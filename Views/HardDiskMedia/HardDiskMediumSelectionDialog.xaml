@@ -1,0 +1,74 @@
+<Window x:Class="DocMgr.Views.HardDiskMedia.HardDiskMediumSelectionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
+        Width="960"
+        Height="520"
+        Loaded="Window_Loaded"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F7FA">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Button Content="关闭"
+                Command="{x:Static viewShared:ViewCommands.CloseCurrentView}"
+                Style="{StaticResource DialogCloseButtonStyle}"
+                HorizontalAlignment="Right"/>
+
+        <StackPanel Grid.Row="0" Margin="0,0,120,0">
+            <TextBlock Text="资料立档拟使用硬盘"
+                       FontSize="15"
+                       FontWeight="Bold"
+                       Foreground="#333"/>
+            <TextBlock Margin="0,8,0,0"
+                       Foreground="#4B5563"
+                       TextWrapping="Wrap"
+                       Text="{Binding HintText}"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,16,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0"
+                     Margin="0,0,10,0"
+                     Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="可按硬盘编号、序列号、品牌、容量、接口类型、柜内位置筛选。"/>
+            <Button Grid.Column="1"
+                    Width="90"
+                    Content="查询"
+                    Command="{Binding SearchCommand}"/>
+        </Grid>
+
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding AvailableDisks}"
+                  SelectedItem="{Binding SelectedDisk}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  HeadersVisibility="Column"
+                  SelectionMode="Single"
+                  IsReadOnly="True"
+                  ColumnHeaderStyle="{StaticResource DataGridHeaderStyle}">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="硬盘编号" Binding="{Binding DiskCode}" Width="120"/>
+                <DataGridTextColumn Header="序列号" Binding="{Binding SerialNumber}" Width="150"/>
+                <DataGridTextColumn Header="品牌" Binding="{Binding Brand}" Width="100"/>
+                <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="90"/>
+                <DataGridTextColumn Header="出厂日期" Binding="{Binding FactoryDate, StringFormat=yyyy-MM-dd}" Width="100"/>
+                <DataGridTextColumn Header="接口类型" Binding="{Binding InterfaceType}" Width="100"/>
+                <DataGridTextColumn Header="柜内位置" Binding="{Binding CurrentLocation}" Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="确定" Style="{StaticResource DialogPrimaryActionButtonStyle}" Command="{Binding ConfirmCommand}"/>
+            <Button Content="取消" Style="{StaticResource DialogSecondaryActionButtonStyle}" Margin="10,0,0,0" Command="{Binding CancelCommand}"/>
+        </StackPanel>
+    </Grid>
+</Window>

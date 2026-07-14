@@ -1,0 +1,81 @@
+﻿<Page x:Class="DocMgr.Views.HistoryArchive.TopoMapPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      mc:Ignorable="d" 
+      d:DesignHeight="450" d:DesignWidth="800"
+      Title="TopoMapPage">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- 工具栏 -->
+        <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Background="#F5F7FA" BorderBrush="#E0E0E0" BorderThickness="1" Margin="0,0,0,10">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="📥 导入" Command="{Binding ImportCommand}" Width="90" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <Button Content="🔍 浏览数据" Command="{Binding BrowseCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+
+                    <Separator Style="{StaticResource VerticalSeparatorStyle}" />
+
+                    <Button Content="✏️ 编辑" Command="{Binding EditCommand}" Width="80" Margin="10,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <Button Content="🔎 检索" Command="{Binding SearchCommand}" Width="80" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <Button Content="📤 导出" Command="{Binding ExportCommand}" Width="80" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+
+                    <!-- 右侧删除按钮 -->
+                    <Button Content="🗑️ 删除表" Command="{Binding DeleteTableCommand}" Width="90" Margin="20,0,0,0" HorizontalAlignment="Right" Style="{StaticResource ToolbarDangerButtonStyle}"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- 数据展示区 -->
+        <Grid Grid.Row="1">
+            <DataGrid x:Name="DgTopoMaps" 
+                      ItemsSource="{Binding TopoMaps}"
+                      LoadingRow="DgTopoMaps_LoadingRow"
+                      AutoGenerateColumns="False" 
+                      IsReadOnly="True"
+                      GridLinesVisibility="Horizontal"
+                      HeadersVisibility="All"
+                      CanUserAddRows="False">
+                <DataGrid.Columns>
+                    <!-- 序号列由 LoadingRow 事件处理，直接显示Header -->
+                    
+                    <DataGridTextColumn Header="档案盒编号" Binding="{Binding BoxNumber}" Width="100"/>
+                    <DataGridTextColumn Header="比例尺" Binding="{Binding Scale}" Width="80"/>
+                    <DataGridTextColumn Header="图号" Binding="{Binding MapNumber}" Width="100"/>
+                    <DataGridTextColumn Header="图名" Binding="{Binding MapName}" Width="150"/>
+                    
+                    <!-- 补全缺失的字段 -->
+                    <DataGridTextColumn Header="幅数" Binding="{Binding SheetCount}" Width="50"/>
+                    <DataGridTextColumn Header="成图日期" Binding="{Binding CreationDate}" Width="100"/>
+                    <DataGridTextColumn Header="调绘日期" Binding="{Binding SurveyDate}" Width="100"/>
+                    <DataGridTextColumn Header="坐标系统" Binding="{Binding CoordinateSystem}" Width="100"/>
+                    <DataGridTextColumn Header="高程基准" Binding="{Binding ElevationDatum}" Width="100"/>
+                    <DataGridTextColumn Header="涉及省市县" Binding="{Binding Region}" Width="150"/>
+                    
+                    <DataGridTextColumn Header="登记人" Binding="{Binding Registrant}" Width="80"/>
+                    <DataGridTextColumn Header="登记日期" Binding="{Binding RegistrationDate}" Width="120"/>
+                    <DataGridTextColumn Header="备注" Binding="{Binding Remark}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- 无数据提示 -->
+            <StackPanel x:Name="TxtNoDataHint" 
+                        Visibility="{Binding NoDataHintVisibility}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.5">
+                <TextBlock Text="📭" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                <TextBlock Text="暂无数据，请先导入或选择数据表" FontSize="16"/>
+            </StackPanel>
+
+            <!-- 当前表名显示 (右下角或顶部，视你原设计而定) -->
+            <TextBlock Text="{Binding CurrentTableName, StringFormat='当前表: {0}'}" 
+                       HorizontalAlignment="Right" VerticalAlignment="Top" 
+                       Margin="0,-35,10,0" Foreground="Gray"/>
+        </Grid>
+    </Grid>
+</Page>

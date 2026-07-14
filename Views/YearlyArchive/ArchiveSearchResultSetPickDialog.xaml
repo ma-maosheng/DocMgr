@@ -1,0 +1,39 @@
+<Window x:Class="DocMgr.Views.YearlyArchive.ArchiveSearchResultSetPickDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="760"
+        Height="520"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F7FA"
+        Loaded="Window_Loaded">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBox Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}" Width="260" Height="28" Margin="0,0,8,0"/>
+            <Button Content="检索" Command="{Binding SearchCommand}" Padding="12,4"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="1" ItemsSource="{Binding Pools}" SelectedItem="{Binding SelectedPool}"
+                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" SelectionMode="Single">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="检索集编号" Binding="{Binding ResultSetNo}" Width="140"/>
+                <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="*"/>
+                <DataGridTextColumn Header="介质" Binding="{Binding MediaKind}" Width="70"/>
+                <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="80"/>
+                <DataGridTextColumn Header="明细数" Binding="{Binding ItemCount}" Width="70"/>
+                <DataGridTextColumn Header="创建人" Binding="{Binding CreatedByName}" Width="90"/>
+                <DataGridTextColumn Header="更新时间" Binding="{Binding UpdatedAtDisplay}" Width="130"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="确定" Command="{Binding ConfirmCommand}" Padding="16,6" Margin="0,0,8,0"/>
+            <Button Content="取消" Command="{Binding CancelCommand}" Padding="16,6"/>
+        </StackPanel>
+    </Grid>
+</Window>

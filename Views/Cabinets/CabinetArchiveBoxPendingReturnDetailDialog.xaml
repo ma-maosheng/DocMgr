@@ -1,0 +1,85 @@
+<Window x:Class="DocMgr.Views.Cabinets.CabinetArchiveBoxPendingReturnDetailDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
+        Width="1280"
+        Height="680"
+        MinWidth="980"
+        MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F7FA">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Padding="14"
+                Background="White"
+                BorderBrush="#FDBA74"
+                BorderThickness="1"
+                CornerRadius="4">
+            <StackPanel>
+                <TextBlock Text="{Binding WindowTitle}" FontSize="18" FontWeight="Bold" Foreground="#9A3412"/>
+                <TextBlock Text="{Binding HeaderText}" Margin="0,6,0,0" FontSize="14" Foreground="#C2410C"/>
+                <TextBlock Text="{Binding SummaryText}" Margin="0,4,0,0" Foreground="#666" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding ListHintText}" Margin="0,4,0,0" Foreground="#555" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1"
+                Margin="0,12,0,12"
+                Padding="10"
+                Background="White"
+                BorderBrush="#E0E0E0"
+                BorderThickness="1"
+                CornerRadius="4">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <viewShared:ItemDetailsPanelHeader Grid.Row="0" DataContext="{Binding ItemDetailsPanel}" Margin="0,0,0,8"/>
+                <DataGrid Grid.Row="1"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          ItemsSource="{Binding ItemDetailsPanel.PageItems}">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ItemDetailsPanel.IsExpanded}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="????" Binding="{Binding OutboundNo}" Width="120"/>
+                        <DataGridTextColumn Header="????" Binding="{Binding OutboundCompletedAtDisplay}" Width="88"/>
+                        <DataGridTextColumn Header="???" Binding="{Binding ApplicantName}" Width="72"/>
+                        <DataGridTextColumn Header="??" Binding="{Binding ApplicantDept}" Width="88"/>
+                        <DataGridTextColumn Header="????" Binding="{Binding ApplyDateDisplay}" Width="88"/>
+                        <DataGridTextColumn Header="????" Binding="{Binding FormNo}" Width="96"/>
+                        <DataGridTextColumn Header="????" Binding="{Binding MaterialName}" Width="*"/>
+                        <DataGridTextColumn Header="????" Binding="{Binding ItemName}" Width="120"/>
+                        <DataGridTextColumn Header="????" Binding="{Binding MediaType}" Width="80"/>
+                        <DataGridTextColumn Header="????" Binding="{Binding PendingReturnCopyCount}" Width="72"/>
+                        <DataGridTextColumn Header="????" Binding="{Binding ExpectedReturnDateDisplay}" Width="88"/>
+                        <DataGridTextColumn Header="????" Binding="{Binding ArchivePurpose}" Width="88"/>
+                        <DataGridTextColumn Header="????" Binding="{Binding Reason}" Width="140"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+                <viewShared:ItemDetailsPanelPaginationBar Grid.Row="2" DataContext="{Binding ItemDetailsPanel}"/>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="??" Command="{Binding CloseCommand}" Padding="16,8"/>
+        </StackPanel>
+    </Grid>
+</Window>

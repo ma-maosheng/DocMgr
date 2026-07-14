@@ -1,0 +1,53 @@
+<Window x:Class="DocMgr.Views.Shared.TextDetailDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Height="620"
+        Width="760"
+        MinHeight="420"
+        MinWidth="560"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="#F5F5F5">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="{Binding DialogTitle}"
+                   FontSize="16"
+                   FontWeight="Bold"
+                   Foreground="#333"
+                   Margin="0,0,0,10"/>
+
+        <Border Grid.Row="1"
+                Background="White"
+                BorderBrush="#E0E0E0"
+                BorderThickness="1"
+                CornerRadius="4">
+            <ScrollViewer x:Name="DetailScrollViewer"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Auto"
+                          CanContentScroll="False"
+                          Padding="10">
+                <TextBlock x:Name="DetailTextBlock"
+                           TextWrapping="Wrap"
+                           FontFamily="Microsoft YaHei UI, Consolas"
+                           FontSize="13"
+                           LineHeight="22"
+                           LineStackingStrategy="BlockLineHeight"
+                           Margin="0,0,0,8"/>
+            </ScrollViewer>
+        </Border>
+
+        <Button Grid.Row="2"
+                Content="关闭"
+                Width="96"
+                Margin="0,12,0,0"
+                HorizontalAlignment="Right"
+                Style="{StaticResource DialogPrimaryActionButtonStyle}"
+                Click="CloseButton_Click"/>
+    </Grid>
+</Window>

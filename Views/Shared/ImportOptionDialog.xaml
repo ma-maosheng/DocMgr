@@ -1,0 +1,45 @@
+﻿<Window x:Class="DocMgr.Views.Shared.ImportOptionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
+        Height="220" Width="400"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" WindowStyle="ToolWindow"
+        Background="#F5F5F5">
+    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Button Content="关闭"
+                Command="{x:Static viewShared:ViewCommands.CloseCurrentView}"
+                Style="{StaticResource DialogCloseButtonStyle}"
+                HorizontalAlignment="Right"/>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="{Binding Message}"
+                       TextWrapping="Wrap" FontSize="14" Foreground="#333" Margin="0,0,120,15"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="10,0,0,0">
+            <RadioButton Content="追加导入 (保留现有数据，新增数据追加到末尾)"
+                         IsChecked="{Binding IsAppendMode, Mode=TwoWay}"
+                         Margin="0,0,0,8" FontSize="13"/>
+            <RadioButton Content="重新建表 (清空现有表数据，重新导入)"
+                         IsChecked="{Binding IsRecreateMode, Mode=TwoWay}"
+                         Margin="0,0,0,8" FontSize="13"/>
+            <!-- 暂时不实现复杂的单条覆盖逻辑，通常工程上"覆盖"指的是重做或者是按图号更新，这里简化为清空重录更安全 -->
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="确定" Style="{StaticResource DialogPrimaryActionButtonStyle}"
+                    Command="{Binding ConfirmCommand}" Cursor="Hand"/>
+            <Button Content="取消" Margin="10,0,0,0" Style="{StaticResource DialogSecondaryActionButtonStyle}"
+                    Command="{Binding CancelCommand}" Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+    </ScrollViewer>
+</Window>

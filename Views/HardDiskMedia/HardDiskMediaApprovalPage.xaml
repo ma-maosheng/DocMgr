@@ -1,0 +1,193 @@
+﻿<Page x:Class="DocMgr.Views.HardDiskMedia.HardDiskMediaApprovalPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      mc:Ignorable="d"
+      d:DesignHeight="800"
+      d:DesignWidth="1200"
+      Title="HardDiskMediaApprovalPage"
+      Background="#F0F2F5">
+    <Grid Margin="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Margin="0" CornerRadius="0" Padding="16,12">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <Button Content="申请-&gt;查看" Command="{Binding ViewApplicationCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="120" Margin="0,0,10,0"/>
+                        <Button Content="申请-&gt;审批" Command="{Binding ApproveCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="120" Margin="0,0,10,0"/>
+                        <Button Content="强制作废" Command="{Binding ForceWithdrawCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="130" Margin="0,0,10,0"/>
+                        <Button Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <Border Width="180"
+                                Height="32"
+                                Background="#EEF2F7"
+                                BorderBrush="#C7CED8"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8,0"
+                                ToolTipService.InitialShowDelay="0"
+                                ToolTipService.ShowDuration="30000">
+                            <Border.ToolTip>
+                                <ToolTip>
+                                    <StackPanel>
+                                        <TextBlock Text="审批状态已锁定为【全部】" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                        <TextBlock Text="包含状态："/>
+                                        <TextBlock Text="1. 当前草稿-待提交"/>
+                                        <TextBlock Text="2. 已提交-待审批"/>
+                                        <TextBlock Text="3. 已审批-待实物交接"/>
+                                        <TextBlock Text="4. 已实物交接-待上传签批交接单"/>
+                                        <TextBlock Text="5. 已办结（业务已闭环）"/>
+                                        <TextBlock Text="6. 已作废（撤回）"/>
+                                        <TextBlock Text="7. 已作废（强制）"/>
+                                    </StackPanel>
+                                </ToolTip>
+                            </Border.ToolTip>
+                            <DockPanel LastChildFill="True">
+                                <TextBlock Text="&#xE72E;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           VerticalAlignment="Center"
+                                           Foreground="#6B7280"
+                                           Margin="0,0,6,0"
+                                           DockPanel.Dock="Left"/>
+                                <TextBlock Text="全部"
+                                           VerticalAlignment="Center"
+                                           Foreground="#374151"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="&#xE946;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           VerticalAlignment="Center"
+                                           Foreground="#6B7280"
+                                           Margin="6,0,0,0"
+                                           DockPanel.Dock="Right"/>
+                            </DockPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                        <TextBlock Text="申请人信息:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <Grid>
+                            <ToggleButton x:Name="ApplicantFilterButton"
+                                          Width="180"
+                                          Height="32"
+                                          IsChecked="{Binding IsApplicantPopupOpen, Mode=TwoWay}">
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock Text="{Binding SelectedApplicantSummary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="▼" Margin="8,0,0,0" VerticalAlignment="Center" DockPanel.Dock="Right"/>
+                                </DockPanel>
+                            </ToggleButton>
+                            <Popup PlacementTarget="{Binding ElementName=ApplicantFilterButton}"
+                                   Placement="Bottom"
+                                   StaysOpen="False"
+                                   IsOpen="{Binding IsApplicantPopupOpen, Mode=TwoWay}">
+                                <Border Background="White" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="4" Padding="10" MinWidth="180">
+                                    <StackPanel>
+                                        <CheckBox Content="全部"
+                                                  IsChecked="{Binding IsAllApplicantsSelected, Mode=TwoWay}"/>
+                                        <Separator Margin="0,6,0,6"/>
+                                        <ItemsControl ItemsSource="{Binding ApplicantOptions}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Content="{Binding Label}"
+                                                              Margin="0,2,0,0"
+                                                              IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                        <TextBlock Text="申请年度:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox Width="100"
+                                  Style="{StaticResource ToolbarFilterComboBoxStyle}"
+                                  ItemsSource="{Binding ApplicationYears}"
+                                  SelectedItem="{Binding ApplicationYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </Border>
+
+        <Border Grid.Row="1"
+                Margin="0,12,0,12"
+                Padding="0"
+                Background="#FFFDF7"
+                BorderBrush="#E2C98F"
+                BorderThickness="1"
+                CornerRadius="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="#B98A2E"/>
+
+                <TextBlock Grid.Row="1"
+                           Text="硬盘出库审批办理表"
+                           Margin="0,12,0,4"
+                           FontSize="22"
+                           FontWeight="Bold"
+                           Foreground="#6F4A00"
+                           HorizontalAlignment="Center"
+                           TextDecorations="Underline"/>
+
+                <TextBlock Grid.Row="2"
+                           Text="Hard Disk Outbound Approval Ledger"
+                           Margin="0,0,0,10"
+                           FontSize="12"
+                           Foreground="#9A7B3F"
+                           HorizontalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <Border Background="White" CornerRadius="0" Padding="10" Margin="0">
+                <DataGrid x:Name="DgApplications"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          RowHeight="38"
+                          ColumnHeaderHeight="40"
+                          GridLinesVisibility="Horizontal"
+                          BorderThickness="0"
+                          ItemsSource="{Binding Applications}"
+                          SelectedItem="{Binding SelectedApplication}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="申请单编号" Binding="{Binding ApplicationNo}" Width="150"/>
+                        <DataGridTextColumn Header="介质编号" Binding="{Binding Medium.DiskCode}" Width="110"/>
+                        <DataGridTextColumn Header="申请类型" Binding="{Binding ApplicationType}" Width="140"/>
+                        <DataGridTextColumn Header="申请状态" Binding="{Binding ApplicationStatus}" Width="120"/>
+                        <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="90"/>
+                        <DataGridTextColumn Header="申请日期" Binding="{Binding ApplyTime, StringFormat=yyyy-MM-dd}" Width="110"/>
+                        <DataGridTextColumn Header="去向/对方" Binding="{Binding TargetPersonOrUnit}" Width="140"/>
+                        <DataGridCheckBoxColumn Header="已上传签字件" Binding="{Binding SignedAttachmentUploaded}" Width="100"/>
+                        <DataGridTextColumn Header="审批意见" Binding="{Binding ApprovalOpinion}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>
+

@@ -1,0 +1,25 @@
+---
+description: 防磁磁盘柜档口用途（专用类别）配置与启动行为
+globs: Services/Cabinets/**,App.xaml.cs,ViewModels/Cabinets/**,Services/SystemSettings/TestPreparationService.cs
+alwaysApply: false
+---
+
+# 防磁磁盘柜档口用途
+
+## 用户配置
+
+- 开柜界面通过 `ICabinetService.SetHardDiskDedicatedSlotCategory` / `ClearHardDiskDedicatedSlotCategory` 写入 `CabinetHardDiskSlotCategoryAssignments`。
+- **不得**在普通业务或应用启动时覆盖用户已保存的 `CategoryName`。
+
+## 启动时（`EnsureAllMagneticDiskSlotsUseBlankCategoryOnStartup`）
+
+- 仅为**尚未存在**专用类别记录的格口补默认「空白硬盘专用档口」。
+- **不**将已设为年度数据硬盘/光盘、损坏硬盘等用途的格口改回空白。
+
+## 测试数据准备
+
+- `TestPreparationService` 导入无数据硬盘前可调用 `ResetAllMagneticDiskSlotsToBlankCategory`，**有意**将全部格口重置为空白专用（仅测试场景）。
+
+## 其它
+
+- `MigrateCabinetHardDiskSlotCategoryNames` 仅做旧名称字符串迁移（如「数据硬盘专用档口」→「年度数据硬盘专用档口」），不按启动逻辑批量改用途。

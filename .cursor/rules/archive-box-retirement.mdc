@@ -1,0 +1,40 @@
+---
+description: 模拟介质档案盒销号（Retired）与柜体占位释放规则
+globs: Services/YearlyArchive/ArchiveRelocationService*.cs,Models/YearlyArchive/YearlyArchiveBox.cs,Repositories/YearlyArchive/**,Repositories/Cabinets/CabinetOpenLayoutRepository.cs,ViewModels/YearlyArchive/ArchiveSimulatedRelocationViewModel.cs
+alwaysApply: false
+---
+
+# 档案盒销号（Retired）
+
+## 何时销号
+
+模拟介质资料迁档在以下场景**必须**将源档案盒标为 `Retired`，并从柜体占位中移除：
+
+1. **并入已有档案盒**：资料迁入目标盒，源盒由管理员取走处置。
+2. **物理位置迁移 · 迁入空盒**：勾选后在目标档口**新建**档案盒承载资料，源盒销号。
+
+**物理位置迁移（未勾选迁入空盒）**：源盒与资料整体迁至新位置，保持 `InUse`，不销号。
+
+## 销号时的数据处置
+
+- `ContainerLifecycleStatus` → `Retired`
+- `LastStorageLocation` ← 销号前 `BoxLocationCode`
+- `RetiredAt` / `RetiredBy` 记录操作信息
+- 清空 `BoxLocationCode`、柜号/面/层/列/盒序等物理字段
+- **删除** `CabinetArchiveBoxPlacements` 中对应 `BoxCode` 记录
+- 资料子项与 FilingFact 指向目标盒（新建盒或并档目标盒）
+
+## 追溯
+
+- 源盒实体保留（`ArchiveSequenceNo` 不变），可通过迁档单 `YearlyArchiveRelocationRecords` / `YearlyArchiveRelocationItems` 查询历史。
+- 柜体开柜界面、档口占用统计**仅**包含 `InUse` 且位置非空的档案盒。
+
+## 位置编号复用
+
+销号后释放的物理位置编号（含档口键与 `-NN` 序号）可在立档、迁档等流程中重新分配；占用统计以 `InUse` 盒的 `BoxLocationCode` 为准（见 `GetYearlyArchiveBoxLocationCodesAsync`）。
+
+## 实现入口
+
+- 销号：`ArchiveRelocationService.RetireSimulatedSourceBox`
+- 物理迁移·迁入空盒：`ExecuteSimulatedPhysicalMoveToNewEmptyBoxAsync`
+- UI：`ArchiveSimulatedRelocationPage` 物理位置迁移区的「迁入空盒」勾选与新档案盒规格

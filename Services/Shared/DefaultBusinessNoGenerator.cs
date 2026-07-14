@@ -1,0 +1,100 @@
+using DocMgr.Repositories.Interfaces;
+
+namespace DocMgr.Services.Shared
+{
+    /// <summary>
+    /// 默认业务编号生成器。
+    /// </summary>
+    public sealed class DefaultBusinessNoGenerator : IBusinessNoGenerator
+    {
+        private readonly IArchiveRegisterRepository _archiveRegisterRepository;
+        private readonly IArchiveOutboundRepository _archiveOutboundRepository;
+        private readonly IArchiveReturnRepository _archiveReturnRepository;
+        private readonly IHardDiskMediaRepository _hardDiskMediaRepository;
+
+        public DefaultBusinessNoGenerator(
+            IArchiveRegisterRepository archiveRegisterRepository,
+            IArchiveOutboundRepository archiveOutboundRepository,
+            IArchiveReturnRepository archiveReturnRepository,
+            IHardDiskMediaRepository hardDiskMediaRepository)
+        {
+            _archiveRegisterRepository = archiveRegisterRepository;
+            _archiveOutboundRepository = archiveOutboundRepository;
+            _archiveReturnRepository = archiveReturnRepository;
+            _hardDiskMediaRepository = hardDiskMediaRepository;
+        }
+
+        /// <summary>
+        /// 根据业务编号类别生成下一编号。
+        /// </summary>
+        public async Task<string> GenerateNextNoAsync(BusinessNoCategory category, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var rule = DefaultBusinessPolicyProvider.GetRule(category);
+            int currentYear = DateTime.Now.Year;
+            string prefix = $"{rule.Prefix}-{currentYear}-";
+
+            string? lastNo = await GetLastBusinessNoByPrefixAsync(category, prefix).ConfigureAwait(false);
+            int nextSequence = 1;
+
+            if (!string.IsNullOrWhiteSpace(lastNo) && lastNo.Length > prefix.Length)
+            {
+                string sequenceText = lastNo[prefix.Length..];
+                if (int.TryParse(sequenceText, out int parsedSequence) && parsedSequence > 0)
+                {
+                    nextSequence = parsedSequence + 1;
+                }
+            }
+
+            return $"{prefix}{nextSequence.ToString($"D{rule.SequenceLength}")}";
+        }
+
+        private Task<string?> GetLastBusinessNoByPrefixAsync(BusinessNoCategory category, string prefix)
+        {
+            return category switch
+            {
+                BusinessNoCategory.AssetReturnRegister => GetLastReturnRegisterBusinessNoAsync(prefix),
+                BusinessNoCategory.AssetInboundApply or
+                BusinessNoCategory.AssetOutboundApply or
+                BusinessNoCategory.AssetDestroyApply => GetLastArchiveBusinessNoAsync(prefix),
+                BusinessNoCategory.DiskInboundRegister or
+                BusinessNoCategory.DiskOutboundApply or
+                BusinessNoCategory.DiskDestroyApply => _hardDiskMediaRepository.GetLastApplicationNoByPrefixAsync(prefix),
+                _ => throw new ArgumentException($"不支持的业务编号类别：{category}", nameof(category))
+            };
+        }
+
+        private async Task<string?> GetLastReturnRegisterBusinessNoAsync(string prefix)
+        {
+            var registerFormNos = await _archiveRegisterRepository.GetFormNosByPrefixAsync(prefix).ConfigureAwait(false);
+            var returnNos = await _archiveReturnRepository.GetReturnNosByPrefixAsync(prefix).ConfigureAwait(false);
+
+            var combined = registerFormNos.Concat(returnNos).ToList();
+            if (combined.Count == 0)
+            {
+                return null;
+            }
+
+            return combined
+                .OrderByDescending(no => no, StringComparer.Ordinal)
+                .FirstOrDefault();
+        }
+
+        private async Task<string?> GetLastArchiveBusinessNoAsync(string prefix)
+        {
+            var registerFormNos = await _archiveRegisterRepository.GetFormNosByPrefixAsync(prefix).ConfigureAwait(false);
+            var outboundNos = await _archiveOutboundRepository.GetOutboundNosByPrefixAsync(prefix).ConfigureAwait(false);
+
+            var combined = registerFormNos.Concat(outboundNos).ToList();
+            if (combined.Count == 0)
+            {
+                return null;
+            }
+
+            return combined
+                .OrderByDescending(no => no, StringComparer.Ordinal)
+                .FirstOrDefault();
+        }
+    }
+}

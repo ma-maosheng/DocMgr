@@ -1,0 +1,277 @@
+﻿<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveReturnWorkbenchPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="clr-namespace:DocMgr.Views.YearlyArchive"
+      xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
+      Title="资料归还工作台"
+      Background="#F0F2F5">
+    <Page.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <local:BoolToVisConverter x:Key="BoolToVisConverter"/>
+        <local:BoolToStarOrZeroGridLengthConverter x:Key="BoolToStarOrZeroGridLengthConverter"/>
+
+        <Style x:Key="LeftPanelToggleButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="MinHeight" Value="72"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Background" Value="#ECEFF1"/>
+            <Setter Property="BorderBrush" Value="#CFD8DC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="#546E7A"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#CFD8DC"/>
+                                <Setter Property="Foreground" Value="#37474F"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#B0BEC5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+    <Grid Margin="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Margin="0" CornerRadius="0" Padding="16,12">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,16,0"/>
+                    <TextBlock Text="归还年度:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox Width="100" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding Years}" SelectedItem="{Binding SelectedYear}" Margin="0,0,16,0"/>
+                    <TextBlock Text="归还状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox Width="100" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding ReturnStatusOptions}" SelectedItem="{Binding SelectedReturnStatus}" Margin="0,0,16,0"/>
+                    <TextBlock Text="待归还:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox Width="100" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding OutboundFilterOptions}" SelectedItem="{Binding SelectedOutboundFilter}" Margin="0,0,16,0"/>
+                    <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBox Width="200" Style="{StaticResource ToolbarFilterTextBoxStyle}" VerticalContentAlignment="Center" Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,16,0">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <Border Grid.Row="1" Margin="0,12,0,12" Padding="12" Background="#E8F5E9" BorderBrush="#81C784" BorderThickness="1">
+            <TextBlock Text="资料归还（模拟介质提档原件收回入库）" FontSize="20" FontWeight="Bold" Foreground="#2E7D32" HorizontalAlignment="Center"/>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="{Binding IsLeftPanelExpanded, Converter={StaticResource BoolToStarOrZeroGridLengthConverter}, ConverterParameter=3}"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="7*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧：待归还出库单 + 归还单列表 -->
+            <Grid Grid.Column="0"
+                  Visibility="{Binding IsLeftPanelExpanded, Converter={StaticResource BoolToVisConverter}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="1*"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="1*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="White" Padding="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                            <TextBlock Text="待归还出库单" FontSize="14" FontWeight="Bold" Foreground="#37474F" VerticalAlignment="Center"/>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="查看借出详情" Command="{Binding ViewOutboundDetailCommand}" Width="112" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
+                                <Button Content="发起归还" Command="{Binding StartReturnCommand}" Width="96" Style="{StaticResource FormInlineButtonStyle}"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <DataGrid Grid.Row="1" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" SelectionMode="Single"
+                                  ItemsSource="{Binding ReturnableOutbounds}" SelectedItem="{Binding SelectedOutbound}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="出库单号" Binding="{Binding OutboundNo}" Width="150"/>
+                                <DataGridTextColumn Header="资料摘要" Binding="{Binding MaterialSummary}" Width="*"/>
+                                <DataGridTextColumn Header="借出人" Binding="{Binding ApplicantName}" Width="80"/>
+                                <DataGridTextColumn Header="盒位提示" Binding="{Binding ContainerStatusHintSummary}" Width="90"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="2" Background="White" Padding="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                            <TextBlock Text="归还单" FontSize="14" FontWeight="Bold" Foreground="#37474F" VerticalAlignment="Center"/>
+                            <Button Content="打开" Command="{Binding OpenReturnCommand}" DockPanel.Dock="Right"
+                                    HorizontalAlignment="Right" Width="96" Style="{StaticResource FormInlineButtonStyle}"/>
+                        </DockPanel>
+                        <DataGrid Grid.Row="1" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" SelectionMode="Single"
+                                  ItemsSource="{Binding Returns}" SelectedItem="{Binding SelectedReturn}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="归还单号" Binding="{Binding ReturnNo}" Width="150"/>
+                                <DataGridTextColumn Header="源出库单" Binding="{Binding SourceOutboundNo}" Width="150"/>
+                                <DataGridTextColumn Header="借出人" Binding="{Binding BorrowerName}" Width="80"/>
+                                <DataGridTextColumn Header="状态" Binding="{Binding StatusStr}" Width="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <Button Grid.Column="1"
+                    Command="{Binding ToggleLeftPanelCommand}"
+                    Content="{Binding LeftPanelToggleGlyph}"
+                    ToolTip="{Binding LeftPanelToggleToolTip}"
+                    Style="{StaticResource LeftPanelToggleButtonStyle}"
+                    Margin="4,0"/>
+
+            <!-- 右侧：归还明细编辑区 -->
+            <Border Grid.Column="2" Background="White" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <viewShared:ItemDetailsPanelHeader Grid.Row="0" DataContext="{Binding EditItemDetailsPanel}" Margin="0,0,0,8"/>
+                    <TextBlock Grid.Row="1" Text="{Binding EditHeader}" TextWrapping="Wrap" Foreground="#546E7A" Margin="0,0,0,8"/>
+                    <TextBlock Grid.Row="2" Text="{Binding AbnormalFlowHint}" TextWrapping="Wrap" Foreground="#C62828" Margin="0,0,0,8"
+                               Visibility="{Binding ShowAbnormalReturnPanel, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                    <DataGrid Grid.Row="3" AutoGenerateColumns="False" CanUserAddRows="False" SelectionMode="Single"
+                              ItemsSource="{Binding EditItemDetailsPanel.PageItems}" HorizontalScrollBarVisibility="Auto">
+                        <DataGrid.Style>
+                            <Style TargetType="DataGrid">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding EditItemDetailsPanel.IsExpanded}" Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.Style>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="序号" Binding="{Binding SortOrder}" Width="50" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="年度" Binding="{Binding ItemArchiveYear}" Width="56" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="介质" Binding="{Binding MediaKind}" Width="56" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="载体类型" Binding="{Binding MediaType}" Width="72" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="用途" Binding="{Binding UsageModeDisplay}" Width="56" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="*" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="子项" Binding="{Binding ItemName}" Width="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="范围" Binding="{Binding SelectionScopeDisplay}" Width="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="借出盒号" Binding="{Binding ContainerCode}" Width="80" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="借出位置" Binding="{Binding StorageLocation}" Width="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="当前盒号" Binding="{Binding CurrentContainerCode}" Width="80" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="当前盒位" Binding="{Binding CurrentStorageLocation}" Width="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="容器状态" Binding="{Binding ContainerStatusHintText}" Width="140" IsReadOnly="True"/>
+                            <DataGridTemplateColumn Header="目标盒" Width="100" IsReadOnly="True">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="指定目标盒"
+                                                Padding="6,2"
+                                                Command="{Binding DataContext.AssignRehomeTargetCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                CommandParameter="{Binding}"
+                                                Visibility="{Binding NeedsRehome, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                Style="{StaticResource FormInlineButtonStyle}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="借出份数" Binding="{Binding ReturnCopyCount}" Width="72" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevelDisplay}" Width="56" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="硬盘/空盘" Binding="{Binding DiskInfo}" Width="90" IsReadOnly="True"/>
+                            <DataGridTemplateColumn Header="完好归还份数" Width="96">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Text="{Binding IntactReturnCopyCount, UpdateSourceTrigger=PropertyChanged}"
+                                                 IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=Page}}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="灭失份数" Binding="{Binding LossCopyCount}" Width="72" IsReadOnly="True"/>
+                            <DataGridTemplateColumn Header="备注" Width="160">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Text="{Binding Remark, UpdateSourceTrigger=PropertyChanged}"
+                                                 IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=Page}}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <viewShared:ItemDetailsPanelPaginationBar Grid.Row="4" DataContext="{Binding EditItemDetailsPanel}"/>
+
+                    <StackPanel Grid.Row="5" Margin="0,10,0,0">
+                        <Border Padding="10" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1" Margin="0,0,0,10"
+                                Visibility="{Binding ShowAbnormalReturnPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="资料灭失情况" FontWeight="SemiBold" Foreground="#E65100" Margin="0,0,0,8"/>
+                                <TextBlock Text="灭失具体情况：" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding LossDescription, UpdateSourceTrigger=PropertyChanged}"
+                                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="112" MaxHeight="192"
+                                         VerticalScrollBarVisibility="Auto"
+                                         IsEnabled="{Binding IsEditable}"/>
+                                <ListView ItemsSource="{Binding AbnormalReportAttachments}" Height="72"
+                                          SelectedItem="{Binding SelectedAbnormalReportAttachment}"
+                                          Margin="0,8,0,0"
+                                          BorderBrush="#EEE" BorderThickness="1">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="文件名" Width="220" DisplayMemberBinding="{Binding FileName}"/>
+                                            <GridViewColumn Header="上传时间" Width="130" DisplayMemberBinding="{Binding UploadTime, StringFormat='yyyy-MM-dd HH:mm'}"/>
+                                            <GridViewColumn Header="上传人" Width="80" DisplayMemberBinding="{Binding UploaderName}"/>
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Button Content="打印灭失情况表" Command="{Binding PrintAbnormalReportCommand}" Width="112" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
+                                    <Button Content="上传灭失情况表扫描件" Command="{Binding UploadAbnormalReportCommand}" Width="144" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
+                                    <Button Content="查看" Command="{Binding ViewAbnormalReportCommand}" Width="72" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
+                                    <Button Content="删除" Command="{Binding DeleteAbnormalReportCommand}" Width="72" Style="{StaticResource FormInlineButtonStyle}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
+                            <Button Content="登记" Command="{Binding RegisterCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
+                            <Button Content="打印回执" Command="{Binding PrintReceiptCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
+                            <Button Content="办结入库" Command="{Binding CompleteCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
+                            <Button Content="作废" Command="{Binding VoidCommand}" Width="80" Height="32" Margin="0,0,10,0"/>
+                            <Button Content="取消" Command="{Binding CancelEditCommand}" Width="80" Height="32"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

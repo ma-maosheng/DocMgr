@@ -1,0 +1,23 @@
+# 模拟介质出库：提档与复制的库存规则
+
+## 核心结论
+
+模拟介质资料出库时，**仅「提档」领用方式**参与库内份数的校验与扣减；**「复制」领用方式**办理出库时**不影响**资料子项库存数量。
+
+## 提档（Withdrawal）
+
+- 提交申请前：按资料子项校验 `拟提份数 ≤ 当前库内可用份数`（立档份数分解公式，并扣减其他在途提档预订）。
+- 办结出库时：按资料子项份数分解公式校验（与提交一致）；**不**扣减 `YearlyArchiveRegisterMedia.MediaCount`；更新立档事实生命周期（借出/部分可借等）。
+- 份数分解公式（档案盒查看、库内份数计算）仅统计**提档**出库记录，不含复制。
+
+## 复制（Copy）
+
+- 提交申请：**不**做库内份数不足校验。
+- 办结出库：**不**扣减 `MediaCount`；原件留存库内，仅更新借阅提示（如 `CopyBorrowed`）与复制待办流水（Pending → Confirmed）。
+- 复制份数仅表示拟交付复制件数量，不改变「立档 = 库内 + 待还 + 不还 + 灭失」恒等式中的库内份数。
+
+## 实现约定
+
+- 判断是否扣减/校验库存：使用 `ArchiveSimulatedMediaItemStockSupport.IsSimulatedWithdrawalStockItem`（仅 `MediaKindSimulated` + `UsageModeWithdrawal`）。
+- **禁止**将 `UsageModeCopy` 纳入 `MediaCount` 扣减、库内份数提交校验或份数分解公式中的出库扣减项。
+- 检索筛选池份数上限（不超过立档份数）与出库领用方式无关，仍按 `ArchiveSearchPoolCopyCountSupport` 处理。

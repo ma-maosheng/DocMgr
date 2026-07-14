@@ -1,0 +1,16 @@
+global using DocMgr.Models.Cabinets;
+global using DocMgr.Models.HardDiskMedia;
+global using DocMgr.Models.HistoryArchive;
+global using DocMgr.Models.OpticalDiscMedia;
+global using DocMgr.Models.Projects;
+global using DocMgr.Models.Shared;
+global using DocMgr.Models.SystemSettings;
+global using DocMgr.Models.YearlyArchive;
+global using DocMgr.Services.Cabinets;
+global using DocMgr.Services.HardDiskMedia;
+global using DocMgr.Services.HistoryArchive;
+global using DocMgr.Services.Projects;
+global using DocMgr.Services.Shared;
+global using DocMgr.Services.SystemSettings;
+global using DocMgr.Services.Interfaces;
+global using DocMgr.Services.YearlyArchive;

@@ -1,0 +1,1064 @@
+---
+description: 数据库表/字段中英对照字典；用户用中文指代表或字段时必须先查本字典再写代码
+alwaysApply: true
+---
+
+# 数据字典（中英对照）
+
+## 使用约定
+
+1. 用户以**中文表名/字段名**描述需求时，先在本字典中定位 `Entity` / `Property`，再修改 C# 与 SQL。
+2. 代码与数据库物理名保持英文；中文仅作语义对照与 UI 显示。
+3. 权威源文件：`.cursor/schema/SchemaDictionary.yaml`；运行时从 `schema/SchemaDictionary.yaml` 加载。
+4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
+5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
+
+> 生成时间（UTC）：2026-07-10T09:14:31Z
+
+## 表索引
+
+| 中文表名 | Entity | Table | 类型 |
+| --- | --- | --- | --- |
+| 航片 | `AerialPhoto` | `AerialPhotos` | 表 |
+| 档案盒规格 | `ArchiveBoxSpecification` | `ArchiveBoxSpecifications` | 表 |
+| 档案容器汇总视图 | `ArchiveContainerProjection` | `ArchiveContainerProjection` | 视图 |
+| 业务逻辑设置 | `BusinessLogicSettings` | `BusinessLogicSettings` | 表 |
+| 资料柜 | `Cabinet` | `Cabinets` | 表 |
+| 档案盒柜位分配 | `CabinetArchiveBoxPlacement` | `CabinetArchiveBoxPlacements` | 表 |
+| 资料柜硬盘槽位分类 | `CabinetHardDiskSlotCategoryAssignment` | `CabinetHardDiskSlotCategoryAssignments` | 表 |
+| 资料柜槽位特殊规则 | `CabinetSlotSpecialRule` | `CabinetSlotSpecialRules` | 表 |
+| 资料柜槽位规格 | `CabinetSlotSpecification` | `CabinetSlotSpecifications` | 表 |
+| 数据库操作日志 | `DbOperationLog` | `DbOperationLogs` | 表 |
+| 部门 | `Department` | `Departments` | 表 |
+| 字段域定义 | `FieldDomainDefinition` | `FieldDomainDefinitions` | 表 |
+| 字段域选项 | `FieldDomainOption` | `FieldDomainOptions` | 表 |
+| 硬盘台账 | `HardDiskLedger` | `HardDiskLedgers` | 表 |
+| 硬盘出库申请 | `HardDiskMediaApplication` | `HardDiskMediaApplications` | 表 |
+| 硬盘出入库流水 | `HardDiskMediaTransaction` | `HardDiskMediaTransactions` | 表 |
+| 硬盘介质 | `HardDiskMedium` | `HardDiskMedia` | 表 |
+| 硬盘登记锁 | `HardDiskRegisterLock` | `HardDiskRegisterLocks` | 表 |
+| 光盘台账 | `OpticalDiscLedger` | `OpticalDiscLedgers` | 表 |
+| 光盘流转流水 | `OpticalDiscMediaTransaction` | `OpticalDiscMediaTransactions` | 表 |
+| 光盘介质 | `OpticalDiscMedium` | `OpticalDiscMedia` | 表 |
+| 其他图件 | `OtherMap` | `OtherMaps` | 表 |
+| 项目信息 | `ProjectInfo` | `ProjectInfos` | 表 |
+| 角色 | `Role` | `Roles` | 表 |
+| 系统附件 | `SystemAttachment` | `SystemAttachments` | 表 |
+| 待办已读状态 | `ToDoReadState` | `ToDoReadStates` | 表 |
+| 地形图 | `TopoMap` | `TopoMaps` | 表 |
+| 用户 | `User` | `Users` | 表 |
+| 用户偏好 | `UserPreference` | `UserPreferences` | 表 |
+| 用户会话 | `UserSession` | `UserSessions` | 表 |
+| 年度档案盒 | `YearlyArchiveBox` | `YearlyArchiveBoxes` | 表 |
+| 档案盒-介质明细关联 | `YearlyArchiveBoxMediaItemLink` | `YearlyArchiveBoxMediaItemLinks` | 表 |
+| 档案盒-登记申请关联 | `YearlyArchiveBoxYearlyArchiveRegisterRecord` | `YearlyArchiveBoxYearlyArchiveRegisterRecord` | 表 |
+| 立档事实 | `YearlyArchiveFilingFact` | `YearlyArchiveFilingFacts` | 表 |
+| 资料流转履历 | `YearlyArchiveMaterialTransaction` | `YearlyArchiveMaterialTransactions` | 表 |
+| 资料出库明细 | `YearlyArchiveOutboundItem` | `YearlyArchiveOutboundItems` | 表 |
+| 资料出库单 | `YearlyArchiveOutboundRecord` | `YearlyArchiveOutboundRecords` | 表 |
+| 资料出库同步条目 | `YearlyArchiveOutboundSyncEntry` | `YearlyArchiveOutboundSyncEntries` | 表 |
+| 电子介质明细扩展 | `YearlyArchiveRegisterElectronicMediaItemDetail` | `YearlyArchiveRegisterElectronicMediaItemDetails` | 表 |
+| 电子介质目录/文件明细 | `YearlyArchiveRegisterElectronicMediaItemEntry` | `YearlyArchiveRegisterElectronicMediaItemEntries` | 表 |
+| 登记介质条目 | `YearlyArchiveRegisterMedia` | `YearlyArchiveRegisterMedias` | 表 |
+| 登记介质明细 | `YearlyArchiveRegisterMediaItem` | `YearlyArchiveRegisterMediaItems` | 表 |
+| 年度资料登记申请 | `YearlyArchiveRegisterRecord` | `YearlyArchiveRegisterRecords` | 表 |
+| 登记申请-电子立档单元关联 | `YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit` | `YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit` | 表 |
+| 资料移库明细 | `YearlyArchiveRelocationItem` | `YearlyArchiveRelocationItems` | 表 |
+| 资料移库单 | `YearlyArchiveRelocationRecord` | `YearlyArchiveRelocationRecords` | 表 |
+| 资料归还明细 | `YearlyArchiveReturnItem` | `YearlyArchiveReturnItems` | 表 |
+| 资料归还单 | `YearlyArchiveReturnRecord` | `YearlyArchiveReturnRecords` | 表 |
+| 资料检索结果集 | `YearlyArchiveSearchResultSet` | `YearlyArchiveSearchResultSets` | 表 |
+| 资料检索结果集明细 | `YearlyArchiveSearchResultSetItem` | `YearlyArchiveSearchResultSetItems` | 表 |
+| 电子档案单元 | `YearlyElectronicArchiveUnit` | `YearlyElectronicArchiveUnits` | 表 |
+| 电子档案-光盘关联 | `YearlyElectronicArchiveUnitDiscLink` | `YearlyElectronicArchiveUnitDiscLinks` | 表 |
+| 电子立档单元-介质明细关联 | `YearlyElectronicArchiveUnitMediaItemLink` | `YearlyElectronicArchiveUnitMediaItemLinks` | 表 |
+| 电子档案-登记介质关联 | `YearlyElectronicArchiveUnitMediaLink` | `YearlyElectronicArchiveUnitMediaLinks` | 表 |
+| 电子档案-硬盘关联 | `YearlyElectronicArchiveUnitMediumLink` | `YearlyElectronicArchiveUnitMediumLinks` | 表 |
+
+## 字段明细
+
+### AerialPhoto（航片）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 分类 | `Category` | `String` | 否 |
+| 盒号 | `BoxNumber` | `String` | 否 |
+| 档案盒规格 | `BoxSpecification` | `String` | 否 |
+| 测区 | `SurveyArea` | `String` | 否 |
+| 比例尺 | `Scale` | `String` | 否 |
+| 摄影日期 | `PhotographyDate` | `String` | 否 |
+| 盒内内容 | `BoxContents` | `String` | 否 |
+| 照片数量 | `PhotoCount` | `Int32` | 否 |
+| 登记人 | `Registrant` | `String` | 否 |
+| 登记日期 | `RegistrationDate` | `String` | 否 |
+| 修改人 | `Modifier` | `String` | 否 |
+| 修改日期 | `ModificationDate` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+
+### ArchiveBoxSpecification（档案盒规格）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 规格名称 | `Name` | `String` | 否 |
+| 宽度(cm) | `WidthCm` | `Decimal` | 否 |
+| 高度(cm) | `HeightCm` | `Decimal` | 否 |
+| 厚度(cm) | `ThicknessCm` | `Decimal` | 否 |
+| 排序 | `SortOrder` | `Int32` | 否 |
+
+### ArchiveContainerProjection（档案容器汇总视图）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| 类别 | `Kind` | `ArchiveContainerKind` | 否 |
+| 容器编号 | `ContainerCode` | `String` | 否 |
+| 项目名称 | `ProjectName` | `String` | 否 |
+| 所属年度 | `Year` | `String` | 否 |
+| 立档人 | `ArchivedBy` | `String` | 否 |
+| 归档日期 | `ArchivedDate` | `DateTime` | 否 |
+| 备注 | `Remarks` | `String` | 否 |
+
+### BusinessLogicSettings（业务逻辑设置）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 申请单逾期设置 | `ApplicationOverdueSetting` | `String` | 否 |
+| 更新时间 | `UpdatedAt` | `DateTime` | 否 |
+
+### Cabinet（资料柜）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 柜体名称 | `Name` | `String` | 否 |
+| 柜体类型 | `Type` | `CabinetType` | 否 |
+| 宽度 | `Width` | `Double` | 否 |
+| 高度 | `Height` | `Double` | 否 |
+| 深度 | `Depth` | `Double` | 否 |
+| 画布左坐标 | `CanvasLeft` | `Double` | 否 |
+| 画布上坐标 | `CanvasTop` | `Double` | 否 |
+| 面数 | `FaceCount` | `Int32` | 否 |
+| 层数 | `LayerCount` | `Int32` | 否 |
+| 列数 | `ColumnCount` | `Int32` | 否 |
+| 旋转角度 | `RotationAngle` | `Double` | 否 |
+
+### CabinetArchiveBoxPlacement（档案盒柜位分配）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 档案盒编号 | `BoxCode` | `String` | 否 |
+| 档案盒规格 | `BoxSpecification` | `String` | 否 |
+| 柜体名称 | `CabinetName` | `String` | 否 |
+| 面别代码 | `FaceCode` | `String` | 否 |
+| 档口编号 | `SlotCode` | `String` | 否 |
+| 放置方式 | `PlacementMode` | `String` | 否 |
+| 资料来源 | `SourceType` | `String` | 否 |
+| 来源记录标识 | `SourceRecordKey` | `String` | 否 |
+| 创建时间 | `CreatedAt` | `String` | 否 |
+| 更新时间 | `UpdatedAt` | `String` | 否 |
+| 最后更新人 | `UpdatedBy` | `String` | 否 |
+
+### CabinetHardDiskSlotCategoryAssignment（资料柜硬盘槽位分类）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 柜体ID | `CabinetId` | `Int32` | 否 |
+| 门别编码 | `FaceCode` | `String` | 否 |
+| 档口编号 | `SlotCode` | `String` | 否 |
+| 档口用途 | `CategoryName` | `String` | 否 |
+| 创建时间 | `CreatedTime` | `DateTime` | 否 |
+| 更新时间 | `UpdatedTime` | `DateTime` | 否 |
+
+### CabinetSlotSpecialRule（资料柜槽位特殊规则）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 规则键 | `RuleKey` | `String` | 否 |
+| 柜体名称 | `CabinetName` | `String` | 否 |
+| 打开面别 | `OpenFaceCode` | `String` | 否 |
+| 格口编号 | `SlotCode` | `String` | 否 |
+| 要求盒规格 | `RequiredBoxSpecification` | `String` | 否 |
+| 要求档案面别 | `RequiredArchiveFaceCode` | `String` | 否 |
+| 布局覆盖文本 | `LayoutModeOverride` | `String` | 否 |
+| 特例说明 | `SpecialRuleText` | `String` | 否 |
+| 启用 | `IsEnabled` | `Boolean` | 否 |
+| 排序 | `SortOrder` | `Int32` | 否 |
+
+### CabinetSlotSpecification（资料柜槽位规格）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 柜体类型编码 | `CabinetTypeCode` | `String` | 否 |
+| 规格名称 | `DisplayName` | `String` | 否 |
+| 宽度(cm) | `WidthCm` | `Decimal` | 否 |
+| 高度(cm) | `HeightCm` | `Decimal` | 否 |
+| 深度(cm) | `DepthCm` | `Decimal` | 否 |
+| 排序 | `SortOrder` | `Int32` | 否 |
+
+### DbOperationLog（数据库操作日志）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int64` | 否 |
+| 操作时间 | `OperationTime` | `DateTime` | 否 |
+| 用户ID | `UserId` | `Int32?` | 否 |
+| 用户名称 | `UserName` | `String` | 否 |
+| 会话ID | `SessionId` | `String?` | 否 |
+| 来源页面 | `SourcePage` | `String` | 否 |
+| 来源按钮 | `SourceButton` | `String` | 否 |
+| 实体类型 | `EntityType` | `String` | 否 |
+| 数据库表名 | `TableName` | `String` | 否 |
+| 实体主键 | `EntityKey` | `String` | 否 |
+| 操作类型 | `Operation` | `String` | 否 |
+| 变更字段 | `ChangedColumns` | `String` | 否 |
+| 操作摘要 | `Summary` | `String` | 否 |
+
+### Department（部门）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 名称 | `Name` | `String` | 否 |
+| 描述 | `Description` | `String` | 否 |
+
+### FieldDomainDefinition（字段域定义）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 实体名称 | `EntityName` | `String` | 否 |
+| 字段名称 | `FieldName` | `String` | 否 |
+| 字段别名 | `DisplayName` | `String` | 否 |
+| 描述 | `Description` | `String` | 否 |
+| 启用域值 | `IsDomainEnabled` | `Boolean` | 否 |
+| 排序 | `SortOrder` | `Int32` | 否 |
+
+### FieldDomainOption（字段域选项）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 字段定义ID | `FieldDomainDefinitionId` | `Int32` | 否 |
+| 作用域 | `Scope` | `String` | 否 |
+| 选项值 | `OptionValue` | `String` | 否 |
+| 选项显示 | `OptionLabel` | `String` | 否 |
+| 启用 | `IsEnabled` | `Boolean` | 否 |
+| 排序 | `SortOrder` | `Int32` | 否 |
+
+### HardDiskLedger（硬盘台账）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 介质ID | `MediumId` | `Int32` | 否 |
+| 硬盘编号 | `DiskCode` | `String` | 否 |
+| 介质状态 | `MediaStatus` | `String` | 否 |
+| 介质属性 | `MediaNature` | `String` | 否 |
+| 存放位置 | `StorageLocation` | `String` | 否 |
+| 责任部门 | `HolderOrOrganization` | `String` | 否 |
+| 是否需归还 | `NeedReturn` | `Boolean` | 否 |
+| 登记人 | `RegisterPerson` | `String` | 否 |
+| 登记日期 | `RegisterDate` | `DateTime` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+| 创建时间 | `CreatedTime` | `DateTime` | 否 |
+| 更新时间 | `UpdatedTime` | `DateTime` | 否 |
+
+### HardDiskMediaApplication（硬盘出库申请）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 申请单编号 | `ApplicationNo` | `String` | 否 |
+| 介质ID | `MediumId` | `Int32` | 否 |
+| 来源申请单ID | `SourceApplicationId` | `Int32?` | 否 |
+| 来源资料出库单ID | `SourceOutboundRecordId` | `Int32?` | 否 |
+| 申请类型 | `ApplicationType` | `String` | 否 |
+| 申请状态 | `ApplicationStatus` | `String` | 否 |
+| 申请人 | `ApplicantName` | `String` | 否 |
+| 申请部门 | `ApplicantDept` | `String` | 否 |
+| 申请时间 | `ApplyTime` | `DateTime` | 否 |
+| 申请原因 | `Reason` | `String` | 否 |
+| 对方人员或单位 | `TargetPersonOrUnit` | `String` | 否 |
+| 当前位置 | `CurrentLocation` | `String` | 否 |
+| 目标位置 | `TargetLocation` | `String` | 否 |
+| 预计归还日期 | `ExpectedReturnDate` | `DateTime?` | 否 |
+| 相关批次 | `RelatedBatch` | `String` | 否 |
+| 相关资料标题 | `RelatedArchiveTitle` | `String` | 否 |
+| 打印次数 | `PrintCount` | `Int32` | 否 |
+| 打印时间 | `PrintedTime` | `DateTime?` | 否 |
+| 已上传签字件 | `SignedAttachmentUploaded` | `Boolean` | 否 |
+| 签字件上传时间 | `SignedAttachmentUploadedTime` | `DateTime?` | 否 |
+| 签字件上传人 | `SignedAttachmentUploader` | `String` | 否 |
+| 审核人 | `ReviewerName` | `String` | 否 |
+| 审核时间 | `ReviewerDate` | `DateTime?` | 否 |
+| 审批人 | `ApprovedBy` | `String` | 否 |
+| 审批时间 | `ApprovedTime` | `DateTime?` | 否 |
+| 审批意见 | `ApprovalOpinion` | `String` | 否 |
+| 查验结果 | `InspectionResult` | `String` | 否 |
+| 格式化确认 | `FormatConfirmation` | `String` | 否 |
+| 办理人 | `ExecutedBy` | `String` | 否 |
+| 办理时间 | `ExecutedTime` | `DateTime?` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+| 创建时间 | `CreatedTime` | `DateTime` | 否 |
+| 更新时间 | `UpdatedTime` | `DateTime` | 否 |
+
+### HardDiskMediaTransaction（硬盘出入库流水）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 介质ID | `MediumId` | `Int32` | 否 |
+| 申请单ID | `ApplicationId` | `Int32?` | 否 |
+| 流转类型 | `TransactionType` | `String` | 否 |
+| 流转前状态 | `BeforeStatus` | `String` | 否 |
+| 流转后状态 | `AfterStatus` | `String` | 否 |
+| 流转前位置 | `BeforeLocation` | `String` | 否 |
+| 流转后位置 | `AfterLocation` | `String` | 否 |
+| 经办人 | `OperatorName` | `String` | 否 |
+| 办理时间 | `OperateTime` | `DateTime` | 否 |
+| 相关人员 | `RelatedPerson` | `String` | 否 |
+| 目标单位 | `TargetOrganization` | `String` | 否 |
+| 是否要求归还 | `NeedReturn` | `Boolean` | 否 |
+| 预计归还日期 | `ExpectedReturnDate` | `DateTime?` | 否 |
+| 实际归还日期 | `ActualReturnDate` | `DateTime?` | 否 |
+| 相关批次 | `RelatedBatch` | `String` | 否 |
+| 相关资料标题 | `RelatedArchiveTitle` | `String` | 否 |
+| 业务说明 | `Description` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+
+### HardDiskMedium（硬盘介质）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 硬盘编号 | `DiskCode` | `String` | 否 |
+| 序列号 | `SerialNumber` | `String` | 否 |
+| 硬盘类型 | `DiskType` | `String` | 否 |
+| 品牌 | `Brand` | `String` | 否 |
+| 容量 | `Capacity` | `String` | 否 |
+| 接口类型 | `InterfaceType` | `String` | 否 |
+| 登记人 | `RegisterPerson` | `String` | 否 |
+| 登记日期 | `RegisterDate` | `DateTime` | 否 |
+| 出厂日期 | `FactoryDate` | `DateTime?` | 否 |
+| 登记方式 | `RegistrationMethod` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+| 逻辑删除 | `IsDeleted` | `Boolean` | 否 |
+| 创建时间 | `CreatedTime` | `DateTime` | 否 |
+| 更新时间 | `UpdatedTime` | `DateTime` | 否 |
+
+### HardDiskRegisterLock（硬盘登记锁）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 硬盘ID | `MediumId` | `Int32` | 否 |
+| 占用业务类型 | `BusinessType` | `String` | 否 |
+| 占用业务记录ID | `BusinessRecordId` | `Int32?` | 否 |
+| 占用业务单号 | `BusinessNo` | `String` | 否 |
+| 占用前状态 | `PreviousStatus` | `String` | 否 |
+| 锁定时间 | `LockedTime` | `DateTime` | 否 |
+
+### OpticalDiscLedger（光盘台账）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 介质ID | `MediumId` | `Int32` | 否 |
+| 光盘编号 | `DiscCode` | `String` | 否 |
+| 介质状态 | `MediaStatus` | `String` | 否 |
+| 存放位置 | `StorageLocation` | `String` | 否 |
+| 持有人/保管单位 | `HolderOrOrganization` | `String` | 否 |
+| 是否需归还 | `NeedReturn` | `Boolean` | 否 |
+| 登记人 | `RegisterPerson` | `String` | 否 |
+| 登记日期 | `RegisterDate` | `DateTime` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+| 创建时间 | `CreatedTime` | `DateTime` | 否 |
+| 更新时间 | `UpdatedTime` | `DateTime` | 否 |
+
+### OpticalDiscMediaTransaction（光盘流转流水）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 介质ID | `MediumId` | `Int32` | 否 |
+| 申请单ID | `ApplicationId` | `Int32?` | 否 |
+| 流转类型 | `TransactionType` | `String` | 否 |
+| 业务编号 | `BusinessNo` | `String` | 否 |
+| 流转前状态 | `BeforeStatus` | `String` | 否 |
+| 流转后状态 | `AfterStatus` | `String` | 否 |
+| 流转前位置 | `BeforeLocation` | `String` | 否 |
+| 流转后位置 | `AfterLocation` | `String` | 否 |
+| 经办人 | `OperatorName` | `String` | 否 |
+| 办理时间 | `OperateTime` | `DateTime` | 否 |
+| 相关人员 | `RelatedPerson` | `String` | 否 |
+| 目标单位 | `TargetOrganization` | `String` | 否 |
+| 是否要求归还 | `NeedReturn` | `Boolean` | 否 |
+| 预计归还日期 | `ExpectedReturnDate` | `DateTime?` | 否 |
+| 实际归还日期 | `ActualReturnDate` | `DateTime?` | 否 |
+| 相关批次 | `RelatedBatch` | `String` | 否 |
+| 相关资料标题 | `RelatedArchiveTitle` | `String` | 否 |
+| 描述 | `Description` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+
+### OpticalDiscMedium（光盘介质）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 光盘编号 | `DiscCode` | `String` | 否 |
+| 光盘类型 | `DiscType` | `String` | 否 |
+| 容量 | `Capacity` | `String` | 否 |
+| 登记人 | `RegisterPerson` | `String` | 否 |
+| 登记日期 | `RegisterDate` | `DateTime` | 否 |
+| 登记方式 | `RegistrationMethod` | `String` | 否 |
+| 资料来源 | `SourceType` | `String` | 否 |
+| 来源记录键 | `SourceRecordKey` | `String` | 否 |
+| 备注 | `Remarks` | `String` | 否 |
+| 逻辑删除 | `IsDeleted` | `Boolean` | 否 |
+| 创建时间 | `CreatedTime` | `DateTime` | 否 |
+| 更新时间 | `UpdatedTime` | `DateTime` | 否 |
+
+### OtherMap（其他图件）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 分类 | `Category` | `String` | 否 |
+| 序号 | `SequenceNumber` | `String` | 否 |
+| 比例尺 | `Scale` | `String` | 否 |
+| 盒号 | `BoxNumber` | `String` | 否 |
+| 档案盒规格 | `BoxSpecification` | `String` | 否 |
+| 图名 | `MapName` | `String` | 否 |
+| 图幅数 | `SheetCount` | `Int32` | 否 |
+| 登记人 | `Registrant` | `String` | 否 |
+| 登记日期 | `RegistrationDate` | `String` | 否 |
+| 修改人 | `Modifier` | `String` | 否 |
+| 修改日期 | `ModificationDate` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+
+### ProjectInfo（项目信息）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 项目名称 | `ProjectName` | `String` | 否 |
+| 项目编号 | `ProjectCode` | `String` | 否 |
+| 实施年度 | `ImplementYear` | `String` | 否 |
+| 资金管理部门 | `CapitalMgrDept` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+
+### Role（角色）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 名称 | `Name` | `String` | 否 |
+| 描述 | `Description` | `String` | 否 |
+
+### SystemAttachment（系统附件）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 业务类型 | `BusinessType` | `String` | 否 |
+| 业务编号 | `BusinessNo` | `String` | 否 |
+| 业务ID | `BusinessId` | `Int32` | 否 |
+| 文件名 | `FileName` | `String` | 否 |
+| 扩展名 | `Extension` | `String` | 否 |
+| 文件大小 | `FileSize` | `Int64` | 否 |
+| 文件内容 | `FileContent` | `Byte[]?` | 否 |
+| 文件分类 | `FileCategory` | `String` | 否 |
+| 上传时间 | `UploadTime` | `DateTime` | 否 |
+| 上传人 | `UploaderName` | `String` | 否 |
+
+### ToDoReadState（待办已读状态）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 用户ID | `UserId` | `Int32` | 否 |
+| 待办ID | `ToDoId` | `String` | 否 |
+| 已读时间 | `ReadAt` | `DateTime` | 否 |
+
+### TopoMap（地形图）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 比例尺 | `Scale` | `String` | 否 |
+| 盒号 | `BoxNumber` | `String` | 否 |
+| 档案盒规格 | `BoxSpecification` | `String` | 否 |
+| 图号 | `MapNumber` | `String` | 否 |
+| 图名 | `MapName` | `String` | 否 |
+| 图幅数 | `SheetCount` | `Int32` | 否 |
+| 成图日期 | `CreationDate` | `String` | 否 |
+| 测绘日期 | `SurveyDate` | `String` | 否 |
+| 坐标系统 | `CoordinateSystem` | `String` | 否 |
+| 高程基准 | `ElevationDatum` | `String` | 否 |
+| 区域 | `Region` | `String` | 否 |
+| 登记人 | `Registrant` | `String` | 否 |
+| 登记日期 | `RegistrationDate` | `String` | 否 |
+| 修改人 | `Modifier` | `String` | 否 |
+| 修改日期 | `ModificationDate` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+
+### User（用户）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 登录名 | `LoginName` | `String` | 否 |
+| 真实姓名 | `RealName` | `String` | 否 |
+| 部门 | `Department` | `String` | 否 |
+| 角色 | `Role` | `String` | 否 |
+| 密码 | `Password` | `String` | 否 |
+| 创建日期 | `CreatedDate` | `DateTime` | 否 |
+
+### UserPreference（用户偏好）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 用户ID | `UserId` | `Int32` | 否 |
+| 启用待办弹窗 | `EnableToDoPopup` | `Boolean` | 否 |
+| 启用待办角标 | `EnableToDoBadge` | `Boolean` | 否 |
+| 待办刷新秒数 | `ToDoRefreshSeconds` | `Int32` | 否 |
+| 待办显示条数 | `ToDoTopN` | `Int32` | 否 |
+| 确认后全部标记已读 | `MarkAllAsReadOnAcknowledge` | `Boolean` | 否 |
+| 更新时间 | `UpdatedAt` | `DateTime` | 否 |
+
+### UserSession（用户会话）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 用户ID | `UserId` | `Int32` | 否 |
+| 会话ID | `SessionId` | `String` | 否 |
+| 终端名称 | `TerminalName` | `String` | 否 |
+| 登录时间 | `LoginTime` | `DateTime` | 否 |
+| 最后心跳时间 | `LastHeartbeatTime` | `DateTime` | 否 |
+| 登出时间 | `LogoutTime` | `DateTime?` | 否 |
+| 是否活跃 | `IsActive` | `Boolean` | 否 |
+
+### YearlyArchiveBox（年度档案盒）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 归档序号 | `ArchiveSequenceNo` | `String` | 否 |
+| 盒位编码 | `BoxLocationCode` | `String` | 否 |
+| 柜体名称 | `CabinetName` | `String` | 否 |
+| 面别 | `Side` | `String` | 否 |
+| 行 | `Row` | `Int32` | 否 |
+| 列 | `Column` | `Int32` | 否 |
+| 盒序号 | `BoxIndex` | `Int32` | 否 |
+| 项目名称 | `ProjectName` | `String` | 否 |
+| 年度 | `Year` | `String` | 否 |
+| 规格 | `Specs` | `String` | 否 |
+| 放置方式 | `PlacementMode` | `String` | 否 |
+| 归档人 | `ArchivedBy` | `String` | 否 |
+| 归档日期 | `ArchivedDate` | `DateTime` | 否 |
+| 备注 | `Remarks` | `String` | 否 |
+| 容器生命周期状态 | `ContainerLifecycleStatus` | `String` | 否 |
+| 最后存储位置 | `LastStorageLocation` | `String` | 否 |
+| 退役时间 | `RetiredAt` | `DateTime?` | 否 |
+| 退役操作人 | `RetiredBy` | `String` | 否 |
+
+### YearlyArchiveBoxMediaItemLink（档案盒-介质明细关联）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 年度档案盒ID | `YearlyArchiveBoxId` | `Int32` | 否 |
+| 登记介质明细ID | `YearlyArchiveRegisterMediaItemId` | `Int32` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### YearlyArchiveBoxYearlyArchiveRegisterRecord（档案盒-登记申请关联）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| 年度档案盒ID | `ArchiveBoxesId` | `Int32` | 否 |
+| 登记申请ID | `RegisterRecordsId` | `Int32` | 否 |
+
+### YearlyArchiveFilingFact（立档事实）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 立档事实编号 | `FilingFactNo` | `String` | 否 |
+| 介质类别 | `MediaKind` | `String` | 否 |
+| 登记记录ID | `RegisterRecordId` | `Int32` | 否 |
+| 登记介质ID | `RegisterMediaId` | `Int32` | 否 |
+| 介质明细ID | `MediaItemId` | `Int32` | 否 |
+| 表单编号 | `FormNo` | `String` | 否 |
+| 资料名称 | `MaterialName` | `String` | 否 |
+| 项目编号 | `ProjectId` | `Int32?` | 否 |
+| 项目名称 | `ProjectName` | `String` | 否 |
+| 提供单位 | `ProvideUnit` | `String` | 否 |
+| 申请人 | `ApplicantName` | `String` | 否 |
+| 测绘资料/证明材料 | `ItemType` | `String` | 否 |
+| 明细名称 | `ItemName` | `String` | 否 |
+| 密级 | `ConfidentialLevel` | `String` | 否 |
+| 内容份数 | `ContentCount` | `Int32` | 否 |
+| 容器类别 | `ContainerKind` | `ArchiveContainerKind` | 否 |
+| 容器ID | `ContainerId` | `Int32` | 否 |
+| 容器编号 | `ContainerCode` | `String` | 否 |
+| 存储位置 | `StorageLocation` | `String` | 否 |
+| 柜体名称 | `CabinetName` | `String` | 否 |
+| 盒位编码 | `BoxLocationCode` | `String` | 否 |
+| 盒规格 | `BoxSpecs` | `String` | 否 |
+| 存储载体类型 | `StorageCarrierType` | `String` | 否 |
+| 处置 | `Disposition` | `String` | 否 |
+| 介质编号 | `MediumCode` | `String` | 否 |
+| 立档存储路径 | `FilingStoragePath` | `String` | 否 |
+| 数据大小(MB) | `DataSizeMb` | `Decimal` | 否 |
+| 立档时间 | `FiledAt` | `DateTime` | 否 |
+| 立档人 | `FiledBy` | `String` | 否 |
+| 来源关联类型 | `SourceLinkType` | `String` | 否 |
+| 来源关联ID | `SourceLinkId` | `Int32` | 否 |
+| 生命周期状态 | `LifecycleStatus` | `String` | 否 |
+| 当前容器编号 | `CurrentContainerCode` | `String` | 否 |
+| 当前存储位置 | `CurrentStorageLocation` | `String` | 否 |
+| 生命周期更新时间 | `LifecycleUpdatedAt` | `DateTime?` | 否 |
+| 生命周期备注 | `LifecycleRemark` | `String` | 否 |
+| 借出提示级别 | `BorrowHintLevel` | `String` | 否 |
+| 借出提示文本 | `BorrowHintText` | `String` | 否 |
+| 借出提示更新时间 | `BorrowHintUpdatedAt` | `DateTime?` | 否 |
+| 原件立档事实ID | `PrimaryFilingFactId` | `Int32?` | 否 |
+| 归档副本角色 | `ArchiveCopyRole` | `String` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### YearlyArchiveMaterialTransaction（资料流转履历）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 立档事实ID | `FilingFactId` | `Int32` | 否 |
+| 流转类型 | `TransactionType` | `String` | 否 |
+| 业务编号 | `BusinessNo` | `String` | 否 |
+| 来源类别 | `SourceKind` | `String` | 否 |
+| 来源ID | `SourceId` | `Int32` | 否 |
+| 去重键 | `DedupKey` | `String` | 否 |
+| 流转前生命周期状态 | `BeforeLifecycleStatus` | `String` | 否 |
+| 流转后生命周期状态 | `AfterLifecycleStatus` | `String` | 否 |
+| 流转前容器编号 | `BeforeContainerCode` | `String` | 否 |
+| 流转后容器编号 | `AfterContainerCode` | `String` | 否 |
+| 流转前存储位置 | `BeforeStorageLocation` | `String` | 否 |
+| 流转后存储位置 | `AfterStorageLocation` | `String` | 否 |
+| 流转摘要 | `Summary` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+| 经办人 | `OperatorName` | `String` | 否 |
+| 办理时间 | `OperatedAt` | `DateTime` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### YearlyArchiveOutboundItem（资料出库明细）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 出库单ID | `OutboundRecordId` | `Int32` | 否 |
+| 排序序号 | `SortOrder` | `Int32` | 否 |
+| 立档事实ID | `FilingFactId` | `Int32` | 否 |
+| 原件立档事实ID | `PrimaryFilingFactId` | `Int32?` | 否 |
+| 归档副本角色 | `ArchiveCopyRole` | `String` | 否 |
+| 来源检索集明细ID | `SourceResultSetItemId` | `Int32?` | 否 |
+| 来源检索集ID | `SourceResultSetId` | `Int32?` | 否 |
+| 明细归档年度 | `ItemArchiveYear` | `Int32?` | 否 |
+| 明细项目名称 | `ItemProjectName` | `String` | 否 |
+| 选取范围类别 | `SelectionScopeKind` | `String` | 否 |
+| 内容条目ID | `ContentEntryId` | `Int32?` | 否 |
+| 内容条目类别 | `ContentEntryKind` | `String` | 否 |
+| 内容条目名称 | `ContentEntryName` | `String` | 否 |
+| 内容条目相对路径 | `ContentEntryRelativePath` | `String` | 否 |
+| 表单编号 | `FormNo` | `String` | 否 |
+| 资料名称 | `MaterialName` | `String` | 否 |
+| 明细名称 | `ItemName` | `String` | 否 |
+| 容器编号 | `ContainerCode` | `String` | 否 |
+| 存储位置 | `StorageLocation` | `String` | 否 |
+| 当前存储位置 | `CurrentStorageLocation` | `String` | 否 |
+| 容器状态提示 | `ContainerStatusHint` | `String` | 否 |
+| 密级 | `ConfidentialLevel` | `String` | 否 |
+| 库管模式 | `ArchivePurpose` | `String` | 否 |
+| 介质类别 | `MediaKind` | `String` | 否 |
+| 介质类型 | `MediaType` | `String` | 否 |
+| 存储载体类型 | `StorageCarrierType` | `String` | 否 |
+| 登记库存份数 | `StockCopyCount` | `Int32` | 否 |
+| 领用方式 | `UsageMode` | `String` | 否 |
+| 是否需归还 | `NeedReturn` | `Boolean` | 否 |
+| 拟领用份数 | `CopyCount` | `Int32?` | 否 |
+| 数据大小(MB) | `DataSizeMb` | `Decimal?` | 否 |
+| 电子介质来源 | `ElectronicMediaSource` | `String` | 否 |
+| 是否自带盘登记 | `IsSelfDiskRegistered` | `Boolean?` | 否 |
+| 电子介质类型 | `ElectronicMediumType` | `String` | 否 |
+| 领用介质ID | `RequisitionedMediumId` | `Int32?` | 否 |
+| 领用硬盘编号 | `RequisitionedDiskCode` | `String` | 否 |
+| 领用硬盘是否需归还 | `RequisitionedDiskNeedReturn` | `Boolean` | 否 |
+| 自带盘序列号 | `SelfDiskSerialNo` | `String` | 否 |
+| 自带盘容量 | `SelfDiskCapacity` | `String` | 否 |
+| 自带盘编号JSON | `SelfDiskCodesJson` | `String` | 否 |
+| 自带盘序列号JSON | `SelfDiskSerialNumbersJson` | `String` | 否 |
+| 容器处置方式 | `ContainerDisposition` | `String` | 否 |
+| 预订状态 | `ReservationStatus` | `String` | 否 |
+| 预计归还日期 | `ExpectedReturnDate` | `DateTime?` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### YearlyArchiveOutboundRecord（资料出库单）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 出库单编号 | `OutboundNo` | `String` | 否 |
+| 状态 | `Status` | `Int32` | 否 |
+| 归档年度 | `ArchiveYear` | `Int32?` | 否 |
+| 项目编号 | `ProjectId` | `Int32?` | 否 |
+| 项目名称 | `ProjectName` | `String` | 否 |
+| 申请人用户ID | `ApplicantUserId` | `Int32` | 否 |
+| 申请人 | `ApplicantName` | `String` | 否 |
+| 申请部门 | `ApplicantDept` | `String` | 否 |
+| 申请日期 | `ApplyDate` | `DateTime` | 否 |
+| 申请原因 | `Reason` | `String` | 否 |
+| 去向类别 | `DestinationKind` | `String` | 否 |
+| 外部单位 | `ExternalUnit` | `String` | 否 |
+| 自留处置方式 | `SelfRetainDisposition` | `String` | 否 |
+| 证明材料备注 | `ProofMaterialNote` | `String` | 否 |
+| 资料摘要 | `MaterialSummary` | `String` | 否 |
+| 预计归还日期 | `ExpectedReturnDate` | `DateTime?` | 否 |
+| 来源检索集ID | `SourceResultSetId` | `Int32?` | 否 |
+| 来源检索集编号 | `SourceResultSetNo` | `String` | 否 |
+| 提交时间 | `SubmittedAt` | `DateTime?` | 否 |
+| 审批时间 | `ApprovedAt` | `DateTime?` | 否 |
+| 签字件上传时间 | `SignedUploadedAt` | `DateTime?` | 否 |
+| 办结时间 | `CompletedAt` | `DateTime?` | 否 |
+| 撤回时间 | `WithdrawnAt` | `DateTime?` | 否 |
+| 撤回原因 | `WithdrawReason` | `String` | 否 |
+| 强制作废时间 | `ForceVoidedAt` | `DateTime?` | 否 |
+| 强制作废原因 | `ForceVoidReason` | `String` | 否 |
+| 强制作废类别 | `ForceVoidKind` | `String` | 否 |
+| 审批截止日期 | `ApprovalDeadline` | `DateTime?` | 否 |
+| 逾期提醒时间 | `OverdueRemindedAt` | `DateTime?` | 否 |
+| 打印次数 | `PrintCount` | `Int32` | 否 |
+| 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 交接备注 | `HandoverRemark` | `String` | 否 |
+| 实物出库办理人 | `PhysicallyCompletedBy` | `String` | 否 |
+| 部门审核意见 | `DeptAuditOpinion` | `String` | 否 |
+| 部门审核人 | `DeptAuditor` | `String` | 否 |
+| 部门审核日期 | `DeptAuditDate` | `DateTime?` | 否 |
+| 资料室负责人意见 | `ArchiveRoomHeadOpinion` | `String` | 否 |
+| 资料室负责人 | `ArchiveRoomHead` | `String` | 否 |
+| 资料室负责人日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
+| 生产管理科负责人意见 | `ProductionHeadOpinion` | `String` | 否 |
+| 生产管理科负责人 | `ProductionHead` | `String` | 否 |
+| 生产管理科负责人日期 | `ProductionHeadDate` | `DateTime?` | 否 |
+| 分管领导意见 | `VicePresidentOpinion` | `String` | 否 |
+| 分管领导 | `VicePresident` | `String` | 否 |
+| 分管领导日期 | `VicePresidentDate` | `DateTime?` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 更新时间 | `UpdatedAt` | `DateTime` | 否 |
+
+### YearlyArchiveOutboundSyncEntry（资料出库同步条目）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 出库单ID | `OutboundRecordId` | `Int32` | 否 |
+| 出库明细ID | `OutboundItemId` | `Int32` | 否 |
+| 立档事实ID | `FilingFactId` | `Int32` | 否 |
+| 同步条目类别 | `EntryKind` | `String` | 否 |
+| 同步阶段 | `Phase` | `String` | 否 |
+| 操作人 | `OperatedBy` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 更新时间 | `UpdatedAt` | `DateTime?` | 否 |
+
+### YearlyArchiveRegisterElectronicMediaItemDetail（电子介质明细扩展）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| 明细ID | `MediaItemId` | `Int32` | 否 |
+| 资料类型 | `MaterialCategory` | `String` | 否 |
+| 所属子类 | `SubCategory` | `String` | 否 |
+| 数据组织形式 | `DataOrganizationForm` | `String` | 否 |
+| 数据量(MB) | `DataSizeMb` | `Decimal` | 否 |
+
+### YearlyArchiveRegisterElectronicMediaItemEntry（电子介质目录/文件明细）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 电子明细ID | `ElectronicMediaItemDetailId` | `Int32` | 否 |
+| 条目类型 | `EntryKind` | `String` | 否 |
+| 名称 | `EntryName` | `String` | 否 |
+| 相对路径 | `RelativePath` | `String` | 否 |
+| 大小(MB) | `SizeMb` | `Decimal?` | 否 |
+| 创建日期 | `CreatedAt` | `DateTime?` | 否 |
+| 修改日期 | `ModifiedAt` | `DateTime?` | 否 |
+| 排序 | `SortOrder` | `Int32` | 否 |
+
+### YearlyArchiveRegisterMedia（登记介质条目）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 登记记录ID | `YearlyArchiveRegisterRecordId` | `Int32` | 否 |
+| 载体分类 | `MediaKind` | `String` | 否 |
+| 载体名称 | `MediaType` | `String` | 否 |
+| 载体数量 | `MediaCount` | `Int32` | 否 |
+| 处置方式 | `Disposition` | `String` | 否 |
+| 是否借用硬盘 | `IsBorrowedHardDisk` | `Boolean` | 否 |
+| 借用硬盘编号 | `BorrowedHardDiskCode` | `String` | 否 |
+
+### YearlyArchiveRegisterMediaItem（登记介质明细）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 介质ID | `YearlyArchiveRegisterMediaId` | `Int32` | 否 |
+| 测绘资料/证明材料 | `ItemType` | `String` | 否 |
+| 分项资料名称 | `ContentDesc` | `String` | 否 |
+| 份数 | `ContentCount` | `Int32` | 否 |
+| 提交时存储目录 | `StoragePath` | `String` | 否 |
+| 备注 | `Note` | `String` | 否 |
+| 密级 | `ConfidentialLevel` | `String` | 否 |
+
+### YearlyArchiveRegisterRecord（年度资料登记申请）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 表单编号 | `FormNo` | `String` | 否 |
+| 状态 | `Status` | `Int32` | 否 |
+| 创建日期 | `CreatedDate` | `DateTime` | 否 |
+| 归档日期 | `ArchivedDate` | `DateTime?` | 否 |
+| 模拟归档状态 | `SimulatedArchiveStatus` | `Int32` | 否 |
+| 电子归档状态 | `ElectronicArchiveStatus` | `Int32` | 否 |
+| 项目ID | `ProjectId` | `Int32?` | 否 |
+| 项目名称 | `ProjectName` | `String?` | 否 |
+| 资料名称 | `MaterialName` | `String` | 否 |
+| 资料来源 | `SourceType` | `String` | 否 |
+| 提供单位 | `ProvideUnit` | `String` | 否 |
+| 库管模式 | `ArchivePurpose` | `String` | 否 |
+| 其他要求 | `OtherRequests` | `String` | 否 |
+| 申请人 | `ApplicantName` | `String` | 否 |
+| 申请部门 | `ApplicantDept` | `String` | 否 |
+| 申请日期 | `ApplicantDate` | `DateTime` | 否 |
+| 生产管理科意见 | `ProdDeptOpinion` | `String` | 否 |
+| 生产管理科负责人 | `ProdLeader` | `String` | 否 |
+| 生产管理科日期 | `ProdDate` | `DateTime?` | 否 |
+| 科研开发室意见 | `RndDeptOpinion` | `String` | 否 |
+| 科研开发室负责人 | `RndLeader` | `String` | 否 |
+| 科研开发室日期 | `RndDate` | `DateTime?` | 否 |
+| 分管领导意见 | `DeputyOpinion` | `String` | 否 |
+| 分管领导签字 | `DeputyLeader` | `String` | 否 |
+| 分管领导日期 | `DeputyDate` | `DateTime?` | 否 |
+| 移交人 | `Deliverer` | `String` | 否 |
+| 移交日期 | `DeliverDate` | `DateTime?` | 否 |
+| 资料员 | `Administrator` | `String` | 否 |
+| 资料员日期 | `AdminDate` | `DateTime?` | 否 |
+| 部门负责人 | `DeptLeader` | `String` | 否 |
+| 部门审核日期 | `DeptDate` | `DateTime?` | 否 |
+
+### YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit（登记申请-电子立档单元关联）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| 电子立档单元ID | `ElectronicArchiveUnitsId` | `Int32` | 否 |
+| 登记申请ID | `RegisterRecordsId` | `Int32` | 否 |
+
+### YearlyArchiveRelocationItem（资料移库明细）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 移库单ID | `RelocationRecordId` | `Int32` | 否 |
+| 立档事实ID | `FilingFactId` | `Int32` | 否 |
+| 来源关联ID | `SourceLinkId` | `Int32` | 否 |
+| 来源关联类型 | `SourceLinkType` | `String` | 否 |
+| 移库前容器编号 | `BeforeContainerCode` | `String` | 否 |
+| 移库前存储位置 | `BeforeStorageLocation` | `String` | 否 |
+| 移库后容器编号 | `AfterContainerCode` | `String` | 否 |
+| 移库后存储位置 | `AfterStorageLocation` | `String` | 否 |
+
+### YearlyArchiveRelocationRecord（资料移库单）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 移库单编号 | `RelocationNo` | `String` | 否 |
+| 介质类别 | `MediaKind` | `String` | 否 |
+| 移库方式 | `RelocationMode` | `String` | 否 |
+| 来源容器ID | `SourceContainerId` | `Int32` | 否 |
+| 来源容器编号 | `SourceContainerCode` | `String` | 否 |
+| 来源存储位置 | `SourceStorageLocation` | `String` | 否 |
+| 目标容器ID | `TargetContainerId` | `Int32?` | 否 |
+| 目标容器编号 | `TargetContainerCode` | `String` | 否 |
+| 目标存储位置 | `TargetStorageLocation` | `String` | 否 |
+| 来源介质处置 | `SourceMediumDisposition` | `String` | 否 |
+| 操作人 | `OperatedBy` | `String` | 否 |
+| 操作时间 | `OperatedAt` | `DateTime` | 否 |
+| 备注 | `Remarks` | `String` | 否 |
+| 预览报告 | `PreviewReport` | `String` | 否 |
+
+### YearlyArchiveReturnItem（资料归还明细）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 归还单ID | `ReturnRecordId` | `Int32` | 否 |
+| 排序序号 | `SortOrder` | `Int32` | 否 |
+| 源出库明细ID | `SourceOutboundItemId` | `Int32` | 否 |
+| 立档事实ID | `FilingFactId` | `Int32` | 否 |
+| 登记介质ID | `RegisterMediaId` | `Int32` | 否 |
+| 介质类别 | `MediaKind` | `String` | 否 |
+| 领用方式 | `UsageMode` | `String` | 否 |
+| 借出份数 | `ReturnCopyCount` | `Int32` | 否 |
+| 完好归还份数 | `IntactReturnCopyCount` | `Int32` | 否 |
+| 灭失份数 | `LossCopyCount` | `Int32` | 否 |
+| 资料名称 | `MaterialName` | `String` | 否 |
+| 明细名称 | `ItemName` | `String` | 否 |
+| 容器编号 | `ContainerCode` | `String` | 否 |
+| 存储位置 | `StorageLocation` | `String` | 否 |
+| 归还目标盒ID | `RehomeTargetBoxId` | `Int32?` | 否 |
+| 归还物状态 | `ItemCondition` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### YearlyArchiveReturnRecord（资料归还单）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 归还单编号 | `ReturnNo` | `String` | 否 |
+| 状态 | `Status` | `Int32` | 否 |
+| 源出库单ID | `SourceOutboundRecordId` | `Int32` | 否 |
+| 源出库单编号 | `SourceOutboundNo` | `String` | 否 |
+| 归档年度 | `ArchiveYear` | `Int32?` | 否 |
+| 项目编号 | `ProjectId` | `Int32?` | 否 |
+| 项目名称 | `ProjectName` | `String` | 否 |
+| 借出人 | `BorrowerName` | `String` | 否 |
+| 借出部门 | `BorrowerDept` | `String` | 否 |
+| 登记人用户ID | `RegisteredByUserId` | `Int32` | 否 |
+| 登记人 | `RegisteredByName` | `String` | 否 |
+| 登记人部门 | `RegisteredByDept` | `String` | 否 |
+| 归还日期 | `ReturnDate` | `DateTime` | 否 |
+| 归还原因 | `Reason` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+| 灭失具体情况 | `LossDescription` | `String` | 否 |
+| 办结管理员 | `HandlerName` | `String` | 否 |
+| 登记时间 | `RegisteredAt` | `DateTime?` | 否 |
+| 办结时间 | `CompletedAt` | `DateTime?` | 否 |
+| 作废时间 | `VoidedAt` | `DateTime?` | 否 |
+| 作废原因 | `VoidReason` | `String` | 否 |
+| 打印次数 | `PrintCount` | `Int32` | 否 |
+| 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 更新时间 | `UpdatedAt` | `DateTime` | 否 |
+
+### YearlyArchiveSearchResultSet（资料检索结果集）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 检索集编号 | `ResultSetNo` | `String` | 否 |
+| 名称 | `Name` | `String` | 否 |
+| 介质类别 | `MediaKind` | `String` | 否 |
+| 状态 | `Status` | `String` | 否 |
+| 创建人用户ID | `CreatedByUserId` | `Int32` | 否 |
+| 创建人 | `CreatedByName` | `String` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 更新时间 | `UpdatedAt` | `DateTime?` | 否 |
+| 备注 | `Remarks` | `String` | 否 |
+| 检索条件JSON | `SearchCriteriaJson` | `String` | 否 |
+
+### YearlyArchiveSearchResultSetItem（资料检索结果集明细）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 检索集ID | `ResultSetId` | `Int32` | 否 |
+| 立档事实ID | `FilingFactId` | `Int32` | 否 |
+| 选取范围类别 | `SelectionScopeKind` | `String` | 否 |
+| 内容条目ID | `ContentEntryId` | `Int32?` | 否 |
+| 内容条目类别 | `ContentEntryKind` | `String` | 否 |
+| 内容条目名称 | `ContentEntryName` | `String` | 否 |
+| 内容条目相对路径 | `ContentEntryRelativePath` | `String` | 否 |
+| 排序序号 | `SortOrder` | `Int32` | 否 |
+| 表单编号 | `FormNo` | `String` | 否 |
+| 资料名称 | `MaterialName` | `String` | 否 |
+| 明细名称 | `ItemName` | `String` | 否 |
+| 容器编号 | `ContainerCode` | `String` | 否 |
+| 存储位置 | `StorageLocation` | `String` | 否 |
+| 生命周期状态 | `LifecycleStatus` | `String` | 否 |
+| 借出提示级别 | `BorrowHintLevel` | `String` | 否 |
+| 借出提示文本 | `BorrowHintText` | `String` | 否 |
+| 申请份数 | `RequestedCopyCount` | `Int32` | 否 |
+| 加入时间 | `AddedAt` | `DateTime` | 否 |
+
+### YearlyElectronicArchiveUnit（电子档案单元）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 电子立档编号 | `ElectronicArchiveNo` | `String` | 否 |
+| 项目名称 | `ProjectName` | `String` | 否 |
+| 所属年度 | `Year` | `String` | 否 |
+| 存储载体类型 | `StorageCarrierType` | `String` | 否 |
+| 存储目录 | `StoragePath` | `String` | 否 |
+| 存放位置 | `StorageLocation` | `String` | 否 |
+| 关联介质编号 | `LinkedMediumCodes` | `String` | 否 |
+| 处置方式 | `Disposition` | `String` | 否 |
+| 介质数量 | `MediaCount` | `Int32` | 否 |
+| 资料摘要 | `ContentSummary` | `String` | 否 |
+| 立档人 | `ArchivedBy` | `String` | 否 |
+| 归档日期 | `ArchivedDate` | `DateTime` | 否 |
+| 资料来源 | `SourceType` | `String` | 否 |
+| 来源记录键 | `SourceRecordKey` | `String` | 否 |
+| 备注 | `Remarks` | `String` | 否 |
+| 单元生命周期状态 | `UnitLifecycleStatus` | `String` | 否 |
+
+### YearlyElectronicArchiveUnitDiscLink（电子档案-光盘关联）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 电子立档单元ID | `YearlyElectronicArchiveUnitId` | `Int32` | 否 |
+| 光盘介质ID | `OpticalDiscMediumId` | `Int32` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### YearlyElectronicArchiveUnitMediaItemLink（电子立档单元-介质明细关联）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 电子立档单元ID | `YearlyElectronicArchiveUnitId` | `Int32` | 否 |
+| 登记介质明细ID | `YearlyArchiveRegisterMediaItemId` | `Int32` | 否 |
+| 立档存储路径 | `FilingStoragePath` | `String` | 否 |
+| 介质编号 | `MediumCode` | `String` | 否 |
+| 表单编号 | `FormNo` | `String` | 否 |
+| 资料名称 | `MaterialName` | `String` | 否 |
+| 明细名称 | `ItemName` | `String` | 否 |
+| 数据大小(MB) | `DataSizeMb` | `Decimal` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### YearlyElectronicArchiveUnitMediaLink（电子档案-登记介质关联）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 电子立档单元ID | `YearlyElectronicArchiveUnitId` | `Int32` | 否 |
+| 登记介质ID | `YearlyArchiveRegisterMediaId` | `Int32` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### YearlyElectronicArchiveUnitMediumLink（电子档案-硬盘关联）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 电子立档单元ID | `YearlyElectronicArchiveUnitId` | `Int32` | 否 |
+| 硬盘介质ID | `HardDiskMediumId` | `Int32` | 否 |
+

@@ -1,0 +1,47 @@
+<Page x:Class="DocMgr.Views.SystemSettings.BusinessLogicSettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:vm="clr-namespace:DocMgr.ViewModels.SystemSettings"
+      mc:Ignorable="d"
+      Title="业务逻辑设置" Background="White"
+      d:DataContext="{d:DesignInstance Type=vm:BusinessLogicSettingsViewModel}">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="业务逻辑设置" FontSize="20" FontWeight="Bold" Foreground="#333"/>
+
+        <StackPanel Grid.Row="1" Margin="0,20,0,0">
+            <TextBlock Text="申请单逾期设置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock TextWrapping="Wrap" Foreground="#666" Margin="0,0,0,12"
+                       Text="控制资料室管理员对未审批申请单执行强制作废的最早时限。当天：申请当天即可强制作废；7天：提交后第7天（满6个自然日）起可强制作废；30天：提交后第30天（满29个自然日）起可强制作废。"/>
+
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="逾期时限：" Width="100" VerticalAlignment="Center"/>
+                <ComboBox Width="160"
+                          ItemsSource="{Binding ApplicationOverdueOptions}"
+                          DisplayMemberPath="Label"
+                          SelectedValuePath="Code"
+                          SelectedItem="{Binding SelectedApplicationOverdueOption}"/>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="恢复默认"
+                    Width="100"
+                    Height="32"
+                    Margin="0,0,10,0"
+                    Command="{Binding ResetDefaultCommand}"/>
+            <Button Content="保存设置"
+                    Width="100"
+                    Height="32"
+                    Command="{Binding SaveCommand}"/>
+        </StackPanel>
+    </Grid>
+</Page>

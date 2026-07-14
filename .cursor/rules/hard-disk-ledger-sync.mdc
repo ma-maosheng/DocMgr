@@ -1,0 +1,22 @@
+---
+description: 硬盘台账与流转记录同步原则（立档、迁档、位置变更）
+globs: Services/YearlyArchive/**,Services/HardDiskMedia/**,ViewModels/YearlyArchive/**
+alwaysApply: false
+---
+
+# 硬盘台账与流转记录同步
+
+凡涉及硬盘的业务写入 `HardDiskLedger` 时，必须同步写入 `HardDiskMediaTransaction` 流转记录。
+
+以下任一情况均视为需要同步：
+
+1. **进出资料室**：状态在在库/出库/登记中等发生变化（如空盘转数据盘、借出归还、格式化归位）。
+2. **档口变化**：`StorageLocation` 的柜-面-层-列或完整位置编码发生变化（档口四维定义见 `archive-slot-definition.mdc`）。
+3. **同档口序号变化**：档口键（柜面-层-列）不变，但档内序号（位置编码第 4 段）发生变化。
+
+实现要求：
+
+- 空白盘与数据盘的位置编码区分见 `hard-disk-storage-location-encoding.mdc`（空白盘仅档口键，数据盘含档内序号）。
+- 比较数据盘位置是否变化时，使用完整位置编码（`HardDiskLedgerSyncSupport.IsSameFullLocation`）；空白盘以档口键比较即可。
+- 立档入袋关联后通过 `PrepareElectronicArchiveUnitAsync` 写入流转记录；借出硬盘自动归还登记仍由 `MaintainBorrowedHardDiskReturnAsync` 负责，避免重复。
+- 迁档、格式化空盘、换盘等路径在更新台账后同样调用共享同步 helper 留痕。

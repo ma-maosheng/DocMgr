@@ -1,0 +1,233 @@
+﻿<Window x:Class="DocMgr.Views.Cabinets.CabinetEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
+        Width="420"
+        SizeToContent="Height"
+        MaxHeight="720"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        WindowStyle="ToolWindow"
+        ShowInTaskbar="False"
+        Background="#F5F5F5"
+        Loaded="CabinetEditDialog_Loaded">
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <Grid x:Name="ContentRoot" Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Button Grid.Row="0"
+                    Content="关闭"
+                    Command="{x:Static viewShared:ViewCommands.CloseCurrentView}"
+                    Style="{StaticResource DialogCloseButtonStyle}"
+                    HorizontalAlignment="Right"/>
+
+            <StackPanel Grid.Row="1" Margin="0,0,120,0">
+                <TextBlock Text="档案柜编号" FontSize="14" FontWeight="Bold" Foreground="#333"/>
+                <ComboBox Margin="0,8,0,0"
+                          Height="32"
+                          VerticalContentAlignment="Center"
+                          Padding="5,0"
+                          ItemsSource="{Binding NameOptions}"
+                          SelectedItem="{Binding SelectedName, Mode=TwoWay}"/>
+                <TextBlock Text="规范编号：甲~癸 (10个) + 子~亥 (12个)，共22个"
+                           FontSize="12"
+                           Foreground="#999"
+                           Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="2" Margin="0,20,0,0">
+                <TextBlock Text="档案柜种类" FontSize="14" FontWeight="Bold" Foreground="#333"/>
+                <ComboBox Margin="0,8,0,0"
+                          Height="32"
+                          VerticalContentAlignment="Center"
+                          ItemsSource="{Binding CabinetTypeOptions}"
+                          DisplayMemberPath="Value"
+                          SelectedValuePath="Key"
+                          SelectedValue="{Binding SelectedCabinetType, Mode=TwoWay}"/>
+            </StackPanel>
+
+            <Border Grid.Row="3"
+                    Margin="0,20,0,0"
+                    Background="White"
+                    BorderBrush="#DDD"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="15">
+                <StackPanel>
+                    <TextBlock Text="{Binding SpecificationSectionTitle}"
+                               FontSize="12"
+                               Foreground="#888"
+                               Margin="0,0,0,10"/>
+
+                    <Grid Visibility="{Binding DefaultSpecificationVisibility}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="面数" FontSize="12" Foreground="#666"/>
+                            <TextBlock Text="{Binding FaceCount}"
+                                       FontSize="16"
+                                       FontWeight="Bold"
+                                       Foreground="#333"
+                                       Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="层数" FontSize="12" Foreground="#666"/>
+                            <TextBlock Text="{Binding LayerCount}"
+                                       FontSize="16"
+                                       FontWeight="Bold"
+                                       Foreground="#333"
+                                       Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="格数(列)" FontSize="12" Foreground="#666"/>
+                            <TextBlock Text="{Binding ColumnCount}"
+                                       FontSize="16"
+                                       FontWeight="Bold"
+                                       Foreground="#333"
+                                       Margin="0,5,0,0"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Visibility="{Binding MagneticSpecificationVisibility}">
+                        <TextBlock Text="门数" FontSize="12" Foreground="#666"/>
+                        <ComboBox Margin="0,6,0,12"
+                                  Height="32"
+                                  VerticalContentAlignment="Center"
+                                  ItemsSource="{Binding MagneticDoorOptions}"
+                                  DisplayMemberPath="Value"
+                                  SelectedValuePath="Key"
+                                  SelectedValue="{Binding SelectedMagneticDoorCount, Mode=TwoWay}"/>
+
+                        <TextBlock Text="抽屉层数" FontSize="12" Foreground="#666"/>
+                        <ComboBox Margin="0,6,0,12"
+                                  Height="32"
+                                  VerticalContentAlignment="Center"
+                                  ItemsSource="{Binding DrawerCountOptions}"
+                                  SelectedItem="{Binding SelectedMagneticDrawerCount, Mode=TwoWay}"/>
+
+                        <TextBlock Text="每层格数" FontSize="12" Foreground="#666"/>
+                        <ComboBox Margin="0,6,0,12"
+                                  Height="32"
+                                  VerticalContentAlignment="Center"
+                                  ItemsSource="{Binding MagneticColumnOptions}"
+                                  SelectedItem="{Binding SelectedMagneticColumnCount, Mode=TwoWay}"/>
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="面数" FontSize="12" Foreground="#666"/>
+                                <TextBlock Text="{Binding FaceCount}"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Foreground="#333"
+                                           Margin="0,5,0,0"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="层数" FontSize="12" Foreground="#666"/>
+                                <TextBlock Text="{Binding LayerCount}"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Foreground="#333"
+                                           Margin="0,5,0,0"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="格数(列)" FontSize="12" Foreground="#666"/>
+                                <TextBlock Text="{Binding ColumnCount}"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Foreground="#333"
+                                           Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="{Binding DimensionSummary}"
+                                   FontSize="12"
+                                   Foreground="#475569"
+                                   Margin="0,0,0,10"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="宽 (cm)" FontSize="12" Foreground="#666"/>
+                                <TextBox Margin="0,6,0,0"
+                                         Height="32"
+                                         Padding="5,0"
+                                         VerticalContentAlignment="Center"
+                                         Text="{Binding EditableWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="4,0">
+                                <TextBlock Text="高 (cm)" FontSize="12" Foreground="#666"/>
+                                <TextBox Margin="0,6,0,0"
+                                         Height="32"
+                                         Padding="5,0"
+                                         VerticalContentAlignment="Center"
+                                         Text="{Binding EditableHeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                                <TextBlock Text="深 (cm)" FontSize="12" Foreground="#666"/>
+                                <TextBox Margin="0,6,0,0"
+                                         Height="32"
+                                         Padding="5,0"
+                                         VerticalContentAlignment="Center"
+                                         Text="{Binding EditableDepth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding Description}"
+                               FontSize="12"
+                               Foreground="#009688"
+                               Margin="0,15,0,0"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Grid.Row="4"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,20,0,0">
+                <Button Content="确定保存"
+                        Width="100"
+                        Height="35"
+                        Style="{StaticResource ButtonNormalStyle}"
+                        Command="{Binding ConfirmCommand}"
+                        Cursor="Hand"/>
+                <Button Content="取消"
+                        Width="80"
+                        Height="35"
+                        Margin="10,0,0,0"
+                        Style="{StaticResource ButtonNormalStyle}"
+                        Command="{Binding CancelCommand}"
+                        Cursor="Hand"/>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Window>

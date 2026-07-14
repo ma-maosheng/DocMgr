@@ -1,0 +1,46 @@
+---
+description: 开柜界面档口批量物理搬迁（方案 B：先设源档口，再选空目标档口）
+globs: Services/YearlyArchive/ArchiveRelocationService*.cs,ViewModels/Cabinets/CabinetOpenViewModel.cs,Views/Cabinets/CabinetOpenDialog.xaml,Services/YearlyArchive/BatchSlotRelocationSession.cs
+alwaysApply: false
+---
+
+# 档口批量物理搬迁
+
+## 交互（方案 B）
+
+1. 在**源档口**（仅含年度模拟档案盒、非混放）右键 → **设为批量搬迁源**。
+2. 打开同柜/跨柜/跨面任意开柜页，在**全空目标档口**右键 → **搬迁到此档口**。
+3. 预览确认后一次事务执行；写入**一条**迁档单（`BatchPhysicalMove`）。
+
+源档口会话由 `IBatchSlotRelocationSession`（Singleton）跨开柜窗口保持，直至执行成功或「清除批量搬迁源」。
+
+## 业务规则
+
+### 模拟介质（档案盒）
+
+- 搬迁方式等同「物理位置迁移 · 不迁入空盒」：`ApplySimulatedBoxPhysicalLocation` + `UpdateFilingFactsForPhysicalMoveAsync`。
+- 源档口内盒按原顺序在目标档口重排为 `-01` … `-NN`。
+- **全空**目标：无在库年度盒、无历史库（地形图/航摄/其他图件）占用。
+- **混放档口禁止**作源：存在非「年度资料」类别盒、或混放待梳理盒。
+- 允许**跨柜、跨面**；目标档口宽度须容纳源档口全部盒厚度之和。
+- 与迁档菜单共用 `ArchiveRelocationService.Preview/ExecuteBatchSimulatedSlotPhysicalMoveAsync`。
+
+### 电子介质（防磁磁盘柜）
+
+- 搬迁方式等同单袋「物理位置迁移」：更新电子介质袋 `StorageLocation`、立档事实、关联硬盘/光盘台账。
+- 源档口内袋按原 `-01/-02…` 顺序在目标档口重排。
+- **全空**目标：无在库硬盘/光盘、无电子介质袋占用。
+- 源档口须为**年度数据硬盘专用**或**年度数据光盘专用**，且袋内均有资料子项。
+- 目标档口专用类别须与源一致；盘位容量须 ≥ 源档口袋数。
+- 与迁档菜单共用 `ArchiveRelocationService.Preview/ExecuteBatchElectronicSlotPhysicalMoveAsync`。
+
+## 权限
+
+仅资料室管理员（与资料迁档一致）。
+
+## 范围
+
+- **模拟介质**：滑道式 / 立式 / 卧式档案柜；单档口快照模式不显示批量菜单。
+- **电子介质**：防磁磁盘柜；源/目标档口须为**年度数据硬盘专用**或**年度数据光盘专用**（二者不可混用）；单档口快照模式不显示批量菜单。
+
+模拟轨与电子轨的搬迁源会话相互独立：在防磁柜设的源只能在防磁柜全空目标档口接收，在档案柜设的源同理。

@@ -1,0 +1,68 @@
+# Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+# ==============================================
+# .cursorignore for C# / .NET Projects
+# 说明：语法与 .gitignore 完全一致，Cursor 会跳过这些文件/目录的索引
+# ==============================================
+
+# 构建输出目录（核心优化，必须排除）
+bin/
+obj/
+build/
+out/
+artifacts/
+publish/
+
+# .NET 项目缓存与配置
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.swp
+*.swo
+*.cache
+*.log
+*.tmp
+*.bak
+
+# NuGet 与包缓存
+packages/
+.nuget/
+nuget_packages/
+
+# 测试与覆盖率
+TestResults/
+coverage/
+*.trx
+*.coverage
+
+# 依赖与第三方库（按需开启）
+# lib/
+# vendor/
+
+# 日志与临时文件
+logs/
+temp/
+tmp/
+*.log
+*.txt~
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# ==============================================
+# 可选：根据你的项目类型补充
+# ==============================================
+
+# 如果你有 WPF/WinForms 项目
+*.pdb
+*.exe
+*.dll
+*.config
+*.manifest
+
+# 如果你有 ASP.NET Core 项目
+wwwroot/lib/
+node_modules/

@@ -1,0 +1,34 @@
+---
+description: 档口（物理格位）的业务定义：柜号、柜面、层号、列号四维相同才属同一档口
+globs: Services/YearlyArchive/**,Services/HardDiskMedia/**,Services/Cabinets/**,ViewModels/YearlyArchive/**,ViewModels/HardDiskMedia/**,Models/Cabinets/**
+alwaysApply: false
+---
+
+# 档口定义
+
+## 结论
+
+在业务逻辑中，**档口**指物理位置编号中的**柜号、柜面、层号、列号**所共同标识的那个物理格位。
+
+只有当两个物理位置的上述**四个号码全部相同**时，才表示它们属于**同一个档口**；任一号码不同，即视为不同档口。
+
+## 与物理位置编码的关系
+
+- **档口键**（档口号）：`{柜号}{柜面}-{层号}-{列号}`，例如 `甲A-1-2`、`壬B-3-4`。
+- **档内序号**（第 4 段，如 `-01`、`-02`）**不属于**档口定义的一部分；它仅表示同一档口内的不同占位序号。
+- 因此：
+  - `壬A-1-2` 与 `壬A-1-2-01` 属于**同一档口**（前者为空白盘档口键，后者为含序号的数据盘完整位置）。
+  - `壬A-1-2-01` 与 `壬A-1-2-02` 属于**同一档口**、不同档内序号。
+  - `壬A-1-2` 与 `壬A-1-3` 属于**不同档口**（列号不同）。
+
+## 实现约定
+
+- 解析档口四维：使用 `ArchiveSlotLocationSupport.TryParseSlotLocation`。
+- 构造档口键：使用 `ArchiveSlotLocationSupport.BuildSlotKey`。
+- 判断是否同一档口：使用 `ArchiveSlotLocationSupport.IsSameSlot`（比较档口键，忽略档内序号）。
+- 构造含序号完整位置：使用 `ArchiveSlotLocationSupport.BuildFullElectronicLocation`。
+
+## 与其它规则的关系
+
+- 空白盘与数据盘的位置编码形式见 `hard-disk-storage-location-encoding.mdc`。
+- 台账同步中「档口变化」与「同档口序号变化」的区分见 `hard-disk-ledger-sync.mdc`。

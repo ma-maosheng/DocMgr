@@ -1,0 +1,36 @@
+---
+description: 电子介质迁档备份与检索展示规则
+globs: Services/YearlyArchive/ArchiveRelocationService*.cs,Services/YearlyArchive/FilingFactWriter.cs,Services/YearlyArchive/FiledArchiveSearchGroupingSupport.cs,ViewModels/YearlyArchive/ArchiveElectronicRelocationViewModel.cs,ViewModels/YearlyArchive/ArchiveFilingSearchViewModel.cs,Views/YearlyArchive/ArchiveFilingSearchPage.xaml
+alwaysApply: false
+---
+
+# 电子介质迁档备份与检索展示
+
+## 备份机制（迁档页）
+
+- 仅在「迁入空盘/空袋」「并入同项目硬盘」下提供勾选：**保留原件，执行备份机制**（默认关闭）。
+- 勾选后：
+  - **不**格式化原硬盘、**不**销毁原光盘、**不**移动源袋内 link 与原件 `FilingFact`。
+  - 克隆登记资料子项（含电子目录/文件条目），在目标介质上新建 link，并写入带 `PrimaryFilingFactId` 的备份 `FilingFact`。
+- **迁入空盘 + 备份**：新建电子介质袋 + 空白硬盘承载备份（类同 `CopyNewHardDisk`）。
+- **并入同项目硬盘 + 备份**：备份副本 append 到目标硬盘袋（类同 `CopyAppendExistingHardDisk`）。
+- **并入同项目硬盘 · 目标列表**：仅列出同项目、同年度、**已用硬盘介质袋**；**排除光盘袋**（光盘不可二次写入/并入）。
+- 执行前校验目标硬盘可用容量；迁档单 `SourceMediumDisposition = OriginalRetained`。
+
+## 立档事实字段
+
+| 字段 | 原件 | 备份 |
+|------|------|------|
+| `ArchiveCopyRole` | `Original` | `Backup` |
+| `PrimaryFilingFactId` | `null` | 指向原件 fact Id |
+
+## 检索展示（默认折叠、按需展开）
+
+1. 登记方向检索结果按 **`PrimaryFilingFactId ?? FilingFactId`** 分组；列表**默认只展示原件主行**。
+2. 同一原件存在备份时，主行下方显示「另有 N 份备份」；用户点击「展开备份」后显示副本行（袋号、档口、介质编号、立档日期）。
+3. 若本次检索**仅命中备份**而未命中原件，仍提升为原件主行展示，并标记「本次检索匹配备份」；此种情况**默认展开**备份区。
+4. **选中加入筛选池（电子介质）**：通过目录/文件勾选或「全部选择/清空选择/切换选择」确定范围；子项内**全部**目录/文件选中时按「整子项」加入，**部分**选中时按「部分子项」加入对应条目；展开备份后勾选副本 → 仅加入该备份 fact。「本页全部加入」仍仅加入各组原件整子项。模拟介质仍通过主行勾选加入整子项。
+
+## 物理 vs 逻辑
+
+系统登记**逻辑备份**元数据；物理介质拷贝由人工完成后再执行系统操作。

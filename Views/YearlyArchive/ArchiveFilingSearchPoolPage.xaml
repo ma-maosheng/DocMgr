@@ -1,0 +1,161 @@
+﻿<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveFilingSearchPoolPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      mc:Ignorable="d"
+      d:DesignHeight="900" d:DesignWidth="1300"
+      Title="ArchiveFilingSearchPoolPage" Background="#F0F2F5">
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="{Binding PageTitle}" FontSize="18" FontWeight="SemiBold"
+                   Foreground="#004D40" Margin="0,0,0,10"/>
+
+        <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Padding="12" Margin="0,0,0,10">
+            <StackPanel>
+                <WrapPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                        <TextBlock Text="介质类型:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox Width="120" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding MediaKindOptions}"
+                                  DisplayMemberPath="Label" SelectedValuePath="Value"
+                                  SelectedValue="{Binding SelectedMediaKind, Mode=TwoWay}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                        <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBox Width="200" Style="{StaticResource SearchTextBoxStyle}"
+                                 Text="{Binding FilterKeyword, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="检索池名称、编号、备注、创建人"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox Width="120" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding StatusFilterOptions}"
+                                  DisplayMemberPath="Label" SelectedValuePath="Value"
+                                  SelectedValue="{Binding FilterStatus}"/>
+                    </StackPanel>
+                    <CheckBox Content="仅看我创建的" Margin="0,0,16,8" VerticalAlignment="Center"
+                              IsChecked="{Binding OnlyMine, Mode=TwoWay}"
+                              IsEnabled="{Binding CanBrowseAllPools}"/>
+                    <Button Content="查询" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding SearchCommand}"/>
+                    <Button Content="重置" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding ResetCommand}"/>
+                </WrapPanel>
+                <TextBlock Foreground="#666" TextWrapping="Wrap"
+                           Text="一般人员仅可浏览、编辑本人保存的检索池；资料室资料管理员可查看全部检索池。切换介质类型可分别管理电子介质与模拟介质检索池。"/>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.1*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="1.4*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="White" CornerRadius="4" Padding="10">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="检索池列表" FontWeight="SemiBold" Foreground="#37474F" Margin="0,0,0,8"/>
+                    <DataGrid AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                              ItemsSource="{Binding Pools}" SelectedItem="{Binding SelectedPool, Mode=TwoWay}"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                              BorderThickness="0" RowHeight="36">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="编号" Binding="{Binding ResultSetNo}" Width="130"/>
+                            <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="条数" Binding="{Binding ItemCount}" Width="50"/>
+                            <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="70"/>
+                            <DataGridTextColumn Header="创建人" Binding="{Binding CreatedByName}" Width="80"/>
+                            <DataGridTextColumn Header="更新时间" Binding="{Binding UpdatedAtDisplay}" Width="130"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+
+            <Border Grid.Column="2" Background="White" CornerRadius="4" Padding="10">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                        <TextBlock Text="{Binding DetailSummary}" FontWeight="SemiBold" Foreground="#37474F" TextWrapping="Wrap"/>
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="名称" VerticalAlignment="Center" Margin="0,0,8,8"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource SearchTextBoxStyle}"
+                                     Text="{Binding EditableName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="状态" VerticalAlignment="Center" Margin="0,0,8,8"/>
+                            <ComboBox Grid.Row="1" Grid.Column="1" Style="{StaticResource ToolbarFilterComboBoxStyle}" Margin="0,0,0,8"
+                                      ItemsSource="{Binding EditableStatusOptions}"
+                                      DisplayMemberPath="Label" SelectedValuePath="Value"
+                                      SelectedValue="{Binding EditableStatus}"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="备注" VerticalAlignment="Top" Margin="0,4,8,0"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource SearchTextBoxStyle}"
+                                     Text="{Binding EditableRemarks, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True" TextWrapping="Wrap" MinHeight="48"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Content="查看资料" Style="{StaticResource ButtonNormalStyle}" Command="{Binding ViewDetailCommand}"/>
+                            <Button Content="移出选中条目" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}"
+                                    Command="{Binding RemoveSelectedItemsCommand}"/>
+                            <Button Content="发起借出申请" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}"
+                                    Command="{Binding CreateOutboundFromPoolCommand}"/>
+                            <Button Content="保存修改" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}"
+                                    Command="{Binding SaveCommand}"/>
+                        </StackPanel>
+                        <TextBlock Text="池内立档记录" FontWeight="SemiBold" Foreground="#37474F" VerticalAlignment="Center"/>
+                    </DockPanel>
+
+                    <DataGrid x:Name="PoolItemsDataGrid" AutoGenerateColumns="False" IsReadOnly="False" CanUserAddRows="False"
+                              ItemsSource="{Binding PoolItems}" SelectedItem="{Binding SelectedPoolItem, Mode=TwoWay}"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                              BorderThickness="0" RowHeight="36">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
+                            <DataGridTextColumn Header="表单号" Binding="{Binding FormNo}" Width="130" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="*" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName}" Width="160" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="筛选份数" Binding="{Binding RequestedCopyCountDisplay}" Width="80" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="筛选范围" Binding="{Binding SelectionScopeDisplay}" Width="180" IsReadOnly="True">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                        <Setter Property="Foreground" Value="#00695C"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevel}" Width="70" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="盒/袋编号" Binding="{Binding ContainerCode}" Width="120" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="立档位置" Binding="{Binding StorageLocation}" Width="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="当前位置" Binding="{Binding CurrentStorageLocation}" Width="100" IsReadOnly="True">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#1B5E20"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Binding="{Binding StatusColumnDisplay}" Width="100" IsReadOnly="True">
+                                <DataGridTextColumn.Header>
+                                    <TextBlock Text="{Binding DataContext.PoolItemStatusColumnHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}"/>
+                                </DataGridTextColumn.Header>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="借出提示" Binding="{Binding BorrowHintDisplay}" Width="100" IsReadOnly="True"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

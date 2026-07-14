@@ -1,0 +1,164 @@
+<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveRelocationLedgerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      mc:Ignorable="d"
+      d:DesignHeight="800"
+      d:DesignWidth="1400"
+      Title="ArchiveRelocationLedgerPage"
+      Background="#F0F2F5">
+
+    <Page.Resources>
+        <Style x:Key="PageTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#004D40"/>
+        </Style>
+        <Style x:Key="PageSubtitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#6B7280"/>
+            <Setter Property="Margin" Value="0,4,0,0"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style x:Key="CompactToolbarButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarActionButtonStyle}">
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MinHeight" Value="28"/>
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="迁档台账" Style="{StaticResource PageTitleStyle}"/>
+            <TextBlock Style="{StaticResource PageSubtitleStyle}"
+                       Text="横向浏览资料迁档实物流转流水，可按迁档模式、业务单号与关键字筛选。"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Padding="10,8" Margin="0,0,0,8">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <Grid MinHeight="28">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="108"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="108"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="128"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="68"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="88"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="88"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="140" MinWidth="100"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="筛选条件" FontWeight="SemiBold" Foreground="#37474F" VerticalAlignment="Center"/>
+
+                    <TextBlock Grid.Column="2" Text="自" Style="{StaticResource FilterLabelStyle}"/>
+                    <DatePicker Grid.Column="3" Style="{StaticResource FilterDatePickerStyle}"
+                                SelectedDate="{Binding OperatedFrom, Mode=TwoWay}"/>
+
+                    <TextBlock Grid.Column="5" Text="至" Style="{StaticResource FilterLabelStyle}"/>
+                    <DatePicker Grid.Column="6" Style="{StaticResource FilterDatePickerStyle}"
+                                SelectedDate="{Binding OperatedTo, Mode=TwoWay}"/>
+
+                    <TextBlock Grid.Column="8" Text="模式" Style="{StaticResource FilterLabelStyle}"/>
+                    <ComboBox Grid.Column="9" Style="{StaticResource FilterInputStyle}"
+                              ItemsSource="{Binding RelocationModeOptions}"
+                              DisplayMemberPath="Label"
+                              SelectedValuePath="Value"
+                              SelectedValue="{Binding SelectedRelocationMode, Mode=TwoWay}"/>
+
+                    <TextBlock Grid.Column="11" Text="介质" Style="{StaticResource FilterLabelStyle}"/>
+                    <ComboBox Grid.Column="12" Style="{StaticResource FilterInputStyle}"
+                              ItemsSource="{Binding MediaKindOptions}"
+                              DisplayMemberPath="Label"
+                              SelectedValuePath="Value"
+                              SelectedValue="{Binding SelectedMediaKind, Mode=TwoWay}"/>
+
+                    <TextBlock Grid.Column="14" Text="单号" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBox Grid.Column="15" Style="{StaticResource SearchTextBoxStyle}"
+                             Text="{Binding BusinessNo, UpdateSourceTrigger=PropertyChanged}"/>
+
+                    <TextBlock Grid.Column="17" Text="操作人" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBox Grid.Column="18" Style="{StaticResource SearchTextBoxStyle}"
+                             Text="{Binding OperatorName, UpdateSourceTrigger=PropertyChanged}"/>
+
+                    <TextBlock Grid.Column="20" Text="关键字" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBox Grid.Column="21" Style="{StaticResource SearchTextBoxStyle}"
+                             Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
+                        </TextBox.InputBindings>
+                    </TextBox>
+
+                    <Button Grid.Column="23" Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                    <Button Grid.Column="25" Content="重置" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                    <Button Grid.Column="27" Content="定位立档" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                </Grid>
+            </ScrollViewer>
+        </Border>
+
+        <Border Grid.Row="2" Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1"
+                CornerRadius="4" Padding="12,8" Margin="0,0,0,8">
+            <TextBlock Text="{Binding SummaryText}" Foreground="#065F46" FontSize="12"/>
+        </Border>
+
+        <Border Grid.Row="3" Background="White" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="4" Padding="8">
+            <DataGrid AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      IsReadOnly="True"
+                      SelectionMode="Single"
+                      RowHeight="36"
+                      ColumnHeaderHeight="36"
+                      GridLinesVisibility="Horizontal"
+                      BorderThickness="0"
+                      ItemsSource="{Binding LedgerRows}"
+                      SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
+                      MouseDoubleClick="LedgerGrid_MouseDoubleClick">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="操作时间" Binding="{Binding OperatedAtDisplay}" Width="130"/>
+                    <DataGridTextColumn Header="迁档模式" Binding="{Binding RelocationModeDisplay}" Width="120"/>
+                    <DataGridTextColumn Header="迁档单号" Binding="{Binding BusinessNo}" Width="140"/>
+                    <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo}" Width="130"/>
+                    <DataGridTextColumn Header="表单编号" Binding="{Binding FormNo}" Width="120"/>
+                    <DataGridTextColumn Header="介质" Binding="{Binding MediaKind}" Width="72"/>
+                    <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="140"/>
+                    <DataGridTextColumn Header="分项名称" Binding="{Binding ItemName}" Width="120"/>
+                    <DataGridTextColumn Header="项目" Binding="{Binding ProjectName}" Width="120"/>
+                    <DataGridTextColumn Header="位置变更" Binding="{Binding LocationChangeDisplay}" Width="180"/>
+                    <DataGridTextColumn Header="生命周期" Binding="{Binding LifecycleChangeDisplay}" Width="120"/>
+                    <DataGridTextColumn Header="操作人" Binding="{Binding OperatorName}" Width="80"/>
+                    <DataGridTextColumn Header="摘要" Binding="{Binding Summary}" Width="160"/>
+                    <DataGridTextColumn Header="备注" Binding="{Binding Remark}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </Grid>
+</Page>

@@ -1,0 +1,368 @@
+﻿<Page x:Class="DocMgr.Views.HardDiskMedia.HardDiskMediaPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      mc:Ignorable="d"
+      d:DesignHeight="800"
+      d:DesignWidth="1200"
+      Title="HardDiskMediaPage"
+      Background="#F0F2F5">
+    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <Grid Margin="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0"
+                    Padding="20"
+                    Margin="0,0,0,16"
+                    Background="White"
+                    CornerRadius="6">
+                <StackPanel>
+                    <TextBlock Text="介质管理（硬盘）"
+                               FontSize="24"
+                               FontWeight="Bold"
+                               Foreground="#1F2937"/>
+                    <TextBlock Margin="0,8,0,0"
+                               Text="{Binding SectionTitle}"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="#0F766E"/>
+                    <TextBlock Margin="0,8,0,0"
+                               Text="{Binding SectionDescription}"
+                               TextWrapping="Wrap"
+                               Foreground="#4B5563"/>
+                    <Border Margin="0,14,0,0"
+                            Padding="12"
+                            Background="#ECFDF5"
+                            BorderBrush="#A7F3D0"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                        <TextBlock Text="{Binding SectionFocus}"
+                                   TextWrapping="Wrap"
+                                   Foreground="#065F46"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="1"
+                    Padding="16"
+                    Margin="0,0,0,16"
+                    Background="White"
+                    CornerRadius="6">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="硬盘概览"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="#1F2937"/>
+                    <Button Grid.Column="1"
+                            Content="刷新概览"
+                            Padding="16,6"
+                            Style="{StaticResource ButtonSecondaryStyle}"
+                            Command="{Binding RefreshCommand}"/>
+                    <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,12,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Row="0" Grid.Column="0" Margin="0,0,12,12" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="介质总数" Foreground="#64748B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding TotalMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#0F172A"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="0" Grid.Column="1" Margin="0,0,12,12" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="在库空白" Foreground="#64748B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding BlankInStockCount}" FontSize="24" FontWeight="Bold" Foreground="#0F766E"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="0" Grid.Column="2" Margin="0,0,12,12" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="出库中" Foreground="#64748B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding BorrowedCount}" FontSize="24" FontWeight="Bold" Foreground="#B45309"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="0" Grid.Column="3" Margin="0,0,0,12" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="资料在库" Foreground="#64748B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding DataCarrierInStockCount}" FontSize="24" FontWeight="Bold" Foreground="#1D4ED8"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Grid.Column="0" Margin="0,0,12,0" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="对外移交" Foreground="#64748B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding TransferOutCount}" FontSize="24" FontWeight="Bold" Foreground="#7C3AED"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="1" Margin="0,0,12,0" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="已提交待审" Foreground="#64748B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding SubmittedApplicationCount}" FontSize="24" FontWeight="Bold" Foreground="#DC2626"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="2" Margin="0,0,12,0" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="待上传签字件" Foreground="#64748B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding PendingSignedFileCount}" FontSize="24" FontWeight="Bold" Foreground="#9333EA"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="3" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="待办理" Foreground="#64748B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding PendingProcessApplicationCount}" FontSize="24" FontWeight="Bold" Foreground="#2563EB"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="2" Grid.Column="0" Margin="0,12,12,0" Padding="14" Background="#FFF7ED" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="损坏在库" Foreground="#9A3412"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding DamagedInStockCount}" FontSize="24" FontWeight="Bold" Foreground="#C2410C"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="2" Grid.Column="1" Margin="0,12,12,0" Padding="14" Background="#EFF6FF" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="需归还介质" Foreground="#1D4ED8"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding NeedReturnMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#2563EB"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="2" Grid.Column="2" Margin="0,12,12,0" Padding="14" Background="#FDF2F8" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="长期出库且需归还" Foreground="#BE185D"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding LongTermNeedReturnMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#DB2777"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="2" Grid.Column="3" Margin="0,12,0,0" Padding="14" Background="#ECFEFF" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="临时出库且需归还" Foreground="#0F766E"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding TemporaryNeedReturnMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#0D9488"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="3" Grid.Column="0" Margin="0,12,12,0" Padding="14" Background="#FEFCE8" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="未登记位置" Foreground="#A16207"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding MissingLocationMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#CA8A04"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="3" Grid.Column="1" Margin="0,12,12,0" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="出库未明确保管" Foreground="#475569"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding OutboundWithoutKeeperMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#334155"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.4*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        Padding="16"
+                        Margin="0,0,16,0"
+                        Background="White"
+                        CornerRadius="6">
+                    <StackPanel>
+                        <TextBlock Text="办理摘要"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#1F2937"/>
+                        <TextBlock Margin="0,6,0,0"
+                                   Text="当前模块的核心办理链路摘要"
+                                   Foreground="#6B7280"/>
+                        <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding SectionHighlights}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,8,8"
+                                            Padding="10,6"
+                                            Background="#EEF2FF"
+                                            CornerRadius="14">
+                                        <TextBlock Text="{Binding}" Foreground="#3730A3"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+
+                        <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding WorkflowSteps}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,10"
+                                            Padding="12"
+                                            Background="#F8FAFC"
+                                            CornerRadius="4">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="22"
+                                                    Height="22"
+                                                    Margin="0,0,10,0"
+                                                    Background="#0F766E"
+                                                    CornerRadius="11">
+                                                <TextBlock HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Text="✓"
+                                                           Foreground="White"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding}"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="#374151"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="1">
+                    <Border Padding="16" Margin="0,0,0,16" Background="White" CornerRadius="6">
+                        <StackPanel>
+                            <TextBlock Text="统计分析" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
+                            <TextBlock Margin="0,6,0,0" Text="从位置、容量、交接、生命周期和风险五个维度看整体运行情况" Foreground="#6B7280"/>
+
+                            <Border Margin="0,12,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="位置与保管分布" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding LocationInsights}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,0,0,6" Text="{Binding}" TextWrapping="Wrap" Foreground="#4B5563"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Margin="0,10,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="出库容量分布" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding OutboundCapacityInsights}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,0,0,6" Text="{Binding}" TextWrapping="Wrap" Foreground="#4B5563"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Margin="0,10,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="交接环节分析" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding HandoverInsights}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,0,0,6" Text="{Binding}" TextWrapping="Wrap" Foreground="#4B5563"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Margin="0,10,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="生命周期结构" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding LifecycleInsights}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,0,0,6" Text="{Binding}" TextWrapping="Wrap" Foreground="#4B5563"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Margin="0,10,0,0" Padding="12" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="风险提示" FontWeight="SemiBold" Foreground="#991B1B"/>
+                                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding RiskInsights}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,0,0,6" Text="{Binding}" TextWrapping="Wrap" Foreground="#7F1D1D"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="16" Margin="0,0,0,16" Background="White" CornerRadius="6">
+                        <StackPanel>
+                            <TextBlock Text="关键域值" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
+                            <TextBlock Margin="0,6,0,0" Text="当前模块的核心枚举摘要" Foreground="#6B7280"/>
+
+                            <Border Margin="0,12,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="申请类型" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding ApplicationTypeSummary}" TextWrapping="Wrap" Foreground="#4B5563"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Margin="0,10,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="申请状态" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding ApplicationStatusSummary}" TextWrapping="Wrap" Foreground="#4B5563"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Margin="0,10,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="流转类型" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding TransactionTypeSummary}" TextWrapping="Wrap" Foreground="#4B5563"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="16" Background="White" CornerRadius="6">
+                        <StackPanel>
+                            <TextBlock Text="设计要点" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
+                            <TextBlock Margin="0,12,0,0" Text="{Binding BusinessReference}" TextWrapping="Wrap" Foreground="#374151"/>
+                            <TextBlock Margin="0,10,0,0" Text="• 主表看当前状态，流转表看历史过程。" TextWrapping="Wrap" Foreground="#4B5563"/>
+                            <TextBlock Margin="0,6,0,0" Text="• 申请办理采用“线上填报 + 线下签字 + 回传照片”闭环。" TextWrapping="Wrap" Foreground="#4B5563"/>
+                            <TextBlock Margin="0,6,0,0" Text="• 对外移交、归还、销毁等流程需明确区分。" TextWrapping="Wrap" Foreground="#4B5563"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </ScrollViewer>
+</Page>

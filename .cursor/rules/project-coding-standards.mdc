@@ -1,0 +1,88 @@
+---
+description: 局域网桌面端 C# 信息管理系统开发规范（单人开发专用）
+alwaysApply: true
+---
+
+# 适配局域网桌面管理系统的 C# 开发规范
+
+专注 **局域网桌面端 C# 信息管理系统** 的资深开发者视角。本项目为 **桌面客户端单机架构**（非前后端分离、非 Web、非 API），仅内网使用、单人开发、内部业务管理系统。所有代码生成、修改、重构必须严格遵循以下规范，禁止套用 Web 后端、前后端分离、微服务、分布式等不相关规范。
+
+## 一、项目架构定位（最重要）
+
+1. **桌面端一体化架构**：UI + 业务逻辑 + 数据库访问均在本地客户端。允许轻量 DI、`Services` 业务层、领域服务、仓储注册、ViewModel 注册，完全兼容现有 `ServiceCollectionExtensions` 注册逻辑。
+2. **禁止的是 Web 专属强制抽象**：不新增无必要的 `IXxxService` 接口层仅为「分层而分层」；**项目现有** `Services/Interfaces/`、`Repositories/Interfaces/`、DI 注册、业务服务类均为合规桌面分层，无需删除或重构。
+3. **禁止**自动创建 Web API、前后端分离代码，以及跨域、请求响应、JWT、路由等 Web 专属代码。
+4. **简洁分层**：Views（页面/窗口）→ ViewModel → Services → Repository → Models，轻量、适合单人维护。
+5. 业务逻辑在本地直接执行；简单逻辑不必强行异步，兼顾效率与简洁。
+
+## 二、统一命名规范
+
+| 对象 | 风格 | 示例 |
+|------|------|------|
+| 类、窗口、方法、属性、常量 | PascalCase | `ArchiveRegisterService` |
+| 局部变量、参数 | camelCase | `registerRecord` |
+| 私有字段 | `_` 前缀 | `private readonly AppDbContext _dbContext` |
+| 窗口/页面 | `Page` / `Window` / `Form` 结尾 | `LoginWindow`、`ArchiveFilingPage` |
+| 实体类 | 业务名词、单数 | `HardDiskMedium`（禁止复数） |
+
+命名须语义清晰，禁止无意义缩写。
+
+**项目专有命名**（沿用现有约定）：
+
+- 领域常量：`*DomainValues`（如 `ArchiveOutboundDomainValues`）
+- 可复用静态逻辑：`*Support`（如 `ArchiveSlotLocationSupport`）
+- 业务规则：`*BusinessRules`
+- 大类拆分：`partial class` + 职责后缀文件（如 `HardDiskMediaService.ApplicationRules.cs`）
+
+## 三、数据库与 EF Core
+
+1. 适配内网 SQL Server / SQLite，客户端本地直连，无需远程部署或复杂鉴权。
+2. 允许客户端直接访问数据库，无需中间 API。
+3. 查询优先 `IQueryable`，避免 N+1；简单查询可直接 `ToList()`，不过度封装。
+4. 批量增删改优先 EF Core 原生批量方法。
+5. 实体字段严格对应数据库，禁止随意新增无用途字段。
+6. 连接字符串放本地配置文件，禁止硬编码在业务代码。
+
+## 四、桌面 UI 与交互
+
+1. 专注桌面交互：弹窗、列表、分页、查询、导出、表单录入、本地权限控制。
+2. UI 与业务严格分离：页面/ViewModel 负责展示与交互，复杂计算与数据逻辑放 Service/Repository。
+3. 数据绑定整洁，避免冗余重复绑定。
+4. 弹窗提示、加载状态、操作结果须完善，符合桌面软件习惯。
+
+## 五、异常处理与日志（内网轻量版）
+
+1. 无需复杂全局过滤器；表单提交、数据库、文件操作用简洁 `try-catch`。
+2. 异常友好展示于桌面弹窗，同时写本地日志，便于单人排查。
+3. 业务场景使用语义清晰的自定义异常，禁止直接抛原生 `Exception`。
+
+## 六、异步与性能
+
+1. IO 操作（数据库、文件、导出）使用 `async/await`，避免界面卡顿。
+2. 简单计算不必强行异步。
+3. **禁止** `Task.Result`、`Task.Wait()` 阻塞 UI 线程。
+
+## 七、代码简洁性（单人开发核心）
+
+1. 优先简洁、易懂、易维护；不堆砌架构、不强行设计模式、不过度工程化。
+2. 适合单人长期维护：逻辑清晰、注释充足、无冗余代码。
+3. 公共方法、核心类必须写 XML 注释。
+4. 重复逻辑抽取公共方法，禁止复制粘贴。
+5. **复用优先**：档口、硬盘位置、台账同步等领域逻辑，先查现有 `*Support` 与 `.cursor/rules/` 业务规则，禁止平行实现第二套解析/比较函数。
+6. **最小改动**：只改与任务直接相关的文件与逻辑。
+
+## 八、实现细节约定
+
+- 业务编码、状态、角色比较用 `StringComparison.Ordinal` / `StringComparer.Ordinal`。
+- 入参用 `string?`；比较前 `Trim()`；空值用 `string.IsNullOrWhiteSpace`。
+- 对外返回优先 `IReadOnlyList<T>` / `IReadOnlyCollection<T>`。
+- Service/Repository 通过构造函数注入，字段 `readonly`。
+- 业务语义（档口、硬盘编码、台账同步等）以 `.cursor/rules/` 对应规则为准。
+
+## 九、绝对禁止
+
+1. ❌ Controller、API 接口、路由、请求/响应模型
+2. ❌ JWT、授权、跨域、中间件、网关等 Web 代码
+3. ❌ 为 Web 风格强行搭建新的服务接口抽象层；现有桌面 DI 与业务分层保留使用
+4. ❌ 分布式、微服务、集群、高可用等无关架构
+5. ❌ 不适合桌面端的复杂异步、过度解耦代码

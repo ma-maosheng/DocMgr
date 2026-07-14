@@ -1,0 +1,398 @@
+<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveCirculationLedgerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      mc:Ignorable="d"
+      d:DesignHeight="800"
+      d:DesignWidth="1400"
+      Title="ArchiveCirculationLedgerPage"
+      Background="#F0F2F5">
+
+    <Page.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <Style x:Key="PageTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#004D40"/>
+        </Style>
+        <Style x:Key="PageSubtitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#6B7280"/>
+            <Setter Property="Margin" Value="0,4,0,0"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style x:Key="CompactToolbarButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarActionButtonStyle}">
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MinHeight" Value="28"/>
+        </Style>
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#37474F"/>
+        </Style>
+        <Style x:Key="SectionHintStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#9CA3AF"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="SectionHeaderBarStyle" TargetType="Border">
+            <Setter Property="Background" Value="#F9FAFB"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="12,8"/>
+        </Style>
+        <Style x:Key="ContentCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style x:Key="LedgerPaneGridSplitterStyle" TargetType="GridSplitter">
+            <Setter Property="Height" Value="8"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="ResizeBehavior" Value="PreviousAndNext"/>
+            <Setter Property="ResizeDirection" Value="Rows"/>
+            <Setter Property="Cursor" Value="SizeNS"/>
+        </Style>
+        <Style x:Key="FilterGroupPanelStyle" TargetType="StackPanel">
+            <Setter Property="Orientation" Value="Horizontal"/>
+            <Setter Property="Margin" Value="0,0,14,8"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="流转台账" Style="{StaticResource PageTitleStyle}"/>
+            <TextBlock Style="{StaticResource PageSubtitleStyle}"
+                       Text="按容器 → 业务单 → 子流程浏览立档入库后的出库、归还实物流转及出库流程节点；不含立档业务与迁档记录。"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Padding="10,8" Margin="0,0,0,8">
+            <StackPanel>
+                <TextBlock Text="筛选条件" FontWeight="SemiBold" Foreground="#37474F" Margin="0,0,0,8"/>
+
+                <WrapPanel>
+                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
+                        <TextBlock Text="自" Style="{StaticResource FilterLabelStyle}"/>
+                        <DatePicker Width="108" Style="{StaticResource FilterDatePickerStyle}"
+                                    SelectedDate="{Binding OperatedFrom, Mode=TwoWay}"/>
+                    </StackPanel>
+
+                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
+                        <TextBlock Text="至" Style="{StaticResource FilterLabelStyle}"/>
+                        <DatePicker Width="108" Style="{StaticResource FilterDatePickerStyle}"
+                                    SelectedDate="{Binding OperatedTo, Mode=TwoWay}"/>
+                    </StackPanel>
+
+                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
+                        <TextBlock Text="业务" Style="{StaticResource FilterLabelStyle}"/>
+                        <ComboBox Width="96" Style="{StaticResource FilterInputStyle}"
+                                  ItemsSource="{Binding TransactionTypeOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedValuePath="Value"
+                                  SelectedValue="{Binding SelectedTransactionType, Mode=TwoWay}"/>
+                    </StackPanel>
+
+                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
+                        <TextBlock Text="单号" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBox Width="120" Style="{StaticResource SearchTextBoxStyle}"
+                                 Text="{Binding BusinessNo, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+
+                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
+                        <TextBlock Text="节点" Style="{StaticResource FilterLabelStyle}"/>
+                        <ComboBox Width="96" Style="{StaticResource FilterInputStyle}"
+                                  ItemsSource="{Binding NodeCategoryOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedValuePath="Value"
+                                  SelectedValue="{Binding SelectedNodeCategory, Mode=TwoWay}"/>
+                    </StackPanel>
+
+                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
+                        <TextBlock Text="申请人" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBox Width="88" Style="{StaticResource SearchTextBoxStyle}"
+                                 Text="{Binding ApplicantName, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+
+                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
+                        <TextBlock Text="操作人" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBox Width="88" Style="{StaticResource SearchTextBoxStyle}"
+                                 Text="{Binding OperatorName, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+
+                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
+                        <TextBlock Text="关键字" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBox MinWidth="140" Width="160" Style="{StaticResource SearchTextBoxStyle}"
+                                 Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
+                            </TextBox.InputBindings>
+                        </TextBox>
+                    </StackPanel>
+
+                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}" Margin="0,0,0,8">
+                        <Button Content="查询" Margin="0,0,8,0" Command="{Binding SearchCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                        <Button Content="重置" Margin="0,0,8,0" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                        <Button Content="定位立档" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                    </StackPanel>
+                </WrapPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                    <TextBlock Text="容器范围" Style="{StaticResource FilterLabelStyle}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                    <RadioButton Content="仅有流转记录" GroupName="CirculationListingMode"
+                                 IsChecked="{Binding IsCirculationOnlyListingMode, Mode=TwoWay}"
+                                 VerticalAlignment="Center"/>
+                    <RadioButton Content="含未流转在库容器" GroupName="CirculationListingMode" Margin="16,0,0,0"
+                                 IsChecked="{Binding IsIncludeNeverCirculatedListingMode, Mode=TwoWay}"
+                                 VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding ListingModeLimitedHint}" Margin="16,0,0,0" FontSize="11" Foreground="#B45309"
+                               VerticalAlignment="Center" TextWrapping="Wrap"
+                               Visibility="{Binding ShowListingModeLimitedHint, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2" Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1"
+                CornerRadius="4" Padding="12,8" Margin="0,0,0,8">
+            <TextBlock Text="{Binding SummaryText}" Foreground="#065F46" FontSize="12" TextWrapping="Wrap"/>
+        </Border>
+
+        <TabControl Grid.Row="3" SelectedIndex="{Binding SelectedSubTabIndex, Mode=TwoWay}" Margin="0,4,0,0">
+            <TabItem Header="模拟档案盒">
+                <Grid Margin="0,4,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="1.1*" MinHeight="120"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="0.9*" MinHeight="100"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="1.2*" MinHeight="120"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Style="{StaticResource ContentCardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Style="{StaticResource SectionHeaderBarStyle}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="一级 · 档案盒" Style="{StaticResource SectionTitleStyle}"/>
+                                    <TextBlock Text="一行对应一个档案盒；汇总出库/归还流水与流程节点" Style="{StaticResource SectionHintStyle}"/>
+                                </StackPanel>
+                            </Border>
+                            <DataGrid Grid.Row="1" Margin="8"
+                                      AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                                      SelectionMode="Single" RowHeight="34" ColumnHeaderHeight="34"
+                                      GridLinesVisibility="Horizontal" BorderThickness="0"
+                                      ItemsSource="{Binding ContainerMasters}"
+                                      SelectedItem="{Binding SelectedContainer, Mode=TwoWay}"
+                                      MouseDoubleClick="LedgerGrid_MouseDoubleClick">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="档案盒编号" Binding="{Binding ContainerCode}" Width="120"/>
+                                    <DataGridTextColumn Header="年度" Binding="{Binding Year}" Width="56"/>
+                                    <DataGridTextColumn Header="项目" Binding="{Binding ProjectName}" Width="140"/>
+                                    <DataGridTextColumn Header="当前位置" Binding="{Binding LocationDisplay}" Width="120"/>
+                                    <DataGridTextColumn Header="容器状态" Binding="{Binding ContainerStatusDisplay}" Width="72"/>
+                                    <DataGridTextColumn Header="流转概况" Binding="{Binding ActivitySummary}" Width="160"/>
+                                    <DataGridTextColumn Header="最近活动" Binding="{Binding LatestOperatedAtDisplay}" Width="128"/>
+                                    <DataGridTextColumn Header="最近摘要" Binding="{Binding LatestTransactionTypeDisplay}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+
+                    <GridSplitter Grid.Row="1" Style="{StaticResource LedgerPaneGridSplitterStyle}"/>
+
+                    <Border Grid.Row="2" Style="{StaticResource ContentCardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Style="{StaticResource SectionHeaderBarStyle}">
+                                <TextBlock Text="{Binding BusinessDetailHeader}" Style="{StaticResource SectionTitleStyle}"/>
+                            </Border>
+                            <DataGrid Grid.Row="1" Margin="8"
+                                      AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                                      SelectionMode="Single" RowHeight="34" ColumnHeaderHeight="34"
+                                      GridLinesVisibility="Horizontal" BorderThickness="0"
+                                      ItemsSource="{Binding BusinessRows}"
+                                      SelectedItem="{Binding SelectedBusiness, Mode=TwoWay}"
+                                      MouseDoubleClick="LedgerGrid_MouseDoubleClick">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="业务单" Binding="{Binding DisplayTitle}" Width="200"/>
+                                    <DataGridTextColumn Header="最近活动" Binding="{Binding LatestOperatedAtDisplay}" Width="128"/>
+                                    <DataGridTextColumn Header="子项数" Binding="{Binding SubItemCount}" Width="56"/>
+                                    <DataGridTextColumn Header="出库状态" Binding="{Binding OutboundStatusDisplay}" Width="88"/>
+                                    <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="72"/>
+                                    <DataGridTextColumn Header="最近摘要" Binding="{Binding LatestSummary}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+
+                    <GridSplitter Grid.Row="3" Style="{StaticResource LedgerPaneGridSplitterStyle}"/>
+
+                    <Border Grid.Row="4" Style="{StaticResource ContentCardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Style="{StaticResource SectionHeaderBarStyle}">
+                                <TextBlock Text="{Binding SubItemDetailHeader}" Style="{StaticResource SectionTitleStyle}"/>
+                            </Border>
+                            <DataGrid Grid.Row="1" Margin="8"
+                                      AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                                      SelectionMode="Single" RowHeight="34" ColumnHeaderHeight="34"
+                                      GridLinesVisibility="Horizontal" BorderThickness="0"
+                                      ItemsSource="{Binding SubItemRows}"
+                                      MouseDoubleClick="LedgerGrid_MouseDoubleClick">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="操作时间" Binding="{Binding OperatedAtDisplay}" Width="128"/>
+                                    <DataGridTextColumn Header="层级" Binding="{Binding LayerDisplay}" Width="72"/>
+                                    <DataGridTextColumn Header="类别" Binding="{Binding CategoryDisplay}" Width="80"/>
+                                    <DataGridTextColumn Header="摘要" Binding="{Binding DetailDisplay}" Width="180"/>
+                                    <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo}" Width="120"/>
+                                    <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="120"/>
+                                    <DataGridTextColumn Header="分项名称" Binding="{Binding ItemName}" Width="100"/>
+                                    <DataGridTextColumn Header="位置变更" Binding="{Binding LocationChangeDisplay}" Width="140"/>
+                                    <DataGridTextColumn Header="生命周期" Binding="{Binding LifecycleChangeDisplay}" Width="88"/>
+                                    <DataGridTextColumn Header="出库状态" Binding="{Binding OutboundStatusDisplay}" Width="80"/>
+                                    <DataGridTextColumn Header="使用方式" Binding="{Binding UsageModeDisplay}" Width="72"/>
+                                    <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="72"/>
+                                    <DataGridTextColumn Header="操作人" Binding="{Binding OperatorName}" Width="72"/>
+                                    <DataGridTextColumn Header="备注" Binding="{Binding Remark}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="电子介质袋">
+                <Grid Margin="0,4,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="1.1*" MinHeight="120"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="0.9*" MinHeight="100"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="1.2*" MinHeight="120"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Style="{StaticResource ContentCardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Style="{StaticResource SectionHeaderBarStyle}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="一级 · 电子介质袋" Style="{StaticResource SectionTitleStyle}"/>
+                                    <TextBlock Text="一行对应一个电子介质袋；汇总出库/归还流水与流程节点" Style="{StaticResource SectionHintStyle}"/>
+                                </StackPanel>
+                            </Border>
+                            <DataGrid Grid.Row="1" Margin="8"
+                                      AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                                      SelectionMode="Single" RowHeight="34" ColumnHeaderHeight="34"
+                                      GridLinesVisibility="Horizontal" BorderThickness="0"
+                                      ItemsSource="{Binding ContainerMasters}"
+                                      SelectedItem="{Binding SelectedContainer, Mode=TwoWay}"
+                                      MouseDoubleClick="LedgerGrid_MouseDoubleClick">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="介质袋编号" Binding="{Binding ContainerCode}" Width="120"/>
+                                    <DataGridTextColumn Header="年度" Binding="{Binding Year}" Width="56"/>
+                                    <DataGridTextColumn Header="项目" Binding="{Binding ProjectName}" Width="140"/>
+                                    <DataGridTextColumn Header="存放位置" Binding="{Binding LocationDisplay}" Width="120"/>
+                                    <DataGridTextColumn Header="容器状态" Binding="{Binding ContainerStatusDisplay}" Width="72"/>
+                                    <DataGridTextColumn Header="流转概况" Binding="{Binding ActivitySummary}" Width="160"/>
+                                    <DataGridTextColumn Header="最近活动" Binding="{Binding LatestOperatedAtDisplay}" Width="128"/>
+                                    <DataGridTextColumn Header="最近摘要" Binding="{Binding LatestTransactionTypeDisplay}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+
+                    <GridSplitter Grid.Row="1" Style="{StaticResource LedgerPaneGridSplitterStyle}"/>
+
+                    <Border Grid.Row="2" Style="{StaticResource ContentCardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Style="{StaticResource SectionHeaderBarStyle}">
+                                <TextBlock Text="{Binding BusinessDetailHeader}" Style="{StaticResource SectionTitleStyle}"/>
+                            </Border>
+                            <DataGrid Grid.Row="1" Margin="8"
+                                      AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                                      SelectionMode="Single" RowHeight="34" ColumnHeaderHeight="34"
+                                      GridLinesVisibility="Horizontal" BorderThickness="0"
+                                      ItemsSource="{Binding BusinessRows}"
+                                      SelectedItem="{Binding SelectedBusiness, Mode=TwoWay}"
+                                      MouseDoubleClick="LedgerGrid_MouseDoubleClick">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="业务单" Binding="{Binding DisplayTitle}" Width="200"/>
+                                    <DataGridTextColumn Header="最近活动" Binding="{Binding LatestOperatedAtDisplay}" Width="128"/>
+                                    <DataGridTextColumn Header="子项数" Binding="{Binding SubItemCount}" Width="56"/>
+                                    <DataGridTextColumn Header="出库状态" Binding="{Binding OutboundStatusDisplay}" Width="88"/>
+                                    <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="72"/>
+                                    <DataGridTextColumn Header="最近摘要" Binding="{Binding LatestSummary}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+
+                    <GridSplitter Grid.Row="3" Style="{StaticResource LedgerPaneGridSplitterStyle}"/>
+
+                    <Border Grid.Row="4" Style="{StaticResource ContentCardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Style="{StaticResource SectionHeaderBarStyle}">
+                                <TextBlock Text="{Binding SubItemDetailHeader}" Style="{StaticResource SectionTitleStyle}"/>
+                            </Border>
+                            <DataGrid Grid.Row="1" Margin="8"
+                                      AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                                      SelectionMode="Single" RowHeight="34" ColumnHeaderHeight="34"
+                                      GridLinesVisibility="Horizontal" BorderThickness="0"
+                                      ItemsSource="{Binding SubItemRows}"
+                                      MouseDoubleClick="LedgerGrid_MouseDoubleClick">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="操作时间" Binding="{Binding OperatedAtDisplay}" Width="128"/>
+                                    <DataGridTextColumn Header="层级" Binding="{Binding LayerDisplay}" Width="72"/>
+                                    <DataGridTextColumn Header="类别" Binding="{Binding CategoryDisplay}" Width="80"/>
+                                    <DataGridTextColumn Header="摘要" Binding="{Binding DetailDisplay}" Width="180"/>
+                                    <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo}" Width="120"/>
+                                    <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="120"/>
+                                    <DataGridTextColumn Header="分项名称" Binding="{Binding ItemName}" Width="100"/>
+                                    <DataGridTextColumn Header="位置变更" Binding="{Binding LocationChangeDisplay}" Width="140"/>
+                                    <DataGridTextColumn Header="生命周期" Binding="{Binding LifecycleChangeDisplay}" Width="88"/>
+                                    <DataGridTextColumn Header="出库状态" Binding="{Binding OutboundStatusDisplay}" Width="80"/>
+                                    <DataGridTextColumn Header="使用方式" Binding="{Binding UsageModeDisplay}" Width="72"/>
+                                    <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="72"/>
+                                    <DataGridTextColumn Header="操作人" Binding="{Binding OperatorName}" Width="72"/>
+                                    <DataGridTextColumn Header="备注" Binding="{Binding Remark}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Page>

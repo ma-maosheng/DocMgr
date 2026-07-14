@@ -1,0 +1,97 @@
+﻿<Window x:Class="DocMgr.Views.HistoryArchive.OtherMapEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
+        Width="560"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="#F5F5F5">
+
+    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+    <Grid Margin="20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Button Grid.ColumnSpan="2"
+                Content="关闭"
+                Command="{x:Static viewShared:ViewCommands.CloseCurrentView}"
+                Style="{StaticResource DialogCloseButtonStyle}"
+                HorizontalAlignment="Right"/>
+
+        <TextBlock Grid.ColumnSpan="2"
+                   Text="{Binding Title}"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   Margin="0,0,120,15"
+                   Foreground="#333"/>
+
+        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,15">
+            <TextBlock Text="序号" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="35" Padding="5,8"
+                     Text="{Binding SequenceNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,0,0,15">
+            <TextBlock Text="比例尺 *" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="35" Padding="5,8"
+                     Text="{Binding Scale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,10,15">
+            <TextBlock Text="档案盒编号 *" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="35" Padding="5,8"
+                     Text="{Binding BoxNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Grid.Column="1" Margin="10,0,0,15">
+            <TextBlock Text="档案盒规格" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="35" Padding="5,8"
+                     Text="{Binding BoxSpecification, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Grid.Column="1" Margin="10,0,0,15">
+            <TextBlock Text="幅数" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="35" Padding="5,8"
+                     Text="{Binding SheetCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Margin="0,0,0,15">
+            <TextBlock Text="图名 *" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="35" Padding="5,8"
+                     Text="{Binding MapName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Margin="0,0,0,25">
+            <TextBlock Text="备注" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="80" Padding="5"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     VerticalContentAlignment="Top"
+                     Text="{Binding Remark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="取消"
+                    Margin="0,0,10,0"
+                    Style="{StaticResource DialogSecondaryActionButtonStyle}"
+                    Command="{Binding CancelCommand}"/>
+            <Button Content="确定"
+                    Style="{StaticResource DialogPrimaryActionButtonStyle}"
+                    Command="{Binding ConfirmCommand}"/>
+        </StackPanel>
+    </Grid>
+    </ScrollViewer>
+</Window>

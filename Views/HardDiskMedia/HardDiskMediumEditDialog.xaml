@@ -1,0 +1,191 @@
+﻿        <Window x:Class="DocMgr.Views.HardDiskMedia.HardDiskMediumEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="760"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="#F5F5F5">
+    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Grid.ColumnSpan="2"
+                   Margin="0,0,0,16"
+                   Text="{Binding Title}"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   Foreground="#333333"/>
+
+        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,14">
+            <TextBlock Text="硬盘编号 *" Foreground="#666666" Margin="0,0,0,5"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBox Grid.Column="0"
+                        
+                         Padding="6,0"
+                         Text="{Binding DiskCode, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Column="1"
+                        Width="96"
+                        Margin="8,0,0,0"
+                        Content="自动生成"
+                        Style="{StaticResource FormInlineButtonStyle}"
+                        Visibility="{Binding NewOnlyVisibility}"
+                        Command="{Binding GenerateDiskCodeCommand}"/>
+            </Grid>
+        </StackPanel>
+        <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,0,0,14">
+            <TextBlock Text="序列号 *" Foreground="#666666" Margin="0,0,0,5"/>
+            <TextBox Padding="6,0" Text="{Binding SerialNumber, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,10,14">
+            <TextBlock Text="硬盘类型 *" Foreground="#666666" Margin="0,0,0,5"/>
+            <ComboBox ItemsSource="{Binding DiskTypeOptions}" SelectedItem="{Binding DiskType}"/>
+        </StackPanel>
+        <StackPanel Grid.Row="2" Grid.Column="1" Margin="10,0,0,14">
+            <TextBlock Text="品牌 *" Foreground="#666666" Margin="0,0,0,5"/>
+            <TextBox Padding="6,0" Text="{Binding Brand, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,10,14">
+            <TextBlock Text="容量" Foreground="#666666" Margin="0,0,0,5"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBox Grid.Column="0"
+                        
+                         Padding="6,0"
+                         Text="{Binding CapacityValue, UpdateSourceTrigger=PropertyChanged}"/>
+                <ComboBox Grid.Column="1"
+                          Width="88"
+                         
+                          Margin="8,0,0,0"
+                          ItemsSource="{Binding CapacityUnitOptions}"
+                          SelectedItem="{Binding CapacityUnit}"/>
+            </Grid>
+        </StackPanel>
+        <StackPanel Grid.Row="3" Grid.Column="1" Margin="10,0,0,14">
+            <TextBlock Text="接口类型" Foreground="#666666" Margin="0,0,0,5"/>
+            <ComboBox ItemsSource="{Binding InterfaceTypeOptions}" SelectedItem="{Binding InterfaceType}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,10,14">
+            <TextBlock Text="登记人" Foreground="#666666" Margin="0,0,0,5"/>
+            <TextBox Padding="6,0" Text="{Binding RegisterPerson, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+        <StackPanel Grid.Row="4" Grid.Column="1" Margin="10,0,0,14">
+            <TextBlock Text="登记日期" Foreground="#666666" Margin="0,0,0,5"/>
+            <DatePicker SelectedDate="{Binding RegisterDate}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Grid.Column="0" Margin="0,0,10,14">
+            <TextBlock Text="出厂日期" Foreground="#666666" Margin="0,0,0,5"/>
+            <DatePicker SelectedDate="{Binding FactoryDate}"/>
+        </StackPanel>
+        <StackPanel Grid.Row="5" Grid.Column="1" Margin="10,0,0,14">
+            <TextBlock Text="登记方式" Foreground="#666666" Margin="0,0,0,5"/>
+            <TextBox
+                     Padding="6,0"
+                     Text="{Binding RegistrationMethod}"
+                     IsReadOnly="True"
+                     Background="#F9F9F9"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Margin="0,0,0,14" Visibility="{Binding NewOnlyVisibility}">
+            <TextBlock Text="存放档口（空白硬盘）" Foreground="#666666" Margin="0,0,0,5"/>
+            <TextBlock Text="{Binding BlankSlotLocationHintText}"
+                       Foreground="#6B7280"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,8"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <ComboBox Grid.Column="0"
+                          ItemsSource="{Binding BlankSlotLocationOptions}"
+                          SelectedItem="{Binding SelectedBlankSlotLocationOption}"
+                          DisplayMemberPath="DisplayText"/>
+                <Button Grid.Column="1"
+                        Width="96"
+                        Margin="8,0,0,0"
+                        Content="推荐档口"
+                        Style="{StaticResource FormInlineButtonStyle}"
+                        Command="{Binding RecommendBlankSlotLocationCommand}"/>
+                <Button Grid.Column="2"
+                        Width="96"
+                        Margin="8,0,0,0"
+                        Content="档口快照"
+                        Style="{StaticResource FormInlineButtonStyle}"
+                        Command="{Binding ShowBlankSlotSnapshotCommand}"
+                        IsEnabled="{Binding CanShowBlankSlotSnapshot}"/>
+            </Grid>
+        </StackPanel>
+
+        <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Margin="0,0,0,14">
+            <TextBlock Text="状态信息" Foreground="#666666" Margin="0,0,0,5"/>
+            <TextBlock Text="硬盘当前状态由【硬盘台账】统一维护，初始登记仅维护基础参数。"
+                       Foreground="#6B7280"
+                       TextWrapping="Wrap"
+                       Margin="0,6,0,0"/>
+        </StackPanel>
+
+        <Grid Grid.Row="8" Grid.ColumnSpan="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,20">
+                <TextBlock Text="备注" Foreground="#666666" Margin="0,0,0,5"/>
+                <TextBox Height="72"
+                         Padding="6"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         VerticalContentAlignment="Top"
+                         Text="{Binding Remark, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="取消"
+                        Style="{StaticResource DialogSecondaryActionButtonStyle}"
+                        Margin="0,0,10,0"
+                        Command="{Binding CancelCommand}"/>
+                <Button Content="保存"
+                        Style="{StaticResource DialogPrimaryActionButtonStyle}"
+                        Command="{Binding ConfirmCommand}"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+    </ScrollViewer>
+</Window>
+

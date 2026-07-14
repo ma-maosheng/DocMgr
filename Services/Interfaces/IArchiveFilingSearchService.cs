@@ -1,0 +1,98 @@
+using DocMgr.Models.YearlyArchive;
+
+namespace DocMgr.Services.Interfaces
+{
+    /// <summary>
+    /// 立档事实写入契约：将立档结果写入立档事实（filing fact）存储。
+    /// </summary>
+    public interface IFilingFactWriter
+    {
+        Task WriteForSimulatedLinksAsync(
+            YearlyArchiveBox box,
+            IReadOnlyList<YearlyArchiveBoxMediaItemLink> links,
+            IReadOnlyList<YearlyArchiveRegisterMediaItem> mediaItems,
+            DateTime filedAt,
+            string filedBy);
+
+        Task WriteForElectronicLinksAsync(
+            YearlyElectronicArchiveUnit unit,
+            IReadOnlyList<YearlyElectronicArchiveUnitMediaItemLink> links,
+            DateTime filedAt,
+            string filedBy);
+
+        Task WriteBackupElectronicLinksAsync(
+            YearlyElectronicArchiveUnit unit,
+            IReadOnlyList<BackupElectronicLinkWriteItem> links,
+            IReadOnlyDictionary<int, int> primaryFilingFactIdByOriginalLinkId,
+            DateTime filedAt,
+            string filedBy,
+            string backupRemark);
+    }
+
+    /// <summary>
+    /// 立档检索服务契约：检索池构建、条件检索与结果集管理。
+    /// </summary>
+    public interface IArchiveFilingSearchService
+    {
+        Task<List<FiledArchiveSearchHit>> SearchByRegisterAsync(
+            string mediaKind,
+            RegisterDirectionSearchCriteria criteria);
+
+        Task<List<FiledArchiveSearchGroupHit>> SearchByRegisterGroupedAsync(
+            string mediaKind,
+            RegisterDirectionSearchCriteria criteria);
+
+        /// <summary>模拟介质登记方向检索：先按资料子项分组，再按档案盒归组。</summary>
+        Task<List<FiledArchiveSearchBoxGroupHit>> SearchByRegisterGroupedByArchiveBoxAsync(
+            string mediaKind,
+            RegisterDirectionSearchCriteria criteria);
+
+        Task<List<FiledArchiveSearchHit>> SearchByContainerAsync(
+            string mediaKind,
+            ContainerDirectionSearchCriteria criteria);
+
+        Task<SearchResultSetSaveResult> SaveResultSetAsync(
+            SaveArchiveSearchResultSetRequest request,
+            User currentUser,
+            bool isArchiveAdmin);
+
+        Task<List<SearchPoolListItem>> ListSearchPoolsAsync(
+            SearchPoolListCriteria criteria,
+            User currentUser,
+            bool isArchiveAdmin);
+
+        Task<YearlyArchiveSearchResultSet?> GetSearchPoolAsync(
+            int resultSetId,
+            User currentUser,
+            bool isArchiveAdmin);
+
+        Task<YearlyArchiveSearchResultSet> UpdateSearchPoolAsync(
+            UpdateSearchPoolRequest request,
+            User currentUser,
+            bool isArchiveAdmin);
+
+        Task DeleteSearchPoolAsync(
+            int resultSetId,
+            User currentUser,
+            bool isArchiveAdmin);
+
+        Task<FiledArchiveSearchHit?> GetSearchHitByFilingFactIdAsync(int filingFactId);
+
+        /// <summary>按立档事实 Id 批量读取资料子项库存份数展示文案。</summary>
+        Task<IReadOnlyDictionary<int, string>> GetStockCopyCountDisplaysByFilingFactIdsAsync(
+            IReadOnlyCollection<int> filingFactIds);
+
+        Task<IReadOnlyList<MatchedContentEntryInfo>> GetContentEntriesByMediaItemIdAsync(
+            int mediaItemId,
+            string? filingStoragePath = null);
+
+        Task<IReadOnlyDictionary<int, string>> GetCurrentStorageLocationsByFilingFactIdsAsync(
+            IReadOnlyList<int> filingFactIds);
+
+        /// <summary>
+        /// 模拟介质：按立档事实返回在库份数信息（立档份数、提档份数、展示如 1/5）。
+        /// </summary>
+        Task<IReadOnlyDictionary<int, SimulatedInArchiveCopyCountInfo>> GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(
+            IReadOnlyCollection<int> filingFactIds);
+    }
+}

@@ -1,0 +1,28 @@
+﻿<Window x:Class="DocMgr.Views.Shared.PrintPreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
+        Height="800"
+        Width="600"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+
+            <Button Content="导出 Word"
+                    Command="{Binding ExportWordCommand}"
+                     Margin="0,0,8,0"
+                    Style="{StaticResource DialogCloseButtonStyle}"/>
+
+            <Button Content="关闭"
+                    Command="{x:Static viewShared:ViewCommands.CloseCurrentView}"
+                    Style="{StaticResource DialogCloseButtonStyle}"/>
+        </StackPanel>
+
+        <DocumentViewer Grid.Row="1" Document="{Binding PreviewDocument}" />
+    </Grid>
+</Window>

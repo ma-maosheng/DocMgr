@@ -1,0 +1,125 @@
+<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveRegisterSimulationPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="clr-namespace:DocMgr.Views.YearlyArchive"
+      Title="模拟登记">
+    <Page.Resources>
+        <local:BoolToVisConverter x:Key="BoolToVisibilityConverter"/>
+    </Page.Resources>
+    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="20">
+                <StackPanel>
+                    <TextBlock Text="模拟登记" FontSize="24" FontWeight="Bold" Foreground="#2D3748"/>
+                    <TextBlock Margin="0,12,0,0"
+                               Foreground="#4A5568"
+                               TextWrapping="Wrap"
+                               Text="所有登录用户可生成复杂电子介质申请单（以本人为申请人，走登记操作台提交流程）。资料室资料管理员可使用下方扩展按钮进行借出准备、批量审批与立档测试。"/>
+                    <WrapPanel Margin="0,16,0,0">
+
+                    </WrapPanel>
+                    <WrapPanel Visibility="{Binding IsArchiveAdminSimulationToolsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Button Width="200"
+                                Height="34"
+                                Margin="0,0,12,12"
+                                Content="生成5个硬盘借出业务"
+                                Command="{Binding GenerateFiveHardDiskBorrowCommand}"
+                                Style="{StaticResource ButtonNormalStyle}"/>
+                        <Button Width="180"
+                                Height="34"
+                                Margin="0,0,12,12"
+                                Content="生成5个模拟申请单"
+                                Command="{Binding GenerateCommand}"
+                                Style="{StaticResource ButtonNormalStyle}"/>
+                        <Button Width="220"
+                                Height="34"
+                                Margin="0,0,12,12"
+                                Content="生成20个复杂的电子介质申请单"
+                                Command="{Binding GenerateComplexElectronicCommand}"
+                                Style="{StaticResource ButtonNormalStyle}"/>
+                        <Button Width="200"
+                                Height="34"
+                                Margin="0,0,12,12"
+                                Content="申请单测试数据自动审批"
+                                Command="{Binding AutoApproveSubmittedCommand}"
+                                Style="{StaticResource ButtonNormalStyle}"/>
+                        <Button Width="180"
+                                Height="34"
+                                Margin="0,0,12,12"
+                                Content="自动立档测试_copilot"
+                                Command="{Binding RunAutomatedFilingTestCommand}"
+                                Style="{StaticResource ButtonNormalStyle}"/>
+                        <Button Width="180"
+                                Height="34"
+                                Margin="0,0,12,12"
+                                Content="立档测试_cursor"
+                                Command="{Binding RunCursorFilingTestCommand}"
+                                Style="{StaticResource ButtonNormalStyle}"/>
+                        <Button Width="180"
+                                Height="34"
+                                Margin="0,0,12,12"
+                                Content="导出测试清单"
+                                Command="{Binding ExportChecklistCommand}"
+                                Style="{StaticResource ButtonNormalStyle}"/>
+                        <Button Width="160"
+                                Height="34"
+                                Margin="0,0,12,12"
+                                Content="清理本次模拟数据"
+                                Command="{Binding ClearCommand}"
+                                Style="{StaticResource ButtonCautionStyle}"/>
+                    </WrapPanel>
+                    <TextBlock Margin="0,12,0,0"
+                               FontWeight="Bold"
+                               Foreground="#2D3748"
+                               Text="{Binding ResultSummary}"/>
+                </StackPanel>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="0,20,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <GroupBox Header="模拟场景" Padding="15" Margin="0,0,10,0">
+                    <ItemsControl ItemsSource="{Binding SimulationScenarios}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Margin="0,0,0,8" Text="{Binding}" TextWrapping="Wrap"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </GroupBox>
+
+                <GroupBox Grid.Column="1" Header="本次生成的申请单编号" Padding="15" Margin="10,0,0,0">
+                    <ListBox ItemsSource="{Binding GeneratedFormNos}" MinHeight="180"/>
+                </GroupBox>
+            </Grid>
+
+            <Border Grid.Row="2" Margin="0,20,0,0" Background="#F7FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Foreground="#4A5568"
+                               TextWrapping="Wrap"
+                               Text="说明：复杂电子申请单按「资料登记」申请人操作台路径生成（校验→保存草稿→提交），所属项目须为库内已有项目；生成清单见下方。立档测试请用「立档测试_cursor」（与立档操作台同源编排）。"/>
+                    <TextBox Grid.Row="1"
+                             Margin="0,12,0,0"
+                             MinHeight="180"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             Text="{Binding AutomationChecklistText, Mode=OneWay}"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</Page>

@@ -1,0 +1,384 @@
+<UserControl x:Class="DocMgr.Views.Cabinets.CabinetRoomMapControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:behaviors="clr-namespace:DocMgr.Views.Cabinets.Behaviors"
+             xmlns:vm="clr-namespace:DocMgr.ViewModels.Cabinets"
+             x:Name="RootControl"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="1200">
+
+    <Border Margin="20" BorderBrush="#DDDDDD" BorderThickness="1" Background="#FAFAFA">
+        <Viewbox Stretch="Uniform" Margin="50">
+            <Grid x:Name="InteractionLayer"
+                  Width="1200"
+                  Height="600"
+                  Background="Transparent"
+                  behaviors:CabinetLayoutInteractionBehavior.ClearSelectionCommand="{Binding ClearSelectionCommand}">
+
+                <Canvas x:Name="RoomBackgroundLayer" Width="1200" Height="600" Background="White" IsHitTestVisible="False">
+                    <Rectangle Width="1200" Height="600" Stroke="#455A64" StrokeThickness="10" />
+                    <Line X1="400" Y1="0" X2="400" Y2="600" Stroke="#455A64" StrokeThickness="6"/>
+
+                    <Rectangle Canvas.Left="10" Canvas.Top="130" Width="40" Height="100" RadiusX="2" RadiusY="2" Fill="#D7CCC8" Stroke="#5D4037" StrokeThickness="2"/>
+                    <TextBlock Canvas.Left="20" Canvas.Top="150" Text="物品柜" FontSize="12" Foreground="#5D4037" FontWeight="Normal">
+                        <TextBlock.LayoutTransform>
+                            <RotateTransform Angle="90"/>
+                        </TextBlock.LayoutTransform>
+                    </TextBlock>
+                    <Rectangle Canvas.Left="10" Canvas.Top="250" Width="40" Height="100" RadiusX="2" RadiusY="2" Fill="#D7CCC8" Stroke="#5D4037" StrokeThickness="2"/>
+                    <TextBlock Canvas.Left="20" Canvas.Top="270" Text="物品柜" FontSize="12" Foreground="#5D4037" FontWeight="Normal">
+                        <TextBlock.LayoutTransform>
+                            <RotateTransform Angle="90"/>
+                        </TextBlock.LayoutTransform>
+                    </TextBlock>
+
+                    <Rectangle Canvas.Left="60" Canvas.Top="120" Width="200" Height="120" RadiusX="5" RadiusY="5" Fill="#D7CCC8" Stroke="#5D4037" StrokeThickness="3">
+                        <Rectangle.Effect>
+                            <DropShadowEffect Color="#AAAAAA" Direction="320" ShadowDepth="5" BlurRadius="5" Opacity="0.3"/>
+                        </Rectangle.Effect>
+                    </Rectangle>
+                    <Canvas Canvas.Left="125" Canvas.Top="135" Width="70" Height="25">
+                        <Canvas.RenderTransform>
+                            <RotateTransform Angle="180" CenterX="35" CenterY="12.5"/>
+                        </Canvas.RenderTransform>
+                        <Rectangle Width="70" Height="25" RadiusX="2" RadiusY="2" Fill="#CFD8DC" Stroke="#90A4AE" StrokeThickness="1"/>
+                        <Rectangle Canvas.Left="3" Canvas.Top="3" Width="47" Height="4" Fill="White" RadiusX="1" RadiusY="1"/>
+                        <Rectangle Canvas.Left="53" Canvas.Top="3" Width="14" Height="4" Fill="White" RadiusX="1" RadiusY="1"/>
+                    </Canvas>
+                    <Rectangle Canvas.Left="120" Canvas.Top="170" Width="80" Height="8" RadiusX="1" RadiusY="1" Fill="#37474F"/>
+                    <Rectangle Canvas.Left="145" Canvas.Top="178" Width="30" Height="15" RadiusX="2" RadiusY="2" Fill="#B0BEC5"/>
+                    <TextBlock Canvas.Left="65" Canvas.Top="190" Text="办公桌 01" FontSize="16" FontWeight="Bold" Foreground="#8D6E63"/>
+                    <Path Canvas.Left="130" Canvas.Top="50" Fill="#8D6E63" Stroke="#5D4037" StrokeThickness="2" Data="M 0,0 L 60,0 L 60,40 Q 60,60 30,60 Q 0,60 0,40 Z">
+                        <Path.RenderTransform>
+                            <RotateTransform Angle="180" CenterX="30" CenterY="30"/>
+                        </Path.RenderTransform>
+                        <Path.Effect>
+                            <DropShadowEffect Color="#AAAAAA" Direction="140" ShadowDepth="2"/>
+                        </Path.Effect>
+                    </Path>
+
+                    <Rectangle Canvas.Left="60" Canvas.Top="240" Width="200" Height="120" RadiusX="5" RadiusY="5" Fill="#D7CCC8" Stroke="#5D4037" StrokeThickness="3">
+                        <Rectangle.Effect>
+                            <DropShadowEffect Color="#AAAAAA" Direction="320" ShadowDepth="5" BlurRadius="5" Opacity="0.3"/>
+                        </Rectangle.Effect>
+                    </Rectangle>
+                    <Canvas Canvas.Left="125" Canvas.Top="320" Width="70" Height="25">
+                        <Rectangle Width="70" Height="25" RadiusX="2" RadiusY="2" Fill="#CFD8DC" Stroke="#90A4AE" StrokeThickness="1"/>
+                        <Rectangle Canvas.Left="3" Canvas.Top="3" Width="47" Height="4" Fill="White" RadiusX="1" RadiusY="1"/>
+                        <Rectangle Canvas.Left="53" Canvas.Top="3" Width="14" Height="4" Fill="White" RadiusX="1" RadiusY="1"/>
+                    </Canvas>
+                    <Rectangle Canvas.Left="120" Canvas.Top="302" Width="80" Height="8" RadiusX="1" RadiusY="1" Fill="#37474F"/>
+                    <Rectangle Canvas.Left="145" Canvas.Top="287" Width="30" Height="15" RadiusX="2" RadiusY="2" Fill="#B0BEC5"/>
+                    <TextBlock Canvas.Left="65" Canvas.Top="250" Text="办公桌 02" FontSize="16" FontWeight="Bold" Foreground="#8D6E63"/>
+                    <Path Canvas.Left="130" Canvas.Top="370" Fill="#8D6E63" Stroke="#5D4037" StrokeThickness="2" Data="M 0,0 L 60,0 L 60,40 Q 60,60 30,60 Q 0,60 0,40 Z">
+                        <Path.Effect>
+                            <DropShadowEffect Color="#AAAAAA" Direction="320" ShadowDepth="2"/>
+                        </Path.Effect>
+                    </Path>
+
+                    <Rectangle Canvas.Left="300" Canvas.Top="594" Width="80" Height="12" Fill="White"/>
+                    <Path Data="M 300,600 A 80,80 0 0 1 380,520 L 380,600 Z" Fill="#E0E0E0" Opacity="0.5" Stroke="#455A64" StrokeThickness="1" StrokeDashArray="2 2"/>
+                    <Line X1="380" Y1="600" X2="380" Y2="520" Stroke="#455A64" StrokeThickness="3"/>
+
+                    <Rectangle Canvas.Left="100" Canvas.Top="-5" Width="200" Height="10" Fill="#B3E5FC" Stroke="#0288D1" StrokeThickness="2"/>
+                    <Rectangle Canvas.Left="500" Canvas.Top="-5" Width="200" Height="10" Fill="#B3E5FC" Stroke="#0288D1" StrokeThickness="2"/>
+                    <Rectangle Canvas.Left="900" Canvas.Top="-5" Width="200" Height="10" Fill="#B3E5FC" Stroke="#0288D1" StrokeThickness="2"/>
+
+                    <Rectangle Canvas.Left="396" Canvas.Top="50" Width="8" Height="80" Fill="White"/>
+                    <Path Data="M 400,130 A 80,80 0 0 0 480,50 L 400,50 Z" Fill="#E0E0E0" Opacity="0.5" Stroke="#455A64" StrokeThickness="1" StrokeDashArray="2 2"/>
+                    <Line X1="400" Y1="50" X2="480" Y2="50" Stroke="#455A64" StrokeThickness="3"/>
+
+                    <TextBlock Text="西侧资料室" FontSize="24" FontWeight="Bold" Foreground="#CFD8DC" Canvas.Left="180" Canvas.Top="500"/>
+                    <TextBlock Text="东侧资料室" FontSize="24" FontWeight="Bold" Foreground="#CFD8DC" Canvas.Left="750" Canvas.Top="300"/>
+                </Canvas>
+
+                <Canvas Width="1200" Height="600" IsHitTestVisible="False">
+                    <Rectangle Canvas.Left="560"
+                               Canvas.Top="70"
+                               Width="18"
+                               Height="470"
+                               RadiusX="3"
+                               RadiusY="3"
+                               Fill="#90CAF9"
+                               Stroke="#0288D1"
+                               StrokeThickness="2"
+                               Opacity="0.95"/>
+                    <Rectangle Canvas.Left="1082"
+                               Canvas.Top="70"
+                               Width="18"
+                               Height="470"
+                               RadiusX="3"
+                               RadiusY="3"
+                               Fill="#90CAF9"
+                               Stroke="#0288D1"
+                               StrokeThickness="2"
+                               Opacity="0.95"/>
+                    <Line X1="569" Y1="70" X2="569" Y2="540"
+                          Stroke="#E3F2FD"
+                          StrokeThickness="1"
+                          Opacity="0.8"/>
+                    <Line X1="1091" Y1="70" X2="1091" Y2="540"
+                          Stroke="#E3F2FD"
+                          StrokeThickness="1"
+                          Opacity="0.8"/>
+                </Canvas>
+
+                <ItemsControl ItemsSource="{Binding Cabinets}" Width="1200" Height="600">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas Background="Transparent"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Canvas.Left" Value="{Binding CanvasLeft}"/>
+                            <Setter Property="Canvas.Top" Value="{Binding CanvasTop}"/>
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border x:Name="CabinetBorder"
+                                    Width="{Binding LayoutRenderWidth}"
+                                    Height="{Binding LayoutRenderHeight}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Cursor="Hand"
+                                    ToolTip="{Binding Name}"
+                                    behaviors:CabinetLayoutInteractionBehavior.IsEnabled="True"
+                                    behaviors:CabinetLayoutInteractionBehavior.CoordinateTarget="{Binding ElementName=InteractionLayer}"
+                                    behaviors:CabinetLayoutInteractionBehavior.SelectCommand="{Binding DataContext.SelectCabinetCommand, ElementName=RootControl}"
+                                    behaviors:CabinetLayoutInteractionBehavior.SaveCommand="{Binding DataContext.SaveLocationCommand, ElementName=RootControl}"
+                                    Tag="{Binding DataContext, ElementName=RootControl}">
+
+                                <Border.RenderTransform>
+                                    <RotateTransform Angle="{Binding RotationAngle}" />
+                                </Border.RenderTransform>
+
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="#404040"/>
+                                        <Setter Property="Effect">
+                                            <Setter.Value>
+                                                <DropShadowEffect Color="#888888" Direction="315" ShadowDepth="4" BlurRadius="6" Opacity="0.5"/>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Setter Property="Background">
+                                            <Setter.Value>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                    <GradientStop Color="#8D6E63" Offset="0"/>
+                                                    <GradientStop Color="#5D4037" Offset="1"/>
+                                                </LinearGradientBrush>
+                                            </Setter.Value>
+                                        </Setter>
+
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Type}" Value="Vertical">
+                                                <Setter Property="Background">
+                                                    <Setter.Value>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                            <GradientStop Color="#CFD8DC" Offset="0"/>
+                                                            <GradientStop Color="#90A4AE" Offset="1"/>
+                                                        </LinearGradientBrush>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+
+                                            <DataTrigger Binding="{Binding Type}" Value="Horizontal">
+                                                <Setter Property="Background">
+                                                    <Setter.Value>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                            <GradientStop Color="#B0BEC5" Offset="0"/>
+                                                            <GradientStop Color="#607D8B" Offset="1"/>
+                                                        </LinearGradientBrush>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="BorderBrush" Value="#FF4081"/>
+                                                <Setter Property="BorderThickness" Value="2"/>
+                                                <Setter Property="Effect">
+                                                    <Setter.Value>
+                                                        <DropShadowEffect Color="#FF4081" BlurRadius="20" ShadowDepth="0" Opacity="1.0"/>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+
+                                <Border.ContextMenu>
+                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                        <MenuItem Header="📂 打开档案柜"
+                                                  Command="{Binding PlacementTarget.Tag.OpenCabinetCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Style>
+                                                <Style TargetType="MenuItem">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding PlacementTarget.Tag.WorkspaceMode, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Value="{x:Static vm:CabinetLayoutWorkspaceMode.Search}"/>
+                                                                <Condition Binding="{Binding HasSingleFace}" Value="True"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </MenuItem.Style>
+                                        </MenuItem>
+                                        <MenuItem Header="📂 打开A面"
+                                                  Command="{Binding PlacementTarget.Tag.OpenCabinetFaceACommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Style>
+                                                <Style TargetType="MenuItem">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding PlacementTarget.Tag.WorkspaceMode, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Value="{x:Static vm:CabinetLayoutWorkspaceMode.Search}"/>
+                                                                <Condition Binding="{Binding HasMultipleFaces}" Value="True"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </MenuItem.Style>
+                                        </MenuItem>
+                                        <MenuItem Header="📂 打开B面"
+                                                  Command="{Binding PlacementTarget.Tag.OpenCabinetFaceBCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Style>
+                                                <Style TargetType="MenuItem">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding PlacementTarget.Tag.WorkspaceMode, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Value="{x:Static vm:CabinetLayoutWorkspaceMode.Search}"/>
+                                                                <Condition Binding="{Binding HasMultipleFaces}" Value="True"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </MenuItem.Style>
+                                        </MenuItem>
+                                        <Separator>
+                                            <Separator.Style>
+                                                <Style TargetType="Separator">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding PlacementTarget.Tag.WorkspaceMode, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Value="{x:Static vm:CabinetLayoutWorkspaceMode.Search}">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Separator.Style>
+                                        </Separator>
+                                        <MenuItem Header="✏️ 编号设置..."
+                                                  Command="{Binding PlacementTarget.Tag.EditCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Style>
+                                                <Style TargetType="MenuItem">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding PlacementTarget.Tag.WorkspaceMode, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Value="{x:Static vm:CabinetLayoutWorkspaceMode.Register}">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </MenuItem.Style>
+                                        </MenuItem>
+                                        <MenuItem Header="🔄 旋转90°"
+                                                  Command="{Binding PlacementTarget.Tag.RotateCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Style>
+                                                <Style TargetType="MenuItem">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding PlacementTarget.Tag.WorkspaceMode, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Value="{x:Static vm:CabinetLayoutWorkspaceMode.Register}">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </MenuItem.Style>
+                                        </MenuItem>
+                                        <MenuItem Header="🗑️ 删除资料柜"
+                                                  Command="{Binding PlacementTarget.Tag.DeleteCabinetCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Style>
+                                                <Style TargetType="MenuItem">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding PlacementTarget.Tag.WorkspaceMode, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Value="{x:Static vm:CabinetLayoutWorkspaceMode.Register}">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </MenuItem.Style>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+
+                                <Grid>
+                                    <Border BorderBrush="#FFFFFFFF" BorderThickness="1,1,0,0" Opacity="0.3" CornerRadius="2"/>
+                                    <Border BorderBrush="#FF000000" BorderThickness="0,0,1,1" Opacity="0.2" CornerRadius="2"/>
+
+                                    <TextBlock Text="{Binding Name}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               Foreground="White"
+                                               FontWeight="Bold"
+                                               FontSize="14"
+                                               IsHitTestVisible="False">
+                                        <TextBlock.Effect>
+                                            <DropShadowEffect Color="Black" BlurRadius="2" ShadowDepth="1" Opacity="0.5"/>
+                                        </TextBlock.Effect>
+                                        <TextBlock.RenderTransform>
+                                            <RotateTransform Angle="0"/>
+                                        </TextBlock.RenderTransform>
+                                    </TextBlock>
+
+                                    <Thumb x:Name="ResizeThumb"
+                                           Width="10"
+                                           Height="10"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Bottom"
+                                           Cursor="SizeNWSE"
+                                           Background="Transparent">
+                                        <Thumb.Style>
+                                            <Style TargetType="Thumb">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DataContext.AllowLayoutEdit, ElementName=RootControl}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Thumb.Style>
+                                        <Thumb.Template>
+                                            <ControlTemplate>
+                                                <Grid Background="Transparent">
+                                                    <Path Data="M 8,0 L 8,8 L 0,8 Z"
+                                                          Fill="White"
+                                                          Opacity="0.7"
+                                                          HorizontalAlignment="Right"
+                                                          VerticalAlignment="Bottom"/>
+                                                </Grid>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+        </Viewbox>
+    </Border>
+</UserControl>

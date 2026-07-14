@@ -1,0 +1,269 @@
+﻿<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveSimulatedRelocationPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
+      mc:Ignorable="d"
+      d:DesignHeight="900" d:DesignWidth="1300"
+      Title="ArchiveSimulatedRelocationPage" Background="#F0F2F5">
+
+    <Page.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
+        <Style x:Key="SectionGroupBoxStyle" TargetType="GroupBox">
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="BorderBrush" Value="#D0D7DE"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="HeaderTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" FontWeight="Bold" Foreground="#00695C"/>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#666"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <Style x:Key="FormComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="{Binding PageTitle}" FontSize="18" FontWeight="SemiBold"
+                   Foreground="#004D40" Margin="0,0,0,12"/>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+
+                <GroupBox Header="迁档模式" Style="{StaticResource SectionGroupBoxStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton Content="物理位置迁移" GroupName="SimulatedRelocationMode"
+                                     IsChecked="{Binding IsPhysicalMoveModeSelected, Mode=TwoWay}"
+                                     VerticalAlignment="Center" Margin="0,0,28,0"/>
+                        <RadioButton Content="并入已有档案盒" GroupName="SimulatedRelocationMode"
+                                     IsChecked="{Binding IsMergeToExistingModeSelected, Mode=TwoWay}"
+                                     VerticalAlignment="Center"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="拟迁档对象" Style="{StaticResource SectionGroupBoxStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="240"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="年度" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="项目" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="源档案盒" Style="{StaticResource FieldLabelStyle}"/>
+
+                        <ComboBox Grid.Row="1" Grid.Column="0" Style="{StaticResource FormComboBoxStyle}" Margin="0,0,12,0"
+                                  ItemsSource="{Binding Years}"
+                                  SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <ComboBox Grid.Row="1" Grid.Column="1" Style="{StaticResource FormComboBoxStyle}" Margin="0,0,12,0"
+                                  ItemsSource="{Binding ProjectOptions}"
+                                  DisplayMemberPath="Name"
+                                  SelectedValuePath="Id"
+                                  SelectedValue="{Binding SelectedProjectId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <ComboBox Grid.Row="1" Grid.Column="2" Style="{StaticResource FormComboBoxStyle}"
+                                  ItemsSource="{Binding SourceOptions}"
+                                  DisplayMemberPath="DisplayText"
+                                  SelectedItem="{Binding SelectedSourceOption, Mode=TwoWay}"/>
+
+                        <Border Grid.Row="2" Grid.ColumnSpan="3" Margin="0,12,0,0" Padding="10,8"
+                                Background="#F6FFFD" BorderBrush="#B2DFDB" BorderThickness="1" CornerRadius="4"
+                                Visibility="{Binding HasSource, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding SourceSummaryText, Mode=OneWay}" TextWrapping="Wrap" Foreground="#37474F"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0"
+                                            Visibility="{Binding ShowSourceCurrentLocation, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Text="当前档口：" Foreground="#666" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding SourceCurrentLocation, Mode=OneWay}"
+                                               FontWeight="SemiBold" Foreground="#00695C" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,8,0,0">
+                                    <TextBlock Text="关联资料" Style="{StaticResource FieldLabelStyle}"/>
+                                    <TextBlock Text="{Binding SourceItemsDescriptionText, Mode=OneWay}"
+                                               TextWrapping="Wrap" Margin="0,2,0,0"
+                                               Foreground="#37474F" LineHeight="22"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="迁档目标" Style="{StaticResource SectionGroupBoxStyle}">
+                    <StackPanel>
+                        <StackPanel Visibility="{Binding IsPhysicalMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Grid Margin="0,0,0,8">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Row="0" Grid.Column="0">
+                                    <TextBlock Text="柜子" Style="{StaticResource FieldLabelStyle}"/>
+                                    <ComboBox Style="{StaticResource FormComboBoxStyle}"
+                                              ItemsSource="{Binding TargetLocation.Cabinets}"
+                                              SelectedItem="{Binding TargetLocation.SelectedCabinet}"
+                                              DisplayMemberPath="Name"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="0" Grid.Column="2">
+                                    <TextBlock Text="A/B 面" Style="{StaticResource FieldLabelStyle}"/>
+                                    <ComboBox Style="{StaticResource FormComboBoxStyle}"
+                                              ItemsSource="{Binding TargetLocation.Sides}"
+                                              SelectedItem="{Binding TargetLocation.SelectedSide}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="0" Grid.Column="4">
+                                    <TextBlock Text="层" Style="{StaticResource FieldLabelStyle}"/>
+                                    <ComboBox Style="{StaticResource FormComboBoxStyle}"
+                                              ItemsSource="{Binding TargetLocation.Rows}"
+                                              SelectedItem="{Binding TargetLocation.SelectedRow}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="0" Grid.Column="6">
+                                    <TextBlock Text="列" Style="{StaticResource FieldLabelStyle}"/>
+                                    <ComboBox Style="{StaticResource FormComboBoxStyle}"
+                                              ItemsSource="{Binding TargetLocation.Columns}"
+                                              SelectedItem="{Binding TargetLocation.SelectedColumn}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
+                                <Button Content="档口占用快照" Style="{StaticResource ButtonNormalStyle}"
+                                        Command="{Binding TargetLocation.ShowSlotSnapshotCommand}"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="目标位置：" Foreground="#666" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding TargetLocation.NewLocationPreview}" FontWeight="Bold"
+                                           Foreground="#E91E63" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding TargetLocation.CellOccupancyText}" Foreground="Gray" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding TargetLocation.SlotValidationMessage}" Foreground="#C62828"/>
+
+                            <CheckBox Margin="0,8,0,0"
+                                      Content="迁入空盒（在目标档口新建档案盒承载资料，源档案盒从柜内销号）"
+                                      IsChecked="{Binding MoveContentsToNewEmptyBox, Mode=TwoWay}"/>
+
+                            <StackPanel Margin="0,8,0,0"
+                                        Visibility="{Binding ShowNewBoxSpecificationSelector, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="新档案盒规格" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox Style="{StaticResource FormComboBoxStyle}" Width="240" HorizontalAlignment="Left"
+                                          ItemsSource="{Binding BoxSpecifications}"
+                                          SelectedItem="{Binding SelectedNewBoxSpecification, Mode=TwoWay}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsContainerMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Text="目标档案盒" Style="{StaticResource FieldLabelStyle}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Style="{StaticResource FormComboBoxStyle}"
+                                          ItemsSource="{Binding TargetOptions}"
+                                          DisplayMemberPath="DisplayText"
+                                          SelectedItem="{Binding SelectedTarget, Mode=TwoWay}"/>
+                                <Button Grid.Column="1" Content="刷新" Margin="12,0,0,0"
+                                        Style="{StaticResource ToolbarActionButtonStyle}"
+                                        Command="{Binding RefreshTargetsCommand}"/>
+                            </Grid>
+                            <Border Margin="0,12,0,0" Padding="10,8"
+                                    Background="#F6FFFD" BorderBrush="#B2DFDB" BorderThickness="1" CornerRadius="4"
+                                    Visibility="{Binding ShowTargetDescription, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding TargetSummaryText, Mode=OneWay}" TextWrapping="Wrap" Foreground="#37474F"/>
+                                    <StackPanel Margin="0,8,0,0">
+                                        <TextBlock Text="关联资料" Style="{StaticResource FieldLabelStyle}"/>
+                                        <TextBlock Text="{Binding TargetItemsDescriptionText, Mode=OneWay}"
+                                                   TextWrapping="Wrap" Margin="0,2,0,0"
+                                                   Foreground="#37474F" LineHeight="22"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,12,0,0">
+                            <TextBlock Text="备注" Style="{StaticResource FieldLabelStyle}"/>
+                            <TextBox Style="{StaticResource ToolbarFilterTextBoxStyle}" VerticalContentAlignment="Center"
+                                     Text="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="{Binding ItemsSectionHeader}" Style="{StaticResource SectionGroupBoxStyle}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding ItemsEmptyHintText, Mode=OneWay}"
+                                   Foreground="#666" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Visibility="{Binding ShowItemsEmptyHint, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <viewShared:ItemDetailsPanelHeader DataContext="{Binding ItemDetailsPanel}" Margin="0,0,0,6"/>
+                        <DataGrid ItemsSource="{Binding ItemDetailsPanel.PageItems}" AutoGenerateColumns="False" IsReadOnly="True"
+                              CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
+                              MinHeight="160" MaxHeight="280">
+                            <DataGrid.Style>
+                                <Style TargetType="DataGrid">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ItemDetailsPanel.IsExpanded}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.Style>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="表单号" Binding="{Binding FormNo}" Width="140"/>
+                                <DataGridTextColumn Header="子项类型" Binding="{Binding ItemType}" Width="120"/>
+                                <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <viewShared:ItemDetailsPanelPaginationBar DataContext="{Binding ItemDetailsPanel}"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="预览与确认" Style="{StaticResource SectionGroupBoxStyle}">
+                    <StackPanel>
+                        <TextBox Text="{Binding PreviewText, Mode=OneWay}" TextWrapping="Wrap" MinHeight="72"
+                                 IsReadOnly="True" Background="#FAFAFA" BorderBrush="#E0E0E0" Padding="8"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                            <Button Content="生成预览" Style="{StaticResource ToolbarActionButtonStyle}"
+                                    Command="{Binding PreviewCommand}"/>
+                            <Button Content="确认迁档" Margin="12,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}"
+                                    Command="{Binding ExecuteCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

@@ -1,0 +1,323 @@
+using DocMgr.Models.Cabinets;
+using DocMgr.Repositories.Interfaces;
+using DocMgr.Services.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace DocMgr.Services.Cabinets
+{
+    public class CabinetService : ICabinetService
+    {
+        private static readonly string[] DefaultCabinetNamePool =
+        [
+            "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸",
+            "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"
+        ];
+
+        private const double StandardTrackLeft = 560;
+        private const double StandardTrackWidth = 18;
+        private const double StandardTrackRight = 1082;
+        private const double StandardTrackTop = 70;
+        private const double StandardCabinetThickness = 40;
+        private const double StandardCabinetLengthOverflow = 20;
+        private const int DefaultStandardCabinetCount = 7;
+        private const double DefaultMagneticCabinetLeft = 410;
+        private const double DefaultMagneticCabinetTop = 150;
+        private const double DefaultMagneticCabinetWidth = 70;
+        private const double DefaultMagneticCabinetHeight = 150;
+        private const double DefaultMagneticCabinetDepth = 52;
+
+        private readonly ICabinetRepository _cabinetRepository;
+
+        public CabinetService(ICabinetRepository cabinetRepository)
+        {
+            _cabinetRepository = cabinetRepository;
+        }
+
+        public List<Cabinet> GetAllCabinets()
+        {
+            EnsureDefaultCabinets();
+            return _cabinetRepository.GetAll();
+        }
+
+        public Cabinet? GetCabinet(int cabinetId)
+        {
+            return _cabinetRepository.GetById(cabinetId);
+        }
+
+        public void AddCabinet(Cabinet cabinet)
+        {
+            _cabinetRepository.Add(cabinet);
+            _cabinetRepository.SaveChanges();
+        }
+
+        public void UpdateCabinet(Cabinet cabinet)
+        {
+            _cabinetRepository.Update(cabinet);
+            _cabinetRepository.SaveChanges();
+        }
+
+        /// <inheritdoc/>
+        public void SetHardDiskDedicatedSlotCategory(int cabinetId, string faceCode, string slotCode, string categoryName)
+        {
+            if (string.IsNullOrWhiteSpace(faceCode))
+            {
+                throw new ArgumentException("门别不能为空。", nameof(faceCode));
+            }
+
+            if (string.IsNullOrWhiteSpace(slotCode))
+            {
+                throw new ArgumentException("档口编号不能为空。", nameof(slotCode));
+            }
+
+            if (string.IsNullOrWhiteSpace(categoryName))
+            {
+                throw new ArgumentException("专用类别不能为空。", nameof(categoryName));
+            }
+
+            var target = _cabinetRepository.GetById(cabinetId);
+            if (target == null)
+            {
+                throw new InvalidOperationException("未找到要设置的防磁磁盘柜。");
+            }
+
+            if (target.Type != CabinetType.MagneticDisk)
+            {
+                throw new InvalidOperationException("仅防磁磁盘柜支持设置硬盘专用档口。");
+            }
+
+            string trimmedFaceCode = faceCode.Trim();
+            string trimmedSlotCode = slotCode.Trim();
+            string trimmedCategoryName = categoryName.Trim();
+
+            var existing = _cabinetRepository.GetSlotCategoryAssignment(cabinetId, trimmedFaceCode, trimmedSlotCode);
+
+            DateTime now = DateTime.Now;
+            if (existing == null)
+            {
+                _cabinetRepository.AddSlotCategoryAssignment(new CabinetHardDiskSlotCategoryAssignment
+                {
+                    CabinetId = cabinetId,
+                    FaceCode = trimmedFaceCode,
+                    SlotCode = trimmedSlotCode,
+                    CategoryName = trimmedCategoryName,
+                    CreatedTime = now,
+                    UpdatedTime = now
+                });
+            }
+            else
+            {
+                existing.CategoryName = trimmedCategoryName;
+                existing.UpdatedTime = now;
+            }
+
+            _cabinetRepository.SaveChanges();
+        }
+
+        /// <inheritdoc/>
+        public void ClearHardDiskDedicatedSlotCategory(int cabinetId, string faceCode, string slotCode)
+        {
+            if (string.IsNullOrWhiteSpace(faceCode))
+            {
+                throw new ArgumentException("门别不能为空。", nameof(faceCode));
+            }
+
+            if (string.IsNullOrWhiteSpace(slotCode))
+            {
+                throw new ArgumentException("档口编号不能为空。", nameof(slotCode));
+            }
+
+            string trimmedFaceCode = faceCode.Trim();
+            string trimmedSlotCode = slotCode.Trim();
+            var existing = _cabinetRepository.GetSlotCategoryAssignment(cabinetId, trimmedFaceCode, trimmedSlotCode);
+
+            if (existing != null)
+            {
+                _cabinetRepository.RemoveSlotCategoryAssignment(existing);
+            }
+
+            _cabinetRepository.SaveChanges();
+        }
+
+        /// <inheritdoc/>
+        public void EnsureAllMagneticDiskSlotsUseBlankCategoryOnStartup()
+            => ApplyMagneticDiskSlotBlankCategoryDefaults(overwriteExistingAssignments: false);
+
+        /// <inheritdoc/>
+        public void ResetAllMagneticDiskSlotsToBlankCategory()
+            => ApplyMagneticDiskSlotBlankCategoryDefaults(overwriteExistingAssignments: true);
+
+        private void ApplyMagneticDiskSlotBlankCategoryDefaults(bool overwriteExistingAssignments)
+        {
+            EnsureDefaultCabinets();
+
+            string blankCategory = CabinetHardDiskSlotCategoryAssignment.CategoryBlank;
+            var magneticCabinets = _cabinetRepository.GetAll()
+                .Where(item => item.Type == CabinetType.MagneticDisk)
+                .Where(item => item.LayerCount > 0 && item.ColumnCount > 0)
+                .ToList();
+
+            if (magneticCabinets.Count == 0)
+            {
+                return;
+            }
+
+            DateTime now = DateTime.Now;
+            bool changed = false;
+
+            foreach (var cabinet in magneticCabinets)
+            {
+                var assignmentLookup = _cabinetRepository
+                    .GetSlotCategoryAssignmentsByCabinetId(cabinet.Id)
+                    .ToDictionary(
+                        item => BuildSlotCategoryKey(item.FaceCode, item.SlotCode),
+                        item => item,
+                        StringComparer.OrdinalIgnoreCase);
+
+                foreach (string faceCode in ResolveFaceCodes(cabinet.FaceCount))
+                {
+                    for (int layer = 1; layer <= cabinet.LayerCount; layer++)
+                    {
+                        for (int column = 1; column <= cabinet.ColumnCount; column++)
+                        {
+                            string slotCode = $"{layer}-{column}";
+                            string key = BuildSlotCategoryKey(faceCode, slotCode);
+                            if (assignmentLookup.TryGetValue(key, out var existing))
+                            {
+                                if (!overwriteExistingAssignments
+                                    || CabinetHardDiskSlotCategoryAssignment.MatchesCategory(existing.CategoryName, blankCategory))
+                                {
+                                    continue;
+                                }
+
+                                existing.CategoryName = blankCategory;
+                                existing.UpdatedTime = now;
+                                changed = true;
+                                continue;
+                            }
+
+                            _cabinetRepository.AddSlotCategoryAssignment(new CabinetHardDiskSlotCategoryAssignment
+                            {
+                                CabinetId = cabinet.Id,
+                                FaceCode = faceCode,
+                                SlotCode = slotCode,
+                                CategoryName = blankCategory,
+                                CreatedTime = now,
+                                UpdatedTime = now
+                            });
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
+            if (changed)
+            {
+                _cabinetRepository.SaveChanges();
+            }
+        }
+
+        public void DeleteCabinet(int cabinetId)
+        {
+            var cab = _cabinetRepository.GetById(cabinetId);
+            if (cab != null)
+            {
+                _cabinetRepository.Remove(cab);
+                _cabinetRepository.SaveChanges();
+            }
+        }
+        public async Task<List<Cabinet>> GetAllCabinetsAsync()
+        {
+            await EnsureDefaultCabinetsAsync();
+            return await _cabinetRepository.GetAllAsync();
+        }
+
+        private void EnsureDefaultCabinets()
+        {
+            if (_cabinetRepository.Any())
+            {
+                return;
+            }
+
+            _cabinetRepository.AddRange(CreateDefaultCabinets());
+            _cabinetRepository.SaveChanges();
+        }
+
+        private async Task EnsureDefaultCabinetsAsync()
+        {
+            if (await _cabinetRepository.AnyAsync())
+            {
+                return;
+            }
+
+            _cabinetRepository.AddRange(CreateDefaultCabinets());
+            await _cabinetRepository.SaveChangesAsync();
+        }
+
+        private static List<Cabinet> CreateDefaultCabinets()
+        {
+            var generatedCabinets = new List<Cabinet>();
+
+            for (int i = 0; i < DefaultStandardCabinetCount; i++)
+            {
+                generatedCabinets.Add(new Cabinet
+                {
+                    Name = DefaultCabinetNamePool[i],
+                    Type = CabinetType.Standard,
+                    FaceCount = 2,
+                    LayerCount = 6,
+                    ColumnCount = 3,
+                    Width = GetStandardCabinetWidth(),
+                    Height = StandardCabinetThickness,
+                    Depth = 25,
+                    CanvasLeft = GetStandardCabinetLeft(),
+                    CanvasTop = StandardTrackTop + (i * StandardCabinetThickness),
+                    RotationAngle = 0
+                });
+            }
+
+            generatedCabinets.Add(new Cabinet
+            {
+                Name = DefaultCabinetNamePool[DefaultStandardCabinetCount],
+                Type = CabinetType.MagneticDisk,
+                FaceCount = 1,
+                LayerCount = 9,
+                ColumnCount = 4,
+                Width = DefaultMagneticCabinetWidth,
+                Height = DefaultMagneticCabinetHeight,
+                Depth = DefaultMagneticCabinetDepth,
+                CanvasLeft = DefaultMagneticCabinetLeft,
+                CanvasTop = DefaultMagneticCabinetTop,
+                RotationAngle = 0
+            });
+
+            return generatedCabinets;
+        }
+
+        private static double GetStandardCabinetWidth()
+        {
+            double leftTrackCenter = StandardTrackLeft + (StandardTrackWidth / 2d);
+            double rightTrackCenter = StandardTrackRight + (StandardTrackWidth / 2d);
+            return (rightTrackCenter - leftTrackCenter) + StandardCabinetLengthOverflow;
+        }
+
+        private static double GetStandardCabinetLeft()
+        {
+            double leftTrackCenter = StandardTrackLeft + (StandardTrackWidth / 2d);
+            return leftTrackCenter - (StandardCabinetLengthOverflow / 2d);
+        }
+
+        private static IEnumerable<string> ResolveFaceCodes(int faceCount)
+        {
+            int resolvedFaceCount = faceCount <= 1 ? 1 : faceCount;
+            for (int index = 0; index < resolvedFaceCount; index++)
+            {
+                yield return ((char)('A' + index)).ToString();
+            }
+        }
+
+        private static string BuildSlotCategoryKey(string faceCode, string slotCode)
+            => $"{faceCode.Trim()}:{slotCode.Trim()}";
+    }
+}
