@@ -1,13 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows.Input;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.Shared;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.HardDiskMedia
 {
     /// <summary>
-    /// 硬盘归还登记工作台：待归还介质发起归还 → 右侧就地登记/打印/上传/办结。
+    /// 硬盘归还工作台：待归还介质发起归还 → 申请/审批分流办理。
     /// </summary>
     public partial class HardDiskMediaReturnRegistrationPageViewModel : ViewModelBase
     {
@@ -17,11 +20,17 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private const string ReturnStageSignedUploaded = "已上传签字件";
         private const string ReturnStageCompleted = "已办结";
 
+        private readonly HardDiskReturnWorkspaceMode _workspaceMode;
         private readonly IHardDiskMediaService _hardDiskMediaService;
         private readonly ICabinetService _cabinetService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IUserService _userService;
+        private readonly List<HardDiskMediaApplication> _allApplications = new();
+        private readonly List<HardDiskMediaReturnCandidate> _allReturnCandidates = new();
+        private readonly Dictionary<int, string> _sourceBorrowApplicationNoByReturnId = new();
         private bool _isPageInitialized;
+        private int _applicationYear = DateTime.Today.Year;
         private string _searchKeyword = string.Empty;
         private string _selectedStatus = ReturnStageAll;
         private string _selectedApplicationType = ReturnStageAll;
@@ -30,15 +39,19 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private bool _isLeftPanelExpanded = true;
 
         public HardDiskMediaReturnRegistrationPageViewModel(
+            HardDiskReturnWorkspaceMode workspaceMode,
             IHardDiskMediaService hardDiskMediaService,
             ICabinetService cabinetService,
             IDialogService dialogService,
-            IUserContextService userContextService)
+            IUserContextService userContextService,
+            IUserService userService)
         {
+            _workspaceMode = workspaceMode;
             _hardDiskMediaService = hardDiskMediaService;
             _cabinetService = cabinetService;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _userService = userService;
 
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
@@ -51,16 +64,26 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ShowTargetLocationSnapshotCommand = new RelayCommand(async _ => await ShowTargetLocationSnapshotAsync(), _ => CanShowTargetLocationSnapshot);
             SaveDraftCommand = new RelayCommand(async _ => await SaveAsync(HardDiskMediaApplication.StatusDraft), _ => IsRegistrationEditable);
             SubmitCommand = new RelayCommand(async _ => await SaveAsync(HardDiskMediaApplication.StatusSubmitted), _ => IsRegistrationEditable);
-            PrintAbnormalReportCommand = new RelayCommand(async _ => await PrintAbnormalReportAsync(), _ => CanPrintAbnormalReport);
-            UploadAbnormalReportCommand = new RelayCommand(async _ => await UploadAbnormalReportAsync(), _ => CanManageAbnormalReportAttachments);
-            ViewAbnormalReportCommand = new RelayCommand(async attachment => await ViewAbnormalReportAsync(attachment as SystemAttachment), attachment => attachment is SystemAttachment || SelectedAbnormalReportAttachment != null);
-            DeleteAbnormalReportCommand = new RelayCommand(async attachment => await DeleteAbnormalReportAsync(attachment as SystemAttachment), attachment => (attachment is SystemAttachment || SelectedAbnormalReportAttachment != null) && CanDeleteAbnormalReportAttachment);
+            PrintSignedHandoverCommand = new RelayCommand(async _ => await PrintHandoverSheetAsync(), _ => CanPrintSignedHandoverOnApplication);
             PrintHandoverSheetCommand = new RelayCommand(async _ => await PrintHandoverSheetAsync(), _ => CanPrintHandoverSheet);
             CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
             ViewAttachmentCommand = new RelayCommand(async attachment => await ViewAttachmentAsync(attachment as SystemAttachment), attachment => attachment is SystemAttachment);
             DeleteAttachmentCommand = new RelayCommand(async attachment => await DeleteAttachmentAsync(attachment as SystemAttachment), attachment => attachment is SystemAttachment && CanDeleteAttachment);
             CancelEditCommand = new RelayCommand(_ => CancelEdit(), _ => IsEditing);
+            ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
+            ConfirmHandoverCommand = new RelayCommand(async _ => await ConfirmHandoverAsync(), _ => CanConfirmHandover);
+            UploadSignedAttachmentCommand = new RelayCommand(async _ => await UploadSignedAttachmentAsync(), _ => CanUploadSignedAttachment);
         }
+
+        public HardDiskReturnWorkspaceMode WorkspaceMode => _workspaceMode;
+
+        public string PageTitle => _workspaceMode == HardDiskReturnWorkspaceMode.Approval
+            ? "硬盘归还审批"
+            : "硬盘归还申请";
+
+        public string PageSubtitle => _workspaceMode == HardDiskReturnWorkspaceMode.Approval
+            ? "对已提交的归还申请进行审批、实物交接、上传签批交接单并办结。"
+            : "选择待归还介质，填写归还申请、打印签批交接单并提交审批。";
 
         public ObservableCollection<HardDiskMediaApplication> Applications { get; } = new();
 
@@ -70,7 +93,22 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public ObservableCollection<string> ApplicationTypeOptions { get; } = new();
 
-        public string PageTitle => "硬盘归还登记工作台";
+        public ObservableCollection<int> ApplicationYears { get; } = new();
+
+        public int ApplicationYear
+        {
+            get => _applicationYear;
+            set
+            {
+                if (SetProperty(ref _applicationYear, value))
+                {
+                    if (_isPageInitialized)
+                    {
+                        ApplyListFilters();
+                    }
+                }
+            }
+        }
 
         public string SearchKeyword
         {
@@ -81,13 +119,31 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string SelectedStatus
         {
             get => _selectedStatus;
-            set => SetProperty(ref _selectedStatus, value);
+            set
+            {
+                if (SetProperty(ref _selectedStatus, value))
+                {
+                    if (_isPageInitialized)
+                    {
+                        ApplyListFilters();
+                    }
+                }
+            }
         }
 
         public string SelectedApplicationType
         {
             get => _selectedApplicationType;
-            set => SetProperty(ref _selectedApplicationType, value);
+            set
+            {
+                if (SetProperty(ref _selectedApplicationType, value))
+                {
+                    if (_isPageInitialized)
+                    {
+                        ApplyListFilters();
+                    }
+                }
+            }
         }
 
         public HardDiskMediaReturnCandidate? SelectedCandidate
@@ -143,6 +199,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public RelayCommand ToggleLeftPanelCommand { get; }
 
+        public RelayCommand ApproveCommand { get; }
+
+        public RelayCommand ConfirmHandoverCommand { get; }
+
+        public RelayCommand UploadSignedAttachmentCommand { get; }
+
         public async Task InitializeAsync()
         {
             if (_isPageInitialized)
@@ -159,10 +221,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             StatusOptions.Clear();
             StatusOptions.Add(ReturnStageAll);
-            StatusOptions.Add(ReturnStageRegistered);
-            StatusOptions.Add(ReturnStagePendingComplete);
-            StatusOptions.Add(ReturnStageSignedUploaded);
-            StatusOptions.Add(ReturnStageCompleted);
+            foreach (var (_, label) in ApplicationWorkflowStatus.AllOptions)
+            {
+                StatusOptions.Add(label);
+            }
+
             SelectedStatus = ReturnStageAll;
 
             HardDiskMediaApplicationViewModelHelper.ResetReturnRegistrationKindOptions(ApplicationTypeOptions);
@@ -175,27 +238,133 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             try
             {
-                int? selectedId = SelectedApplication?.Id ?? _editingApplication?.Id;
-                var items = await _hardDiskMediaService.SearchApplicationsAsync(SearchKeyword, null, null);
+                int? selectedApplicationId = SelectedApplication?.Id ?? _editingApplication?.Id;
+                string? selectedCandidateKey = SelectedCandidate == null ? null : BuildCandidateKey(SelectedCandidate);
+                string? keyword = string.IsNullOrWhiteSpace(SearchKeyword) ? null : SearchKeyword;
+                var items = await _hardDiskMediaService.SearchApplicationsAsync(keyword, null, null);
 
-                Applications.Clear();
-                foreach (var item in items.Where(item => HardDiskMediaApplicationViewModelHelper.IsReturnRegistrationType(item.ApplicationType))
-                                          .Where(MatchesSelectedRegistrationKind)
-                                          .Where(MatchesSelectedReturnStage))
-                {
-                    Applications.Add(item);
-                }
+                _allApplications.Clear();
+                _allApplications.AddRange(items.Where(item => HardDiskMediaApplicationViewModelHelper.IsReturnRegistrationType(item.ApplicationType)));
 
-                await LoadReturnCandidatesAsync();
+                var candidates = await _hardDiskMediaService.GetReturnRegistrationCandidatesAsync();
+                _allReturnCandidates.Clear();
+                _allReturnCandidates.AddRange(candidates);
 
-                SelectedApplication = selectedId.HasValue
-                    ? Applications.FirstOrDefault(item => item.Id == selectedId.Value)
-                    : Applications.FirstOrDefault();
+                await LoadSourceBorrowApplicationNosAsync();
+                UpdateYearOptions();
+                ApplyListFilters(selectedApplicationId, selectedCandidateKey);
             }
             catch (InvalidOperationException ex)
             {
                 _dialogService.ShowError(ex.Message);
             }
+        }
+
+        private void ApplyListFilters(int? selectedApplicationId = null, string? selectedCandidateKey = null)
+        {
+            selectedApplicationId ??= SelectedApplication?.Id ?? _editingApplication?.Id;
+            selectedCandidateKey ??= SelectedCandidate == null ? null : BuildCandidateKey(SelectedCandidate);
+
+            var filteredApplications = _allApplications
+                .Where(MatchesSelectedBorrowApplicationYear)
+                .Where(MatchesSelectedRegistrationKind)
+                .Where(MatchesSelectedReturnStage)
+                .ToList();
+
+            Applications.Clear();
+            foreach (var item in filteredApplications)
+            {
+                Applications.Add(item);
+            }
+
+            var filteredCandidates = _allReturnCandidates
+                .Where(MatchesSelectedBorrowApplicationYear)
+                .OrderBy(item => item.ExpectedReturnDate ?? DateTime.MaxValue)
+                .ThenBy(item => item.DiskCode, StringComparer.Ordinal)
+                .ToList();
+
+            ReturnCandidates.Clear();
+            foreach (var candidate in filteredCandidates)
+            {
+                ReturnCandidates.Add(candidate);
+            }
+
+            SelectedApplication = selectedApplicationId.HasValue
+                ? Applications.FirstOrDefault(item => item.Id == selectedApplicationId.Value)
+                : Applications.FirstOrDefault();
+
+            SelectedCandidate = selectedCandidateKey == null
+                ? ReturnCandidates.FirstOrDefault()
+                : ReturnCandidates.FirstOrDefault(item => string.Equals(BuildCandidateKey(item), selectedCandidateKey, StringComparison.Ordinal))
+                  ?? ReturnCandidates.FirstOrDefault();
+        }
+
+        private async Task LoadSourceBorrowApplicationNosAsync()
+        {
+            _sourceBorrowApplicationNoByReturnId.Clear();
+
+            foreach (var application in _allApplications)
+            {
+                string sourceBorrowApplicationNo = await _hardDiskMediaService.ResolveReturnSourceApplicationNoAsync(
+                    application.SourceApplicationId,
+                    application.SourceOutboundRecordId);
+
+                if (!string.IsNullOrWhiteSpace(sourceBorrowApplicationNo))
+                {
+                    _sourceBorrowApplicationNoByReturnId[application.Id] = sourceBorrowApplicationNo.Trim();
+                }
+            }
+        }
+
+        private void UpdateYearOptions()
+        {
+            int currentYear = DateTime.Today.Year;
+            var years = _allReturnCandidates
+                .Select(item => HardDiskMediaApplicationNoSupport.TryParseBusinessNoYear(item.SourceApplicationNo, out int year)
+                    ? year
+                    : (int?)null)
+                .Concat(_sourceBorrowApplicationNoByReturnId.Values.Select(sourceNo =>
+                    HardDiskMediaApplicationNoSupport.TryParseBusinessNoYear(sourceNo, out int year)
+                        ? year
+                        : (int?)null))
+                .Where(year => year.HasValue)
+                .Select(year => year!.Value)
+                .Distinct()
+                .OrderBy(year => year)
+                .ToList();
+
+            if (!years.Contains(currentYear))
+            {
+                years.Add(currentYear);
+                years.Sort();
+            }
+
+            ApplicationYears.Clear();
+            foreach (int year in years)
+            {
+                ApplicationYears.Add(year);
+            }
+
+            if (!ApplicationYears.Contains(_applicationYear))
+            {
+                _applicationYear = ApplicationYears[^1];
+            }
+
+            // ItemsSource 重建后须强制刷新 SelectedItem 绑定，否则 ComboBox 会短暂处于校验失败（红边、文本空白）。
+            OnPropertyChanged(nameof(ApplicationYear));
+        }
+
+        private bool MatchesSelectedBorrowApplicationYear(HardDiskMediaApplication application)
+        {
+            return _sourceBorrowApplicationNoByReturnId.TryGetValue(application.Id, out string? sourceBorrowApplicationNo)
+                   && HardDiskMediaApplicationNoSupport.TryParseBusinessNoYear(sourceBorrowApplicationNo, out int year)
+                   && year == _applicationYear;
+        }
+
+        private bool MatchesSelectedBorrowApplicationYear(HardDiskMediaReturnCandidate candidate)
+        {
+            return HardDiskMediaApplicationNoSupport.TryParseBusinessNoYear(candidate.SourceApplicationNo, out int year)
+                   && year == _applicationYear;
         }
 
         private async Task RefreshListsKeepingEditorAsync()
@@ -210,24 +379,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     SynchronizeEditingApplication(SelectedApplication);
                 }
             }
-        }
-
-        private async Task LoadReturnCandidatesAsync()
-        {
-            string? selectedKey = SelectedCandidate == null ? null : BuildCandidateKey(SelectedCandidate);
-            var candidates = await _hardDiskMediaService.GetReturnRegistrationCandidatesAsync();
-            ReturnCandidates.Clear();
-            foreach (var candidate in candidates
-                         .OrderBy(item => item.ExpectedReturnDate ?? DateTime.MaxValue)
-                         .ThenBy(item => item.DiskCode, StringComparer.Ordinal))
-            {
-                ReturnCandidates.Add(candidate);
-            }
-
-            SelectedCandidate = selectedKey == null
-                ? ReturnCandidates.FirstOrDefault()
-                : ReturnCandidates.FirstOrDefault(item => string.Equals(BuildCandidateKey(item), selectedKey, StringComparison.Ordinal))
-                  ?? ReturnCandidates.FirstOrDefault();
         }
 
         private bool MatchesSelectedRegistrationKind(HardDiskMediaApplication application)
@@ -245,16 +396,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return true;
             }
 
-            return SelectedStatus switch
-            {
-                ReturnStageRegistered => application.ApplicationStatus == HardDiskMediaApplication.StatusDraft ||
-                                         (application.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted && application.PrintCount <= 0) ||
-                                         application.ApplicationStatus == HardDiskMediaApplication.StatusPendingUpload,
-                ReturnStagePendingComplete => application.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted && application.PrintCount > 0,
-                ReturnStageSignedUploaded => application.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded,
-                ReturnStageCompleted => application.ApplicationStatus == HardDiskMediaApplication.StatusCompleted,
-                _ => true
-            };
+            return string.Equals(
+                application.StatusStr,
+                SelectedStatus,
+                StringComparison.Ordinal);
         }
 
         private static string ResolveReturnStageText(HardDiskMediaApplication? application)
@@ -264,22 +409,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return "(无)";
             }
 
-            return application.ApplicationStatus switch
-            {
-                HardDiskMediaApplication.StatusDraft => ReturnStageRegistered,
-                HardDiskMediaApplication.StatusSubmitted when application.PrintCount > 0 => ReturnStagePendingComplete,
-                HardDiskMediaApplication.StatusSubmitted => ReturnStageRegistered,
-                HardDiskMediaApplication.StatusSignedUploaded => ReturnStageSignedUploaded,
-                HardDiskMediaApplication.StatusCompleted => ReturnStageCompleted,
-                _ => application.ApplicationStatus
-            };
+            return application.StatusStr;
         }
 
         private async Task RefreshAsync()
         {
-            SearchKeyword = string.Empty;
-            SelectedStatus = ReturnStageAll;
-            SelectedApplicationType = ReturnStageAll;
             await SearchAsync();
         }
 
@@ -359,12 +493,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private bool CanStartReturn()
         {
-            return IsCurrentUserArchiveAdmin() && SelectedCandidate != null;
+            return _workspaceMode == HardDiskReturnWorkspaceMode.Application
+                   && SelectedCandidate != null
+                   && HardDiskMediaApplicationViewModelHelper.CanSubmitApplication(_userContextService.CurrentUser);
         }
 
         private bool CanOpenReturn()
         {
-            return SelectedApplication != null && IsCurrentUserArchiveAdmin();
+            return SelectedApplication != null;
         }
 
         private bool CanDeleteSelectedApplication()
@@ -372,9 +508,17 @@ namespace DocMgr.ViewModels.HardDiskMedia
             HardDiskMediaApplication? target = _editingApplication?.Id > 0
                 ? _editingApplication
                 : SelectedApplication;
-            return target != null
-                   && IsCurrentUserArchiveAdmin()
-                   && target.ApplicationStatus != HardDiskMediaApplication.StatusCompleted;
+            if (target == null || target.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)
+            {
+                return false;
+            }
+
+            if (_workspaceMode == HardDiskReturnWorkspaceMode.Approval)
+            {
+                return IsCurrentUserArchiveAdmin();
+            }
+
+            return target.ApplicationStatus == HardDiskMediaApplication.StatusDraft;
         }
 
         private bool IsCurrentUserArchiveAdmin()

@@ -47,8 +47,14 @@ namespace DocMgr.Models.Cabinets
 
         public int ElectronicArchiveUnitId { get; init; }
 
+        public int MediumId { get; init; }
+
+        public bool IsBlankInStock { get; init; }
+
         public bool HasOccupationLock { get; init; }
 
         public string OccupationLockToolTipText { get; init; } = string.Empty;
+
+        public string OccupationLockBadgeText { get; init; } = string.Empty;
     }
 }

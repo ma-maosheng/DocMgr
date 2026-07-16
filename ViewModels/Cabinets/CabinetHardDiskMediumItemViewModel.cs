@@ -38,6 +38,8 @@ namespace DocMgr.ViewModels.Cabinets
             IsEmpty = isEmpty;
             IsPendingReturn = isPendingReturn;
             ElectronicArchiveUnitId = 0;
+            MediumId = 0;
+            IsBlankInStock = false;
         }
 
         public CabinetHardDiskMediumItemViewModel(CabinetHardDiskMediumDescriptor descriptor)
@@ -91,8 +93,13 @@ namespace DocMgr.ViewModels.Cabinets
             ToolTipText = descriptor.ToolTipText;
             IsPendingReturn = descriptor.IsPendingReturn;
             ElectronicArchiveUnitId = descriptor.ElectronicArchiveUnitId;
+            MediumId = descriptor.MediumId;
+            IsBlankInStock = descriptor.IsBlankInStock;
             HasOccupationLock = descriptor.HasOccupationLock;
             OccupationLockToolTipText = descriptor.OccupationLockToolTipText ?? string.Empty;
+            OccupationLockBadgeText = string.IsNullOrWhiteSpace(descriptor.OccupationLockBadgeText)
+                ? (descriptor.HasOccupationLock ? "占用" : string.Empty)
+                : descriptor.OccupationLockBadgeText.Trim();
         }
 
         public bool IsSelected
@@ -146,6 +153,8 @@ namespace DocMgr.ViewModels.Cabinets
 
         public string MediumInfoText { get; } = string.Empty;
 
+        public bool IsBlankInStock { get; }
+
         public bool HasArchiveInfo { get; }
 
         public int ArchiveSequenceNumber { get; }
@@ -184,6 +193,8 @@ namespace DocMgr.ViewModels.Cabinets
 
         public string OccupationLockToolTipText { get; } = string.Empty;
 
+        public string OccupationLockBadgeText { get; } = string.Empty;
+
         public Visibility OccupationLockBadgeVisibility => HasOccupationLock ? Visibility.Visible : Visibility.Collapsed;
 
         public bool CanShowInfo => !IsEmpty;
@@ -191,7 +202,25 @@ namespace DocMgr.ViewModels.Cabinets
         public bool CanShowArchiveInfo => !IsEmpty && HasArchiveInfo;
 
         public bool CanInteractiveRelocate =>
-            !IsEmpty && !IsPendingReturn && ElectronicArchiveUnitId > 0 && IsYearlyArchiveDisplay;
+            !IsEmpty
+            && !IsPendingReturn
+            && !HasOccupationLock
+            && (IsElectronicMediaRelocationCandidate || IsBlankHardDiskRelocationCandidate);
+
+        public bool IsElectronicMediaRelocationCandidate =>
+            !IsEmpty
+            && !IsPendingReturn
+            && !IsBlankInStock
+            && ElectronicArchiveUnitId > 0;
+
+        public bool IsBlankHardDiskRelocationCandidate =>
+            !IsEmpty
+            && !IsPendingReturn
+            && !IsOpticalDiscMedia
+            && !IsYearlyArchiveDisplay
+            && IsBlankInStock;
+
+        public int MediumId { get; }
 
         public Visibility YearlyArchiveLayoutVisibility => IsYearlyArchiveDisplay ? Visibility.Visible : Visibility.Collapsed;
 

@@ -44,8 +44,8 @@
                           ItemsSource="{Binding Tables}"
                           DisplayMemberPath="TableName"
                           SelectedItem="{Binding SelectedTable, Mode=TwoWay}"/>
-                <Button Content="🔄 刷新数据" Command="{Binding RefreshCommand}" Margin="10,0,0,0" Padding="10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
                 <Button Content="📤 导出到 Excel" Command="{Binding ExportToExcelCommand}" Margin="10,0,0,0" Padding="10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                <Button Content="🔄 刷新数据" Command="{Binding RefreshCommand}" Margin="10,0,0,0" Padding="10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
 
                 <Border Margin="15,0,0,0"
                         MinWidth="360"

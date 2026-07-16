@@ -44,6 +44,16 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private bool _preferRecommendedTargetLocationForCurrentKind;
         private readonly List<HardDiskMediaReturnCandidate> _returnCandidates = new();
 
+        // 审批模式专用录入字段：审批通过 / 确认实物交接。
+        private string _reviewerName = string.Empty;
+        private DateTime _reviewerDate;
+        private string _approverName = string.Empty;
+        private DateTime _approverDate;
+        private string _approvalOpinion = "同意";
+        private string _handoverApplicant = string.Empty;
+        private string _handoverAdmin = string.Empty;
+        private DateTime _handoverDate;
+
         public ObservableCollection<HardDiskMediaReturnMediumOption> MediumOptions { get; } = new();
 
         public ObservableCollection<HardDiskMediaApplicantOption> ApplicantOptions { get; } = new();
@@ -57,9 +67,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public ObservableCollection<SystemAttachment> AbnormalReportAttachments { get; } = new();
 
-        public string SaveButtonText => "保存登记";
+        public string SaveButtonText => "保存草稿";
 
-        public string SubmitButtonText => "登记归还信息";
+        public string SubmitButtonText => "提交申请";
+
+        /// <summary>申请模式：显示保存草稿/提交申请/删除等操作。</summary>
+        public bool ShowApplicationActions => _workspaceMode == HardDiskReturnWorkspaceMode.Application;
+
+        /// <summary>审批模式：显示审批通过/确认交接/上传签批交接单/打印/办结等操作。</summary>
+        public bool ShowApprovalActions => _workspaceMode == HardDiskReturnWorkspaceMode.Approval;
 
         public string ReturnLocationLabel => InspectionResult switch
         {
@@ -78,13 +94,28 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string ReasonFieldLabel => IsSpecialSituationInspectionResult ? "特殊情况说明 *" : "特殊情况说明";
 
         public bool IsMediumSelectionEnabled => IsRegistrationEditable && SelectedApplicant != null;
+
+        /// <summary>仅申请模式下、草稿状态（或新建）时表单可编辑；审批模式表单只读。</summary>
         public bool IsRegistrationEditable =>
+            _workspaceMode == HardDiskReturnWorkspaceMode.Application &&
             _editingApplication != null &&
             (_editingApplication.Id == 0 ||
-             _editingApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft ||
-             _editingApplication.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted ||
-             _editingApplication.ApplicationStatus == HardDiskMediaApplication.StatusPendingUpload);
-        public bool CanUploadSignedAttachment => false;
+             _editingApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft);
+
+        public bool CanApprove =>
+            ShowApprovalActions &&
+            _editingApplication is { Id: > 0, ApplicationStatus: HardDiskMediaApplication.StatusSubmitted } &&
+            IsCurrentUserArchiveAdmin();
+
+        public bool CanConfirmHandover =>
+            ShowApprovalActions &&
+            _editingApplication is { Id: > 0, ApplicationStatus: HardDiskMediaApplication.StatusApproved } &&
+            IsCurrentUserArchiveAdmin();
+
+        public bool CanUploadSignedAttachment =>
+            ShowApprovalActions &&
+            _editingApplication is { Id: > 0, ApplicationStatus: HardDiskMediaApplication.StatusSignedUploaded } &&
+            IsCurrentUserArchiveAdmin();
 
         public bool HasAbnormalReturnItems =>
             IsEditing && (
@@ -105,14 +136,29 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public bool CanManageAbnormalReportAttachments =>
             ShowAbnormalReturnPanel && IsRegistrationEditable;
 
+        public bool CanPrintSignedHandoverOnApplication =>
+            ShowApplicationActions && IsApplicationHandoverPrintable();
+
         public bool CanPrintHandoverSheet =>
-            _editingApplication is { Id: > 0, ApplicationStatus: HardDiskMediaApplication.StatusSubmitted };
+            ShowApprovalActions &&
+            _editingApplication is { Id: > 0 } &&
+            (_editingApplication.ApplicationStatus == HardDiskMediaApplication.StatusApproved ||
+             _editingApplication.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded ||
+             _editingApplication.ApplicationStatus == HardDiskMediaApplication.StatusCompleted);
 
         public bool CanComplete =>
-            _editingApplication is { Id: > 0, ApplicationStatus: HardDiskMediaApplication.StatusSubmitted, PrintCount: > 0 }
-            && (!HasAbnormalReturnItems || HasAbnormalReportUploaded);
+            ShowApprovalActions &&
+            _editingApplication is { Id: > 0, ApplicationStatus: HardDiskMediaApplication.StatusSignedUploaded, PrintCount: > 0 } &&
+            _editingApplication.SignedAttachmentUploaded &&
+            IsCurrentUserArchiveAdmin();
 
-        public bool CanDeleteAttachment => false;
+        public bool CanDeleteAttachment =>
+            ShowApprovalActions &&
+            _editingApplication is { Id: > 0 } &&
+            _editingApplication.ApplicationStatus != HardDiskMediaApplication.StatusCompleted &&
+            _editingApplication.ApplicationStatus != HardDiskMediaApplication.StatusWithdrawn &&
+            _editingApplication.ApplicationStatus != HardDiskMediaApplication.StatusForceWithdrawn &&
+            IsCurrentUserArchiveAdmin();
 
         public bool CanDeleteAbnormalReportAttachment => CanManageAbnormalReportAttachments;
 
@@ -120,35 +166,50 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             get
             {
+                if (!ShowApplicationActions)
+                {
+                    return string.Empty;
+                }
+
                 if (!IsRegistrationEditable)
                 {
-                    return "当前状态不允许重新登记归还信息。";
+                    return CanPrintSignedHandoverOnApplication
+                        ? "申请已提交，可继续打印签批交接单供线下审批签字。"
+                        : "当前状态不允许重新编辑，请等待审批办理。";
                 }
 
                 if (ShowAbnormalReturnPanel)
                 {
-                    return HasAbnormalReportUploaded
-                        ? "非正常归还情况表扫描件已上传，可登记归还信息。"
-                        : "请先填写具体情况、打印情况表并完成线下签字后上传扫描件，再办理登记。";
+                    return "请填写具体情况说明，打印签批交接单并完成线下签字后提交申请。";
                 }
 
-                return "下一步：登记归还信息后，请打印交接单。";
+                return "下一步：填写归还信息后，请保存草稿、打印签批交接单或提交申请。";
             }
         }
 
-        public string PrintHintText => CanPrintHandoverSheet
-            ? (ShowAbnormalReturnPanel
-                ? "下一步：打印交接单后，请确认办结。"
-                : "下一步：打印交接单后，请确认办结。")
-            : "请先完成“登记归还信息”，再打印交接单。";
+        public string ApproveHintText => CanApprove
+            ? "后续：审批通过后，请办理实物交接。"
+            : "当前状态不允许执行“审批通过”。";
 
-        public string UploadHintText => string.Empty;
+        public string ConfirmHandoverHintText => CanConfirmHandover
+            ? "后续：确认实物交接后，请上传签批交接单。"
+            : "请先执行“审批通过”，再确认实物交接。";
+
+        public string PrintHintText => !CanPrintHandoverSheet
+            ? "请先完成实物交接，再打印交接单。"
+            : _editingApplication?.ApplicationStatus == HardDiskMediaApplication.StatusCompleted
+                ? "本单已办结，可再次打印交接单备查。"
+                : "下一步：打印交接单后，请确认办结。";
+
+        public string UploadHintText => CanUploadSignedAttachment
+            ? "后续：上传签批交接单后，请点击“确认办结”。"
+            : "请先确认实物交接，再上传签批交接单。";
 
         public string CompleteHintText => CanComplete
             ? "下一步：确认办结，完成介质收回入库。"
             : (_editingApplication is { PrintCount: <= 0 }
-                ? "请先打印交接单，再确认办结。"
-                : "请先完成登记与打印交接单，再确认办结。");
+                ? "请先上传签批交接单并打印交接单，再确认办结。"
+                : "请先完成实物交接并上传签批交接单，再确认办结。");
 
         public bool UseTargetLocationOptionList =>
             !IsLossInspectionScenario && ReturnTargetLocationOptions.Count > 0;
@@ -353,6 +414,62 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _selectedAbnormalReportAttachment, value);
         }
 
+        /// <summary>审核人（审批模式）。</summary>
+        public string ReviewerName
+        {
+            get => _reviewerName;
+            set => SetProperty(ref _reviewerName, value);
+        }
+
+        /// <summary>审核日期（审批模式）。</summary>
+        public DateTime ReviewerDate
+        {
+            get => _reviewerDate;
+            set => SetProperty(ref _reviewerDate, value);
+        }
+
+        /// <summary>审批人（审批模式）。</summary>
+        public string ApproverName
+        {
+            get => _approverName;
+            set => SetProperty(ref _approverName, value);
+        }
+
+        /// <summary>审批日期（审批模式）。</summary>
+        public DateTime ApproverDate
+        {
+            get => _approverDate;
+            set => SetProperty(ref _approverDate, value);
+        }
+
+        /// <summary>审批意见（审批模式）。</summary>
+        public string ApprovalOpinion
+        {
+            get => _approvalOpinion;
+            set => SetProperty(ref _approvalOpinion, value);
+        }
+
+        /// <summary>办理交接人：归还人（审批模式）。</summary>
+        public string HandoverApplicant
+        {
+            get => _handoverApplicant;
+            set => SetProperty(ref _handoverApplicant, value);
+        }
+
+        /// <summary>办理交接人：资料室资料管理员（审批模式）。</summary>
+        public string HandoverAdmin
+        {
+            get => _handoverAdmin;
+            set => SetProperty(ref _handoverAdmin, value);
+        }
+
+        /// <summary>办理交接日期（审批模式）。</summary>
+        public DateTime HandoverDate
+        {
+            get => _handoverDate;
+            set => SetProperty(ref _handoverDate, value);
+        }
+
         public ICommand SaveDraftCommand { get; private set; } = null!;
 
         public ICommand RecommendTargetLocationCommand { get; private set; } = null!;
@@ -361,13 +478,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public ICommand SubmitCommand { get; private set; } = null!;
 
-        public ICommand PrintAbnormalReportCommand { get; private set; } = null!;
-
-        public ICommand UploadAbnormalReportCommand { get; private set; } = null!;
-
-        public ICommand ViewAbnormalReportCommand { get; private set; } = null!;
-
-        public ICommand DeleteAbnormalReportCommand { get; private set; } = null!;
+        public ICommand PrintSignedHandoverCommand { get; private set; } = null!;
 
         public ICommand PrintHandoverSheetCommand { get; private set; } = null!;
 
@@ -410,19 +521,34 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return string.Empty;
                 }
 
-                if (IsRegistrationEditable)
+                if (ShowApplicationActions)
                 {
                     return RegisterHintText;
                 }
 
-                if (CanPrintHandoverSheet)
+                if (CanApprove)
                 {
-                    return PrintHintText;
+                    return ApproveHintText;
+                }
+
+                if (CanConfirmHandover)
+                {
+                    return ConfirmHandoverHintText;
+                }
+
+                if (CanUploadSignedAttachment)
+                {
+                    return UploadHintText;
                 }
 
                 if (CanComplete)
                 {
                     return CompleteHintText;
+                }
+
+                if (CanPrintHandoverSheet)
+                {
+                    return PrintHintText;
                 }
 
                 return _editingApplication.ApplicationStatus == HardDiskMediaApplication.StatusCompleted
@@ -552,9 +678,47 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
 
             await UpdateReturnTargetLocationAsync();
+            InitializeApprovalInputsFromApplication();
         }
 
-        private async Task<bool> SaveAsync(string targetStatus)
+        /// <summary>
+        /// 审批模式下，为审批通过/确认实物交接的录入字段填充默认值。
+        /// </summary>
+        private void InitializeApprovalInputsFromApplication()
+        {
+            if (_workspaceMode != HardDiskReturnWorkspaceMode.Approval || _editingApplication == null)
+            {
+                return;
+            }
+
+            var today = DateTime.Today;
+            var currentUser = _userContextService.CurrentUser;
+            string currentUserName = currentUser?.RealName?.Trim() ?? string.Empty;
+            var users = _userService.GetAllUsers();
+
+            // 默认：审核人 = 申请人所属部门负责人；审批人 = 资料室负责人
+            ReviewerName = HardDiskMediaApplicationViewModelHelper.ResolveDefaultReviewerName(
+                _editingApplication, users, currentUser);
+            ReviewerDate = _editingApplication.ApplyTime == default ? today : _editingApplication.ApplyTime.Date;
+
+            ApproverName = HardDiskMediaApplicationViewModelHelper.ResolveDefaultApproverName(
+                _editingApplication, users, currentUser);
+            ApproverDate = (_editingApplication.ApprovedTime ?? today).Date;
+
+            ApprovalOpinion = string.IsNullOrWhiteSpace(_editingApplication.ApprovalOpinion)
+                ? "同意"
+                : _editingApplication.ApprovalOpinion.Trim();
+
+            HandoverApplicant = string.IsNullOrWhiteSpace(_editingApplication.ApplicantName)
+                ? currentUserName
+                : _editingApplication.ApplicantName.Trim();
+            HandoverAdmin = string.IsNullOrWhiteSpace(_editingApplication.ExecutedBy)
+                ? currentUserName
+                : _editingApplication.ExecutedBy.Trim();
+            HandoverDate = (_editingApplication.ExecutedTime ?? today).Date;
+        }
+
+        private async Task<bool> SaveAsync(int targetStatus)
         {
             if (_editingApplication == null || !IsRegistrationEditable)
             {
@@ -608,19 +772,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return false;
             }
 
-            if (targetStatus == HardDiskMediaApplication.StatusSubmitted && ShowAbnormalReturnPanel)
+            if (targetStatus == HardDiskMediaApplication.StatusSubmitted &&
+                ShowAbnormalReturnPanel &&
+                string.IsNullOrWhiteSpace(Reason))
             {
-                if (_editingApplication.Id <= 0)
-                {
-                    _dialogService.ShowMessage("非正常归还需先保存草稿并上传情况表扫描件后再登记。");
-                    return false;
-                }
-
-                if (!HasAbnormalReportUploaded)
-                {
-                    _dialogService.ShowMessage("非正常归还需上传情况表扫描件后再登记。");
-                    return false;
-                }
+                _dialogService.ShowMessage("非正常归还需填写具体情况说明后再提交。");
+                return false;
             }
 
             try
@@ -662,9 +819,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 await _hardDiskMediaService.SaveApplicationAsync(application, _userContextService.CurrentUser);
                 SynchronizeEditingApplication(application);
                 string nextStepMessage = targetStatus == HardDiskMediaApplication.StatusSubmitted
-                    ? (ShowAbnormalReturnPanel
-                        ? "归还信息登记成功。下一步：请打印交接单。"
-                        : "归还信息登记成功。下一步：请打印交接单。")
+                    ? "归还申请已提交，请等待资料室审批。"
                     : "登记已保存。";
                 _dialogService.ShowMessage(nextStepMessage);
                 await RefreshListsKeepingEditorAsync();
@@ -683,7 +838,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return false;
         }
 
-        private async Task<bool> EnsureDraftSavedForAbnormalFlowAsync()
+        private async Task<bool> EnsureDraftSavedAsync()
         {
             if (_editingApplication is { Id: > 0 })
             {
@@ -693,132 +848,17 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return await SaveAsync(HardDiskMediaApplication.StatusDraft);
         }
 
-        private async Task PrintAbnormalReportAsync()
-        {
-            if (!CanPrintAbnormalReport)
-            {
-                _dialogService.ShowMessage("当前状态不允许打印非正常归还情况表。");
-                return;
-            }
-
-            if (!await EnsureDraftSavedForAbnormalFlowAsync())
-            {
-                return;
-            }
-
-            try
-            {
-                var data = await _hardDiskMediaService.BuildAbnormalReturnReportPrintDataAsync(_editingApplication!, blankReturnerSignature: true);
-                var document = HardDiskMediaAbnormalReturnReportPrintDocumentFactory.Create(data);
-                var previewWindow = new PrintPreviewWindow(document)
-                {
-                    Owner = Application.Current.MainWindow
-                };
-                previewWindow.ShowDialog();
-            }
-            catch (InvalidOperationException ex)
-            {
-                _dialogService.ShowError(ex.Message);
-            }
-        }
-
-        private async Task UploadAbnormalReportAsync()
-        {
-            if (!CanManageAbnormalReportAttachments)
-            {
-                _dialogService.ShowMessage("当前状态不允许上传非正常归还情况表扫描件。");
-                return;
-            }
-
-            if (_editingApplication is not { Id: > 0 })
-            {
-                if (!await EnsureDraftSavedForAbnormalFlowAsync())
-                {
-                    return;
-                }
-            }
-
-            var filePath = _dialogService.OpenFileDialog("所有文件|*.*", "选择非正常归还情况表扫描件");
-            if (string.IsNullOrWhiteSpace(filePath))
-            {
-                return;
-            }
-
-            try
-            {
-                var fileInfo = new FileInfo(filePath);
-                var fileContent = await File.ReadAllBytesAsync(filePath);
-                var result = await _hardDiskMediaService.UploadAbnormalReturnReportAsync(
-                    _editingApplication,
-                    _userContextService.CurrentUser,
-                    fileInfo.Name,
-                    fileInfo.Extension,
-                    fileInfo.Length,
-                    fileContent);
-                if (!result.Success)
-                {
-                    _dialogService.ShowMessage(result.Message);
-                    return;
-                }
-
-                await RefreshEditingApplicationAsync();
-                await LoadEditorAttachmentsAsync();
-                await RefreshListsKeepingEditorAsync();
-                NotifyEditorStateChanged();
-                _dialogService.ShowMessage("非正常归还情况表扫描件上传成功。下一步：请登记归还信息。");
-            }
-            catch (IOException ex)
-            {
-                _dialogService.ShowError($"读取扫描件失败：{ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                _dialogService.ShowError($"上传扫描件失败：{ex.Message}");
-            }
-        }
-
-        private async Task ViewAbnormalReportAsync(SystemAttachment? attachment)
-        {
-            await ViewAttachmentAsync(attachment ?? SelectedAbnormalReportAttachment);
-        }
-
-        private async Task DeleteAbnormalReportAsync(SystemAttachment? attachment)
-        {
-            attachment ??= SelectedAbnormalReportAttachment;
-            if (attachment == null)
-            {
-                return;
-            }
-
-            if (!CanDeleteAbnormalReportAttachment)
-            {
-                _dialogService.ShowMessage("当前状态不允许删除扫描件。");
-                return;
-            }
-
-            if (!_dialogService.ShowConfirm($"确定删除附件“{attachment.FileName}”吗？", "提示"))
-            {
-                return;
-            }
-
-            var result = await _hardDiskMediaService.DeleteAbnormalReturnReportAsync(attachment);
-            _dialogService.ShowMessage(result.Message);
-            if (!result.Success)
-            {
-                return;
-            }
-
-            await RefreshEditingApplicationAsync();
-            await LoadEditorAttachmentsAsync();
-            await RefreshListsKeepingEditorAsync();
-            NotifyEditorStateChanged();
-        }
-
         private async Task PrintHandoverSheetAsync()
         {
-            if (!CanPrintHandoverSheet)
+            bool isApplicationPrint = CanPrintSignedHandoverOnApplication;
+            if (!CanPrintHandoverSheet && !isApplicationPrint)
             {
-                _dialogService.ShowMessage("请先完成“登记归还信息”，再打印交接单。");
+                _dialogService.ShowMessage("当前状态不允许打印签批交接单。");
+                return;
+            }
+
+            if (isApplicationPrint && !await EnsureDraftSavedAsync())
+            {
                 return;
             }
 
@@ -833,10 +873,16 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
                 await _hardDiskMediaService.MarkApplicationPrintedAsync(_editingApplication!);
                 previewWindow.ShowDialog();
-                                await RefreshEditingApplicationAsync();
+                await RefreshEditingApplicationAsync();
                 await RefreshListsKeepingEditorAsync();
                 NotifyEditorStateChanged();
-                _dialogService.ShowMessage("交接单打印完成。下一步：请确认办结。");
+                _dialogService.ShowMessage(isApplicationPrint
+                    ? (_editingApplication?.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted
+                        ? "签批交接单打印完成。"
+                        : "签批交接单打印完成。下一步：请提交申请。")
+                    : (_editingApplication?.ApplicationStatus == HardDiskMediaApplication.StatusCompleted
+                        ? "交接单打印完成。"
+                        : "交接单打印完成。下一步：请确认办结。"));
             }
             catch (InvalidOperationException ex)
             {
@@ -844,13 +890,136 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
         }
 
+        private async Task ApproveAsync()
+        {
+            if (!CanApprove)
+            {
+                _dialogService.ShowMessage("当前状态不允许执行“审批通过”。");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(ReviewerName))
+            {
+                _dialogService.ShowMessage("请填写审核人。");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(ApproverName))
+            {
+                _dialogService.ShowMessage("请填写审批人。");
+                return;
+            }
+
+            var input = new HardDiskMediaApprovalInput
+            {
+                ReviewerName = ReviewerName.Trim(),
+                ReviewerDate = ReviewerDate,
+                ApproverName = ApproverName.Trim(),
+                ApproverDate = ApproverDate,
+                ApprovalOpinion = string.IsNullOrWhiteSpace(ApprovalOpinion) ? "同意" : ApprovalOpinion.Trim()
+            };
+
+            var result = await _hardDiskMediaService.ApproveApplicationAsync(_editingApplication, _userContextService.CurrentUser, input);
+            _dialogService.ShowMessage(result.Message);
+            if (!result.Success)
+            {
+                return;
+            }
+
+            await RefreshEditingApplicationAsync();
+            await RefreshListsKeepingEditorAsync();
+            NotifyEditorStateChanged();
+        }
+
+        private async Task ConfirmHandoverAsync()
+        {
+            if (!CanConfirmHandover)
+            {
+                _dialogService.ShowMessage("请先执行“审批通过”，再确认实物交接。");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(HandoverApplicant))
+            {
+                _dialogService.ShowMessage("请填写办理交接人（归还人）。");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(HandoverAdmin))
+            {
+                _dialogService.ShowMessage("请填写办理交接人（资料室资料管理员）。");
+                return;
+            }
+
+            var input = new HardDiskMediaApprovalInput
+            {
+                HandoverApplicant = HandoverApplicant.Trim(),
+                HandoverAdmin = HandoverAdmin.Trim(),
+                HandoverName = HandoverAdmin.Trim(),
+                HandoverDate = HandoverDate
+            };
+
+            var result = await _hardDiskMediaService.ConfirmPhysicalHandoverAsync(_editingApplication, _userContextService.CurrentUser, input);
+            _dialogService.ShowMessage(result.Message);
+            if (!result.Success)
+            {
+                return;
+            }
+
+            await RefreshEditingApplicationAsync();
+            await RefreshListsKeepingEditorAsync();
+            NotifyEditorStateChanged();
+        }
+
+        private async Task UploadSignedAttachmentAsync()
+        {
+            if (!CanUploadSignedAttachment)
+            {
+                _dialogService.ShowMessage("请先确认实物交接，再上传签批交接单。");
+                return;
+            }
+
+            var filePath = _dialogService.OpenFileDialog(SystemAttachmentUploadSupport.OpenFileDialogFilter, "选择签批交接单扫描件");
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return;
+            }
+
+            try
+            {
+                var fileInfo = new FileInfo(filePath);
+                var fileContent = await File.ReadAllBytesAsync(filePath);
+                var uploadResult = await _hardDiskMediaService.UploadSignedAttachmentAsync(
+                    _editingApplication,
+                    _userContextService.CurrentUser,
+                    fileInfo.Name,
+                    fileInfo.Extension,
+                    fileInfo.Length,
+                    fileContent);
+                _dialogService.ShowMessage(uploadResult.Message);
+                if (!uploadResult.Success)
+                {
+                    return;
+                }
+
+                await RefreshEditingApplicationAsync();
+                await LoadEditorAttachmentsAsync();
+                await RefreshListsKeepingEditorAsync();
+                NotifyEditorStateChanged();
+            }
+            catch (IOException ex)
+            {
+                _dialogService.ShowError($"读取附件失败：{ex.Message}");
+            }
+        }
+
         private async Task CompleteAsync()
         {
             if (!CanComplete)
             {
-                _dialogService.ShowMessage(ShowAbnormalReturnPanel && !HasAbnormalReportUploaded
-                    ? "非正常归还需上传情况表扫描件并打印交接单后再确认办结。"
-                    : "请先打印交接单，再确认办结。");
+                _dialogService.ShowMessage(_editingApplication is { PrintCount: <= 0 }
+                    ? "请先上传签批交接单并打印交接单，再确认办结。"
+                    : "请先完成实物交接并上传签批交接单，再确认办结。");
                 return;
             }
 
@@ -937,6 +1106,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(IsRegistrationEditable));
             OnPropertyChanged(nameof(IsMediumSelectionEnabled));
             OnPropertyChanged(nameof(IsFormatConfirmationEditable));
+            OnPropertyChanged(nameof(CanApprove));
+            OnPropertyChanged(nameof(CanConfirmHandover));
             OnPropertyChanged(nameof(CanUploadSignedAttachment));
             OnPropertyChanged(nameof(HasAbnormalReturnItems));
             OnPropertyChanged(nameof(ShowAbnormalReturnPanel));
@@ -950,9 +1121,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(CanDeleteAttachment));
             OnPropertyChanged(nameof(RegisterHintText));
+            OnPropertyChanged(nameof(ApproveHintText));
+            OnPropertyChanged(nameof(ConfirmHandoverHintText));
             OnPropertyChanged(nameof(PrintHintText));
             OnPropertyChanged(nameof(UploadHintText));
             OnPropertyChanged(nameof(CompleteHintText));
+            OnPropertyChanged(nameof(WorkflowHintText));
+            OnPropertyChanged(nameof(EditHeader));
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -1007,13 +1182,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
             else
             {
-                _abnormalFlowHint = HasAbnormalReportUploaded
-                    ? (IsRegistrationEditable
-                        ? "非正常归还情况表扫描件已上传，可登记后打印交接单并办结入库。"
-                        : "非正常归还情况表扫描件已上传，可打印交接单并办结入库。")
-                    : (IsRegistrationEditable
-                        ? "本单为非正常归还：请填写具体情况，打印情况表并完成线下签字后上传扫描件，再办理登记。"
-                        : "本单为非正常归还，登记信息已锁定。");
+                _abnormalFlowHint = IsRegistrationEditable
+                    ? "本单为非正常归还：请填写具体情况说明，打印签批交接单并完成线下签字后提交申请。"
+                    : "本单为非正常归还，登记信息已锁定。";
             }
 
             OnPropertyChanged(nameof(AbnormalFlowHint));
@@ -1077,6 +1248,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(IsRegistrationEditable));
             OnPropertyChanged(nameof(IsMediumSelectionEnabled));
             OnPropertyChanged(nameof(IsFormatConfirmationEditable));
+            OnPropertyChanged(nameof(CanApprove));
+            OnPropertyChanged(nameof(CanConfirmHandover));
             OnPropertyChanged(nameof(CanUploadSignedAttachment));
             OnPropertyChanged(nameof(HasAbnormalReturnItems));
             OnPropertyChanged(nameof(ShowAbnormalReturnPanel));
@@ -1090,9 +1263,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(CanDeleteAttachment));
             OnPropertyChanged(nameof(RegisterHintText));
+            OnPropertyChanged(nameof(ApproveHintText));
+            OnPropertyChanged(nameof(ConfirmHandoverHintText));
             OnPropertyChanged(nameof(PrintHintText));
             OnPropertyChanged(nameof(UploadHintText));
             OnPropertyChanged(nameof(CompleteHintText));
+            OnPropertyChanged(nameof(WorkflowHintText));
+            OnPropertyChanged(nameof(EditHeader));
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -1603,6 +1780,25 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return !string.IsNullOrWhiteSpace(cabinetName) && !string.IsNullOrWhiteSpace(slotCode);
         }
 
+        /// <summary>
+        /// 申请侧是否可打印签批交接单：新建/草稿可打印；已提交后仍可补打供线下签字。
+        /// </summary>
+        private bool IsApplicationHandoverPrintable()
+        {
+            if (_editingApplication == null)
+            {
+                return false;
+            }
+
+            if (_editingApplication.Id == 0)
+            {
+                return true;
+            }
+
+            return _editingApplication.ApplicationStatus is HardDiskMediaApplication.StatusDraft
+                or HardDiskMediaApplication.StatusSubmitted;
+        }
+
         private void NotifyEditorStateChanged()
         {
             OnPropertyChanged(nameof(IsEditing));
@@ -1611,19 +1807,21 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(IsRegistrationEditable));
             OnPropertyChanged(nameof(IsMediumSelectionEnabled));
             OnPropertyChanged(nameof(IsFormatConfirmationEditable));
+            OnPropertyChanged(nameof(CanApprove));
+            OnPropertyChanged(nameof(CanConfirmHandover));
             OnPropertyChanged(nameof(CanUploadSignedAttachment));
             OnPropertyChanged(nameof(HasAbnormalReturnItems));
             OnPropertyChanged(nameof(ShowAbnormalReturnPanel));
             OnPropertyChanged(nameof(ShowNormalReturnReasonField));
             OnPropertyChanged(nameof(HasAbnormalReportUploaded));
             OnPropertyChanged(nameof(AbnormalFlowHint));
-            OnPropertyChanged(nameof(CanPrintAbnormalReport));
-            OnPropertyChanged(nameof(CanManageAbnormalReportAttachments));
-            OnPropertyChanged(nameof(CanDeleteAbnormalReportAttachment));
+            OnPropertyChanged(nameof(CanPrintSignedHandoverOnApplication));
             OnPropertyChanged(nameof(CanPrintHandoverSheet));
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(CanDeleteAttachment));
             OnPropertyChanged(nameof(RegisterHintText));
+            OnPropertyChanged(nameof(ApproveHintText));
+            OnPropertyChanged(nameof(ConfirmHandoverHintText));
             OnPropertyChanged(nameof(PrintHintText));
             OnPropertyChanged(nameof(UploadHintText));
             OnPropertyChanged(nameof(CompleteHintText));

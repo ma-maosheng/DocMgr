@@ -62,5 +62,7 @@ namespace DocMgr.Models.Cabinets
         public bool HasOccupationLock { get; init; }
 
         public string OccupationLockToolTipText { get; init; } = string.Empty;
+
+        public string OccupationLockBadgeText { get; init; } = string.Empty;
     }
 }

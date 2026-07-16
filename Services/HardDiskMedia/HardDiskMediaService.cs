@@ -17,7 +17,6 @@ namespace DocMgr.Services.HardDiskMedia
     {
         private const string ApplicationAttachmentBusinessType = "HardDiskMediaApplication";
         private const string SignedAttachmentCategory = "签批交接单";
-        private const string SignedRegistrationAttachmentCategory = "签字登记单";
         private static readonly Regex DiskCodeSequenceRegex = new(@"^(?<prefix>[A-Za-z]+)(?<sequence>\d+)$", RegexOptions.Compiled);
 
         private readonly IHardDiskMediaRepository _hardDiskMediaRepository;
@@ -600,7 +599,7 @@ namespace DocMgr.Services.HardDiskMedia
         }
 
         /// <inheritdoc/>
-        public async Task<IReadOnlyList<HardDiskMediaApplication>> SearchApplicationsAsync(string? keyword, string? status, string? applicationType)
+        public async Task<IReadOnlyList<HardDiskMediaApplication>> SearchApplicationsAsync(string? keyword, int? status, string? applicationType)
         {
             return await _hardDiskMediaRepository.SearchApplicationsAsync(keyword, status, applicationType);
         }
@@ -644,7 +643,7 @@ namespace DocMgr.Services.HardDiskMedia
             ValidateApplicationRules(application.ApplicationType, medium, currentUser);
 
             var returnCandidate = await GetActiveReturnCandidateAsync(application.MediumId, application.SourceApplicationId, application.SourceOutboundRecordId);
-            if (IsRegistrationWithoutApprovalType(application.ApplicationType) && returnCandidate == null)
+            if (IsReturnOrLossRegistrationType(application.ApplicationType) && returnCandidate == null)
             {
                 throw new InvalidOperationException("未找到该介质当前有效的借出记录，无法办理归还/挂失登记。");
             }
@@ -692,7 +691,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             if (application.Id == 0)
             {
-                if (IsRegistrationWithoutApprovalType(application.ApplicationType))
+                if (IsReturnOrLossRegistrationType(application.ApplicationType))
                 {
                     var activeReturnRegistration = await _hardDiskMediaRepository.GetActiveReturnRegistrationByMediumIdAsync(application.MediumId);
                     if (activeReturnRegistration != null)
@@ -706,9 +705,9 @@ namespace DocMgr.Services.HardDiskMedia
                 application.SourceApplicationId = sourceApplicationId;
                 application.SourceOutboundRecordId = sourceOutboundRecordId;
                 application.ApplicationType = application.ApplicationType.Trim();
-                application.ApplicationStatus = string.IsNullOrWhiteSpace(application.ApplicationStatus)
-                    ? HardDiskMediaApplication.StatusDraft
-                    : application.ApplicationStatus.Trim();
+                application.ApplicationStatus = ApplicationWorkflowStatus.IsDefined(application.ApplicationStatus)
+                    ? application.ApplicationStatus
+                    : HardDiskMediaApplication.StatusDraft;
                 application.ApplicantName = string.IsNullOrWhiteSpace(applicantName)
                     ? currentUser?.RealName?.Trim() ?? string.Empty
                     : applicantName;
@@ -767,16 +766,16 @@ namespace DocMgr.Services.HardDiskMedia
 
                 int originalMediumId = existing.MediumId;
                 string originalApplicationType = existing.ApplicationType;
-                string originalApplicationStatus = existing.ApplicationStatus;
+                int originalApplicationStatus = existing.ApplicationStatus;
 
                 existing.ApplicationNo = applicationNo;
                 existing.MediumId = application.MediumId;
                 existing.SourceApplicationId = sourceApplicationId;
                 existing.SourceOutboundRecordId = sourceOutboundRecordId;
                 existing.ApplicationType = application.ApplicationType.Trim();
-                existing.ApplicationStatus = string.IsNullOrWhiteSpace(application.ApplicationStatus)
-                    ? existing.ApplicationStatus
-                    : application.ApplicationStatus.Trim();
+                existing.ApplicationStatus = ApplicationWorkflowStatus.IsDefined(application.ApplicationStatus)
+                    ? application.ApplicationStatus
+                    : existing.ApplicationStatus;
                 existing.ApplicantName = applicantName;
                 existing.ApplicantDept = applicantDept;
                 existing.ApplyTime = application.ApplyTime;
@@ -846,7 +845,7 @@ namespace DocMgr.Services.HardDiskMedia
                 throw new InvalidOperationException("当前申请已进入交接办理阶段，不允许撤销。请联系资料室管理员处理。");
             }
 
-            if (IsOutboundBorrowType(existing.ApplicationType))
+            if (IsOutboundLockableType(existing.ApplicationType))
             {
                 var medium = await _hardDiskMediaRepository.GetActiveMediumWithLedgerByIdForUpdateAsync(existing.MediumId);
                 if (medium != null)
@@ -923,7 +922,7 @@ namespace DocMgr.Services.HardDiskMedia
                 return BusinessNoCategory.DiskDestroyApply;
             }
 
-            if (IsRegistrationWithoutApprovalType(applicationType))
+            if (IsReturnOrLossRegistrationType(applicationType))
             {
                 return BusinessNoCategory.DiskInboundRegister;
             }

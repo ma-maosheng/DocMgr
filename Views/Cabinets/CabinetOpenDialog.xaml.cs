@@ -50,7 +50,13 @@ namespace DocMgr.Views.Cabinets
 
         private void SlotContextMenu_Closed(object sender, RoutedEventArgs e)
         {
+            if (DataContext is CabinetOpenViewModel viewModel)
+            {
+                viewModel.ClearSlotContextMenuTarget();
+            }
+
             SetSlotContextMenuState(sender, false);
+            CommandManager.InvalidateRequerySuggested();
         }
 
         private void ArchiveBoxContextMenu_Opened(object sender, RoutedEventArgs e)

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Models.HardDiskMedia
@@ -24,6 +25,21 @@ namespace DocMgr.Models.HardDiskMedia
         public const string StatusCarrierInStock = StatusInStockData;
         public const string StatusTransferred = StatusOutPermanent;
         public const string StatusDestroyed = StatusOutDestroyed;
+
+        /// <summary>
+        /// 判断硬盘是否处于在库可迁档状态（含资料盘与损坏盘）。
+        /// </summary>
+        public static bool IsInStockRelocatableStatus(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+            {
+                return false;
+            }
+
+            string normalized = status.Trim();
+            return string.Equals(normalized, StatusInStockData, StringComparison.Ordinal)
+                || string.Equals(normalized, StatusInStockDamaged, StringComparison.Ordinal);
+        }
 
         public const string RegistrationMethodImported = "文件导入登记";
         public const string RegistrationMethodManual = "手工录入登记";
@@ -128,5 +144,11 @@ namespace DocMgr.Models.HardDiskMedia
         /// 当前临时占用锁。
         /// </summary>
         public virtual HardDiskRegisterLock? RegisterLock { get; set; }
+
+        /// <summary>
+        /// 台账列表征用锁列显示文本。
+        /// </summary>
+        [NotMapped]
+        public string RegisterLockDisplayText => HardDiskRegisterLockFilterSupport.GetGridDisplayText(RegisterLock);
     }
 }

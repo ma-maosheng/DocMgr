@@ -58,11 +58,21 @@ namespace DocMgr.Services.Interfaces
         IReadOnlyList<HardDiskMedium>? ShowHardDiskMediumSelectionDialog(IEnumerable<string>? initialSelectedCodes = null, int? currentElectronicArchiveUnitId = null, string? selectionMode = null);
         bool ShowHardDiskMediaOutboundApplicationEditDialog(HardDiskMediaApplication applicationToEdit);
         bool ShowArchiveRegisterEditDialog(ArchiveRegisterWorkspaceMode workspaceMode, out int? committedRecordId, int? initialRecordId = null);
+
+        /// <summary>
+        /// 以只读方式查看资料建档申请单信息。
+        /// </summary>
+        void ShowArchiveRegisterApplicationViewDialog(YearlyArchiveRegisterRecord record);
         bool ShowArchiveOutboundEditDialog(
             ArchiveOutboundWorkspaceMode workspaceMode,
             out int? committedRecordId,
             int? initialRecordId = null,
             YearlyArchiveOutboundRecord? initialDraft = null);
+
+        /// <summary>
+        /// 以只读方式查看资料借出申请单信息。
+        /// </summary>
+        void ShowArchiveOutboundApplicationViewDialog(YearlyArchiveOutboundRecord record);
         int? ShowSearchResultSetPickDialog(IEnumerable<int>? excludedResultSetIds = null);
         void ShowArchiveDetailWindow(ArchiveDetailOpenRequest request);
         bool ShowDeptEditDialog(Department? deptToEdit);

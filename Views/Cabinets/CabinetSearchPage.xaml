@@ -16,9 +16,9 @@
 
         <Border Grid.Row="0" Margin="10" Padding="10" Background="#FAFAFA" BorderBrush="#EEE" BorderThickness="1" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
-                <Button Content="🔄 刷新" Command="{Binding RefreshCommand}" Width="80" Margin="0,0,10,0" Style="{StaticResource ButtonNormalStyle}"/>
                 <Button Content="📂 打开柜体A面" Command="{Binding OpenSelectedFaceACommand}" Width="140" Margin="0,0,10,0" Style="{StaticResource ButtonNormalStyle}"/>
                 <Button Content="📂 打开柜体B面" Command="{Binding OpenSelectedFaceBCommand}" Width="140" Margin="0,0,10,0" Style="{StaticResource ButtonNormalStyle}"/>
+                <Button Content="🔄 刷新" Command="{Binding RefreshCommand}" Width="80" Style="{StaticResource ButtonNormalStyle}"/>
                 <TextBlock Text="提示：选中柜体后点击按钮、双击或右键打开；单面柜体仅使用 A 面" VerticalAlignment="Center" Margin="20,0,0,0" Foreground="Gray"/>
             </StackPanel>
         </Border>

@@ -20,12 +20,12 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <Button Content="打开出库" Command="{Binding OpenCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
-                        <Button Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96"/>
+                        <Button Content="打开出库" Command="{Binding OpenCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -100,6 +100,14 @@
                                   SelectedItem="{Binding SelectedMediaKindOption, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                   DisplayMemberPath="Label"/>
                     </StackPanel>
+
+                    <Button Grid.Column="6"
+                            Content="刷新列表"
+                            Command="{Binding RefreshCommand}"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Width="96"
+                            Margin="16,0,0,0"
+                            VerticalAlignment="Center"/>
                 </Grid>
             </ScrollViewer>
         </Border>

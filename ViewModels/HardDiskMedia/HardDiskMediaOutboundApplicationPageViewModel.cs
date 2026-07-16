@@ -41,7 +41,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
-            AddCommand = new RelayCommand(async _ => await AddApplicationAsync());
+            AddCommand = new RelayCommand(
+                async _ => await AddApplicationAsync(),
+                _ => HardDiskMediaApplicationViewModelHelper.CanSubmitApplication(_userContextService.CurrentUser));
             EditCommand = new RelayCommand(async _ => await OpenApplicationAsync(), _ => CanOpenSelectedApplication());
             SubmitCommand = new RelayCommand(async _ => await SubmitApplicationAsync(), _ => CanSubmitSelectedApplication());
             WithdrawCommand = new RelayCommand(async _ => await WithdrawApplicationAsync(), _ => CanWithdrawSelectedApplication());
@@ -176,16 +178,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             var applicationTypes = await _hardDiskMediaService.GetDomainOptionLabelsAsync(nameof(HardDiskMediaApplication), nameof(HardDiskMediaApplication.ApplicationType));
 
-            var statuses = new List<string>
-            {
-                HardDiskMediaApplication.StatusDraft,
-                HardDiskMediaApplication.StatusSubmitted,
-                HardDiskMediaApplication.StatusApproved,
-                HardDiskMediaApplication.StatusSignedUploaded,
-                HardDiskMediaApplication.StatusCompleted,
-                HardDiskMediaApplication.StatusWithdrawn,
-                HardDiskMediaApplication.StatusForceWithdrawn
-            };
+            var statuses = ApplicationWorkflowStatus.AllOptions.Select(item => item.Label).ToList();
 
             HardDiskMediaApplicationViewModelHelper.ResetOptions(StatusOptions, statuses);
             HardDiskMediaApplicationViewModelHelper.ResetOptions(
@@ -520,7 +513,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private bool CanSubmitSelectedApplication()
         {
-            return SelectedApplication?.ApplicationStatus == HardDiskMediaApplication.StatusDraft;
+            return SelectedApplication?.ApplicationStatus == HardDiskMediaApplication.StatusDraft
+                   && HardDiskMediaApplicationViewModelHelper.CanSubmitApplication(_userContextService.CurrentUser)
+                   && IsCurrentUserApplicant(SelectedApplication);
         }
 
     }

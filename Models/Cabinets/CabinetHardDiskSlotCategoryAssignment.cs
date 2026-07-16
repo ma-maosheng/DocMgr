@@ -157,5 +157,18 @@ namespace DocMgr.Models.Cabinets
 
             return DedicatedHardDiskSlotCapacity;
         }
+
+        /// <summary>
+        /// 是否为支持迁档的专用档口类别（空白硬盘走独立迁档轨道）。
+        /// </summary>
+        public static bool IsRelocatableDedicatedSlotCategory(string? categoryName)
+        {
+            return MatchesCategory(categoryName, CategoryData)
+                || MatchesCategory(categoryName, CategoryDataOpticalDisc)
+                || MatchesCategory(categoryName, CategoryHistoricalDataHardDisk)
+                || MatchesCategory(categoryName, CategoryHistoricalDataOpticalDisc)
+                || MatchesCategory(categoryName, CategoryDamaged)
+                || MatchesCategory(categoryName, CategoryDamagedOpticalDisc);
+        }
     }
 }

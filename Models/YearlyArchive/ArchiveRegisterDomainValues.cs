@@ -7,6 +7,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public const string MediaKindElectronic = "电子";
         public const string MediaKindSimulated = "模拟";
+        public const string MediaKindBlankHardDisk = "空白盘";
 
         public const string ElectronicMediaTypeUsbDrive = "U盘";
         public const string ElectronicMediaTypeOpticalDisc = "光盘";

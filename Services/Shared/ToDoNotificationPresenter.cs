@@ -30,7 +30,12 @@ namespace DocMgr.Services.Shared
             if (_window != null)
             {
                 _viewModel?.RefreshItems(_toDoCenterService.Items);
-                _window.Activate();
+                _window.RefreshFloatingState();
+                if (!_window.HasBlockingPopup())
+                {
+                    _window.Activate();
+                }
+
                 return;
             }
 
@@ -53,6 +58,7 @@ namespace DocMgr.Services.Shared
             _viewModel = vm;
             _toDoCenterService.PropertyChanged += ToDoCenter_PropertyChanged;
             win.Show();
+            win.RefreshFloatingState();
         }
 
         private void ToDoCenter_PropertyChanged(object? sender, PropertyChangedEventArgs e)

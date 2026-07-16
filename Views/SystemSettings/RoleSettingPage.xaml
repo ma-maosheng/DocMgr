@@ -20,10 +20,10 @@
         <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="0,0,0,10" Margin="0,0,0,20">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="刷新列表" Command="{Binding RefreshCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
                     <Button Content="新增角色" Command="{Binding AddCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
                     <Button Content="编辑角色" Command="{Binding EditCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
                     <Button Content="删除选中" Command="{Binding DeleteCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarDangerButtonStyle}"/>
+                    <Button Content="刷新列表" Command="{Binding RefreshCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>

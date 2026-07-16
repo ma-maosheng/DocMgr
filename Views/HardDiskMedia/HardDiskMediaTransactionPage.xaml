@@ -27,36 +27,29 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <Button Content="刷新列表"
-                                Command="{Binding RefreshCommand}"
-                                Style="{StaticResource ToolbarActionButtonStyle}"
-                                Width="96"
-                                Margin="0,0,10,0"/>
-                    </StackPanel>
-
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <ComboBox Width="150" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="属性:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <ComboBox Width="150" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding NatureOptions}" SelectedItem="{Binding SelectedNature}"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="征用锁:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <ComboBox Width="150"
+                        <ComboBox Width="180"
                                   Style="{StaticResource ToolbarFilterComboBoxStyle}"
                                   ItemsSource="{Binding RegisterLockFilterOptions}"
                                   SelectedItem="{Binding SelectedRegisterLockFilter}"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <TextBox Width="240"
                                  Style="{StaticResource ToolbarFilterTextBoxStyle}"
@@ -68,12 +61,17 @@
                         </TextBox>
                     </StackPanel>
 
-                    <Button Grid.Column="5"
+                    <Button Grid.Column="4"
                             Content="查询"
                             Command="{Binding SearchCommand}"
                             Style="{StaticResource ToolbarActionButtonStyle}"
                             Width="88"
-                            HorizontalAlignment="Left"/>
+                            Margin="0,0,10,0"/>
+                    <Button Grid.Column="5"
+                            Content="刷新列表"
+                            Command="{Binding RefreshCommand}"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Width="96"/>
                 </Grid>
             </ScrollViewer>
         </Border>
@@ -89,9 +87,9 @@
             <!-- 上半区：左台账 + 右初始登记 -->
             <Grid Grid.Row="0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.6*"/>
+                    <ColumnDefinition Width="2.4*"/>
                     <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="1*"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- 上左：硬盘台账 -->
@@ -109,13 +107,14 @@
                               SelectedItem="{Binding SelectedMedium}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="硬盘编号" Binding="{Binding DiskCode}" Width="110"/>
-                            <DataGridTextColumn Header="当前状态" Binding="{Binding Ledger.MediaStatus}" Width="120"/>
-                            <DataGridTextColumn Header="介质属性" Binding="{Binding Ledger.MediaNature}" Width="120"/>
                             <DataGridTextColumn Header="当前存放位置" Binding="{Binding Ledger.StorageLocation}" Width="180"/>
                             <DataGridTextColumn Header="持有人/保管单位" Binding="{Binding Ledger.HolderOrOrganization}" Width="160"/>
                             <DataGridTextColumn Header="是否要求归还" Binding="{Binding Ledger.NeedReturn}" Width="100"/>
                             <DataGridTextColumn Header="台账登记人" Binding="{Binding Ledger.RegisterPerson}" Width="110"/>
                             <DataGridTextColumn Header="台账登记日期" Binding="{Binding Ledger.RegisterDate, StringFormat=yyyy-MM-dd}" Width="120"/>
+                            <DataGridTextColumn Header="状态" Binding="{Binding Ledger.MediaStatus}" Width="110"/>
+                            <DataGridTextColumn Header="属性" Binding="{Binding Ledger.MediaNature}" Width="110"/>
+                            <DataGridTextColumn Header="征用锁" Binding="{Binding RegisterLockDisplayText}" Width="180"/>
                             <DataGridTextColumn Header="台账备注" Binding="{Binding Ledger.Remark}" Width="*"/>
                         </DataGrid.Columns>
                     </DataGrid>

@@ -46,7 +46,7 @@ namespace DocMgr.ViewModels.Cabinets
         private readonly double _layoutDisplayScale;
         private double _canvasLayoutScale;
 
-        public ArchiveBoxItemViewModel(string boxCode, string boxLabel, string categoryText, string archiveTypeText, string archiveIdentifierText, string countText, string slotCode, int sequenceIndex, int itemCount, bool isMixedPlacement, string originalBoxNumberText, string relatedBoxCodesText, int relatedBoxCount, string mixedPlacementHint, string sourceSummaryText, int pendingSortingRecordCount, string boxSpecification, string placementMode, double layoutX, double layoutY, double layoutWidth, double layoutHeight, double displayScale, int yearlyArchiveBoxId = 0, int pendingReturnCopyCount = 0, bool hasOccupationLock = false, string occupationLockToolTipText = "", bool isYearlyArchiveDisplay = false, string archiveSequenceNoShortText = "", string yearText = "", string projectText = "")
+        public ArchiveBoxItemViewModel(string boxCode, string boxLabel, string categoryText, string archiveTypeText, string archiveIdentifierText, string countText, string slotCode, int sequenceIndex, int itemCount, bool isMixedPlacement, string originalBoxNumberText, string relatedBoxCodesText, int relatedBoxCount, string mixedPlacementHint, string sourceSummaryText, int pendingSortingRecordCount, string boxSpecification, string placementMode, double layoutX, double layoutY, double layoutWidth, double layoutHeight, double displayScale, int yearlyArchiveBoxId = 0, int pendingReturnCopyCount = 0, bool hasOccupationLock = false, string occupationLockToolTipText = "", string occupationLockBadgeText = "", bool isYearlyArchiveDisplay = false, string archiveSequenceNoShortText = "", string yearText = "", string projectText = "")
         {
             BoxCode = boxCode;
             BoxLabel = boxLabel;
@@ -77,6 +77,9 @@ namespace DocMgr.ViewModels.Cabinets
             HasPendingReturn = PendingReturnCopyCount > 0;
             HasOccupationLock = hasOccupationLock;
             OccupationLockToolTipText = occupationLockToolTipText?.Trim() ?? string.Empty;
+            OccupationLockBadgeText = string.IsNullOrWhiteSpace(occupationLockBadgeText)
+                ? (hasOccupationLock ? "预订" : string.Empty)
+                : occupationLockBadgeText.Trim();
             IsYearlyArchiveDisplay = isYearlyArchiveDisplay;
             ArchiveSequenceNoShortText = archiveSequenceNoShortText?.Trim() ?? string.Empty;
             YearDisplayText = FormatLabelValue("年度", yearText);
@@ -92,6 +95,8 @@ namespace DocMgr.ViewModels.Cabinets
         public bool HasOccupationLock { get; init; }
 
         public string OccupationLockToolTipText { get; init; } = string.Empty;
+
+        public string OccupationLockBadgeText { get; init; } = string.Empty;
 
         public Visibility OccupationLockBadgeVisibility => HasOccupationLock && !IsMixedPlacement ? Visibility.Visible : Visibility.Collapsed;
 

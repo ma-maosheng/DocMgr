@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using DocMgr.Services.YearlyArchive;
 
 namespace DocMgr.Services.HardDiskMedia
 {
@@ -121,9 +122,17 @@ namespace DocMgr.Services.HardDiskMedia
                    applicationType == HardDiskMediaApplication.TypeOutboundLongTerm;
         }
 
-        private static bool ShouldKeepOutboundLock(string applicationType, string applicationStatus)
+        /// <summary>
+        /// 出库申请流程中需占用库内空盘征用锁的类型（临时/长期/永久）。
+        /// </summary>
+        private static bool IsOutboundLockableType(string applicationType)
         {
-            if (!IsOutboundBorrowType(applicationType))
+            return HardDiskMediaOutboundReturnSupport.IsSelectableOutboundApplicationType(applicationType);
+        }
+
+        private static bool ShouldKeepOutboundLock(string applicationType, int applicationStatus)
+        {
+            if (!IsOutboundLockableType(applicationType))
             {
                 return false;
             }
@@ -225,7 +234,7 @@ namespace DocMgr.Services.HardDiskMedia
             ArgumentNullException.ThrowIfNull(application);
             ArgumentNullException.ThrowIfNull(medium);
 
-            if (!IsOutboundBorrowType(application.ApplicationType))
+            if (!IsOutboundLockableType(application.ApplicationType))
             {
                 return;
             }
@@ -249,7 +258,20 @@ namespace DocMgr.Services.HardDiskMedia
             }
         }
 
+        /// <summary>
+        /// 归还/挂失登记现已统一走「申请→审批→实物交接→上传签批交接单→办结」7态流程，
+        /// 不再存在跳过审批的登记类型，故恒为 false。
+        /// </summary>
         private static bool IsRegistrationWithoutApprovalType(string applicationType)
+        {
+            return false;
+        }
+
+        /// <summary>
+        /// 归还/挂失登记域类型判断（含挂失），用于业务编号分类、候选匹配、附件归类等归还域业务规则；
+        /// 不代表跳过审批，审批流程判断请使用 <see cref="IsRegistrationWithoutApprovalType"/>。
+        /// </summary>
+        private static bool IsReturnOrLossRegistrationType(string applicationType)
         {
             return applicationType == HardDiskMediaApplication.TypeReturnBlankRegistration ||
                    applicationType == HardDiskMediaApplication.TypeReturnDataRegistration ||
@@ -279,7 +301,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             if (string.IsNullOrWhiteSpace(application.Reason))
             {
-                if (IsRegistrationWithoutApprovalType(application.ApplicationType) ||
+                if (IsReturnOrLossRegistrationType(application.ApplicationType) ||
                     string.Equals(inspectionResult, "损坏登记", StringComparison.Ordinal) ||
                     string.Equals(inspectionResult, "挂失登记", StringComparison.Ordinal))
                 {
@@ -307,57 +329,51 @@ namespace DocMgr.Services.HardDiskMedia
                    applicationType == HardDiskMediaApplication.TypeReturnDamagedRegistration;
         }
 
-        private static bool IsArchiveRoomMediaAdmin(User? currentUser)
-        {
-            string dept = currentUser?.Department?.Trim() ?? string.Empty;
-            string role = currentUser?.Role?.Trim() ?? string.Empty;
+        private static bool IsArchiveRoomMediaAdmin(User? currentUser) =>
+            ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser);
 
-            return (string.Equals(dept, "资料室", StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(role, "部门资料管理员", StringComparison.OrdinalIgnoreCase)) ||
-                   string.Equals(role, "Administrator", StringComparison.OrdinalIgnoreCase);
-        }
+        private static bool CanSubmitHardDiskApplication(User? currentUser) =>
+            ArchiveRegisterBusinessRules.CanSubmitApplication(currentUser);
 
         private static void ValidateApplicationRules(string applicationType, HardDiskMedium medium, User? currentUser)
         {
             var ledger = medium.Ledger;
             string mediaStatus = ledger?.MediaStatus ?? string.Empty;
 
+            bool isOutboundApply =
+                applicationType == HardDiskMediaApplication.TypeOutboundTemporary ||
+                applicationType == HardDiskMediaApplication.TypeOutboundLongTerm ||
+                applicationType == HardDiskMediaApplication.TypeOutboundPermanent ||
+                applicationType == HardDiskMediaApplication.TypeOutboundDestroy ||
+                applicationType == HardDiskMediaApplication.TypeRelocate;
+
+            bool isReturnApply = IsReturnOrLossRegistrationType(applicationType);
+
+            if ((isOutboundApply || isReturnApply) && !CanSubmitHardDiskApplication(currentUser))
+            {
+                throw new InvalidOperationException("仅部门资料管理员可发起硬盘借出/归还申请。");
+            }
+
             if (applicationType == HardDiskMediaApplication.TypeOutboundTemporary ||
                 applicationType == HardDiskMediaApplication.TypeOutboundLongTerm ||
                 applicationType == HardDiskMediaApplication.TypeOutboundPermanent ||
-                applicationType == HardDiskMediaApplication.TypeRelocate)
+                applicationType == HardDiskMediaApplication.TypeRelocate ||
+                applicationType == HardDiskMediaApplication.TypeOutboundDestroy)
             {
                 if (!IsInStockStatus(mediaStatus))
                 {
-                    throw new InvalidOperationException("仅在库介质可发起出库/调整申请。");
+                    throw new InvalidOperationException(
+                        applicationType == HardDiskMediaApplication.TypeOutboundDestroy
+                            ? "仅在库介质可发起出库(销毁)申请。"
+                            : "仅在库介质可发起出库/调整申请。");
                 }
 
                 return;
             }
 
-            if (applicationType == HardDiskMediaApplication.TypeOutboundDestroy)
-            {
-                if (!IsInStockStatus(mediaStatus))
-                {
-                    throw new InvalidOperationException("仅在库介质可发起出库(销毁)申请。");
-                }
-
-                if (!IsArchiveRoomMediaAdmin(currentUser))
-                {
-                    throw new InvalidOperationException("仅“资料室资料管理员”可发起出库(销毁)申请。");
-                }
-
-                return;
-            }
-
-            if (IsRegistrationWithoutApprovalType(applicationType) && !IsOutTemporaryOrLongTerm(mediaStatus))
+            if (isReturnApply && !IsOutTemporaryOrLongTerm(mediaStatus))
             {
                 throw new InvalidOperationException("仅临时或长期出库的介质可办理归还/挂失登记。");
-            }
-
-            if (IsRegistrationWithoutApprovalType(applicationType) && !IsArchiveRoomMediaAdmin(currentUser))
-            {
-                throw new InvalidOperationException("仅“资料室资料管理员”可办理归还/挂失登记。");
             }
         }
 

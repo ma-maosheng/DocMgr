@@ -29,11 +29,6 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaFlowResult.Fail("未找到当前申请单。");
             }
 
-            if (IsRegistrationWithoutApprovalType(existing.ApplicationType))
-            {
-                return HardDiskMediaFlowResult.Fail("登记类业务无审批环节，请直接上传签字件并办理。");
-            }
-
             if (existing.ApplicationStatus != HardDiskMediaApplication.StatusSubmitted)
             {
                 return HardDiskMediaFlowResult.Fail("只有“已提交-待审批”的申请单才能执行审批通过。");
@@ -78,11 +73,6 @@ namespace DocMgr.Services.HardDiskMedia
             if (existing == null)
             {
                 return HardDiskMediaFlowResult.Fail("未找到当前申请单。");
-            }
-
-            if (IsRegistrationWithoutApprovalType(existing.ApplicationType))
-            {
-                return HardDiskMediaFlowResult.Fail("登记类业务无实物交接确认环节。");
             }
 
             if (existing.ApplicationStatus != HardDiskMediaApplication.StatusApproved)
@@ -143,7 +133,7 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaFlowResult.Fail("当前申请单已进入或完成审批信息阶段，不允许申请人撤回作废。");
             }
 
-            if (IsOutboundBorrowType(existing.ApplicationType))
+            if (IsOutboundLockableType(existing.ApplicationType))
             {
                 var medium = await _hardDiskMediaRepository.GetActiveMediumWithLedgerByIdForUpdateAsync(existing.MediumId);
                 if (medium != null)
@@ -201,7 +191,7 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaFlowResult.Fail("当前申请单已录入审批信息或已上传附件，不允许强制撤回作废。");
             }
 
-            if (IsOutboundBorrowType(existing.ApplicationType))
+            if (IsOutboundLockableType(existing.ApplicationType))
             {
                 var medium = await _hardDiskMediaRepository.GetActiveMediumWithLedgerByIdForUpdateAsync(existing.MediumId);
                 if (medium != null)
@@ -245,33 +235,12 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaFlowResult.Fail("未找到当前申请单。");
             }
 
-            if (IsRegistrationWithoutApprovalType(existingApplication.ApplicationType))
-            {
-                bool isAbnormalReturn = HardDiskMediaReturnDomainValues.IsAbnormalReturn(existingApplication);
-                bool isReadyStatus = existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted
-                    || existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded;
-
-                if (!isReadyStatus)
-                {
-                    return HardDiskMediaFlowResult.Fail("当前登记单状态不允许办结，请刷新后重试。");
-                }
-
-                if (existingApplication.PrintCount <= 0)
-                {
-                    return HardDiskMediaFlowResult.Fail("请先打印交接单后再确认办结。");
-                }
-
-                if (isAbnormalReturn &&
-                    !await HasUploadedAbnormalReturnReportAsync(existingApplication.Id, existingApplication.ApplicationNo))
-                {
-                    return HardDiskMediaFlowResult.Fail("非正常归还需上传情况表扫描件后再确认办结。");
-                }
-            }
-            else if (existingApplication.ApplicationStatus != HardDiskMediaApplication.StatusSignedUploaded)
+            if (existingApplication.ApplicationStatus != HardDiskMediaApplication.StatusSignedUploaded)
             {
                 return HardDiskMediaFlowResult.Fail("请先完成实物交接并上传签批交接单后再确认办结。");
             }
-            else if (!existingApplication.SignedAttachmentUploaded)
+
+            if (!existingApplication.SignedAttachmentUploaded)
             {
                 return HardDiskMediaFlowResult.Fail("请先上传签批交接单后再办理。");
             }
@@ -288,7 +257,7 @@ namespace DocMgr.Services.HardDiskMedia
                 existingApplication.MediumId,
                 existingApplication.SourceApplicationId,
                 existingApplication.SourceOutboundRecordId);
-            if (IsRegistrationWithoutApprovalType(existingApplication.ApplicationType) && returnCandidate == null)
+            if (IsReturnOrLossRegistrationType(existingApplication.ApplicationType) && returnCandidate == null)
             {
                 return HardDiskMediaFlowResult.Fail("未找到当前有效的借出记录，无法完成登记。\n请检查介质状态与借出记录是否一致。");
             }
@@ -360,7 +329,7 @@ namespace DocMgr.Services.HardDiskMedia
             existingApplication.ExecutedTime ??= now;
             existingApplication.UpdatedTime = now;
 
-            if (IsOutboundBorrowType(existingApplication.ApplicationType))
+            if (IsOutboundLockableType(existingApplication.ApplicationType))
             {
                 UnlockOutboundMedium(existingApplication.Id, medium);
             }
@@ -398,7 +367,7 @@ namespace DocMgr.Services.HardDiskMedia
                 ApplicationNo = existingApplication.ApplicationNo,
                 SourceApplicationNo = sourceApplicationNo,
                 ApplicationType = existingApplication.ApplicationType,
-                ApplicationStatus = existingApplication.ApplicationStatus,
+                ApplicationStatus = existingApplication.StatusStr,
                 DiskCode = existingApplication.Medium.DiskCode,
                 SerialNumber = existingApplication.Medium.SerialNumber,
                 DiskType = existingApplication.Medium.DiskType,

@@ -174,16 +174,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task LoadStatusOptionsAsync()
         {
-            var statuses = new List<string>
-            {
-                HardDiskMediaApplication.StatusDraft,
-                HardDiskMediaApplication.StatusSubmitted,
-                HardDiskMediaApplication.StatusApproved,
-                HardDiskMediaApplication.StatusSignedUploaded,
-                HardDiskMediaApplication.StatusCompleted,
-                HardDiskMediaApplication.StatusWithdrawn,
-                HardDiskMediaApplication.StatusForceWithdrawn
-            };
+            var statuses = ApplicationWorkflowStatus.AllOptions.Select(item => item.Label).ToList();
 
             foreach (var option in StatusOptions)
             {
@@ -288,7 +279,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
-            var filePath = _dialogService.OpenFileDialog("所有文件|*.*", "选择签字件附件");
+            var filePath = _dialogService.OpenFileDialog(SystemAttachmentUploadSupport.OpenFileDialogFilter, "选择签字件附件");
             if (string.IsNullOrWhiteSpace(filePath))
             {
                 return;
@@ -360,7 +351,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                    IsArchiveRoomAdminUser(_userContextService.CurrentUser);
         }
 
-        private static bool IsApprovalProcessingStatus(string? applicationStatus)
+        private static bool IsApprovalProcessingStatus(int? applicationStatus)
         {
             return applicationStatus == HardDiskMediaApplication.StatusSubmitted ||
                    applicationStatus == HardDiskMediaApplication.StatusApproved ||
@@ -525,8 +516,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
             if (_applicationYear < 2000 || !ApplicationYears.Contains(_applicationYear))
             {
                 _applicationYear = ApplicationYears[^1];
-                OnPropertyChanged(nameof(ApplicationYear));
             }
+
+            // ItemsSource 重建后须强制刷新 SelectedItem 绑定，否则 ComboBox 会短暂处于校验失败（红边、文本空白）。
+            OnPropertyChanged(nameof(ApplicationYear));
         }
 
         private void ApplyApplicationFilters(int? selectedId = null)
@@ -544,7 +537,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             var filteredItems = _allApplications
-                .Where(item => (selectedStatuses.Count == 0 || selectedStatuses.Contains(item.ApplicationStatus)) &&
+                .Where(item => (selectedStatuses.Count == 0 || selectedStatuses.Contains(item.StatusStr)) &&
                                (selectedApplicants.Count == 0 || selectedApplicants.Contains(item.ApplicantName?.Trim() ?? string.Empty)) &&
                                item.ApplyTime.Year == _applicationYear)
                 .ToList();

@@ -19,6 +19,7 @@ namespace DocMgr.Services.YearlyArchive
         private const int CellLineSpacingTwips = 220;
         private const int SingleRowHeightTwips = 340;
         private const int ReasonRowHeightTwips = 400;
+        private const int SignatureRowHeightTwips = 620;
         private const int PageHeightTwips = 16838;
         private const int PageMarginVerticalTwips = 850;
         private const int TitleBlockHeightTwips = 520;
@@ -82,6 +83,13 @@ namespace DocMgr.Services.YearlyArchive
             AddSingleRow(table, ref rowIndex, "资料室负责人", data.ArchiveRoomHeadBlock, WordTableRowStyle.SingleLine);
             AddSingleRow(table, ref rowIndex, "生产科负责人", data.ProductionHeadBlock, WordTableRowStyle.SingleLine);
             AddSingleRow(table, ref rowIndex, "生产副院长", data.VicePresidentBlock, WordTableRowStyle.SingleLine);
+            AddSingleRow(
+                table,
+                ref rowIndex,
+                "交接签字",
+                data.HandoverSignatureBlock,
+                WordTableRowStyle.Signature,
+                SignatureRowHeightTwips);
 
             ApplyTableOuterBorder(table);
             AddFooterNotes(document, data.PrintCount + 1);
@@ -92,11 +100,13 @@ namespace DocMgr.Services.YearlyArchive
         private static int CalculateItemDetailRowHeightTwips(bool hasLongTermDepletionNotice)
         {
             int usablePageHeight = PageHeightTwips - PageMarginVerticalTwips * 2;
+            // 固定行：业务字段 + 四级审批 + 交接签字（交接行单独计高）。
             int fixedStandardRows = hasLongTermDepletionNotice ? 11 : 10;
             int fixedTableHeight =
                 SingleRowHeightTwips * fixedStandardRows
                 + ReasonRowHeightTwips
-                + SingleRowHeightTwips * 4;
+                + SingleRowHeightTwips * 4
+                + SignatureRowHeightTwips;
             if (hasLongTermDepletionNotice)
             {
                 fixedTableHeight += ReasonRowHeightTwips;
@@ -186,7 +196,8 @@ namespace DocMgr.Services.YearlyArchive
         {
             SingleLine,
             ReasonLine,
-            ItemDetail
+            ItemDetail,
+            Signature
         }
 
         private static void AddSingleRow(
@@ -231,6 +242,7 @@ namespace DocMgr.Services.YearlyArchive
             {
                 WordTableRowStyle.ReasonLine => ReasonRowHeightTwips,
                 WordTableRowStyle.ItemDetail => explicitHeightTwips ?? SingleRowHeightTwips * 4,
+                WordTableRowStyle.Signature => explicitHeightTwips ?? SignatureRowHeightTwips,
                 _ => SingleRowHeightTwips
             };
 
@@ -329,7 +341,8 @@ namespace DocMgr.Services.YearlyArchive
         private static void ApplyCellVerticalAlignment(XWPFTableCell cell, WordTableRowStyle rowStyle)
         {
             bool topAligned = rowStyle is WordTableRowStyle.ReasonLine
-                or WordTableRowStyle.ItemDetail;
+                or WordTableRowStyle.ItemDetail
+                or WordTableRowStyle.Signature;
             cell.SetVerticalAlignment(topAligned
                 ? XWPFTableCell.XWPFVertAlign.TOP
                 : XWPFTableCell.XWPFVertAlign.CENTER);

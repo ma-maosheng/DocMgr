@@ -153,8 +153,8 @@ namespace DocMgr.Services.HardDiskMedia
             IReadOnlyList<OverviewApplicationSnapshot> applicationItems,
             IReadOnlyList<OverviewTransactionSnapshot> transactionItems)
         {
-            var outboundApplications = applicationItems.Where(item => !IsRegistrationWithoutApprovalType(item.ApplicationType)).ToList();
-            var registrationApplications = applicationItems.Where(item => IsRegistrationWithoutApprovalType(item.ApplicationType)).ToList();
+            var outboundApplications = applicationItems.Where(item => !IsReturnOrLossRegistrationType(item.ApplicationType)).ToList();
+            var registrationApplications = applicationItems.Where(item => IsReturnOrLossRegistrationType(item.ApplicationType)).ToList();
 
             var recentTransactions = transactionItems
                 .Where(item => item.OperateTime >= DateTime.Now.AddDays(-90))
@@ -349,7 +349,7 @@ namespace DocMgr.Services.HardDiskMedia
             string MediaNature,
             bool NeedReturn);
 
-        private sealed record OverviewApplicationSnapshot(string ApplicationType, string ApplicationStatus, bool SignedAttachmentUploaded);
+        private sealed record OverviewApplicationSnapshot(string ApplicationType, int ApplicationStatus, bool SignedAttachmentUploaded);
 
         private sealed record OverviewTransactionSnapshot(string TransactionType, DateTime OperateTime);
 

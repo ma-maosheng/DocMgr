@@ -153,6 +153,11 @@ namespace DocMgr.Services.YearlyArchive
 
         public YearlyArchiveRegisterRecord CreateDraftRecord(User? currentUser)
         {
+            if (!ArchiveRegisterBusinessRules.CanSubmitApplication(currentUser))
+            {
+                throw new InvalidOperationException("仅部门资料管理员可发起资料登记申请。");
+            }
+
             var record = new YearlyArchiveRegisterRecord
             {
                 CreatedDate = DateTime.Now,
@@ -375,11 +380,19 @@ namespace DocMgr.Services.YearlyArchive
             return _businessLogicSettingsService.IsEligibleForAdminForceVoid(applyDate, settingCode);
         }
 
-        public async Task<ArchiveRegisterFlowResult> SaveDraftFlowAsync(YearlyArchiveRegisterRecord? record, IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries)
+        public async Task<ArchiveRegisterFlowResult> SaveDraftFlowAsync(
+            YearlyArchiveRegisterRecord? record,
+            IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries,
+            User? operatorUser)
         {
             if (record == null)
             {
                 return ArchiveRegisterFlowResult.Fail("当前记录为空，无法保存。");
+            }
+
+            if (!ArchiveRegisterBusinessRules.CanSubmitApplication(operatorUser))
+            {
+                return ArchiveRegisterFlowResult.Fail("仅部门资料管理员可保存资料登记申请草稿。");
             }
 
             await EnsureFormNoAsync(record);
@@ -430,9 +443,6 @@ namespace DocMgr.Services.YearlyArchive
             if (string.IsNullOrWhiteSpace(record.ProdDeptOpinion) || string.IsNullOrWhiteSpace(record.ProdLeader)) approvalErrors.Add("• 生产管理科审批信息缺失");
             if (string.IsNullOrWhiteSpace(record.RndDeptOpinion) || string.IsNullOrWhiteSpace(record.RndLeader)) approvalErrors.Add("• 科研开发室审批信息缺失");
             if (string.IsNullOrWhiteSpace(record.DeputyOpinion) || string.IsNullOrWhiteSpace(record.DeputyLeader)) approvalErrors.Add("• 分管领导审批信息缺失");
-            if (string.IsNullOrWhiteSpace(record.Deliverer)) approvalErrors.Add("• 移交人缺失");
-            if (string.IsNullOrWhiteSpace(record.Administrator)) approvalErrors.Add("• 资料员缺失");
-            if (string.IsNullOrWhiteSpace(record.DeptLeader)) approvalErrors.Add("• 部门负责人缺失");
             if (approvalErrors.Count > 0)
             {
                 return ArchiveRegisterFlowResult.Fail("审批信息不完整，无法审批通过：\n\n" + string.Join(Environment.NewLine, approvalErrors));
@@ -451,7 +461,46 @@ namespace DocMgr.Services.YearlyArchive
             existing.MarkAsApprovedReceived();
             await SaveOrUpdateAsync(existing);
 
-            return ArchiveRegisterFlowResult.Ok("审批通过成功。下一步：上传签字件。");
+            return ArchiveRegisterFlowResult.Ok("审批通过成功。下一步：确认实物交接。");
+        }
+
+        public async Task<ArchiveRegisterFlowResult> ConfirmPhysicalHandoverFlowAsync(YearlyArchiveRegisterRecord? record, User? currentUser)
+        {
+            if (record == null || record.Id <= 0)
+            {
+                return ArchiveRegisterFlowResult.Fail("当前记录为空，无法确认实物交接。");
+            }
+
+            if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
+            {
+                return ArchiveRegisterFlowResult.Fail("仅资料室（资料管理员）可执行确认实物交接。");
+            }
+
+            var existing = await GetByIdAsync(record.Id);
+            if (existing == null)
+            {
+                return ArchiveRegisterFlowResult.Fail("未找到指定的登记申请单。");
+            }
+
+            if (!existing.IsApprovedReceived)
+            {
+                return ArchiveRegisterFlowResult.Fail("只有“已审批”状态的记录可确认实物交接。");
+            }
+
+            var handoverErrors = new List<string>();
+            if (string.IsNullOrWhiteSpace(record.Deliverer)) handoverErrors.Add("• 移交人缺失");
+            if (string.IsNullOrWhiteSpace(record.Administrator)) handoverErrors.Add("• 资料员缺失");
+            if (string.IsNullOrWhiteSpace(record.DeptLeader)) handoverErrors.Add("• 部门负责人缺失");
+            if (handoverErrors.Count > 0)
+            {
+                return ArchiveRegisterFlowResult.Fail("实物交接信息不完整，无法确认：\n\n" + string.Join(Environment.NewLine, handoverErrors));
+            }
+
+            ArchiveRegisterBusinessRules.CopyRegisterApprovalFields(existing, record);
+            existing.MarkAsSignedUploaded();
+            await SaveOrUpdateAsync(existing);
+
+            return ArchiveRegisterFlowResult.Ok("实物交接确认成功，请上传签批交接单和资料照片。");
         }
 
         public async Task<ArchiveRegisterFlowResult> CompleteRegisterFlowAsync(YearlyArchiveRegisterRecord? record, IReadOnlyCollection<SystemAttachment> attachments, User? currentUser)
@@ -466,9 +515,9 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveRegisterFlowResult.Fail("仅资料室（资料管理员）可执行确认办结。");
             }
 
-            if (!record.IsApprovedReceived && !record.IsSignedUploaded)
+            if (!record.IsSignedUploaded)
             {
-                return ArchiveRegisterFlowResult.Fail("请先审批通过后再确认办结。");
+                return ArchiveRegisterFlowResult.Fail("请先确认实物交接并上传签批交接单后再确认办结。");
             }
 
             var approvalValidation = await ValidateApprovalAsync(record, attachments);
@@ -482,11 +531,20 @@ namespace DocMgr.Services.YearlyArchive
             return ArchiveRegisterFlowResult.Ok("确认办结成功。下一步：打印交接单。");
         }
 
-        public async Task<ArchiveRegisterFlowResult> SubmitApplicationFlowAsync(YearlyArchiveRegisterRecord? record, IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries, bool isExternalSource)
+        public async Task<ArchiveRegisterFlowResult> SubmitApplicationFlowAsync(
+            YearlyArchiveRegisterRecord? record,
+            IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries,
+            bool isExternalSource,
+            User? operatorUser)
         {
             if (record == null)
             {
                 return ArchiveRegisterFlowResult.Fail("当前记录为空，无法提交。");
+            }
+
+            if (!ArchiveRegisterBusinessRules.CanSubmitApplication(operatorUser))
+            {
+                return ArchiveRegisterFlowResult.Fail("仅部门资料管理员可提交资料登记申请。");
             }
 
             await EnsureFormNoAsync(record);
@@ -606,6 +664,12 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveRegisterAttachmentFlowResult.Fail("附件内容为空，无法上传。");
             }
 
+            string? formatError = SystemAttachmentUploadSupport.ValidateUploadFormat(fileName, extension, fileContent);
+            if (!string.IsNullOrWhiteSpace(formatError))
+            {
+                return ArchiveRegisterAttachmentFlowResult.Fail(formatError);
+            }
+
             var attachment = new SystemAttachment
             {
                 BusinessType = "YearlyArchiveRegister",
@@ -625,8 +689,23 @@ namespace DocMgr.Services.YearlyArchive
                 {
                     if (!persisted.IsApprovedReceived && !persisted.IsSignedUploaded)
                     {
-                        return ArchiveRegisterAttachmentFlowResult.Fail("当前状态不允许上传签字件，请先执行“审批通过”。");
+                        return ArchiveRegisterAttachmentFlowResult.Fail("当前状态不允许上传签批交接单，请先执行“审批通过”并确认实物交接。");
                     }
+
+                    await UploadAttachmentAsync(attachment);
+
+                    if (persisted.IsApprovedReceived)
+                    {
+                        var currentAttachments = await GetAttachmentsByFormNoAsync(persisted.FormNo);
+                        var validation = await ValidateMandatoryAttachmentsAsync(currentAttachments);
+                        if (validation.IsValid)
+                        {
+                            persisted.MarkAsSignedUploaded();
+                            await SaveOrUpdateAsync(persisted);
+                        }
+                    }
+
+                    return ArchiveRegisterAttachmentFlowResult.Ok("上传成功", attachment);
                 }
             }
 

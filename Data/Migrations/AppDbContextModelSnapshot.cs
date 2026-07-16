@@ -379,9 +379,8 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ApplicationStatus")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<int>("ApplicationStatus")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("ApplicationType")
                         .IsRequired()
@@ -2848,6 +2847,9 @@ namespace DocMgr.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("ArchiveYear")
                         .HasColumnType("INTEGER");
 
@@ -2865,6 +2867,13 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ForceVoidReason")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ForceVoidedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("HandlerName")
@@ -2925,6 +2934,9 @@ namespace DocMgr.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("SignedUploadedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("SourceOutboundNo")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -2936,6 +2948,9 @@ namespace DocMgr.Data.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
 
@@ -2945,6 +2960,9 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("WithdrawnAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

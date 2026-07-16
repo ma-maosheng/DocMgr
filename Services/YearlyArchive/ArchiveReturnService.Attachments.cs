@@ -22,6 +22,15 @@ namespace DocMgr.Services.YearlyArchive
             ArgumentNullException.ThrowIfNull(attachment);
             ArgumentNullException.ThrowIfNull(user);
 
+            string? formatError = SystemAttachmentUploadSupport.ValidateUploadFormat(
+                attachment.FileName,
+                attachment.Extension,
+                attachment.FileContent);
+            if (!string.IsNullOrWhiteSpace(formatError))
+            {
+                return ArchiveReturnAttachmentFlowResult.Fail(formatError);
+            }
+
             if (!IsArchiveAdminUser(user))
             {
                 return ArchiveReturnAttachmentFlowResult.Fail("仅资料室管理员可上传灭失情况表扫描件。");
@@ -35,7 +44,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (record.Status != YearlyArchiveReturnRecord.Draft)
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("仅草稿状态的归还单可上传灭失情况表扫描件；已登记后信息不可再改。");
+                return ArchiveReturnAttachmentFlowResult.Fail("仅草稿状态的归还单可上传灭失情况表扫描件；提交后信息不可再改。");
             }
 
             if (!ArchiveReturnDomainValues.HasAbnormalReturnItems(record.Items))
@@ -77,7 +86,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (record.Status != YearlyArchiveReturnRecord.Draft)
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("仅草稿状态的归还单可删除扫描件；已登记后信息不可再改。");
+                return ArchiveReturnAttachmentFlowResult.Fail("仅草稿状态的归还单可删除扫描件；提交后信息不可再改。");
             }
 
             var existing = await _returnRepository.GetAttachmentByIdAsync(attachment.Id);

@@ -41,13 +41,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _ = InitializeAsync();
         }
 
-        public string WindowTitle => $"查看申请 · {_application.ApplicationNo} · {_application.ApplicationStatus}";
+        public string WindowTitle => $"查看申请 · {_application.ApplicationNo} · {_application.StatusStr}";
 
         public string WorkspaceBannerText => "本窗口仅用于查看申请单信息，不允许编辑。";
 
         public string ApplicationNo => HardDiskMediaApplicationViewModelHelper.EmptyAsPlaceholder(_application.ApplicationNo);
         public string ApplicationType => HardDiskMediaApplicationViewModelHelper.EmptyAsPlaceholder(_application.ApplicationType);
-        public string ApplicationStatus => HardDiskMediaApplicationViewModelHelper.EmptyAsPlaceholder(_application.ApplicationStatus);
+        public string ApplicationStatus => HardDiskMediaApplicationViewModelHelper.EmptyAsPlaceholder(_application.StatusStr);
         public string DiskCode => HardDiskMediaApplicationViewModelHelper.EmptyAsPlaceholder(_application.Medium?.DiskCode);
         public string ApplicantName => HardDiskMediaApplicationViewModelHelper.EmptyAsPlaceholder(_application.ApplicantName);
         public string ApplicantDept => HardDiskMediaApplicationViewModelHelper.EmptyAsPlaceholder(_application.ApplicantDept);

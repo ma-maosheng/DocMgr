@@ -5,11 +5,18 @@ using DocMgr.Models.YearlyArchive;
 namespace DocMgr.Services.Interfaces
 {
     /// <summary>
-    /// 资料归还服务契约：对已办结出库的提档(借出原件)项进行收回入库。轻量流程：登记 → 办结。
+    /// 资料归还服务契约：对已办结出库的提档(借出原件)项进行收回入库。
+    /// 统一 7 态：草稿 → 提交 → 审批 → 实物交接 → 办结（含撤回/强制作废）。
     /// </summary>
     public interface IArchiveReturnService
     {
         bool IsArchiveAdminUser(User? user);
+
+        /// <summary>部门资料管理员（不含资料室），仅可发起申请。</summary>
+        bool IsDepartmentArchiveAdmin(User? user);
+
+        /// <summary>是否允许发起申请（部门资料管理员或系统管理员）。</summary>
+        bool CanSubmitApplication(User? user);
 
         /// <summary>列出可发起归还的出库单（已办结出库、存在未归还提档项、且无有效归还单）。</summary>
         Task<List<YearlyArchiveOutboundRecord>> GetReturnableOutboundsAsync(int year);
@@ -24,8 +31,14 @@ namespace DocMgr.Services.Interfaces
         /// <summary>由出库单生成归还单草稿（含待归还提档明细，未落库）。</summary>
         Task<YearlyArchiveReturnRecord> CreateDraftFromOutboundAsync(int outboundRecordId, User registrar);
 
-        /// <summary>保存草稿或提交登记。</summary>
+        /// <summary>保存草稿或提交归还申请。</summary>
         Task<ArchiveReturnFlowResult> SaveReturnFlowAsync(SaveReturnRequest request, User user);
+
+        /// <summary>审批通过：已提交 → 已审批-待实物交接。</summary>
+        Task<ArchiveReturnFlowResult> ApproveReturnFlowAsync(int recordId, User admin);
+
+        /// <summary>确认实物交接：已审批 → 已实物交接-待上传签批交接单。</summary>
+        Task<ArchiveReturnFlowResult> ConfirmHandoverFlowAsync(int recordId, User admin);
 
         /// <summary>办结归还：在单一事务内反向冲销出库提档对资料台账的影响。</summary>
         Task<ArchiveReturnFlowResult> CompleteReturnFlowAsync(int recordId, User admin);

@@ -18,6 +18,11 @@ namespace DocMgr.Models.YearlyArchive
 
         public int TargetColumn { get; set; }
 
+        /// <summary>
+        /// 空白硬盘档口批量搬迁时，是否同步更新源档口内待归还空白硬盘的归属档口（借出未还）。
+        /// </summary>
+        public bool IncludePendingReturnBlankHardDisks { get; set; }
+
         public string Remarks { get; set; } = string.Empty;
     }
 
@@ -34,7 +39,7 @@ namespace DocMgr.Models.YearlyArchive
         public string SlotCode { get; init; } = string.Empty;
 
         /// <summary>
-        /// 迁档介质轨：<see cref="ArchiveRegisterDomainValues.MediaKindSimulated"/> 或 <see cref="ArchiveRegisterDomainValues.MediaKindElectronic"/>。
+        /// 迁档介质轨：<see cref="ArchiveRegisterDomainValues.MediaKindSimulated"/>、<see cref="ArchiveRegisterDomainValues.MediaKindElectronic"/> 或 <see cref="ArchiveRegisterDomainValues.MediaKindBlankHardDisk"/>。
         /// </summary>
         public string MediaKind { get; init; } = ArchiveRegisterDomainValues.MediaKindSimulated;
 
@@ -50,7 +55,9 @@ namespace DocMgr.Models.YearlyArchive
         public string DisplayText =>
             string.Equals(MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
                 ? $"{CabinetName}{FaceCode}-{Row}-{Column}（{ItemCount} 袋）"
-                : $"{CabinetName}{FaceCode}-{Row}-{Column}（{ItemCount} 盒）";
+                : string.Equals(MediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal)
+                    ? $"{CabinetName}{FaceCode}-{Row}-{Column}（{ItemCount} 盘）"
+                    : $"{CabinetName}{FaceCode}-{Row}-{Column}（{ItemCount} 盒）";
     }
 
 }

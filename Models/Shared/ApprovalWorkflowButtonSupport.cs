@@ -1,71 +1,114 @@
 namespace DocMgr.Models.Shared
 {
     /// <summary>
-    /// 审批弹窗四按钮（审批通过 / 上传签字件 / 确认办结 / 打印审批单）可用状态统一规则。
+    /// 审批弹窗五按钮统一规则（与硬盘出库审批对齐）：
+    /// 审批通过 → 确认实物交接 → 上传签批交接单 → 确认办结 → 打印交接单。
     /// </summary>
     public static class ApprovalWorkflowButtonSupport
     {
         /// <summary>审批办理阶段。</summary>
         public enum Phase
         {
-            /// <summary>已提交，审批尚未通过。</summary>
+            /// <summary>已提交，待审批。</summary>
             PendingApproval,
 
-            /// <summary>审批已通过，尚未确认办结。</summary>
-            ApprovalInProgress,
+            /// <summary>已审批，待实物交接。</summary>
+            PendingPhysicalHandover,
 
-            /// <summary>确认办结已完成。</summary>
-            ApprovalCompleted
+            /// <summary>已实物交接，待上传签批交接单。</summary>
+            PendingSignedUpload,
+
+            /// <summary>已上传签批交接单，待确认办结。</summary>
+            PendingComplete,
+
+            /// <summary>已办结。</summary>
+            Completed
         }
 
-        /// <summary>四按钮可用状态。</summary>
+        /// <summary>五按钮可用状态。</summary>
         public readonly struct ButtonState
         {
             public ButtonState(
                 bool canApprovePass,
+                bool canConfirmPhysicalHandover,
                 bool canUploadSignedAttachment,
                 bool canConfirmComplete,
-                bool canPrintApprovalForm)
+                bool canPrintHandoverSheet)
             {
                 CanApprovePass = canApprovePass;
+                CanConfirmPhysicalHandover = canConfirmPhysicalHandover;
                 CanUploadSignedAttachment = canUploadSignedAttachment;
                 CanConfirmComplete = canConfirmComplete;
-                CanPrintApprovalForm = canPrintApprovalForm;
+                CanPrintHandoverSheet = canPrintHandoverSheet;
             }
 
-            /// <summary>是否可执行「审批通过」。</summary>
             public bool CanApprovePass { get; }
-
-            /// <summary>是否可执行「上传签字件」。</summary>
+            public bool CanConfirmPhysicalHandover { get; }
             public bool CanUploadSignedAttachment { get; }
-
-            /// <summary>是否可执行「确认办结」。</summary>
             public bool CanConfirmComplete { get; }
+            public bool CanPrintHandoverSheet { get; }
 
-            /// <summary>是否可执行「打印审批单」（或业务等价的打印按钮）。</summary>
-            public bool CanPrintApprovalForm { get; }
+            /// <summary>兼容旧四按钮命名。</summary>
+            public bool CanPrintApprovalForm => CanPrintHandoverSheet;
         }
 
         /// <summary>
-        /// 解析四按钮可用状态。
+        /// 解析五按钮可用状态。
         /// </summary>
-        /// <param name="phase">当前审批阶段。</param>
-        /// <param name="isOperatorAllowed">当前用户是否具备办理权限（如资料室管理员）。</param>
-        /// <param name="canExecuteApprovePass">除阶段外，审批通过的前置条件是否满足（如审批项已完整）。</param>
-        public static ButtonState Resolve(Phase phase, bool isOperatorAllowed, bool canExecuteApprovePass = true)
+        /// <param name="phase">当前阶段。</param>
+        /// <param name="isOperatorAllowed">当前用户是否具备办理权限。</param>
+        /// <param name="canExecuteApprovePass">除阶段外，审批通过的前置条件是否满足。</param>
+        /// <param name="enableComplete">是否启用「确认办结」（部分业务在独立出库页办结时可传 false）。</param>
+        public static ButtonState Resolve(
+            Phase phase,
+            bool isOperatorAllowed,
+            bool canExecuteApprovePass = true,
+            bool enableComplete = true)
         {
             if (!isOperatorAllowed)
             {
-                return new ButtonState(false, false, false, false);
+                return new ButtonState(false, false, false, false, false);
             }
 
             return phase switch
             {
-                Phase.PendingApproval => new ButtonState(canExecuteApprovePass, false, false, false),
-                Phase.ApprovalInProgress => new ButtonState(false, true, true, false),
-                Phase.ApprovalCompleted => new ButtonState(false, false, false, true),
-                _ => new ButtonState(false, false, false, false)
+                Phase.PendingApproval => new ButtonState(canExecuteApprovePass, false, false, false, false),
+                Phase.PendingPhysicalHandover => new ButtonState(false, true, false, false, true),
+                Phase.PendingSignedUpload => new ButtonState(false, false, true, false, true),
+                Phase.PendingComplete => new ButtonState(false, false, false, enableComplete, true),
+                Phase.Completed => new ButtonState(false, false, false, false, true),
+                _ => new ButtonState(false, false, false, false, false)
             };
+        }
+
+        /// <summary>
+        /// 按统一 7 态 int 状态与签字件上传标记解析阶段。
+        /// </summary>
+        public static Phase ResolvePhase(int status, bool signedAttachmentUploaded)
+        {
+            if (status == ApplicationWorkflowStatus.Completed)
+            {
+                return Phase.Completed;
+            }
+
+            if (status == ApplicationWorkflowStatus.Approved)
+            {
+                return Phase.PendingPhysicalHandover;
+            }
+
+            if (status == ApplicationWorkflowStatus.SignedUploaded)
+            {
+                return signedAttachmentUploaded
+                    ? Phase.PendingComplete
+                    : Phase.PendingSignedUpload;
+            }
+
+            if (status == ApplicationWorkflowStatus.Submitted)
+            {
+                return Phase.PendingApproval;
+            }
+
+            return Phase.PendingApproval;
         }
     }
 }

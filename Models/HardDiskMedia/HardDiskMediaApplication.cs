@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using DocMgr.Models.Shared;
 
 namespace DocMgr.Models.HardDiskMedia
 {
@@ -7,15 +8,15 @@ namespace DocMgr.Models.HardDiskMedia
     /// </summary>
     public class HardDiskMediaApplication
     {
-        public const string StatusDraft = "当前草稿-待提交";
-        public const string StatusSubmitted = "已提交-待审批";
-        public const string StatusApproved = "已审批-待实物交接";
-        public const string StatusSignedUploaded = "已实物交接-待上传签批交接单";
-        public const string StatusCompleted = "已办结（业务已闭环）";
-        public const string StatusWithdrawn = "已作废（撤回）";
-        public const string StatusForceWithdrawn = "已作废（强制）";
+        public const int StatusDraft = ApplicationWorkflowStatus.Draft;
+        public const int StatusSubmitted = ApplicationWorkflowStatus.Submitted;
+        public const int StatusApproved = ApplicationWorkflowStatus.Approved;
+        public const int StatusSignedUploaded = ApplicationWorkflowStatus.SignedUploaded;
+        public const int StatusCompleted = ApplicationWorkflowStatus.Completed;
+        public const int StatusWithdrawn = ApplicationWorkflowStatus.Withdrawn;
+        public const int StatusForceWithdrawn = ApplicationWorkflowStatus.ForceWithdrawn;
 
-        /// <summary>历史状态值，仅用于启动期数据归一化。</summary>
+        /// <summary>历史状态值（字符串），仅用于启动期数据归一化/迁移解析，不作为存储类型。</summary>
         public const string LegacyStatusDraft = "未提交";
 
         /// <summary>历史状态值，仅用于启动期数据归一化。</summary>
@@ -36,11 +37,11 @@ namespace DocMgr.Models.HardDiskMedia
         /// <summary>历史状态值，仅用于启动期数据归一化。</summary>
         public const string LegacyStatusForceWithdrawn = "已强制作废";
 
-        public const string StatusReturned = StatusWithdrawn;
-        public const string StatusCancelled = StatusForceWithdrawn;
+        public const int StatusReturned = StatusWithdrawn;
+        public const int StatusCancelled = StatusForceWithdrawn;
 
-        public const string StatusPendingUpload = StatusSignedUploaded;
-        public const string StatusPendingProcess = StatusSignedUploaded;
+        public const int StatusPendingUpload = StatusSignedUploaded;
+        public const int StatusPendingProcess = StatusSignedUploaded;
 
         public const string TypeOutboundTemporary = "出库(临时)申请";
         public const string TypeOutboundLongTerm = "出库(长期)申请";
@@ -89,9 +90,15 @@ namespace DocMgr.Models.HardDiskMedia
         public string ApplicationType { get; set; } = string.Empty;
 
         /// <summary>
-        /// 申请单状态。
+        /// 申请单状态（与 <see cref="ApplicationWorkflowStatus"/> 对齐的整型状态码）。
         /// </summary>
-        public string ApplicationStatus { get; set; } = StatusDraft;
+        public int ApplicationStatus { get; set; } = StatusDraft;
+
+        /// <summary>
+        /// 申请单状态展示文案。
+        /// </summary>
+        [NotMapped]
+        public string StatusStr => ApplicationWorkflowStatus.ToDisplay(ApplicationStatus);
 
         /// <summary>
         /// 申请人。
@@ -238,14 +245,7 @@ namespace DocMgr.Models.HardDiskMedia
             HardDiskMediaReturnDomainValues.ResolveRegistrationKindDisplay(ApplicationType, InspectionResult);
 
         [NotMapped]
-        public string ReturnRegistrationStageText => ApplicationStatus switch
-        {
-            StatusDraft => "已登记归还信息",
-            StatusSubmitted => "已登记归还信息",
-            StatusSignedUploaded => "已上传签字件",
-            StatusCompleted => "已办结（业务已闭环）",
-            _ => ApplicationStatus
-        };
+        public string ReturnRegistrationStageText => ApplicationWorkflowStatus.ToDisplay(ApplicationStatus);
 
         /// <summary>
         /// 出库审批流程在界面展示用的状态文案（含签批交接单上传后的子状态）。
@@ -256,14 +256,14 @@ namespace DocMgr.Models.HardDiskMedia
         /// <summary>
         /// 解析出库审批流程状态展示文案。
         /// </summary>
-        public static string ResolveOutboundWorkflowStatusDisplay(string applicationStatus, bool signedAttachmentUploaded)
+        public static string ResolveOutboundWorkflowStatusDisplay(int applicationStatus, bool signedAttachmentUploaded)
         {
-            if (string.Equals(applicationStatus, StatusSignedUploaded, StringComparison.Ordinal))
+            if (applicationStatus == StatusSignedUploaded)
             {
-                return signedAttachmentUploaded ? "已上传签批交接单-待办结" : StatusSignedUploaded;
+                return signedAttachmentUploaded ? "已上传签批交接单-待办结" : ApplicationWorkflowStatus.TextSignedUploaded;
             }
 
-            return applicationStatus;
+            return ApplicationWorkflowStatus.ToDisplay(applicationStatus);
         }
     }
 }

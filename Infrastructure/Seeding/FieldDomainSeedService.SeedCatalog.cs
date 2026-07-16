@@ -1,3 +1,4 @@
+using System.Globalization;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.YearlyArchive;
 
@@ -328,13 +329,13 @@ public static partial class FieldDomainSeedService
                     170,
                     new List<FieldDomainOptionSeed>
                     {
-                        new(string.Empty, HardDiskMediaApplication.StatusDraft, HardDiskMediaApplication.StatusDraft, true, 10),
-                        new(string.Empty, HardDiskMediaApplication.StatusSubmitted, HardDiskMediaApplication.StatusSubmitted, true, 20),
-                        new(string.Empty, HardDiskMediaApplication.StatusApproved, HardDiskMediaApplication.StatusApproved, true, 30),
-                        new(string.Empty, HardDiskMediaApplication.StatusSignedUploaded, HardDiskMediaApplication.StatusSignedUploaded, true, 40),
-                        new(string.Empty, HardDiskMediaApplication.StatusCompleted, HardDiskMediaApplication.StatusCompleted, true, 50),
-                        new(string.Empty, HardDiskMediaApplication.StatusWithdrawn, HardDiskMediaApplication.StatusWithdrawn, true, 60),
-                        new(string.Empty, HardDiskMediaApplication.StatusForceWithdrawn, HardDiskMediaApplication.StatusForceWithdrawn, true, 70)
+                        new(string.Empty, HardDiskMediaApplication.StatusDraft.ToString(CultureInfo.InvariantCulture), ApplicationWorkflowStatus.TextDraft, true, 10),
+                        new(string.Empty, HardDiskMediaApplication.StatusSubmitted.ToString(CultureInfo.InvariantCulture), ApplicationWorkflowStatus.TextSubmitted, true, 20),
+                        new(string.Empty, HardDiskMediaApplication.StatusApproved.ToString(CultureInfo.InvariantCulture), ApplicationWorkflowStatus.TextApproved, true, 30),
+                        new(string.Empty, HardDiskMediaApplication.StatusSignedUploaded.ToString(CultureInfo.InvariantCulture), ApplicationWorkflowStatus.TextSignedUploaded, true, 40),
+                        new(string.Empty, HardDiskMediaApplication.StatusCompleted.ToString(CultureInfo.InvariantCulture), ApplicationWorkflowStatus.TextCompleted, true, 50),
+                        new(string.Empty, HardDiskMediaApplication.StatusWithdrawn.ToString(CultureInfo.InvariantCulture), ApplicationWorkflowStatus.TextWithdrawn, true, 60),
+                        new(string.Empty, HardDiskMediaApplication.StatusForceWithdrawn.ToString(CultureInfo.InvariantCulture), ApplicationWorkflowStatus.TextForceWithdrawn, true, 70)
                     }),
                 new(
                     "HardDiskMediaTransaction",

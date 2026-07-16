@@ -1,4 +1,4 @@
-﻿<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveReturnWorkbenchPage"
+<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveReturnWorkbenchPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:local="clr-namespace:DocMgr.Views.YearlyArchive"
@@ -57,7 +57,6 @@
         <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Margin="0" CornerRadius="0" Padding="16,12">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,16,0"/>
                     <TextBlock Text="归还年度:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <ComboBox Width="100" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding Years}" SelectedItem="{Binding SelectedYear}" Margin="0,0,16,0"/>
                     <TextBlock Text="归还状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -70,7 +69,8 @@
                             <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
                         </TextBox.InputBindings>
                     </TextBox>
-                    <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72"/>
+                    <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72" Margin="0,0,16,0"/>
+                    <Button Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -90,12 +90,13 @@
             <Grid Grid.Column="0"
                   Visibility="{Binding IsLeftPanelExpanded, Converter={StaticResource BoolToVisConverter}}">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="{Binding ShowOutboundCandidatesPanel, Converter={StaticResource BoolToStarOrZeroGridLengthConverter}, ConverterParameter=1}"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="1*"/>
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Background="White" Padding="10">
+                <Border Grid.Row="0" Background="White" Padding="10"
+                        Visibility="{Binding ShowOutboundCandidatesPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -119,6 +120,9 @@
                         </DataGrid>
                     </Grid>
                 </Border>
+
+                <Border Grid.Row="1" Height="10" Background="Transparent"
+                        Visibility="{Binding ShowOutboundCandidatesPanel, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
                 <Border Grid.Row="2" Background="White" Padding="10">
                     <Grid>
@@ -262,12 +266,26 @@
                         </Border>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
-                            <Button Content="登记" Command="{Binding RegisterCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
-                            <Button Content="打印回执" Command="{Binding PrintReceiptCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
-                            <Button Content="办结入库" Command="{Binding CompleteCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
-                            <Button Content="作废" Command="{Binding VoidCommand}" Width="80" Height="32" Margin="0,0,10,0"/>
-                            <Button Content="取消" Command="{Binding CancelEditCommand}" Width="80" Height="32"/>
+                            <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                    ToolTip="保存为草稿，暂不提交审批"
+                                    Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            <Button Content="提交申请" Command="{Binding RegisterCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                    ToolTip="提交归还申请，进入审批流程"
+                                    Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            <Button Content="审批通过" Command="{Binding ApproveCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                    ToolTip="审批通过归还申请，转入实物交接"
+                                    Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            <Button Content="确认实物交接" Command="{Binding ConfirmHandoverCommand}" Width="112" Height="32" Margin="0,0,10,0"
+                                    ToolTip="确认资料实物已交回，转入办结入库"
+                                    Visibility="{Binding ShowHandoverActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            <Button Content="打印回执" Command="{Binding PrintReceiptCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                    ToolTip="打印资料归还回执"
+                                    Visibility="{Binding ShowHandoverActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            <Button Content="办结入库" Command="{Binding CompleteCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                    ToolTip="办结归还，冲销台账并归位入库（业务闭环）"
+                                    Visibility="{Binding ShowHandoverActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            <Button Content="作废" Command="{Binding VoidCommand}" Width="80" Height="32" Margin="0,0,10,0" ToolTip="作废本归还单"/>
+                            <Button Content="取消" Command="{Binding CancelEditCommand}" Width="80" Height="32" ToolTip="取消编辑，关闭当前表单"/>
                         </StackPanel>
                     </StackPanel>
                 </Grid>

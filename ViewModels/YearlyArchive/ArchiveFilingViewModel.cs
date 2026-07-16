@@ -23,6 +23,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IUserContextService _userContextService;
         private readonly IServiceScopeFactory _scopeFactory;
         private int _selectedRecordsChangedGeneration;
+        private int _simulatedBoxIndexCalculationGeneration;
+        private bool _suppressSimulatedLocationRecalc;
+        private readonly SemaphoreSlim _selectedRecordsChangedGate = new(1, 1);
         private bool _isInitialized;
         private int _currentCellBoxCount;
         private int _currentElectronicCellMediumCount;
@@ -283,6 +286,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             set
             {
                 _selectedRecords = value ?? new List<YearlyArchiveRegisterRecord>();
+                OnPropertyChanged(nameof(SelectedRecords));
+                OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
                 _ = HandleSelectedRecordsChangedAsync();
             }
         }
@@ -494,8 +499,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedCabinet, value))
                 {
-                    UpdateSides();
-                    UpdateRowsAndCols();
+                    _suppressSimulatedLocationRecalc = true;
+                    try
+                    {
+                        UpdateSides();
+                        UpdateRowsAndCols();
+                    }
+                    finally
+                    {
+                        _suppressSimulatedLocationRecalc = false;
+                    }
+
                     CalculateBoxIndex();
                     RaiseSlotSnapshotAvailabilityChanged();
                 }
@@ -1099,10 +1113,19 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 ArchiveSequenceNo = SelectedExistingBox.ArchiveSequenceNo;
                 PhysicalCodeResult = SelectedExistingBox.BoxLocationCode;
-                SelectedCabinet = Cabinets.FirstOrDefault(item => string.Equals(item.Name, SelectedExistingBox.CabinetName, StringComparison.OrdinalIgnoreCase));
-                SelectedSide = SelectedExistingBox.Side;
-                SelectedRow = SelectedExistingBox.Row.ToString();
-                SelectedColumn = SelectedExistingBox.Column.ToString();
+                _suppressSimulatedLocationRecalc = true;
+                try
+                {
+                    SelectedCabinet = Cabinets.FirstOrDefault(item => string.Equals(item.Name, SelectedExistingBox.CabinetName, StringComparison.OrdinalIgnoreCase));
+                    SelectedSide = SelectedExistingBox.Side;
+                    SelectedRow = SelectedExistingBox.Row.ToString();
+                    SelectedColumn = SelectedExistingBox.Column.ToString();
+                }
+                finally
+                {
+                    _suppressSimulatedLocationRecalc = false;
+                }
+
                 SelectedSpec = string.IsNullOrWhiteSpace(SelectedExistingBox.Specs) ? SelectedSpec : SelectedExistingBox.Specs;
                 Remarks = SelectedExistingBox.Remarks;
                 _currentCellBoxCount = Math.Max(SelectedExistingBox.BoxIndex, 1);

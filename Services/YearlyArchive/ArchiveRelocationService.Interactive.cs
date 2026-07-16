@@ -8,6 +8,11 @@ namespace DocMgr.Services.YearlyArchive
         public async Task<ArchiveRelocationPreview> PreviewInteractiveItemPhysicalMoveAsync(InteractiveItemPhysicalMoveRequest request)
         {
             EnsureArchiveAdmin();
+            if (string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal))
+            {
+                return await BuildInteractiveBlankHardDiskPreviewAsync(request);
+            }
+
             return string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
                 ? await BuildInteractiveElectronicPreviewAsync(request)
                 : await BuildInteractiveSimulatedPreviewAsync(request);
@@ -20,6 +25,11 @@ namespace DocMgr.Services.YearlyArchive
             if (!preview.CanExecute)
             {
                 return ArchiveRelocationResult.Fail(preview.BlockReason);
+            }
+
+            if (string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal))
+            {
+                return await ExecuteInteractiveBlankHardDiskPhysicalMoveAsync(request);
             }
 
             if (string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
@@ -271,7 +281,8 @@ namespace DocMgr.Services.YearlyArchive
             string targetSlotCode = $"{request.TargetRow}-{request.TargetColumn}";
 
             string? sourceCategory = null;
-            if (ArchiveSlotLocationSupport.TryParseSlotLocation(source.StorageLocation, out string sourceCabinetName, out string sourceFace, out int sourceRow, out int sourceColumn))
+            string sourcePhysicalLocation = ResolveElectronicUnitPhysicalStorageLocation(source);
+            if (ArchiveSlotLocationSupport.TryParseSlotLocation(sourcePhysicalLocation, out string sourceCabinetName, out string sourceFace, out int sourceRow, out int sourceColumn))
             {
                 var sourceCabinet = await _filingRepository.GetMagneticDiskCabinetByNameAsync(sourceCabinetName);
                 if (sourceCabinet != null)
@@ -290,9 +301,9 @@ namespace DocMgr.Services.YearlyArchive
             string normalizedSourceCategory = CabinetHardDiskSlotCategoryAssignment.NormalizeCategoryName(sourceCategory);
             string normalizedTargetCategory = CabinetHardDiskSlotCategoryAssignment.NormalizeCategoryName(targetCategory);
 
-            if (!IsYearlyDataMagneticDiskSlotCategory(normalizedSourceCategory))
+            if (!CabinetHardDiskSlotCategoryAssignment.IsRelocatableDedicatedSlotCategory(normalizedSourceCategory))
             {
-                return InteractiveTargetValidationResult.Fail("仅支持年度数据硬盘/光盘专用档口内的电子介质袋迁档。");
+                return InteractiveTargetValidationResult.Fail("仅支持已设置专用类别档口内的电子介质迁档。");
             }
 
             if (!CabinetHardDiskSlotCategoryAssignment.MatchesCategory(normalizedTargetCategory, normalizedSourceCategory))

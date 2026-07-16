@@ -297,7 +297,8 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApprovalWorkflowPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Button Content="审批通过" Command="{Binding SaveApprovalCommand}" ToolTip="{Binding ApproveHintText}" Margin="0,0,8,0" Padding="12,6"/>
-                        <Button Content="上传签字件" Command="{Binding UploadAttachmentCommand}" ToolTip="{Binding UploadHintText}" Margin="0,0,8,0" Padding="12,6"/>
+                        <Button Content="确认实物交接" Command="{Binding ConfirmPhysicalHandoverCommand}" ToolTip="{Binding ConfirmHandoverHintText}" Margin="0,0,8,0" Padding="12,6"/>
+                        <Button Content="上传签批交接单和资料照片" Command="{Binding UploadAttachmentCommand}" ToolTip="{Binding UploadHintText}" Margin="0,0,8,0" Padding="12,6"/>
                         <Button Content="确认办结" Command="{Binding CompleteCommand}" ToolTip="{Binding CompleteHintText}" Margin="0,0,8,0" Padding="12,6"/>
                         <Button Content="打印交接单" Command="{Binding PrintApprovalCommand}" ToolTip="{Binding PrintHintText}" Margin="0,0,8,0" Padding="12,6"/>
                     </StackPanel>

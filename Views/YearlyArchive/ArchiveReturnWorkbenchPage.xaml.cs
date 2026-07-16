@@ -1,3 +1,4 @@
+using DocMgr.Models.YearlyArchive;
 using DocMgr.ViewModels.YearlyArchive;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -11,13 +12,18 @@ namespace DocMgr.Views.YearlyArchive
         private readonly IServiceScope _pageScope;
         private bool _isUnloaded;
 
+        public ArchiveReturnWorkspaceMode WorkspaceMode { get; }
+
         public ArchiveReturnWorkbenchViewModel ViewModel { get; }
 
-        public ArchiveReturnWorkbenchPage()
+        public ArchiveReturnWorkbenchPage(ArchiveReturnWorkspaceMode workspaceMode = ArchiveReturnWorkspaceMode.Handover)
         {
             InitializeComponent();
+            WorkspaceMode = workspaceMode;
             _pageScope = App.CurrentProvider.CreateScope();
-            ViewModel = _pageScope.ServiceProvider.GetRequiredService<ArchiveReturnWorkbenchViewModel>();
+            var vmFactory = _pageScope.ServiceProvider
+                .GetRequiredService<Func<ArchiveReturnWorkspaceMode, ArchiveReturnWorkbenchViewModel>>();
+            ViewModel = vmFactory(workspaceMode);
             DataContext = ViewModel;
             Loaded += ArchiveReturnWorkbenchPage_Loaded;
             Unloaded += ArchiveReturnWorkbenchPage_Unloaded;
@@ -49,7 +55,6 @@ namespace DocMgr.Views.YearlyArchive
             Loaded -= ArchiveReturnWorkbenchPage_Loaded;
             Unloaded -= ArchiveReturnWorkbenchPage_Unloaded;
             ViewModel.Deactivate();
-            DataContext = null;
             _pageScope.Dispose();
         }
     }

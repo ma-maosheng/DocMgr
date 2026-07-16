@@ -74,6 +74,9 @@ public interface ICabinetOpenLayoutRepository
     /// <summary>读取电子介质袋关联硬盘的占用锁记录。</summary>
     IReadOnlyList<CabinetHardDiskOccupationLockInfo> GetHardDiskOccupationLocksByElectronicUnitId(int electronicArchiveUnitId);
 
+    /// <summary>按硬盘介质 Id 汇总在途出库申请占用（含永久出库，弥补历史未写入征用锁的记录）。</summary>
+    Dictionary<int, CabinetOccupationLockDescriptor> GetActiveOutboundApplicationLocksByMediumIds(IReadOnlyCollection<int> mediumIds);
+
     /// <summary>读取年度模拟档案盒内待还资料追溯明细（已办结出库、尚未归还的提档记录）。</summary>
     IReadOnlyList<SimulatedArchiveBoxPendingReturnDetailRow> GetSimulatedArchiveBoxPendingReturnDetails(string boxLocationCode);
 }

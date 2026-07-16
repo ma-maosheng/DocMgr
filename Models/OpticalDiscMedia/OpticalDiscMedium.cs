@@ -27,6 +27,21 @@ namespace DocMgr.Models.OpticalDiscMedia
         /// </summary>
         public const string StatusDestroyed = "出库(销毁)";
 
+        /// <summary>
+        /// 判断光盘是否处于在库可迁档状态（含资料盘与损坏盘）。
+        /// </summary>
+        public static bool IsInStockRelocatableStatus(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+            {
+                return false;
+            }
+
+            string normalized = status.Trim();
+            return string.Equals(normalized, StatusInStock, StringComparison.Ordinal)
+                || string.Equals(normalized, StatusDamaged, StringComparison.Ordinal);
+        }
+
         public const string RegistrationMethodManual = "手工录入登记";
         public const string RegistrationMethodArchive = "资料存档登记";
 

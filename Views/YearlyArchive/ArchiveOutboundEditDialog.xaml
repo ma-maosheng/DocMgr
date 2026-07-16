@@ -105,7 +105,9 @@
                         <TextBox Text="{Binding Record.MaterialSummary, UpdateSourceTrigger=PropertyChanged}" Height="30" Margin="0,0,0,12"/>
 
                         <TextBlock Text="预计归还日期" Style="{StaticResource OutboundFieldLabelStyle}"/>
-                        <DatePicker SelectedDate="{Binding Record.ExpectedReturnDate}" Height="30" Width="200" HorizontalAlignment="Left"/>
+                        <TextBox Text="{Binding ExpectedReturnDateDisplay, Mode=OneWay}"
+                                 Height="30" Width="200" HorizontalAlignment="Left"
+                                 IsReadOnly="True" Background="#F8FAFC" VerticalContentAlignment="Center"/>
                         <TextBlock Text="{Binding ExpectedReturnDateHint}" Margin="0,6,0,0" Foreground="#64748B" TextWrapping="Wrap" FontSize="12"/>
                     </StackPanel>
                 </Border>
@@ -308,9 +310,9 @@
                                 </ListView.View>
                             </ListView>
                             <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                <Button Content="上传审批签字单" Command="{Binding UploadSignedApprovalCommand}" Padding="8,4"/>
+                                <Button Content="上传签批交接单" Command="{Binding UploadSignedApprovalCommand}" Padding="8,4"/>
                             </StackPanel>
-                            <TextBlock Text="办结审批阶段前须上传签字后的审批单扫描件。" Margin="0,6,0,0" Foreground="#B45309" TextWrapping="Wrap" FontSize="11"/>
+                            <TextBlock Text="确认实物交接后须上传签字后的审批单扫描件。" Margin="0,6,0,0" Foreground="#B45309" TextWrapping="Wrap" FontSize="11"/>
                         </StackPanel>
                     </GroupBox>
                 </StackPanel>
@@ -478,8 +480,9 @@
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="200"/>
-                                                        <ColumnDefinition Width="220"/>
-                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0" Margin="0,0,16,0">
                                                         <TextBlock Text="领用方式" Style="{StaticResource OutboundFieldLabelStyle}"/>
@@ -487,7 +490,7 @@
                                                                   SelectedValue="{Binding UsageMode, UpdateSourceTrigger=PropertyChanged}"
                                                                   SelectedValuePath="Value" DisplayMemberPath="Display" Height="30"/>
                                                     </StackPanel>
-                                                    <StackPanel Grid.Column="1" Margin="0,0,16,0"
+                                                    <StackPanel Grid.Column="1" Margin="0,0,16,0" MinWidth="160"
                                                                 Visibility="{Binding ShowMaterialNeedReturn, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                         <TextBlock Text="提档资料是否归还" Style="{StaticResource OutboundFieldLabelStyle}"/>
                                                         <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
@@ -499,7 +502,7 @@
                                                                          IsChecked="{Binding NeedReturn, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                         </StackPanel>
                                                     </StackPanel>
-                                                    <StackPanel Grid.Column="2"
+                                                    <StackPanel Grid.Column="2" Margin="0,0,16,0" MinWidth="160"
                                                                 Visibility="{Binding ShowDuplicateSettings, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                         <TextBlock Text="是否使用库内空盘" Style="{StaticResource OutboundFieldLabelStyle}"/>
                                                         <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
@@ -511,7 +514,17 @@
                                                                          IsChecked="{Binding UseInStockBlankDisk, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                         </StackPanel>
                                                     </StackPanel>
+                                                    <StackPanel Grid.Column="3"
+                                                                Visibility="{Binding RequiresExpectedReturnDate, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Text="预计归还日期" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                        <DatePicker SelectedDate="{Binding ExpectedReturnDate, UpdateSourceTrigger=PropertyChanged}"
+                                                                    Height="30" Width="200" HorizontalAlignment="Left"
+                                                                    IsEnabled="{Binding CanEditExpectedReturnDate}"/>
+                                                    </StackPanel>
                                                 </Grid>
+                                                <TextBlock Text="{Binding SharedDiskSettingsHint}"
+                                                           Margin="0,8,0,0" Foreground="#64748B" TextWrapping="Wrap" FontSize="12"
+                                                           Visibility="{Binding ShowSharedDiskSettingsHint, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                                 <Grid Margin="0,12,0,0"
                                                       Visibility="{Binding ShowDuplicateSettings, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                     <Grid.ColumnDefinitions>
@@ -574,6 +587,7 @@
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                                     <TextBlock Text="领用方式" Style="{StaticResource OutboundFieldLabelStyle}"/>
@@ -587,9 +601,13 @@
                                                     <TextBlock Text="库内空盘" Style="{StaticResource OutboundFieldLabelStyle}"/>
                                                     <TextBlock Text="{Binding RequisitionedDiskCode}" Foreground="#1E293B"/>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="3" Margin="8,0,0,0">
+                                                <StackPanel Grid.Column="3" Margin="8,0">
                                                     <TextBlock Text="硬盘是否归还" Style="{StaticResource OutboundFieldLabelStyle}"/>
                                                     <TextBlock Text="{Binding RequisitionedDiskNeedReturnDisplay}" Foreground="#1E293B"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="4" Margin="8,0,0,0">
+                                                    <TextBlock Text="预计归还日期" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                    <TextBlock Text="{Binding ExpectedReturnDateDisplay}" Foreground="#1E293B"/>
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
@@ -660,21 +678,21 @@
 
             <StackPanel Orientation="Horizontal">
                 <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Margin="0,0,8,0" Padding="12,6"/>
-                    <Button Content="提交申请" Command="{Binding SubmitCommand}" Margin="0,0,8,0" Padding="12,6"/>
-                    <Button Content="撤回" Command="{Binding WithdrawCommand}" Margin="0,0,8,0" Padding="12,6"/>
-                    <Button Content="打印" Command="{Binding PrintCommand}" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" ToolTip="保存为草稿，暂不提交审批" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="提交申请" Command="{Binding SubmitCommand}" ToolTip="提交申请，进入审批流程" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="撤回" Command="{Binding WithdrawCommand}" ToolTip="撤回申请并作废" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="打印" Command="{Binding PrintCommand}" ToolTip="打印借出申请单" Margin="0,0,8,0" Padding="12,6"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <Button Content="审批通过" Command="{Binding SaveApprovalCommand}" ToolTip="{Binding ApproveHintText}" Margin="0,0,8,0" Padding="12,6"/>
-                    <Button Content="上传签字件" Command="{Binding UploadSignedApprovalCommand}" ToolTip="{Binding UploadHintText}" Margin="0,0,8,0" Padding="12,6"/>
-                    <Button Content="审批阶段确认办结" Command="{Binding CompleteApprovalPhaseCommand}" ToolTip="{Binding CompleteHintText}" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="确认实物交接" Command="{Binding ConfirmPhysicalHandoverCommand}" ToolTip="{Binding ConfirmHandoverHintText}" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="上传签批交接单" Command="{Binding UploadSignedApprovalCommand}" ToolTip="{Binding UploadHintText}" Margin="0,0,8,0" Padding="12,6"/>
                     <Button Content="打印审批单" Command="{Binding PrintApprovalCommand}" ToolTip="{Binding PrintApprovalHintText}" Margin="0,0,8,0" Padding="12,6"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Visibility="{Binding ShowHandoverWorkspaceContent, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <Button Content="打印交接单" Command="{Binding PrintHandoverCommand}" Margin="0,0,8,0" Padding="12,6"/>
-                    <Button Content="业务助手" Command="{Binding OpenBusinessAssistantCommand}" Margin="0,0,8,0" Padding="12,6"/>
-                    <Button Content="资料出库办结" Command="{Binding CompleteHandoverCommand}" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="打印交接单" Command="{Binding PrintHandoverCommand}" ToolTip="打印资料出库交接单" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="业务助手" Command="{Binding OpenBusinessAssistantCommand}" ToolTip="打开资料出库业务助手，辅助办理交接" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="资料出库办结" Command="{Binding CompleteHandoverCommand}" ToolTip="确认实物交接完成，办结出库（业务闭环）" Margin="0,0,8,0" Padding="12,6"/>
                 </StackPanel>
             </StackPanel>
 

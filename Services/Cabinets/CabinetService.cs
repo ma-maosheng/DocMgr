@@ -90,6 +90,7 @@ namespace DocMgr.Services.Cabinets
             string trimmedFaceCode = faceCode.Trim();
             string trimmedSlotCode = slotCode.Trim();
             string trimmedCategoryName = categoryName.Trim();
+            EnsureMagneticDiskSlotIsEmptyForCategoryChange(target, trimmedFaceCode, trimmedSlotCode);
 
             var existing = _cabinetRepository.GetSlotCategoryAssignment(cabinetId, trimmedFaceCode, trimmedSlotCode);
 
@@ -128,8 +129,20 @@ namespace DocMgr.Services.Cabinets
                 throw new ArgumentException("档口编号不能为空。", nameof(slotCode));
             }
 
+            var target = _cabinetRepository.GetById(cabinetId);
+            if (target == null)
+            {
+                throw new InvalidOperationException("未找到要设置的防磁磁盘柜。");
+            }
+
+            if (target.Type != CabinetType.MagneticDisk)
+            {
+                throw new InvalidOperationException("仅防磁磁盘柜支持设置硬盘专用档口。");
+            }
+
             string trimmedFaceCode = faceCode.Trim();
             string trimmedSlotCode = slotCode.Trim();
+            EnsureMagneticDiskSlotIsEmptyForCategoryChange(target, trimmedFaceCode, trimmedSlotCode);
             var existing = _cabinetRepository.GetSlotCategoryAssignment(cabinetId, trimmedFaceCode, trimmedSlotCode);
 
             if (existing != null)
@@ -138,6 +151,14 @@ namespace DocMgr.Services.Cabinets
             }
 
             _cabinetRepository.SaveChanges();
+        }
+
+        private void EnsureMagneticDiskSlotIsEmptyForCategoryChange(Cabinet cabinet, string faceCode, string slotCode)
+        {
+            if (_cabinetRepository.HasInStockMediaInMagneticDiskSlot(cabinet.Name, faceCode, slotCode))
+            {
+                throw new InvalidOperationException($"档口 {faceCode} {slotCode} 仍有介质占用，仅可对空档口变更用途。");
+            }
         }
 
         /// <inheritdoc/>

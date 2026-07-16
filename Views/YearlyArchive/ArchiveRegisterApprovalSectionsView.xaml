@@ -79,7 +79,7 @@
                     </StackPanel>
                 </Grid>
 
-                <Grid Margin="0,5" IsEnabled="{Binding CanConfirmDeliver}">
+                <Grid Margin="0,5" IsEnabled="{Binding CanConfirmPhysicalHandover}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="110"/>
                         <ColumnDefinition Width="*"/>
@@ -148,9 +148,14 @@
                 ToolTip="{Binding ApproveHintText}"
                 MinWidth="120" Height="40" Padding="20,0"
                 FontSize="16" FontWeight="Bold" Cursor="Hand" Margin="0,0,20,0" Style="{StaticResource ButtonNormalStyle}"/>
-            <Button Content="上传签字件" Command="{Binding UploadAttachmentCommand}"
+            <Button Content="确认实物交接"
+                Command="{Binding ConfirmPhysicalHandoverCommand}"
+                ToolTip="{Binding ConfirmHandoverHintText}"
+                MinWidth="140" Height="40" Padding="20,0"
+                FontSize="16" FontWeight="Bold" Cursor="Hand" Margin="0,0,20,0" Style="{StaticResource ButtonNormalStyle}"/>
+            <Button Content="上传签批交接单和资料照片" Command="{Binding UploadAttachmentCommand}"
                 ToolTip="{Binding UploadHintText}"
-                MinWidth="120" Height="40" Padding="20,0" FontSize="16" FontWeight="Bold" Cursor="Hand" Margin="0,0,20,0" Style="{StaticResource ButtonNormalStyle}"/>
+                MinWidth="220" Height="40" Padding="20,0" FontSize="16" FontWeight="Bold" Cursor="Hand" Margin="0,0,20,0" Style="{StaticResource ButtonNormalStyle}"/>
             <Button Content="确认办结" Command="{Binding CompleteCommand}"
                 ToolTip="{Binding CompleteHintText}"
                 MinWidth="120" Height="40" Padding="20,0" FontSize="16" FontWeight="Bold" Cursor="Hand" Margin="0,0,20,0" Style="{StaticResource ButtonNormalStyle}"/>

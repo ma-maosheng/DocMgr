@@ -56,12 +56,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             var now = DateTime.Today;
 
+            var users = _userService.GetAllUsers();
+
             // 默认：审核人优先使用申请人所属部门负责人，否则回退到申请人姓名/当前用户
-            ReviewerName = ResolveDefaultReviewerName(application, currentUser);
+            ReviewerName = HardDiskMediaApplicationViewModelHelper.ResolveDefaultReviewerName(application, users, currentUser);
             ReviewerDate = application.ApplyTime == default ? now : application.ApplyTime.Date;
 
             // 默认：审批人优先使用资料室负责人；若申请单已有审批人则保持原值
-            ApproverName = ResolveDefaultApproverName(application, currentUser);
+            ApproverName = HardDiskMediaApplicationViewModelHelper.ResolveDefaultApproverName(application, users, currentUser);
             ApproverDate = (application.ApprovedTime ?? now).Date;
 
             // 办理交接默认包含两人：申请人 + 资料室资料管理员（如无法查到资料管理员则使用当前用户）
@@ -99,7 +101,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string ApplicantName => _application.ApplicantName;
         public string ApplicantDept => _application.ApplicantDept;
         public string ApplicationType => _application.ApplicationType;
-        public string ApplicationStatus => _application.ApplicationStatus;
+        public string ApplicationStatus => _application.StatusStr;
         public string DiskCode =>
             _application.Medium?.DiskCode?.Trim() ?? string.Empty;
 
@@ -125,9 +127,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public bool CanUploadSignedAttachment => ResolveOutboundButtonState().CanUploadSignedAttachment;
         public bool CanComplete => ResolveOutboundButtonState().CanConfirmComplete;
         public bool CanPrintHandoverSheet => ResolveOutboundButtonState().CanPrintHandoverSheet;
-        public bool CanDeleteAttachment => !string.Equals(_application.ApplicationStatus, HardDiskMediaApplication.StatusCompleted, StringComparison.Ordinal) &&
-                                          !string.Equals(_application.ApplicationStatus, HardDiskMediaApplication.StatusWithdrawn, StringComparison.Ordinal) &&
-                                          !string.Equals(_application.ApplicationStatus, HardDiskMediaApplication.StatusForceWithdrawn, StringComparison.Ordinal);
+        public bool CanDeleteAttachment => _application.ApplicationStatus != HardDiskMediaApplication.StatusCompleted &&
+                                          _application.ApplicationStatus != HardDiskMediaApplication.StatusWithdrawn &&
+                                          _application.ApplicationStatus != HardDiskMediaApplication.StatusForceWithdrawn;
 
         public string ConfirmHintText => CanApprovePass
             ? "后续：审批通过后，请办理实物交接。"
@@ -230,53 +232,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public event Action<bool?>? RequestClose;
 
-        private string ResolveDefaultReviewerName(HardDiskMediaApplication application, User? currentUser)
-        {
-            string applicantDept = application.ApplicantDept?.Trim() ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(applicantDept))
-            {
-                string reviewer = _userService
-                    .GetAllUsers()
-                    .FirstOrDefault(user => string.Equals(user.Department, applicantDept, StringComparison.OrdinalIgnoreCase)
-                        && !string.IsNullOrWhiteSpace(user.RealName)
-                        && (user.Role?.Contains("部门负责人", StringComparison.OrdinalIgnoreCase) ?? false))
-                    ?.RealName
-                    ?.Trim() ?? string.Empty;
-
-                if (!string.IsNullOrWhiteSpace(reviewer))
-                {
-                    return reviewer;
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(application.ApplicantName))
-            {
-                return application.ApplicantName.Trim();
-            }
-
-            return currentUser?.RealName?.Trim() ?? string.Empty;
-        }
-
-        private string ResolveDefaultApproverName(HardDiskMediaApplication application, User? currentUser)
-        {
-            if (!string.IsNullOrWhiteSpace(application.ApprovedBy))
-            {
-                return application.ApprovedBy.Trim();
-            }
-
-            string approver = _userService
-                .GetAllUsers()
-                .FirstOrDefault(user => string.Equals(user.Department, "资料室", StringComparison.OrdinalIgnoreCase)
-                    && !string.IsNullOrWhiteSpace(user.RealName)
-                    && (user.Role?.Contains("负责人", StringComparison.OrdinalIgnoreCase) ?? false))
-                ?.RealName
-                ?.Trim() ?? string.Empty;
-
-            return string.IsNullOrWhiteSpace(approver)
-                ? currentUser?.RealName?.Trim() ?? string.Empty
-                : approver;
-        }
-
         private async Task InitializeAsync()
         {
             await EnsureMediumLoadedAsync();
@@ -369,7 +324,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
-            var filePath = _dialogService.OpenFileDialog("所有文件|*.*", "选择签批交接单扫描件");
+            var filePath = _dialogService.OpenFileDialog(SystemAttachmentUploadSupport.OpenFileDialogFilter, "选择签批交接单扫描件");
             if (string.IsNullOrWhiteSpace(filePath))
             {
                 return;

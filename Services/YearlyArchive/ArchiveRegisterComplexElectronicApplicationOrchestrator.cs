@@ -43,7 +43,7 @@ namespace DocMgr.Services.YearlyArchive
             bool isExternalSource = _archiveRegisterService.IsExternalSourceType(record.SourceType);
             var mediaEntries = BuildConsoleMediaEntries(request.MediaEntries, request.DomainOptions);
 
-            var draftResult = await _archiveRegisterService.SaveDraftFlowAsync(record, mediaEntries);
+            var draftResult = await _archiveRegisterService.SaveDraftFlowAsync(record, mediaEntries, request.Applicant);
             if (!draftResult.Success)
             {
                 return Fail(lines, $"保存草稿失败：{draftResult.Message}");
@@ -57,7 +57,8 @@ namespace DocMgr.Services.YearlyArchive
             var submitResult = await _archiveRegisterService.SubmitApplicationFlowAsync(
                 record,
                 mediaEntries,
-                isExternalSource);
+                isExternalSource,
+                request.Applicant);
             if (!submitResult.Success)
             {
                 return Fail(lines, $"提交申请失败：{submitResult.Message}");

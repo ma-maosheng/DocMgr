@@ -38,6 +38,10 @@
 
                         <ColumnDefinition Width="Auto"/>
 
+                        <ColumnDefinition Width="Auto"/>
+
+                        <ColumnDefinition Width="Auto"/>
+
                         <ColumnDefinition Width="*"/>
 
                     </Grid.ColumnDefinitions>
@@ -46,11 +50,11 @@
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
 
-                        <Button Content="{Binding OpenActionText}" Command="{Binding OpenCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
+                        <Button Content="申请-&gt;查看" Command="{Binding ViewCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="120" Margin="0,0,10,0"/>
+
+                        <Button Content="申请-&gt;审批" Command="{Binding ApproveCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="120" Margin="0,0,10,0"/>
 
                         <Button Content="{Binding DestructiveActionText}" Command="{Binding DestructiveCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="110" Margin="0,0,10,0"/>
-
-                        <Button Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96"/>
 
                     </StackPanel>
 
@@ -161,6 +165,14 @@
                         </Grid>
 
                     </StackPanel>
+
+                    <Button Grid.Column="4"
+                            Content="刷新列表"
+                            Command="{Binding RefreshCommand}"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Width="96"
+                            Margin="16,0,0,0"
+                            VerticalAlignment="Center"/>
 
                 </Grid>
 

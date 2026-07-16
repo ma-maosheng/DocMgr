@@ -40,6 +40,12 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaAttachmentFlowResult.Fail("附件内容为空，无法上传。");
             }
 
+            string? formatError = SystemAttachmentUploadSupport.ValidateUploadFormat(fileName, extension, fileContent);
+            if (!string.IsNullOrWhiteSpace(formatError))
+            {
+                return HardDiskMediaAttachmentFlowResult.Fail(formatError);
+            }
+
             var existingApplication = await _hardDiskMediaRepository.GetApplicationByIdAsync(application.Id);
             if (existingApplication == null)
             {
@@ -59,17 +65,9 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaAttachmentFlowResult.Fail("当前申请已完成或已作废，不允许上传签批交接单。");
             }
 
-            if (!IsRegistrationWithoutApprovalType(existingApplication.ApplicationType))
+            if (existingApplication.ApplicationStatus != HardDiskMediaApplication.StatusSignedUploaded)
             {
-                if (existingApplication.ApplicationStatus != HardDiskMediaApplication.StatusSignedUploaded)
-                {
-                    return HardDiskMediaAttachmentFlowResult.Fail("请先确认实物交接后再上传签批交接单。");
-                }
-            }
-            else if (existingApplication.ApplicationStatus != HardDiskMediaApplication.StatusSubmitted &&
-                     existingApplication.ApplicationStatus != HardDiskMediaApplication.StatusSignedUploaded)
-            {
-                return HardDiskMediaAttachmentFlowResult.Fail("当前登记单状态不允许上传签字件。");
+                return HardDiskMediaAttachmentFlowResult.Fail("请先确认实物交接后再上传签批交接单。");
             }
 
             var attachment = new SystemAttachment
@@ -91,12 +89,6 @@ namespace DocMgr.Services.HardDiskMedia
             existingApplication.SignedAttachmentUploaded = true;
             existingApplication.SignedAttachmentUploadedTime = attachment.UploadTime;
             existingApplication.SignedAttachmentUploader = attachment.UploaderName;
-            if (IsRegistrationWithoutApprovalType(existingApplication.ApplicationType) &&
-                existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted)
-            {
-                existingApplication.ApplicationStatus = HardDiskMediaApplication.StatusPendingProcess;
-            }
-
             existingApplication.UpdatedTime = attachment.UploadTime;
 
             await _hardDiskMediaRepository.SaveChangesAsync();
@@ -146,18 +138,6 @@ namespace DocMgr.Services.HardDiskMedia
                     relatedApplication.SignedAttachmentUploaded = false;
                     relatedApplication.SignedAttachmentUploadedTime = null;
                     relatedApplication.SignedAttachmentUploader = string.Empty;
-
-                    if (IsRegistrationWithoutApprovalType(relatedApplication.ApplicationType) &&
-                        relatedApplication.ApplicationStatus == HardDiskMediaApplication.StatusPendingProcess)
-                    {
-                        relatedApplication.ApplicationStatus = HardDiskMediaApplication.StatusSubmitted;
-                    }
-                }
-                else if (IsRegistrationWithoutApprovalType(relatedApplication.ApplicationType) &&
-                         relatedApplication.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted)
-                {
-                    relatedApplication.SignedAttachmentUploaded = true;
-                    relatedApplication.ApplicationStatus = HardDiskMediaApplication.StatusPendingProcess;
                 }
 
                 relatedApplication.UpdatedTime = DateTime.Now;
@@ -186,9 +166,7 @@ namespace DocMgr.Services.HardDiskMedia
 
         private static string GetSignedAttachmentCategory(string applicationType)
         {
-            return IsRegistrationWithoutApprovalType(applicationType)
-                ? SignedRegistrationAttachmentCategory
-                : SignedAttachmentCategory;
+            return SignedAttachmentCategory;
         }
     }
 }

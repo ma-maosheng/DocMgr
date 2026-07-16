@@ -17,10 +17,10 @@
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Horizontal">
                     <!-- 绑定 Command -->
-                    <Button Content="刷新列表" Command="{Binding RefreshCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
                     <Button Content="新增用户" Command="{Binding AddCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
                     <Button Content="编辑选中" Command="{Binding EditCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
                     <Button Content="删除选中" Command="{Binding DeleteCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarDangerButtonStyle}"/>
+                    <Button Content="刷新列表" Command="{Binding RefreshCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>

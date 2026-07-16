@@ -1,7 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using DocMgr.Models.Shared;
+using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 
@@ -56,13 +58,13 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<StatusOption> StatusOptions { get; } =
         [
             new StatusOption { Label = "全部", Value = -1 },
-            new StatusOption { Label = "未提交", Value = 0 },
-            new StatusOption { Label = "已提交", Value = 1 },
-            new StatusOption { Label = "已审批", Value = 2 },
-            new StatusOption { Label = "已上传签字件", Value = 3 },
-            new StatusOption { Label = "已办结", Value = 4 },
-            new StatusOption { Label = "已撤回作废", Value = 5 },
-            new StatusOption { Label = "已强制作废", Value = 6 }
+            new StatusOption { Label = ApplicationWorkflowStatus.TextDraft, Value = ApplicationWorkflowStatus.Draft },
+            new StatusOption { Label = ApplicationWorkflowStatus.TextSubmitted, Value = ApplicationWorkflowStatus.Submitted },
+            new StatusOption { Label = ApplicationWorkflowStatus.TextApproved, Value = ApplicationWorkflowStatus.Approved },
+            new StatusOption { Label = ApplicationWorkflowStatus.TextSignedUploaded, Value = ApplicationWorkflowStatus.SignedUploaded },
+            new StatusOption { Label = ApplicationWorkflowStatus.TextCompleted, Value = ApplicationWorkflowStatus.Completed },
+            new StatusOption { Label = ApplicationWorkflowStatus.TextWithdrawn, Value = ApplicationWorkflowStatus.Withdrawn },
+            new StatusOption { Label = ApplicationWorkflowStatus.TextForceWithdrawn, Value = ApplicationWorkflowStatus.ForceWithdrawn }
         ];
 
         private int _selectedStatusValue = -1;

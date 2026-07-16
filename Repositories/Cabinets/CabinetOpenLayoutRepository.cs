@@ -747,6 +747,65 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
             }).ToList();
     }
 
+    public Dictionary<int, CabinetOccupationLockDescriptor> GetActiveOutboundApplicationLocksByMediumIds(IReadOnlyCollection<int> mediumIds)
+    {
+        if (mediumIds == null || mediumIds.Count == 0)
+        {
+            return new Dictionary<int, CabinetOccupationLockDescriptor>();
+        }
+
+        int[] activeStatuses =
+        [
+            HardDiskMediaApplication.StatusDraft,
+            HardDiskMediaApplication.StatusSubmitted,
+            HardDiskMediaApplication.StatusApproved,
+            HardDiskMediaApplication.StatusSignedUploaded,
+            HardDiskMediaApplication.StatusPendingUpload,
+            HardDiskMediaApplication.StatusPendingProcess,
+        ];
+
+        var rows = _dbContext.HardDiskMediaApplications
+            .AsNoTracking()
+            .Where(item => mediumIds.Contains(item.MediumId))
+            .Where(item => item.ApplicationType == HardDiskMediaApplication.TypeOutboundTemporary ||
+                           item.ApplicationType == HardDiskMediaApplication.TypeOutboundLongTerm ||
+                           item.ApplicationType == HardDiskMediaApplication.TypeOutboundPermanent)
+            .Where(item => activeStatuses.Contains(item.ApplicationStatus))
+            .Select(item => new
+            {
+                item.MediumId,
+                item.ApplicationNo,
+                item.ApplicationType,
+            })
+            .ToList();
+
+        return rows
+            .GroupBy(row => row.MediumId)
+            .ToDictionary(
+                group => group.Key,
+                group => BuildOutboundApplicationOccupationLockDescriptor(group.First().ApplicationNo, group.First().ApplicationType));
+    }
+
+    private static CabinetOccupationLockDescriptor BuildOutboundApplicationOccupationLockDescriptor(string? applicationNo, string? applicationType)
+    {
+        string businessNo = string.IsNullOrWhiteSpace(applicationNo) ? "（无）" : applicationNo.Trim();
+        string outboundType = string.IsNullOrWhiteSpace(applicationType) ? string.Empty : applicationType.Trim();
+        string supplement = $"占用锁\n业务类型：{HardDiskRegisterLock.BusinessTypeOutboundApplication}\n业务单号：{businessNo}";
+        if (!string.IsNullOrWhiteSpace(outboundType))
+        {
+            supplement += $"\n申请类型：{outboundType}";
+        }
+
+        return new CabinetOccupationLockDescriptor
+        {
+            HasLock = true,
+            LockKindText = "占用锁",
+            BusinessTypeText = HardDiskRegisterLock.BusinessTypeOutboundApplication,
+            BusinessNoText = businessNo,
+            ToolTipSupplement = supplement,
+        };
+    }
+
     /// <inheritdoc />
     public IReadOnlyList<SimulatedArchiveBoxPendingReturnDetailRow> GetSimulatedArchiveBoxPendingReturnDetails(string boxLocationCode)
     {

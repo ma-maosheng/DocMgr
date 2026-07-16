@@ -49,6 +49,10 @@ namespace DocMgr.Services.YearlyArchive
         public static string NormalizeConfidentialLevel(string? value)
             => ArchiveRegisterDomainValues.NormalizeConfidentialLevel(value);
 
+        /// <summary>
+        /// 资料室资料管理员：所属部门为「资料室」的部门资料管理员，或系统管理员。
+        /// 仅用于审批及后续办理（交接/办结等）。
+        /// </summary>
         public static bool IsArchiveAdminUser(User? user)
         {
             if (user == null)
@@ -56,26 +60,65 @@ namespace DocMgr.Services.YearlyArchive
                 return false;
             }
 
-            return user.Department == "资料室"
-                   && (user.Role == "部门资料管理员"
-                       || user.Role == "资料室资料管理员"
-                       || user.Role == "资料室管理员"
-                       || user.Role == "Administrator"
-                       || user.Role == "管理员");
+            string role = user.Role?.Trim() ?? string.Empty;
+            if (string.Equals(role, "Administrator", StringComparison.Ordinal)
+                || string.Equals(role, "管理员", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            string dept = user.Department?.Trim() ?? string.Empty;
+            return string.Equals(dept, "资料室", StringComparison.Ordinal)
+                   && (string.Equals(role, "部门资料管理员", StringComparison.Ordinal)
+                       || string.Equals(role, "资料室资料管理员", StringComparison.Ordinal)
+                       || string.Equals(role, "资料室管理员", StringComparison.Ordinal));
         }
 
-        public static bool IsApplicantUser(User? user)
+        /// <summary>
+        /// 部门资料管理员（不含资料室）：仅可发起各类申请业务。
+        /// </summary>
+        public static bool IsDepartmentArchiveAdmin(User? user)
         {
             if (user == null)
             {
                 return false;
             }
 
-            var role = user.Role ?? string.Empty;
-            var isArchiveAdmin = IsArchiveAdminUser(user);
-            var isDeptDocAdmin = role == "部门资料管理员" && !isArchiveAdmin;
+            string role = user.Role?.Trim() ?? string.Empty;
+            if (!string.Equals(role, "部门资料管理员", StringComparison.Ordinal))
+            {
+                return false;
+            }
 
-            return role == "普通用户" || isDeptDocAdmin;
+            // 资料室部门的「部门资料管理员」即资料室资料管理员，不得发起申请。
+            string dept = user.Department?.Trim() ?? string.Empty;
+            return !string.Equals(dept, "资料室", StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// 申请侧操作人：部门资料管理员（不含资料室）。
+        /// </summary>
+        public static bool IsApplicantUser(User? user) => IsDepartmentArchiveAdmin(user);
+
+        /// <summary>
+        /// 是否允许发起申请（部门资料管理员，或系统管理员例外）。
+        /// </summary>
+        public static bool CanSubmitApplication(User? user) =>
+            IsDepartmentArchiveAdmin(user) || IsSystemAdministrator(user);
+
+        /// <summary>
+        /// 系统管理员（超管例外）。
+        /// </summary>
+        public static bool IsSystemAdministrator(User? user)
+        {
+            if (user == null)
+            {
+                return false;
+            }
+
+            string role = user.Role?.Trim() ?? string.Empty;
+            return string.Equals(role, "Administrator", StringComparison.Ordinal)
+                   || string.Equals(role, "管理员", StringComparison.Ordinal);
         }
 
         public static ArchiveRegisterUiPermissionState ResolveUiPermissionState(User? user, YearlyArchiveRegisterRecord? currentRecord)
@@ -85,24 +128,22 @@ namespace DocMgr.Services.YearlyArchive
                 return new ArchiveRegisterUiPermissionState(false, false, false, false, false, false);
             }
 
-            var role = user.Role ?? string.Empty;
             bool isDraft = currentRecord == null || currentRecord.IsDraft;
             bool isSubmitted = currentRecord?.IsSubmitted == true;
             bool isApproved = currentRecord?.IsApprovedReceived == true;
             bool isSignedUploaded = currentRecord?.IsSignedUploaded == true;
             bool isCompleted = currentRecord?.IsArchived == true;
 
-            bool isSysAdmin = role == "Administrator";
+            bool isSysAdmin = IsSystemAdministrator(user);
             bool isArchiveAdmin = IsArchiveAdminUser(user);
-            bool isDeptDocAdmin = role.Contains("部门资料管理员", StringComparison.Ordinal) && !isArchiveAdmin;
-            bool isApplicant = role == "普通用户" || isDeptDocAdmin;
+            bool isApplicant = IsDepartmentArchiveAdmin(user);
 
             bool canEditForm = (isApplicant && (isDraft || isSubmitted)) || isSysAdmin;
-            bool canApprove = (isArchiveAdmin || isSysAdmin) && isSubmitted;
-            bool canUpload = (isArchiveAdmin || isSysAdmin) && (isApproved || isSignedUploaded);
+            bool canApprove = isArchiveAdmin && isSubmitted;
+            bool canUpload = isArchiveAdmin && (isApproved || isSignedUploaded);
             bool canEditItemConfidentialLevel = !isCompleted
                 && (canEditForm
-                    || ((isArchiveAdmin || isSysAdmin) && isSubmitted));
+                    || (isArchiveAdmin && isSubmitted));
 
             return new ArchiveRegisterUiPermissionState(
                 isArchiveAdmin,

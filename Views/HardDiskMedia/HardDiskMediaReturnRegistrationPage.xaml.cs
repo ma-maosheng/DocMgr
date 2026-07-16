@@ -1,5 +1,7 @@
+using DocMgr.Models.HardDiskMedia;
 using DocMgr.ViewModels.HardDiskMedia;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -10,12 +12,18 @@ namespace DocMgr.Views.HardDiskMedia
     {
         private readonly IServiceScope _pageScope;
 
-        public HardDiskMediaReturnRegistrationPage()
+        public HardDiskReturnWorkspaceMode WorkspaceMode { get; }
+
+        public HardDiskMediaReturnRegistrationPage(
+            HardDiskReturnWorkspaceMode workspaceMode = HardDiskReturnWorkspaceMode.Application)
         {
             InitializeComponent();
+            WorkspaceMode = workspaceMode;
 
             _pageScope = App.CurrentProvider.CreateScope();
-            DataContext = _pageScope.ServiceProvider.GetRequiredService<HardDiskMediaReturnRegistrationPageViewModel>();
+            var vmFactory = _pageScope.ServiceProvider
+                .GetRequiredService<Func<HardDiskReturnWorkspaceMode, HardDiskMediaReturnRegistrationPageViewModel>>();
+            DataContext = vmFactory(workspaceMode);
 
             Loaded += HardDiskMediaReturnRegistrationPage_Loaded;
             Unloaded += HardDiskMediaReturnRegistrationPage_Unloaded;

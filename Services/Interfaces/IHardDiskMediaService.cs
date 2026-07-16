@@ -129,7 +129,7 @@ namespace DocMgr.Services.Interfaces
         /// <summary>
         /// 查询业务申请。
         /// </summary>
-        Task<IReadOnlyList<HardDiskMediaApplication>> SearchApplicationsAsync(string? keyword, string? status, string? applicationType);
+        Task<IReadOnlyList<HardDiskMediaApplication>> SearchApplicationsAsync(string? keyword, int? status, string? applicationType);
 
         /// <summary>
         /// 保存业务申请。

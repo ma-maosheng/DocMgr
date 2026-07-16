@@ -20,10 +20,17 @@ namespace DocMgr.Services.YearlyArchive
                     string.Empty);
             }
 
-            if (record.ApplicantUserId != user.Id && !IsArchiveAdminUser(user))
+            if (!CanSubmitApplication(user))
             {
                 return new ArchiveOutboundSubmitPreviewResult(
-                    ["仅申请人或资料室管理员可提交该申请。"],
+                    ["仅部门资料管理员可提交资料借出申请。"],
+                    string.Empty);
+            }
+
+            if (record.ApplicantUserId != user.Id && !ArchiveRegisterBusinessRules.IsSystemAdministrator(user))
+            {
+                return new ArchiveOutboundSubmitPreviewResult(
+                    ["仅申请人本人可提交该申请。"],
                     string.Empty);
             }
 

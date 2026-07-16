@@ -1,6 +1,9 @@
+﻿using DocMgr.Infrastructure.AgentDebugLogging;
 using DocMgr.Models.Cabinets;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -204,22 +207,31 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void ResetSimulatedLocationSelection()
         {
-            _selectedCabinet = null;
-            OnPropertyChanged(nameof(SelectedCabinet));
-            _selectedSide = string.Empty;
-            OnPropertyChanged(nameof(SelectedSide));
-            _selectedRow = string.Empty;
-            OnPropertyChanged(nameof(SelectedRow));
-            _selectedColumn = string.Empty;
-            OnPropertyChanged(nameof(SelectedColumn));
-            ReplaceItems(Sides, Array.Empty<string>());
-            ReplaceItems(Rows, Array.Empty<string>());
-            ReplaceItems(Columns, Array.Empty<string>());
-            PhysicalCodeResult = "请先选择位置";
-            IsPhysicalCodeWarning = true;
-            CellCountText = "-";
-            _currentCellBoxCount = 0;
-            RaiseSlotSnapshotAvailabilityChanged();
+            _suppressSimulatedLocationRecalc = true;
+            try
+            {
+                _selectedCabinet = null;
+                OnPropertyChanged(nameof(SelectedCabinet));
+                _selectedSide = string.Empty;
+                OnPropertyChanged(nameof(SelectedSide));
+                _selectedRow = string.Empty;
+                OnPropertyChanged(nameof(SelectedRow));
+                _selectedColumn = string.Empty;
+                OnPropertyChanged(nameof(SelectedColumn));
+                ReplaceItems(Sides, Array.Empty<string>());
+                ReplaceItems(Rows, Array.Empty<string>());
+                ReplaceItems(Columns, Array.Empty<string>());
+                PhysicalCodeResult = "请先选择位置";
+                IsPhysicalCodeWarning = true;
+                CellCountText = "-";
+                _currentCellBoxCount = 0;
+                RaiseSlotSnapshotAvailabilityChanged();
+            }
+            finally
+            {
+                _suppressSimulatedLocationRecalc = false;
+            }
+
             if (Cabinets.Count > 0)
             {
                 SelectedCabinet = Cabinets[0];
@@ -277,42 +289,83 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        /// <summary>
+        /// 根据当前柜位计算盒内序号与物理位置编码。
+        /// 使用独立 scope 读库，并用代数丢弃过期的并发计算结果。
+        /// </summary>
         private async void CalculateBoxIndex()
         {
-            if (!IsSimulatedTrack || !IsNewBoxMode)
+            if (_suppressSimulatedLocationRecalc || !IsSimulatedTrack || !IsNewBoxMode)
             {
                 return;
             }
 
-            if (SelectedCabinet == null || string.IsNullOrEmpty(SelectedSide) || string.IsNullOrEmpty(SelectedRow) || string.IsNullOrEmpty(SelectedColumn))
+            if (SelectedCabinet == null
+                || string.IsNullOrEmpty(SelectedSide)
+                || string.IsNullOrEmpty(SelectedRow)
+                || string.IsNullOrEmpty(SelectedColumn)
+                || !int.TryParse(SelectedRow, out int row)
+                || !int.TryParse(SelectedColumn, out int col))
             {
                 PhysicalCodeResult = "位置信息不全";
                 IsPhysicalCodeWarning = true;
+                RaiseSlotSnapshotAvailabilityChanged();
                 return;
             }
 
-            if (!int.TryParse(SelectedRow, out int row) || !int.TryParse(SelectedColumn, out int col))
+            string cabinetName = SelectedCabinet.Name;
+            string side = SelectedSide;
+            int myGeneration = Interlocked.Increment(ref _simulatedBoxIndexCalculationGeneration);
+            // #region agent log
+            AgentDebugSessionLog.Write("C", "CalculateBoxIndex", "start", new
             {
-                PhysicalCodeResult = "位置信息不全";
-                IsPhysicalCodeWarning = true;
-                return;
-            }
+                cabinetName,
+                side,
+                row,
+                col,
+                myGeneration,
+                threadId = Environment.CurrentManagedThreadId
+            });
+            // #endregion
 
             try
             {
-                int count = await _filingService.GetBoxCountInCellAsync(SelectedCabinet.Name, SelectedSide, row, col);
+                int count;
+                using (IServiceScope scope = _scopeFactory.CreateScope())
+                {
+                    var filing = scope.ServiceProvider.GetRequiredService<IArchiveFilingService>();
+                    // 回到 UI 同步上下文后再写绑定属性，避免跨线程异常。
+                    count = await filing.GetBoxCountInCellAsync(cabinetName, side, row, col).ConfigureAwait(true);
+                }
+
+                if (myGeneration != Volatile.Read(ref _simulatedBoxIndexCalculationGeneration))
+                {
+                    return;
+                }
+
                 _currentCellBoxCount = count;
                 CellCountText = $"{count} 盒";
-
-                int newIndex = count + 1;
-                PhysicalCodeResult = $"{SelectedCabinet.Name}{SelectedSide}-{row}-{col}-{newIndex:D2}";
+                PhysicalCodeResult = $"{cabinetName}{side}-{row}-{col}-{(count + 1):D2}";
                 IsPhysicalCodeWarning = false;
+                RaiseSlotSnapshotAvailabilityChanged();
+                // #region agent log
+                AgentDebugSessionLog.Write("C", "CalculateBoxIndex", "success", new { count, PhysicalCodeResult });
+                // #endregion
             }
             catch (Exception ex)
             {
+                // #region agent log
+                AgentDebugSessionLog.WriteException("C", "CalculateBoxIndex", "failed", ex);
+                // #endregion
+                if (myGeneration != Volatile.Read(ref _simulatedBoxIndexCalculationGeneration))
+                {
+                    return;
+                }
+
                 PhysicalCodeResult = "位置计算失败";
                 IsPhysicalCodeWarning = true;
-                MessageBox.Show("计算档案盒位置失败: " + ex.Message);
+                RaiseSlotSnapshotAvailabilityChanged();
+                MessageBox.Show("计算档案盒位置失败: " + ex.GetBaseException().Message);
             }
         }
 
@@ -340,14 +393,24 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                SelectedCabinet = Cabinets.FirstOrDefault(item => string.Equals(item.Name, suggestion.CabinetName, StringComparison.OrdinalIgnoreCase));
-                SelectedSide = suggestion.Side;
-                SelectedRow = suggestion.Row.ToString();
-                SelectedColumn = suggestion.Column.ToString();
+                _suppressSimulatedLocationRecalc = true;
+                try
+                {
+                    SelectedCabinet = Cabinets.FirstOrDefault(item => string.Equals(item.Name, suggestion.CabinetName, StringComparison.OrdinalIgnoreCase));
+                    SelectedSide = suggestion.Side;
+                    SelectedRow = suggestion.Row.ToString();
+                    SelectedColumn = suggestion.Column.ToString();
+                }
+                finally
+                {
+                    _suppressSimulatedLocationRecalc = false;
+                }
+
                 _currentCellBoxCount = suggestion.ExistingBoxCount;
                 CellCountText = $"{suggestion.ExistingBoxCount} 盒";
                 PhysicalCodeResult = suggestion.SuggestedBoxLocationCode;
                 IsPhysicalCodeWarning = false;
+                RaiseSlotSnapshotAvailabilityChanged();
                 MessageBox.Show(suggestion.SuggestionSummary, "建议档口位置", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)

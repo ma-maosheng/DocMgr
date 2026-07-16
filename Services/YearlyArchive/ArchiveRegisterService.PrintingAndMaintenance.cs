@@ -40,9 +40,19 @@ namespace DocMgr.Services.YearlyArchive
             return ArchiveRegisterBusinessRules.IsArchiveAdminUser(user);
         }
 
+        public bool IsDepartmentArchiveAdmin(User? user)
+        {
+            return ArchiveRegisterBusinessRules.IsDepartmentArchiveAdmin(user);
+        }
+
         public bool IsApplicantUser(User? user)
         {
             return ArchiveRegisterBusinessRules.IsApplicantUser(user);
+        }
+
+        public bool CanSubmitApplication(User? user)
+        {
+            return ArchiveRegisterBusinessRules.CanSubmitApplication(user);
         }
 
         public ArchiveRegisterPrintData BuildPrintData(

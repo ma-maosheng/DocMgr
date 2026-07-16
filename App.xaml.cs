@@ -7,6 +7,7 @@ using DocMgr.Infrastructure.Seeding;
 using DocMgr.Infrastructure.Startup;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.Shared;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services;
 using DocMgr.Services.Interfaces;
@@ -29,6 +30,49 @@ namespace DocMgr
         {
             base.OnStartup(e);
 
+            // #region agent log
+            DispatcherUnhandledException += (_, args) =>
+            {
+                DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
+                    "E",
+                    "App.DispatcherUnhandledException",
+                    "ui unhandled — preventing silent exit",
+                    args.Exception);
+                try
+                {
+                    MessageBox.Show(
+                        "未处理异常（已写入调试日志，程序暂不退出）：\n\n"
+                        + args.Exception.GetType().FullName + "\n"
+                        + args.Exception.GetBaseException().Message,
+                        "调试捕获",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+                catch
+                {
+                    // ignore
+                }
+
+                args.Handled = true;
+            };
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            {
+                if (args.ExceptionObject is Exception ex)
+                {
+                    DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
+                        "E",
+                        "App.UnhandledException",
+                        "domain unhandled isTerminating=" + args.IsTerminating,
+                        ex);
+                }
+            };
+            DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.Write(
+                "E",
+                "App.OnStartup",
+                "startup begin post-fix",
+                new { logPath = DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.PrimaryLogPath, runId = "post-fix" });
+            // #endregion
+
             DocMgrWindowBranding.Register();
 
             ScrollViewerWheelRoutingSupport.Register();
@@ -40,6 +84,13 @@ namespace DocMgr
             }
             catch (Exception ex)
             {
+                // #region agent log
+                DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
+                    "E",
+                    "App.OnStartup",
+                    "database config failed",
+                    ex);
+                // #endregion
                 MessageBox.Show(
                     ex.Message,
                     "数据库配置错误",
@@ -53,6 +104,38 @@ namespace DocMgr
             ConfigureServices(services, databaseOptions);
 
             CurrentProvider = BuildServiceProvider(services);
+
+            // #region agent log
+            AppDomain.CurrentDomain.FirstChanceException += (_, args) =>
+            {
+                try
+                {
+                    Exception ex = args.Exception;
+                    string text = ex.ToString();
+                    if (text.Contains("ArchiveFiling", StringComparison.Ordinal)
+                        || text.Contains("HandleSelectedRecords", StringComparison.Ordinal)
+                        || text.Contains("CalculateBoxIndex", StringComparison.Ordinal)
+                        || text.Contains("RebuildSimulated", StringComparison.Ordinal)
+                        || text.Contains("InvalidOperationException", StringComparison.Ordinal)
+                        || text.Contains("NullReferenceException", StringComparison.Ordinal))
+                    {
+                        DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
+                            "E",
+                            "App.FirstChanceException",
+                            "first-chance",
+                            ex);
+                    }
+                }
+                catch
+                {
+                    // ignore
+                }
+            };
+            DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.Write(
+                "E",
+                "App.OnStartup",
+                "provider ready, showing login");
+            // #endregion
 
             var logContextService = CurrentProvider.GetRequiredService<IDbOperationLogContextService>();
             DbOperationLogUiCapture.Register(logContextService);
@@ -140,6 +223,9 @@ namespace DocMgr
 
             initializationState.ReportProgress("正在归一化硬盘申请单状态…");
             NormalizeHardDiskApplicationStatusStorage(db);
+
+            initializationState.ReportProgress("正在归一化资料归还单状态…");
+            NormalizeYearlyArchiveReturnStatusStorage(db);
 
             initializationState.ReportProgress("正在补全防磁磁盘柜未配置档口用途…");
             scope.ServiceProvider.GetRequiredService<ICabinetService>()
@@ -238,32 +324,43 @@ namespace DocMgr
         }
 
         /// <summary>
-        /// 将历史硬盘申请单作废状态文案迁移为现行命名。
+        /// 硬盘申请单状态历史文案 → int 的转换已由 EF Migration（ConvertHardDiskApplicationStatusToInt）
+        /// 在库结构升级阶段一次性完成，此处保留空实现以维持启动流程调用点不变。
         /// </summary>
         private static void NormalizeHardDiskApplicationStatusStorage(AppDbContext db)
+        {
+            ArgumentNullException.ThrowIfNull(db);
+        }
+
+        /// <summary>
+        /// 资料归还旧 4 态（0草稿/1已登记/2已办结/3已作废）迁移为统一 7 态。
+        /// 仅当 CompletedAt/VoidedAt 表明仍为旧语义时改写，避免与新「已审批」态冲突。
+        /// </summary>
+        private static void NormalizeYearlyArchiveReturnStatusStorage(AppDbContext db)
         {
             ArgumentNullException.ThrowIfNull(db);
 
             bool changed = false;
 
-            foreach (var application in db.HardDiskMediaApplications)
+            foreach (var record in db.YearlyArchiveReturnRecords)
             {
-                string? normalizedStatus = application.ApplicationStatus switch
-                {
-                    HardDiskMediaApplication.LegacyStatusDraft => HardDiskMediaApplication.StatusDraft,
-                    HardDiskMediaApplication.LegacyStatusSubmitted => HardDiskMediaApplication.StatusSubmitted,
-                    HardDiskMediaApplication.LegacyStatusApproved => HardDiskMediaApplication.StatusApproved,
-                    HardDiskMediaApplication.LegacyStatusSignedUploaded => HardDiskMediaApplication.StatusSignedUploaded,
-                    HardDiskMediaApplication.LegacyStatusCompleted => HardDiskMediaApplication.StatusCompleted,
-                    HardDiskMediaApplication.LegacyStatusWithdrawn => HardDiskMediaApplication.StatusWithdrawn,
-                    HardDiskMediaApplication.LegacyStatusForceWithdrawn => HardDiskMediaApplication.StatusForceWithdrawn,
-                    _ => null
-                };
+                int original = record.Status;
+                int normalized = original;
 
-                if (normalizedStatus != null &&
-                    !string.Equals(application.ApplicationStatus, normalizedStatus, StringComparison.Ordinal))
+                // 旧 Completed=2 且已办结时间存在 → 新 Completed=4
+                if (original == 2 && record.CompletedAt.HasValue)
                 {
-                    application.ApplicationStatus = normalizedStatus;
+                    normalized = ApplicationWorkflowStatus.Completed;
+                }
+                // 旧 Voided=3 → 新 Withdrawn=5
+                else if (original == 3)
+                {
+                    normalized = ApplicationWorkflowStatus.Withdrawn;
+                }
+
+                if (normalized != original)
+                {
+                    record.Status = normalized;
                     changed = true;
                 }
             }

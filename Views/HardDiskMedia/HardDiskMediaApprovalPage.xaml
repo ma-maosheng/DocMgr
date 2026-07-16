@@ -23,14 +23,14 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                         <Button Content="申请-&gt;查看" Command="{Binding ViewApplicationCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="120" Margin="0,0,10,0"/>
                         <Button Content="申请-&gt;审批" Command="{Binding ApproveCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="120" Margin="0,0,10,0"/>
-                        <Button Content="强制作废" Command="{Binding ForceWithdrawCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="130" Margin="0,0,10,0"/>
-                        <Button Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96"/>
+                        <Button Content="强制作废" Command="{Binding ForceWithdrawCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="130"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -123,6 +123,14 @@
                                   ItemsSource="{Binding ApplicationYears}"
                                   SelectedItem="{Binding ApplicationYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
+
+                    <Button Grid.Column="4"
+                            Content="刷新列表"
+                            Command="{Binding RefreshCommand}"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Width="96"
+                            Margin="16,0,0,0"
+                            VerticalAlignment="Center"/>
                 </Grid>
             </ScrollViewer>
         </Border>
@@ -178,7 +186,7 @@
                         <DataGridTextColumn Header="申请单编号" Binding="{Binding ApplicationNo}" Width="150"/>
                         <DataGridTextColumn Header="介质编号" Binding="{Binding Medium.DiskCode}" Width="110"/>
                         <DataGridTextColumn Header="申请类型" Binding="{Binding ApplicationType}" Width="140"/>
-                        <DataGridTextColumn Header="申请状态" Binding="{Binding ApplicationStatus}" Width="120"/>
+                        <DataGridTextColumn Header="申请状态" Binding="{Binding StatusStr}" Width="120"/>
                         <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="90"/>
                         <DataGridTextColumn Header="申请日期" Binding="{Binding ApplyTime, StringFormat=yyyy-MM-dd}" Width="110"/>
                         <DataGridTextColumn Header="去向/对方" Binding="{Binding TargetPersonOrUnit}" Width="140"/>

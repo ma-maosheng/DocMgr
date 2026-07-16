@@ -359,8 +359,8 @@
                     <StackPanel Grid.Column="26" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Content="查询" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding SearchCommand}"/>
                         <Button Content="重置" Margin="4,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding ResetCommand}"/>
-                        <Button Content="刷新" Margin="4,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding RefreshCommand}"/>
                         <Button Content="导出" Margin="6,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding ExportCommand}" ToolTip="导出台账"/>
+                        <Button Content="刷新" Margin="4,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding RefreshCommand}"/>
                     </StackPanel>
                 </Grid>
             </ScrollViewer>

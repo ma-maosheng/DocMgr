@@ -39,7 +39,7 @@ namespace DocMgr.ViewModels.Cabinets
             CanvasDisplayScale = ResolveCanvasDisplayScale(SlotCanvasWidth, SlotCanvasHeight, descriptor.IsMagneticDiskSlot);
             IsMagneticDiskSlot = descriptor.IsMagneticDiskSlot;
             HardDiskCapacity = descriptor.HardDiskCapacity <= 0 ? 10 : descriptor.HardDiskCapacity;
-            ArchiveBoxes = new ObservableCollection<ArchiveBoxItemViewModel>(descriptor.ArchiveBoxes.Select(box => new ArchiveBoxItemViewModel(box.BoxCode, box.BoxLabel, box.CategoryText, box.ArchiveTypeText, box.ArchiveIdentifierText, box.CountText, box.SlotCode, box.SequenceIndex, box.ItemCount, box.IsMixedPlacement, box.OriginalBoxNumberText, box.RelatedBoxCodesText, box.RelatedBoxCount, box.MixedPlacementHint, box.SourceSummaryText, box.PendingSortingRecordCount, box.BoxSpecification, box.PlacementMode, box.LayoutX, box.LayoutY, box.LayoutWidth, box.LayoutHeight, CanvasDisplayScale, box.YearlyArchiveBoxId, box.PendingReturnCopyCount, box.HasOccupationLock, box.OccupationLockToolTipText, box.IsYearlyArchiveDisplay, box.ArchiveSequenceNoShortText, box.YearText, box.ProjectText)));
+            ArchiveBoxes = new ObservableCollection<ArchiveBoxItemViewModel>(descriptor.ArchiveBoxes.Select(box => new ArchiveBoxItemViewModel(box.BoxCode, box.BoxLabel, box.CategoryText, box.ArchiveTypeText, box.ArchiveIdentifierText, box.CountText, box.SlotCode, box.SequenceIndex, box.ItemCount, box.IsMixedPlacement, box.OriginalBoxNumberText, box.RelatedBoxCodesText, box.RelatedBoxCount, box.MixedPlacementHint, box.SourceSummaryText, box.PendingSortingRecordCount, box.BoxSpecification, box.PlacementMode, box.LayoutX, box.LayoutY, box.LayoutWidth, box.LayoutHeight, CanvasDisplayScale, box.YearlyArchiveBoxId, box.PendingReturnCopyCount, box.HasOccupationLock, box.OccupationLockToolTipText, box.OccupationLockBadgeText, box.IsYearlyArchiveDisplay, box.ArchiveSequenceNoShortText, box.YearText, box.ProjectText)));
             HardDiskMediaItems = new ObservableCollection<CabinetHardDiskMediumItemViewModel>(BuildHardDiskMediaItems(descriptor));
             PendingReturnMediaItems = new ObservableCollection<CabinetHardDiskMediumItemViewModel>(descriptor.PendingReturnMedia.Select(item => new CabinetHardDiskMediumItemViewModel(item)));
             UtilizationRatio = descriptor.UtilizationRatio;
@@ -380,10 +380,28 @@ namespace DocMgr.ViewModels.Cabinets
             IsMagneticDiskSlot && HardDiskPresentCount == 0;
 
         public bool IsYearlyDataMagneticDiskSourceSlot =>
+            IsElectronicMediaMagneticDiskSourceSlot;
+
+        public bool IsRelocatableDedicatedMagneticDiskSlot =>
             IsMagneticDiskSlot
-            && (IsDataDiskDedicatedSlot || IsDataOpticalDiscDedicatedSlot)
+            && CabinetHardDiskSlotCategoryAssignment.IsRelocatableDedicatedSlotCategory(DedicatedSlotCategoryName);
+
+        public bool IsElectronicMediaMagneticDiskSourceSlot =>
+            IsRelocatableDedicatedMagneticDiskSlot
             && HardDiskPresentCount > 0
-            && HardDiskMediaItems.Where(item => !item.IsEmpty).All(item => item.IsYearlyArchiveDisplay);
+            && HardDiskMediaItems.Where(item => !item.IsEmpty).All(item => item.IsElectronicMediaRelocationCandidate);
+
+        public int ElectronicMediaRelocationCandidateCount =>
+            HardDiskMediaItems.Count(item => item.IsElectronicMediaRelocationCandidate);
+
+        public bool IsBlankHardDiskMagneticDiskSourceSlot =>
+            IsMagneticDiskSlot
+            && IsBlankDiskDedicatedSlot
+            && HardDiskPresentCount > 0
+            && HardDiskMediaItems.Where(item => !item.IsEmpty).All(item => item.IsBlankHardDiskRelocationCandidate);
+
+        public int BlankHardDiskRelocationCandidateCount =>
+            HardDiskMediaItems.Count(item => item.IsBlankHardDiskRelocationCandidate);
 
         public bool CanAcceptElectronicBatchRelocationTarget(string? sourceDedicatedCategoryName)
         {
@@ -402,8 +420,34 @@ namespace DocMgr.ViewModels.Cabinets
                 sourceDedicatedCategoryName);
         }
 
+        public bool CanAcceptBlankHardDiskBatchRelocationTarget(int incomingCount)
+        {
+            if (!IsMagneticDiskSlot || !IsBlankDiskDedicatedSlot || incomingCount <= 0)
+            {
+                return false;
+            }
+
+            if (HardDiskMediaItems.Any(item => !item.IsEmpty && !item.IsBlankHardDiskRelocationCandidate))
+            {
+                return false;
+            }
+
+            int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
+                CabinetHardDiskSlotCategoryAssignment.CategoryBlank);
+            return BlankHardDiskRelocationCandidateCount + incomingCount <= slotCapacity;
+        }
+
+        public bool CanAcceptBlankHardDiskInteractiveRelocationTarget(int incomingCount = 1)
+            => CanAcceptBlankHardDiskBatchRelocationTarget(incomingCount);
+
         public bool CanAcceptInteractiveItemRelocationTarget(string mediaKind, string? sourceDedicatedCategoryName)
         {
+            if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal))
+            {
+                return IsMagneticDiskSlot
+                    && CanAcceptBlankHardDiskInteractiveRelocationTarget();
+            }
+
             if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
             {
                 return IsMagneticDiskSlot

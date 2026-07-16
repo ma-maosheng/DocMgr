@@ -1,4 +1,4 @@
-﻿<Window x:Class="DocMgr.Views.MainWindow"
+<Window x:Class="DocMgr.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -430,7 +430,9 @@
                                         <Button x:Name="BtnArchiveOutboundApply" Content="借出申请" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveOutboundApply_Click"/>
                                         <Button x:Name="BtnArchiveOutboundApproval" Content="申请审批" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveOutboundApproval_Click"/>
                                         <Button x:Name="BtnArchiveOutboundHandover" Content="资料出库" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveOutboundHandover_Click"/>
-                                        <Button x:Name="BtnArchiveReturn" Content="资料归还" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveReturn_Click"/>
+                                        <Button x:Name="BtnArchiveReturnApply" Content="归还申请" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveReturnApply_Click"/>
+                                        <Button x:Name="BtnArchiveReturnApproval" Content="归还审批" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveReturnApproval_Click"/>
+                                        <Button x:Name="BtnArchiveReturnHandover" Content="资料归还" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveReturnHandover_Click"/>
                                         <Button x:Name="BtnArchiveCirculationLedger" Content="流转台账" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveCirculationLedger_Click"/>
                                     </StackPanel>
                                 </Expander>
@@ -482,7 +484,8 @@
                                         <Button x:Name="BtnDiskRegister" Content="初始登记" Style="{StaticResource SubSubNavButton}" Click="BtnDiskLedger_Click"/>
                                         <Button x:Name="BtnDiskBorrow"   Content="出库申请" Style="{StaticResource SubSubNavButton}" Click="BtnDiskOutboundApplication_Click"/>
                                         <Button x:Name="BtnDiskApproval" Content="出库审批" Style="{StaticResource SubSubNavButton}" Click="BtnDiskApproval_Click"/>
-                                        <Button x:Name="BtnDiskReturn"   Content="归还登记" Style="{StaticResource SubSubNavButton}" Click="BtnDiskReturnRegistration_Click"/>
+                                        <Button x:Name="BtnDiskReturnApply" Content="归还申请" Style="{StaticResource SubSubNavButton}" Click="BtnDiskReturnApply_Click"/>
+                                        <Button x:Name="BtnDiskReturnApproval" Content="归还审批" Style="{StaticResource SubSubNavButton}" Click="BtnDiskReturnApproval_Click"/>
                                         <Button x:Name="BtnDiskDispose"  Content="硬盘台账" Style="{StaticResource SubSubNavButton}" Click="BtnDiskTransaction_Click"/>
                                     </StackPanel>
                                 </Expander>

@@ -161,6 +161,8 @@ namespace DocMgr.Services.YearlyArchive
                     blankApprovalSignatures ? string.Empty : record.VicePresidentOpinion,
                     blankApprovalSignatures ? string.Empty : record.VicePresident,
                     blankApprovalSignatures ? BlankDateText : FormatDate(record.VicePresidentDate)),
+                // 交接双方签字须留白，供线下亲笔签名（见 handover-signature-print-blank）。
+                HandoverSignatureBlock = BuildBlankHandoverSignatureBlock(),
                 PrintCount = record.PrintCount
             };
         }

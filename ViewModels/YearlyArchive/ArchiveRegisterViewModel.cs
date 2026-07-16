@@ -190,8 +190,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool CanApproveRnd { get => _canApproveRnd; set => SetProperty(ref _canApproveRnd, value); }
         private bool _canApproveDeputy;
         public bool CanApproveDeputy { get => _canApproveDeputy; set => SetProperty(ref _canApproveDeputy, value); }
-        private bool _canConfirmDeliver;
-        public bool CanConfirmDeliver { get => _canConfirmDeliver; set => SetProperty(ref _canConfirmDeliver, value); }
         private bool _canUpload;
         public bool CanUpload { get => _canUpload; set => SetProperty(ref _canUpload, value); }
         private bool _canEditItemConfidentialLevel;
@@ -216,18 +214,22 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         public bool CanApprovePass => ResolveApprovalButtonState().CanApprovePass;
+        public bool CanConfirmPhysicalHandover => ResolveApprovalButtonState().CanConfirmPhysicalHandover;
         public bool CanUploadSignedAttachment => ResolveApprovalButtonState().CanUploadSignedAttachment;
         public bool CanCompleteApproval => ResolveApprovalButtonState().CanConfirmComplete;
         public bool CanPrintHandoverSheet => ResolveApprovalButtonState().CanPrintApprovalForm;
         public string ApproveHintText => CanApprovePass
             ? "请先根据线下审批结果核实资料子项密级，再执行审批通过。"
             : "仅「已提交」状态可执行审批通过。";
+        public string ConfirmHandoverHintText => CanConfirmPhysicalHandover
+            ? "请核实移交人、资料员、部门负责人签字后确认实物交接。"
+            : "请先执行「审批通过」。";
         public string UploadHintText => CanUploadSignedAttachment
             ? "请上传登记申请单、资料照片各1个。"
-            : "请先执行「审批通过」。";
+            : "请先执行「审批通过」并确认实物交接。";
         public string CompleteHintText => CanCompleteApproval
             ? "确认办结后，可打印交接单。"
-            : "请先审批通过后再确认办结。";
+            : "请先上传签批交接单和资料照片后再确认办结。";
         public string PrintHintText => CanPrintHandoverSheet
             ? "流程已办结，可打印交接单。"
             : "请先完成「确认办结」。";
@@ -239,6 +241,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public RelayCommand? GenerateIdCommand { get; }
         public RelayCommand SaveApprovalCommand { get; }
+        public RelayCommand ConfirmPhysicalHandoverCommand { get; }
         public RelayCommand SaveDraftCommand { get; }
         public RelayCommand SubmitApplicationsCommand { get; }
         public RelayCommand PrintApplicationsCommand { get; }
@@ -286,6 +289,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _archiveRegisterWordExportService = archiveRegisterWordExportService ?? throw new ArgumentNullException(nameof(archiveRegisterWordExportService));
 
             SaveApprovalCommand = new RelayCommand(async _ => await SaveApprovalAsync(), _ => CanApprovePass);
+            ConfirmPhysicalHandoverCommand = new RelayCommand(async _ => await ConfirmPhysicalHandoverAsync(), _ => CanConfirmPhysicalHandover);
             SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanExecuteApplicationSaveDraft());
             SubmitApplicationsCommand = new RelayCommand(async _ => await SubmitApplication(), _ => CanExecuteApplicationSubmit());
 
@@ -377,7 +381,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ArchiveRegisterWorkspaceMode.Application =>
                 "请填写资料与介质明细，可使用「保存草稿」「提交申请」。提交后由资料室在「资料登记（审批）」办理。",
             ArchiveRegisterWorkspaceMode.Approval =>
-                "请先根据线下审批结果核实并登记各资料子项密级，再填写审批流程，按“审批通过→上传签字件→确认办结→打印交接单”办理。",
+                "请先根据线下审批结果核实并登记各资料子项密级，再填写审批流程，按“审批通过→确认实物交接→上传签批交接单→确认办结→打印交接单”办理。",
             _ => string.Empty
         };
 

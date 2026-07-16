@@ -128,7 +128,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                     CurrentRecord.ArchivePurpose = SelectedArchivePurpose ?? string.Empty;
                 }
 
-                var result = await _archiveRegisterService.SaveDraftFlowAsync(CurrentRecord, BuildMediaEntries());
+                var result = await _archiveRegisterService.SaveDraftFlowAsync(
+                    CurrentRecord,
+                    BuildMediaEntries(),
+                    _userContextService.CurrentUser);
                 _dialogService.ShowMessage(result.Message);
                 if (!result.Success) return false;
                 MarkCommitted();
@@ -173,6 +176,42 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        private async Task ConfirmPhysicalHandoverAsync()
+        {
+            if (CurrentRecord == null)
+            {
+                _dialogService.ShowMessage("当前记录为空，无法确认实物交接。");
+                return;
+            }
+
+            if (!CanConfirmPhysicalHandover)
+            {
+                _dialogService.ShowMessage("请先审批通过后再确认实物交接。");
+                return;
+            }
+
+            try
+            {
+                var result = await _archiveRegisterService.ConfirmPhysicalHandoverFlowAsync(CurrentRecord, _userContextService.CurrentUser);
+                _dialogService.ShowMessage(result.Message);
+                if (!result.Success)
+                {
+                    return;
+                }
+
+                MarkCommitted();
+                CurrentRecord.MarkAsSignedUploaded();
+                UpdateUIState();
+                OnPropertyChanged(nameof(CurrentRecord));
+                OnPropertyChanged(nameof(WindowTitle));
+                await RefreshAttachmentRequirementsAsync();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError("确认实物交接失败: " + ex.Message);
+            }
+        }
+
         private async Task CompleteAsync()
         {
             if (CurrentRecord == null)
@@ -183,7 +222,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             if (!CanCompleteApproval)
             {
-                _dialogService.ShowMessage("请先审批通过后再确认办结。");
+                _dialogService.ShowMessage("请先上传签批交接单和资料照片后再确认办结。");
                 return;
             }
 
@@ -216,12 +255,19 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             if (CurrentRecord.IsArchived)
             {
-                return ApprovalWorkflowButtonSupport.Phase.ApprovalCompleted;
+                return ApprovalWorkflowButtonSupport.Phase.Completed;
             }
 
-            if (CurrentRecord.IsApprovedReceived || CurrentRecord.IsSignedUploaded)
+            if (CurrentRecord.IsSignedUploaded)
             {
-                return ApprovalWorkflowButtonSupport.Phase.ApprovalInProgress;
+                return AttachmentsMeetMandatoryRequirements
+                    ? ApprovalWorkflowButtonSupport.Phase.PendingComplete
+                    : ApprovalWorkflowButtonSupport.Phase.PendingSignedUpload;
+            }
+
+            if (CurrentRecord.IsApprovedReceived)
+            {
+                return ApprovalWorkflowButtonSupport.Phase.PendingPhysicalHandover;
             }
 
             if (CurrentRecord.IsSubmitted)
@@ -236,7 +282,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             if (_workspaceMode != ArchiveRegisterWorkspaceMode.Approval || CurrentRecord == null)
             {
-                return new ApprovalWorkflowButtonSupport.ButtonState(false, false, false, false);
+                return new ApprovalWorkflowButtonSupport.ButtonState(false, false, false, false, false);
             }
 
             bool isOperatorAllowed = _archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser);
@@ -264,7 +310,11 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                var result = await _archiveRegisterService.SubmitApplicationFlowAsync(CurrentRecord, mediaEntries, IsExternalSource);
+                var result = await _archiveRegisterService.SubmitApplicationFlowAsync(
+                    CurrentRecord,
+                    mediaEntries,
+                    IsExternalSource,
+                    _userContextService.CurrentUser);
                 _dialogService.ShowMessage(result.Message);
                 if (!result.Success) return;
 
@@ -283,16 +333,18 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             CanEditForm = state.CanEditForm;
             CanEditItemConfidentialLevel = state.CanEditItemConfidentialLevel;
-            CanApproveProd = CanApproveRnd = CanApproveDeputy = CanConfirmDeliver = state.CanApprove;
+            CanApproveProd = CanApproveRnd = CanApproveDeputy = state.CanApprove;
             CanUpload = state.CanUpload;
 
             OnPropertyChanged(nameof(CanApprovePass));
+            OnPropertyChanged(nameof(CanConfirmPhysicalHandover));
             OnPropertyChanged(nameof(CanUploadSignedAttachment));
             OnPropertyChanged(nameof(CanCompleteApproval));
             OnPropertyChanged(nameof(CanPrintHandoverSheet));
             OnPropertyChanged(nameof(AttachmentsMeetMandatoryRequirements));
             OnPropertyChanged(nameof(AttachmentRequirementHint));
             OnPropertyChanged(nameof(ApproveHintText));
+            OnPropertyChanged(nameof(ConfirmHandoverHintText));
             OnPropertyChanged(nameof(UploadHintText));
             OnPropertyChanged(nameof(CompleteHintText));
             OnPropertyChanged(nameof(PrintHintText));
@@ -314,22 +366,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ? "必备附件已齐全：登记申请单、资料照片。"
                 : "必备附件未齐全：\n" + validation.ErrorMessage;
 
-            if (CurrentRecord.IsSignedUploaded && !validation.IsValid)
-            {
-                CurrentRecord.MarkAsApprovedReceived();
-                try
-                {
-                    await _archiveRegisterService.SaveOrUpdateAsync(CurrentRecord);
-                }
-                catch
-                {
-                    // 状态回退以界面约束为准，保存失败时由后续操作再次持久化。
-                }
-
-                OnPropertyChanged(nameof(CurrentRecord));
-            }
-
+            OnPropertyChanged(nameof(CanConfirmPhysicalHandover));
+            OnPropertyChanged(nameof(CanUploadSignedAttachment));
             OnPropertyChanged(nameof(CanCompleteApproval));
+            OnPropertyChanged(nameof(ConfirmHandoverHintText));
             OnPropertyChanged(nameof(UploadHintText));
             OnPropertyChanged(nameof(CompleteHintText));
             CommandManager.InvalidateRequerySuggested();

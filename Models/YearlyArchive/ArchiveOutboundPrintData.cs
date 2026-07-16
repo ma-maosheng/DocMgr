@@ -42,6 +42,9 @@ namespace DocMgr.Models.YearlyArchive
 
         public string VicePresidentBlock { get; init; } = string.Empty;
 
+        /// <summary>资料双方交接签字栏（领用人与资料室资料员，打印时留白）。</summary>
+        public string HandoverSignatureBlock { get; init; } = string.Empty;
+
         public int PrintCount { get; init; }
     }
 }

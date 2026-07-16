@@ -62,18 +62,23 @@
         <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Margin="0" CornerRadius="0" Padding="16,12">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,16,0"/>
                     <TextBlock Text="归还状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <ComboBox Width="140" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" Margin="0,0,16,0"/>
                     <TextBlock Text="登记类型:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <ComboBox Width="140" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding ApplicationTypeOptions}" SelectedItem="{Binding SelectedApplicationType}" Margin="0,0,16,0"/>
+                    <TextBlock Text="年度:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox Width="100"
+                              Style="{StaticResource ToolbarFilterComboBoxStyle}"
+                              ItemsSource="{Binding ApplicationYears}"
+                              SelectedItem="{Binding ApplicationYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              Margin="0,0,16,0"/>
                     <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <TextBox Width="200" Style="{StaticResource ToolbarFilterTextBoxStyle}" VerticalContentAlignment="Center" Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,16,0">
                         <TextBox.InputBindings>
                             <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
                         </TextBox.InputBindings>
                     </TextBox>
-                    <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72"/>
+                    <Button Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -293,9 +298,85 @@
                                                  AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" MaxHeight="120"
                                                  VerticalScrollBarVisibility="Auto"
                                                  IsEnabled="{Binding IsRegistrationEditable}"/>
-                                        <ListView ItemsSource="{Binding AbnormalReportAttachments}" Height="72"
-                                                  SelectedItem="{Binding SelectedAbnormalReportAttachment}"
-                                                  Margin="0,8,0,0"
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Background="#F1F8FF" BorderBrush="#90CAF9" BorderThickness="1" Padding="12" Margin="0,0,0,10"
+                                        Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel>
+                                        <TextBlock Text="审批与交接信息" FontWeight="SemiBold" Foreground="#1565C0" Margin="0,0,0,8"/>
+
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
+                                                <TextBlock Text="审核人 *" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding ReviewerName, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanApprove}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10">
+                                                <TextBlock Text="审核日期 *" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <DatePicker Height="{StaticResource DialogFormControlHeight}" SelectedDate="{Binding ReviewerDate}" IsEnabled="{Binding CanApprove}"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,0">
+                                                <TextBlock Text="审批人 *" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding ApproverName, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanApprove}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,0">
+                                                <TextBlock Text="审批日期 *" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <DatePicker Height="{StaticResource DialogFormControlHeight}" SelectedDate="{Binding ApproverDate}" IsEnabled="{Binding CanApprove}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <StackPanel Margin="0,0,0,10">
+                                            <TextBlock Text="审批意见" Foreground="#666666" Margin="0,0,0,4"/>
+                                            <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding ApprovalOpinion, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanApprove}"/>
+                                        </StackPanel>
+
+                                        <Button Content="审批通过" Command="{Binding ApproveCommand}" HorizontalAlignment="Left" Width="112" Height="30" Margin="0,0,0,12" Style="{StaticResource FormInlineButtonStyle}"/>
+                                        <TextBlock Text="{Binding ApproveHintText}" TextWrapping="Wrap" Foreground="#1565C0" Margin="0,0,0,12"/>
+
+                                        <Separator Margin="0,0,0,12"/>
+
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0" Margin="0,0,0,10">
+                                                <TextBlock Text="办理交接人（归还人） *" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding HandoverApplicant, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanConfirmHandover}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Margin="0,0,0,10">
+                                                <TextBlock Text="办理交接人（资料管理员） *" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding HandoverAdmin, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanConfirmHandover}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <StackPanel Margin="0,0,0,10">
+                                            <TextBlock Text="办理交接日期 *" Foreground="#666666" Margin="0,0,0,4"/>
+                                            <DatePicker Width="200" HorizontalAlignment="Left" Height="{StaticResource DialogFormControlHeight}" SelectedDate="{Binding HandoverDate}" IsEnabled="{Binding CanConfirmHandover}"/>
+                                        </StackPanel>
+
+                                        <Button Content="确认实物交接" Command="{Binding ConfirmHandoverCommand}" HorizontalAlignment="Left" Width="112" Height="30" Margin="0,0,0,12" Style="{StaticResource FormInlineButtonStyle}"/>
+                                        <TextBlock Text="{Binding ConfirmHandoverHintText}" TextWrapping="Wrap" Foreground="#1565C0" Margin="0,0,0,12"/>
+
+                                        <Separator Margin="0,0,0,12"/>
+
+                                        <TextBlock Text="签批交接单附件" FontWeight="SemiBold" Foreground="#1565C0" Margin="0,0,0,8"/>
+                                        <ListView ItemsSource="{Binding Attachments}" Height="72"
+                                                  SelectedItem="{Binding SelectedAttachment}"
+                                                  Margin="0,0,0,8"
                                                   BorderBrush="#EEE" BorderThickness="1">
                                             <ListView.View>
                                                 <GridView>
@@ -305,12 +386,12 @@
                                                 </GridView>
                                             </ListView.View>
                                         </ListView>
-                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                            <Button Content="打印情况表" Command="{Binding PrintAbnormalReportCommand}" Width="96" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
-                                            <Button Content="上传情况表扫描件" Command="{Binding UploadAbnormalReportCommand}" Width="128" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
-                                            <Button Content="查看" Command="{Binding ViewAbnormalReportCommand}" Width="72" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
-                                            <Button Content="删除" Command="{Binding DeleteAbnormalReportCommand}" Width="72" Style="{StaticResource FormInlineButtonStyle}"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                            <Button Content="上传签批交接单" Command="{Binding UploadSignedAttachmentCommand}" Width="128" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
+                                            <Button Content="查看" Command="{Binding ViewAttachmentCommand}" CommandParameter="{Binding SelectedAttachment}" Width="72" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
+                                            <Button Content="删除" Command="{Binding DeleteAttachmentCommand}" CommandParameter="{Binding SelectedAttachment}" Width="72" Style="{StaticResource FormInlineButtonStyle}"/>
                                         </StackPanel>
+                                        <TextBlock Text="{Binding UploadHintText}" TextWrapping="Wrap" Foreground="#1565C0" Margin="0,8,0,0"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -321,9 +402,15 @@
                         </Border>
 
                         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-                            <Button Content="{Binding SubmitButtonText}" Command="{Binding SubmitCommand}" Width="112" Height="32" Margin="0,0,10,0"/>
-                            <Button Content="打印交接单" Command="{Binding PrintHandoverSheetCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
-                            <Button Content="确认办结" Command="{Binding CompleteCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
+                            <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Button Content="{Binding SaveButtonText}" Command="{Binding SaveDraftCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
+                                <Button Content="{Binding SubmitButtonText}" Command="{Binding SubmitCommand}" Width="112" Height="32" Margin="0,0,10,0"/>
+                                <Button Content="打印签批交接单" Command="{Binding PrintSignedHandoverCommand}" Width="128" Height="32" Margin="0,0,10,0"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Button Content="打印交接单" Command="{Binding PrintHandoverSheetCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
+                                <Button Content="确认办结" Command="{Binding CompleteCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
+                            </StackPanel>
                             <Button Content="删除" Command="{Binding DeleteCommand}" Width="80" Height="32" Margin="0,0,10,0"/>
                             <Button Content="取消" Command="{Binding CancelEditCommand}" Width="80" Height="32"/>
                         </StackPanel>

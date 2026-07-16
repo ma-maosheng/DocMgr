@@ -95,7 +95,7 @@ namespace DocMgr.Services.HardDiskMedia
                 HardDiskMediaApplication.StatusApproved => "已审批-待实物交接",
                 HardDiskMediaApplication.StatusSignedUploaded when !application.SignedAttachmentUploaded => "已实物交接-待上传签批交接单",
                 HardDiskMediaApplication.StatusSignedUploaded => "已上传签批交接单-待办结",
-                _ => application.ApplicationStatus
+                _ => ApplicationWorkflowStatus.ToDisplay(application.ApplicationStatus)
             };
         }
 

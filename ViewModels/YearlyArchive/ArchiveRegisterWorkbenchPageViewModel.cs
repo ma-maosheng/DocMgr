@@ -54,6 +54,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanAdd());
             OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null);
+            ViewCommand = new RelayCommand(_ => ViewSelectedRecord(), _ => SelectedRecord != null);
+            ApproveCommand = new RelayCommand(async _ => await OpenAsync(), _ => CanApprove());
             DestructiveCommand = new RelayCommand(async _ => await ExecuteDestructiveAsync(), _ => CanExecuteDestructive());
             RefreshCommand = new RelayCommand(async _ => await LoadRecordsAsync());
         }
@@ -140,6 +142,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand AddCommand { get; }
 
         public RelayCommand OpenCommand { get; }
+
+        public RelayCommand ViewCommand { get; }
+
+        public RelayCommand ApproveCommand { get; }
 
         public RelayCommand DestructiveCommand { get; }
 
@@ -323,8 +329,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return false;
             }
 
-            return _archiveRegisterService.IsApplicantUser(_userContextService.CurrentUser)
-                   || _archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser);
+            return _archiveRegisterService.CanSubmitApplication(_userContextService.CurrentUser);
         }
 
         private async Task AddAsync()
@@ -340,6 +345,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             await OpenAndReopenDialogAsync(SelectedRecord.Id);
+        }
+
+        private void ViewSelectedRecord()
+        {
+            if (SelectedRecord == null)
+            {
+                return;
+            }
+
+            _dialogService.ShowArchiveRegisterApplicationViewDialog(SelectedRecord);
         }
 
         private async Task OpenAndReopenDialogAsync(int? initialRecordId)
@@ -373,6 +388,20 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
             }
+        }
+
+        private bool CanApprove()
+        {
+            return SelectedRecord != null
+                && _archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser)
+                && IsApprovalProcessingStatus(SelectedRecord.Status);
+        }
+
+        private static bool IsApprovalProcessingStatus(int status)
+        {
+            return status == YearlyArchiveRegisterRecord.Submitted
+                || status == YearlyArchiveRegisterRecord.Approved
+                || status == YearlyArchiveRegisterRecord.SignedUploaded;
         }
 
         private async Task<T> ExecuteWithFreshArchiveServiceAsync<T>(Func<IArchiveRegisterService, Task<T>> action)

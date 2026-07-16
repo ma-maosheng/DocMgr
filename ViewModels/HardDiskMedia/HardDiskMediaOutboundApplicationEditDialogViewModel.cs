@@ -57,9 +57,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string WindowTitle =>
             $"硬盘借出 · {(string.IsNullOrWhiteSpace(ApplicationNo) ? "待编单" : ApplicationNo)} · {StatusDisplay}";
 
-        public string StatusDisplay => string.IsNullOrWhiteSpace(_sourceApplication.ApplicationStatus)
-            ? HardDiskMediaApplication.StatusDraft
-            : _sourceApplication.ApplicationStatus;
+        public string StatusDisplay => _sourceApplication.StatusStr;
 
         public string HeaderGuidanceText =>
             $"{ApplicationTypeGuidanceText} {MediumSelectionGuidanceText}";
@@ -326,7 +324,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             NotifyExpectedReturnDatePresentationChanged();
         }
 
-        private async Task SaveAsync(string targetStatus)
+        private async Task SaveAsync(int targetStatus)
         {
             if (!TryValidateForm(out var selectedMedia))
             {
@@ -373,9 +371,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             try
             {
-                string statusForPrint = string.IsNullOrWhiteSpace(_sourceApplication.ApplicationStatus)
-                    ? HardDiskMediaApplication.StatusDraft
-                    : _sourceApplication.ApplicationStatus;
+                int statusForPrint = _sourceApplication.ApplicationStatus;
                 var application = BuildApplicationForSave(statusForPrint, selectedMedia[0]);
 
                 await _hardDiskMediaService.SaveApplicationAsync(application, _userContextService.CurrentUser);
@@ -403,7 +399,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
         }
 
-        private async Task SaveBatchAsync(IReadOnlyList<HardDiskMediaOutboundMediumOption> selectedMedia, string targetStatus)
+        private async Task SaveBatchAsync(IReadOnlyList<HardDiskMediaOutboundMediumOption> selectedMedia, int targetStatus)
         {
             string batchKey = ApplicationNo.Trim();
             HardDiskMediaApplication? primaryApplication = null;
@@ -482,7 +478,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return true;
         }
 
-        private HardDiskMediaApplication BuildApplicationForSave(string targetStatus, HardDiskMediaOutboundMediumOption medium)
+        private HardDiskMediaApplication BuildApplicationForSave(int targetStatus, HardDiskMediaOutboundMediumOption medium)
         {
             return new HardDiskMediaApplication
             {
@@ -622,8 +618,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private ApplicationFormActionSupport.ActionState ResolveApplicationFormActions()
         {
-            bool isDraft = string.IsNullOrWhiteSpace(_sourceApplication.ApplicationStatus)
-                || string.Equals(_sourceApplication.ApplicationStatus, HardDiskMediaApplication.StatusDraft, StringComparison.Ordinal);
+            bool isDraft = _sourceApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft;
             return ApplicationFormActionSupport.Resolve(_sourceApplication.Id, isDraft);
         }
 

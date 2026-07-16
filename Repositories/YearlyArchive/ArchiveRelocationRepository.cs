@@ -248,10 +248,18 @@ namespace DocMgr.Repositories.YearlyArchive
                 .Where(unit =>
                     unit.StorageLocation == slotKey
                     || unit.StorageLocation.StartsWith(slotPrefix)
+                    || unit.MediumLinks.Any(link =>
+                        link.HardDiskMedium != null
+                        && link.HardDiskMedium.Ledger != null
+                        && (link.HardDiskMedium.Ledger.MediaStatus == HardDiskMedium.StatusInStockData
+                            || link.HardDiskMedium.Ledger.MediaStatus == HardDiskMedium.StatusInStockDamaged)
+                        && (link.HardDiskMedium.Ledger.StorageLocation == slotKey
+                            || link.HardDiskMedium.Ledger.StorageLocation.StartsWith(slotPrefix)))
                     || unit.DiscLinks.Any(link =>
                         link.OpticalDiscMedium != null
                         && link.OpticalDiscMedium.Ledger != null
-                        && link.OpticalDiscMedium.Ledger.MediaStatus == OpticalDiscMedium.StatusInStock
+                        && (link.OpticalDiscMedium.Ledger.MediaStatus == OpticalDiscMedium.StatusInStock
+                            || link.OpticalDiscMedium.Ledger.MediaStatus == OpticalDiscMedium.StatusDamaged)
                         && (link.OpticalDiscMedium.Ledger.StorageLocation == slotKey
                             || link.OpticalDiscMedium.Ledger.StorageLocation.StartsWith(slotPrefix))))
                 .ToListAsync();

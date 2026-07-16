@@ -5,6 +5,7 @@ using DocMgr.ViewModels.HistoryArchive;
 using DocMgr.ViewModels.Projects;
 using DocMgr.ViewModels.SystemSettings;
 using DocMgr.ViewModels.YearlyArchive;
+using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.YearlyArchive;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,7 +21,8 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<HardDiskMediumLedgerViewModel>();
         services.AddTransient<OpticalDiscMediumLedgerViewModel>();
         services.AddTransient<HardDiskMediaOutboundApplicationPageViewModel>();
-        services.AddTransient<HardDiskMediaReturnRegistrationPageViewModel>();
+        services.AddTransient<Func<HardDiskReturnWorkspaceMode, HardDiskMediaReturnRegistrationPageViewModel>>(sp =>
+            mode => ActivatorUtilities.CreateInstance<HardDiskMediaReturnRegistrationPageViewModel>(sp, mode));
         services.AddTransient<HardDiskMediaApprovalPageViewModel>();
         services.AddTransient<HardDiskMediaTransactionPageViewModel>();
         services.AddTransient<HardDiskMediaPageViewModel>();
@@ -35,7 +37,8 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<ArchiveRelocationLedgerViewModel>();
         services.AddTransient<ArchiveCirculationLedgerViewModel>();
         services.AddTransient<ArchiveSimulatedRelocationViewModel>();
-        services.AddTransient<ArchiveReturnWorkbenchViewModel>();
+        services.AddTransient<Func<ArchiveReturnWorkspaceMode, ArchiveReturnWorkbenchViewModel>>(sp =>
+            mode => ActivatorUtilities.CreateInstance<ArchiveReturnWorkbenchViewModel>(sp, mode));
         services.AddTransient<ArchiveElectronicRelocationViewModel>();
         services.AddTransient<ProjectSettingViewModel>();
         services.AddTransient<ArchiveSearchViewModel>();

@@ -42,8 +42,8 @@
                     </StackPanel>
 
                     <Button Grid.Column="2" Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"  Margin="0,0,10,0"/>
-                    <Button Grid.Column="3" Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88" Margin="0,0,10,0"/>
-                    <Button Grid.Column="4" Content="导出台账" Command="{Binding ExportTemplateCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
+                    <Button Grid.Column="3" Content="导出台账" Command="{Binding ExportTemplateCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
+                    <Button Grid.Column="4" Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"/>
                 </Grid>
             </ScrollViewer>
         </Border>

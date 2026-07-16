@@ -121,8 +121,18 @@ namespace DocMgr.ViewModels.YearlyArchive
             ResetPanelState();
             _selectedRecords = retainedRecords;
             OnPropertyChanged(nameof(SelectedRecords));
-            await HandleSelectedRecordsChangedAsync().ConfigureAwait(true);
-            SimulatedPendingSelectionRestoreRequested?.Invoke(retainedRecords.Select(record => record.Id).ToList());
+            OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
+            SuppressPendingListSelectionSync = true;
+            try
+            {
+                SimulatedPendingSelectionRestoreRequested?.Invoke(retainedRecords.Select(record => record.Id).ToList());
+                await HandleSelectedRecordsChangedAsync().ConfigureAwait(true);
+            }
+            finally
+            {
+                SuppressPendingListSelectionSync = false;
+            }
+
             return true;
         }
 
@@ -144,6 +154,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ResetPanelState();
             _selectedRecords = retainedRecords;
             OnPropertyChanged(nameof(SelectedRecords));
+            OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
             await HandleSelectedRecordsChangedAsync().ConfigureAwait(true);
             return true;
         }

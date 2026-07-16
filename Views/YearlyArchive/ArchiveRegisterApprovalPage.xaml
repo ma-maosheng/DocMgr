@@ -23,13 +23,14 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <Button Content="{Binding OpenActionText}" Command="{Binding OpenCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="120" Margin="0,0,10,0"/>
+                        <Button Content="申请-&gt;查看" Command="{Binding ViewCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="120" Margin="0,0,10,0"/>
+                        <Button Content="申请-&gt;审批" Command="{Binding ApproveCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="120" Margin="0,0,10,0"/>
                         <Button Content="{Binding DestructiveActionText}" Command="{Binding DestructiveCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="130" Margin="0,0,10,0"/>
-                        <Button Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -48,13 +49,13 @@
                                     <StackPanel>
                                         <TextBlock Text="审批状态已锁定为【全部】" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                         <TextBlock Text="包含状态："/>
-                                        <TextBlock Text="1. 未提交"/>
-                                        <TextBlock Text="2. 已提交"/>
-                                        <TextBlock Text="3. 已审批"/>
-                                        <TextBlock Text="4. 已上传签字件"/>
-                                        <TextBlock Text="5. 已办结"/>
-                                        <TextBlock Text="6. 已撤回作废"/>
-                                        <TextBlock Text="7. 已强制作废"/>
+                                        <TextBlock Text="1. 当前草稿-待提交"/>
+                                        <TextBlock Text="2. 已提交-待审批"/>
+                                        <TextBlock Text="3. 已审批-待实物交接"/>
+                                        <TextBlock Text="4. 已实物交接-待上传签批交接单"/>
+                                        <TextBlock Text="5. 已办结（业务已闭环）"/>
+                                        <TextBlock Text="6. 已作废（撤回）"/>
+                                        <TextBlock Text="7. 已作废（强制）"/>
                                     </StackPanel>
                                 </ToolTip>
                             </Border.ToolTip>
@@ -123,6 +124,14 @@
                                   ItemsSource="{Binding YearOptions}"
                                   SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
+
+                    <Button Grid.Column="4"
+                            Content="刷新列表"
+                            Command="{Binding RefreshCommand}"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Width="96"
+                            Margin="16,0,0,0"
+                            VerticalAlignment="Center"/>
                 </Grid>
             </ScrollViewer>
         </Border>

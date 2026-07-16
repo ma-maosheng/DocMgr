@@ -4,6 +4,8 @@ using System.ComponentModel;
 
 using DocMgr.Models.SystemSettings;
 
+using DocMgr.Models.Shared;
+
 using DocMgr.Models.YearlyArchive;
 
 using DocMgr.Services.Interfaces;
@@ -105,6 +107,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanAdd());
 
             OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null);
+
+            ViewCommand = new RelayCommand(_ => ViewSelectedRecord(), _ => SelectedRecord != null);
+
+            ApproveCommand = new RelayCommand(async _ => await OpenAsync(), _ => CanApprove());
 
             DestructiveCommand = new RelayCommand(async _ => await ExecuteDestructiveAsync(), _ => CanExecuteDestructive());
 
@@ -440,6 +446,14 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 
 
+        public RelayCommand ViewCommand { get; }
+
+
+
+        public RelayCommand ApproveCommand { get; }
+
+
+
         public RelayCommand DestructiveCommand { get; }
 
 
@@ -502,9 +516,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                     new("全部", null),
 
-                    new("已办结审批", YearlyArchiveOutboundRecord.SignedUploaded),
+                    new(ApplicationWorkflowStatus.TextSignedUploaded, YearlyArchiveOutboundRecord.SignedUploaded),
 
-                    new("已办结出库", YearlyArchiveOutboundRecord.Completed),
+                    new(ApplicationWorkflowStatus.TextCompleted, YearlyArchiveOutboundRecord.Completed),
 
                 };
 
@@ -528,19 +542,19 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 new("全部", null),
 
-                new("未提交", YearlyArchiveOutboundRecord.Unsubmitted),
+                new(ApplicationWorkflowStatus.TextDraft, YearlyArchiveOutboundRecord.Unsubmitted),
 
-                new("已提交", YearlyArchiveOutboundRecord.Submitted),
+                new(ApplicationWorkflowStatus.TextSubmitted, YearlyArchiveOutboundRecord.Submitted),
 
-                new("已审批", YearlyArchiveOutboundRecord.Approved),
+                new(ApplicationWorkflowStatus.TextApproved, YearlyArchiveOutboundRecord.Approved),
 
-                new("已办结审批", YearlyArchiveOutboundRecord.SignedUploaded),
+                new(ApplicationWorkflowStatus.TextSignedUploaded, YearlyArchiveOutboundRecord.SignedUploaded),
 
-                new("已办结出库", YearlyArchiveOutboundRecord.Completed),
+                new(ApplicationWorkflowStatus.TextCompleted, YearlyArchiveOutboundRecord.Completed),
 
-                new("已撤回作废", YearlyArchiveOutboundRecord.WithdrawnVoid),
+                new(ApplicationWorkflowStatus.TextWithdrawn, YearlyArchiveOutboundRecord.WithdrawnVoid),
 
-                new("已强制作废", YearlyArchiveOutboundRecord.ForceVoided),
+                new(ApplicationWorkflowStatus.TextForceWithdrawn, YearlyArchiveOutboundRecord.ForceVoided),
 
             };
 
@@ -613,16 +627,30 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 
         private bool CanAdd()
-
         {
-
-            var user = _userContextService.CurrentUser;
-
-            return user != null && _workspaceMode == ArchiveOutboundWorkspaceMode.Application;
-
+            return _workspaceMode == ArchiveOutboundWorkspaceMode.Application
+                   && _outboundService.CanSubmitApplication(_userContextService.CurrentUser);
         }
 
 
+
+        private bool CanApprove()
+        {
+            if (SelectedRecord == null)
+            {
+                return false;
+            }
+
+            return _outboundService.IsArchiveAdminUser(_userContextService.CurrentUser)
+                && IsApprovalProcessingStatus(SelectedRecord.Status);
+        }
+
+        private static bool IsApprovalProcessingStatus(int status)
+        {
+            return status == YearlyArchiveOutboundRecord.Submitted
+                || status == YearlyArchiveOutboundRecord.Approved
+                || status == YearlyArchiveOutboundRecord.SignedUploaded;
+        }
 
         private bool CanExecuteDestructive()
 
@@ -1073,6 +1101,16 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
 
+
+        private void ViewSelectedRecord()
+        {
+            if (SelectedRecord == null)
+            {
+                return;
+            }
+
+            _dialogService.ShowArchiveOutboundApplicationViewDialog(SelectedRecord);
+        }
 
         private Task OpenAndReopenDialogAsync(int? recordId = null, YearlyArchiveOutboundRecord? initialDraft = null)
 

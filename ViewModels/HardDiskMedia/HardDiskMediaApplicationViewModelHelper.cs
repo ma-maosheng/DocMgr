@@ -1,10 +1,74 @@
 using System.Collections.ObjectModel;
 using DocMgr.Services.HardDiskMedia;
+using DocMgr.Services.YearlyArchive;
 
 namespace DocMgr.ViewModels.HardDiskMedia
 {
     internal static class HardDiskMediaApplicationViewModelHelper
     {
+        /// <summary>
+        /// 默认审核人：申请人所属部门的「部门负责人」；找不到时回退到申请人姓名/当前用户。
+        /// </summary>
+        internal static string ResolveDefaultReviewerName(
+            HardDiskMediaApplication application,
+            IReadOnlyList<User> users,
+            User? currentUser)
+        {
+            ArgumentNullException.ThrowIfNull(application);
+            ArgumentNullException.ThrowIfNull(users);
+
+            string applicantDept = application.ApplicantDept?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(applicantDept))
+            {
+                string reviewer = users
+                    .FirstOrDefault(user => string.Equals(user.Department, applicantDept, StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrWhiteSpace(user.RealName)
+                        && (user.Role?.Contains("部门负责人", StringComparison.OrdinalIgnoreCase) ?? false))
+                    ?.RealName
+                    ?.Trim() ?? string.Empty;
+
+                if (!string.IsNullOrWhiteSpace(reviewer))
+                {
+                    return reviewer;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(application.ApplicantName))
+            {
+                return application.ApplicantName.Trim();
+            }
+
+            return currentUser?.RealName?.Trim() ?? string.Empty;
+        }
+
+        /// <summary>
+        /// 默认审批人：申请单已有审批人则保持；否则取资料室「负责人」；再回退到当前用户。
+        /// </summary>
+        internal static string ResolveDefaultApproverName(
+            HardDiskMediaApplication application,
+            IReadOnlyList<User> users,
+            User? currentUser)
+        {
+            ArgumentNullException.ThrowIfNull(application);
+            ArgumentNullException.ThrowIfNull(users);
+
+            if (!string.IsNullOrWhiteSpace(application.ApprovedBy))
+            {
+                return application.ApprovedBy.Trim();
+            }
+
+            string approver = users
+                .FirstOrDefault(user => string.Equals(user.Department, "资料室", StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrWhiteSpace(user.RealName)
+                    && (user.Role?.Contains("负责人", StringComparison.OrdinalIgnoreCase) ?? false))
+                ?.RealName
+                ?.Trim() ?? string.Empty;
+
+            return string.IsNullOrWhiteSpace(approver)
+                ? currentUser?.RealName?.Trim() ?? string.Empty
+                : approver;
+        }
+
         internal static HardDiskMediaApplication CloneApplication(HardDiskMediaApplication source)
         {
             ArgumentNullException.ThrowIfNull(source);
@@ -69,15 +133,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
                    applicationType == HardDiskMediaApplication.TypeLossRegistration;
         }
 
-        internal static bool IsArchiveRoomMediaAdmin(User? currentUser)
-        {
-            string dept = currentUser?.Department?.Trim() ?? string.Empty;
-            string role = currentUser?.Role?.Trim() ?? string.Empty;
+        internal static bool IsArchiveRoomMediaAdmin(User? currentUser) =>
+            ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser);
 
-            return (string.Equals(dept, "资料室", StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(role, "部门资料管理员", StringComparison.OrdinalIgnoreCase)) ||
-                   string.Equals(role, "Administrator", StringComparison.OrdinalIgnoreCase);
-        }
+        internal static bool IsDepartmentArchiveAdmin(User? currentUser) =>
+            ArchiveRegisterBusinessRules.IsDepartmentArchiveAdmin(currentUser);
+
+        internal static bool CanSubmitApplication(User? currentUser) =>
+            ArchiveRegisterBusinessRules.CanSubmitApplication(currentUser);
 
         internal static void ResetReturnRegistrationKindOptions(ObservableCollection<string> target)
         {

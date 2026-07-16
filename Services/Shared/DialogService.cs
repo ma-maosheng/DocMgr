@@ -777,6 +777,34 @@ namespace DocMgr.Services.Shared
             }
         }
 
+        public void ShowArchiveRegisterApplicationViewDialog(YearlyArchiveRegisterRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+
+            var dialog = new ArchiveRegisterApplicationViewDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+
+            var (scope, viewModel) = CreateScopedViewModel<ArchiveRegisterApplicationViewDialogViewModel>(
+                new[] { typeof(YearlyArchiveRegisterRecord) },
+                record);
+            dialog.DataContext = viewModel;
+
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            viewModel.RequestClose += HandleRequestClose;
+
+            try
+            {
+                dialog.ShowDialog();
+            }
+            finally
+            {
+                viewModel.RequestClose -= HandleRequestClose;
+                scope.Dispose();
+            }
+        }
+
         public int? ShowSearchResultSetPickDialog(IEnumerable<int>? excludedResultSetIds = null)
         {
             var dialog = new ArchiveSearchResultSetPickDialog
@@ -862,6 +890,34 @@ namespace DocMgr.Services.Shared
             {
                 viewModel.RequestClose -= HandleRequestClose;
                 dialog.Loaded -= HandleLoaded;
+                scope.Dispose();
+            }
+        }
+
+        public void ShowArchiveOutboundApplicationViewDialog(YearlyArchiveOutboundRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+
+            var dialog = new ArchiveOutboundApplicationViewDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+
+            var (scope, viewModel) = CreateScopedViewModel<ArchiveOutboundApplicationViewDialogViewModel>(
+                new[] { typeof(YearlyArchiveOutboundRecord) },
+                record);
+            dialog.DataContext = viewModel;
+
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            viewModel.RequestClose += HandleRequestClose;
+
+            try
+            {
+                dialog.ShowDialog();
+            }
+            finally
+            {
+                viewModel.RequestClose -= HandleRequestClose;
                 scope.Dispose();
             }
         }

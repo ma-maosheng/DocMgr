@@ -6,7 +6,6 @@
         Height="320"
         ResizeMode="NoResize"
         WindowStartupLocation="Manual"
-        Topmost="True"
         ShowInTaskbar="False"
         Background="White">
     <Grid Margin="12">

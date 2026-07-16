@@ -138,6 +138,12 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaAttachmentFlowResult.Fail("附件内容为空，无法上传。");
             }
 
+            string? formatError = SystemAttachmentUploadSupport.ValidateUploadFormat(fileName, extension, fileContent);
+            if (!string.IsNullOrWhiteSpace(formatError))
+            {
+                return HardDiskMediaAttachmentFlowResult.Fail(formatError);
+            }
+
             var existingApplication = await _hardDiskMediaRepository.GetApplicationByIdAsync(application.Id);
             if (existingApplication == null)
             {
@@ -251,7 +257,7 @@ namespace DocMgr.Services.HardDiskMedia
 
         private async Task ValidateAbnormalReturnRegistrationSubmitAsync(HardDiskMediaApplication application)
         {
-            if (!IsRegistrationWithoutApprovalType(application.ApplicationType) ||
+            if (!IsReturnOrLossRegistrationType(application.ApplicationType) ||
                 application.ApplicationStatus != HardDiskMediaApplication.StatusSubmitted ||
                 !HardDiskMediaReturnDomainValues.IsAbnormalReturn(application))
             {
@@ -261,16 +267,6 @@ namespace DocMgr.Services.HardDiskMedia
             if (string.IsNullOrWhiteSpace(application.Reason))
             {
                 throw new InvalidOperationException("非正常归还需填写具体情况说明。");
-            }
-
-            if (application.Id <= 0)
-            {
-                throw new InvalidOperationException("非正常归还需先保存草稿并上传情况表扫描件后再登记。");
-            }
-
-            if (!await HasUploadedAbnormalReturnReportAsync(application.Id, application.ApplicationNo))
-            {
-                throw new InvalidOperationException("非正常归还需上传情况表扫描件后再登记。");
             }
         }
     }

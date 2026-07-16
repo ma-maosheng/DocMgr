@@ -1,3 +1,4 @@
+using DocMgr.Infrastructure.AgentDebugLogging;
 using DocMgr.Models.ArchiveContainers;
 using DocMgr.Services.YearlyArchive;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,9 +19,146 @@ namespace DocMgr.ViewModels.YearlyArchive
     {
         private async Task HandleSelectedRecordsChangedAsync()
         {
-            int myGeneration = Interlocked.Increment(ref _selectedRecordsChangedGeneration);
+            // #region agent log
+            AgentDebugSessionLog.Write("E", "HandleSelectedRecordsChangedAsync", "enter", new
+            {
+                selectedCount = SelectedRecords.Count,
+                isSimulated = IsSimulatedTrack,
+                threadId = Environment.CurrentManagedThreadId
+            });
+            // #endregion
+            await _selectedRecordsChangedGate.WaitAsync().ConfigureAwait(true);
+            try
+            {
+                int myGeneration = Interlocked.Increment(ref _selectedRecordsChangedGeneration);
+                // #region agent log
+                AgentDebugSessionLog.Write("E", "HandleSelectedRecordsChangedAsync", "gate acquired", new { myGeneration });
+                // #endregion
 
+                try
+                {
+                    await HandleSelectedRecordsChangedCoreAsync(myGeneration).ConfigureAwait(true);
+                    // #region agent log
+                    AgentDebugSessionLog.Write("E", "HandleSelectedRecordsChangedAsync", "core completed", new
+                    {
+                        myGeneration,
+                        itemCount = SimulatedRecordItems.Count,
+                        project = TargetProject
+                    });
+                    // #endregion
+                }
+                catch (Exception ex)
+                {
+                    // #region agent log
+                    AgentDebugSessionLog.WriteException("A", "HandleSelectedRecordsChangedAsync.catch", "core threw", ex);
+                    // #endregion
+                    string detail = ex.GetBaseException().Message;
+                    await RunOnUiAsync(() =>
+                        MessageBox.Show(
+                            "加载所选资料立档信息失败: " + detail + "\n\n" + ex.GetType().Name,
+                            "错误",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error)
+                    ).ConfigureAwait(true);
+                }
+            }
+            finally
+            {
+                _selectedRecordsChangedGate.Release();
+            }
+        }
+
+        /// <summary>
+        /// 按当前轨道与年度，从数据库重新加载所选登记单的完整导航图，避免列表项导航属性未展开导致投影失败。
+        /// </summary>
+        private async Task<bool> TryRefreshSelectedPendingRecordsAsync(int myGeneration)
+        {
+            var selectedIds = SelectedRecords
+                .Select(record => record.Id)
+                .Distinct()
+                .ToList();
+            if (selectedIds.Count == 0)
+            {
+                return false;
+            }
+
+            List<YearlyArchiveRegisterRecord> refreshedRecords;
+            try
+            {
+                using IServiceScope scope = _scopeFactory.CreateScope();
+                IArchiveFilingService filing = scope.ServiceProvider.GetRequiredService<IArchiveFilingService>();
+                List<YearlyArchiveRegisterRecord> pending = IsSimulatedTrack
+                    ? await filing.GetPendingSimulatedRecordsAsync(SelectedPendingYear).ConfigureAwait(false)
+                    : await filing.GetPendingElectronicRecordsAsync(SelectedPendingYear).ConfigureAwait(false);
+                refreshedRecords = pending
+                    .Where(record => selectedIds.Contains(record.Id))
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                // #region agent log
+                AgentDebugSessionLog.WriteException("D", "TryRefreshSelectedPendingRecordsAsync", "refresh failed", ex);
+                // #endregion
+                await RunOnUiAsync(() =>
+                    MessageBox.Show(
+                        "刷新所选待立档登记单失败: " + ex.GetBaseException().Message,
+                        "错误",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error)
+                ).ConfigureAwait(false);
+                return false;
+            }
+
+            if (myGeneration != Volatile.Read(ref _selectedRecordsChangedGeneration))
+            {
+                return false;
+            }
+
+            await RunOnUiAsync(() =>
+            {
+                _selectedRecords = refreshedRecords;
+                OnPropertyChanged(nameof(SelectedRecords));
+                OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
+            }).ConfigureAwait(true);
+
+            return true;
+        }
+
+        private async Task HandleSelectedRecordsChangedCoreAsync(int myGeneration)
+        {
             UpdateSummaryText();
+
+            if (SelectedRecords.Count == 0)
+            {
+                ReplaceItems(ExistingBoxes, Array.Empty<YearlyArchiveBox>());
+                ReplaceItems(ExistingElectronicUnits, Array.Empty<ExistingElectronicArchiveUnitListItem>());
+                ReplaceItems(SimulatedRecordItems, Array.Empty<SelectableSimulatedArchiveItemViewModel>());
+                RefreshSimulatedRecordItemsPanel();
+                ReplaceItems(ElectronicRecordItems, Array.Empty<SelectableElectronicArchiveMediaViewModel>());
+                ReplaceItems(ElectronicRecordItemsStepTwo, Array.Empty<SelectableElectronicArchiveMediaViewModel>());
+                RefreshElectronicRecordItemsStepTwoPanel();
+                ReplaceItems(ElectronicMediaFormOptions, Array.Empty<ElectronicMediaFormListItem>());
+                _selectedElectronicMediaForm = null;
+                OnPropertyChanged(nameof(SelectedElectronicMediaForm));
+                TargetProject = string.Empty;
+                TargetYear = string.Empty;
+                ResetElectronicFields();
+                ResetElectronicLocationSelection();
+                Remarks = string.Empty;
+                OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
+                OnPropertyChanged(nameof(ElectronicStepOneSelectedDisposition));
+                OnPropertyChanged(nameof(ElectronicStepOneSelectedMediumCode));
+                OnPropertyChanged(nameof(ElectronicStepOneSelectedFilingStatus));
+                OnPropertyChanged(nameof(ElectronicStepOneSelectedFilingProgress));
+                RaiseElectronicStepFourPresentationChanged();
+                return;
+            }
+
+            if (!await TryRefreshSelectedPendingRecordsAsync(myGeneration).ConfigureAwait(true)
+                || myGeneration != Volatile.Read(ref _selectedRecordsChangedGeneration))
+            {
+                return;
+            }
 
             if (SelectedRecords.Count == 0)
             {
@@ -54,13 +192,46 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             if (IsSimulatedTrack)
             {
+                // #region agent log
+                AgentDebugSessionLog.Write("D", "HandleSelectedRecordsChangedCoreAsync", "before LoadExistingBoxes", new
+                {
+                    TargetProject,
+                    TargetYear,
+                    mediaEntries = first.MediaEntries?.Count ?? -1
+                });
+                // #endregion
                 await LoadExistingBoxesAsync(TargetProject, TargetYear).ConfigureAwait(true);
                 if (myGeneration != Volatile.Read(ref _selectedRecordsChangedGeneration))
                 {
                     return;
                 }
 
-                RebuildSimulatedRecordItems();
+                // #region agent log
+                AgentDebugSessionLog.Write("A", "HandleSelectedRecordsChangedCoreAsync", "before RebuildSimulatedRecordItems", new
+                {
+                    selectedCount = SelectedRecords.Count,
+                    mediaEntries = SelectedRecords.Sum(r => r.MediaEntries?.Count ?? 0)
+                });
+                // #endregion
+                try
+                {
+                    RebuildSimulatedRecordItems();
+                }
+                catch (Exception ex)
+                {
+                    // #region agent log
+                    AgentDebugSessionLog.WriteException("A", "RebuildSimulatedRecordItems", "rebuild threw", ex);
+                    // #endregion
+                    throw;
+                }
+
+                // #region agent log
+                AgentDebugSessionLog.Write("B", "HandleSelectedRecordsChangedCoreAsync", "after RebuildSimulatedRecordItems", new
+                {
+                    itemCount = SimulatedRecordItems.Count,
+                    threadId = Environment.CurrentManagedThreadId
+                });
+                // #endregion
                 ReplaceItems(ElectronicRecordItems, Array.Empty<SelectableElectronicArchiveMediaViewModel>());
                 ReplaceItems(ElectronicRecordItemsStepTwo, Array.Empty<SelectableElectronicArchiveMediaViewModel>());
                 RefreshElectronicRecordItemsStepTwoPanel();
@@ -197,14 +368,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                     summaries = await filing.GetExistingContainerSummariesForProjectAsync(projectName, year, ArchiveContainerKind.ElectronicBag).ConfigureAwait(false);
                 }
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex)
             {
-                await RunOnUiAsync(() => MessageBox.Show("查询已有电子立档单元失败: " + ex.Message)).ConfigureAwait(false);
-                return;
-            }
-            catch (ArgumentException ex)
-            {
-                await RunOnUiAsync(() => MessageBox.Show("查询已有电子立档单元失败: " + ex.Message)).ConfigureAwait(false);
+                await RunOnUiAsync(() => MessageBox.Show("查询已有电子立档单元失败: " + ex.GetBaseException().Message)).ConfigureAwait(false);
                 return;
             }
 
@@ -239,34 +405,52 @@ namespace DocMgr.ViewModels.YearlyArchive
                     summaries = await filing.GetExistingContainerSummariesForProjectAsync(projectName, year, containerKind).ConfigureAwait(false);
                 }
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex)
             {
-                await RunOnUiAsync(() => MessageBox.Show(errorPrefix + ex.Message)).ConfigureAwait(false);
-                return;
-            }
-            catch (ArgumentException ex)
-            {
-                await RunOnUiAsync(() => MessageBox.Show(errorPrefix + ex.Message)).ConfigureAwait(false);
+                // #region agent log
+                AgentDebugSessionLog.WriteException("D", "LoadExistingContainersAsync.query", errorPrefix + "query failed", ex);
+                // #endregion
+                await RunOnUiAsync(() => MessageBox.Show(errorPrefix + ex.GetBaseException().Message)).ConfigureAwait(false);
                 return;
             }
 
-            await RunOnUiAsync(() =>
+            try
             {
-                ReplaceItems(target, containers);
-                setSelected(target.FirstOrDefault());
-                _existingContainerSummaries = summaries;
-            }).ConfigureAwait(false);
+                await RunOnUiAsync(() =>
+                {
+                    ReplaceItems(target, containers);
+                    // 新建模式下仅刷新可选盒列表，不改写当前选中，避免连带触发柜位重算与 DbContext 并发。
+                    if (!IsNewBoxMode)
+                    {
+                        setSelected(target.FirstOrDefault());
+                    }
+                    else
+                    {
+                        setSelected(null);
+                    }
+
+                    _existingContainerSummaries = summaries;
+                }).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // #region agent log
+                AgentDebugSessionLog.WriteException("B", "LoadExistingContainersAsync.ui", errorPrefix + "ui apply failed", ex);
+                // #endregion
+                await RunOnUiAsync(() => MessageBox.Show(errorPrefix + ex.GetBaseException().Message)).ConfigureAwait(false);
+            }
         }
 
         private void RebuildSimulatedRecordItems()
         {
             var items = SelectedRecords
-                .SelectMany(record => record.MediaEntries
+                .SelectMany(record => (record.MediaEntries ?? Enumerable.Empty<YearlyArchiveRegisterMedia>())
                     .Where(media => string.Equals(media.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.OrdinalIgnoreCase))
-                    .SelectMany(media => media.Items.Select(item => new { Record = record, Media = media, Item = item })))
+                    .SelectMany(media => (media.Items ?? Enumerable.Empty<YearlyArchiveRegisterMediaItem>())
+                        .Select(item => new { Record = record, Media = media, Item = item })))
                 .Select(entry =>
                 {
-                    var archiveLink = entry.Item.ArchiveBoxLinks
+                    var archiveLink = (entry.Item.ArchiveBoxLinks ?? Enumerable.Empty<YearlyArchiveBoxMediaItemLink>())
                         .Where(link => link.ArchiveBox != null)
                         .OrderByDescending(link => link.CreatedAt)
                         .FirstOrDefault();
@@ -275,13 +459,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                     {
                         MediaItemId = entry.Item.Id,
                         RecordId = entry.Record.Id,
-                        FormNo = entry.Record.FormNo,
-                        MaterialName = entry.Record.MaterialName,
-                        MediaType = entry.Media.MediaType,
-                        ItemType = entry.Item.ItemType,
-                        ContentDesc = entry.Item.ContentDesc,
+                        FormNo = entry.Record.FormNo ?? string.Empty,
+                        MaterialName = entry.Record.MaterialName ?? string.Empty,
+                        MediaType = entry.Media.MediaType ?? string.Empty,
+                        ItemType = entry.Item.ItemType ?? string.Empty,
+                        ContentDesc = entry.Item.ContentDesc ?? string.Empty,
                         ContentCount = entry.Item.ContentCount,
-                        Note = entry.Item.Note,
+                        Note = entry.Item.Note ?? string.Empty,
                         CanSelect = !isArchived,
                         ArchiveStatusText = isArchived ? "已入盒" : "未入盒",
                         ArchiveSequenceNo = archiveLink?.ArchiveBox?.ArchiveSequenceNo ?? string.Empty,
@@ -311,7 +495,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             foreach (var record in SelectedRecords)
             {
-                foreach (var media in record.MediaEntries)
+                foreach (var media in record.MediaEntries ?? Enumerable.Empty<YearlyArchiveRegisterMedia>())
                 {
                     if (string.Equals(media.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.OrdinalIgnoreCase))
                     {
@@ -460,7 +644,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             var items = EnumerateSelectedElectronicMediaEntries()
                 .SelectMany(entry =>
                 {
-                    var orderedItems = entry.Media.Items
+                    var orderedItems = (entry.Media.Items ?? Enumerable.Empty<YearlyArchiveRegisterMediaItem>())
                         .OrderBy(item => item.ItemType, StringComparer.OrdinalIgnoreCase)
                         .ThenBy(item => item.ContentDesc, StringComparer.OrdinalIgnoreCase)
                         .ThenBy(item => item.Id)

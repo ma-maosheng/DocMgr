@@ -196,20 +196,20 @@
                                                 <DataGrid.RowStyle>
                                                     <Style TargetType="DataGridRow" BasedOn="{StaticResource StandardDataGridRowStyle}">
                                                         <Style.Triggers>
-                                                            <MultiTrigger>
-                                                                <MultiTrigger.Conditions>
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
                                                                     <Condition Binding="{Binding ArchiveStatusText}" Value="已入盒"/>
-                                                                    <Condition Property="IsSelected" Value="False"/>
-                                                                </MultiTrigger.Conditions>
+                                                                    <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="False"/>
+                                                                </MultiDataTrigger.Conditions>
                                                                 <Setter Property="Background" Value="#E8F5E9"/>
-                                                            </MultiTrigger>
-                                                            <MultiTrigger>
-                                                                <MultiTrigger.Conditions>
+                                                            </MultiDataTrigger>
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
                                                                     <Condition Binding="{Binding ArchiveStatusText}" Value="未入盒"/>
-                                                                    <Condition Property="IsSelected" Value="False"/>
-                                                                </MultiTrigger.Conditions>
+                                                                    <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="False"/>
+                                                                </MultiDataTrigger.Conditions>
                                                                 <Setter Property="Background" Value="#FFF8E1"/>
-                                                            </MultiTrigger>
+                                                            </MultiDataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
                                                 </DataGrid.RowStyle>
@@ -601,20 +601,20 @@
                                                 <DataGrid.RowStyle>
                                                     <Style TargetType="DataGridRow" BasedOn="{StaticResource StandardDataGridRowStyle}">
                                                         <Style.Triggers>
-                                                            <MultiTrigger>
-                                                                <MultiTrigger.Conditions>
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
                                                                     <Condition Binding="{Binding ArchiveStatusText}" Value="已入袋"/>
-                                                                    <Condition Property="IsSelected" Value="False"/>
-                                                                </MultiTrigger.Conditions>
+                                                                    <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="False"/>
+                                                                </MultiDataTrigger.Conditions>
                                                                 <Setter Property="Background" Value="#E8F5E9"/>
-                                                            </MultiTrigger>
-                                                            <MultiTrigger>
-                                                                <MultiTrigger.Conditions>
+                                                            </MultiDataTrigger>
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
                                                                     <Condition Binding="{Binding ArchiveStatusText}" Value="未入袋"/>
-                                                                    <Condition Property="IsSelected" Value="False"/>
-                                                                </MultiTrigger.Conditions>
+                                                                    <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="False"/>
+                                                                </MultiDataTrigger.Conditions>
                                                                 <Setter Property="Background" Value="#FFF8E1"/>
-                                                            </MultiTrigger>
+                                                            </MultiDataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
                                                 </DataGrid.RowStyle>

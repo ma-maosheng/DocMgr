@@ -22,6 +22,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private const double FooterBlockHeight = 58;
         private const double StandardRowHeight = 32;
         private const double ReasonRowHeight = 38;
+        private const double SignatureRowHeight = 56;
         private const double CellPadding = 4;
         private const double BodyFontSize = 12;
 
@@ -66,6 +67,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             rowGroup.Rows.Add(CreateSingleRow("资料室负责人", data.ArchiveRoomHeadBlock));
             rowGroup.Rows.Add(CreateSingleRow("生产科负责人", data.ProductionHeadBlock));
             rowGroup.Rows.Add(CreateSingleRow("生产副院长", data.VicePresidentBlock));
+            rowGroup.Rows.Add(CreateSingleRow(
+                "交接签字",
+                data.HandoverSignatureBlock,
+                SignatureRowHeight,
+                CellVerticalAlignment.ContentTop));
 
             document.Blocks.Add(CreateMainTable(rowGroup));
             document.Blocks.Add(CreateFooterParagraph(data));
@@ -76,11 +82,13 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static double CalculateItemDetailRowHeight(bool hasLongTermDepletionNotice)
         {
             double usablePageHeight = PageHeight - PagePaddingTop - PagePaddingBottom;
+            // 固定行：业务字段 + 四级审批 + 交接签字（交接行单独计高）。
             int fixedStandardRows = hasLongTermDepletionNotice ? 11 : 10;
             double fixedTableHeight =
                 StandardRowHeight * fixedStandardRows
                 + ReasonRowHeight
-                + StandardRowHeight * 4;
+                + StandardRowHeight * 4
+                + SignatureRowHeight;
             if (hasLongTermDepletionNotice)
             {
                 fixedTableHeight += ReasonRowHeight;

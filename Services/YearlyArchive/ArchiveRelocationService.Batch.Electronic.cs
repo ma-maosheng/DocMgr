@@ -178,9 +178,9 @@ namespace DocMgr.Services.YearlyArchive
                 request.SourceFace.Trim(),
                 sourceSlotCode);
             string normalizedSourceCategory = CabinetHardDiskSlotCategoryAssignment.NormalizeCategoryName(sourceCategory);
-            if (!IsYearlyDataMagneticDiskSlotCategory(normalizedSourceCategory))
+            if (!CabinetHardDiskSlotCategoryAssignment.IsRelocatableDedicatedSlotCategory(normalizedSourceCategory))
             {
-                throw new InvalidOperationException("源档口须为年度数据硬盘专用或年度数据光盘专用档口。");
+                throw new InvalidOperationException("源档口须为已设置专用类别的档口。");
             }
 
             var units = await _relocationRepository.GetInUseElectronicArchiveUnitsInSlotForRelocationAsync(
@@ -269,12 +269,6 @@ namespace DocMgr.Services.YearlyArchive
             return ArchiveSlotLocationSupport.TryParseSequenceIndex(storageLocation, out int sequenceIndex)
                 ? sequenceIndex
                 : int.MaxValue;
-        }
-
-        private static bool IsYearlyDataMagneticDiskSlotCategory(string? categoryName)
-        {
-            return CabinetHardDiskSlotCategoryAssignment.MatchesCategory(categoryName, CabinetHardDiskSlotCategoryAssignment.CategoryData)
-                || CabinetHardDiskSlotCategoryAssignment.MatchesCategory(categoryName, CabinetHardDiskSlotCategoryAssignment.CategoryDataOpticalDisc);
         }
 
         private static string ResolveMagneticSlotCategoryDisplay(string categoryName)

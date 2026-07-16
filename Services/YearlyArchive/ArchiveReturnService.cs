@@ -45,6 +45,10 @@ namespace DocMgr.Services.YearlyArchive
 
         public bool IsArchiveAdminUser(User? user) => _archiveRegisterService.IsArchiveAdminUser(user);
 
+        public bool IsDepartmentArchiveAdmin(User? user) => _archiveRegisterService.IsDepartmentArchiveAdmin(user);
+
+        public bool CanSubmitApplication(User? user) => _archiveRegisterService.CanSubmitApplication(user);
+
         public Task<List<YearlyArchiveOutboundRecord>> GetReturnableOutboundsAsync(int year) =>
             _returnRepository.GetReturnableOutboundsAsync(year);
 
@@ -86,6 +90,11 @@ namespace DocMgr.Services.YearlyArchive
         public async Task<YearlyArchiveReturnRecord> CreateDraftFromOutboundAsync(int outboundRecordId, User registrar)
         {
             ArgumentNullException.ThrowIfNull(registrar);
+
+            if (!CanSubmitApplication(registrar))
+            {
+                throw new InvalidOperationException("仅部门资料管理员可发起资料归还申请。");
+            }
 
             var outbound = await _outboundRepository.GetByIdWithDetailsAsync(outboundRecordId)
                 ?? throw new InvalidOperationException("未找到指定的出库申请单。");
@@ -166,6 +175,11 @@ namespace DocMgr.Services.YearlyArchive
             ArgumentNullException.ThrowIfNull(request);
             ArgumentNullException.ThrowIfNull(user);
 
+            if (!CanSubmitApplication(user))
+            {
+                return ArchiveReturnFlowResult.Fail("仅部门资料管理员可保存或提交资料归还申请。");
+            }
+
             var record = request.Record;
             if (record.SourceOutboundRecordId <= 0)
             {
@@ -188,9 +202,9 @@ namespace DocMgr.Services.YearlyArchive
                 if (existing.Status != YearlyArchiveReturnRecord.Draft)
                 {
                     return ArchiveReturnFlowResult.Fail(
-                        existing.Status == YearlyArchiveReturnRecord.Registered
-                            ? "已登记的归还单不可再修改，请直接办结入库或作废。"
-                            : "已办结或已作废的归还单不可修改。");
+                        existing.Status == YearlyArchiveReturnRecord.Submitted
+                            ? "已提交的归还申请不可再修改，请前往审批或作废。"
+                            : "当前状态的归还单不可修改。");
                 }
             }
             else if (await _returnRepository.HasActiveReturnForOutboundAsync(record.SourceOutboundRecordId))
@@ -223,12 +237,13 @@ namespace DocMgr.Services.YearlyArchive
                 record.ReturnDate = now;
             }
 
-            record.Status = request.SubmitForRegistration
-                ? YearlyArchiveReturnRecord.Registered
-                : YearlyArchiveReturnRecord.Draft;
             if (request.SubmitForRegistration)
             {
-                record.RegisteredAt = now;
+                record.MarkAsSubmitted();
+            }
+            else
+            {
+                record.MarkAsDraft();
             }
 
             record.UpdatedAt = now;
@@ -256,15 +271,78 @@ namespace DocMgr.Services.YearlyArchive
                     recordId);
             }
 
-            string action = request.SubmitForRegistration ? "登记完成" : "草稿已保存";
             if (request.SubmitForRegistration)
             {
                 return ArchiveReturnFlowResult.Ok(
-                    $"{action}，当前状态：{record.StatusStr}。登记信息已锁定，可打印回执并办结入库。",
+                    $"归还申请已提交，当前状态：{record.StatusStr}。请等待资料室审批。",
                     recordId);
             }
 
-            return ArchiveReturnFlowResult.Ok($"{action}，当前状态：{record.StatusStr}。", recordId);
+            return ArchiveReturnFlowResult.Ok($"草稿已保存，当前状态：{record.StatusStr}。", recordId);
+        }
+
+        public async Task<ArchiveReturnFlowResult> ApproveReturnFlowAsync(int recordId, User admin)
+        {
+            ArgumentNullException.ThrowIfNull(admin);
+
+            if (!IsArchiveAdminUser(admin))
+            {
+                return ArchiveReturnFlowResult.Fail("仅资料室管理员可审批归还申请。");
+            }
+
+            var record = await _returnRepository.GetByIdWithDetailsAsync(recordId);
+            if (record == null)
+            {
+                return ArchiveReturnFlowResult.Fail("未找到指定的归还单。");
+            }
+
+            if (record.Status != YearlyArchiveReturnRecord.Submitted)
+            {
+                return ArchiveReturnFlowResult.Fail("只有“已提交-待审批”的归还申请可审批通过。");
+            }
+
+            record.MarkAsApproved();
+            record.UpdatedAt = DateTime.Now;
+            await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
+
+            return ArchiveReturnFlowResult.Ok(
+                $"审批通过，当前状态：{record.StatusStr}。请办理实物交接。",
+                record.Id);
+        }
+
+        public async Task<ArchiveReturnFlowResult> ConfirmHandoverFlowAsync(int recordId, User admin)
+        {
+            ArgumentNullException.ThrowIfNull(admin);
+
+            if (!IsArchiveAdminUser(admin))
+            {
+                return ArchiveReturnFlowResult.Fail("仅资料室管理员可确认实物交接。");
+            }
+
+            var record = await _returnRepository.GetByIdWithDetailsAsync(recordId);
+            if (record == null)
+            {
+                return ArchiveReturnFlowResult.Fail("未找到指定的归还单。");
+            }
+
+            if (record.Status != YearlyArchiveReturnRecord.Approved)
+            {
+                return ArchiveReturnFlowResult.Fail("只有“已审批-待实物交接”的归还单可确认实物交接。");
+            }
+
+            var abnormalGate = await ValidateAbnormalReturnGateAsync(record);
+            if (!abnormalGate.Success)
+            {
+                return abnormalGate;
+            }
+
+            record.MarkAsSignedUploaded();
+            record.UpdatedAt = DateTime.Now;
+            await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
+
+            return ArchiveReturnFlowResult.Ok(
+                $"实物交接已确认，当前状态：{record.StatusStr}。可打印回执并办结入库。",
+                record.Id);
         }
 
         public async Task<ArchiveReturnFlowResult> CompleteReturnFlowAsync(int recordId, User admin)
@@ -282,9 +360,9 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnFlowResult.Fail("未找到指定的归还单。");
             }
 
-            if (record.Status != YearlyArchiveReturnRecord.Registered)
+            if (record.Status != YearlyArchiveReturnRecord.SignedUploaded)
             {
-                return ArchiveReturnFlowResult.Fail("只有“已登记”状态的归还单可办结入库。");
+                return ArchiveReturnFlowResult.Fail("只有“已实物交接-待上传签批交接单”状态的归还单可办结入库。");
             }
 
             var abnormalGate = await ValidateAbnormalReturnGateAsync(record);
@@ -372,12 +450,18 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnFlowResult.Fail("未找到指定的归还单。");
             }
 
-            if (record.RegisteredByUserId != user.Id && !IsArchiveAdminUser(user))
+            bool isRoomAdmin = IsArchiveAdminUser(user);
+            bool isApplicantSide = CanSubmitApplication(user) && record.RegisteredByUserId == user.Id;
+            if (!isRoomAdmin && !isApplicantSide)
             {
-                return ArchiveReturnFlowResult.Fail("仅登记人或资料室管理员可作废该归还单。");
+                return ArchiveReturnFlowResult.Fail("仅登记人（部门资料管理员）或资料室管理员可作废该归还单。");
             }
 
-            if (record.Status is not (YearlyArchiveReturnRecord.Draft or YearlyArchiveReturnRecord.Registered))
+            if (record.Status is not (
+                    YearlyArchiveReturnRecord.Draft
+                    or YearlyArchiveReturnRecord.Submitted
+                    or YearlyArchiveReturnRecord.Approved
+                    or YearlyArchiveReturnRecord.SignedUploaded))
             {
                 return ArchiveReturnFlowResult.Fail(
                     record.Status == YearlyArchiveReturnRecord.Completed
@@ -385,7 +469,20 @@ namespace DocMgr.Services.YearlyArchive
                         : "该归还单当前状态不可作废。");
             }
 
-            record.MarkAsVoided(reason);
+            if (record.Status is YearlyArchiveReturnRecord.Approved or YearlyArchiveReturnRecord.SignedUploaded
+                && !IsArchiveAdminUser(user))
+            {
+                return ArchiveReturnFlowResult.Fail("审批后的归还单仅资料室管理员可强制作废。");
+            }
+
+            if (record.Status is YearlyArchiveReturnRecord.Approved or YearlyArchiveReturnRecord.SignedUploaded)
+            {
+                record.MarkAsForceVoided(reason);
+            }
+            else
+            {
+                record.MarkAsWithdrawnVoid(reason);
+            }
             record.UpdatedAt = DateTime.Now;
             await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
 

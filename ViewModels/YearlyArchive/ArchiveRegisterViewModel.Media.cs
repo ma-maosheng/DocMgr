@@ -1091,7 +1091,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            var dlg = new OpenFileDialog { Multiselect = true, Title = "请选择附件（仅允许登记申请单、资料照片，且各1个）" };
+            var dlg = new OpenFileDialog
+            {
+                Multiselect = true,
+                Title = "请选择附件（仅允许登记申请单、资料照片，且各1个）",
+                Filter = SystemAttachmentUploadSupport.OpenFileDialogFilter
+            };
             if (dlg.ShowDialog() == true)
             {
                 foreach (var f in dlg.FileNames)

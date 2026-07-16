@@ -16,7 +16,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public int SourceUnitId { get; set; }
 
-
+        public int SourceMediumId { get; set; }
 
         public string TargetCabinetName { get; set; } = string.Empty;
 
@@ -54,7 +54,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public int SourceUnitId { get; init; }
 
-
+        public int SourceMediumId { get; init; }
 
         public string DisplayText { get; init; } = string.Empty;
 

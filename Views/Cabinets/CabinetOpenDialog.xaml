@@ -657,6 +657,21 @@
                                                                                                    FontWeight="Bold"
                                                                                                    Foreground="#C2410C"/>
                                                                                     </Border>
+
+                                                                                    <Border HorizontalAlignment="Right"
+                                                                                            Margin="0,1.2,0,0"
+                                                                                            Padding="0.8,0.2"
+                                                                                            Background="#FEF3C7"
+                                                                                            BorderBrush="#D97706"
+                                                                                            BorderThickness="0.4"
+                                                                                            CornerRadius="1.6"
+                                                                                            ToolTip="{Binding OccupationLockToolTipText}"
+                                                                                            Visibility="{Binding OccupationLockBadgeVisibility}">
+                                                                                        <TextBlock Text="{Binding OccupationLockBadgeText}"
+                                                                                                   FontSize="10"
+                                                                                                   FontWeight="Bold"
+                                                                                                   Foreground="#92400E"/>
+                                                                                    </Border>
                                                                                 </StackPanel>
 
                                                                                 <Viewbox Grid.Column="1"
@@ -778,6 +793,17 @@
                                                                                             Visibility="{Binding PendingReturnBadgeVisibility}">
                                                                                         <TextBlock Text="{Binding PendingReturnBadgeText}" Style="{StaticResource SnapFs9}" FontWeight="Bold" Foreground="#C2410C"/>
                                                                                     </Border>
+                                                                                    <Border HorizontalAlignment="Right"
+                                                                                            Margin="0,2,0,0"
+                                                                                            Padding="2,1"
+                                                                                            Background="#FEF3C7"
+                                                                                            BorderBrush="#D97706"
+                                                                                            BorderThickness="0.4"
+                                                                                            CornerRadius="2"
+                                                                                            ToolTip="{Binding OccupationLockToolTipText}"
+                                                                                            Visibility="{Binding OccupationLockBadgeVisibility}">
+                                                                                        <TextBlock Text="{Binding OccupationLockBadgeText}" Style="{StaticResource SnapFs9}" FontWeight="Bold" Foreground="#92400E"/>
+                                                                                    </Border>
                                                                                 </StackPanel>
 
                                                                                 <StackPanel Grid.Column="1"
@@ -883,6 +909,21 @@
                                                                                                FontWeight="Bold"
                                                                                                Foreground="#C2410C"/>
                                                                                 </Border>
+
+                                                                                <Border HorizontalAlignment="Right"
+                                                                                        Margin="0,1.2,0,0"
+                                                                                        Padding="1.2,0.4"
+                                                                                        Background="#FEF3C7"
+                                                                                        BorderBrush="#D97706"
+                                                                                        BorderThickness="0.4"
+                                                                                        CornerRadius="2.2"
+                                                                                        ToolTip="{Binding OccupationLockToolTipText}"
+                                                                                        Visibility="{Binding OccupationLockBadgeVisibility}">
+                                                                                    <TextBlock Text="{Binding OccupationLockBadgeText}"
+                                                                                               Style="{StaticResource SnapFs8}"
+                                                                                               FontWeight="Bold"
+                                                                                               Foreground="#92400E"/>
+                                                                                </Border>
                                                                             </StackPanel>
 
                                                                             <StackPanel Grid.Row="1"
@@ -976,7 +1017,8 @@
                                                                                 </ContextMenu>
                                                                             </Border.ContextMenu>
                                                                             <Grid>
-                                                                                <Grid Visibility="{Binding DefaultLayoutVisibility}">
+                                                                                <Grid>
+                                                                                    <Grid Visibility="{Binding DefaultLayoutVisibility}">
                                                                                     <Grid.RowDefinitions>
                                                                                         <RowDefinition Height="Auto"/>
                                                                                         <RowDefinition Height="Auto"/>
@@ -1175,6 +1217,23 @@
                                                                                                    Foreground="{Binding StatusBadgeForeground}"/>
                                                                                     </Border>
                                                                                 </StackPanel>
+                                                                                </Grid>
+
+                                                                                <Border HorizontalAlignment="Left"
+                                                                                        VerticalAlignment="Top"
+                                                                                        Margin="-1,-1,0,0"
+                                                                                        Padding="2,0"
+                                                                                        Background="#FEF3C7"
+                                                                                        BorderBrush="#D97706"
+                                                                                        BorderThickness="0.8"
+                                                                                        CornerRadius="3"
+                                                                                        ToolTip="{Binding OccupationLockToolTipText}"
+                                                                                        Visibility="{Binding OccupationLockBadgeVisibility}">
+                                                                                    <TextBlock Text="{Binding OccupationLockBadgeText}"
+                                                                                               Style="{StaticResource SnapFs8}"
+                                                                                               FontWeight="Bold"
+                                                                                               Foreground="#92400E"/>
+                                                                                </Border>
                                                                             </Grid>
                                                                         </Border>
                                                                     </DataTemplate>

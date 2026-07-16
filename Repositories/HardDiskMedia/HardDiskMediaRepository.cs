@@ -92,6 +92,22 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
             .FirstOrDefaultAsync();
     }
 
+    public Task<HardDiskMediaApplication?> GetActiveReturnRegistrationByMediumIdForUpdateAsync(int mediumId)
+    {
+        return _dbContext.HardDiskMediaApplications
+            .Where(item => item.MediumId == mediumId)
+            .Where(item => item.ApplicationType == HardDiskMediaApplication.TypeReturnBlankRegistration
+                           || item.ApplicationType == HardDiskMediaApplication.TypeReturnDataRegistration
+                           || item.ApplicationType == HardDiskMediaApplication.TypeReturnDamagedRegistration
+                           || item.ApplicationType == HardDiskMediaApplication.TypeLossRegistration)
+            .Where(item => item.ApplicationStatus != HardDiskMediaApplication.StatusCompleted
+                           && item.ApplicationStatus != HardDiskMediaApplication.StatusWithdrawn
+                           && item.ApplicationStatus != HardDiskMediaApplication.StatusForceWithdrawn)
+            .OrderByDescending(item => item.UpdatedTime)
+            .ThenByDescending(item => item.Id)
+            .FirstOrDefaultAsync();
+    }
+
     public Task<List<int>> GetMediumIdsWithActiveReturnRegistrationAsync()
     {
         return _dbContext.HardDiskMediaApplications
@@ -460,7 +476,7 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
             .ToListAsync();
     }
 
-    public Task<List<HardDiskMediaApplication>> SearchApplicationsAsync(string? keyword, string? status, string? applicationType)
+    public Task<List<HardDiskMediaApplication>> SearchApplicationsAsync(string? keyword, int? status, string? applicationType)
     {
         IQueryable<HardDiskMediaApplication> query = _dbContext.HardDiskMediaApplications
             .AsNoTracking()
@@ -479,9 +495,9 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
                 (item.Medium != null && (item.Medium.DiskCode.Contains(trimmedKeyword) || item.Medium.SerialNumber.Contains(trimmedKeyword))));
         }
 
-        if (!string.IsNullOrWhiteSpace(status))
+        if (status.HasValue)
         {
-            query = query.Where(item => item.ApplicationStatus == status);
+            query = query.Where(item => item.ApplicationStatus == status.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(applicationType))
@@ -636,9 +652,12 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
             .Where(item => item.MediumId == mediumId)
             .Where(item => !excludedApplicationId.HasValue || item.Id != excludedApplicationId.Value)
             .Where(item => item.ApplicationType == HardDiskMediaApplication.TypeOutboundTemporary ||
-                           item.ApplicationType == HardDiskMediaApplication.TypeOutboundLongTerm)
+                           item.ApplicationType == HardDiskMediaApplication.TypeOutboundLongTerm ||
+                           item.ApplicationType == HardDiskMediaApplication.TypeOutboundPermanent)
             .Where(item => item.ApplicationStatus == HardDiskMediaApplication.StatusDraft ||
                            item.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted ||
+                           item.ApplicationStatus == HardDiskMediaApplication.StatusApproved ||
+                           item.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded ||
                            item.ApplicationStatus == HardDiskMediaApplication.StatusPendingUpload ||
                            item.ApplicationStatus == HardDiskMediaApplication.StatusPendingProcess)
             .AnyAsync();
@@ -865,6 +884,112 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
                 StringComparison.OrdinalIgnoreCase))
             .Select(location => location!.Trim())
             .ToList();
+    }
+
+    public async Task<List<HardDiskMedium>> GetInStockBlankHardDisksInSlotAsync(string slotKey)
+    {
+        if (string.IsNullOrWhiteSpace(slotKey))
+        {
+            return [];
+        }
+
+        string normalizedSlotKey = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(slotKey);
+        var media = await _dbContext.HardDiskMedia
+            .Include(item => item.Ledger)
+            .Where(item => !item.IsDeleted)
+            .Where(item => item.Ledger != null && item.Ledger.MediaStatus == HardDiskMedium.StatusInStockBlank)
+            .Where(item => item.RegisterLock == null)
+            .ToListAsync();
+
+        return media
+            .Where(item => string.Equals(
+                HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(item.Ledger!.StorageLocation),
+                normalizedSlotKey,
+                StringComparison.OrdinalIgnoreCase))
+            .OrderBy(item => item.DiskCode, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public Task<int> CountPendingReturnBlankHardDisksInSlotAsync(string slotKey)
+        => CountPendingReturnBlankHardDisksInSlotInternalAsync(slotKey);
+
+    public async Task<List<HardDiskMedium>> LoadPendingReturnBlankHardDisksInSlotForRelocationAsync(string slotKey)
+    {
+        if (string.IsNullOrWhiteSpace(slotKey))
+        {
+            return [];
+        }
+
+        string normalizedSlotKey = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(slotKey);
+        var media = await _dbContext.HardDiskMedia
+            .Include(item => item.Ledger)
+            .Include(item => item.Transactions)
+            .Where(item => !item.IsDeleted)
+            .Where(item => item.Ledger != null && item.Ledger.NeedReturn)
+            .Where(item => item.Ledger!.MediaStatus == HardDiskMedium.StatusOutTemporary
+                || item.Ledger!.MediaStatus == HardDiskMedium.StatusOutLongTerm)
+            .ToListAsync();
+
+        return FilterPendingReturnBlankHardDisksInSlot(media, normalizedSlotKey);
+    }
+
+    public Task<List<HardDiskMediaApplication>> GetCompletedOutboundApplicationsByMediumIdsAsync(IReadOnlyCollection<int> mediumIds)
+    {
+        if (mediumIds == null || mediumIds.Count == 0)
+        {
+            return Task.FromResult<List<HardDiskMediaApplication>>([]);
+        }
+
+        var targetIds = mediumIds.Where(id => id > 0).Distinct().ToList();
+        if (targetIds.Count == 0)
+        {
+            return Task.FromResult<List<HardDiskMediaApplication>>([]);
+        }
+
+        return _dbContext.HardDiskMediaApplications
+            .Where(item => targetIds.Contains(item.MediumId))
+            .Where(item => item.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)
+            .Where(item => item.ApplicationType == HardDiskMediaApplication.TypeOutboundTemporary
+                || item.ApplicationType == HardDiskMediaApplication.TypeOutboundLongTerm)
+            .ToListAsync();
+    }
+
+    private async Task<int> CountPendingReturnBlankHardDisksInSlotInternalAsync(string slotKey)
+    {
+        var media = await LoadPendingReturnBlankHardDisksInSlotForRelocationAsync(slotKey);
+        return media.Count;
+    }
+
+    private static List<HardDiskMedium> FilterPendingReturnBlankHardDisksInSlot(
+        List<HardDiskMedium> media,
+        string normalizedSlotKey)
+    {
+        return media
+            .Where(item => MatchesPendingReturnBlankHardDiskHomeSlot(item, normalizedSlotKey))
+            .OrderBy(item => item.DiskCode, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static bool MatchesPendingReturnBlankHardDiskHomeSlot(HardDiskMedium medium, string normalizedSlotKey)
+    {
+        var latestTransaction = medium.Transactions
+            .OrderByDescending(item => item.OperateTime)
+            .ThenByDescending(item => item.Id)
+            .FirstOrDefault();
+        if (latestTransaction == null)
+        {
+            return false;
+        }
+
+        if (!string.Equals(latestTransaction.BeforeStatus, HardDiskMedium.StatusInStockBlank, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return string.Equals(
+            HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(latestTransaction.BeforeLocation),
+            normalizedSlotKey,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<List<string>> GetInStockOpticalDiscStorageLocationsInSlotAsync(string slotCode)

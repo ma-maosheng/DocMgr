@@ -151,6 +151,14 @@ namespace DocMgr.Services.Cabinets
             }
             var usedDataSizeLookup = LoadUsedDataSizeLookup(media, opticalDiscMedia, mediumArchiveLookup, opticalDiscArchiveLookup);
 
+            var inStockMediumIds = media
+                .Where(item => item.Ledger != null && IsInStockStatus(item.Ledger.MediaStatus))
+                .Select(item => item.Id)
+                .ToList();
+            var activeOutboundApplicationLockByMediumId = inStockMediumIds.Count == 0
+                ? new Dictionary<int, CabinetOccupationLockDescriptor>()
+                : _cabinetOpenLayoutRepository.GetActiveOutboundApplicationLocksByMediumIds(inStockMediumIds);
+
             var pendingOpticalDiscIds = opticalDiscMedia
                 .Where(item => item.Ledger != null)
                 .Where(item => !IsOpticalDiscInStockStatus(item.Ledger!.MediaStatus) && item.Ledger.NeedReturn)
@@ -179,7 +187,10 @@ namespace DocMgr.Services.Cabinets
                     MediumArchiveContext? archiveContext = mediumArchiveLookup.TryGetValue(medium.Id, out var loadedContext)
                         ? loadedContext
                         : null;
-                    AddMedium(inStockMediaBySlot, location.SlotCode, CreateHardDiskDescriptor(medium, false, archiveContext, usedDataSizeLookup, ResolveElectronicUnitWithdrawalLock(archiveContext, activeWithdrawalLockByUnitId)));
+                    var outboundApplicationLock = medium.RegisterLock == null
+                        ? activeOutboundApplicationLockByMediumId.GetValueOrDefault(medium.Id, CabinetOccupationLockDescriptor.Empty)
+                        : CabinetOccupationLockDescriptor.Empty;
+                    AddMedium(inStockMediaBySlot, location.SlotCode, CreateHardDiskDescriptor(medium, false, archiveContext, usedDataSizeLookup, ResolveElectronicUnitWithdrawalLock(archiveContext, activeWithdrawalLockByUnitId), outboundApplicationLock));
                     continue;
                 }
 
@@ -494,7 +505,8 @@ namespace DocMgr.Services.Cabinets
                 YearlyArchiveBoxId = yearlyArchiveBoxId,
                 PendingReturnCopyCount = pendingReturnCopyCount,
                 HasOccupationLock = withdrawalLock.HasLock,
-                OccupationLockToolTipText = withdrawalLock.ToolTipSupplement
+                OccupationLockToolTipText = withdrawalLock.ToolTipSupplement,
+                OccupationLockBadgeText = withdrawalLock.BadgeText
             };
         }
 
@@ -555,8 +567,11 @@ namespace DocMgr.Services.Cabinets
                 RemainingCapacityDisplayText = string.Empty,
                 ToolTipText = AppendOccupationLockToolTip(baseToolTipText, occupationLock),
                 ElectronicArchiveUnitId = archiveContext?.ElectronicArchiveUnitId ?? 0,
+                MediumId = medium.Id,
+                IsBlankInStock = false,
                 HasOccupationLock = occupationLock.HasLock,
-                OccupationLockToolTipText = occupationLock.ToolTipSupplement
+                OccupationLockToolTipText = occupationLock.ToolTipSupplement,
+                OccupationLockBadgeText = occupationLock.BadgeText
             };
         }
 
@@ -653,7 +668,8 @@ namespace DocMgr.Services.Cabinets
             bool isPendingReturn,
             MediumArchiveContext? archiveContext,
             IReadOnlyDictionary<string, decimal> usedDataSizeLookup,
-            CabinetOccupationLockDescriptor? withdrawalLock = null)
+            CabinetOccupationLockDescriptor? withdrawalLock = null,
+            CabinetOccupationLockDescriptor? outboundApplicationLock = null)
         {
             var ledger = medium.Ledger;
             string diskCode = string.IsNullOrWhiteSpace(medium.DiskCode) ? "未编号" : medium.DiskCode.Trim();
@@ -680,7 +696,7 @@ namespace DocMgr.Services.Cabinets
             string yearlyDisplayHint = isYearlyArchiveDisplay
                 ? $"\n年度：{FormatYearDisplayText(yearText)}\n项目：{FormatProjectDisplayText(projectText)}\n已用容量：{usedCapacityDisplayText}\n剩余容量：{remainingCapacityDisplayText}"
                 : string.Empty;
-            var occupationLock = ResolveHardDiskOccupationLock(medium.RegisterLock, withdrawalLock);
+            var occupationLock = ResolveHardDiskOccupationLock(medium.RegisterLock, withdrawalLock, outboundApplicationLock);
             string baseToolTipText = isPendingReturn
                 ? $"{diskCode}\n容量：{capacityText}\n状态：{statusText}\n当前所在：{currentLocation}\n当前保管：{holder}{electronicArchiveHint}\n该介质原存于当前档口，后续需归还。"
                 : $"{diskCode}\n容量：{capacityText}\n状态：{statusText}\n当前所在：{currentLocation}{yearlyDisplayHint}{electronicArchiveHint}";
@@ -708,8 +724,12 @@ namespace DocMgr.Services.Cabinets
                 ArchiveSequenceText = ResolveArchiveSequenceText(diskCode, archiveContext),
                 ToolTipText = AppendOccupationLockToolTip(baseToolTipText, occupationLock),
                 ElectronicArchiveUnitId = archiveContext?.ElectronicArchiveUnitId ?? 0,
+                MediumId = medium.Id,
+                IsBlankInStock = string.Equals(statusText, HardDiskMedium.StatusInStockBlank, StringComparison.OrdinalIgnoreCase)
+                    && medium.RegisterLock == null,
                 HasOccupationLock = occupationLock.HasLock,
-                OccupationLockToolTipText = occupationLock.ToolTipSupplement
+                OccupationLockToolTipText = occupationLock.ToolTipSupplement,
+                OccupationLockBadgeText = occupationLock.BadgeText
             };
         }
 
@@ -1456,11 +1476,13 @@ namespace DocMgr.Services.Cabinets
 
         private static CabinetOccupationLockDescriptor ResolveHardDiskOccupationLock(
             HardDiskRegisterLock? registerLock,
-            CabinetOccupationLockDescriptor? withdrawalLock)
+            CabinetOccupationLockDescriptor? withdrawalLock,
+            CabinetOccupationLockDescriptor? outboundApplicationLock = null)
         {
             bool hasRegisterLock = registerLock != null;
+            bool hasOutboundApplicationLock = outboundApplicationLock is { HasLock: true };
             bool hasWithdrawalLock = withdrawalLock is { HasLock: true };
-            if (!hasRegisterLock && !hasWithdrawalLock)
+            if (!hasRegisterLock && !hasOutboundApplicationLock && !hasWithdrawalLock)
             {
                 return CabinetOccupationLockDescriptor.Empty;
             }
@@ -1469,6 +1491,10 @@ namespace DocMgr.Services.Cabinets
             if (hasRegisterLock)
             {
                 supplementParts.Add(BuildRegisterLockToolTip(registerLock!));
+            }
+            else if (hasOutboundApplicationLock)
+            {
+                supplementParts.Add(outboundApplicationLock!.ToolTipSupplement);
             }
 
             if (hasWithdrawalLock)
@@ -1479,13 +1505,17 @@ namespace DocMgr.Services.Cabinets
             return new CabinetOccupationLockDescriptor
             {
                 HasLock = true,
-                LockKindText = hasRegisterLock ? "占用锁" : withdrawalLock!.LockKindText,
+                LockKindText = hasRegisterLock || hasOutboundApplicationLock ? "占用锁" : withdrawalLock!.LockKindText,
                 BusinessTypeText = hasRegisterLock
                     ? registerLock!.BusinessType
-                    : withdrawalLock!.BusinessTypeText,
+                    : hasOutboundApplicationLock
+                        ? outboundApplicationLock!.BusinessTypeText
+                        : withdrawalLock!.BusinessTypeText,
                 BusinessNoText = hasRegisterLock
                     ? registerLock!.BusinessNo
-                    : withdrawalLock!.BusinessNoText,
+                    : hasOutboundApplicationLock
+                        ? outboundApplicationLock!.BusinessNoText
+                        : withdrawalLock!.BusinessNoText,
                 ReservedCopyCount = hasWithdrawalLock ? withdrawalLock!.ReservedCopyCount : 0,
                 ToolTipSupplement = string.Join("\n\n", supplementParts.Where(part => !string.IsNullOrWhiteSpace(part))),
             };

@@ -174,6 +174,7 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     public Task<List<YearlyArchiveBox>> GetExistingBoxesForProjectAsync(string projectName, string year)
     {
         return _dbContext.YearlyArchiveBoxes
+            .AsNoTracking()
             .Where(box => box.ProjectName == projectName && box.Year == year)
             .Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
             .ToListAsync();
@@ -182,6 +183,7 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     public Task<List<YearlyElectronicArchiveUnit>> GetExistingElectronicUnitsForProjectAsync(string projectName, string year)
     {
         return _dbContext.YearlyElectronicArchiveUnits
+            .AsNoTracking()
             .Where(unit => unit.ProjectName == projectName && unit.Year == year)
             .ToListAsync();
     }
@@ -220,7 +222,9 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
 
         var opticalDiscLocations = await _dbContext.OpticalDiscMedia
             .AsNoTracking()
-            .Where(item => item.Ledger != null && item.Ledger.MediaStatus == OpticalDiscMedium.StatusInStock)
+            .Where(item => item.Ledger != null
+                && (item.Ledger!.MediaStatus == OpticalDiscMedium.StatusInStock
+                    || item.Ledger!.MediaStatus == OpticalDiscMedium.StatusDamaged))
             .Where(item => item.Ledger!.StorageLocation == slotCode || item.Ledger!.StorageLocation.StartsWith(slotPrefix))
             .Where(item => excludeUnitId == null
                 || !_dbContext.YearlyElectronicArchiveUnitDiscLinks.Any(link =>

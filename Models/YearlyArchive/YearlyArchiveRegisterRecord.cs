@@ -1,6 +1,7 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
+using DocMgr.Models.Shared;
 
 namespace DocMgr.Models.YearlyArchive
 {
@@ -14,13 +15,13 @@ namespace DocMgr.Models.YearlyArchive
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        public const int Unsubmitted = 0;
-        public const int Submitted = 1;
-        public const int Approved = 2;
-        public const int SignedUploaded = 3;
-        public const int Completed = 4;
-        public const int WithdrawnVoid = 5;
-        public const int ForceVoided = 6;
+        public const int Unsubmitted = ApplicationWorkflowStatus.Draft;
+        public const int Submitted = ApplicationWorkflowStatus.Submitted;
+        public const int Approved = ApplicationWorkflowStatus.Approved;
+        public const int SignedUploaded = ApplicationWorkflowStatus.SignedUploaded;
+        public const int Completed = ApplicationWorkflowStatus.Completed;
+        public const int WithdrawnVoid = ApplicationWorkflowStatus.Withdrawn;
+        public const int ForceVoided = ApplicationWorkflowStatus.ForceWithdrawn;
         public const int Draft = Unsubmitted;
         public const int ApprovedReceived = Approved;
         public const int Archived = Completed;
@@ -469,17 +470,7 @@ namespace DocMgr.Models.YearlyArchive
         }
 
         [NotMapped]
-        public string StatusStr => Status switch
-        {
-            Unsubmitted => "未提交",
-            Submitted => "已提交",
-            Approved => "已审批",
-            SignedUploaded => "已上传签字件",
-            Completed => "已办结",
-            WithdrawnVoid => "已撤回作废",
-            ForceVoided => "已强制作废",
-            _ => "未知"
-        };
+        public string StatusStr => ApplicationWorkflowStatus.ToDisplay(Status);
 
         [NotMapped]
         public string StatusColor => Status switch

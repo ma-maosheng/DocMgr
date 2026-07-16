@@ -23,6 +23,9 @@ public interface IHardDiskMediaRepository
     /// <summary>获取介质上尚未办结的归还登记单（草稿/已登记/待办结）。</summary>
     Task<HardDiskMediaApplication?> GetActiveReturnRegistrationByMediumIdAsync(int mediumId);
 
+    /// <summary>获取介质上尚未办结的归还登记单（可更新，供档口搬迁同步目标位置）。</summary>
+    Task<HardDiskMediaApplication?> GetActiveReturnRegistrationByMediumIdForUpdateAsync(int mediumId);
+
     /// <summary>获取存在未办结归还登记单的介质 ID 集合。</summary>
     Task<List<int>> GetMediumIdsWithActiveReturnRegistrationAsync();
 
@@ -49,7 +52,7 @@ public interface IHardDiskMediaRepository
 
     Task<List<HardDiskMediaTransaction>> SearchTransactionsAsync(string? keyword, string? transactionType);
 
-    Task<List<HardDiskMediaApplication>> SearchApplicationsAsync(string? keyword, string? status, string? applicationType);
+    Task<List<HardDiskMediaApplication>> SearchApplicationsAsync(string? keyword, int? status, string? applicationType);
 
     /// <summary>列出资料室尚未办结（已提交/已审批/已上传签字件）的硬盘出库类申请，供待办提醒使用。</summary>
     Task<List<HardDiskMediaApplication>> GetSubmittedApplicationsForToDoAsync(int takeCount);
@@ -119,6 +122,26 @@ public interface IHardDiskMediaRepository
     Task<List<int>> GetInStockHardDiskSequenceIndexesInSlotAsync(string slotCode);
 
     Task<List<string>> GetInStockHardDiskStorageLocationsInSlotAsync(string slotCode);
+
+    /// <summary>
+    /// 查询指定档口键下在库空白硬盘（不含登记锁占用）。
+    /// </summary>
+    Task<List<HardDiskMedium>> GetInStockBlankHardDisksInSlotAsync(string slotKey);
+
+    /// <summary>
+    /// 统计指定档口内借出未还、原归属该档口的空白硬盘数量。
+    /// </summary>
+    Task<int> CountPendingReturnBlankHardDisksInSlotAsync(string slotKey);
+
+    /// <summary>
+    /// 加载指定档口内借出未还、原归属该档口的空白硬盘（含台账与流转，供档口搬迁更新引用）。
+    /// </summary>
+    Task<List<HardDiskMedium>> LoadPendingReturnBlankHardDisksInSlotForRelocationAsync(string slotKey);
+
+    /// <summary>
+    /// 按介质 ID 加载已办结的硬盘借出申请单。
+    /// </summary>
+    Task<List<HardDiskMediaApplication>> GetCompletedOutboundApplicationsByMediumIdsAsync(IReadOnlyCollection<int> mediumIds);
 
     Task<List<string>> GetInStockOpticalDiscStorageLocationsInSlotAsync(string slotCode);
 

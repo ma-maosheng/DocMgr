@@ -43,17 +43,27 @@ namespace DocMgr.Services.Interfaces
         // 规范化密级值
         string NormalizeConfidentialLevel(string? value);
 
-        // 流程编排：保存草稿
-        Task<ArchiveRegisterFlowResult> SaveDraftFlowAsync(YearlyArchiveRegisterRecord? record, IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries);
+        // 流程编排：保存草稿（仅部门资料管理员或系统管理员）
+        Task<ArchiveRegisterFlowResult> SaveDraftFlowAsync(
+            YearlyArchiveRegisterRecord? record,
+            IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries,
+            User? operatorUser);
 
         // 流程编排：保存审批
         Task<ArchiveRegisterFlowResult> SaveApprovalFlowAsync(YearlyArchiveRegisterRecord? record, IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries, IReadOnlyCollection<SystemAttachment> attachments, User? currentUser);
 
+        // 流程编排：确认实物交接（审批通过后，上传签批交接单前）
+        Task<ArchiveRegisterFlowResult> ConfirmPhysicalHandoverFlowAsync(YearlyArchiveRegisterRecord? record, User? currentUser);
+
         // 流程编排：确认办结
         Task<ArchiveRegisterFlowResult> CompleteRegisterFlowAsync(YearlyArchiveRegisterRecord? record, IReadOnlyCollection<SystemAttachment> attachments, User? currentUser);
 
-        // 流程编排：提交申请
-        Task<ArchiveRegisterFlowResult> SubmitApplicationFlowAsync(YearlyArchiveRegisterRecord? record, IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries, bool isExternalSource);
+        // 流程编排：提交申请（仅部门资料管理员或系统管理员）
+        Task<ArchiveRegisterFlowResult> SubmitApplicationFlowAsync(
+            YearlyArchiveRegisterRecord? record,
+            IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries,
+            bool isExternalSource,
+            User? operatorUser);
 
         /// <summary>
         /// 同步借出留存硬盘的台账状态与登记占用锁（与提交申请时一致；用于补全未走提交流程的数据）。
@@ -124,11 +134,17 @@ namespace DocMgr.Services.Interfaces
             string? rndOpinion,
             string? deputyOpinion);
 
-        // 角色判定：资料室资料管理员/系统管理员
+        // 角色判定：资料室资料管理员/系统管理员（审批及后续办理）
         bool IsArchiveAdminUser(User? user);
 
-        // 角色判定：申请人（普通用户或非资料室部门资料管理员）
+        // 角色判定：部门资料管理员（不含资料室，仅可发起申请）
+        bool IsDepartmentArchiveAdmin(User? user);
+
+        // 角色判定：申请侧操作人（同 IsDepartmentArchiveAdmin）
         bool IsApplicantUser(User? user);
+
+        // 角色判定：是否允许发起申请（部门资料管理员或系统管理员）
+        bool CanSubmitApplication(User? user);
 
         // 计算登记页界面权限状态
         ArchiveRegisterUiPermissionState ResolveUiPermissionState(User? user, YearlyArchiveRegisterRecord? currentRecord);

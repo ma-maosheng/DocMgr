@@ -49,6 +49,7 @@ namespace DocMgr.ViewModels.Cabinets
         private string? _selectionAnchorSlotCode;
         private ArchiveBoxItemViewModel? _selectedArchiveBox;
         private CabinetHardDiskMediumItemViewModel? _selectedHardDiskMedium;
+        private CabinetSlotViewModel? _slotContextMenuTarget;
 
         public CabinetOpenViewModel(CabinetOpenRequest request, IDialogService dialogService, ICabinetService cabinetService, ICabinetOpenLayoutService cabinetOpenLayoutService, ICabinetArchiveBoxPlacementService cabinetArchiveBoxPlacementService, IUserContextService userContextService, IArchiveRelocationService archiveRelocationService, IBatchSlotRelocationSession batchSlotRelocationSession, IInteractiveItemRelocationSession interactiveItemRelocationSession, ICabinetOpenLayoutRefreshNotifier cabinetOpenLayoutRefreshNotifier, IArchiveRegisterService archiveRegisterService)
         {
@@ -110,13 +111,13 @@ namespace DocMgr.ViewModels.Cabinets
             AddArchiveBoxCommand = new RelayCommand<CabinetSlotViewModel>(AddArchiveBox);
             RefreshSlotCommand = new RelayCommand<CabinetSlotViewModel>(RefreshSlot);
             EditSlotPlacementModeCommand = new RelayCommand<CabinetSlotViewModel>(EditSlotPlacementMode);
-            ToggleDamagedDiskSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleDamagedDiskSlot);
-            ToggleDamagedOpticalDiscSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleDamagedOpticalDiscSlot);
-            ToggleDataDiskSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleDataDiskSlot);
-            ToggleDataOpticalDiscSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleDataOpticalDiscSlot);
-            ToggleHistoricalDataDiskSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleHistoricalDataDiskSlot);
-            ToggleHistoricalDataOpticalDiscSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleHistoricalDataOpticalDiscSlot);
-            ToggleBlankDiskSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleBlankDiskSlot);
+            ToggleDamagedDiskSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleDamagedDiskSlot, CanChangeSlotDedicatedCategory);
+            ToggleDamagedOpticalDiscSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleDamagedOpticalDiscSlot, CanChangeSlotDedicatedCategory);
+            ToggleDataDiskSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleDataDiskSlot, CanChangeSlotDedicatedCategory);
+            ToggleDataOpticalDiscSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleDataOpticalDiscSlot, CanChangeSlotDedicatedCategory);
+            ToggleHistoricalDataDiskSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleHistoricalDataDiskSlot, CanChangeSlotDedicatedCategory);
+            ToggleHistoricalDataOpticalDiscSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleHistoricalDataOpticalDiscSlot, CanChangeSlotDedicatedCategory);
+            ToggleBlankDiskSlotCommand = new RelayCommand<CabinetSlotViewModel>(ToggleBlankDiskSlot, CanChangeSlotDedicatedCategory);
             ShowArchiveContentCommand = new RelayCommand<ArchiveBoxItemViewModel>(ShowArchiveContent);
             ShowPendingReturnDetailCommand = new RelayCommand<ArchiveBoxItemViewModel>(ShowPendingReturnDetail, CanShowPendingReturnDetail);
             EditArchiveBoxPlacementModeCommand = new RelayCommand<ArchiveBoxItemViewModel>(EditArchiveBoxPlacementMode);
@@ -327,7 +328,11 @@ namespace DocMgr.ViewModels.Cabinets
 
         public bool HasSelectedSlots => SelectedSlotCount > 0;
 
-        public bool CanApplySelectedSlotsPurpose => IsCompactDisplayMode && HasSelectedSlots && IsArchiveRoomMediaAdmin();
+        public bool CanApplySelectedSlotsPurpose =>
+            IsCompactDisplayMode
+            && HasSelectedSlots
+            && IsArchiveRoomMediaAdmin()
+            && Slots.Where(slot => slot.IsSelected).All(slot => slot.IsFullyEmptyMagneticDiskSlot);
 
         public bool CanSelectAllSlots => IsCompactDisplayMode && Slots.Count > 0;
 
@@ -727,8 +732,24 @@ namespace DocMgr.ViewModels.Cabinets
             CommandManager.InvalidateRequerySuggested();
         }
 
+        /// <summary>
+        /// 记录当前档口右键菜单目标。ContextMenu 脱离可视树时 CommandParameter 可能为空，CanExecute 需回退到此档口。
+        /// </summary>
+        public void SetSlotContextMenuTarget(CabinetSlotViewModel clickedSlot)
+        {
+            ArgumentNullException.ThrowIfNull(clickedSlot);
+            _slotContextMenuTarget = clickedSlot;
+        }
+
+        public void ClearSlotContextMenuTarget()
+        {
+            _slotContextMenuTarget = null;
+        }
+
         public void PrepareCompactSlotContextMenu(CabinetSlotViewModel clickedSlot)
         {
+            SetSlotContextMenuTarget(clickedSlot);
+
             if (!IsCompactDisplayMode)
             {
                 return;
@@ -742,6 +763,9 @@ namespace DocMgr.ViewModels.Cabinets
                 NotifySlotSelectionChanged();
             }
         }
+
+        private CabinetSlotViewModel? ResolveSlotContextMenuTarget(CabinetSlotViewModel? slot)
+            => slot ?? _slotContextMenuTarget;
 
         public void HandleCompactSlotSelection(CabinetSlotViewModel slot, bool ctrlPressed, bool shiftPressed)
         {
@@ -896,7 +920,10 @@ namespace DocMgr.ViewModels.Cabinets
         }
 
         private bool CanShowSlotZoomFromSlot(CabinetSlotViewModel? slot)
-            => slot != null && !IsSingleSlotSnapshot;
+        {
+            slot = ResolveSlotContextMenuTarget(slot);
+            return slot != null && !IsSingleSlotSnapshot;
+        }
 
         private void AddArchiveBox(CabinetSlotViewModel? slot)
         {
@@ -1001,8 +1028,15 @@ namespace DocMgr.ViewModels.Cabinets
 
         private void ToggleDedicatedSlotCategory(CabinetSlotViewModel? slot, string categoryName, bool isCurrentCategory, bool showReturnHint)
         {
+            slot = ResolveSlotContextMenuTarget(slot);
             if (slot == null || !slot.IsMagneticDiskSlot || !IsArchiveRoomMediaAdmin())
             {
+                return;
+            }
+
+            if (!slot.IsFullyEmptyMagneticDiskSlot)
+            {
+                _dialogService.ShowMessage($"档口 {slot.SlotCode} 仍有介质占用，仅可对空档口变更用途。", "无法变更用途");
                 return;
             }
 
@@ -1220,6 +1254,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         private bool CanSetBatchRelocationSource(CabinetSlotViewModel? slot)
         {
+            slot = ResolveSlotContextMenuTarget(slot);
             if (slot == null || !IsArchiveAdmin() || IsSingleSlotSnapshot)
             {
                 return false;
@@ -1227,7 +1262,8 @@ namespace DocMgr.ViewModels.Cabinets
 
             if (IsMagneticDiskRelocationCabinet)
             {
-                return slot.IsYearlyDataMagneticDiskSourceSlot;
+                return slot.IsElectronicMediaMagneticDiskSourceSlot
+                    || slot.IsBlankHardDiskMagneticDiskSourceSlot;
             }
 
             return IsArchiveRelocationCabinet && slot.IsYearlySimulatedOnlyArchiveSlot;
@@ -1235,8 +1271,32 @@ namespace DocMgr.ViewModels.Cabinets
 
         private void SetBatchRelocationSource(CabinetSlotViewModel? slot)
         {
+            slot = ResolveSlotContextMenuTarget(slot);
             if (!CanSetBatchRelocationSource(slot) || slot == null)
             {
+                return;
+            }
+
+            _interactiveItemRelocationSession.ClearSource();
+
+            if (slot.IsBlankHardDiskMagneticDiskSourceSlot)
+            {
+                int blankCount = slot.BlankHardDiskRelocationCandidateCount;
+                _batchSlotRelocationSession.SetSource(new BatchSlotRelocationEndpoint
+                {
+                    CabinetName = Request.CabinetName,
+                    FaceCode = ResolveFaceCode(slot.Face),
+                    Row = slot.LayerIndex,
+                    Column = slot.ColumnIndex,
+                    SlotCode = slot.SlotCode,
+                    MediaKind = ArchiveRegisterDomainValues.MediaKindBlankHardDisk,
+                    DedicatedSlotCategoryName = slot.DedicatedSlotCategoryName,
+                    ItemCount = blankCount
+                });
+
+                _dialogService.ShowMessage(
+                    $"已将 [{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}] 设为批量搬迁源（{blankCount} 盘）。请在空白专用且有空余盘位的目标档口右键选择「搬迁到此档口」。",
+                    "批量搬迁");
                 return;
             }
 
@@ -1244,7 +1304,6 @@ namespace DocMgr.ViewModels.Cabinets
             int itemCount = isElectronic ? slot.HardDiskPresentCount : slot.ArchiveBoxes.Count;
             string itemLabel = isElectronic ? "袋" : "盒";
 
-            _interactiveItemRelocationSession.ClearSource();
             _batchSlotRelocationSession.SetSource(new BatchSlotRelocationEndpoint
             {
                 CabinetName = Request.CabinetName,
@@ -1266,6 +1325,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         private bool CanRelocateBatchToSlot(CabinetSlotViewModel? slot)
         {
+            slot = ResolveSlotContextMenuTarget(slot);
             if (slot == null || !IsArchiveAdmin() || IsSingleSlotSnapshot || !HasBatchRelocationSource)
             {
                 return false;
@@ -1275,6 +1335,12 @@ namespace DocMgr.ViewModels.Cabinets
             if (source == null)
             {
                 return false;
+            }
+
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal))
+            {
+                return IsMagneticDiskRelocationCabinet
+                    && slot.CanAcceptBlankHardDiskBatchRelocationTarget(source.ItemCount);
             }
 
             if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
@@ -1289,6 +1355,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         private async Task RelocateBatchToSlotAsync(CabinetSlotViewModel? slot)
         {
+            slot = ResolveSlotContextMenuTarget(slot);
             if (!CanRelocateBatchToSlot(slot) || slot == null || _batchSlotRelocationSession.Source == null)
             {
                 return;
@@ -1307,6 +1374,10 @@ namespace DocMgr.ViewModels.Cabinets
                 TargetColumn = slot.ColumnIndex
             };
 
+            bool isBlankHardDisk = string.Equals(
+                source.MediaKind,
+                ArchiveRegisterDomainValues.MediaKindBlankHardDisk,
+                StringComparison.Ordinal);
             bool isElectronic = string.Equals(
                 source.MediaKind,
                 ArchiveRegisterDomainValues.MediaKindElectronic,
@@ -1314,9 +1385,11 @@ namespace DocMgr.ViewModels.Cabinets
 
             try
             {
-                var preview = isElectronic
-                    ? await _archiveRelocationService.PreviewBatchElectronicSlotPhysicalMoveAsync(request)
-                    : await _archiveRelocationService.PreviewBatchSimulatedSlotPhysicalMoveAsync(request);
+                var preview = isBlankHardDisk
+                    ? await _archiveRelocationService.PreviewBatchBlankHardDiskSlotPhysicalMoveAsync(request)
+                    : isElectronic
+                        ? await _archiveRelocationService.PreviewBatchElectronicSlotPhysicalMoveAsync(request)
+                        : await _archiveRelocationService.PreviewBatchSimulatedSlotPhysicalMoveAsync(request);
                 if (!preview.CanExecute)
                 {
                     _dialogService.ShowMessage(preview.BlockReason, "无法批量搬迁");
@@ -1328,7 +1401,7 @@ namespace DocMgr.ViewModels.Cabinets
                     return;
                 }
 
-                if (!isElectronic)
+                if (!isElectronic && !isBlankHardDisk)
                 {
                     string? pendingReturnWarning = await _archiveRelocationService.GetBatchSimulatedPendingReturnConfirmMessageAsync(
                         request,
@@ -1340,10 +1413,23 @@ namespace DocMgr.ViewModels.Cabinets
                     }
                 }
 
+                if (isBlankHardDisk)
+                {
+                    string? blankPendingReturnMessage = await _archiveRelocationService.GetBatchBlankHardDiskPendingReturnConfirmMessageAsync(request);
+                    if (!string.IsNullOrWhiteSpace(blankPendingReturnMessage))
+                    {
+                        request.IncludePendingReturnBlankHardDisks = _dialogService.ShowConfirm(
+                            blankPendingReturnMessage,
+                            "待归还提醒");
+                    }
+                }
+
                 _dialogService.SetBusyState(true);
-                var result = isElectronic
-                    ? await _archiveRelocationService.ExecuteBatchElectronicSlotPhysicalMoveAsync(request)
-                    : await _archiveRelocationService.ExecuteBatchSimulatedSlotPhysicalMoveAsync(request);
+                var result = isBlankHardDisk
+                    ? await _archiveRelocationService.ExecuteBatchBlankHardDiskSlotPhysicalMoveAsync(request)
+                    : isElectronic
+                        ? await _archiveRelocationService.ExecuteBatchElectronicSlotPhysicalMoveAsync(request)
+                        : await _archiveRelocationService.ExecuteBatchSimulatedSlotPhysicalMoveAsync(request);
                 if (result.Success)
                 {
                     _batchSlotRelocationSession.ClearSource();
@@ -1423,6 +1509,24 @@ namespace DocMgr.ViewModels.Cabinets
             }
 
             _batchSlotRelocationSession.ClearSource();
+
+            if (medium.IsBlankHardDiskRelocationCandidate)
+            {
+                _interactiveItemRelocationSession.SetSource(new InteractiveItemRelocationSource
+                {
+                    MediaKind = ArchiveRegisterDomainValues.MediaKindBlankHardDisk,
+                    SourceMediumId = medium.MediumId,
+                    DisplayText = medium.DiskCodeText,
+                    SourceDedicatedSlotCategoryName = slot.DedicatedSlotCategoryName,
+                    SourceStorageLocation = medium.CurrentLocationText
+                });
+
+                _dialogService.ShowMessage(
+                    $"已将空白硬盘 [{medium.DiskCodeText}] 设为迁档对象。请在空白专用且有空余盘位的目标档口右键选择「迁档到此档口」。",
+                    "交互式迁档");
+                return;
+            }
+
             string displayText = string.IsNullOrWhiteSpace(medium.ElectronicArchiveNoText)
                 ? medium.DiskCodeText
                 : medium.ElectronicArchiveNoText;
@@ -1464,6 +1568,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         private bool CanRelocateInteractiveItemToSlot(CabinetSlotViewModel? slot, InteractiveItemRelocationSource? source = null)
         {
+            slot = ResolveSlotContextMenuTarget(slot);
             source ??= _interactiveItemRelocationSession.Source;
             if (slot == null || !SupportsInteractiveItemRelocation || source == null)
             {
@@ -1508,6 +1613,18 @@ namespace DocMgr.ViewModels.Cabinets
             if (slot == null)
             {
                 return null;
+            }
+
+            if (medium.IsBlankHardDiskRelocationCandidate)
+            {
+                return new InteractiveItemRelocationDragPayload
+                {
+                    MediaKind = ArchiveRegisterDomainValues.MediaKindBlankHardDisk,
+                    SourceMediumId = medium.MediumId,
+                    DisplayText = medium.DiskCodeText,
+                    SourceDedicatedSlotCategoryName = slot.DedicatedSlotCategoryName,
+                    SourceStorageLocation = medium.CurrentLocationText
+                };
             }
 
             string displayText = string.IsNullOrWhiteSpace(medium.ElectronicArchiveNoText)
@@ -1571,6 +1688,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         private async Task RelocateInteractiveItemToSlotAsync(CabinetSlotViewModel? slot)
         {
+            slot = ResolveSlotContextMenuTarget(slot);
             if (!CanRelocateInteractiveItemToSlot(slot) || slot == null)
             {
                 return;
@@ -1592,6 +1710,7 @@ namespace DocMgr.ViewModels.Cabinets
                 MediaKind = source.MediaKind,
                 SourceBoxId = source.SourceBoxId,
                 SourceUnitId = source.SourceUnitId,
+                SourceMediumId = source.SourceMediumId,
                 TargetCabinetName = Request.CabinetName,
                 TargetFace = ResolveFaceCode(slot.Face),
                 TargetRow = slot.LayerIndex,
@@ -1692,6 +1811,14 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
+            var occupiedSlots = selectedSlots.Where(slot => !slot.IsFullyEmptyMagneticDiskSlot).ToList();
+            if (occupiedSlots.Count > 0)
+            {
+                string slotList = string.Join("、", occupiedSlots.Select(slot => slot.SlotCode));
+                _dialogService.ShowMessage($"所选档口中 {slotList} 仍有介质占用，仅可对空档口变更用途。", "无法变更用途");
+                return;
+            }
+
             string? sharedCategory = ResolveSharedCategoryName(selectedSlots);
             var result = _dialogService.ShowCabinetHardDiskSlotCategoryEditDialog(
                 "统一设置档口用途",
@@ -1743,6 +1870,12 @@ namespace DocMgr.ViewModels.Cabinets
             bool allSame = selectedSlots.All(slot =>
                 string.Equals(slot.DedicatedSlotCategoryName, first, StringComparison.OrdinalIgnoreCase));
             return allSame ? first : null;
+        }
+
+        private bool CanChangeSlotDedicatedCategory(CabinetSlotViewModel? slot)
+        {
+            slot = ResolveSlotContextMenuTarget(slot);
+            return slot != null && slot.IsMagneticDiskSlot && slot.IsFullyEmptyMagneticDiskSlot;
         }
 
         private void ReloadSlots()

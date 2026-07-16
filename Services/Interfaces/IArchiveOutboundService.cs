@@ -10,6 +10,12 @@ namespace DocMgr.Services.Interfaces
     {
         bool IsArchiveAdminUser(User? user);
 
+        /// <summary>部门资料管理员（不含资料室），仅可发起申请。</summary>
+        bool IsDepartmentArchiveAdmin(User? user);
+
+        /// <summary>是否允许发起申请（部门资料管理员或系统管理员）。</summary>
+        bool CanSubmitApplication(User? user);
+
         Task<List<YearlyArchiveOutboundRecord>> ListRecordsAsync(OutboundListCriteria criteria, User user);
 
         /// <summary>返回已有出库申请记录涉及的申请年度（降序）。</summary>

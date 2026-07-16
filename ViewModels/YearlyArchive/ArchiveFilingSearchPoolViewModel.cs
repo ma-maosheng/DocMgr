@@ -68,7 +68,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             SaveCommand = new RelayCommand(async _ => await SavePoolAsync(), _ => SelectedPool != null);
             RemoveSelectedItemsCommand = new RelayCommand(_ => RemoveSelectedItems(), _ => PoolItems.Any(item => item.IsSelected));
             ViewDetailCommand = new RelayCommand(async _ => await ViewDetailAsync(), _ => SelectedPoolItem != null);
-            CreateOutboundFromPoolCommand = new RelayCommand(async _ => await CreateOutboundFromPoolAsync(), _ => SelectedPool != null && PoolItems.Count > 0);
+            CreateOutboundFromPoolCommand = new RelayCommand(
+                async _ => await CreateOutboundFromPoolAsync(),
+                _ => SelectedPool != null
+                     && PoolItems.Count > 0
+                     && _outboundService.CanSubmitApplication(_userContextService.CurrentUser));
 
             StatusFilterOptions =
             [

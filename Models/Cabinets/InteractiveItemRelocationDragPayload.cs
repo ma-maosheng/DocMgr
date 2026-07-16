@@ -15,6 +15,8 @@ namespace DocMgr.Models.Cabinets
 
         public int SourceUnitId { get; init; }
 
+        public int SourceMediumId { get; init; }
+
         public string BoxSpecification { get; init; } = string.Empty;
 
         public string SourceDedicatedSlotCategoryName { get; init; } = string.Empty;
@@ -32,6 +34,7 @@ namespace DocMgr.Models.Cabinets
                 MediaKind = MediaKind,
                 SourceBoxId = SourceBoxId,
                 SourceUnitId = SourceUnitId,
+                SourceMediumId = SourceMediumId,
                 BoxSpecification = BoxSpecification,
                 SourceDedicatedSlotCategoryName = SourceDedicatedSlotCategoryName,
                 SourceStorageLocation = SourceStorageLocation,

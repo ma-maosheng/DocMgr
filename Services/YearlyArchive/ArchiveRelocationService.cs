@@ -4,8 +4,8 @@ using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
-using DocMgr.Services.Interfaces;
 using DocMgr.Services.HardDiskMedia;
+using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 
 namespace DocMgr.Services.YearlyArchive
@@ -14,6 +14,7 @@ namespace DocMgr.Services.YearlyArchive
     {
         private readonly IArchiveRelocationRepository _relocationRepository;
         private readonly IArchiveFilingRepository _filingRepository;
+        private readonly IHardDiskMediaRepository _hardDiskMediaRepository;
         private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly IUserContextService _userContextService;
         private readonly IFilingFactWriter _filingFactWriter;
@@ -23,6 +24,7 @@ namespace DocMgr.Services.YearlyArchive
         public ArchiveRelocationService(
             IArchiveRelocationRepository relocationRepository,
             IArchiveFilingRepository filingRepository,
+            IHardDiskMediaRepository hardDiskMediaRepository,
             IArchiveRegisterService archiveRegisterService,
             IUserContextService userContextService,
             IFilingFactWriter filingFactWriter,
@@ -31,6 +33,7 @@ namespace DocMgr.Services.YearlyArchive
         {
             _relocationRepository = relocationRepository;
             _filingRepository = filingRepository;
+            _hardDiskMediaRepository = hardDiskMediaRepository;
             _archiveRegisterService = archiveRegisterService;
             _userContextService = userContextService;
             _filingFactWriter = filingFactWriter;
@@ -435,7 +438,7 @@ namespace DocMgr.Services.YearlyArchive
         {
             string status = medium.Ledger?.MediaStatus?.Trim() ?? string.Empty;
             string nature = medium.Ledger?.MediaNature?.Trim() ?? string.Empty;
-            return string.Equals(status, HardDiskMedium.StatusInStockData, StringComparison.Ordinal)
+            return HardDiskMedium.IsInStockRelocatableStatus(status)
                 || string.Equals(nature, HardDiskMedium.NatureDataCarrier, StringComparison.Ordinal);
         }
 
@@ -769,7 +772,7 @@ namespace DocMgr.Services.YearlyArchive
             string? ledgerLocation = unit.DiscLinks
                 .Select(link => link.OpticalDiscMedium?.Ledger)
                 .Where(ledger => ledger != null
-                    && string.Equals(ledger.MediaStatus, OpticalDiscMedium.StatusInStock, StringComparison.Ordinal))
+                    && OpticalDiscMedium.IsInStockRelocatableStatus(ledger.MediaStatus))
                 .Select(ledger => ledger!.StorageLocation?.Trim())
                 .FirstOrDefault(location => !string.IsNullOrWhiteSpace(location));
 
@@ -906,7 +909,7 @@ namespace DocMgr.Services.YearlyArchive
                     continue;
                 }
 
-                if (!string.Equals(disc.Ledger.MediaStatus, OpticalDiscMedium.StatusInStock, StringComparison.Ordinal))
+                if (!OpticalDiscMedium.IsInStockRelocatableStatus(disc.Ledger.MediaStatus))
                 {
                     continue;
                 }

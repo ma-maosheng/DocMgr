@@ -1,6 +1,9 @@
 using DocMgr.Data;
 using DocMgr.Models.Cabinets;
+using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Repositories.Interfaces;
+using DocMgr.Services.YearlyArchive;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocMgr.Repositories.Cabinets;
@@ -65,10 +68,14 @@ public class CabinetRepository : ICabinetRepository
 
     public CabinetHardDiskSlotCategoryAssignment? GetSlotCategoryAssignment(int cabinetId, string faceCode, string slotCode)
     {
-        return _dbContext.CabinetHardDiskSlotCategoryAssignments.FirstOrDefault(item =>
-            item.CabinetId == cabinetId &&
-            item.FaceCode == faceCode &&
-            item.SlotCode == slotCode);
+        string normalizedFaceCode = faceCode.Trim();
+        string normalizedSlotCode = slotCode.Trim();
+        return _dbContext.CabinetHardDiskSlotCategoryAssignments
+            .AsEnumerable()
+            .FirstOrDefault(item =>
+                item.CabinetId == cabinetId
+                && string.Equals(item.FaceCode, normalizedFaceCode, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(item.SlotCode, normalizedSlotCode, StringComparison.OrdinalIgnoreCase));
     }
 
     public List<CabinetHardDiskSlotCategoryAssignment> GetSlotCategoryAssignmentsByCabinetId(int cabinetId)
@@ -88,6 +95,68 @@ public class CabinetRepository : ICabinetRepository
     {
         ArgumentNullException.ThrowIfNull(assignment);
         _dbContext.CabinetHardDiskSlotCategoryAssignments.Remove(assignment);
+    }
+
+    public bool HasInStockMediaInMagneticDiskSlot(string cabinetName, string faceCode, string slotCode)
+    {
+        if (string.IsNullOrWhiteSpace(cabinetName)
+            || string.IsNullOrWhiteSpace(faceCode)
+            || string.IsNullOrWhiteSpace(slotCode)
+            || !TryParseMagneticDiskSlotRowColumn(slotCode, out int row, out int column))
+        {
+            return false;
+        }
+
+        string slotKey = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName.Trim(), faceCode.Trim(), row, column);
+        if (string.IsNullOrWhiteSpace(slotKey))
+        {
+            return false;
+        }
+
+        var hardDiskLocations = _dbContext.HardDiskMedia
+            .AsNoTracking()
+            .Where(item => !item.IsDeleted && item.Ledger != null)
+            .Where(item => item.Ledger!.MediaStatus == HardDiskMedium.StatusInStockBlank
+                || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockData
+                || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockDamaged)
+            .Select(item => item.Ledger!.StorageLocation)
+            .ToList();
+
+        if (hardDiskLocations.Any(location => IsSameMagneticDiskSlot(location, slotKey)))
+        {
+            return true;
+        }
+
+        var opticalDiscLocations = _dbContext.OpticalDiscMedia
+            .AsNoTracking()
+            .Where(item => !item.IsDeleted && item.Ledger != null)
+            .Where(item => item.Ledger!.MediaStatus == OpticalDiscMedium.StatusInStock
+                || item.Ledger.MediaStatus == OpticalDiscMedium.StatusDamaged)
+            .Select(item => item.Ledger!.StorageLocation)
+            .ToList();
+
+        return opticalDiscLocations.Any(location => IsSameMagneticDiskSlot(location, slotKey));
+    }
+
+    private static bool IsSameMagneticDiskSlot(string? storageLocation, string slotKey)
+        => !string.IsNullOrWhiteSpace(storageLocation)
+            && ArchiveSlotLocationSupport.IsSameSlot(storageLocation, slotKey);
+
+    private static bool TryParseMagneticDiskSlotRowColumn(string slotCode, out int row, out int column)
+    {
+        row = 0;
+        column = 0;
+        if (string.IsNullOrWhiteSpace(slotCode))
+        {
+            return false;
+        }
+
+        string[] parts = slotCode.Trim().Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length == 2
+            && int.TryParse(parts[0], out row)
+            && int.TryParse(parts[1], out column)
+            && row > 0
+            && column > 0;
     }
 
     public int SaveChanges()

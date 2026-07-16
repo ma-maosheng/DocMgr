@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
@@ -50,11 +51,13 @@ namespace DocMgr.ViewModels.YearlyArchive
         public void Deactivate() => _isActive = false;
 
         public ArchiveReturnWorkbenchViewModel(
+            ArchiveReturnWorkspaceMode workspaceMode,
             IArchiveReturnService returnService,
             IArchiveOutboundService outboundService,
             IUserContextService userContextService,
             IDialogService dialogService)
         {
+            _workspaceMode = workspaceMode;
             _returnService = returnService;
             _outboundService = outboundService;
             _userContextService = userContextService;
@@ -62,12 +65,14 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             SearchCommand = new RelayCommand(_ => ApplyFilters(), _ => !IsBusy);
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync(), _ => !IsBusy);
-            ViewOutboundDetailCommand = new RelayCommand(async _ => await ViewOutboundDetailAsync(), _ => !IsBusy && IsAdmin && SelectedOutbound != null);
-            StartReturnCommand = new RelayCommand(async _ => await StartReturnAsync(), _ => !IsBusy && IsAdmin && SelectedOutbound != null);
+            ViewOutboundDetailCommand = new RelayCommand(async _ => await ViewOutboundDetailAsync(), _ => !IsBusy && SelectedOutbound != null);
+            StartReturnCommand = new RelayCommand(async _ => await StartReturnAsync(), _ => !IsBusy && CanStartReturn);
             OpenReturnCommand = new RelayCommand(async _ => await OpenReturnAsync(), _ => !IsBusy && SelectedReturn != null);
-            SaveDraftCommand = new RelayCommand(async _ => await SaveAsync(false), _ => !IsBusy && IsAdmin && IsEditable);
-            RegisterCommand = new RelayCommand(async _ => await SaveAsync(true), _ => !IsBusy && IsAdmin && IsEditable);
-            CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => !IsBusy && IsAdmin && CanComplete);
+            SaveDraftCommand = new RelayCommand(async _ => await SaveAsync(false), _ => !IsBusy && CanSaveDraft);
+            RegisterCommand = new RelayCommand(async _ => await SaveAsync(true), _ => !IsBusy && CanSubmit);
+            ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => !IsBusy && CanApprove);
+            ConfirmHandoverCommand = new RelayCommand(async _ => await ConfirmHandoverAsync(), _ => !IsBusy && CanConfirmHandover);
+            CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => !IsBusy && CanComplete);
             VoidCommand = new RelayCommand(async _ => await VoidAsync(), _ => !IsBusy && CanVoid);
             PrintReceiptCommand = new RelayCommand(async _ => await PrintReceiptAsync(), _ => !IsBusy && CanPrintReceipt);
             PrintAbnormalReportCommand = new RelayCommand(async _ => await PrintAbnormalReportAsync(), _ => !IsBusy && CanPrintAbnormalReport);
@@ -78,7 +83,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ToggleLeftPanelCommand = new RelayCommand(_ => IsLeftPanelExpanded = !IsLeftPanelExpanded);
             AssignRehomeTargetCommand = new RelayCommand<ArchiveReturnItemEditRowViewModel>(
                 async row => await AssignRehomeTargetAsync(row),
-                row => !IsBusy && IsAdmin && IsEditable && row?.NeedsRehome == true);
+                row => !IsBusy && IsEditable && row?.NeedsRehome == true);
 
             EditItemDetailsPanel = new ItemDetailsListPresenter<ArchiveReturnItemEditRowViewModel>(
                 "归还明细",
@@ -88,17 +93,36 @@ namespace DocMgr.ViewModels.YearlyArchive
             EditItemDetailsPanel.RefreshItems(EditItems);
         }
 
-        public string PageTitle => "资料归还工作台";
+        private readonly ArchiveReturnWorkspaceMode _workspaceMode;
+
+        public ArchiveReturnWorkspaceMode WorkspaceMode => _workspaceMode;
+
+        public string PageTitle => _workspaceMode switch
+        {
+            ArchiveReturnWorkspaceMode.Application => "资料归还申请",
+            ArchiveReturnWorkspaceMode.Approval => "资料归还审批",
+            _ => "资料归还入库"
+        };
+
+        public string PageSubtitle => _workspaceMode switch
+        {
+            ArchiveReturnWorkspaceMode.Application => "由借出人发起归还申请并提交审批。",
+            ArchiveReturnWorkspaceMode.Approval => "对已提交的归还申请进行审批。",
+            _ => "办理实物交接、上传签批交接单并办结入库。"
+        };
 
         public ObservableCollection<int> Years { get; } = new();
 
         public ObservableCollection<string> ReturnStatusOptions { get; } = new()
         {
             FilterAll,
-            "草稿",
-            "已登记",
-            "已办结",
-            "已作废"
+            ApplicationWorkflowStatus.TextDraft,
+            ApplicationWorkflowStatus.TextSubmitted,
+            ApplicationWorkflowStatus.TextApproved,
+            ApplicationWorkflowStatus.TextSignedUploaded,
+            ApplicationWorkflowStatus.TextCompleted,
+            ApplicationWorkflowStatus.TextWithdrawn,
+            ApplicationWorkflowStatus.TextForceWithdrawn
         };
 
         public ObservableCollection<string> OutboundFilterOptions { get; } = new()
@@ -142,6 +166,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand OpenReturnCommand { get; }
         public RelayCommand SaveDraftCommand { get; }
         public RelayCommand RegisterCommand { get; }
+        public RelayCommand ApproveCommand { get; }
+        public RelayCommand ConfirmHandoverCommand { get; }
         public RelayCommand CompleteCommand { get; }
         public RelayCommand VoidCommand { get; }
         public RelayCommand PrintReceiptCommand { get; }
@@ -281,7 +307,38 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool IsEditing => EditingRecord != null;
 
-        public bool IsEditable => EditingRecord is { Status: YearlyArchiveReturnRecord.Draft };
+        public bool IsEditable => EditingRecord is { Status: YearlyArchiveReturnRecord.Draft }
+            && _workspaceMode == ArchiveReturnWorkspaceMode.Application;
+
+        public bool CanStartReturn =>
+            _workspaceMode == ArchiveReturnWorkspaceMode.Application
+            && SelectedOutbound != null
+            && _returnService.CanSubmitApplication(_userContextService.CurrentUser);
+
+        public bool CanSaveDraft =>
+            IsEditable && _returnService.CanSubmitApplication(_userContextService.CurrentUser);
+
+        public bool CanSubmit =>
+            IsEditable && _returnService.CanSubmitApplication(_userContextService.CurrentUser);
+
+        public bool CanApprove =>
+            _workspaceMode == ArchiveReturnWorkspaceMode.Approval
+            && IsAdmin
+            && EditingRecord is { Id: > 0, Status: YearlyArchiveReturnRecord.Submitted };
+
+        public bool CanConfirmHandover =>
+            _workspaceMode == ArchiveReturnWorkspaceMode.Handover
+            && IsAdmin
+            && EditingRecord is { Id: > 0, Status: YearlyArchiveReturnRecord.Approved }
+            && (!HasAbnormalReturnItems || HasAbnormalReportUploaded);
+
+        public bool ShowApplicationActions => _workspaceMode == ArchiveReturnWorkspaceMode.Application;
+
+        public bool ShowApprovalActions => _workspaceMode == ArchiveReturnWorkspaceMode.Approval;
+
+        public bool ShowHandoverActions => _workspaceMode == ArchiveReturnWorkspaceMode.Handover;
+
+        public bool ShowOutboundCandidatesPanel => _workspaceMode == ArchiveReturnWorkspaceMode.Application;
 
         public bool HasAbnormalReturnItems =>
             EditingRecord != null
@@ -292,25 +349,37 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool CanPrintAbnormalReport =>
             ShowAbnormalReturnPanel && EditingRecord is { Id: > 0 }
-            && EditingRecord.Status is YearlyArchiveReturnRecord.Draft or YearlyArchiveReturnRecord.Registered;
+            && EditingRecord.Status is YearlyArchiveReturnRecord.Draft
+                or YearlyArchiveReturnRecord.Submitted
+                or YearlyArchiveReturnRecord.Approved
+                or YearlyArchiveReturnRecord.SignedUploaded;
 
         public bool CanManageAbnormalReportAttachments =>
             ShowAbnormalReturnPanel
             && EditingRecord is { Status: YearlyArchiveReturnRecord.Draft }
-            && IsAdmin;
+            && _workspaceMode == ArchiveReturnWorkspaceMode.Application;
 
-        /// <summary>仅已登记且灭失附件齐全（若有灭失）的归还单可办结入库。</summary>
-        public bool CanComplete => EditingRecord is { Status: YearlyArchiveReturnRecord.Registered }
+        /// <summary>已实物交接后可办结入库。</summary>
+        public bool CanComplete =>
+            _workspaceMode == ArchiveReturnWorkspaceMode.Handover
+            && IsAdmin
+            && EditingRecord is { Status: YearlyArchiveReturnRecord.SignedUploaded }
             && (!HasAbnormalReturnItems || HasAbnormalReportUploaded);
 
-        /// <summary>办结入库前（草稿/已登记）可作废。</summary>
+        /// <summary>办结前可作废；审批后仅管理员可强制。</summary>
         public bool CanVoid => EditingRecord is { } record
             && record.Id > 0
-            && record.Status is YearlyArchiveReturnRecord.Draft or YearlyArchiveReturnRecord.Registered;
+            && record.Status is YearlyArchiveReturnRecord.Draft
+                or YearlyArchiveReturnRecord.Submitted
+                or YearlyArchiveReturnRecord.Approved
+                or YearlyArchiveReturnRecord.SignedUploaded
+            && (_workspaceMode != ArchiveReturnWorkspaceMode.Application
+                || record.Status is YearlyArchiveReturnRecord.Draft or YearlyArchiveReturnRecord.Submitted);
 
-        /// <summary>仅已登记或已办结可打印回执。</summary>
+        /// <summary>实物交接后可打印回执。</summary>
         public bool CanPrintReceipt => EditingRecord is { Id: > 0 } record
-            && record.Status is YearlyArchiveReturnRecord.Registered or YearlyArchiveReturnRecord.Completed
+            && record.Status is YearlyArchiveReturnRecord.SignedUploaded or YearlyArchiveReturnRecord.Completed
+            && (_workspaceMode == ArchiveReturnWorkspaceMode.Handover || record.Status == YearlyArchiveReturnRecord.Completed)
             && (!HasAbnormalReturnItems || HasAbnormalReportUploaded || record.Status == YearlyArchiveReturnRecord.Completed);
 
         public async Task InitializeAsync()
@@ -703,6 +772,82 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        private async Task ApproveAsync()
+        {
+            if (EditingRecord is not { } record || record.Id <= 0)
+            {
+                return;
+            }
+
+            var user = _userContextService.CurrentUser;
+            if (user == null)
+            {
+                return;
+            }
+
+            if (!_dialogService.ShowConfirm($"确认审批通过归还单 {record.ReturnNo}？", "审批确认"))
+            {
+                return;
+            }
+
+            IsBusy = true;
+            try
+            {
+                var result = await _returnService.ApproveReturnFlowAsync(record.Id, user);
+                if (!result.Success)
+                {
+                    _dialogService.ShowError(result.Message);
+                    return;
+                }
+
+                _dialogService.ShowMessage(result.Message);
+                await ReloadSavedRecordAsync(result.RecordId);
+            }
+            finally
+            {
+                IsBusy = false;
+                await TryReloadListsAfterOperationAsync();
+            }
+        }
+
+        private async Task ConfirmHandoverAsync()
+        {
+            if (EditingRecord is not { } record || record.Id <= 0)
+            {
+                return;
+            }
+
+            var user = _userContextService.CurrentUser;
+            if (user == null)
+            {
+                return;
+            }
+
+            if (!_dialogService.ShowConfirm($"确认归还单 {record.ReturnNo} 已完成实物交接？", "实物交接确认"))
+            {
+                return;
+            }
+
+            IsBusy = true;
+            try
+            {
+                var result = await _returnService.ConfirmHandoverFlowAsync(record.Id, user);
+                if (!result.Success)
+                {
+                    _dialogService.ShowError(result.Message);
+                    return;
+                }
+
+                _dialogService.ShowMessage(result.Message);
+                await ReloadSavedRecordAsync(result.RecordId);
+            }
+            finally
+            {
+                IsBusy = false;
+                await TryReloadListsAfterOperationAsync();
+            }
+        }
+
         private async Task CompleteAsync()
         {
             if (EditingRecord is not { } record || record.Id <= 0)
@@ -896,14 +1041,24 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void NotifyEditCommandStates()
         {
             OnPropertyChanged(nameof(IsEditable));
-            OnPropertyChanged(nameof(ShowAbnormalReturnPanel));
-            OnPropertyChanged(nameof(HasAbnormalReturnItems));
+            OnPropertyChanged(nameof(CanSaveDraft));
+            OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(CanApprove));
+            OnPropertyChanged(nameof(CanConfirmHandover));
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(CanVoid));
             OnPropertyChanged(nameof(CanPrintReceipt));
             OnPropertyChanged(nameof(CanPrintAbnormalReport));
             OnPropertyChanged(nameof(CanManageAbnormalReportAttachments));
+            OnPropertyChanged(nameof(ShowAbnormalReturnPanel));
+            OnPropertyChanged(nameof(HasAbnormalReturnItems));
+            OnPropertyChanged(nameof(ShowApplicationActions));
+            OnPropertyChanged(nameof(ShowApprovalActions));
+            OnPropertyChanged(nameof(ShowHandoverActions));
+            OnPropertyChanged(nameof(ShowOutboundCandidatesPanel));
+            OnPropertyChanged(nameof(CanStartReturn));
             RefreshAbnormalFlowHint();
+            CommandManager.InvalidateRequerySuggested();
         }
 
         private async Task PrintReceiptAsync()
@@ -1001,7 +1156,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             var dialog = new OpenFileDialog
             {
-                Filter = "图像/PDF|*.jpg;*.jpeg;*.png;*.pdf|所有文件|*.*"
+                Filter = SystemAttachmentUploadSupport.OpenFileDialogFilter
             };
 
             if (dialog.ShowDialog() != true)

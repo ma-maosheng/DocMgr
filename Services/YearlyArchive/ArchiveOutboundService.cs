@@ -47,6 +47,10 @@ namespace DocMgr.Services.YearlyArchive
 
         public bool IsArchiveAdminUser(User? user) => _archiveRegisterService.IsArchiveAdminUser(user);
 
+        public bool IsDepartmentArchiveAdmin(User? user) => _archiveRegisterService.IsDepartmentArchiveAdmin(user);
+
+        public bool CanSubmitApplication(User? user) => _archiveRegisterService.CanSubmitApplication(user);
+
         public async Task<List<YearlyArchiveOutboundRecord>> ListRecordsAsync(OutboundListCriteria criteria, User user)
         {
             ArgumentNullException.ThrowIfNull(user);
@@ -96,6 +100,11 @@ namespace DocMgr.Services.YearlyArchive
         public async Task<YearlyArchiveOutboundRecord> CreateDraftRecordAsync(User applicant)
         {
             ArgumentNullException.ThrowIfNull(applicant);
+
+            if (!CanSubmitApplication(applicant))
+            {
+                throw new InvalidOperationException("仅部门资料管理员可发起资料借出申请。");
+            }
 
             DateTime now = DateTime.Now;
             return new YearlyArchiveOutboundRecord
@@ -165,6 +174,11 @@ namespace DocMgr.Services.YearlyArchive
         {
             ArgumentNullException.ThrowIfNull(request);
             ArgumentNullException.ThrowIfNull(user);
+
+            if (!CanSubmitApplication(user))
+            {
+                return ArchiveOutboundFlowResult.Fail("仅部门资料管理员可保存资料借出申请草稿。");
+            }
 
             var validation = ValidateDraft(request.Record, request.Items, user, requireSubmittedFields: false);
             if (!validation.Success)
@@ -237,9 +251,14 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveOutboundFlowResult.Fail("未找到指定的出库申请单。");
             }
 
-            if (record.ApplicantUserId != user.Id && !IsArchiveAdminUser(user))
+            if (!CanSubmitApplication(user))
             {
-                return ArchiveOutboundFlowResult.Fail("仅申请人或资料室管理员可提交该申请。");
+                return ArchiveOutboundFlowResult.Fail("仅部门资料管理员可提交资料借出申请。");
+            }
+
+            if (record.ApplicantUserId != user.Id && !ArchiveRegisterBusinessRules.IsSystemAdministrator(user))
+            {
+                return ArchiveOutboundFlowResult.Fail("仅申请人本人可提交该申请。");
             }
 
             if (record.Status != YearlyArchiveOutboundRecord.Unsubmitted)
@@ -327,9 +346,15 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveOutboundFlowResult.Fail("未找到指定的出库申请单。");
             }
 
-            if (record.ApplicantUserId != user.Id && !IsArchiveAdminUser(user))
+            if (!CanSubmitApplication(user))
             {
-                return ArchiveOutboundFlowResult.Fail("仅申请人或资料室管理员可撤回该申请。");
+                return ArchiveOutboundFlowResult.Fail("仅部门资料管理员可撤回资料借出申请。");
+            }
+
+            if (record.ApplicantUserId != user.Id
+                && !ArchiveRegisterBusinessRules.IsSystemAdministrator(user))
+            {
+                return ArchiveOutboundFlowResult.Fail("仅申请人本人可撤回该申请。");
             }
 
             if (!record.CanApplicantWithdraw)
@@ -487,6 +512,15 @@ namespace DocMgr.Services.YearlyArchive
             ArgumentNullException.ThrowIfNull(attachment);
             ArgumentNullException.ThrowIfNull(user);
 
+            string? formatError = SystemAttachmentUploadSupport.ValidateUploadFormat(
+                attachment.FileName,
+                attachment.Extension,
+                attachment.FileContent);
+            if (!string.IsNullOrWhiteSpace(formatError))
+            {
+                return ArchiveOutboundFlowResult.Fail(formatError);
+            }
+
             var record = await _outboundRepository.GetByIdWithDetailsAsync(recordId);
             if (record == null)
             {
@@ -521,9 +555,9 @@ namespace DocMgr.Services.YearlyArchive
                         return ArchiveOutboundFlowResult.Fail("仅已提交或已审批通过的申请单可上传证明材料扫描件。");
                     }
                 }
-                else if (record.Status != YearlyArchiveOutboundRecord.Approved)
+                else if (record.Status != YearlyArchiveOutboundRecord.SignedUploaded)
                 {
-                    return ArchiveOutboundFlowResult.Fail("请先审批通过后再上传审批签字单。");
+                    return ArchiveOutboundFlowResult.Fail("请先确认实物交接后再上传签批交接单。");
                 }
             }
 
@@ -613,9 +647,9 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveOutboundAttachmentFlowResult.Fail("当前状态不允许删除证明材料扫描件。");
             }
 
-            if (isSignedApproval && record.Status != YearlyArchiveOutboundRecord.Approved)
+            if (isSignedApproval && record.Status != YearlyArchiveOutboundRecord.SignedUploaded)
             {
-                return ArchiveOutboundAttachmentFlowResult.Fail("请先审批通过后再删除附件。");
+                return ArchiveOutboundAttachmentFlowResult.Fail("请先确认实物交接后再删除附件。");
             }
 
             if (isHandoverAttachment && record.Status != YearlyArchiveOutboundRecord.SignedUploaded)
@@ -688,7 +722,7 @@ namespace DocMgr.Services.YearlyArchive
             existing.UpdatedAt = DateTime.Now;
             await _outboundRepository.SaveOrUpdateRecordGraphAsync(existing);
 
-            return ArchiveOutboundFlowResult.Ok("审批阶段已办结（已办结审批），请前往「资料出库」办理实物交接。");
+            return ArchiveOutboundFlowResult.Ok("实物交接确认成功，请上传签批交接单。");
         }
 
         public async Task<ArchiveOutboundFlowResult> CompletePhysicalOutboundFlowAsync(int recordId, string handoverRemark, User admin)
@@ -1141,13 +1175,6 @@ namespace DocMgr.Services.YearlyArchive
             if (!record.VicePresidentDate.HasValue)
             {
                 errors.Add("• 请填写生产副院长审核日期。");
-            }
-
-            bool hasSignedApproval = attachments.Any(a =>
-                string.Equals(a.FileCategory, ArchiveOutboundDomainValues.AttachmentKindSignedApprovalForm, StringComparison.Ordinal));
-            if (!hasSignedApproval)
-            {
-                errors.Add("• 请上传审批签字单扫描件。");
             }
 
             if (ArchiveOutboundDomainValues.RequiresProofMaterialScan(record.ProofMaterialNote))

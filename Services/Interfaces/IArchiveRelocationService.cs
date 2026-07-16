@@ -41,6 +41,14 @@ namespace DocMgr.Services.Interfaces
 
         Task<ArchiveRelocationResult> ExecuteBatchElectronicSlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);
 
+        Task<ArchiveRelocationPreview> PreviewBatchBlankHardDiskSlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);
+
+        Task<ArchiveRelocationResult> ExecuteBatchBlankHardDiskSlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);
+
+        /// <summary>空白硬盘档口批量搬迁前：若源档口有待归还空白硬盘，返回确认提示文案；否则 null。</summary>
+        Task<string?> GetBatchBlankHardDiskPendingReturnConfirmMessageAsync(
+            BatchSimulatedSlotPhysicalMoveRequest request);
+
         Task<ArchiveRelocationPreview> PreviewInteractiveItemPhysicalMoveAsync(InteractiveItemPhysicalMoveRequest request);
 
         Task<ArchiveRelocationResult> ExecuteInteractiveItemPhysicalMoveAsync(InteractiveItemPhysicalMoveRequest request);

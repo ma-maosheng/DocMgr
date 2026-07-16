@@ -57,7 +57,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             UploadProofMaterialScanCommand = new RelayCommand(
                 async _ => await UploadAttachmentAsync(ArchiveOutboundDomainValues.AttachmentKindProofMaterialScan),
                 _ => CanManageProofMaterialAttachments);
-            CompleteApprovalPhaseCommand = new RelayCommand(async _ => await CompleteApprovalPhaseAsync(), _ => CanCompleteApprovalPhase);
+            ConfirmPhysicalHandoverCommand = new RelayCommand(async _ => await ConfirmPhysicalHandoverAsync(), _ => CanConfirmPhysicalHandover);
             ViewAttachmentCommand = new RelayCommand(async param => await ViewAttachmentAsync(param as SystemAttachment));
             DeleteAttachmentCommand = new RelayCommand(
                 async param => await DeleteAttachmentAsync(param as SystemAttachment),
@@ -256,23 +256,23 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         /// <summary>审批工作台顶部流程说明文案。</summary>
         public string ApprovalWorkspaceBannerText =>
-            "请先查看申请信息与拟领用资料明细，再按“审批通过→上传签字件→审批阶段确认办结→打印审批单”的顺序办理。";
+            "请先查看申请信息与拟领用资料明细，再按“审批通过→确认实物交接→上传签批交接单→打印审批单”的顺序办理。";
 
         public string ApproveHintText => CanSaveApproval
-            ? "后续：审批通过后，请上传签字件。"
+            ? "后续：审批通过后，请确认实物交接。"
             : "仅「已提交」且审批信息完整时可执行审批通过。";
 
-        public string UploadHintText => CanUploadSignedAttachment
-            ? "后续：上传签字件后，请点击「审批阶段确认办结」。"
-            : "请先执行「审批通过」，再上传签字件。";
+        public string ConfirmHandoverHintText => CanConfirmPhysicalHandover
+            ? "后续：确认实物交接后，请上传签批交接单。"
+            : "请先执行「审批通过」。";
 
-        public string CompleteHintText => CanCompleteApprovalPhase
-            ? "确认办结后，可打印审批单。"
-            : "请先审批通过后再确认办结。";
+        public string UploadHintText => CanUploadSignedAttachment
+            ? "后续：上传签批交接单后，可打印审批单。"
+            : "请先执行「确认实物交接」，再上传签批交接单。";
 
         public string PrintApprovalHintText => CanPrintApproval
             ? "可打印审批单供线下签字或归档留存。"
-            : "请先完成「审批阶段确认办结」，再打印审批单。";
+            : "请先完成「确认实物交接」，再打印审批单。";
 
         public string StatusDisplay => Record.StatusStr;
 
@@ -298,7 +298,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public RelayCommand UploadProofMaterialScanCommand { get; }
 
-        public RelayCommand CompleteApprovalPhaseCommand { get; }
+        public RelayCommand ConfirmPhysicalHandoverCommand { get; }
 
         public RelayCommand ViewAttachmentCommand { get; }
 
@@ -349,16 +349,16 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// <summary>是否可执行「审批通过」。</summary>
         public bool CanSaveApproval => ResolveApprovalButtonState().CanApprovePass;
 
-        /// <summary>是否可打印审批单（确认办结后）。</summary>
+        /// <summary>是否可打印审批单。</summary>
         public bool CanPrintApproval => ResolveApprovalButtonState().CanPrintApprovalForm;
 
-        /// <summary>是否可上传签字件（审批通过后）。</summary>
+        /// <summary>是否可确认实物交接（审批通过后）。</summary>
+        public bool CanConfirmPhysicalHandover => ResolveApprovalButtonState().CanConfirmPhysicalHandover;
+
+        /// <summary>是否可上传签批交接单（确认实物交接后）。</summary>
         public bool CanUploadSignedAttachment => ResolveApprovalButtonState().CanUploadSignedAttachment;
 
-        /// <summary>是否可确认办结（审批通过后；具体校验在点击时执行）。</summary>
-        public bool CanCompleteApprovalPhase => ResolveApprovalButtonState().CanConfirmComplete;
-
-        /// <summary>是否可管理审批附件（与上传签字件同阶段）。</summary>
+        /// <summary>是否可管理审批附件（与上传签批交接单同阶段）。</summary>
         public bool CanManageApprovalAttachments => CanUploadSignedAttachment;
 
         /// <summary>仅「已提交、未审批」阶段可编辑审批字段。</summary>
@@ -826,14 +826,21 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private ApprovalWorkflowButtonSupport.Phase ResolveApprovalPhase()
         {
-            if (_record.IsSignedUploaded || _record.IsCompleted)
+            if (_record.IsCompleted)
             {
-                return ApprovalWorkflowButtonSupport.Phase.ApprovalCompleted;
+                return ApprovalWorkflowButtonSupport.Phase.Completed;
+            }
+
+            if (_record.IsSignedUploaded)
+            {
+                return IsApprovalAttachmentsReadyForComplete()
+                    ? ApprovalWorkflowButtonSupport.Phase.PendingComplete
+                    : ApprovalWorkflowButtonSupport.Phase.PendingSignedUpload;
             }
 
             if (_record.IsApproved)
             {
-                return ApprovalWorkflowButtonSupport.Phase.ApprovalInProgress;
+                return ApprovalWorkflowButtonSupport.Phase.PendingPhysicalHandover;
             }
 
             if (_record.IsSubmitted)
@@ -848,22 +855,24 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             if (!IsApprovalWorkspaceActive)
             {
-                return new ApprovalWorkflowButtonSupport.ButtonState(false, false, false, false);
+                return new ApprovalWorkflowButtonSupport.ButtonState(false, false, false, false, false);
             }
 
             var user = _userContextService.CurrentUser;
             bool isOperatorAllowed = user != null && _outboundService.IsArchiveAdminUser(user);
             bool canExecuteApprovePass = _record.IsSubmitted && _record.HasApprovalInput;
 
+            // 出库审批页不承担最终「确认办结」，故禁用第 4 按钮（该动作在「资料出库」交接页完成）。
             return ApprovalWorkflowButtonSupport.Resolve(
                 ResolveApprovalPhase(),
                 isOperatorAllowed,
-                canExecuteApprovePass);
+                canExecuteApprovePass,
+                enableComplete: false);
         }
 
         private bool IsApprovalWorkspaceActive =>
             _workspaceMode == ArchiveOutboundWorkspaceMode.Approval
-            && (_record.IsSubmitted || _record.IsApproved || _record.IsSignedUploaded);
+            && (_record.IsSubmitted || _record.IsApproved || _record.IsSignedUploaded || _record.IsCompleted);
 
         private bool IsInMemoryApprovalComplete() =>
             !string.IsNullOrWhiteSpace(Record.DeptAuditor)
@@ -896,14 +905,14 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void RefreshApprovalCommandStates()
         {
             OnPropertyChanged(nameof(CanSaveApproval));
+            OnPropertyChanged(nameof(CanConfirmPhysicalHandover));
             OnPropertyChanged(nameof(CanUploadSignedAttachment));
             OnPropertyChanged(nameof(CanEditApprovalFields));
             OnPropertyChanged(nameof(CanManageApprovalAttachments));
-            OnPropertyChanged(nameof(CanCompleteApprovalPhase));
             OnPropertyChanged(nameof(CanPrintApproval));
             OnPropertyChanged(nameof(ApproveHintText));
+            OnPropertyChanged(nameof(ConfirmHandoverHintText));
             OnPropertyChanged(nameof(UploadHintText));
-            OnPropertyChanged(nameof(CompleteHintText));
             OnPropertyChanged(nameof(PrintApprovalHintText));
             OnPropertyChanged(nameof(RequiresProofMaterialScanUpload));
             OnPropertyChanged(nameof(ShowProofMaterialAttachmentSection));
@@ -1226,11 +1235,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        private async Task CompleteApprovalPhaseAsync()
+        private async Task ConfirmPhysicalHandoverAsync()
         {
-            if (!CanCompleteApprovalPhase)
+            if (!CanConfirmPhysicalHandover)
             {
-                _dialogService.ShowError("请先审批通过后再确认办结。");
+                _dialogService.ShowError("请先审批通过后再确认实物交接。");
                 return;
             }
 
@@ -1250,7 +1259,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             HasCommittedChanges = true;
             await ReloadRecordAsync();
-            _dialogService.ShowMessage("审批阶段确认办结成功。下一步：请打印审批单。", "审批阶段确认办结");
+            _dialogService.ShowMessage(result.Message, "确认实物交接");
             RefreshApprovalCommandStates();
         }
 
@@ -1324,7 +1333,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             var dialog = new OpenFileDialog
             {
-                Filter = "图像/PDF|*.jpg;*.jpeg;*.png;*.pdf|所有文件|*.*"
+                Filter = SystemAttachmentUploadSupport.OpenFileDialogFilter
             };
 
             if (dialog.ShowDialog() != true)

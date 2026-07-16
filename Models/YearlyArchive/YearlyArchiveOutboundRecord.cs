@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using DocMgr.Models.Shared;
 
 namespace DocMgr.Models.YearlyArchive
 {
@@ -9,13 +10,13 @@ namespace DocMgr.Models.YearlyArchive
     [Table("YearlyArchiveOutboundRecords")]
     public sealed class YearlyArchiveOutboundRecord
     {
-        public const int Unsubmitted = 0;
-        public const int Submitted = 1;
-        public const int Approved = 2;
-        public const int SignedUploaded = 3;
-        public const int Completed = 4;
-        public const int WithdrawnVoid = 5;
-        public const int ForceVoided = 6;
+        public const int Unsubmitted = ApplicationWorkflowStatus.Draft;
+        public const int Submitted = ApplicationWorkflowStatus.Submitted;
+        public const int Approved = ApplicationWorkflowStatus.Approved;
+        public const int SignedUploaded = ApplicationWorkflowStatus.SignedUploaded;
+        public const int Completed = ApplicationWorkflowStatus.Completed;
+        public const int WithdrawnVoid = ApplicationWorkflowStatus.Withdrawn;
+        public const int ForceVoided = ApplicationWorkflowStatus.ForceWithdrawn;
 
         [Key]
         public int Id { get; set; }
@@ -183,17 +184,7 @@ namespace DocMgr.Models.YearlyArchive
         public bool CanForceVoid => IsSubmitted && !HasApprovalInput;
 
         [NotMapped]
-        public string StatusStr => Status switch
-        {
-            Unsubmitted => "未提交",
-            Submitted => "已提交",
-            Approved => "已审批",
-            SignedUploaded => "已办结审批",
-            Completed => "已办结出库",
-            WithdrawnVoid => "已撤回作废",
-            ForceVoided => "已强制作废",
-            _ => "未知"
-        };
+        public string StatusStr => ApplicationWorkflowStatus.ToDisplay(Status);
 
         /// <summary>
         /// 明细涉及的介质类别摘要（模拟/电子），用于列表展示。

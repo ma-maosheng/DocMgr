@@ -136,12 +136,12 @@ namespace DocMgr.Services.YearlyArchive
                     throw new InvalidOperationException($"硬盘 [{medium.DiskCode}] 借出实物交接确认失败：{handoverResult.Message}");
                 }
 
-                byte[] signedAttachmentContent = [0x31, 0x32, 0x33];
+                byte[] signedAttachmentContent = "%PDF-1.0\n%%EOF\n"u8.ToArray();
                 var uploadResult = await _hardDiskMediaService.UploadSignedAttachmentAsync(
                     application,
                     operatorUser,
-                    $"{application.ApplicationNo}_模拟签批交接单.txt",
-                    ".txt",
+                    $"{application.ApplicationNo}_模拟签批交接单.pdf",
+                    ".pdf",
                     signedAttachmentContent.Length,
                     signedAttachmentContent);
 
@@ -754,12 +754,12 @@ namespace DocMgr.Services.YearlyArchive
                     throw new InvalidOperationException($"硬盘 [{medium.DiskCode}] 借出实物交接确认失败：{handoverResult.Message}");
                 }
 
-                byte[] signedAttachmentContent = [0x31, 0x32, 0x33];
+                byte[] signedAttachmentContent = "%PDF-1.0\n%%EOF\n"u8.ToArray();
                 var uploadResult = await _hardDiskMediaService.UploadSignedAttachmentAsync(
                     application,
                     operatorUser,
-                    $"{application.ApplicationNo}_模拟签批交接单.txt",
-                    ".txt",
+                    $"{application.ApplicationNo}_模拟签批交接单.pdf",
+                    ".pdf",
                     signedAttachmentContent.Length,
                     signedAttachmentContent);
 
