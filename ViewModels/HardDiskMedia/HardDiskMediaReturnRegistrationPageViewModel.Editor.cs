@@ -183,16 +183,20 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return "请填写具体情况说明，打印签批交接单并完成线下签字后提交申请。";
                 }
 
-                return "下一步：填写归还信息后，请保存草稿、打印签批交接单或提交申请。";
+                return "下一步：填写归还信息后，请保存草稿、打印签批交接单或提交申请。归还位置由资料室管理员在审批办理时指定。";
             }
         }
 
         public string ApproveHintText => CanApprove
-            ? "后续：审批通过后，请办理实物交接。"
+            ? (IsTargetLocationRequired
+                ? "请先指定归还位置，再执行审批通过；通过后办理实物交接。"
+                : "后续：审批通过后，请办理实物交接。")
             : "当前状态不允许执行“审批通过”。";
 
         public string ConfirmHandoverHintText => CanConfirmHandover
-            ? "后续：确认实物交接后，请上传签批交接单。"
+            ? (IsTargetLocationRequired
+                ? "请确认归还位置无误后办理实物交接；确认后请上传签批交接单。"
+                : "后续：确认实物交接后，请上传签批交接单。")
             : "请先执行“审批通过”，再确认实物交接。";
 
         public string PrintHintText => !CanPrintHandoverSheet
@@ -216,10 +220,21 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public bool IsTargetLocationRequired => !IsLossInspectionScenario;
 
+        /// <summary>资料室管理员在审批办理阶段可指定归还位置。</summary>
+        public bool CanEditTargetLocation =>
+            ShowApprovalActions &&
+            IsCurrentUserArchiveAdmin() &&
+            IsTargetLocationRequired &&
+            _editingApplication is { Id: > 0 } &&
+            _editingApplication.ApplicationStatus is HardDiskMediaApplication.StatusSubmitted
+                or HardDiskMediaApplication.StatusApproved
+                or HardDiskMediaApplication.StatusSignedUploaded;
+
         public bool IsFormatConfirmationEditable =>
             IsRegistrationEditable && GetAllowedFormatConfirmationOptions(InspectionResult).Count > 1;
 
-        public bool CanRecommendTargetLocation => SelectedMedium != null && !IsLossInspectionScenario;
+        public bool CanRecommendTargetLocation =>
+            CanEditTargetLocation && SelectedMedium != null;
 
         public bool CanShowTargetLocationSnapshot =>
             !IsLossInspectionScenario &&
@@ -233,18 +248,41 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private bool IsSpecialSituationInspectionResult =>
             IsDamagedInspectionScenario || IsLossInspectionScenario;
 
-        public Visibility TargetLocationSectionVisibility => IsTargetLocationRequired ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility TargetLocationSectionVisibility => Visibility.Visible;
 
-        public Visibility TargetLocationSelectionVisibility => IsTargetLocationRequired && UseTargetLocationOptionList ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility TargetLocationSelectionVisibility =>
+            CanEditTargetLocation && UseTargetLocationOptionList ? Visibility.Visible : Visibility.Collapsed;
 
-        public Visibility TargetLocationTextVisibility => IsTargetLocationRequired && !UseTargetLocationOptionList ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility TargetLocationReadOnlyVisibility =>
+            CanEditTargetLocation && UseTargetLocationOptionList ? Visibility.Collapsed : Visibility.Visible;
+
+        public Visibility TargetLocationTextVisibility => Visibility.Collapsed;
+
+        public string TargetLocationDisplay
+        {
+            get
+            {
+                if (IsLossInspectionScenario)
+                {
+                    return HardDiskMediaReturnDomainValues.LossReturnTargetLocationDisplay;
+                }
+
+                return string.IsNullOrWhiteSpace(TargetLocation)
+                    ? "待资料室指定档口"
+                    : TargetLocation.Trim();
+            }
+        }
 
         public string TargetLocationHintText => InspectionResult switch
         {
             var value when HardDiskMediaReturnDomainValues.IsDamagedReturnInspection(value) =>
-                "损坏归还按损坏硬盘专用档口推荐，可使用“推荐档口”和“档口快照”辅助选择。",
+                CanEditTargetLocation
+                    ? "损坏归还请由资料室管理员指定损坏硬盘专用档口，可使用“推荐档口”和“档口快照”。"
+                    : "损坏归还的入柜位置由资料室管理员在审批办理时指定。",
             HardDiskMediaReturnDomainValues.RegistrationKindLossRegistration => "挂失登记无需归位档口。",
-            _ => "正常归还按空白硬盘专用档口推荐归位。"
+            _ => CanEditTargetLocation
+                ? "正常归还请由资料室管理员指定空白硬盘专用档口，可使用“推荐档口”和“档口快照”。"
+                : "归还位置由资料室管理员在审批办理时指定。"
         };
 
         public string ApplicationNo
@@ -341,6 +379,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 if (SetProperty(ref _targetLocation, value))
                 {
                     NotifyTargetLocationSelectionChanged();
+                    OnPropertyChanged(nameof(TargetLocationDisplay));
                 }
             }
         }
@@ -386,12 +425,16 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     OnPropertyChanged(nameof(CanPrintAbnormalReport));
                     OnPropertyChanged(nameof(CanManageAbnormalReportAttachments));
                     RebuildFormatConfirmationOptions(forceSelection: true);
-                    _preferRecommendedTargetLocationForCurrentKind = true;
+                    // 仅资料室管理员编辑归还位置时自动推荐；申请侧不预填档口。
+                    _preferRecommendedTargetLocationForCurrentKind = CanEditTargetLocation;
                     RefreshReturnTargetLocationAsync();
                     NotifyTargetLocationSelectionChanged();
                     RefreshAbnormalFlowHint();
                     OnPropertyChanged(nameof(RegisterHintText));
                     OnPropertyChanged(nameof(TargetLocationHintText));
+                    OnPropertyChanged(nameof(TargetLocationDisplay));
+                    OnPropertyChanged(nameof(ApproveHintText));
+                    OnPropertyChanged(nameof(ConfirmHandoverHintText));
                 }
             }
         }
@@ -674,6 +717,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             if (_editingApplication.Id == 0)
             {
+                // 申请新建不预填归还档口，由资料室管理员在审批时指定。
+                _preferRecommendedTargetLocationForCurrentKind = false;
+            }
+            else if (ShowApprovalActions &&
+                     string.IsNullOrWhiteSpace(_editingApplication.TargetLocation) &&
+                     !HardDiskMediaReturnDomainValues.IsLossRegistrationInspection(InspectionResult))
+            {
                 _preferRecommendedTargetLocationForCurrentKind = true;
             }
 
@@ -910,13 +960,21 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
+            if (IsTargetLocationRequired &&
+                string.IsNullOrWhiteSpace(SelectedReturnTargetLocationOption?.Location ?? TargetLocation))
+            {
+                _dialogService.ShowMessage("请先指定归还位置（由资料室管理员确定）。");
+                return;
+            }
+
             var input = new HardDiskMediaApprovalInput
             {
                 ReviewerName = ReviewerName.Trim(),
                 ReviewerDate = ReviewerDate,
                 ApproverName = ApproverName.Trim(),
                 ApproverDate = ApproverDate,
-                ApprovalOpinion = string.IsNullOrWhiteSpace(ApprovalOpinion) ? "同意" : ApprovalOpinion.Trim()
+                ApprovalOpinion = string.IsNullOrWhiteSpace(ApprovalOpinion) ? "同意" : ApprovalOpinion.Trim(),
+                TargetLocation = ResolveTargetLocationForSave(ResolveApplicationTypeByInspectionResult())
             };
 
             var result = await _hardDiskMediaService.ApproveApplicationAsync(_editingApplication, _userContextService.CurrentUser, input);
@@ -951,12 +1009,20 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
+            if (IsTargetLocationRequired &&
+                string.IsNullOrWhiteSpace(SelectedReturnTargetLocationOption?.Location ?? TargetLocation))
+            {
+                _dialogService.ShowMessage("请先指定归还位置（由资料室管理员确定）。");
+                return;
+            }
+
             var input = new HardDiskMediaApprovalInput
             {
                 HandoverApplicant = HandoverApplicant.Trim(),
                 HandoverAdmin = HandoverAdmin.Trim(),
                 HandoverName = HandoverAdmin.Trim(),
-                HandoverDate = HandoverDate
+                HandoverDate = HandoverDate,
+                TargetLocation = ResolveTargetLocationForSave(ResolveApplicationTypeByInspectionResult())
             };
 
             var result = await _hardDiskMediaService.ConfirmPhysicalHandoverAsync(_editingApplication, _userContextService.CurrentUser, input);
@@ -1621,9 +1687,19 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 ? await _hardDiskMediaService.RecommendBlankDedicatedSlotLocationAsync()
                 : ReturnTargetLocationOptions.FirstOrDefault()?.Location;
 
+            // 申请侧不自动选定归还档口，仅回显已保存值；审批侧才推荐/选定。
+            if (ShowApplicationActions)
+            {
+                SelectedReturnTargetLocationOption =
+                    ReturnTargetLocationOptions.FirstOrDefault(item =>
+                        string.Equals(item.Location, persistedLocation, StringComparison.OrdinalIgnoreCase));
+                TargetLocation = SelectedReturnTargetLocationOption?.Location ?? string.Empty;
+                return;
+            }
+
             if (autoSelectRecommended)
             {
-                if (preferRecommendedForCurrentKind || _editingApplication is not { Id: > 0 })
+                if (preferRecommendedForCurrentKind || string.IsNullOrWhiteSpace(persistedLocation))
                 {
                     SelectedReturnTargetLocationOption =
                         ReturnTargetLocationOptions.FirstOrDefault(item => string.Equals(item.Location, recommended, StringComparison.OrdinalIgnoreCase))
@@ -1668,13 +1744,17 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private void NotifyTargetLocationSelectionChanged()
         {
             OnPropertyChanged(nameof(IsTargetLocationRequired));
+            OnPropertyChanged(nameof(CanEditTargetLocation));
             OnPropertyChanged(nameof(TargetLocationSectionVisibility));
             OnPropertyChanged(nameof(UseTargetLocationOptionList));
             OnPropertyChanged(nameof(TargetLocationSelectionVisibility));
+            OnPropertyChanged(nameof(TargetLocationReadOnlyVisibility));
             OnPropertyChanged(nameof(TargetLocationTextVisibility));
             OnPropertyChanged(nameof(CanRecommendTargetLocation));
             OnPropertyChanged(nameof(CanShowTargetLocationSnapshot));
             OnPropertyChanged(nameof(TargetLocationSnapshotButtonVisibility));
+            OnPropertyChanged(nameof(TargetLocationDisplay));
+            OnPropertyChanged(nameof(TargetLocationHintText));
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -1685,6 +1765,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
+            _preferRecommendedTargetLocationForCurrentKind = true;
             await UpdateReturnTargetLocationAsync();
             if (SelectedReturnTargetLocationOption == null)
             {
@@ -1827,6 +1908,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(CompleteHintText));
             OnPropertyChanged(nameof(ReturnLocationLabel));
             OnPropertyChanged(nameof(ReasonFieldLabel));
+            NotifyTargetLocationSelectionChanged();
             RefreshAbnormalFlowHint();
             CommandManager.InvalidateRequerySuggested();
         }

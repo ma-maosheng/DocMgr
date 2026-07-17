@@ -232,16 +232,16 @@
 
                                     <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
                                         <TextBlock Text="申请部门" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding ApplicantDept}" IsReadOnly="True" Background="#F9FAFB"/>
+                                        <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding ApplicantDept, Mode=OneWay}" IsReadOnly="True" Background="#F9FAFB"/>
                                     </StackPanel>
                                     <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10">
                                         <TextBlock Text="归还日期" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <DatePicker Height="{StaticResource DialogFormControlHeight}" SelectedDate="{Binding ApplyTime}" IsEnabled="False"/>
+                                        <DatePicker Height="{StaticResource DialogFormControlHeight}" SelectedDate="{Binding ApplyTime, Mode=OneWay}" IsEnabled="False"/>
                                     </StackPanel>
 
                                     <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,10">
                                         <TextBlock Text="借出位置" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding CurrentLocation}" IsReadOnly="True" Background="#F9FAFB"/>
+                                        <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding CurrentLocation, Mode=OneWay}" IsReadOnly="True" Background="#F9FAFB"/>
                                     </StackPanel>
                                     <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,10">
                                         <TextBlock Text="{Binding ReturnLocationLabel}" Foreground="#666666" Margin="0,0,0,4"/>
@@ -249,9 +249,28 @@
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Grid.Column="0" Height="{StaticResource DialogFormControlHeight}" Text="{Binding TargetLocation}" IsReadOnly="True" Background="#F9FAFB"/>
+                                            <TextBox Grid.Column="0"
+                                                     Height="{StaticResource DialogFormControlHeight}"
+                                                     Text="{Binding TargetLocationDisplay, Mode=OneWay}"
+                                                     IsReadOnly="True"
+                                                     Background="#F9FAFB"
+                                                     Visibility="{Binding TargetLocationReadOnlyVisibility}"/>
+                                            <ComboBox Grid.Column="0"
+                                                      Height="{StaticResource DialogFormControlHeight}"
+                                                      ItemsSource="{Binding ReturnTargetLocationOptions}"
+                                                      SelectedItem="{Binding SelectedReturnTargetLocationOption, Mode=TwoWay}"
+                                                      DisplayMemberPath="DisplayText"
+                                                      IsEnabled="{Binding CanEditTargetLocation}"
+                                                      Visibility="{Binding TargetLocationSelectionVisibility}"/>
                                             <Button Grid.Column="1"
+                                                    Margin="8,0,0,0"
+                                                    Content="推荐档口"
+                                                    Style="{StaticResource FormInlineButtonStyle}"
+                                                    Command="{Binding RecommendTargetLocationCommand}"
+                                                    Visibility="{Binding TargetLocationSelectionVisibility}"/>
+                                            <Button Grid.Column="2"
                                                     Margin="8,0,0,0"
                                                     Content="档口快照"
                                                     Style="{StaticResource FormInlineButtonStyle}"
@@ -259,6 +278,11 @@
                                                     IsEnabled="{Binding CanShowTargetLocationSnapshot}"
                                                     Visibility="{Binding TargetLocationSnapshotButtonVisibility}"/>
                                         </Grid>
+                                        <TextBlock Text="{Binding TargetLocationHintText}"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="#78909C"
+                                                   FontSize="11"
+                                                   Margin="0,4,0,0"/>
                                     </StackPanel>
 
                                     <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,0,0">
@@ -412,7 +436,7 @@
                                 <Button Content="确认办结" Command="{Binding CompleteCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
                             </StackPanel>
                             <Button Content="删除" Command="{Binding DeleteCommand}" Width="80" Height="32" Margin="0,0,10,0"/>
-                            <Button Content="取消" Command="{Binding CancelEditCommand}" Width="80" Height="32"/>
+                            <Button Content="关闭" Command="{Binding CancelEditCommand}" Width="80" Height="32"/>
                         </StackPanel>
                     </Grid>
                 </Grid>

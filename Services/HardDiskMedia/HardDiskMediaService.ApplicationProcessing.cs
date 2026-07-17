@@ -37,6 +37,43 @@ namespace DocMgr.Services.HardDiskMedia
             var now = DateTime.Now;
             var input = approvalInput ?? new HardDiskMediaApprovalInput();
 
+            if (IsReturnRegistrationType(existing.ApplicationType) &&
+                existing.ApplicationType != HardDiskMediaApplication.TypeLossRegistration)
+            {
+                string requestedTargetLocation = !string.IsNullOrWhiteSpace(input.TargetLocation)
+                    ? input.TargetLocation.Trim()
+                    : existing.TargetLocation?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(requestedTargetLocation))
+                {
+                    return HardDiskMediaFlowResult.Fail("请先由资料室管理员指定归还位置后再审批通过。");
+                }
+
+                var returnCandidate = await GetActiveReturnCandidateAsync(
+                    existing.MediumId,
+                    existing.SourceApplicationId,
+                    existing.SourceOutboundRecordId);
+                if (returnCandidate == null)
+                {
+                    return HardDiskMediaFlowResult.Fail("未找到当前有效的借出记录，无法确定归还位置。");
+                }
+
+                try
+                {
+                    existing.TargetLocation = await ResolveReturnTargetLocationAsync(
+                        existing.ApplicationType,
+                        returnCandidate,
+                        requestedTargetLocation);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return HardDiskMediaFlowResult.Fail(ex.Message);
+                }
+            }
+            else if (existing.ApplicationType == HardDiskMediaApplication.TypeLossRegistration)
+            {
+                existing.TargetLocation = string.Empty;
+            }
+
             existing.ApplicationStatus = HardDiskMediaApplication.StatusApproved;
             existing.ReviewerName = string.IsNullOrWhiteSpace(input.ReviewerName)
                 ? currentUser?.RealName?.Trim() ?? string.Empty
@@ -91,6 +128,39 @@ namespace DocMgr.Services.HardDiskMedia
             if (!input.HandoverDate.HasValue)
             {
                 return HardDiskMediaFlowResult.Fail("请填写办理交接日期。");
+            }
+
+            if (IsReturnRegistrationType(existing.ApplicationType) &&
+                existing.ApplicationType != HardDiskMediaApplication.TypeLossRegistration)
+            {
+                string requestedTargetLocation = !string.IsNullOrWhiteSpace(input.TargetLocation)
+                    ? input.TargetLocation.Trim()
+                    : existing.TargetLocation?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(requestedTargetLocation))
+                {
+                    return HardDiskMediaFlowResult.Fail("请先由资料室管理员指定归还位置后再确认实物交接。");
+                }
+
+                var returnCandidate = await GetActiveReturnCandidateAsync(
+                    existing.MediumId,
+                    existing.SourceApplicationId,
+                    existing.SourceOutboundRecordId);
+                if (returnCandidate == null)
+                {
+                    return HardDiskMediaFlowResult.Fail("未找到当前有效的借出记录，无法确定归还位置。");
+                }
+
+                try
+                {
+                    existing.TargetLocation = await ResolveReturnTargetLocationAsync(
+                        existing.ApplicationType,
+                        returnCandidate,
+                        requestedTargetLocation);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return HardDiskMediaFlowResult.Fail(ex.Message);
+                }
             }
 
             var now = DateTime.Now;
@@ -273,7 +343,23 @@ namespace DocMgr.Services.HardDiskMedia
                     existingApplication.CurrentLocation = EmptyAsFallback(returnCandidate.BorrowedLocation, ledger.StorageLocation);
                     existingApplication.TargetPersonOrUnit = returnCandidate.ApplicantName;
                     existingApplication.ExpectedReturnDate = returnCandidate.ExpectedReturnDate;
-                    existingApplication.TargetLocation = await ResolveReturnTargetLocationAsync(existingApplication.ApplicationType, returnCandidate, existingApplication.TargetLocation);
+
+                    if (existingApplication.ApplicationType == HardDiskMediaApplication.TypeLossRegistration)
+                    {
+                        existingApplication.TargetLocation = string.Empty;
+                    }
+                    else if (IsReturnRegistrationType(existingApplication.ApplicationType))
+                    {
+                        if (string.IsNullOrWhiteSpace(existingApplication.TargetLocation))
+                        {
+                            return HardDiskMediaFlowResult.Fail("请先由资料室管理员指定归还位置后再办结。");
+                        }
+
+                        existingApplication.TargetLocation = await ResolveReturnTargetLocationAsync(
+                            existingApplication.ApplicationType,
+                            returnCandidate,
+                            existingApplication.TargetLocation);
+                    }
                 }
                 catch (InvalidOperationException ex)
                 {
@@ -379,7 +465,7 @@ namespace DocMgr.Services.HardDiskMedia
                 ApplicantDept = existingApplication.ApplicantDept,
                 ApplyDateText = existingApplication.ApplyTime.ToString("yyyy-MM-dd"),
                 CurrentLocation = existingApplication.CurrentLocation,
-                TargetLocation = existingApplication.TargetLocation,
+                TargetLocation = ResolvePrintTargetLocation(existingApplication),
                 TargetPersonOrUnit = existingApplication.TargetPersonOrUnit,
                 ExpectedReturnDateText = HardDiskMediaOutboundReturnSupport.FormatExpectedReturnDateText(
                     existingApplication.ApplicationType,
@@ -443,6 +529,23 @@ namespace DocMgr.Services.HardDiskMedia
                 HardDiskMediaApplication.TypeReturnDataRegistration => "格式化确认：□已格式化  ■不适用",
                 _ => "格式化确认：■已格式化  □不适用"
             };
+        }
+
+        private static string ResolvePrintTargetLocation(HardDiskMediaApplication application)
+        {
+            ArgumentNullException.ThrowIfNull(application);
+
+            if (!string.IsNullOrWhiteSpace(application.TargetLocation))
+            {
+                return application.TargetLocation.Trim();
+            }
+
+            if (IsReturnRegistrationType(application.ApplicationType))
+            {
+                return "待资料室指定档口";
+            }
+
+            return string.Empty;
         }
 
         private async Task<HardDiskMediaReturnCandidate?> GetActiveReturnCandidateAsync(

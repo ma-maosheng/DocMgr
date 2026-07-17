@@ -64,5 +64,10 @@ namespace DocMgr.Models.HardDiskMedia
         /// 审批后是否触发办理完成。
         /// </summary>
         public bool TriggerCompleteApplication { get; set; }
+
+        /// <summary>
+        /// 归还位置（由资料室管理员在审批办理时指定）。
+        /// </summary>
+        public string TargetLocation { get; set; } = string.Empty;
     }
 }

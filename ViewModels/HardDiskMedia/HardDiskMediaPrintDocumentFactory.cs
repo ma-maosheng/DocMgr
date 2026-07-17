@@ -11,6 +11,18 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private static readonly FontFamily LabelFont = new("SimHei");
         private static readonly FontFamily BodyFont = new("SimSun");
 
+        /// <summary>接收登记单：单行内容统一行高。</summary>
+        private const double RegistrationStandardRowHeight = 36;
+
+        /// <summary>接收登记单：多行说明类内容行高。</summary>
+        private const double RegistrationTextBlockRowHeight = 72;
+
+        /// <summary>接收登记单：关联介质摘要行高（约 5 行）。</summary>
+        private const double RegistrationMediumRowHeight = 100;
+
+        /// <summary>接收登记单：双方交接签字行高（2 行）。</summary>
+        private const double RegistrationHandoverRowHeight = 64;
+
         internal static FlowDocument Create(HardDiskMediaPrintData data)
         {
             ArgumentNullException.ThrowIfNull(data);
@@ -59,16 +71,41 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 $"出库时申请单编号：{EmptyAsPlaceholder(data.SourceApplicationNo)}"));
 
             var rowGroup = new TableRowGroup();
-            rowGroup.Rows.Add(CreateDoubleRow("登记人", data.ApplicantName, "登记（借用）部门", EmptyAsPlaceholder(data.ApplicantDept)));
-            rowGroup.Rows.Add(CreateSingleRow("登记类型", data.ApplicationType, 20));
-            rowGroup.Rows.Add(CreateSingleRow("关联介质", CreateMediumSummary(data), 100));
-            rowGroup.Rows.Add(CreateSingleRow("登记前位置", EmptyAsPlaceholder(data.CurrentLocation), 40));
-            rowGroup.Rows.Add(CreateSingleRow("登记后位置", EmptyAsPlaceholder(data.TargetLocation), 40));
-            rowGroup.Rows.Add(CreateDoubleRow("登记日期", data.ApplyDateText, "登记状态", EmptyAsPlaceholder(data.CurrentStatus)));
-            rowGroup.Rows.Add(CreateSingleRow("特殊情况说明", EmptyAsPlaceholder(data.Reason), 90));
-            rowGroup.Rows.Add(CreateSingleRow("备注", EmptyAsPlaceholder(data.Remark), 60));
-            rowGroup.Rows.Add(CreateSingleRow("资料室查验", GetRegistrationVerificationText(data), 72));
-            rowGroup.Rows.Add(CreateSingleRow("交接签字", BuildRegistrationHandoverSection(data), 72));
+            rowGroup.Rows.Add(CreateDoubleRow(
+                "登记人", data.ApplicantName,
+                "登记（借用）部门", EmptyAsPlaceholder(data.ApplicantDept),
+                RegistrationStandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("登记类型", data.ApplicationType, RegistrationStandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("关联介质", CreateMediumSummary(data), RegistrationMediumRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("登记前位置", EmptyAsPlaceholder(data.CurrentLocation), RegistrationStandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("登记后位置", EmptyAsPlaceholder(data.TargetLocation), RegistrationStandardRowHeight));
+            rowGroup.Rows.Add(CreateDoubleRow(
+                "登记日期", data.ApplyDateText,
+                "登记状态", EmptyAsPlaceholder(data.CurrentStatus),
+                RegistrationStandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("特殊情况说明", EmptyAsPlaceholder(data.Reason), RegistrationTextBlockRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("备注", EmptyAsPlaceholder(data.Remark), RegistrationTextBlockRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("归还登记类型", GetRegistrationKindText(data), RegistrationStandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow(
+                "部门负责人签批",
+                BuildRegistrationSignatureSection(data.ReviewerName, data.ReviewerDateText),
+                RegistrationStandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow(
+                "资料室负责人签批",
+                BuildRegistrationSignatureSection(data.ApproverName, data.ApproverDateText),
+                RegistrationStandardRowHeight));
+            if (IsNormalRegistrationReturn(data))
+            {
+                rowGroup.Rows.Add(CreateSingleRow(
+                    "资料室查验",
+                    GetRegistrationInspectionText(),
+                    RegistrationStandardRowHeight));
+            }
+
+            rowGroup.Rows.Add(CreateSingleRow(
+                "交接签字",
+                BuildRegistrationHandoverSection(data),
+                RegistrationHandoverRowHeight));
 
             document.Blocks.Add(CreateMainTable(rowGroup));
             document.Blocks.Add(CreateFooterParagraph(
@@ -172,13 +209,18 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return row;
         }
 
-        private static TableRow CreateDoubleRow(string label1, string content1, string label2, string content2)
+        private static TableRow CreateDoubleRow(
+            string label1,
+            string content1,
+            string label2,
+            string content2,
+            double minHeight = 0)
         {
             var row = new TableRow();
             row.Cells.Add(CreateLabelCell(label1));
-            row.Cells.Add(CreateContentCell(content1));
+            row.Cells.Add(CreateContentCell(content1, minHeight: minHeight));
             row.Cells.Add(CreateLabelCell(label2));
-            row.Cells.Add(CreateContentCell(content2));
+            row.Cells.Add(CreateContentCell(content2, minHeight: minHeight));
             return row;
         }
 
@@ -209,7 +251,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     TextWrapping = TextWrapping.Wrap,
                     Margin = new Thickness(4),
                     FontFamily = BodyFont,
-                    FontSize = 12
+                    FontSize = 12,
+                    VerticalAlignment = VerticalAlignment.Center
                 });
                 block = new BlockUIContainer(grid);
             }
@@ -252,21 +295,56 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     : "河北省第三测绘院资料室硬盘介质出库申请审批单";
         }
 
-        private static string GetRegistrationVerificationText(HardDiskMediaPrintData data)
+        private static string GetRegistrationKindText(HardDiskMediaPrintData data)
         {
-            string defaultInspectionResult = data.ApplicationType switch
+            string selectedKind = ResolveRegistrationKindSelection(data);
+            return $"{BuildCheckOption("正常归还", selectedKind)}  {BuildCheckOption("损坏登记", selectedKind)}  {BuildCheckOption("挂失登记", selectedKind)}";
+        }
+
+        private static string ResolveRegistrationKindSelection(HardDiskMediaPrintData data)
+        {
+            string inspectionResult = data.InspectionResultText?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(inspectionResult))
+            {
+                if (HardDiskMediaReturnDomainValues.IsLossRegistrationInspection(inspectionResult))
+                {
+                    return "挂失登记";
+                }
+
+                if (HardDiskMediaReturnDomainValues.IsDamagedReturnInspection(inspectionResult))
+                {
+                    return "损坏登记";
+                }
+
+                if (HardDiskMediaReturnDomainValues.IsNormalReturnInspection(inspectionResult))
+                {
+                    return "正常归还";
+                }
+            }
+
+            return data.ApplicationType switch
             {
                 HardDiskMediaApplication.TypeLossRegistration => "挂失登记",
                 HardDiskMediaApplication.TypeReturnDamagedRegistration => "损坏登记",
                 _ => "正常归还"
             };
+        }
 
-            string selectedInspectionResult = string.IsNullOrWhiteSpace(data.InspectionResultText)
-                ? defaultInspectionResult
-                : data.InspectionResultText.Trim();
-            string verificationText = $"查验结果：{BuildCheckOption("正常归还", selectedInspectionResult)}  {BuildCheckOption("损坏登记", selectedInspectionResult)}  {BuildCheckOption("挂失登记", selectedInspectionResult)}";
+        private static bool IsNormalRegistrationReturn(HardDiskMediaPrintData data)
+            => string.Equals(ResolveRegistrationKindSelection(data), "正常归还", StringComparison.Ordinal);
 
-            return $"{verificationText}\n{EmptyAsPlaceholder(data.FormatConfirmationText)}";
+        /// <summary>
+        /// 资料室查验仅展示「已格式化」一项，并默认勾选（仅正常归还）。
+        /// </summary>
+        private static string GetRegistrationInspectionText()
+            => BuildCheckOption("已格式化", "已格式化");
+
+        private static string BuildRegistrationSignatureSection(string? name, string? dateText)
+        {
+            string signatureText = BuildSignatureLine(name, dateText);
+            return string.IsNullOrWhiteSpace(signatureText)
+                ? "签字：                              日期:______年___月___日"
+                : signatureText;
         }
 
         private static string BuildReviewerSection(HardDiskMediaPrintData data)
@@ -304,7 +382,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private static string BuildRegistrationHandoverSection(HardDiskMediaPrintData data)
         {
-            return BuildBlankTwoPartyHandoverBlock("交接人签字：");
+            return $"交接人签字：                                            日期:______年___月___日\n{BlankHandoverAdminSignatureLine}";
         }
 
         private static string BuildBlankTwoPartyHandoverBlock(string firstPartyLabel)

@@ -676,11 +676,27 @@ namespace DocMgr.Services.HardDiskMedia
                 applicantName = returnCandidate.ApplicantName;
                 applicantDept = returnCandidate.ApplicantDept;
                 currentLocation = EmptyAsFallback(returnCandidate.BorrowedLocation, ledger?.StorageLocation ?? string.Empty);
-                targetLocation = await ResolveReturnTargetLocationAsync(application.ApplicationType, returnCandidate, application.TargetLocation);
                 targetPersonOrUnit = returnCandidate.ApplicantName;
                 expectedReturnDate = returnCandidate.ExpectedReturnDate;
                 sourceApplicationId = returnCandidate.SourceApplicationId;
                 sourceOutboundRecordId = returnCandidate.SourceOutboundRecordId;
+
+                // 归还位置改由资料室管理员在审批办理时确定；申请保存/提交允许空位置。
+                if (application.ApplicationType == HardDiskMediaApplication.TypeLossRegistration)
+                {
+                    targetLocation = string.Empty;
+                }
+                else if (string.IsNullOrWhiteSpace(application.TargetLocation))
+                {
+                    targetLocation = string.Empty;
+                }
+                else
+                {
+                    targetLocation = await ResolveReturnTargetLocationAsync(
+                        application.ApplicationType,
+                        returnCandidate,
+                        application.TargetLocation);
+                }
             }
 
             bool duplicateApplicationNo = await _hardDiskMediaRepository.HasDuplicateApplicationNoAsync(application.Id, applicationNo);

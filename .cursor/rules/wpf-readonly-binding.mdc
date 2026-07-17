@@ -1,0 +1,45 @@
+---
+description: WPF 只读展示字段必须用 OneWay 绑定，禁止对只读属性做 TwoWay/OneWayToSource
+globs: **/*.{xaml,cs}
+alwaysApply: false
+---
+
+# WPF 只读属性绑定
+
+## 问题
+
+`TextBox.Text`、`DatePicker.SelectedDate` 等依赖属性默认绑定模式为 **TwoWay**。  
+若目标 ViewModel 属性是 **get-only**（无 setter，或表达式体 `=>`），运行时会抛：
+
+> 无法对“…只读属性…”进行 TwoWay 或 OneWayToSource 绑定
+
+表现为打开页面/弹窗时弹出「未处理异常」。
+
+## 强制约定
+
+1. **只读展示**（`IsReadOnly="True"` / `IsEnabled="False"` / 纯展示）绑到 `TextBox`、`DatePicker`、可写控件时，必须显式写：
+   - `Mode=OneWay`
+2. **真正可编辑**字段才用默认 TwoWay，或显式 `Mode=TwoWay` + `UpdateSourceTrigger=PropertyChanged`。
+3. 优先用 `TextBlock` 展示只读信息；若为与表单统一而用 `TextBox`，仍须 `Mode=OneWay`。
+4. ViewModel 中带 `*Display`、`*HintText`、`*Label`、状态文案等计算属性一律视为只读；绑定控件时禁止 TwoWay。
+
+## 正确示例
+
+```xml
+<!-- ✅ 只读展示 -->
+<TextBox Text="{Binding TargetLocationDisplay, Mode=OneWay}" IsReadOnly="True"/>
+<DatePicker SelectedDate="{Binding ApplyTime, Mode=OneWay}" IsEnabled="False"/>
+
+<!-- ✅ 可编辑 -->
+<TextBox Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"/>
+```
+
+```xml
+<!-- ❌ 禁止：只读属性 + TextBox 默认 TwoWay -->
+<TextBox Text="{Binding TargetLocationDisplay}" IsReadOnly="True"/>
+```
+
+## 改 UI 时自检
+
+- 新增/改版表单：凡 `IsReadOnly="True"` 的 `TextBox`/`DatePicker`，检查绑定是否带 `Mode=OneWay`。
+- 属性若只有 `get` / `=>`，绑定到默认可写控件时必须 `Mode=OneWay`，或改用 `TextBlock`。
