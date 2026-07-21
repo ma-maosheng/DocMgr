@@ -151,6 +151,39 @@ namespace DocMgr.ViewModels.Cabinets
             ShowHardDiskMediumInfoCommand = new RelayCommand<CabinetHardDiskMediumItemViewModel>(ShowHardDiskMediumInfo);
             ShowHardDiskMediumArchiveInfoCommand = new RelayCommand<CabinetHardDiskMediumItemViewModel>(ShowHardDiskMediumArchiveInfo);
             ApplySelectedSlotsPurposeCommand = new RelayCommand(_ => ApplySelectedSlotsPurpose(), _ => CanApplySelectedSlotsPurpose);
+            ApplySelectedSlotsArchiveUnsetCategoryCommand = new RelayCommand(
+                _ => ApplySelectedSlotsArchiveCategory(CabinetArchiveSlotCategoryAssignment.CategoryUnset),
+                _ => CanApplySelectedSlotsArchivePurpose);
+            ApplySelectedSlotsArchiveYearlyCategoryCommand = new RelayCommand(
+                _ => ApplySelectedSlotsArchiveCategory(CabinetArchiveSlotCategoryAssignment.CategoryYearlyMaterials),
+                _ => CanApplySelectedSlotsArchivePurpose);
+            ApplySelectedSlotsArchiveHistoricalCategoryCommand = new RelayCommand(
+                _ => ApplySelectedSlotsArchiveCategory(CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials),
+                _ => CanApplySelectedSlotsArchivePurpose);
+            ApplySelectedSlotsHardDiskGeneralCategoryCommand = new RelayCommand(
+                _ => ApplySelectedSlotsHardDiskCategory(categoryName: null, showReturnHint: false),
+                _ => CanApplySelectedSlotsHardDiskPurpose);
+            ApplySelectedSlotsHardDiskDamagedCategoryCommand = new RelayCommand(
+                _ => ApplySelectedSlotsHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryDamaged, showReturnHint: true),
+                _ => CanApplySelectedSlotsHardDiskPurpose);
+            ApplySelectedSlotsHardDiskDamagedOpticalDiscCategoryCommand = new RelayCommand(
+                _ => ApplySelectedSlotsHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryDamagedOpticalDisc, showReturnHint: false),
+                _ => CanApplySelectedSlotsHardDiskPurpose);
+            ApplySelectedSlotsHardDiskDataCategoryCommand = new RelayCommand(
+                _ => ApplySelectedSlotsHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryData, showReturnHint: false),
+                _ => CanApplySelectedSlotsHardDiskPurpose);
+            ApplySelectedSlotsHardDiskDataOpticalDiscCategoryCommand = new RelayCommand(
+                _ => ApplySelectedSlotsHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryDataOpticalDisc, showReturnHint: false),
+                _ => CanApplySelectedSlotsHardDiskPurpose);
+            ApplySelectedSlotsHardDiskHistoricalDataCategoryCommand = new RelayCommand(
+                _ => ApplySelectedSlotsHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataHardDisk, showReturnHint: false),
+                _ => CanApplySelectedSlotsHardDiskPurpose);
+            ApplySelectedSlotsHardDiskHistoricalDataOpticalDiscCategoryCommand = new RelayCommand(
+                _ => ApplySelectedSlotsHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataOpticalDisc, showReturnHint: false),
+                _ => CanApplySelectedSlotsHardDiskPurpose);
+            ApplySelectedSlotsHardDiskBlankCategoryCommand = new RelayCommand(
+                _ => ApplySelectedSlotsHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryBlank, showReturnHint: false),
+                _ => CanApplySelectedSlotsHardDiskPurpose);
             ClearSlotSelectionCommand = new RelayCommand(_ => ClearSlotSelection(), _ => SelectedSlotCount > 0);
             SelectAllSlotsCommand = new RelayCommand(_ => SelectAllSlots(), _ => CanSelectAllSlots);
             InvertSlotSelectionCommand = new RelayCommand(_ => InvertSlotSelection(), _ => Slots.Count > 0);
@@ -382,7 +415,21 @@ namespace DocMgr.ViewModels.Cabinets
         public bool CanSelectAllSlots => SupportsSlotDisplayModeSwitch && Slots.Count > 0;
 
         public Visibility CompactBatchPurposeMenuVisibility =>
-            HasSelectedSlots && IsArchiveRoomMediaAdmin() && SupportsSlotDisplayModeSwitch
+            SelectedSlotCount > 1 && IsArchiveRoomMediaAdmin() && SupportsSlotDisplayModeSwitch
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+        public Visibility CompactBatchArchivePurposeMenuVisibility =>
+            SelectedSlotCount > 1
+            && Request.CabinetType == CabinetType.Standard
+            && IsArchiveRoomMediaAdmin()
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+        public Visibility CompactBatchHardDiskPurposeMenuVisibility =>
+            SelectedSlotCount > 1
+            && Request.CabinetType == CabinetType.MagneticDisk
+            && IsArchiveRoomMediaAdmin()
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
@@ -391,9 +438,48 @@ namespace DocMgr.ViewModels.Cabinets
                 ? Visibility.Collapsed
                 : DamagedDiskSlotActionVisibility;
 
-        public string BatchApplyPurposeMenuText => SelectedSlotCount <= 1
-            ? "设置档口用途"
-            : $"统一设置所选档口用途（{SelectedSlotCount}）";
+        public string BatchApplyPurposeMenuText => $"统一设置所选档口用途（{SelectedSlotCount}）";
+
+        public bool CanApplySelectedSlotsArchivePurpose =>
+            CanApplySelectedSlotsPurpose && Request.CabinetType == CabinetType.Standard;
+
+        public bool CanApplySelectedSlotsHardDiskPurpose =>
+            CanApplySelectedSlotsPurpose && Request.CabinetType == CabinetType.MagneticDisk;
+
+        public bool IsSelectedSlotsArchiveUnsetCategory =>
+            IsSharedSelectedArchiveCategory(CabinetArchiveSlotCategoryAssignment.CategoryUnset);
+
+        public bool IsSelectedSlotsArchiveYearlyCategory =>
+            IsSharedSelectedArchiveCategory(CabinetArchiveSlotCategoryAssignment.CategoryYearlyMaterials);
+
+        public bool IsSelectedSlotsArchiveHistoricalCategory =>
+            IsSharedSelectedArchiveCategory(CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials);
+
+        public bool IsSelectedSlotsHardDiskGeneralCategory =>
+            TryGetSharedSelectedSlotCategory(out string? shared)
+            && Request.CabinetType == CabinetType.MagneticDisk
+            && string.IsNullOrWhiteSpace(shared);
+
+        public bool IsSelectedSlotsHardDiskDamagedCategory =>
+            IsSharedSelectedHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryDamaged);
+
+        public bool IsSelectedSlotsHardDiskDamagedOpticalDiscCategory =>
+            IsSharedSelectedHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryDamagedOpticalDisc);
+
+        public bool IsSelectedSlotsHardDiskDataCategory =>
+            IsSharedSelectedHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryData);
+
+        public bool IsSelectedSlotsHardDiskDataOpticalDiscCategory =>
+            IsSharedSelectedHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryDataOpticalDisc);
+
+        public bool IsSelectedSlotsHardDiskHistoricalDataCategory =>
+            IsSharedSelectedHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataHardDisk);
+
+        public bool IsSelectedSlotsHardDiskHistoricalDataOpticalDiscCategory =>
+            IsSharedSelectedHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataOpticalDisc);
+
+        public bool IsSelectedSlotsHardDiskBlankCategory =>
+            IsSharedSelectedHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryBlank);
 
         public Visibility DamagedDiskSlotActionVisibility =>
             Request.CabinetType == CabinetType.MagneticDisk
@@ -480,6 +566,28 @@ namespace DocMgr.ViewModels.Cabinets
         public RelayCommand CloseCommand { get; }
 
         public RelayCommand ApplySelectedSlotsPurposeCommand { get; }
+
+        public RelayCommand ApplySelectedSlotsArchiveUnsetCategoryCommand { get; }
+
+        public RelayCommand ApplySelectedSlotsArchiveYearlyCategoryCommand { get; }
+
+        public RelayCommand ApplySelectedSlotsArchiveHistoricalCategoryCommand { get; }
+
+        public RelayCommand ApplySelectedSlotsHardDiskGeneralCategoryCommand { get; }
+
+        public RelayCommand ApplySelectedSlotsHardDiskDamagedCategoryCommand { get; }
+
+        public RelayCommand ApplySelectedSlotsHardDiskDamagedOpticalDiscCategoryCommand { get; }
+
+        public RelayCommand ApplySelectedSlotsHardDiskDataCategoryCommand { get; }
+
+        public RelayCommand ApplySelectedSlotsHardDiskDataOpticalDiscCategoryCommand { get; }
+
+        public RelayCommand ApplySelectedSlotsHardDiskHistoricalDataCategoryCommand { get; }
+
+        public RelayCommand ApplySelectedSlotsHardDiskHistoricalDataOpticalDiscCategoryCommand { get; }
+
+        public RelayCommand ApplySelectedSlotsHardDiskBlankCategoryCommand { get; }
 
         public RelayCommand ClearSlotSelectionCommand { get; }
 
@@ -720,12 +828,17 @@ namespace DocMgr.ViewModels.Cabinets
             OnPropertyChanged(nameof(SelectedSlotSummaryText));
             OnPropertyChanged(nameof(HasSelectedSlots));
             OnPropertyChanged(nameof(CanApplySelectedSlotsPurpose));
+            OnPropertyChanged(nameof(CanApplySelectedSlotsArchivePurpose));
+            OnPropertyChanged(nameof(CanApplySelectedSlotsHardDiskPurpose));
             OnPropertyChanged(nameof(CanSelectAllSlots));
             OnPropertyChanged(nameof(CompactBatchPurposeMenuVisibility));
+            OnPropertyChanged(nameof(CompactBatchArchivePurposeMenuVisibility));
+            OnPropertyChanged(nameof(CompactBatchHardDiskPurposeMenuVisibility));
             OnPropertyChanged(nameof(CompactPerSlotCategoryMenuVisibility));
             OnPropertyChanged(nameof(DamagedDiskSlotActionVisibility));
             OnPropertyChanged(nameof(ArchiveSlotCategoryActionVisibility));
             OnPropertyChanged(nameof(BatchApplyPurposeMenuText));
+            NotifySelectedSlotsPurposeCheckStatesChanged();
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -1951,23 +2064,12 @@ namespace DocMgr.ViewModels.Cabinets
             }
 
             var selectedSlots = Slots.Where(slot => slot.IsSelected).ToList();
-            if (selectedSlots.Count == 0)
+            if (!TryValidateSelectedSlotsForPurposeChange(selectedSlots))
             {
                 return;
             }
 
             bool isStandardArchiveCabinet = Request.CabinetType == CabinetType.Standard;
-            var occupiedSlots = selectedSlots
-                .Where(slot => isStandardArchiveCabinet ? !slot.IsFullyEmptyArchiveSlot : !slot.IsFullyEmptyMagneticDiskSlot)
-                .ToList();
-            if (occupiedSlots.Count > 0)
-            {
-                string slotList = string.Join("、", occupiedSlots.Select(slot => slot.SlotCode));
-                string occupancyLabel = isStandardArchiveCabinet ? "档案盒" : "介质";
-                _dialogService.ShowMessage($"所选档口中 {slotList} 仍有{occupancyLabel}占用，仅可对空档口变更用途。", "无法变更用途");
-                return;
-            }
-
             string? sharedCategory = ResolveSharedCategoryName(selectedSlots);
             if (isStandardArchiveCabinet)
             {
@@ -1980,30 +2082,10 @@ namespace DocMgr.ViewModels.Cabinets
                     return;
                 }
 
-                try
-                {
-                    string faceCode = Request.Face.ToString();
-                    string categoryName = string.IsNullOrWhiteSpace(archiveResult.CategoryName)
-                        ? CabinetArchiveSlotCategoryAssignment.CategoryUnset
-                        : archiveResult.CategoryName;
-                    foreach (var slot in selectedSlots)
-                    {
-                        _cabinetService.SetArchiveDedicatedSlotCategory(Request.CabinetId, faceCode, slot.SlotCode, categoryName);
-                    }
-
-                    _dialogService.ShowMessage($"已更新 {selectedSlots.Count} 个档口的用途设置。", "提示");
-                    ClearSlotSelection();
-                    ReloadSlotsAndBroadcast();
-                }
-                catch (InvalidOperationException ex)
-                {
-                    _dialogService.ShowError(ex.Message);
-                }
-                catch (ArgumentException ex)
-                {
-                    _dialogService.ShowError(ex.Message);
-                }
-
+                string categoryName = string.IsNullOrWhiteSpace(archiveResult.CategoryName)
+                    ? CabinetArchiveSlotCategoryAssignment.CategoryUnset
+                    : archiveResult.CategoryName;
+                ApplySelectedSlotsArchiveCategoryCore(selectedSlots, categoryName, requireConfirm: false);
                 return;
             }
 
@@ -2017,18 +2099,146 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
+            ApplySelectedSlotsHardDiskCategoryCore(
+                selectedSlots,
+                result.CategoryName,
+                showReturnHint: false,
+                requireConfirm: false);
+        }
+
+        private void ApplySelectedSlotsArchiveCategory(string categoryName)
+        {
+            if (!CanApplySelectedSlotsArchivePurpose)
+            {
+                return;
+            }
+
+            var selectedSlots = Slots.Where(slot => slot.IsSelected).ToList();
+            if (!TryValidateSelectedSlotsForPurposeChange(selectedSlots))
+            {
+                return;
+            }
+
+            ApplySelectedSlotsArchiveCategoryCore(selectedSlots, categoryName, requireConfirm: true);
+        }
+
+        private void ApplySelectedSlotsHardDiskCategory(string? categoryName, bool showReturnHint)
+        {
+            if (!CanApplySelectedSlotsHardDiskPurpose)
+            {
+                return;
+            }
+
+            var selectedSlots = Slots.Where(slot => slot.IsSelected).ToList();
+            if (!TryValidateSelectedSlotsForPurposeChange(selectedSlots))
+            {
+                return;
+            }
+
+            ApplySelectedSlotsHardDiskCategoryCore(selectedSlots, categoryName, showReturnHint, requireConfirm: true);
+        }
+
+        private void ApplySelectedSlotsArchiveCategoryCore(
+            IReadOnlyList<CabinetSlotViewModel> selectedSlots,
+            string categoryName,
+            bool requireConfirm)
+        {
+            string normalizedCategory = CabinetArchiveSlotCategoryAssignment.NormalizeCategoryName(categoryName);
+            bool allAlreadyMatch = selectedSlots.All(slot =>
+                CabinetArchiveSlotCategoryAssignment.MatchesCategory(slot.DedicatedSlotCategoryName, normalizedCategory)
+                || (string.IsNullOrWhiteSpace(slot.DedicatedSlotCategoryName)
+                    && CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                        normalizedCategory,
+                        CabinetArchiveSlotCategoryAssignment.CategoryUnset)));
+            if (allAlreadyMatch)
+            {
+                _dialogService.ShowMessage(
+                    $"所选 {selectedSlots.Count} 个档口当前已是「{normalizedCategory}」。",
+                    "提示");
+                return;
+            }
+
+            if (requireConfirm
+                && !_dialogService.ShowConfirm(
+                    $"确定将 {CurrentFaceDisplayName} 已选的 {selectedSlots.Count} 个档口统一设置为「{normalizedCategory}」吗？\n该档口用于存放档案盒内的模拟介质资料。",
+                    "确认"))
+            {
+                return;
+            }
+
             try
             {
                 string faceCode = Request.Face.ToString();
                 foreach (var slot in selectedSlots)
                 {
-                    if (string.IsNullOrWhiteSpace(result.CategoryName))
+                    _cabinetService.SetArchiveDedicatedSlotCategory(
+                        Request.CabinetId,
+                        faceCode,
+                        slot.SlotCode,
+                        normalizedCategory);
+                }
+
+                _dialogService.ShowMessage($"已更新 {selectedSlots.Count} 个档口的用途设置。", "提示");
+                ClearSlotSelection();
+                ReloadSlotsAndBroadcast();
+            }
+            catch (InvalidOperationException ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+            catch (ArgumentException ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private void ApplySelectedSlotsHardDiskCategoryCore(
+            IReadOnlyList<CabinetSlotViewModel> selectedSlots,
+            string? categoryName,
+            bool showReturnHint,
+            bool requireConfirm)
+        {
+            bool clearToGeneral = string.IsNullOrWhiteSpace(categoryName);
+            string displayCategory = clearToGeneral
+                ? "通用（无专用用途）"
+                : CabinetHardDiskSlotCategoryAssignment.NormalizeCategoryName(categoryName);
+            bool allAlreadyMatch = selectedSlots.All(slot =>
+                clearToGeneral
+                    ? string.IsNullOrWhiteSpace(slot.DedicatedSlotCategoryName)
+                    : CabinetHardDiskSlotCategoryAssignment.MatchesCategory(slot.DedicatedSlotCategoryName, displayCategory));
+            if (allAlreadyMatch)
+            {
+                _dialogService.ShowMessage(
+                    $"所选 {selectedSlots.Count} 个档口当前已是「{displayCategory}」。",
+                    "提示");
+                return;
+            }
+
+            string suffix = showReturnHint ? "\n后续损坏硬盘归还登记将自动回柜到该档口。" : string.Empty;
+            if (requireConfirm
+                && !_dialogService.ShowConfirm(
+                    $"确定将 {CurrentFaceDisplayName} 已选的 {selectedSlots.Count} 个档口统一设置为「{displayCategory}」吗？{suffix}",
+                    "确认"))
+            {
+                return;
+            }
+
+            try
+            {
+                string faceCode = Request.Face.ToString();
+                foreach (var slot in selectedSlots)
+                {
+                    if (clearToGeneral)
                     {
                         _cabinetService.ClearHardDiskDedicatedSlotCategory(Request.CabinetId, faceCode, slot.SlotCode);
                     }
                     else
                     {
-                        _cabinetService.SetHardDiskDedicatedSlotCategory(Request.CabinetId, faceCode, slot.SlotCode, result.CategoryName);
+                        _cabinetService.SetHardDiskDedicatedSlotCategory(
+                            Request.CabinetId,
+                            faceCode,
+                            slot.SlotCode,
+                            displayCategory);
                     }
                 }
 
@@ -2044,6 +2254,99 @@ namespace DocMgr.ViewModels.Cabinets
             {
                 _dialogService.ShowError(ex.Message);
             }
+        }
+
+        private bool TryValidateSelectedSlotsForPurposeChange(IReadOnlyList<CabinetSlotViewModel> selectedSlots)
+        {
+            if (selectedSlots.Count == 0)
+            {
+                return false;
+            }
+
+            bool isArchiveCabinet = Request.CabinetType == CabinetType.Standard;
+            var occupiedSlots = selectedSlots
+                .Where(slot => isArchiveCabinet ? !slot.IsFullyEmptyArchiveSlot : !slot.IsFullyEmptyMagneticDiskSlot)
+                .ToList();
+            if (occupiedSlots.Count > 0)
+            {
+                string slotList = string.Join("、", occupiedSlots.Select(slot => slot.SlotCode));
+                string occupancyLabel = isArchiveCabinet ? "档案盒" : "介质";
+                _dialogService.ShowMessage($"所选档口中 {slotList} 仍有{occupancyLabel}占用，仅可对空档口变更用途。", "无法变更用途");
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryGetSharedSelectedSlotCategory(out string? sharedCategory)
+        {
+            sharedCategory = null;
+            if (SelectedSlotCount <= 1)
+            {
+                return false;
+            }
+
+            var selectedSlots = Slots.Where(slot => slot.IsSelected).ToList();
+            if (selectedSlots.Count == 0)
+            {
+                return false;
+            }
+
+            string first = selectedSlots[0].DedicatedSlotCategoryName ?? string.Empty;
+            if (!selectedSlots.All(slot =>
+                    string.Equals(
+                        slot.DedicatedSlotCategoryName ?? string.Empty,
+                        first,
+                        StringComparison.OrdinalIgnoreCase)))
+            {
+                return false;
+            }
+
+            sharedCategory = first;
+            return true;
+        }
+
+        private bool IsSharedSelectedArchiveCategory(string expectedCategory)
+        {
+            if (Request.CabinetType != CabinetType.Standard || !TryGetSharedSelectedSlotCategory(out string? shared))
+            {
+                return false;
+            }
+
+            string normalizedExpected = CabinetArchiveSlotCategoryAssignment.NormalizeCategoryName(expectedCategory);
+            if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(normalizedExpected, CabinetArchiveSlotCategoryAssignment.CategoryUnset))
+            {
+                return string.IsNullOrWhiteSpace(shared)
+                    || CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                        shared,
+                        CabinetArchiveSlotCategoryAssignment.CategoryUnset);
+            }
+
+            return !string.IsNullOrWhiteSpace(shared)
+                && CabinetArchiveSlotCategoryAssignment.MatchesCategory(shared, normalizedExpected);
+        }
+
+        private bool IsSharedSelectedHardDiskCategory(string expectedCategory)
+        {
+            return TryGetSharedSelectedSlotCategory(out string? shared)
+                && Request.CabinetType == CabinetType.MagneticDisk
+                && !string.IsNullOrWhiteSpace(shared)
+                && CabinetHardDiskSlotCategoryAssignment.MatchesCategory(shared, expectedCategory);
+        }
+
+        private void NotifySelectedSlotsPurposeCheckStatesChanged()
+        {
+            OnPropertyChanged(nameof(IsSelectedSlotsArchiveUnsetCategory));
+            OnPropertyChanged(nameof(IsSelectedSlotsArchiveYearlyCategory));
+            OnPropertyChanged(nameof(IsSelectedSlotsArchiveHistoricalCategory));
+            OnPropertyChanged(nameof(IsSelectedSlotsHardDiskGeneralCategory));
+            OnPropertyChanged(nameof(IsSelectedSlotsHardDiskDamagedCategory));
+            OnPropertyChanged(nameof(IsSelectedSlotsHardDiskDamagedOpticalDiscCategory));
+            OnPropertyChanged(nameof(IsSelectedSlotsHardDiskDataCategory));
+            OnPropertyChanged(nameof(IsSelectedSlotsHardDiskDataOpticalDiscCategory));
+            OnPropertyChanged(nameof(IsSelectedSlotsHardDiskHistoricalDataCategory));
+            OnPropertyChanged(nameof(IsSelectedSlotsHardDiskHistoricalDataOpticalDiscCategory));
+            OnPropertyChanged(nameof(IsSelectedSlotsHardDiskBlankCategory));
         }
 
         private static string? ResolveSharedCategoryName(IReadOnlyList<CabinetSlotViewModel> selectedSlots)
@@ -2134,8 +2437,11 @@ namespace DocMgr.ViewModels.Cabinets
             }
             OnPropertyChanged(nameof(CanSelectAllSlots));
             OnPropertyChanged(nameof(CompactBatchPurposeMenuVisibility));
+            OnPropertyChanged(nameof(CompactBatchArchivePurposeMenuVisibility));
+            OnPropertyChanged(nameof(CompactBatchHardDiskPurposeMenuVisibility));
             OnPropertyChanged(nameof(CompactPerSlotCategoryMenuVisibility));
             OnPropertyChanged(nameof(BatchApplyPurposeMenuText));
+            NotifySelectedSlotsPurposeCheckStatesChanged();
             CommandManager.InvalidateRequerySuggested();
         }
 

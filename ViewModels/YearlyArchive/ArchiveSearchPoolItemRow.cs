@@ -71,7 +71,10 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string ArchivePurpose => Hit.ArchivePurpose;
 
-        public int MaxCopyCount => ArchiveSearchPoolCopyCountSupport.ResolveMaxCopyCount(Hit.ContentCount);
+        public int MaxCopyCount => ArchiveSearchPoolCopyCountSupport.ResolveMaxCopyCount(
+            string.Equals(Hit.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal)
+                ? Hit.CurrentInArchiveCopyCount
+                : Hit.ContentCount);
 
         public bool IsCopyCountEditable => ArchiveSearchPoolCopyCountSupport.IsEditableSimulatedWholeItem(
             Hit.MediaKind,

@@ -679,7 +679,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     .Where(row => row.IsCopyCountEditable)
                     .Select(row => ArchiveSearchPoolCopyCountSupport.ValidateSimulatedRequestedCopyCount(
                         row.RequestedCopyCount,
-                        row.Hit.ContentCount,
+                        row.Hit.CurrentInArchiveCopyCount,
                         row.ItemName))
                     .Where(error => error != null)
                     .Cast<string>()

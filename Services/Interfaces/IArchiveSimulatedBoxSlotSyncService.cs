@@ -1,3 +1,5 @@
+using DocMgr.Models.YearlyArchive;
+
 namespace DocMgr.Services.Interfaces
 {
     /// <summary>
@@ -5,7 +7,12 @@ namespace DocMgr.Services.Interfaces
     /// </summary>
     public interface IArchiveSimulatedBoxSlotSyncService
     {
-        /// <summary>按档案盒 Id 重新评估并同步占格状态。</summary>
-        Task SyncBoxesByIdsAsync(IReadOnlyCollection<int> boxIds, DateTime operatedAt);
+        /// <summary>
+        /// 按档案盒 Id 重新评估并同步占格状态。
+        /// </summary>
+        /// <returns>本次被释放档口并标记为已清空的档案盒列表。</returns>
+        Task<IReadOnlyList<EmptiedArchiveBoxHint>> SyncBoxesByIdsAsync(
+            IReadOnlyCollection<int> boxIds,
+            DateTime operatedAt);
     }
 }

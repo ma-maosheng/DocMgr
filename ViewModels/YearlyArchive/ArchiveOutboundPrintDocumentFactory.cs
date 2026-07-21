@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -12,14 +13,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static readonly FontFamily LabelFont = new("SimHei");
         private static readonly FontFamily BodyFont = new("SimSun");
 
-        private const double PageWidth = 793.6;
-        private const double PageHeight = 1122.5;
-        private const double PagePaddingHorizontal = 56;
-        private const double PagePaddingTop = 36;
-        private const double PagePaddingBottom = 32;
-        private const double TitleBlockHeight = 62;
-        private const double HeaderInfoHeight = 22;
-        private const double FooterBlockHeight = 58;
+        private const double TitleBlockHeight = 48;
+        private const double HeaderInfoHeight = 28;
         private const double StandardRowHeight = 32;
         private const double ReasonRowHeight = 38;
         private const double SignatureRowHeight = 56;
@@ -81,23 +76,22 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private static double CalculateItemDetailRowHeight(bool hasLongTermDepletionNotice)
         {
-            double usablePageHeight = PageHeight - PagePaddingTop - PagePaddingBottom;
-            // 固定行：业务字段 + 四级审批 + 交接签字（交接行单独计高）。
-            int fixedStandardRows = hasLongTermDepletionNotice ? 11 : 10;
+            // 固定行外高：申请部门 + 去向/证明/归还/涉密/摘要(5) + 四级审批(4) = 10；原由、交接另计；重点提示可选。
             double fixedTableHeight =
-                StandardRowHeight * fixedStandardRows
-                + ReasonRowHeight
-                + StandardRowHeight * 4
-                + SignatureRowHeight;
+                PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 10
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(ReasonRowHeight, CellPadding)
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(SignatureRowHeight, CellPadding);
             if (hasLongTermDepletionNotice)
             {
-                fixedTableHeight += ReasonRowHeight;
+                fixedTableHeight += PrintPageLayoutSupport.GetTableRowOuterHeightDip(ReasonRowHeight, CellPadding);
             }
 
-            double reservedHeight = TitleBlockHeight + HeaderInfoHeight + FooterBlockHeight + fixedTableHeight;
-            double itemHeight = usablePageHeight - reservedHeight;
-
-            return Math.Max(itemHeight, StandardRowHeight * 4);
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 3, lineHeightDip: 16, topMarginDip: 8);
+            double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
+            return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
+                reservedHeight,
+                StandardRowHeight * 4,
+                CellPadding);
         }
 
         private static Block CreateTitleBlock()
@@ -114,16 +108,15 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private static FlowDocument CreateDocumentSkeleton()
         {
-            return new FlowDocument
+            var document = new FlowDocument
             {
                 FontFamily = BodyFont,
                 FontSize = BodyFontSize,
                 LineHeight = 18,
-                PageWidth = PageWidth,
-                PageHeight = PageHeight,
-                PagePadding = new Thickness(PagePaddingHorizontal, PagePaddingTop, PagePaddingHorizontal, PagePaddingBottom),
                 ColumnWidth = double.PositiveInfinity
             };
+            PrintPageLayoutSupport.ApplyA4MediumMargins(document);
+            return document;
         }
 
         private static Table CreateHeaderTable(string leftText, string rightText)

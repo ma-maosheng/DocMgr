@@ -20,7 +20,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 {
 
-    public sealed class ArchiveOutboundWorkbenchPageViewModel : ViewModelBase
+    public sealed partial class ArchiveOutboundWorkbenchPageViewModel : ViewModelBase
 
     {
 
@@ -115,6 +115,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             DestructiveCommand = new RelayCommand(async _ => await ExecuteDestructiveAsync(), _ => CanExecuteDestructive());
 
             RefreshCommand = new RelayCommand(async _ => await LoadRecordsAsync());
+
+            InitializeInlineEditingCommands();
 
         }
 
@@ -274,6 +276,14 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                     System.Windows.Input.CommandManager.InvalidateRequerySuggested();
 
+                    if (HasEditingViewModel)
+
+                    {
+
+                        _ = SyncEditingPanelToSelectionAsync();
+
+                    }
+
                 }
 
             }
@@ -352,9 +362,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         {
 
-            ArchiveOutboundWorkspaceMode.Approval => "资料借出申请审批",
+            ArchiveOutboundWorkspaceMode.Approval => "资料借出审批出库",
 
-            ArchiveOutboundWorkspaceMode.Handover => "资料出库办理",
+            ArchiveOutboundWorkspaceMode.Handover => "资料借出审批出库",
 
             _ => "资料借出申请"
 
@@ -366,9 +376,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         {
 
-            ArchiveOutboundWorkspaceMode.Approval => "Archive Outbound Approval Ledger",
+            ArchiveOutboundWorkspaceMode.Approval => "审批通过 → 实物交接 → 上传签批与照片 → 业务办结",
 
-            ArchiveOutboundWorkspaceMode.Handover => "Archive Outbound Handover Ledger",
+            ArchiveOutboundWorkspaceMode.Handover => "审批通过 → 实物交接 → 上传签批与照片 → 业务办结",
 
             _ => "Archive Outbound Application Ledger"
 
@@ -416,9 +426,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         {
 
-            ArchiveOutboundWorkspaceMode.Approval => "打开审批",
+            ArchiveOutboundWorkspaceMode.Approval => "打开办理",
 
-            ArchiveOutboundWorkspaceMode.Handover => "打开出库",
+            ArchiveOutboundWorkspaceMode.Handover => "打开办理",
 
             _ => "打开申请"
 
@@ -476,11 +486,31 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 
 
+            bool openPendingRecord = PendingSelectionRecordId.HasValue;
+
+
+
             await LoadYearOptionsAsync();
 
             await LoadRecordsAsync();
 
             _isInitialized = true;
+
+
+
+            if (openPendingRecord
+
+                && SelectedRecord != null
+
+                && (_workspaceMode == ArchiveOutboundWorkspaceMode.Approval
+
+                    || _workspaceMode == ArchiveOutboundWorkspaceMode.Handover))
+
+            {
+
+                await OpenForInlineEditingAsync();
+
+            }
 
         }
 
@@ -1087,6 +1117,20 @@ namespace DocMgr.ViewModels.YearlyArchive
             if (SelectedRecord == null)
 
             {
+
+                return;
+
+            }
+
+
+
+            if (_workspaceMode == ArchiveOutboundWorkspaceMode.Approval
+
+                || _workspaceMode == ArchiveOutboundWorkspaceMode.Handover)
+
+            {
+
+                await OpenForInlineEditingAsync();
 
                 return;
 

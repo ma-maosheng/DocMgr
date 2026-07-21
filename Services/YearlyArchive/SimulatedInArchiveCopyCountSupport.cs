@@ -10,14 +10,6 @@ namespace DocMgr.Services.YearlyArchive
     {
         public static int ResolveFiledCopyCount(int contentCount) => Math.Max(1, contentCount);
 
-        /// <summary>检索池等场景：仅扣减已办结未归还提档份数。</summary>
-        public static int ResolveCurrentInArchiveCopyCount(int filedCopyCount, int withdrawnCopyCount) =>
-            ResolveCurrentInArchiveCopyCount(
-                filedCopyCount,
-                pendingReturnCopyCount: withdrawnCopyCount,
-                noReturnCopyCount: 0,
-                lostCopyCount: 0);
-
         /// <summary>
         /// 按份数分解公式计算资料子项当前库内份数。
         /// </summary>
@@ -35,11 +27,55 @@ namespace DocMgr.Services.YearlyArchive
             return Math.Max(0, current);
         }
 
-        public static string FormatDisplay(int filedCopyCount, int withdrawnCopyCount)
+        public static int ResolveCurrentInArchiveCopyCount(
+            int filedCopyCount,
+            SimulatedFilingFactCopyCountSnapshot snapshot)
+        {
+            ArgumentNullException.ThrowIfNull(snapshot);
+            return ResolveCurrentInArchiveCopyCount(
+                filedCopyCount,
+                snapshot.PendingReturnCopyCount,
+                snapshot.NoReturnCopyCount,
+                snapshot.LostCopyCount);
+        }
+
+        /// <summary>展示当前库内/立档，如「2/5」。</summary>
+        public static string FormatCurrentVsFiled(int currentInArchiveCopyCount, int filedCopyCount)
         {
             int filed = ResolveFiledCopyCount(filedCopyCount);
-            int inArchive = ResolveCurrentInArchiveCopyCount(filed, withdrawnCopyCount);
-            return $"{inArchive}/{filed}";
+            int current = Math.Max(0, currentInArchiveCopyCount);
+            return $"{current}/{filed}";
+        }
+
+        /// <summary>
+        /// 兼容旧调用：仅扣减待还份数（不含不还/灭失）。新逻辑请用四元公式或 <see cref="FormatCurrentVsFiled"/>。
+        /// </summary>
+        public static string FormatDisplay(int filedCopyCount, int withdrawnCopyCount) =>
+            FormatCurrentVsFiled(
+                ResolveCurrentInArchiveCopyCount(
+                    filedCopyCount,
+                    pendingReturnCopyCount: withdrawnCopyCount,
+                    noReturnCopyCount: 0,
+                    lostCopyCount: 0),
+                filedCopyCount);
+
+        public static SimulatedInArchiveCopyCountInfo BuildInfo(
+            int contentCount,
+            SimulatedFilingFactCopyCountSnapshot snapshot)
+        {
+            ArgumentNullException.ThrowIfNull(snapshot);
+
+            int filedCopyCount = ResolveFiledCopyCount(contentCount);
+            int currentInArchiveCopyCount = ResolveCurrentInArchiveCopyCount(filedCopyCount, snapshot);
+            return new SimulatedInArchiveCopyCountInfo
+            {
+                FiledCopyCount = filedCopyCount,
+                PendingReturnCopyCount = Math.Max(0, snapshot.PendingReturnCopyCount),
+                NoReturnCopyCount = Math.Max(0, snapshot.NoReturnCopyCount),
+                LostCopyCount = Math.Max(0, snapshot.LostCopyCount),
+                CurrentInArchiveCopyCount = currentInArchiveCopyCount,
+                Display = FormatCurrentVsFiled(currentInArchiveCopyCount, filedCopyCount)
+            };
         }
     }
 }

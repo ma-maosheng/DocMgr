@@ -275,6 +275,7 @@ namespace DocMgr.Services.YearlyArchive
 
             var linkedMedia = await LoadLinkedMediaAsync(unit.LinkedMediumCodes, pendingExternalHardDisk);
             await ValidateElectronicStorageLocationSlotCategoryAsync(unit, linkedMedia);
+            await EnsureElectronicStorageLocationAvailableAsync(unit);
             await ValidateMediumLinkConflictsAsync(unit.Id, unit.ElectronicArchiveNo, linkedMedia);
 
             if (RequiresHardDiskLink(unit) && linkedMedia.Count != 1)

@@ -12,10 +12,14 @@ namespace DocMgr.Services.YearlyArchive
     public sealed class ArchiveFilingLedgerService : IArchiveFilingLedgerService
     {
         private readonly IArchiveFilingFactRepository _filingFactRepository;
+        private readonly IArchiveOutboundRepository _outboundRepository;
 
-        public ArchiveFilingLedgerService(IArchiveFilingFactRepository filingFactRepository)
+        public ArchiveFilingLedgerService(
+            IArchiveFilingFactRepository filingFactRepository,
+            IArchiveOutboundRepository outboundRepository)
         {
             _filingFactRepository = filingFactRepository;
+            _outboundRepository = outboundRepository;
         }
 
         public async Task<IReadOnlyList<FilingLedgerRow>> SearchAsync(FilingLedgerSearchCriteria criteria)
@@ -51,8 +55,24 @@ namespace DocMgr.Services.YearlyArchive
                 media => media.Id,
                 media => media.MediaType?.Trim() ?? string.Empty);
 
+            var simulatedFactIds = facts
+                .Where(fact => string.Equals(
+                    fact.MediaKind,
+                    ArchiveRegisterDomainValues.MediaKindSimulated,
+                    StringComparison.Ordinal))
+                .Select(fact => fact.Id)
+                .ToList();
+            var copySnapshots = simulatedFactIds.Count == 0
+                ? new Dictionary<int, SimulatedFilingFactCopyCountSnapshot>()
+                : await _outboundRepository.GetSimulatedFilingFactCopyCountSnapshotsByFilingFactIdsAsync(simulatedFactIds);
+
             return facts
-                .Select(fact => MapRow(fact, supplementByMediaItemId, mediaTypeByRegisterMediaId, archivePurposeByRegisterRecordId))
+                .Select(fact => MapRow(
+                    fact,
+                    supplementByMediaItemId,
+                    mediaTypeByRegisterMediaId,
+                    archivePurposeByRegisterRecordId,
+                    copySnapshots))
                 .ToList();
         }
 
@@ -103,6 +123,10 @@ namespace DocMgr.Services.YearlyArchive
                     "子项名称",
                     "密级",
                     "内容数量",
+                    "库内/立档",
+                    "灭失份数",
+                    "待还份数",
+                    "不还份数",
                     "项目名称",
                     "提供单位",
                     "申请人",
@@ -149,6 +173,10 @@ namespace DocMgr.Services.YearlyArchive
                     row.CreateCell(col++).SetCellValue(item.ItemName);
                     row.CreateCell(col++).SetCellValue(item.ConfidentialLevel);
                     row.CreateCell(col++).SetCellValue(item.ContentCount);
+                    row.CreateCell(col++).SetCellValue(item.CopyCountStatusDisplay);
+                    row.CreateCell(col++).SetCellValue(item.IsSimulatedMedia ? item.LostCopyCount : 0);
+                    row.CreateCell(col++).SetCellValue(item.IsSimulatedMedia ? item.PendingReturnCopyCount : 0);
+                    row.CreateCell(col++).SetCellValue(item.IsSimulatedMedia ? item.NoReturnCopyCount : 0);
                     row.CreateCell(col++).SetCellValue(item.ProjectName);
                     row.CreateCell(col++).SetCellValue(item.ProvideUnit);
                     row.CreateCell(col++).SetCellValue(item.ApplicantName);
@@ -184,7 +212,8 @@ namespace DocMgr.Services.YearlyArchive
             YearlyArchiveFilingFact fact,
             IReadOnlyDictionary<int, FilingLedgerRegisterSupplement> supplementByMediaItemId,
             IReadOnlyDictionary<int, string> mediaTypeByRegisterMediaId,
-            IReadOnlyDictionary<int, string> archivePurposeByRegisterRecordId)
+            IReadOnlyDictionary<int, string> archivePurposeByRegisterRecordId,
+            IReadOnlyDictionary<int, SimulatedFilingFactCopyCountSnapshot> copySnapshots)
         {
             var supplement = fact.MediaItemId > 0 && supplementByMediaItemId.TryGetValue(fact.MediaItemId, out var resolvedSupplement)
                 ? resolvedSupplement
@@ -198,6 +227,17 @@ namespace DocMgr.Services.YearlyArchive
                 && archivePurposeByRegisterRecordId.TryGetValue(fact.RegisterRecordId, out string? purpose)
                 ? purpose
                 : string.Empty;
+
+            bool isSimulated = string.Equals(
+                fact.MediaKind,
+                ArchiveRegisterDomainValues.MediaKindSimulated,
+                StringComparison.Ordinal);
+            int currentInArchive = isSimulated
+                ? SimulatedInArchiveCopyCountSupport.ResolveCurrentInArchiveCopyCount(
+                    fact.ContentCount,
+                    copySnapshots.GetValueOrDefault(fact.Id) ?? new SimulatedFilingFactCopyCountSnapshot())
+                : Math.Max(1, fact.ContentCount);
+            var snapshot = copySnapshots.GetValueOrDefault(fact.Id) ?? new SimulatedFilingFactCopyCountSnapshot();
 
             return new FilingLedgerRow
             {
@@ -221,6 +261,10 @@ namespace DocMgr.Services.YearlyArchive
                 ItemName = fact.ItemName,
                 ConfidentialLevel = fact.ConfidentialLevel,
                 ContentCount = fact.ContentCount,
+                CurrentInArchiveCopyCount = currentInArchive,
+                LostCopyCount = isSimulated ? snapshot.LostCopyCount : 0,
+                PendingReturnCopyCount = isSimulated ? snapshot.PendingReturnCopyCount : 0,
+                NoReturnCopyCount = isSimulated ? snapshot.NoReturnCopyCount : 0,
                 ContainerKind = fact.ContainerKind,
                 ContainerCode = fact.ContainerCode,
                 StorageLocation = fact.StorageLocation,

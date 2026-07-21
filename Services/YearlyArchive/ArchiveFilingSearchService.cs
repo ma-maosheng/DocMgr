@@ -28,6 +28,8 @@ namespace DocMgr.Services.YearlyArchive
             var stockCountsByRegisterMediaId = await LoadRegisterMediaStockCountsAsync(facts);
             var supplementsByMediaItemId = await LoadRegisterSupplementsByMediaItemIdAsync(facts);
             var archivePurposeByRegisterRecordId = await LoadArchivePurposeByRegisterRecordIdAsync(facts);
+            var simulatedCopyCountsByFactId = await GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(
+                facts.Select(fact => fact.Id).ToList());
 
             if (!ContentEntrySearchSupport.HasActiveFilter(criteria))
             {
@@ -36,7 +38,8 @@ namespace DocMgr.Services.YearlyArchive
                         fact,
                         stockCountsByRegisterMediaId,
                         supplementsByMediaItemId: supplementsByMediaItemId,
-                        archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId))
+                        archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId,
+                        simulatedCopyCountsByFactId: simulatedCopyCountsByFactId))
                     .ToList();
             }
 
@@ -63,7 +66,8 @@ namespace DocMgr.Services.YearlyArchive
                         criteria,
                         matchedEntries ?? Array.Empty<MatchedContentEntryInfo>(),
                         supplementsByMediaItemId,
-                        archivePurposeByRegisterRecordId);
+                        archivePurposeByRegisterRecordId,
+                        simulatedCopyCountsByFactId);
                 })
                 .ToList();
         }
@@ -91,6 +95,8 @@ namespace DocMgr.Services.YearlyArchive
                 primaryFacts.Concat(backupFacts));
             var archivePurposeByRegisterRecordId = await LoadArchivePurposeByRegisterRecordIdAsync(
                 primaryFacts.Concat(backupFacts));
+            var simulatedCopyCountsByFactId = await GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(
+                primaryFacts.Concat(backupFacts).Select(fact => fact.Id).ToList());
 
             return FiledArchiveSearchGroupingSupport.GroupRegisterHits(
                 matchedHits,
@@ -101,7 +107,8 @@ namespace DocMgr.Services.YearlyArchive
                     stockCountsByRegisterMediaId,
                     criteria,
                     supplementsByMediaItemId: supplementsByMediaItemId,
-                    archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId));
+                    archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId,
+                    simulatedCopyCountsByFactId: simulatedCopyCountsByFactId));
         }
 
         public async Task<List<FiledArchiveSearchBoxGroupHit>> SearchByRegisterGroupedByArchiveBoxAsync(
@@ -144,12 +151,15 @@ namespace DocMgr.Services.YearlyArchive
             var stockCountsByRegisterMediaId = await LoadRegisterMediaStockCountsAsync(facts);
             var supplementsByMediaItemId = await LoadRegisterSupplementsByMediaItemIdAsync(facts);
             var archivePurposeByRegisterRecordId = await LoadArchivePurposeByRegisterRecordIdAsync(facts);
+            var simulatedCopyCountsByFactId = await GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(
+                facts.Select(fact => fact.Id).ToList());
             return facts
                 .Select(fact => MapHit(
                     fact,
                     stockCountsByRegisterMediaId,
                     supplementsByMediaItemId: supplementsByMediaItemId,
-                    archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId))
+                    archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId,
+                    simulatedCopyCountsByFactId: simulatedCopyCountsByFactId))
                 .ToList();
         }
 
@@ -187,6 +197,7 @@ namespace DocMgr.Services.YearlyArchive
                     ArchiveRegisterDomainValues.MediaKindSimulated,
                     StringComparison.Ordinal))
             {
+                var copyCountInfoByFactId = await GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(factIds);
                 var copyCountErrors = new List<string>();
                 foreach (var selection in request.Selections.Where(item => item.IsWholeMediaItem))
                 {
@@ -195,9 +206,12 @@ namespace DocMgr.Services.YearlyArchive
                         continue;
                     }
 
+                    int availableCopyCount = copyCountInfoByFactId.TryGetValue(fact.Id, out var info)
+                        ? info.CurrentInArchiveCopyCount
+                        : SimulatedInArchiveCopyCountSupport.ResolveFiledCopyCount(fact.ContentCount);
                     string? error = ArchiveSearchPoolCopyCountSupport.ValidateSimulatedRequestedCopyCount(
                         selection.RequestedCopyCount,
-                        fact.ContentCount,
+                        availableCopyCount,
                         fact.ItemName);
                     if (error != null)
                     {
@@ -488,11 +502,14 @@ namespace DocMgr.Services.YearlyArchive
             var stockCountsByRegisterMediaId = await LoadRegisterMediaStockCountsAsync(facts);
             var supplementsByMediaItemId = await LoadRegisterSupplementsByMediaItemIdAsync(facts);
             var archivePurposeByRegisterRecordId = await LoadArchivePurposeByRegisterRecordIdAsync(facts);
+            var simulatedCopyCountsByFactId = await GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(
+                facts.Select(fact => fact.Id).ToList());
             return MapHit(
                 facts[0],
                 stockCountsByRegisterMediaId,
                 supplementsByMediaItemId: supplementsByMediaItemId,
-                archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId);
+                archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId,
+                simulatedCopyCountsByFactId: simulatedCopyCountsByFactId);
         }
 
         public async Task<IReadOnlyDictionary<int, string>> GetStockCopyCountDisplaysByFilingFactIdsAsync(
@@ -654,28 +671,15 @@ namespace DocMgr.Services.YearlyArchive
                 return new Dictionary<int, SimulatedInArchiveCopyCountInfo>();
             }
 
-            var withdrawnCopyCounts = await _outboundRepository
-                .GetCompletedOutstandingWithdrawalCopyCountsByFilingFactIdsAsync(
+            var snapshots = await _outboundRepository
+                .GetSimulatedFilingFactCopyCountSnapshotsByFilingFactIdsAsync(
                     simulatedFacts.Select(fact => fact.Id).ToList());
 
             return simulatedFacts.ToDictionary(
                 fact => fact.Id,
-                fact =>
-                {
-                    int filedCopyCount = SimulatedInArchiveCopyCountSupport.ResolveFiledCopyCount(fact.ContentCount);
-                    int withdrawnCopyCount = withdrawnCopyCounts.GetValueOrDefault(fact.Id);
-                    int currentInArchiveCopyCount = SimulatedInArchiveCopyCountSupport.ResolveCurrentInArchiveCopyCount(
-                        filedCopyCount,
-                        withdrawnCopyCount);
-
-                    return new SimulatedInArchiveCopyCountInfo
-                    {
-                        FiledCopyCount = filedCopyCount,
-                        WithdrawnCopyCount = withdrawnCopyCount,
-                        CurrentInArchiveCopyCount = currentInArchiveCopyCount,
-                        Display = SimulatedInArchiveCopyCountSupport.FormatDisplay(filedCopyCount, withdrawnCopyCount)
-                    };
-                });
+                fact => SimulatedInArchiveCopyCountSupport.BuildInfo(
+                    fact.ContentCount,
+                    snapshots.GetValueOrDefault(fact.Id) ?? new SimulatedFilingFactCopyCountSnapshot()));
         }
 
         private static void EnsureCanAccessResultSet(
@@ -708,7 +712,8 @@ namespace DocMgr.Services.YearlyArchive
             RegisterDirectionSearchCriteria? contentSearchCriteria = null,
             IReadOnlyList<MatchedContentEntryInfo>? matchedContentEntries = null,
             IReadOnlyDictionary<int, RegisterSearchSupplement>? supplementsByMediaItemId = null,
-            IReadOnlyDictionary<int, string>? archivePurposeByRegisterRecordId = null)
+            IReadOnlyDictionary<int, string>? archivePurposeByRegisterRecordId = null,
+            IReadOnlyDictionary<int, SimulatedInArchiveCopyCountInfo>? simulatedCopyCountsByFactId = null)
         {
             int stockCopyCount = ResolveStockCopyCount(fact, stockCountsByRegisterMediaId);
             var supplement = fact.MediaItemId > 0
@@ -721,6 +726,30 @@ namespace DocMgr.Services.YearlyArchive
                 && archivePurposeByRegisterRecordId.TryGetValue(fact.RegisterRecordId, out string? purpose)
                 ? purpose
                 : string.Empty;
+
+            bool isSimulated = string.Equals(
+                fact.MediaKind,
+                ArchiveRegisterDomainValues.MediaKindSimulated,
+                StringComparison.Ordinal);
+            int currentInArchiveCopyCount = stockCopyCount;
+            int lostCopyCount = 0;
+            int pendingReturnCopyCount = 0;
+            int noReturnCopyCount = 0;
+            if (isSimulated)
+            {
+                if (simulatedCopyCountsByFactId != null
+                    && simulatedCopyCountsByFactId.TryGetValue(fact.Id, out var copyInfo))
+                {
+                    currentInArchiveCopyCount = copyInfo.CurrentInArchiveCopyCount;
+                    lostCopyCount = copyInfo.LostCopyCount;
+                    pendingReturnCopyCount = copyInfo.PendingReturnCopyCount;
+                    noReturnCopyCount = copyInfo.NoReturnCopyCount;
+                }
+                else
+                {
+                    currentInArchiveCopyCount = SimulatedInArchiveCopyCountSupport.ResolveFiledCopyCount(fact.ContentCount);
+                }
+            }
 
             return new FiledArchiveSearchHit
             {
@@ -760,6 +789,10 @@ namespace DocMgr.Services.YearlyArchive
                 ArchiveCopyRole = string.IsNullOrWhiteSpace(fact.ArchiveCopyRole)
                     ? FilingFactArchiveCopyRole.Original
                     : fact.ArchiveCopyRole,
+                CurrentInArchiveCopyCount = currentInArchiveCopyCount,
+                LostCopyCount = lostCopyCount,
+                PendingReturnCopyCount = pendingReturnCopyCount,
+                NoReturnCopyCount = noReturnCopyCount,
                 StockCopyCount = stockCopyCount,
                 StockCopyCountDisplay = ArchiveStockCopyCountSupport.FormatDisplay(fact.MediaKind, stockCopyCount),
                 RegisterMediaType = supplement.RegisterMediaType,

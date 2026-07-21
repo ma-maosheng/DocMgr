@@ -55,9 +55,14 @@ namespace DocMgr.Services.Interfaces
         Task<string> GenerateNextElectronicArchiveNoAsync(string year);
 
         /// <summary>
-        /// 获取指定格子里当前已有多少盒（用于生成 甲A-1-1-0X）
+        /// 获取指定格子里当前已有多少盒（用于展示占用数，不用于生成档内序号）。
         /// </summary>
         Task<int> GetBoxCountInCellAsync(string cabinetName, string side, int row, int col);
+
+        /// <summary>
+        /// 获取指定模拟介质档口内可用的最小盒序号（从 1 起填补空位）。
+        /// </summary>
+        Task<int> GetMinimumAvailableBoxSequenceInCellAsync(string cabinetName, string side, int row, int col, int? excludeBoxId = null);
 
         /// <summary>
         /// 获取指定电子介质档口内当前已存放的介质袋数量。
@@ -94,6 +99,14 @@ namespace DocMgr.Services.Interfaces
         /// <param name="boxId">档案盒ID</param>
         /// <param name="mediaItemIds">关联的资料子项ID列表</param>
         Task AppendToArchiveBoxAsync(int boxId, List<int> mediaItemIds);
+
+        /// <summary>
+        /// 根据当前项目、年度和档案盒规格，列出全部符合要求的可选档口。
+        /// </summary>
+        Task<IReadOnlyList<ArchiveBoxTargetLocationOption>> GetArchiveBoxTargetLocationOptionsAsync(
+            string projectName,
+            string year,
+            string boxSpecification);
 
         /// <summary>
         /// 根据当前项目、年度和档案盒规格，给出建议档口位置。

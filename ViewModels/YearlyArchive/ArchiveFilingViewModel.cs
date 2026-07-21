@@ -25,13 +25,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         private int _selectedRecordsChangedGeneration;
         private int _simulatedBoxIndexCalculationGeneration;
         private bool _suppressSimulatedLocationRecalc;
+        private bool _suppressSimulatedLocationOptionSync;
+        private int _simulatedTargetLocationOptionsGeneration;
         private bool _suppressElectronicLocationRecalc;
         private bool _suppressElectronicLocationOptionSync;
         private int _electronicTargetLocationOptionsGeneration;
         private readonly SemaphoreSlim _selectedRecordsChangedGate = new(1, 1);
         private bool _isInitialized;
         private int _currentCellBoxCount;
+        private int _resolvedBoxSequenceIndex = 1;
         private int _currentElectronicCellMediumCount;
+        private int _resolvedElectronicSequenceIndex = 1;
         private string _draftNewArchiveSequenceNo = string.Empty;
         private string _draftNewElectronicArchiveNo = string.Empty;
         private IReadOnlyList<ArchiveContainerSummary> _existingContainerSummaries = Array.Empty<ArchiveContainerSummary>();
@@ -69,6 +73,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             Sides = new ObservableCollection<string>();
             Rows = new ObservableCollection<string>();
             Columns = new ObservableCollection<string>();
+            SimulatedTargetLocationOptions = new ObservableCollection<ArchiveBoxTargetLocationOption>();
             ElectronicCabinets = new ObservableCollection<Cabinet>();
             ElectronicSides = new ObservableCollection<string>();
             ElectronicRows = new ObservableCollection<string>();
@@ -142,6 +147,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<string> Sides { get; }
         public ObservableCollection<string> Rows { get; }
         public ObservableCollection<string> Columns { get; }
+        public ObservableCollection<ArchiveBoxTargetLocationOption> SimulatedTargetLocationOptions { get; }
         public ObservableCollection<Cabinet> ElectronicCabinets { get; }
         public ObservableCollection<string> ElectronicSides { get; }
         public ObservableCollection<string> ElectronicRows { get; }
@@ -471,6 +477,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                     OnPropertyChanged(nameof(IsSimulatedLocationEditable));
                     OnPropertyChanged(nameof(IsSimulatedArchiveFieldsEditable));
                     OnPropertyChanged(nameof(IsSimulatedRemarksEditable));
+                    OnPropertyChanged(nameof(SimulatedStepTwoLocationSelectorVisibility));
+                    OnPropertyChanged(nameof(SimulatedStepTwoAppendNoticeVisibility));
                     OnPropertyChanged(nameof(IsElectronicLocationEditable));
                     OnPropertyChanged(nameof(IsElectronicArchiveFieldsEditable));
                     OnPropertyChanged(nameof(ExternalHardDiskRegistrationVisibility));
@@ -504,6 +512,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedCabinet, value))
                 {
+                    bool wasSuppressed = _suppressSimulatedLocationRecalc;
                     _suppressSimulatedLocationRecalc = true;
                     try
                     {
@@ -512,10 +521,14 @@ namespace DocMgr.ViewModels.YearlyArchive
                     }
                     finally
                     {
-                        _suppressSimulatedLocationRecalc = false;
+                        _suppressSimulatedLocationRecalc = wasSuppressed;
                     }
 
-                    CalculateBoxIndex();
+                    if (!_suppressSimulatedLocationRecalc)
+                    {
+                        CalculateBoxIndex();
+                    }
+
                     RaiseSlotSnapshotAvailabilityChanged();
                 }
             }
@@ -529,7 +542,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedSide, value))
                 {
-                    CalculateBoxIndex();
+                    if (!_suppressSimulatedLocationRecalc)
+                    {
+                        CalculateBoxIndex();
+                    }
+
                     RaiseSlotSnapshotAvailabilityChanged();
                 }
             }
@@ -543,7 +560,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedRow, value))
                 {
-                    CalculateBoxIndex();
+                    if (!_suppressSimulatedLocationRecalc)
+                    {
+                        CalculateBoxIndex();
+                    }
+
                     RaiseSlotSnapshotAvailabilityChanged();
                 }
             }
@@ -557,8 +578,37 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedColumn, value))
                 {
-                    CalculateBoxIndex();
+                    if (!_suppressSimulatedLocationRecalc)
+                    {
+                        CalculateBoxIndex();
+                    }
+
                     RaiseSlotSnapshotAvailabilityChanged();
+                }
+            }
+        }
+
+        private ArchiveBoxTargetLocationOption? _selectedSimulatedTargetLocationOption;
+        public ArchiveBoxTargetLocationOption? SelectedSimulatedTargetLocationOption
+        {
+            get => _selectedSimulatedTargetLocationOption;
+            set
+            {
+                if (!SetProperty(ref _selectedSimulatedTargetLocationOption, value)
+                    || _suppressSimulatedLocationOptionSync)
+                {
+                    return;
+                }
+
+                if (value == null)
+                {
+                    ClearSimulatedLocationSelectionCore();
+                    return;
+                }
+
+                if (!TryApplySimulatedSlotOption(value))
+                {
+                    ClearSimulatedLocationSelectionCore();
                 }
             }
         }
@@ -602,7 +652,15 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string SelectedSpec
         {
             get => _selectedSpec;
-            set => SetProperty(ref _selectedSpec, value);
+            set
+            {
+                if (SetProperty(ref _selectedSpec, value)
+                    && IsSimulatedTrack
+                    && IsNewBoxMode)
+                {
+                    _ = LoadSimulatedTargetLocationOptionsAsync();
+                }
+            }
         }
 
         private string _cellCountText = "-";
@@ -1058,6 +1116,14 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         public bool IsSimulatedLocationEditable => IsSimulatedTrack && IsNewBoxMode;
+
+        public Visibility SimulatedStepTwoLocationSelectorVisibility => IsNewBoxMode
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        public Visibility SimulatedStepTwoAppendNoticeVisibility => IsNewBoxMode
+            ? Visibility.Collapsed
+            : Visibility.Visible;
 
         public bool IsSimulatedArchiveFieldsEditable => IsSimulatedTrack && IsNewBoxMode;
 

@@ -26,7 +26,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             int requestedCopyCount = 1,
             bool isSimulatedMedia = false,
             int filedCopyCount = 1,
-            int withdrawnCopyCount = 0)
+            int currentInArchiveCopyCount = 1,
+            int lostCopyCount = 0)
         {
             ResultSetItemId = resultSetItemId;
             FilingFactId = filingFactId;
@@ -47,7 +48,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             RequestedCopyCount = requestedCopyCount > 0 ? requestedCopyCount : 1;
             IsSimulatedMedia = isSimulatedMedia;
             FiledCopyCount = SimulatedInArchiveCopyCountSupport.ResolveFiledCopyCount(filedCopyCount);
-            WithdrawnCopyCount = Math.Max(0, withdrawnCopyCount);
+            CurrentInArchiveCopyCount = Math.Max(0, currentInArchiveCopyCount);
+            LostCopyCount = Math.Max(0, lostCopyCount);
         }
 
         public int ResultSetItemId { get; }
@@ -81,10 +83,12 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public int FiledCopyCount { get; }
 
-        public int WithdrawnCopyCount { get; }
+        public int CurrentInArchiveCopyCount { get; }
+
+        public int LostCopyCount { get; }
 
         public string CurrentInArchiveCopyCountDisplay =>
-            SimulatedInArchiveCopyCountSupport.FormatDisplay(FiledCopyCount, WithdrawnCopyCount);
+            SimulatedInArchiveCopyCountSupport.FormatCurrentVsFiled(CurrentInArchiveCopyCount, FiledCopyCount);
 
         public string StatusColumnDisplay => IsSimulatedMedia
             ? CurrentInArchiveCopyCountDisplay

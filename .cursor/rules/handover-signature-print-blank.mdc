@@ -1,12 +1,15 @@
 ---
-description: 打印单据中交接双方签字栏须留白，供当事人手签
+description: 打印单据中交接双方签字栏：办结前留白，已办结重打预填
 globs: **/*Print*.cs,**/*Printing*.cs
 alwaysApply: false
 ---
 
-# 交接签字打印留白
+# 交接签字打印规则
 
-凡打印单据中出现**交接双方签字**（当事人与资料室资料管理员/资料员），签字栏与日期栏**不得预填姓名或系统日期**，须留白供线下亲笔签名。
+凡打印单据中出现**交接双方签字**（当事人与资料室资料管理员/资料员）：
+
+- **办结前**（供线下亲笔签名）：签字栏与日期栏**不得预填**姓名或系统日期，须留白。
+- **已办结**（业务已闭环后的重打/存档副本）：**直接预填**交接人、资料员及办结日期，并同步预填审核/审批信息。
 
 ## 格式约定
 
@@ -19,12 +22,22 @@ alwaysApply: false
 
 当事人标签按单据语义取值，例如：`申请人签字`、`交接人签字`、`归还人签字`、`领用人签字` 等。
 
+已办结预填示例：
+
+```
+领用人签字：张三    日期：2026-07-20
+资料室资料员签字：李四    日期：2026-07-20
+```
+
 ## 实现要求
 
-- 打印数据装配（`*PrintData`、`*Printing*.cs`）与文档工厂（`*PrintDocumentFactory*.cs`）中，交接签字块固定输出空白栏，**禁止**将 `ApplicantName`、`ExecutedBy`、`BorrowerName` 等写入签字位。
-- 审批意见、部门审核等**非交接双方**签字栏可另行规则；本规则仅约束实物/资料交接双方手签。
-- 年度资料出库/归还交接单调用 `BuildHandoverPrintDataAsync`、`BuildReceiptPrintDataAsync` 时，`blankHandoverSignatures` 应恒为 `true`。
+- 打印数据装配（`*PrintData`、`*Printing*.cs`）与文档工厂（`*PrintDocumentFactory*.cs`）中：
+  - 办结前：交接签字块固定输出空白栏，**禁止**将 `ApplicantName`、`ExecutedBy`、`BorrowerName` 等写入签字位。
+  - 已办结：按业务记录写入交接双方姓名与日期；审批意见、审核/审批签字同步预填。
+- 年度资料出库/归还交接单调用 `BuildHandoverPrintDataAsync`、`BuildReceiptPrintDataAsync` 时：`blankHandoverSignatures = !record.IsCompleted`（办结前 `true`，已办结 `false`）。
+- 审批意见、部门审核等**非交接双方**签字栏：已审批及之后阶段即可预填，不限于已办结。
 
 ## 参考实现
 
-- 硬盘介质：`ViewModels/HardDiskMedia/HardDiskMediaPrintDocumentFactory.cs` 中 `BuildBlankTwoPartyHandoverBlock`。
+- 硬盘介质：`ViewModels/HardDiskMedia/HardDiskMediaPrintDocumentFactory.cs` 中 `BuildBlankTwoPartyHandoverBlock` / `BuildFilledTwoPartyHandoverBlock`（`IsCompleted` 分支）。
+- 资料出库：`Services/YearlyArchive/ArchiveOutboundService.Printing.cs` 中 `BuildFilledHandoverSignatureBlock`。

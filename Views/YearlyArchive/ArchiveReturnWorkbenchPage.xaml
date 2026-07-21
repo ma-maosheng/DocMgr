@@ -6,46 +6,76 @@
       Title="资料归还工作台"
       Background="#F0F2F5">
     <Page.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-        <local:BoolToVisConverter x:Key="BoolToVisConverter"/>
-        <local:BoolToStarOrZeroGridLengthConverter x:Key="BoolToStarOrZeroGridLengthConverter"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ArchiveRegisterResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            <local:BoolToVisConverter x:Key="BoolToVisConverter"/>
+            <local:BoolToStarOrZeroGridLengthConverter x:Key="BoolToStarOrZeroGridLengthConverter"/>
 
-        <Style x:Key="LeftPanelToggleButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="22"/>
-            <Setter Property="MinHeight" Value="72"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="0"/>
-            <Setter Property="VerticalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="Background" Value="#ECEFF1"/>
-            <Setter Property="BorderBrush" Value="#CFD8DC"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Foreground" Value="#546E7A"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="2">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#CFD8DC"/>
-                                <Setter Property="Foreground" Value="#37474F"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#B0BEC5"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+            <!-- 与出库审批一致：节点标题略宽，容纳「资料室负责人」等 -->
+            <Style x:Key="ReturnApprovalCompactStepTitleStyle" TargetType="TextBlock"
+                   BasedOn="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}">
+                <Setter Property="Width" Value="90"/>
+            </Style>
+            <Style x:Key="ReturnApprovalSectionTitleStyle" TargetType="TextBlock">
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Foreground" Value="#1565C0"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Margin" Value="0,0,0,4"/>
+            </Style>
+            <Style x:Key="ReturnApprovalHintStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="Foreground" Value="#1565C0"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+                <Setter Property="Margin" Value="0,2,0,4"/>
+            </Style>
+            <!-- 实物交接字段组间距 -->
+            <Style x:Key="ReturnHandoverFieldGroupStyle" TargetType="StackPanel">
+                <Setter Property="Orientation" Value="Horizontal"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Margin" Value="0,0,20,0"/>
+            </Style>
+
+            <Style x:Key="LeftPanelToggleButtonStyle" TargetType="Button">
+                <Setter Property="Width" Value="22"/>
+                <Setter Property="MinHeight" Value="72"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Margin" Value="0"/>
+                <Setter Property="VerticalAlignment" Value="Stretch"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="Background" Value="#ECEFF1"/>
+                <Setter Property="BorderBrush" Value="#CFD8DC"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Foreground" Value="#546E7A"/>
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="2">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#CFD8DC"/>
+                                    <Setter Property="Foreground" Value="#37474F"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter Property="Background" Value="#B0BEC5"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
     </Page.Resources>
     <Grid Margin="0">
         <Grid.RowDefinitions>
@@ -76,7 +106,11 @@
         </Border>
 
         <Border Grid.Row="1" Margin="0,12,0,12" Padding="12" Background="#E8F5E9" BorderBrush="#81C784" BorderThickness="1">
-            <TextBlock Text="资料归还（模拟介质提档原件收回入库）" FontSize="20" FontWeight="Bold" Foreground="#2E7D32" HorizontalAlignment="Center"/>
+            <StackPanel>
+                <TextBlock Text="资料归还登记（模拟介质提档原件收回入库）" FontSize="20" FontWeight="Bold" Foreground="#2E7D32" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding PageSubtitle}" FontSize="12" Foreground="#558B2F" HorizontalAlignment="Center" Margin="0,4,0,0"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
         </Border>
 
         <Grid Grid.Row="2">
@@ -106,7 +140,8 @@
                             <TextBlock Text="待归还出库单" FontSize="14" FontWeight="Bold" Foreground="#37474F" VerticalAlignment="Center"/>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                                 <Button Content="查看借出详情" Command="{Binding ViewOutboundDetailCommand}" Width="112" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
-                                <Button Content="发起归还" Command="{Binding StartReturnCommand}" Width="96" Style="{StaticResource FormInlineButtonStyle}"/>
+                                <Button Content="发起归还" Command="{Binding StartReturnCommand}" Width="96" Style="{StaticResource FormInlineButtonStyle}"
+                                        Visibility="{Binding ShowStartReturnButton, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                             </StackPanel>
                         </DockPanel>
                         <DataGrid Grid.Row="1" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" SelectionMode="Single"
@@ -141,7 +176,7 @@
                                 <DataGridTextColumn Header="归还单号" Binding="{Binding ReturnNo}" Width="150"/>
                                 <DataGridTextColumn Header="源出库单" Binding="{Binding SourceOutboundNo}" Width="150"/>
                                 <DataGridTextColumn Header="借出人" Binding="{Binding BorrowerName}" Width="80"/>
-                                <DataGridTextColumn Header="状态" Binding="{Binding StatusStr}" Width="80"/>
+                                <DataGridTextColumn Header="状态" Binding="{Binding StatusStr}" Width="160"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
@@ -155,27 +190,30 @@
                     Style="{StaticResource LeftPanelToggleButtonStyle}"
                     Margin="4,0"/>
 
-            <!-- 右侧：归还明细编辑区 -->
-            <Border Grid.Column="2" Background="White" Padding="10">
+            <!-- 右侧：归还明细自动撑满剩余高度 + 审批交接紧凑区 -->
+            <Border Grid.Column="2" Background="White" Padding="10"
+                    VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <!-- 归还明细自动占满右侧剩余高度，使整栏铺满页面 -->
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <viewShared:ItemDetailsPanelHeader Grid.Row="0" DataContext="{Binding EditItemDetailsPanel}" Margin="0,0,0,8"/>
-                    <TextBlock Grid.Row="1" Text="{Binding EditHeader}" TextWrapping="Wrap" Foreground="#546E7A" Margin="0,0,0,8"/>
-                    <TextBlock Grid.Row="2" Text="{Binding AbnormalFlowHint}" TextWrapping="Wrap" Foreground="#C62828" Margin="0,0,0,8"
+                    <viewShared:ItemDetailsPanelHeader Grid.Row="0" DataContext="{Binding EditItemDetailsPanel}" Margin="0,0,0,6"/>
+                    <TextBlock Grid.Row="1" Text="{Binding EditHeader}" TextWrapping="Wrap" Foreground="#546E7A" Margin="0,0,0,6"/>
+                    <TextBlock Grid.Row="2" Text="{Binding AbnormalFlowHint}" TextWrapping="Wrap" Foreground="#C62828" FontSize="12" Margin="0,0,0,6"
                                Visibility="{Binding ShowAbnormalReturnPanel, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
                     <DataGrid Grid.Row="3" AutoGenerateColumns="False" CanUserAddRows="False" SelectionMode="Single"
-                              ItemsSource="{Binding EditItemDetailsPanel.PageItems}" HorizontalScrollBarVisibility="Auto">
+                              ItemsSource="{Binding EditItemDetailsPanel.PageItems}" HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
                         <DataGrid.Style>
-                            <Style TargetType="DataGrid">
+                            <Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding EditItemDetailsPanel.IsExpanded}" Value="False">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -213,11 +251,15 @@
                             <DataGridTextColumn Header="借出份数" Binding="{Binding ReturnCopyCount}" Width="72" IsReadOnly="True"/>
                             <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevelDisplay}" Width="56" IsReadOnly="True"/>
                             <DataGridTextColumn Header="硬盘/空盘" Binding="{Binding DiskInfo}" Width="90" IsReadOnly="True"/>
-                            <DataGridTemplateColumn Header="完好归还份数" Width="96">
+                            <DataGridTemplateColumn Header="完好归还份数" Width="108">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBox Text="{Binding IntactReturnCopyCount, UpdateSourceTrigger=PropertyChanged}"
-                                                 IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=Page}}"/>
+                                        <viewShared:IntegerSpinnerControl
+                                            Margin="2,1"
+                                            Value="{Binding IntactReturnCopyCount, UpdateSourceTrigger=PropertyChanged}"
+                                            Minimum="0"
+                                            Maximum="{Binding ReturnCopyCount}"
+                                            IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=Page}}"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -234,61 +276,228 @@
                     </DataGrid>
                     <viewShared:ItemDetailsPanelPaginationBar Grid.Row="4" DataContext="{Binding EditItemDetailsPanel}"/>
 
-                    <StackPanel Grid.Row="5" Margin="0,10,0,0">
-                        <Border Padding="10" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1" Margin="0,0,0,10"
-                                Visibility="{Binding ShowAbnormalReturnPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <StackPanel>
-                                <TextBlock Text="资料灭失情况" FontWeight="SemiBold" Foreground="#E65100" Margin="0,0,0,8"/>
-                                <TextBlock Text="灭失具体情况：" Margin="0,0,0,4"/>
-                                <TextBox Text="{Binding LossDescription, UpdateSourceTrigger=PropertyChanged}"
-                                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="112" MaxHeight="192"
-                                         VerticalScrollBarVisibility="Auto"
-                                         IsEnabled="{Binding IsEditable}"/>
-                                <ListView ItemsSource="{Binding AbnormalReportAttachments}" Height="72"
-                                          SelectedItem="{Binding SelectedAbnormalReportAttachment}"
-                                          Margin="0,8,0,0"
-                                          BorderBrush="#EEE" BorderThickness="1">
-                                    <ListView.View>
-                                        <GridView>
-                                            <GridViewColumn Header="文件名" Width="220" DisplayMemberBinding="{Binding FileName}"/>
-                                            <GridViewColumn Header="上传时间" Width="130" DisplayMemberBinding="{Binding UploadTime, StringFormat='yyyy-MM-dd HH:mm'}"/>
-                                            <GridViewColumn Header="上传人" Width="80" DisplayMemberBinding="{Binding UploaderName}"/>
-                                        </GridView>
-                                    </ListView.View>
-                                </ListView>
-                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <Button Content="打印灭失情况表" Command="{Binding PrintAbnormalReportCommand}" Width="112" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
-                                    <Button Content="上传灭失情况表扫描件" Command="{Binding UploadAbnormalReportCommand}" Width="144" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
-                                    <Button Content="查看" Command="{Binding ViewAbnormalReportCommand}" Width="72" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
-                                    <Button Content="删除" Command="{Binding DeleteAbnormalReportCommand}" Width="72" Style="{StaticResource FormInlineButtonStyle}"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
+                    <!-- 底部：灭失说明 / 审批交接 / 操作按钮（按内容高度；剩余空间由明细区自动占满） -->
+                    <ScrollViewer Grid.Row="5" Margin="0,8,0,0"
+                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                  VerticalAlignment="Bottom">
+                        <StackPanel>
+                            <Border Padding="8,6" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1" Margin="0,0,0,6"
+                                    Visibility="{Binding ShowAbnormalReturnPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Text="灭失说明" FontWeight="SemiBold" Foreground="#E65100"
+                                               VerticalAlignment="Top" Margin="0,4,10,0" Width="56"/>
+                                    <TextBox Text="{Binding LossDescription, UpdateSourceTrigger=PropertyChanged}"
+                                             AcceptsReturn="True" TextWrapping="Wrap" MinHeight="40" MaxHeight="72"
+                                             VerticalScrollBarVisibility="Auto"
+                                             IsEnabled="{Binding IsEditable}"
+                                             ToolTip="灭失具体情况将写入签批交接单"/>
+                                </DockPanel>
+                            </Border>
 
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Width="96" Height="32" Margin="0,0,10,0"
-                                    ToolTip="保存为草稿，暂不提交审批"
-                                    Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                            <Button Content="提交申请" Command="{Binding RegisterCommand}" Width="96" Height="32" Margin="0,0,10,0"
-                                    ToolTip="提交归还申请，进入审批流程"
-                                    Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                            <Button Content="审批通过" Command="{Binding ApproveCommand}" Width="96" Height="32" Margin="0,0,10,0"
-                                    ToolTip="审批通过归还申请，转入实物交接"
-                                    Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                            <Button Content="确认实物交接" Command="{Binding ConfirmHandoverCommand}" Width="112" Height="32" Margin="0,0,10,0"
-                                    ToolTip="确认资料实物已交回，转入办结入库"
-                                    Visibility="{Binding ShowHandoverActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                            <Button Content="打印回执" Command="{Binding PrintReceiptCommand}" Width="96" Height="32" Margin="0,0,10,0"
-                                    ToolTip="打印资料归还回执"
-                                    Visibility="{Binding ShowHandoverActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                            <Button Content="办结入库" Command="{Binding CompleteCommand}" Width="96" Height="32" Margin="0,0,10,0"
-                                    ToolTip="办结归还，冲销台账并归位入库（业务闭环）"
-                                    Visibility="{Binding ShowHandoverActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                            <Button Content="{Binding VoidActionText}" Command="{Binding VoidCommand}" Width="96" Height="32" Margin="0,0,10,0"
-                                    ToolTip="{Binding VoidActionToolTip}"/>
-                            <Button Content="取消" Command="{Binding CancelEditCommand}" Width="80" Height="32" ToolTip="取消编辑，关闭当前表单"/>
+                            <Border Background="#F1F8FF" BorderBrush="#90CAF9" BorderThickness="1" Padding="8,6" Margin="0,0,0,6"
+                                    Visibility="{Binding ShowApprovalEditorPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel>
+                                    <TextBlock Text="审批与交接" Style="{StaticResource ReturnApprovalSectionTitleStyle}" Margin="0,0,0,4"/>
+
+                                    <!-- 一、审批签字 + 审批通过 -->
+                                    <DockPanel Margin="0,0,0,4" LastChildFill="True">
+                                        <Button DockPanel.Dock="Right" Content="审批通过" Command="{Binding ApproveCommand}"
+                                                Width="88" Height="{StaticResource FormControlHeight}" Margin="8,0,0,0"
+                                                Style="{StaticResource FormInlineButtonStyle}"
+                                                ToolTip="{Binding ApproveHintText}"/>
+                                        <TextBlock Text="审批签字" Style="{StaticResource ReturnApprovalSectionTitleStyle}" Margin="0"
+                                                   VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding ApproveHintText}" Style="{StaticResource ReturnApprovalHintStyle}"
+                                               Visibility="{Binding CanApprove, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                                    <!-- 完好：仅部门负责人 + 意见横排（整组随 CanApprove 启停） -->
+                                    <StackPanel Visibility="{Binding ShowIntactApprovalSigner, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                IsEnabled="{Binding CanApprove}">
+                                        <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}">
+                                            <DockPanel LastChildFill="True">
+                                                <TextBlock DockPanel.Dock="Left" Text="部门负责人" Style="{StaticResource ReturnApprovalCompactStepTitleStyle}"/>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                                    <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                             Text="{Binding ReviewerName, UpdateSourceTrigger=PropertyChanged}"/>
+                                                    <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
+                                                    <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                                SelectedDate="{Binding ReviewerDate}"/>
+                                                    <TextBlock Text="意见" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
+                                                    <TextBox MinWidth="120" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                             Text="{Binding ApprovalOpinion, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </StackPanel>
+                                            </DockPanel>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- 灭失：四级双列均可编辑，整组随 CanApprove 启停 -->
+                                    <StackPanel Visibility="{Binding ShowLossApprovalSigners, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <TextBlock Text="灭失须借出时全部审核审批人签字" Foreground="#E65100" FontSize="11" Margin="0,0,0,4"/>
+                                        <Grid IsEnabled="{Binding CanApprove}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}">
+                                                <DockPanel LastChildFill="True">
+                                                    <TextBlock DockPanel.Dock="Left" Text="部门负责人" Style="{StaticResource ReturnApprovalCompactStepTitleStyle}"/>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                                        <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                                 Text="{Binding ReviewerName, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
+                                                        <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                                    SelectedDate="{Binding ReviewerDate}"/>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </Border>
+                                            <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}">
+                                                <DockPanel LastChildFill="True">
+                                                    <TextBlock DockPanel.Dock="Left" Text="资料室负责人" Style="{StaticResource ReturnApprovalCompactStepTitleStyle}"/>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                                        <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                                 Text="{Binding ApproverName, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
+                                                        <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                                    SelectedDate="{Binding ApproverDate}"/>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </Border>
+                                            <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}">
+                                                <DockPanel LastChildFill="True">
+                                                    <TextBlock DockPanel.Dock="Left" Text="生产科负责人" Style="{StaticResource ReturnApprovalCompactStepTitleStyle}"/>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                                        <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                                 Text="{Binding ProductionHeadName, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
+                                                        <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                                    SelectedDate="{Binding ProductionHeadDate}"/>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </Border>
+                                            <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}">
+                                                <DockPanel LastChildFill="True">
+                                                    <TextBlock DockPanel.Dock="Left" Text="生产副院长" Style="{StaticResource ReturnApprovalCompactStepTitleStyle}"/>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                                        <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                                 Text="{Binding VicePresidentName, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
+                                                        <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                                    SelectedDate="{Binding VicePresidentDate}"/>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </Border>
+                                        </Grid>
+                                        <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}" IsEnabled="{Binding CanApprove}">
+                                            <DockPanel LastChildFill="True">
+                                                <TextBlock DockPanel.Dock="Left" Text="审批意见" Style="{StaticResource ReturnApprovalCompactStepTitleStyle}"/>
+                                                <TextBox Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                         Text="{Binding ApprovalOpinion, UpdateSourceTrigger=PropertyChanged}"/>
+                                            </DockPanel>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- 二、实物交接 + 确认实物交接 -->
+                                    <DockPanel Margin="0,8,0,6" LastChildFill="True">
+                                        <Button DockPanel.Dock="Right" Content="确认实物交接" Command="{Binding ConfirmHandoverCommand}"
+                                                Width="104" Height="{StaticResource FormControlHeight}" Margin="8,0,0,0"
+                                                Style="{StaticResource FormInlineButtonStyle}"
+                                                ToolTip="{Binding ConfirmHandoverHintText}"/>
+                                        <TextBlock Text="实物交接" Style="{StaticResource ReturnApprovalSectionTitleStyle}" Margin="0"
+                                                   VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <Border Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3"
+                                            Padding="12,10" Margin="0,0,0,6"
+                                            IsEnabled="{Binding CanConfirmHandover}">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <StackPanel Style="{StaticResource ReturnHandoverFieldGroupStyle}">
+                                                <TextBlock Text="归还人" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="0,0,8,0"/>
+                                                <TextBox Width="100" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                         Text="{Binding HandoverApplicant, UpdateSourceTrigger=PropertyChanged}"/>
+                                            </StackPanel>
+                                            <StackPanel Style="{StaticResource ReturnHandoverFieldGroupStyle}">
+                                                <TextBlock Text="资料管理员" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="0,0,8,0"/>
+                                                <TextBox Width="100" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                         Text="{Binding HandoverAdmin, UpdateSourceTrigger=PropertyChanged}"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="交接日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="0,0,8,0"/>
+                                                <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                            SelectedDate="{Binding HandoverDate}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock Text="{Binding ConfirmHandoverHintText}" Style="{StaticResource ReturnApprovalHintStyle}"/>
+
+                                    <!-- 三、签批交接单 -->
+                                    <DockPanel Margin="0,6,0,6" LastChildFill="True">
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" Margin="12,0,0,0">
+                                            <Button Content="上传" Command="{Binding UploadSignedAttachmentCommand}" Width="64" Height="{StaticResource FormControlHeight}"
+                                                    Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"
+                                                    IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                            <Button Content="查看" Command="{Binding ViewSignedAttachmentCommand}" Width="56" Height="{StaticResource FormControlHeight}"
+                                                    Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
+                                            <Button Content="删除" Command="{Binding DeleteSignedAttachmentCommand}" Width="56" Height="{StaticResource FormControlHeight}"
+                                                    Style="{StaticResource FormInlineButtonStyle}"
+                                                    IsEnabled="{Binding CanDeleteSignedAttachment}"/>
+                                        </StackPanel>
+                                        <TextBlock Text="签批交接单" Style="{StaticResource ReturnApprovalSectionTitleStyle}" Margin="0"/>
+                                    </DockPanel>
+                                    <ListView ItemsSource="{Binding SignedAttachments}" Height="56"
+                                              SelectedItem="{Binding SelectedSignedAttachment}"
+                                              BorderBrush="#E2E8F0" BorderThickness="1">
+                                        <ListView.View>
+                                            <GridView>
+                                                <GridViewColumn Header="文件名" Width="220" DisplayMemberBinding="{Binding FileName}"/>
+                                                <GridViewColumn Header="上传时间" Width="130" DisplayMemberBinding="{Binding UploadTime, StringFormat='yyyy-MM-dd HH:mm'}"/>
+                                                <GridViewColumn Header="上传人" Width="80" DisplayMemberBinding="{Binding UploaderName}"/>
+                                            </GridView>
+                                        </ListView.View>
+                                    </ListView>
+                                    <TextBlock Text="{Binding UploadHintText}" Style="{StaticResource ReturnApprovalHintStyle}" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Padding="8,6" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1" Margin="0,0,0,6"
+                                    Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="{Binding WorkflowHintText}" TextWrapping="Wrap" Foreground="#E65100" FontSize="12"/>
+                            </Border>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                        Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                            ToolTip="保存为草稿，暂不提交审批"/>
+                                    <Button Content="提交申请" Command="{Binding RegisterCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                            ToolTip="提交归还申请，进入审批流程"/>
+                                    <Button Content="打印签批交接单" Command="{Binding PrintSignedHandoverCommand}" Width="128" Height="32" Margin="0,0,10,0"
+                                            ToolTip="打印签批交接单供线下签字"/>
+                                    <Button Content="撤回作废" Command="{Binding VoidCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                            ToolTip="{Binding VoidActionToolTip}"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Button Content="强制作废" Command="{Binding VoidCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                            ToolTip="{Binding VoidActionToolTip}"/>
+                                    <Button Content="打印交接单" Command="{Binding PrintHandoverSheetCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                            ToolTip="打印资料归还交接单"/>
+                                    <Button Content="确认办结" Command="{Binding CompleteCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                            ToolTip="确认办结，冲销台账并归位入库"/>
+                                </StackPanel>
+                                <Button Content="关闭" Command="{Binding CancelEditCommand}" Width="80" Height="32" ToolTip="关闭当前表单"/>
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
+                    </ScrollViewer>
                 </Grid>
             </Border>
         </Grid>

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.Shared;
 
 namespace DocMgr.ViewModels.HardDiskMedia
 {
@@ -12,16 +13,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private static readonly FontFamily LabelFont = new("SimHei");
         private static readonly FontFamily BodyFont = new("SimSun");
 
-        private const double PageWidth = 793.6;
-        private const double PageHeight = 1122.5;
-        private const double PagePaddingHorizontal = 56;
-        private const double PagePaddingTop = 36;
-        private const double PagePaddingBottom = 32;
         private const double TitleTopSpacerHeight = 20;
         private const double StandardRowHeight = 32;
-        private const double DetailRowHeight = 96;
         private const double HandwritingRowHeight = 112;
         private const double ApprovalRowHeight = 32;
+        private const double TitleBlockHeight = 48;
+        private const double HeaderInfoHeight = 28;
         private const double CellPadding = 4;
         private const double BodyFontSize = 12;
         private const string BlankSignatureDateText = "______年___月___日";
@@ -35,11 +32,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 FontFamily = BodyFont,
                 FontSize = BodyFontSize,
                 LineHeight = 18,
-                PageWidth = PageWidth,
-                PageHeight = PageHeight,
-                PagePadding = new Thickness(PagePaddingHorizontal, PagePaddingTop, PagePaddingHorizontal, PagePaddingBottom),
                 ColumnWidth = double.PositiveInfinity
             };
+            PrintPageLayoutSupport.ApplyA4MediumMargins(document);
 
             document.Blocks.Add(new Paragraph(new Run(" "))
             {
@@ -61,13 +56,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 $"登记单编号：{data.ApplicationNo}",
                 $"归还日期：{data.ReturnDateText}"));
 
+            double detailRowHeight = CalculateDetailRowHeight();
+
             var rowGroup = new TableRowGroup();
             rowGroup.Rows.Add(CreateDoubleRow("申请部门", data.ApplicantDept, "归还人", data.ApplicantName));
             rowGroup.Rows.Add(CreateDoubleRow("源借出单号", data.SourceApplicationNo, "登记类型", data.ApplicationType));
             rowGroup.Rows.Add(CreateDoubleRow("硬盘编号", data.DiskCode, "序列号", data.SerialNumber));
             rowGroup.Rows.Add(CreateSingleRow("借出位置", data.CurrentLocation));
             rowGroup.Rows.Add(CreateSingleRow("登记类型", data.InspectionResult));
-            rowGroup.Rows.Add(CreateSingleRow("具体情况说明", EmptyAsPlaceholder(data.Reason), DetailRowHeight, verticalTop: true));
+            rowGroup.Rows.Add(CreateSingleRow("具体情况说明", EmptyAsPlaceholder(data.Reason), detailRowHeight, verticalTop: true));
             rowGroup.Rows.Add(CreateSingleRow("具体情况（手写补充）", string.Empty, HandwritingRowHeight, verticalTop: true));
             rowGroup.Rows.Add(CreateSignatureRow("归还人签字", BuildReturnerSignatureLine(data)));
             rowGroup.Rows.Add(CreateSignatureRow(
@@ -81,6 +78,26 @@ namespace DocMgr.ViewModels.HardDiskMedia
             document.Blocks.Add(CreateFooterParagraph());
 
             return document;
+        }
+
+        private static double CalculateDetailRowHeight()
+        {
+            // 固定行：3 双列/单列信息行(5) + 手写补充 + 4 签字行；另计顶部留白。
+            double fixedTableHeight =
+                PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 5
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(HandwritingRowHeight, CellPadding)
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(ApprovalRowHeight, CellPadding) * 4;
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 2, lineHeightDip: 16, topMarginDip: 8);
+            double reservedHeight =
+                TitleTopSpacerHeight
+                + TitleBlockHeight
+                + HeaderInfoHeight
+                + footerHeight
+                + fixedTableHeight;
+            return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
+                reservedHeight,
+                StandardRowHeight * 3,
+                CellPadding);
         }
 
         private static string BuildReturnerSignatureLine(HardDiskMediaAbnormalReturnReportPrintData data)

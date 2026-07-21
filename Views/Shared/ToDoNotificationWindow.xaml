@@ -26,16 +26,68 @@
                    Foreground="#333"
                    Margin="0,0,120,10"/>
 
-        <ListBox Grid.Row="1" ItemsSource="{Binding Items}">
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding Items}"
+                 BorderThickness="0"
+                 Background="Transparent"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Focusable" Value="False"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <Border Background="{TemplateBinding Background}"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListBox.ItemContainerStyle>
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <Button Command="{Binding DataContext.OpenItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                             CommandParameter="{Binding}"
                             HorizontalContentAlignment="Stretch"
-                            Padding="0"
-                            Cursor="Hand">
+                            HorizontalAlignment="Stretch"
+                            Padding="8,6"
+                            Cursor="Hand"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="#1F2937">
                         <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource ButtonNormalStyle}">
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="ItemBorder"
+                                                    Background="{TemplateBinding Background}"
+                                                    BorderBrush="#E5E7EB"
+                                                    BorderThickness="0,0,0,1"
+                                                    Padding="{TemplateBinding Padding}"
+                                                    CornerRadius="4">
+                                                <ContentPresenter HorizontalAlignment="Stretch"
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="ItemBorder" Property="Background" Value="#EFF6FF"/>
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="ItemBorder" Property="Background" Value="#DBEAFE"/>
+                                                </Trigger>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter TargetName="ItemBorder" Property="Opacity" Value="0.55"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
                                 <Setter Property="IsEnabled" Value="True"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding DataContext.IsBusy, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
@@ -45,13 +97,17 @@
                             </Style>
                         </Button.Style>
 
-                        <Border BorderBrush="#EEE" BorderThickness="0,0,0,1" Padding="0,6">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding BizNo, StringFormat=单号：{0}}" Foreground="#666" Margin="0,2,0,0"/>
-                                <TextBlock Text="{Binding Stage, StringFormat=环节：{0}}" Foreground="#666"/>
-                            </StackPanel>
-                        </Border>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Title}"
+                                       FontWeight="SemiBold"
+                                       Foreground="#111827"
+                                       TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding BizNo, StringFormat=单号：{0}}"
+                                       Foreground="#4B5563"
+                                       Margin="0,2,0,0"/>
+                            <TextBlock Text="{Binding Stage, StringFormat=环节：{0}}"
+                                       Foreground="#4B5563"/>
+                        </StackPanel>
                     </Button>
                 </DataTemplate>
             </ListBox.ItemTemplate>

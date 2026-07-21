@@ -109,7 +109,8 @@ namespace DocMgr.Services.YearlyArchive
 
         public static IEnumerable<YearlyArchiveMaterialTransaction> BuildReturnCompletionTransactions(
             YearlyArchiveReturnRecord returnRecord,
-            YearlyArchiveOutboundRecord outboundRecord)
+            YearlyArchiveOutboundRecord outboundRecord,
+            IReadOnlyDictionary<int, string>? afterLifecycleByFactId = null)
         {
             DateTime operatedAt = returnRecord.CompletedAt ?? returnRecord.UpdatedAt;
             string operatorName = string.IsNullOrWhiteSpace(returnRecord.HandlerName)
@@ -119,8 +120,11 @@ namespace DocMgr.Services.YearlyArchive
             foreach (var item in returnRecord.Items)
             {
                 int lossCopyCount = ArchiveReturnDomainValues.ResolveLossCopyCount(item);
-                int intactCopyCount = ArchiveReturnDomainValues.ResolveIntactReturnCopyCount(item);
-                string afterLifecycle = FilingFactLifecycleStatus.InArchive;
+                string afterLifecycle = afterLifecycleByFactId != null
+                    && afterLifecycleByFactId.TryGetValue(item.FilingFactId, out string? resolved)
+                    && !string.IsNullOrWhiteSpace(resolved)
+                    ? resolved.Trim()
+                    : FilingFactLifecycleStatus.InArchive;
 
                 yield return new YearlyArchiveMaterialTransaction
                 {
@@ -135,7 +139,9 @@ namespace DocMgr.Services.YearlyArchive
                     BeforeLifecycleStatus = FilingFactLifecycleStatus.Borrowed,
                     AfterLifecycleStatus = afterLifecycle,
                     Summary = lossCopyCount > 0
-                        ? $"资料归还入库（含灭失）· 源出库 {returnRecord.SourceOutboundNo}"
+                        ? (string.Equals(afterLifecycle, FilingFactLifecycleStatus.Destroyed, StringComparison.Ordinal)
+                            ? $"资料归还灭失办结 · 源出库 {returnRecord.SourceOutboundNo}"
+                            : $"资料归还入库（含灭失）· 源出库 {returnRecord.SourceOutboundNo}")
                         : $"资料归还入库 · 源出库 {returnRecord.SourceOutboundNo}",
                     Remark = ArchiveReturnDomainValues.BuildReturnCopyCountSummary(item)
                         + (string.IsNullOrWhiteSpace(returnRecord.LossDescription) ? string.Empty : $"；{returnRecord.LossDescription.Trim()}"),
@@ -171,6 +177,7 @@ namespace DocMgr.Services.YearlyArchive
                 ? returnRecord.RegisteredByName
                 : returnRecord.HandlerName;
             int lossCopyCount = ArchiveReturnDomainValues.ResolveLossCopyCount(item);
+            int intactCopyCount = ArchiveReturnDomainValues.ResolveIntactReturnCopyCount(item);
 
             return new YearlyArchiveMaterialTransaction
             {
@@ -183,7 +190,9 @@ namespace DocMgr.Services.YearlyArchive
                     ? BuildReturnItemDedupKey(item.Id)
                     : $"Return:{returnRecord.ReturnNo}:Fact:{item.FilingFactId}",
                 BeforeLifecycleStatus = FilingFactLifecycleStatus.Borrowed,
-                AfterLifecycleStatus = FilingFactLifecycleStatus.InArchive,
+                AfterLifecycleStatus = lossCopyCount > 0 && intactCopyCount <= 0
+                    ? FilingFactLifecycleStatus.Destroyed
+                    : FilingFactLifecycleStatus.InArchive,
                 Summary = lossCopyCount > 0
                     ? $"资料归还入库（含灭失）· 源出库 {returnRecord.SourceOutboundNo}"
                     : $"资料归还入库 · 源出库 {returnRecord.SourceOutboundNo}",

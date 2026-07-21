@@ -18,6 +18,7 @@ namespace DocMgr.Services.YearlyArchive
         private readonly IHardDiskMediaRepository _hardDiskMediaRepository;
         private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly IBusinessRuleService _businessRuleService;
+        private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
         private readonly IArchiveMaterialTransactionWriter _materialTransactionWriter;
         private readonly IArchiveSimulatedBoxSlotSyncService _simulatedBoxSlotSyncService;
 
@@ -29,6 +30,7 @@ namespace DocMgr.Services.YearlyArchive
             IHardDiskMediaRepository hardDiskMediaRepository,
             IArchiveRegisterService archiveRegisterService,
             IBusinessRuleService businessRuleService,
+            IBusinessLogicSettingsService businessLogicSettingsService,
             IArchiveMaterialTransactionWriter materialTransactionWriter,
             IArchiveSimulatedBoxSlotSyncService simulatedBoxSlotSyncService)
         {
@@ -39,6 +41,7 @@ namespace DocMgr.Services.YearlyArchive
             _hardDiskMediaRepository = hardDiskMediaRepository;
             _archiveRegisterService = archiveRegisterService;
             _businessRuleService = businessRuleService;
+            _businessLogicSettingsService = businessLogicSettingsService;
             _materialTransactionWriter = materialTransactionWriter;
             _simulatedBoxSlotSyncService = simulatedBoxSlotSyncService;
         }
@@ -281,7 +284,10 @@ namespace DocMgr.Services.YearlyArchive
             return ArchiveReturnFlowResult.Ok($"草稿已保存，当前状态：{record.StatusStr}。", recordId);
         }
 
-        public async Task<ArchiveReturnFlowResult> ApproveReturnFlowAsync(int recordId, User admin)
+        public async Task<ArchiveReturnFlowResult> ApproveReturnFlowAsync(
+            int recordId,
+            User admin,
+            ArchiveReturnApprovalInput? approvalInput = null)
         {
             ArgumentNullException.ThrowIfNull(admin);
 
@@ -301,16 +307,63 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnFlowResult.Fail("只有“已提交-待审批”的归还申请可审批通过。");
             }
 
+            DateTime now = DateTime.Now;
+            var input = approvalInput ?? new ArchiveReturnApprovalInput();
+
+            if (string.IsNullOrWhiteSpace(input.ReviewerName))
+            {
+                return ArchiveReturnFlowResult.Fail("请填写部门负责人。");
+            }
+
+            bool hasLoss = ArchiveReturnDomainValues.HasAbnormalReturnItems(record.Items);
+            if (hasLoss && string.IsNullOrWhiteSpace(input.ApproverName))
+            {
+                return ArchiveReturnFlowResult.Fail("存在灭失时请填写资料室负责人。");
+            }
+
+            if (hasLoss && string.IsNullOrWhiteSpace(input.ProductionHeadName))
+            {
+                return ArchiveReturnFlowResult.Fail("存在灭失时请填写生产科负责人。");
+            }
+
+            if (hasLoss && string.IsNullOrWhiteSpace(input.VicePresidentName))
+            {
+                return ArchiveReturnFlowResult.Fail("存在灭失时请填写生产副院长。");
+            }
+
             record.MarkAsApproved();
-            record.UpdatedAt = DateTime.Now;
+            record.ReviewerName = input.ReviewerName.Trim();
+            record.ReviewerDate = input.ReviewerDate ?? now;
+            // 完好归还不录资料室负责人及其他审批人；灭失时录借出时全部四级审核审批人。
+            record.ApprovedBy = hasLoss
+                ? (input.ApproverName?.Trim() ?? string.Empty)
+                : string.Empty;
+            record.ApprovedAt = hasLoss
+                ? (input.ApproverDate ?? now)
+                : input.ReviewerDate ?? now;
+            record.ProductionHead = hasLoss
+                ? (input.ProductionHeadName?.Trim() ?? string.Empty)
+                : string.Empty;
+            record.ProductionHeadDate = hasLoss ? input.ProductionHeadDate ?? now : null;
+            record.VicePresident = hasLoss
+                ? (input.VicePresidentName?.Trim() ?? string.Empty)
+                : string.Empty;
+            record.VicePresidentDate = hasLoss ? input.VicePresidentDate ?? now : null;
+            record.ApprovalOpinion = string.IsNullOrWhiteSpace(input.ApprovalOpinion)
+                ? "同意"
+                : input.ApprovalOpinion.Trim();
+            record.UpdatedAt = now;
             await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
 
             return ArchiveReturnFlowResult.Ok(
-                $"审批通过，当前状态：{record.StatusStr}。请办理实物交接。",
+                $"审批信息录入成功。当前状态：{record.StatusStr}。请办理实物交接。",
                 record.Id);
         }
 
-        public async Task<ArchiveReturnFlowResult> ConfirmHandoverFlowAsync(int recordId, User admin)
+        public async Task<ArchiveReturnFlowResult> ConfirmHandoverFlowAsync(
+            int recordId,
+            User admin,
+            ArchiveReturnApprovalInput? handoverInput = null)
         {
             ArgumentNullException.ThrowIfNull(admin);
 
@@ -336,12 +389,35 @@ namespace DocMgr.Services.YearlyArchive
                 return abnormalGate;
             }
 
+            var input = handoverInput ?? new ArchiveReturnApprovalInput();
+            string handoverAdmin = input.HandoverAdmin?.Trim() ?? string.Empty;
+            string handoverApplicant = input.HandoverApplicant?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(handoverAdmin))
+            {
+                return ArchiveReturnFlowResult.Fail("请填写办理交接人（资料管理员）。");
+            }
+
+            if (!input.HandoverDate.HasValue)
+            {
+                return ArchiveReturnFlowResult.Fail("请填写办理交接日期。");
+            }
+
+            if (string.IsNullOrWhiteSpace(handoverApplicant))
+            {
+                handoverApplicant = record.BorrowerName?.Trim()
+                    ?? record.RegisteredByName?.Trim()
+                    ?? string.Empty;
+            }
+
+            record.HandoverApplicant = handoverApplicant;
+            record.HandoverAdmin = handoverAdmin;
+            record.HandoverDate = input.HandoverDate.Value;
             record.MarkAsSignedUploaded();
             record.UpdatedAt = DateTime.Now;
             await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
 
             return ArchiveReturnFlowResult.Ok(
-                $"实物交接已确认，当前状态：{record.StatusStr}。可打印回执并办结入库。",
+                $"实物交接确认成功。当前状态：{record.StatusStr}。请上传签批交接单。",
                 record.Id);
         }
 
@@ -362,7 +438,17 @@ namespace DocMgr.Services.YearlyArchive
 
             if (record.Status != YearlyArchiveReturnRecord.SignedUploaded)
             {
-                return ArchiveReturnFlowResult.Fail("只有“已实物交接-待上传签批交接单”状态的归还单可办结入库。");
+                return ArchiveReturnFlowResult.Fail("请先完成实物交接并上传签批交接单后再确认办结。");
+            }
+
+            if (!record.SignedAttachmentUploaded)
+            {
+                return ArchiveReturnFlowResult.Fail("请先上传签批交接单后再确认办结。");
+            }
+
+            if (record.PrintCount <= 0)
+            {
+                return ArchiveReturnFlowResult.Fail("请先打印交接单后再确认办结。");
             }
 
             var abnormalGate = await ValidateAbnormalReturnGateAsync(record);
@@ -386,8 +472,20 @@ namespace DocMgr.Services.YearlyArchive
                 var lifecycleUpdates = new List<FilingFactLifecycleUpdate>();
                 var factIds = record.Items.Select(item => item.FilingFactId).Where(id => id > 0).Distinct().ToList();
                 var factsById = await _outboundRepository.GetFilingFactsByIdsForUpdateAsync(factIds);
+                var copySnapshotsBeforeReturn = await _outboundRepository
+                    .GetSimulatedFilingFactCopyCountSnapshotsByFilingFactIdsAsync(factIds);
 
                 await ApplyReturnContainerRehomeAsync(record, factsById, operatorName, now);
+
+                var returnEffectsByFactId = record.Items
+                    .Where(item => item.FilingFactId > 0)
+                    .GroupBy(item => item.FilingFactId)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => (
+                            Borrowed: group.Sum(ArchiveReturnDomainValues.ResolveBorrowedCopyCount),
+                            Intact: group.Sum(ArchiveReturnDomainValues.ResolveIntactReturnCopyCount),
+                            Loss: group.Sum(ArchiveReturnDomainValues.ResolveLossCopyCount)));
 
                 foreach (var item in record.Items)
                 {
@@ -399,8 +497,6 @@ namespace DocMgr.Services.YearlyArchive
 
                     int intactCopyCount = ArchiveReturnDomainValues.ResolveIntactReturnCopyCount(item);
                     int lossCopyCount = ArchiveReturnDomainValues.ResolveLossCopyCount(item);
-
-                    lifecycleUpdates.Add(BuildReturnLifecycleUpdate(record, item, intactCopyCount, lossCopyCount));
 
                     outboundItem.ReservationStatus = ArchiveOutboundDomainValues.SyncEntryPhaseReturned;
                     outboundItem.ContainerStatusHint = ArchiveOutboundDomainValues.ContainerStatusHintNone;
@@ -417,6 +513,24 @@ namespace DocMgr.Services.YearlyArchive
                     });
                 }
 
+                foreach (var pair in returnEffectsByFactId)
+                {
+                    if (!factsById.TryGetValue(pair.Key, out var fact))
+                    {
+                        continue;
+                    }
+
+                    var snapshot = copySnapshotsBeforeReturn.GetValueOrDefault(pair.Key)
+                        ?? new SimulatedFilingFactCopyCountSnapshot();
+                    lifecycleUpdates.Add(BuildReturnLifecycleUpdate(
+                        record,
+                        fact,
+                        snapshot,
+                        pair.Value.Borrowed,
+                        pair.Value.Intact,
+                        pair.Value.Loss));
+                }
+
                 await _filingFactRepository.UpdateFilingFactLifecyclesAsync(lifecycleUpdates, operatorName, "资料归还");
 
                 outbound.UpdatedAt = now;
@@ -425,19 +539,31 @@ namespace DocMgr.Services.YearlyArchive
 
                 await _returnRepository.SaveChangesAsync();
 
-                await SyncSimulatedArchiveBoxSlotsAfterReturnAsync(record, factsById, now);
+                var emptiedBoxes = await SyncSimulatedArchiveBoxSlotsAfterReturnAsync(record, factsById, now);
+                var lossBoxIds = ResolveLossRelatedSimulatedBoxIds(record, factsById);
+                var emptiedByLoss = emptiedBoxes
+                    .Where(box => lossBoxIds.Contains(box.BoxId))
+                    .ToList();
 
-                await _materialTransactionWriter.AppendReturnCompletionTransactionsAsync(record, outbound);
+                var afterLifecycleByFactId = lifecycleUpdates.ToDictionary(
+                    update => update.FilingFactId,
+                    update => update.LifecycleStatus);
+                await _materialTransactionWriter.AppendReturnCompletionTransactionsAsync(
+                    record,
+                    outbound,
+                    afterLifecycleByFactId);
                 await _returnRepository.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                return ArchiveReturnFlowResult.Ok(
+                    BuildCompleteSuccessMessage(record, emptiedByLoss),
+                    record.Id);
             }
             catch (InvalidOperationException ex)
             {
                 await transaction.RollbackAsync();
                 return ArchiveReturnFlowResult.Fail(ex.Message);
             }
-
-            return ArchiveReturnFlowResult.Ok($"资料归还办结完成，单据 {record.ReturnNo} 已入库。", record.Id);
         }
 
         public async Task<ArchiveReturnFlowResult> VoidReturnFlowAsync(int recordId, string? reason, User user)
@@ -469,16 +595,29 @@ namespace DocMgr.Services.YearlyArchive
 
             if (isRoomAdmin)
             {
+                if (record.Status is YearlyArchiveReturnRecord.Approved
+                    or YearlyArchiveReturnRecord.SignedUploaded)
+                {
+                    return ArchiveReturnFlowResult.Fail("当前归还单已录入审批信息或已进入交接环节，不允许强制撤回作废。");
+                }
+
                 if (record.Status is not (
                         YearlyArchiveReturnRecord.Draft
-                        or YearlyArchiveReturnRecord.Submitted
-                        or YearlyArchiveReturnRecord.Approved
-                        or YearlyArchiveReturnRecord.SignedUploaded))
+                        or YearlyArchiveReturnRecord.Submitted))
                 {
                     return ArchiveReturnFlowResult.Fail("该归还单当前状态不可强制作废。");
                 }
 
-                record.MarkAsForceVoided(reason);
+                DateTime applyTime = record.SubmittedAt ?? record.RegisteredAt ?? record.CreatedAt;
+                string settingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
+                if (!_businessLogicSettingsService.IsEligibleForAdminForceVoid(applyTime, settingCode))
+                {
+                    return ArchiveReturnFlowResult.Fail(
+                        _businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
+                }
+
+                record.MarkAsForceVoided(
+                    string.IsNullOrWhiteSpace(reason) ? "资料室管理员强制撤回作废" : reason);
                 record.UpdatedAt = DateTime.Now;
                 await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
                 return ArchiveReturnFlowResult.Ok($"归还单 {record.ReturnNo} 已强制作废。", record.Id);
@@ -486,7 +625,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (record.Status is not (YearlyArchiveReturnRecord.Draft or YearlyArchiveReturnRecord.Submitted))
             {
-                return ArchiveReturnFlowResult.Fail("审批后的归还单仅资料室管理员可强制作废。");
+                return ArchiveReturnFlowResult.Fail("审批后的归还单不可由申请人撤回作废。");
             }
 
             record.MarkAsWithdrawnVoid(reason);
@@ -497,18 +636,74 @@ namespace DocMgr.Services.YearlyArchive
 
         private static FilingFactLifecycleUpdate BuildReturnLifecycleUpdate(
             YearlyArchiveReturnRecord record,
-            YearlyArchiveReturnItem item,
+            YearlyArchiveFilingFact fact,
+            SimulatedFilingFactCopyCountSnapshot snapshotBeforeReturn,
+            int borrowedCopyCount,
             int intactCopyCount,
             int lossCopyCount)
         {
+            int pendingAfter = Math.Max(0, snapshotBeforeReturn.PendingReturnCopyCount - Math.Max(0, borrowedCopyCount));
+            int lostAfter = Math.Max(0, snapshotBeforeReturn.LostCopyCount) + Math.Max(0, lossCopyCount);
+            int currentAfter = SimulatedInArchiveCopyCountSupport.ResolveCurrentInArchiveCopyCount(
+                fact.ContentCount,
+                pendingAfter,
+                snapshotBeforeReturn.NoReturnCopyCount,
+                lostAfter);
+
+            string copySummary = $"完好 {intactCopyCount} 份、灭失 {lossCopyCount} 份";
             string remark = lossCopyCount > 0
-                ? $"归还单 {record.ReturnNo} 完好 {intactCopyCount} 份、灭失 {lossCopyCount} 份"
-                : string.Empty;
+                ? $"归还单 {record.ReturnNo}：{copySummary}"
+                : $"归还单 {record.ReturnNo} 完好入库";
+
+            // 库内与待还均为 0，且本单含灭失：资料已无实物可管，标为已销毁。
+            if (lossCopyCount > 0 && currentAfter <= 0 && pendingAfter <= 0)
+            {
+                return new FilingFactLifecycleUpdate(
+                    fact.Id,
+                    FilingFactLifecycleStatus.Destroyed,
+                    FilingFactBorrowHintLevel.None,
+                    string.Empty,
+                    remark);
+            }
+
+            if (lossCopyCount > 0)
+            {
+                string hint = currentAfter > 0
+                    ? $"部分灭失后库内 {currentAfter} 份（{copySummary}）"
+                    : $"灭失 {lossCopyCount} 份，仍有待还 {pendingAfter} 份";
+                string status = pendingAfter > 0 && currentAfter <= 0
+                    ? FilingFactLifecycleStatus.Borrowed
+                    : FilingFactLifecycleStatus.InArchive;
+                string hintLevel = pendingAfter > 0 && currentAfter > 0
+                    ? FilingFactBorrowHintLevel.PartialAvailable
+                    : FilingFactBorrowHintLevel.None;
+                return new FilingFactLifecycleUpdate(
+                    fact.Id,
+                    status,
+                    hintLevel,
+                    hint,
+                    remark);
+            }
+
+            string intactStatus = pendingAfter > 0 && currentAfter <= 0
+                ? FilingFactLifecycleStatus.Borrowed
+                : FilingFactLifecycleStatus.InArchive;
+            string intactHintLevel = pendingAfter > 0 && currentAfter > 0
+                ? FilingFactBorrowHintLevel.PartialAvailable
+                : pendingAfter > 0
+                    ? FilingFactBorrowHintLevel.OriginalBorrowed
+                    : FilingFactBorrowHintLevel.None;
+            string intactHint = pendingAfter > 0 && currentAfter > 0
+                ? $"归还后库内 {currentAfter} 份，仍有待还 {pendingAfter} 份"
+                : pendingAfter > 0
+                    ? $"归还后仍有待还 {pendingAfter} 份"
+                    : string.Empty;
 
             return new FilingFactLifecycleUpdate(
-                item.FilingFactId,
-                FilingFactLifecycleStatus.InArchive,
-                FilingFactBorrowHintLevel.None,
+                fact.Id,
+                intactStatus,
+                intactHintLevel,
+                intactHint,
                 remark);
         }
 

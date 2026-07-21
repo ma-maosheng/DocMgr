@@ -7,6 +7,7 @@ using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 using DocMgr.Views.Shared;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -17,21 +18,27 @@ namespace DocMgr.ViewModels.YearlyArchive
     public sealed class ArchiveRegisterApplicationViewDialogViewModel : ViewModelBase
     {
         private readonly IArchiveRegisterService _archiveRegisterService;
+        private readonly IArchiveRegisterWordExportService _archiveRegisterWordExportService;
         private readonly IDialogService _dialogService;
         private YearlyArchiveRegisterRecord _record;
+        private string[] _uniformOpinions = [];
 
         public ArchiveRegisterApplicationViewDialogViewModel(
             IArchiveRegisterService archiveRegisterService,
+            IArchiveRegisterWordExportService archiveRegisterWordExportService,
             IDialogService dialogService,
             YearlyArchiveRegisterRecord record)
         {
             ArgumentNullException.ThrowIfNull(archiveRegisterService);
+            ArgumentNullException.ThrowIfNull(archiveRegisterWordExportService);
             ArgumentNullException.ThrowIfNull(dialogService);
             ArgumentNullException.ThrowIfNull(record);
 
             _archiveRegisterService = archiveRegisterService;
+            _archiveRegisterWordExportService = archiveRegisterWordExportService;
             _dialogService = dialogService;
             _record = record;
+            RefreshUniformOpinions();
 
             ViewAttachmentCommand = new RelayCommand(async attachment => await ViewAttachmentAsync(attachment as SystemAttachment), attachment => attachment is SystemAttachment);
             PrintCommand = new RelayCommand(_ => Print(), _ => CanPrint);
@@ -59,16 +66,16 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ApplicantDept => EmptyAsPlaceholder(_record.ApplicantDept);
         public string ApplicantDateDisplay => FormatDate(_record.ApplicantDate);
 
-        // 3. 审批流程
+        // 3. 审批流程（意见栏一致化：空意见不用「(无)」占位）
         public string DeptLeader => EmptyAsPlaceholder(_record.DeptLeader);
         public string DeptDateDisplay => FormatDate(_record.DeptDate);
-        public string ProdDeptOpinion => EmptyAsPlaceholder(_record.ProdDeptOpinion);
+        public string ProdDeptOpinion => _uniformOpinions[0];
         public string ProdLeader => EmptyAsPlaceholder(_record.ProdLeader);
         public string ProdDateDisplay => FormatDate(_record.ProdDate);
-        public string RndDeptOpinion => EmptyAsPlaceholder(_record.RndDeptOpinion);
+        public string RndDeptOpinion => _uniformOpinions[1];
         public string RndLeader => EmptyAsPlaceholder(_record.RndLeader);
         public string RndDateDisplay => FormatDate(_record.RndDate);
-        public string DeputyOpinion => EmptyAsPlaceholder(_record.DeputyOpinion);
+        public string DeputyOpinion => _uniformOpinions[2];
         public string DeputyLeader => EmptyAsPlaceholder(_record.DeputyLeader);
         public string DeputyDateDisplay => FormatDate(_record.DeputyDate);
         public string Deliverer => EmptyAsPlaceholder(_record.Deliverer);
@@ -106,7 +113,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             _record = loaded;
+            RefreshUniformOpinions();
             RaiseAllDisplayPropertiesChanged();
+        }
+
+        private void RefreshUniformOpinions()
+        {
+            _uniformOpinions = ApprovalOpinionUniformitySupport.NormalizeUniform(
+                _record.ProdDeptOpinion,
+                _record.RndDeptOpinion,
+                _record.DeputyOpinion);
         }
 
         private async Task LoadAttachmentsAsync()
@@ -159,7 +175,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 var data = _archiveRegisterService.BuildPrintData(_record, _record.SourceType, _record.MediaEntries);
                 var document = ArchiveRegisterPrintDocumentFactory.Create(data, isApplicationPrint: false);
-                var previewWindow = new PrintPreviewWindow(document)
+                var exportOptions = new PrintPreviewExportOptions
+                {
+                    ExportAsync = () => ExportArchiveRegisterWordAsync(data)
+                };
+                var previewWindow = new PrintPreviewWindow(document, exportOptions)
                 {
                     Owner = Application.Current.MainWindow
                 };
@@ -169,6 +189,38 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 _dialogService.ShowError("打印生成失败：" + ex.Message);
             }
+        }
+
+        private Task ExportArchiveRegisterWordAsync(ArchiveRegisterPrintData data)
+        {
+            try
+            {
+                string defaultName = string.IsNullOrWhiteSpace(data.FormNo)
+                    ? "年度资料入档申请审批单.docx"
+                    : $"{data.FormNo}.docx";
+                string? path = _dialogService.SaveFileDialog(
+                    "Word 文档|*.docx",
+                    "导出 Word",
+                    defaultName);
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    return Task.CompletedTask;
+                }
+
+                if (!path.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+                {
+                    path += ".docx";
+                }
+
+                _archiveRegisterWordExportService.ExportToFile(data, path);
+                _dialogService.ShowMessage($"Word 文档已保存：\n{path}");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError("导出 Word 失败：" + ex.Message);
+            }
+
+            return Task.CompletedTask;
         }
 
         private void RaiseAllDisplayPropertiesChanged()

@@ -9,7 +9,7 @@ using DocMgr.ViewModels.Base;
 namespace DocMgr.ViewModels.YearlyArchive
 {
     /// <summary>
-    /// 流转台账页面 ViewModel（容器 → 业务单 → 子流程/明细三级展示）。
+    /// 流转台账页面 ViewModel（容器 → 业务单 → 明细时间线三级展示）。
     /// </summary>
     public sealed class ArchiveCirculationLedgerViewModel : ViewModelBase
     {
@@ -30,7 +30,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private CirculationLedgerBusinessRow? _selectedBusiness;
         private string _summaryText = "共 0 条";
         private string _businessDetailHeader = "业务单";
-        private string _subItemDetailHeader = "子流程 / 明细";
+        private string _subItemDetailHeader = "明细时间线";
         private bool _isInitialized;
 
         private List<MaterialTransactionLedgerRow> _allCirculationRows = new();
@@ -101,7 +101,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public ObservableCollection<FilterOption> NodeCategoryOptions { get; } =
         [
-            new FilterOption { Label = "全部节点", Value = string.Empty },
+            new FilterOption { Label = "全部申请节点", Value = string.Empty },
             new FilterOption { Label = "流程预订", Value = OutboundProcessNodeCategoryFilter.Reservation },
             new FilterOption { Label = "流程撤销", Value = OutboundProcessNodeCategoryFilter.Cancelled },
             new FilterOption { Label = "办结同步", Value = OutboundProcessNodeCategoryFilter.Confirmed }
@@ -186,7 +186,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 BuildProcessNodeCriteria());
 
         public string ListingModeLimitedHint =>
-            "已选「含未流转在库容器」，但当前业务/单号/节点/人员筛选不适用于未流转容器；请清空后重新查询。";
+            "已选「含未流转在库容器」，但当前业务/单号/申请节点/人员筛选不适用于未流转容器；请清空后重新查询。";
 
         public ObservableCollection<CirculationContainerMasterRow> ContainerMasters { get; } = new();
 
@@ -393,8 +393,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             SubItemDetailHeader = SelectedBusiness == null
-                ? "子流程 / 明细"
-                : $"子流程 / 明细 · {SelectedBusiness.DisplayTitle}";
+                ? "明细时间线"
+                : $"明细时间线 · {SelectedBusiness.DisplayTitle}";
         }
 
         private ArchiveContainerKind CurrentContainerKind =>
@@ -432,9 +432,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             int currentNeverCount = IsSimulatedSubTab ? archiveBoxNeverCount : electronicNeverCount;
 
             SummaryText =
-                $"档案盒 {archiveBoxCount} 个 · 电子介质袋 {electronicCount} 个 · 实物流水 {_allCirculationRows.Count} 条 · 流程节点 {_allProcessNodeRows.Count} 条；当前 {currentLabel} {ContainerMasters.Count} 个"
+                $"档案盒 {archiveBoxCount} 个 · 电子介质袋 {electronicCount} 个 · 出库/归还 {_allCirculationRows.Count} 条 · 申请节点 {_allProcessNodeRows.Count} 条；当前 {currentLabel} {ContainerMasters.Count} 个"
                 + (currentNeverCount > 0 ? $"（含未流转 {currentNeverCount} 个）" : string.Empty)
-                + (ShowListingModeLimitedHint ? "；未流转容器需清空业务/单号/节点/人员筛选" : string.Empty);
+                + (ShowListingModeLimitedHint ? "；未流转容器需清空业务/单号/申请节点/人员筛选" : string.Empty);
         }
 
         private int CountMastersForKind(ArchiveContainerKind containerKind)
@@ -471,7 +471,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             SelectedContainer = null;
             SelectedBusiness = null;
             BusinessDetailHeader = "业务单";
-            SubItemDetailHeader = "子流程 / 明细";
+            SubItemDetailHeader = "明细时间线";
             SummaryText = "共 0 条";
             CommandManager.InvalidateRequerySuggested();
         }

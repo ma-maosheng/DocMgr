@@ -342,9 +342,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                         SelectedSide,
                         row,
                         column);
-                    _resolvedSequenceIndex = _resolvedCellCount + 1;
+                    _resolvedSequenceIndex = await _filingService.GetMinimumAvailableBoxSequenceInCellAsync(
+                        SelectedCabinet.Name,
+                        SelectedSide,
+                        row,
+                        column);
                     NewLocationPreview = $"{SelectedCabinet.Name}{SelectedSide}-{row}-{column}-{_resolvedSequenceIndex:D2}";
-                    CellOccupancyText = $"目标格内现有 {_resolvedCellCount} 盒，迁入后将排在第 {_resolvedSequenceIndex} 位";
+                    CellOccupancyText = $"目标格内现有 {_resolvedCellCount} 盒，迁入后将使用序号 {_resolvedSequenceIndex:D2}";
                 }
                 else
                 {
@@ -353,9 +357,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                         SelectedSide,
                         row,
                         column);
-                    _resolvedSequenceIndex = _resolvedCellCount + 1;
+                    _resolvedSequenceIndex = await _filingService.GetMinimumAvailableElectronicSequenceInCellAsync(
+                        SelectedCabinet.Name,
+                        SelectedSide,
+                        row,
+                        column);
                     NewLocationPreview = $"{SelectedCabinet.Name}{SelectedSide}-{row}-{column}-{_resolvedSequenceIndex:D2}";
-                    CellOccupancyText = $"目标格内现有 {_resolvedCellCount} 袋，迁入后将排在第 {_resolvedSequenceIndex} 位";
+                    CellOccupancyText = $"目标格内现有 {_resolvedCellCount} 袋，迁入后将使用序号 {_resolvedSequenceIndex:D2}";
                 }
 
                 IsLocationReady = true;

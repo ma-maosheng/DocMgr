@@ -457,7 +457,6 @@ namespace DocMgr.Views
                 ArchiveFilingSearchPoolPage => BtnArchiveFilingSearchPool,
                 ArchiveOutboundApplyPage => BtnArchiveOutboundApply,
                 ArchiveOutboundApprovalPage => BtnArchiveOutboundApproval,
-                ArchiveOutboundHandoverPage => BtnArchiveOutboundHandover,
                 ArchiveReturnWorkbenchPage page => ResolveArchiveReturnNavButton(page),
                 ArchiveCirculationLedgerPage => BtnArchiveCirculationLedger,
                 TopoMapPage => BtnHistMap,
@@ -503,12 +502,9 @@ namespace DocMgr.Views
         }
 
         private Button ResolveArchiveReturnNavButton(ArchiveReturnWorkbenchPage page) =>
-            page.WorkspaceMode switch
-            {
-                ArchiveReturnWorkspaceMode.Application => BtnArchiveReturnApply,
-                ArchiveReturnWorkspaceMode.Approval => BtnArchiveReturnApproval,
-                _ => BtnArchiveReturnHandover
-            };
+            page.WorkspaceMode == ArchiveReturnWorkspaceMode.Application
+                ? BtnArchiveReturnApply
+                : BtnArchiveReturnApproval;
 
         private Button ResolveHardDiskReturnNavButton(HardDiskMediaReturnRegistrationPage page) =>
             page.WorkspaceMode == HardDiskReturnWorkspaceMode.Approval
@@ -581,14 +577,10 @@ namespace DocMgr.Views
                 ArchiveSimulatedRelocationPage => "年度资料档案化管理（资料迁档·模拟介质资料迁档）",
                 ArchiveElectronicRelocationPage => "年度资料档案化管理（资料迁档·电子介质资料迁档）",
                 ArchiveOutboundApplyPage => "年度资料档案化管理（资料流转·借出申请）",
-                ArchiveOutboundApprovalPage => "年度资料档案化管理（资料流转·申请审批）",
-                ArchiveOutboundHandoverPage => "年度资料档案化管理（资料流转·资料出库）",
-                ArchiveReturnWorkbenchPage page => page.WorkspaceMode switch
-                {
-                    ArchiveReturnWorkspaceMode.Application => "年度资料档案化管理（资料流转·归还申请）",
-                    ArchiveReturnWorkspaceMode.Approval => "年度资料档案化管理（资料流转·归还审批）",
-                    _ => "年度资料档案化管理（资料流转·资料归还）"
-                },
+                ArchiveOutboundApprovalPage => "年度资料档案化管理（资料流转·审批出库）",
+                ArchiveReturnWorkbenchPage page => page.WorkspaceMode == ArchiveReturnWorkspaceMode.Application
+                    ? "年度资料档案化管理（资料流转·归还申请）"
+                    : "年度资料档案化管理（资料流转·审批入库）",
                 ArchiveSearchPage => "年度资料档案化管理（资料检索·资料检索_方式1）",
                 ProjectSettingPage => "年度项目管理（项目信息设置）",
                 CabinetLayoutPage => "档案柜管理（档案柜登记）",
@@ -600,7 +592,7 @@ namespace DocMgr.Views
                 OpticalDiscMediumLedgerPage => "介质管理（光盘·流转台账）",
                 HardDiskMediaOutboundApplicationPage => "介质管理（硬盘·出库申请）",
                 HardDiskMediaReturnRegistrationPage page => page.WorkspaceMode == HardDiskReturnWorkspaceMode.Approval
-                    ? "介质管理（硬盘·归还审批）"
+                    ? "介质管理（硬盘·审批入库）"
                     : "介质管理（硬盘·归还申请）",
                 HardDiskMediaTransactionPage => "介质管理（硬盘·硬盘台账）",
                 HardDiskMediaApprovalPage => "介质管理（硬盘·出库审批）",
@@ -651,17 +643,11 @@ namespace DocMgr.Views
                 return Task.CompletedTask;
             }
 
-            if (item.BizType == "YearlyArchiveOutboundApproval")
+            if (item.BizType == "YearlyArchiveOutboundApproval"
+                || item.BizType == "YearlyArchiveOutboundHandover")
             {
-                TxtPageTitle.Text = "年度资料档案化管理（资料流转·申请审批）";
+                TxtPageTitle.Text = "年度资料档案化管理（资料流转·审批出库）";
                 MainContentFrame.Navigate(new ArchiveOutboundApprovalPage(item.BizId));
-                return Task.CompletedTask;
-            }
-
-            if (item.BizType == "YearlyArchiveOutboundHandover")
-            {
-                TxtPageTitle.Text = "年度资料档案化管理（资料流转·资料出库）";
-                MainContentFrame.Navigate(new ArchiveOutboundHandoverPage(item.BizId));
                 return Task.CompletedTask;
             }
 
@@ -673,13 +659,13 @@ namespace DocMgr.Views
 
             if (item.BizType == "YearlyArchiveReturn")
             {
-                NavigateToArchiveReturnPage(ArchiveReturnWorkspaceMode.Handover);
+                NavigateToArchiveReturnPage(ArchiveReturnWorkspaceMode.Approval);
                 return Task.CompletedTask;
             }
 
             if (item.BizType == "YearlyArchiveReturnRecord")
             {
-                NavigateToArchiveReturnPage(ArchiveReturnWorkspaceMode.Handover);
+                NavigateToArchiveReturnPage(ArchiveReturnWorkspaceMode.Approval);
                 return Task.CompletedTask;
             }
 
@@ -746,10 +732,8 @@ namespace DocMgr.Views
             SetNavButton(BtnArchiveFilingSearchPool, true);
             SetNavButton(BtnArchiveOutboundApply, canSubmitApplication);
             SetNavButton(BtnArchiveOutboundApproval, isArchiveAdmin);
-            SetNavButton(BtnArchiveOutboundHandover, isArchiveAdmin);
             SetNavButton(BtnArchiveReturnApply, canSubmitApplication);
             SetNavButton(BtnArchiveReturnApproval, isArchiveAdmin);
-            SetNavButton(BtnArchiveReturnHandover, isArchiveAdmin);
             SetNavButton(BtnArchiveSimulatedRelocation, isArchiveAdmin);
             SetNavButton(BtnArchiveElectronicRelocation, isArchiveAdmin);
             SetNavButton(BtnArchiveDispose, true);
@@ -1115,24 +1099,12 @@ namespace DocMgr.Views
         {
             if (!CanAccessArchiveRelocation())
             {
-                MessageBox.Show("仅资料室管理员可办理借出申请审批。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("仅资料室管理员可办理审批出库。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            TxtPageTitle.Text = "年度资料档案化管理（资料流转·申请审批）";
+            TxtPageTitle.Text = "年度资料档案化管理（资料流转·审批出库）";
             MainContentFrame.Navigate(new ArchiveOutboundApprovalPage());
-        }
-
-        private void BtnArchiveOutboundHandover_Click(object sender, RoutedEventArgs e)
-        {
-            if (!CanAccessArchiveRelocation())
-            {
-                MessageBox.Show("仅资料室管理员可办理资料出库。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            TxtPageTitle.Text = "年度资料档案化管理（资料流转·资料出库）";
-            MainContentFrame.Navigate(new ArchiveOutboundHandoverPage());
         }
 
         private void BtnArchiveReturnApply_Click(object sender, RoutedEventArgs e)
@@ -1144,32 +1116,24 @@ namespace DocMgr.Views
         {
             if (!CanAccessArchiveRelocation())
             {
-                MessageBox.Show("仅资料室管理员可办理归还审批。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("仅资料室管理员可办理归还审批入库。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             NavigateToArchiveReturnPage(ArchiveReturnWorkspaceMode.Approval);
         }
 
-        private void BtnArchiveReturnHandover_Click(object sender, RoutedEventArgs e)
-        {
-            if (!CanAccessArchiveRelocation())
-            {
-                MessageBox.Show("仅资料室管理员可办理资料归还入库。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            NavigateToArchiveReturnPage(ArchiveReturnWorkspaceMode.Handover);
-        }
-
         private void NavigateToArchiveReturnPage(ArchiveReturnWorkspaceMode mode)
         {
-            TxtPageTitle.Text = mode switch
+            // 旧 Handover 入口统一并入审批入库。
+            if (mode == ArchiveReturnWorkspaceMode.Handover)
             {
-                ArchiveReturnWorkspaceMode.Application => "年度资料档案化管理（资料流转·归还申请）",
-                ArchiveReturnWorkspaceMode.Approval => "年度资料档案化管理（资料流转·归还审批）",
-                _ => "年度资料档案化管理（资料流转·资料归还）"
-            };
+                mode = ArchiveReturnWorkspaceMode.Approval;
+            }
+
+            TxtPageTitle.Text = mode == ArchiveReturnWorkspaceMode.Application
+                ? "年度资料档案化管理（资料流转·归还申请）"
+                : "年度资料档案化管理（资料流转·审批入库）";
             MainContentFrame.Navigate(new ArchiveReturnWorkbenchPage(mode));
         }
 
@@ -1284,7 +1248,7 @@ namespace DocMgr.Views
         private void NavigateToHardDiskReturnPage(HardDiskReturnWorkspaceMode mode)
         {
             TxtPageTitle.Text = mode == HardDiskReturnWorkspaceMode.Approval
-                ? "介质管理（硬盘·归还审批）"
+                ? "介质管理（硬盘·审批入库）"
                 : "介质管理（硬盘·归还申请）";
             MainContentFrame.Navigate(new HardDiskMediaReturnRegistrationPage(mode));
         }

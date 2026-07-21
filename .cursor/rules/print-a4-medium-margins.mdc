@@ -1,0 +1,20 @@
+---
+description: 打印表单 A4 中等页边距、明细行撑满一页与导出 Word
+globs: **/*Print*.cs,**/*Printing*.cs,**/*WordExport*.cs
+---
+
+# 打印表单 A4 排版与导出
+
+凡系统打印表单（FlowDocument 预览/打印）及对应 Word 导出：
+
+1. 纸张固定为 **A4**。
+2. 页边距采用 Word「中等」预设：**上下 2.54cm、左右 1.91cm**。
+3. **一单一页**：内容偏少时增高明细类行；**「撑满一页」= 表单主体 + 表后说明同处一页**。
+4. **所有打印预览均提供「导出 Word」**：有专用导出（登记/出库审批单）优先用专用；否则用 `FlowDocumentWordExportSupport` 通用导出。
+5. 禁止在各单据工厂内再写一套独立页宽/页高/页边距或撑满算法。
+
+## 实现入口
+
+- 页边距/撑满：`PrintPageLayoutSupport`
+- 通用 Word 导出：`FlowDocumentWordExportSupport`（由 `PrintPreviewWindowViewModel` 默认调用）
+- 专用 Word 导出：通过 `PrintPreviewExportOptions.ExportAsync` 传入

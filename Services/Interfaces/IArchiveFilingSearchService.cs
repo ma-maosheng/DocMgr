@@ -90,7 +90,7 @@ namespace DocMgr.Services.Interfaces
             IReadOnlyList<int> filingFactIds);
 
         /// <summary>
-        /// 模拟介质：按立档事实返回在库份数信息（立档份数、提档份数、展示如 1/5）。
+        /// 模拟介质：按立档事实返回在库份数信息（立档/待还/不还/灭失/当前库内，展示如 2/5）。
         /// </summary>
         Task<IReadOnlyDictionary<int, SimulatedInArchiveCopyCountInfo>> GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(
             IReadOnlyCollection<int> filingFactIds);

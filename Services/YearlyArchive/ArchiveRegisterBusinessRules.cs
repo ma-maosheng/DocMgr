@@ -206,13 +206,14 @@ namespace DocMgr.Services.YearlyArchive
 
             target.DeptLeader = source.DeptLeader?.Trim() ?? string.Empty;
             target.DeptDate = source.DeptDate;
-            target.ProdDeptOpinion = source.ProdDeptOpinion?.Trim() ?? string.Empty;
+            // 登记审批 UI 为「仅签字、无需意见」；落库时统一清空意见，避免部分节点残留「同意」。
+            target.ProdDeptOpinion = string.Empty;
             target.ProdLeader = source.ProdLeader?.Trim() ?? string.Empty;
             target.ProdDate = source.ProdDate;
-            target.RndDeptOpinion = source.RndDeptOpinion?.Trim() ?? string.Empty;
+            target.RndDeptOpinion = string.Empty;
             target.RndLeader = source.RndLeader?.Trim() ?? string.Empty;
             target.RndDate = source.RndDate;
-            target.DeputyOpinion = source.DeputyOpinion?.Trim() ?? string.Empty;
+            target.DeputyOpinion = string.Empty;
             target.DeputyLeader = source.DeputyLeader?.Trim() ?? string.Empty;
             target.DeputyDate = source.DeputyDate;
             target.Deliverer = source.Deliverer?.Trim() ?? string.Empty;

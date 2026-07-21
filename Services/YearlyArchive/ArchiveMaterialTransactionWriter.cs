@@ -53,13 +53,14 @@ namespace DocMgr.Services.YearlyArchive
 
         public async Task AppendReturnCompletionTransactionsAsync(
             YearlyArchiveReturnRecord returnRecord,
-            YearlyArchiveOutboundRecord outboundRecord)
+            YearlyArchiveOutboundRecord outboundRecord,
+            IReadOnlyDictionary<int, string>? afterLifecycleByFactId = null)
         {
             ArgumentNullException.ThrowIfNull(returnRecord);
             ArgumentNullException.ThrowIfNull(outboundRecord);
 
             var candidates = ArchiveMaterialTransactionSupport
-                .BuildReturnCompletionTransactions(returnRecord, outboundRecord)
+                .BuildReturnCompletionTransactions(returnRecord, outboundRecord, afterLifecycleByFactId)
                 .ToList();
 
             await AppendIfNotExistsAsync(candidates);

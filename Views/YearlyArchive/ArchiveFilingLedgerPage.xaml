@@ -424,6 +424,7 @@
                         <DataGridTextColumn Header="容器编号" Binding="{Binding CurrentContainerCode, Mode=OneWay}" Width="125"/>
                         <DataGridTextColumn Header="当前位置" Binding="{Binding CurrentStorageLocation, Mode=OneWay}" Width="110"/>
                         <DataGridTextColumn Header="立档时间" Binding="{Binding FiledAtDisplay, Mode=OneWay}" Width="128"/>
+                        <DataGridTextColumn Header="份数" Binding="{Binding CopyCountStatusDisplay, Mode=OneWay}" Width="90"/>
                         <DataGridTextColumn Header="状态" Binding="{Binding LifecycleStatusDisplay, Mode=OneWay}" Width="68"/>
                         <DataGridTextColumn Header="副本" Binding="{Binding ArchiveCopyRoleDisplay, Mode=OneWay}" Width="56"/>
                         <DataGridTextColumn Header="提供单位" Binding="{Binding ProvideUnit, Mode=OneWay}" Width="100"/>
@@ -526,8 +527,12 @@
                                         <Run Text="{Binding ContentCount, Mode=OneWay}"/>
                                     </TextBlock>
                                 </StackPanel>
-
                                 <StackPanel Grid.Row="3" Grid.Column="1"
+                                            Visibility="{Binding IsSimulatedMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="库内/立档（灭失）"/>
+                                    <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding CopyCountStatusDisplay, Mode=OneWay}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="3" Grid.Column="2"
                                             Visibility="{Binding IsSimulatedMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <TextBlock Style="{StaticResource FieldLabelStyle}" Text="介质类型"/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding RegisterMediaType, Mode=OneWay}"/>

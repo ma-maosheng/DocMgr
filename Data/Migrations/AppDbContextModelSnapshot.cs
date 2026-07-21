@@ -2884,7 +2884,17 @@ namespace DocMgr.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ApprovalOpinion")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ApprovedBy")
+                        .IsRequired()
+                        .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("ArchiveYear")
@@ -2908,6 +2918,7 @@ namespace DocMgr.Data.Migrations
 
                     b.Property<string>("ForceVoidReason")
                         .IsRequired()
+                        .HasMaxLength(512)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("ForceVoidedAt")
@@ -2916,6 +2927,19 @@ namespace DocMgr.Data.Migrations
                     b.Property<string>("HandlerName")
                         .IsRequired()
                         .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HandoverAdmin")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HandoverApplicant")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("HandoverDate")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("LastPrintedAt")
@@ -2928,6 +2952,14 @@ namespace DocMgr.Data.Migrations
 
                     b.Property<int>("PrintCount")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProductionHead")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionHeadDate")
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("ProjectId")
                         .HasColumnType("INTEGER");
@@ -2971,6 +3003,25 @@ namespace DocMgr.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("ReviewerDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewerName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("SignedAttachmentUploaded")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("SignedAttachmentUploadedTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SignedAttachmentUploader")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("SignedUploadedAt")
                         .HasColumnType("TEXT");
 
@@ -2989,6 +3040,14 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VicePresident")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("VicePresidentDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("VoidReason")

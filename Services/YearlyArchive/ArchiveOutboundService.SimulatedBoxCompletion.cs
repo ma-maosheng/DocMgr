@@ -31,7 +31,7 @@ namespace DocMgr.Services.YearlyArchive
                 return;
             }
 
-            await _simulatedBoxSlotSyncService.SyncBoxesByIdsAsync(boxIds, operatedAt);
+            _ = await _simulatedBoxSlotSyncService.SyncBoxesByIdsAsync(boxIds, operatedAt);
         }
     }
 }

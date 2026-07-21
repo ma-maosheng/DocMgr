@@ -239,6 +239,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _selectedElectronicMediaForm = null;
                 OnPropertyChanged(nameof(SelectedElectronicMediaForm));
                 ResetElectronicFields();
+                if (IsNewBoxMode)
+                {
+                    await LoadSimulatedTargetLocationOptionsAsync().ConfigureAwait(true);
+                }
             }
             else
             {

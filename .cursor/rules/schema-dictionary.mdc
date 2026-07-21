@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-07-20T06:10:51Z
+> 生成时间（UTC）：2026-07-21T08:48:45Z
 
 ## 表索引
 
@@ -963,16 +963,26 @@ alwaysApply: true
 | 备注 | `Remark` | `String` | 否 |
 | 灭失具体情况 | `LossDescription` | `String` | 否 |
 | 办结管理员 | `HandlerName` | `String` | 否 |
+| 审核人 | `ReviewerName` | `String` | 否 |
+| 审核日期 | `ReviewerDate` | `DateTime?` | 否 |
+| 审批人 | `ApprovedBy` | `String` | 否 |
+| 审批意见 | `ApprovalOpinion` | `String` | 否 |
+| 办理交接人（归还人） | `HandoverApplicant` | `String` | 否 |
+| 办理交接人（资料管理员） | `HandoverAdmin` | `String` | 否 |
+| 办理交接日期 | `HandoverDate` | `DateTime?` | 否 |
+| 已上传签批交接单 | `SignedAttachmentUploaded` | `Boolean` | 否 |
+| 签批交接单上传人 | `SignedAttachmentUploader` | `String` | 否 |
+| 签批交接单上传时间 | `SignedAttachmentUploadedTime` | `DateTime?` | 否 |
 | 登记时间 | `RegisteredAt` | `DateTime?` | 否 |
-| 未映射字段 | `SubmittedAt` | `DateTime?` | 是 |
-| 未映射字段 | `ApprovedAt` | `DateTime?` | 是 |
-| 未映射字段 | `SignedUploadedAt` | `DateTime?` | 是 |
+| 提交时间 | `SubmittedAt` | `DateTime?` | 否 |
+| 审批时间 | `ApprovedAt` | `DateTime?` | 否 |
+| 实物交接时间 | `SignedUploadedAt` | `DateTime?` | 否 |
 | 办结时间 | `CompletedAt` | `DateTime?` | 否 |
-| 未映射字段 | `WithdrawnAt` | `DateTime?` | 是 |
+| 撤回时间 | `WithdrawnAt` | `DateTime?` | 否 |
 | 作废时间 | `VoidedAt` | `DateTime?` | 否 |
 | 作废原因 | `VoidReason` | `String` | 否 |
-| 未映射字段 | `ForceVoidReason` | `String` | 是 |
-| 未映射字段 | `ForceVoidedAt` | `DateTime?` | 是 |
+| 强制作废原因 | `ForceVoidReason` | `String` | 否 |
+| 强制作废时间 | `ForceVoidedAt` | `DateTime?` | 否 |
 | 打印次数 | `PrintCount` | `Int32` | 否 |
 | 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |

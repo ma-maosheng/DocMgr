@@ -83,7 +83,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public HardDiskReturnWorkspaceMode WorkspaceMode => _workspaceMode;
 
         public string PageTitle => _workspaceMode == HardDiskReturnWorkspaceMode.Approval
-            ? "硬盘归还审批"
+            ? "硬盘审批入库"
             : "硬盘归还申请";
 
         public string PageSubtitle => _workspaceMode == HardDiskReturnWorkspaceMode.Approval

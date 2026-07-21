@@ -215,9 +215,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void ApplyDefaultCabinetSelectionIfNeeded()
         {
-            if (SelectedCabinet == null && Cabinets.Count > 0)
+            if (IsSimulatedTrack && IsNewBoxMode && SimulatedTargetLocationOptions.Count == 0)
             {
-                SelectedCabinet = Cabinets[0];
+                _ = LoadSimulatedTargetLocationOptionsAsync();
             }
 
             if (IsElectronicTrack
@@ -433,15 +433,23 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
+                string cabinetName = SelectedCabinet?.Name ?? string.Empty;
+                int boxSequence = await _filingService.GetMinimumAvailableBoxSequenceInCellAsync(
+                    cabinetName,
+                    SelectedSide,
+                    row,
+                    col);
+                string boxLocationCode = $"{cabinetName}{SelectedSide}-{row}-{col}-{boxSequence:D2}";
+
                 var newBox = new YearlyArchiveBox
                 {
                     ArchiveSequenceNo = ArchiveSequenceNo.Trim(),
-                    BoxLocationCode = PhysicalCodeResult,
-                    CabinetName = SelectedCabinet?.Name ?? string.Empty,
+                    BoxLocationCode = boxLocationCode,
+                    CabinetName = cabinetName,
                     Side = SelectedSide,
                     Row = row,
                     Column = col,
-                    BoxIndex = _currentCellBoxCount + 1,
+                    BoxIndex = boxSequence,
                     ProjectName = TargetProject,
                     Year = TargetYear,
                     Specs = SelectedSpec,
@@ -518,7 +526,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 try
                 {
-                    var request = BuildElectronicSubmissionRequest(selectedMediaItemIds, null);
+                    var request = await BuildElectronicSubmissionRequestAsync(selectedMediaItemIds, null);
 
                     var preview = await _filingService.PreviewNewElectronicArchiveUnitAsync(request, _userContextService.CurrentUser);
                     ShowElectronicArchivePreviewDialog(preview);
@@ -551,7 +559,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                var request = BuildElectronicSubmissionRequest(selectedMediaItemIds, SelectedExistingElectronicUnit?.Id);
+                var request = await BuildElectronicSubmissionRequestAsync(selectedMediaItemIds, SelectedExistingElectronicUnit?.Id);
 
                 var preview = await _filingService.PreviewAppendElectronicArchiveUnitAsync(request, _userContextService.CurrentUser);
                 ShowElectronicArchivePreviewDialog(preview);
@@ -617,7 +625,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 try
                 {
-                    var request = BuildElectronicSubmissionRequest(selectedMediaItemIds, null);
+                    var request = await BuildElectronicSubmissionRequestAsync(selectedMediaItemIds, null);
                     var result = await _filingService.PreviewNewElectronicArchiveUnitAsync(request, _userContextService.CurrentUser);
                     ShowElectronicArchivePreviewDialog(result);
                 }
@@ -641,7 +649,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                var request = BuildElectronicSubmissionRequest(selectedMediaItemIds, SelectedExistingElectronicUnit.Id);
+                var request = await BuildElectronicSubmissionRequestAsync(selectedMediaItemIds, SelectedExistingElectronicUnit.Id);
                 var result = await _filingService.PreviewAppendElectronicArchiveUnitAsync(request, _userContextService.CurrentUser);
                 ShowElectronicArchivePreviewDialog(result);
             }
@@ -655,7 +663,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        private ElectronicArchiveSubmissionRequest BuildElectronicSubmissionRequest(IReadOnlyList<int> mediaItemIds, int? existingUnitId)
+        private async Task<ElectronicArchiveSubmissionRequest> BuildElectronicSubmissionRequestAsync(
+            IReadOnlyList<int> mediaItemIds,
+            int? existingUnitId)
         {
             EnsureBorrowedHardDiskLinkedMediumCodesBeforeSubmit();
 
@@ -669,6 +679,29 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             var filingPaths = BuildFilingStoragePathByMediaItemId();
+            string storageLocation = ElectronicStorageLocation.Trim();
+            if (IsNewBoxMode
+                && existingUnitId is null or <= 0
+                && SelectedElectronicCabinet != null
+                && !string.IsNullOrWhiteSpace(SelectedElectronicSide)
+                && int.TryParse(SelectedElectronicRow, out int electronicRow)
+                && int.TryParse(SelectedElectronicColumn, out int electronicColumn))
+            {
+                // 提交前重新解析最小可用序号，避免预览陈旧导致撞号。
+                int sequence = await _filingService.GetMinimumAvailableElectronicSequenceInCellAsync(
+                    SelectedElectronicCabinet.Name,
+                    SelectedElectronicSide,
+                    electronicRow,
+                    electronicColumn);
+                storageLocation = ArchiveSlotLocationSupport.BuildFullElectronicLocation(
+                    SelectedElectronicCabinet.Name,
+                    SelectedElectronicSide,
+                    electronicRow,
+                    electronicColumn,
+                    sequence);
+                ElectronicStorageLocation = storageLocation;
+            }
+
             return new ElectronicArchiveSubmissionRequest
             {
                 ArchiveUnit = new YearlyElectronicArchiveUnit
@@ -681,7 +714,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     Year = TargetYear,
                     StorageCarrierType = ElectronicStorageCarrierType.Trim(),
                     StoragePath = ElectronicStoragePath.Trim(),
-                    StorageLocation = ElectronicStorageLocation.Trim(),
+                    StorageLocation = storageLocation,
                     LinkedMediumCodes = linkedMediumCodes,
                     Disposition = ElectronicDisposition.Trim(),
                     MediaCount = ResolveElectronicMediaCount(linkedMediumCodes, ElectronicMediaCount),

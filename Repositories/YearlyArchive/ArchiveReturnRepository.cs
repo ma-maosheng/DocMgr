@@ -209,8 +209,11 @@ namespace DocMgr.Repositories.YearlyArchive
             return _dbContext.YearlyArchiveReturnRecords
                 .AsNoTracking()
                 .Include(record => record.Items)
-                .Where(record => record.Status == YearlyArchiveReturnRecord.Registered)
-                .OrderByDescending(record => record.RegisteredAt ?? record.ReturnDate)
+                .Where(record =>
+                    record.Status == YearlyArchiveReturnRecord.Submitted
+                    || record.Status == YearlyArchiveReturnRecord.Approved
+                    || record.Status == YearlyArchiveReturnRecord.SignedUploaded)
+                .OrderByDescending(record => record.SubmittedAt ?? record.RegisteredAt ?? record.ReturnDate)
                 .Take(take)
                 .ToListAsync();
         }

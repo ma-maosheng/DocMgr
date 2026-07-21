@@ -1,4 +1,5 @@
 using System.IO;
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using NPOI.OpenXmlFormats.Wordprocessing;
@@ -20,13 +21,10 @@ namespace DocMgr.Services.YearlyArchive
         private const int SingleRowHeightTwips = 340;
         private const int ReasonRowHeightTwips = 400;
         private const int SignatureRowHeightTwips = 620;
-        private const int PageHeightTwips = 16838;
-        private const int PageMarginVerticalTwips = 850;
         private const int TitleBlockHeightTwips = 520;
         private const int HeaderInfoHeightTwips = 380;
-        private const int FooterBlockHeightTwips = 680;
-        private const int TableWidthDxa = 9360;
-        private static readonly int[] ColumnWidthsDxa = { 1950, 2730, 1950, 2730 };
+        private const int TableWidthDxa = PrintPageLayoutSupport.ContentWidthTwips;
+        private static readonly int[] ColumnWidthsDxa = { 2044, 2829, 2044, 2829 };
 
         public void ExportToFile(ArchiveOutboundPrintData data, string filePath)
         {
@@ -99,23 +97,22 @@ namespace DocMgr.Services.YearlyArchive
 
         private static int CalculateItemDetailRowHeightTwips(bool hasLongTermDepletionNotice)
         {
-            int usablePageHeight = PageHeightTwips - PageMarginVerticalTwips * 2;
-            // 固定行：业务字段 + 四级审批 + 交接签字（交接行单独计高）。
-            int fixedStandardRows = hasLongTermDepletionNotice ? 11 : 10;
+            // 与 FlowDocument 一致：固定行外高含单元格边距；表后 3 行说明必须同页。
             int fixedTableHeight =
-                SingleRowHeightTwips * fixedStandardRows
-                + ReasonRowHeightTwips
-                + SingleRowHeightTwips * 4
-                + SignatureRowHeightTwips;
+                PrintPageLayoutSupport.GetTableRowOuterHeightTwips(SingleRowHeightTwips, CellMarginDxa) * 10
+                + PrintPageLayoutSupport.GetTableRowOuterHeightTwips(ReasonRowHeightTwips, CellMarginDxa)
+                + PrintPageLayoutSupport.GetTableRowOuterHeightTwips(SignatureRowHeightTwips, CellMarginDxa);
             if (hasLongTermDepletionNotice)
             {
-                fixedTableHeight += ReasonRowHeightTwips;
+                fixedTableHeight += PrintPageLayoutSupport.GetTableRowOuterHeightTwips(ReasonRowHeightTwips, CellMarginDxa);
             }
 
-            int reservedHeight = TitleBlockHeightTwips + HeaderInfoHeightTwips + FooterBlockHeightTwips + fixedTableHeight;
-            int itemHeight = usablePageHeight - reservedHeight;
-
-            return Math.Max(itemHeight, SingleRowHeightTwips * 4);
+            int footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightTwips(lineCount: 3, lineHeightTwips: 240, topMarginTwips: 120);
+            int reservedHeight = TitleBlockHeightTwips + HeaderInfoHeightTwips + footerHeight + fixedTableHeight;
+            return PrintPageLayoutSupport.CalculateStretchRowHeightTwips(
+                reservedHeight,
+                SingleRowHeightTwips * 4,
+                CellMarginDxa);
         }
 
         private static void ConfigurePageSettings(XWPFDocument document)
@@ -123,18 +120,18 @@ namespace DocMgr.Services.YearlyArchive
             var body = document.Document.body;
             var sectPr = body.sectPr ?? body.AddNewSectPr();
             var pgSz = sectPr.pgSz ?? sectPr.AddNewPgSz();
-            pgSz.w = (ulong)11906;
-            pgSz.h = (ulong)PageHeightTwips;
+            pgSz.w = (ulong)PrintPageLayoutSupport.PageWidthTwips;
+            pgSz.h = (ulong)PrintPageLayoutSupport.PageHeightTwips;
 
             if (sectPr.pgMar == null)
             {
                 sectPr.pgMar = new CT_PageMar();
             }
 
-            sectPr.pgMar.top = (ulong)PageMarginVerticalTwips;
-            sectPr.pgMar.bottom = (ulong)PageMarginVerticalTwips;
-            sectPr.pgMar.left = (ulong)1134;
-            sectPr.pgMar.right = (ulong)1134;
+            sectPr.pgMar.top = (ulong)PrintPageLayoutSupport.MarginVerticalTwips;
+            sectPr.pgMar.bottom = (ulong)PrintPageLayoutSupport.MarginVerticalTwips;
+            sectPr.pgMar.left = (ulong)PrintPageLayoutSupport.MarginHorizontalTwips;
+            sectPr.pgMar.right = (ulong)PrintPageLayoutSupport.MarginHorizontalTwips;
         }
 
         private static void AddTitle(XWPFDocument document)

@@ -454,6 +454,7 @@ namespace DocMgr.Services.HardDiskMedia
                 SourceApplicationNo = sourceApplicationNo,
                 ApplicationType = existingApplication.ApplicationType,
                 ApplicationStatus = existingApplication.StatusStr,
+                IsCompleted = existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusCompleted,
                 DiskCode = existingApplication.Medium.DiskCode,
                 SerialNumber = existingApplication.Medium.SerialNumber,
                 DiskType = existingApplication.Medium.DiskType,

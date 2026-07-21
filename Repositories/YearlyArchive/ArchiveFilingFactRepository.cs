@@ -636,7 +636,7 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
 
         DateTime now = DateTime.Now;
         string label = string.IsNullOrWhiteSpace(businessLabel) ? "资料出库" : businessLabel.Trim();
-        string lifecycleRemark = $"{label}：{operatedBy}";
+        string defaultLifecycleRemark = $"{label}：{operatedBy}";
 
         foreach (var update in updates)
         {
@@ -650,7 +650,9 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             fact.BorrowHintText = update.BorrowHintText;
             fact.BorrowHintUpdatedAt = now;
             fact.LifecycleUpdatedAt = now;
-            fact.LifecycleRemark = lifecycleRemark;
+            fact.LifecycleRemark = string.IsNullOrWhiteSpace(update.LifecycleRemark)
+                ? defaultLifecycleRemark
+                : $"{update.LifecycleRemark.Trim()}（{operatedBy}）";
         }
 
         await _dbContext.SaveChangesAsync();

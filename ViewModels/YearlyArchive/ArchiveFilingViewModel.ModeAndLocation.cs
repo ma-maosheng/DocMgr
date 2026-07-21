@@ -1,7 +1,9 @@
 ﻿using DocMgr.Infrastructure.AgentDebugLogging;
 using DocMgr.Models.Cabinets;
+using DocMgr.Models.YearlyArchive;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,7 +36,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                     {
                         SelectedSpec = Specs.FirstOrDefault() ?? "标准(5cm)";
                     }
-                    UpdatePhysicalCodePreview();
+
+                    await LoadSimulatedTargetLocationOptionsAsync();
                 }
             }
             else if (!IsNewBoxMode)
@@ -206,9 +209,26 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ExternalHardDiskRegistrationTooltip));
         }
 
-        private void ResetSimulatedLocationSelection()
+        private void ResetSimulatedLocationSelection(bool reloadOptions = true)
+        {
+            ClearSimulatedLocationSelectionCore();
+            Interlocked.Increment(ref _simulatedTargetLocationOptionsGeneration);
+
+            if (reloadOptions
+                && IsSimulatedTrack
+                && IsNewBoxMode)
+            {
+                _ = LoadSimulatedTargetLocationOptionsAsync();
+                return;
+            }
+
+            ReplaceSimulatedTargetLocationOptions(Array.Empty<ArchiveBoxTargetLocationOption>());
+        }
+
+        private void ClearSimulatedLocationSelectionCore()
         {
             _suppressSimulatedLocationRecalc = true;
+            _suppressSimulatedLocationOptionSync = true;
             try
             {
                 _selectedCabinet = null;
@@ -222,20 +242,50 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ReplaceItems(Sides, Array.Empty<string>());
                 ReplaceItems(Rows, Array.Empty<string>());
                 ReplaceItems(Columns, Array.Empty<string>());
+                _selectedSimulatedTargetLocationOption = null;
+                OnPropertyChanged(nameof(SelectedSimulatedTargetLocationOption));
                 PhysicalCodeResult = "请先选择位置";
                 IsPhysicalCodeWarning = true;
                 CellCountText = "-";
                 _currentCellBoxCount = 0;
-                RaiseSlotSnapshotAvailabilityChanged();
+                _resolvedBoxSequenceIndex = 1;
             }
             finally
             {
                 _suppressSimulatedLocationRecalc = false;
+                _suppressSimulatedLocationOptionSync = false;
             }
 
-            if (Cabinets.Count > 0)
+            RaiseSlotSnapshotAvailabilityChanged();
+        }
+
+        private void ReplaceSimulatedTargetLocationOptions(IReadOnlyList<ArchiveBoxTargetLocationOption> options)
+        {
+            var ordered = options
+                .OrderBy(item => item.Priority)
+                .ThenBy(item => item.ExistingBoxCount)
+                .ThenBy(item => item.Location, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            string? selectedLocation = _selectedSimulatedTargetLocationOption?.Location;
+
+            _suppressSimulatedLocationOptionSync = true;
+            try
             {
-                SelectedCabinet = Cabinets[0];
+                SimulatedTargetLocationOptions.Clear();
+                foreach (var option in ordered)
+                {
+                    SimulatedTargetLocationOptions.Add(option);
+                }
+
+                _selectedSimulatedTargetLocationOption = FindSimulatedTargetLocationOption(
+                    SimulatedTargetLocationOptions,
+                    selectedLocation);
+                OnPropertyChanged(nameof(SelectedSimulatedTargetLocationOption));
+            }
+            finally
+            {
+                _suppressSimulatedLocationOptionSync = false;
             }
         }
 
@@ -253,7 +303,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 Sides.Add("B");
             }
 
-            if (Sides.Count > 0)
+            if (Sides.Count > 0 && string.IsNullOrWhiteSpace(SelectedSide))
             {
                 SelectedSide = Sides[0];
             }
@@ -279,12 +329,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                 Columns.Add(i.ToString());
             }
 
-            if (Rows.Count > 0)
+            if (Rows.Count > 0 && string.IsNullOrWhiteSpace(SelectedRow))
             {
                 SelectedRow = Rows[0];
             }
 
-            if (Columns.Count > 0)
+            if (Columns.Count > 0 && string.IsNullOrWhiteSpace(SelectedColumn))
             {
                 SelectedColumn = Columns[0];
             }
@@ -332,11 +382,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 int count;
+                int nextSequence;
                 using (IServiceScope scope = _scopeFactory.CreateScope())
                 {
                     var filing = scope.ServiceProvider.GetRequiredService<IArchiveFilingService>();
                     // 回到 UI 同步上下文后再写绑定属性，避免跨线程异常。
                     count = await filing.GetBoxCountInCellAsync(cabinetName, side, row, col).ConfigureAwait(true);
+                    nextSequence = await filing.GetMinimumAvailableBoxSequenceInCellAsync(cabinetName, side, row, col)
+                        .ConfigureAwait(true);
                 }
 
                 if (myGeneration != Volatile.Read(ref _simulatedBoxIndexCalculationGeneration))
@@ -345,8 +398,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 _currentCellBoxCount = count;
+                _resolvedBoxSequenceIndex = nextSequence;
                 CellCountText = $"{count} 盒";
-                PhysicalCodeResult = $"{cabinetName}{side}-{row}-{col}-{(count + 1):D2}";
+                PhysicalCodeResult = $"{cabinetName}{side}-{row}-{col}-{nextSequence:D2}";
                 IsPhysicalCodeWarning = false;
                 RaiseSlotSnapshotAvailabilityChanged();
                 // #region agent log
@@ -372,6 +426,85 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void UpdatePhysicalCodePreview() => CalculateBoxIndex();
 
+        private async Task LoadSimulatedTargetLocationOptionsAsync(
+            string? preferredLocation = null,
+            bool preferSuggestedSelection = false)
+        {
+            if (!IsSimulatedTrack || !IsNewBoxMode)
+            {
+                ReplaceSimulatedTargetLocationOptions(Array.Empty<ArchiveBoxTargetLocationOption>());
+                SyncSelectedSimulatedTargetLocationOption(null);
+                return;
+            }
+
+            int generation = Interlocked.Increment(ref _simulatedTargetLocationOptionsGeneration);
+            string? locationToPrefer = preferredLocation;
+            if (string.IsNullOrWhiteSpace(locationToPrefer) && !preferSuggestedSelection)
+            {
+                locationToPrefer = SelectedSimulatedTargetLocationOption?.Location
+                    ?? ArchiveSlotLocationSupport.BuildSlotKey(PhysicalCodeResult);
+            }
+
+            IReadOnlyList<ArchiveBoxTargetLocationOption> options;
+            try
+            {
+                options = await _filingService.GetArchiveBoxTargetLocationOptionsAsync(
+                    TargetProject,
+                    TargetYear,
+                    SelectedSpec);
+            }
+            catch (Exception ex)
+            {
+                if (generation != Volatile.Read(ref _simulatedTargetLocationOptionsGeneration))
+                {
+                    return;
+                }
+
+                MessageBox.Show("加载可选档口失败: " + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            if (generation != Volatile.Read(ref _simulatedTargetLocationOptionsGeneration))
+            {
+                return;
+            }
+
+            ReplaceSimulatedTargetLocationOptions(options);
+
+            ArchiveBoxTargetLocationOption? selected = null;
+            if (preferSuggestedSelection)
+            {
+                selected = SimulatedTargetLocationOptions
+                    .OrderBy(item => item.FitsCapacity ? 0 : 1)
+                    .ThenBy(item => item.Priority)
+                    .ThenBy(item => item.ExistingBoxCount)
+                    .ThenBy(item => item.Location, StringComparer.OrdinalIgnoreCase)
+                    .FirstOrDefault();
+            }
+            else if (!string.IsNullOrWhiteSpace(locationToPrefer))
+            {
+                selected = FindSimulatedTargetLocationOption(SimulatedTargetLocationOptions, locationToPrefer);
+            }
+
+            selected ??= SimulatedTargetLocationOptions.FirstOrDefault();
+
+            if (selected == null)
+            {
+                SyncSelectedSimulatedTargetLocationOption(null);
+                ClearSimulatedLocationSelectionCore();
+                return;
+            }
+
+            if (!TryApplySimulatedSlotOption(selected))
+            {
+                SyncSelectedSimulatedTargetLocationOption(null);
+                ClearSimulatedLocationSelectionCore();
+                return;
+            }
+
+            SyncSelectedSimulatedTargetLocationOption(selected.Location);
+        }
+
         private async Task SuggestSimulatedLocationAsync()
         {
             if (!IsSimulatedTrack || !IsNewBoxMode)
@@ -387,36 +520,91 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                var suggestion = await _filingService.SuggestArchiveBoxLocationAsync(TargetProject, TargetYear, SelectedSpec);
-                if (suggestion == null)
+                // 建议档口：刷新占用数并更新 items，而不是先清空再重载。
+                await LoadSimulatedTargetLocationOptionsAsync(preferSuggestedSelection: true);
+
+                var suggestedOption = SimulatedTargetLocationOptions
+                    .OrderBy(item => item.FitsCapacity ? 0 : 1)
+                    .ThenBy(item => item.Priority)
+                    .ThenBy(item => item.ExistingBoxCount)
+                    .ThenBy(item => item.Location, StringComparer.OrdinalIgnoreCase)
+                    .FirstOrDefault();
+
+                if (suggestedOption == null)
                 {
                     MessageBox.Show("未找到符合当前规格的建议档口，请手动选择位置。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
-                _suppressSimulatedLocationRecalc = true;
-                try
-                {
-                    SelectedCabinet = Cabinets.FirstOrDefault(item => string.Equals(item.Name, suggestion.CabinetName, StringComparison.OrdinalIgnoreCase));
-                    SelectedSide = suggestion.Side;
-                    SelectedRow = suggestion.Row.ToString();
-                    SelectedColumn = suggestion.Column.ToString();
-                }
-                finally
-                {
-                    _suppressSimulatedLocationRecalc = false;
-                }
-
-                _currentCellBoxCount = suggestion.ExistingBoxCount;
-                CellCountText = $"{suggestion.ExistingBoxCount} 盒";
-                PhysicalCodeResult = suggestion.SuggestedBoxLocationCode;
-                IsPhysicalCodeWarning = false;
-                RaiseSlotSnapshotAvailabilityChanged();
-                MessageBox.Show(suggestion.SuggestionSummary, "建议档口位置", MessageBoxButton.OK, MessageBoxImage.Information);
+                string summary = suggestedOption.FitsCapacity
+                    ? $"建议使用档口 {suggestedOption.Location}。"
+                    : $"建议使用档口 {suggestedOption.Location}。当前未找到严格满足容量规则的档口，已回退为占用较少的可用档口建议，请人工确认。";
+                MessageBox.Show(summary, "建议档口位置", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 MessageBox.Show("获取建议档口位置失败: " + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private bool TryApplySimulatedSlotOption(ArchiveBoxTargetLocationOption option)
+        {
+            ArgumentNullException.ThrowIfNull(option);
+
+            var matchedCabinet = Cabinets.FirstOrDefault(item =>
+                string.Equals(item.Name, option.CabinetName, StringComparison.OrdinalIgnoreCase));
+            if (matchedCabinet == null)
+            {
+                return false;
+            }
+
+            _suppressSimulatedLocationRecalc = true;
+            try
+            {
+                SelectedCabinet = matchedCabinet;
+                SelectedSide = option.Side;
+                SelectedRow = option.Row.ToString();
+                SelectedColumn = option.Column.ToString();
+            }
+            finally
+            {
+                _suppressSimulatedLocationRecalc = false;
+            }
+
+            CalculateBoxIndex();
+            SyncSelectedSimulatedTargetLocationOption(option.Location);
+            return true;
+        }
+
+        private static ArchiveBoxTargetLocationOption? FindSimulatedTargetLocationOption(
+            IEnumerable<ArchiveBoxTargetLocationOption> options,
+            string? location)
+        {
+            if (string.IsNullOrWhiteSpace(location))
+            {
+                return null;
+            }
+
+            return options.FirstOrDefault(item => ArchiveSlotLocationSupport.IsSameSlot(item.Location, location));
+        }
+
+        private void SyncSelectedSimulatedTargetLocationOption(string? location)
+        {
+            var matched = FindSimulatedTargetLocationOption(SimulatedTargetLocationOptions, location);
+            if (ReferenceEquals(_selectedSimulatedTargetLocationOption, matched))
+            {
+                return;
+            }
+
+            _suppressSimulatedLocationOptionSync = true;
+            try
+            {
+                _selectedSimulatedTargetLocationOption = matched;
+                OnPropertyChanged(nameof(SelectedSimulatedTargetLocationOption));
+            }
+            finally
+            {
+                _suppressSimulatedLocationOptionSync = false;
             }
         }
 

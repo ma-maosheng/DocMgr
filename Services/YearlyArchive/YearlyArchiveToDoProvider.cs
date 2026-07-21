@@ -80,12 +80,12 @@ namespace DocMgr.Services.YearlyArchive
                 result.AddRange(pendingReturnRecords.Select(r => new ToDoItem
                 {
                     Id = $"YAR-RECORD-{r.Id}-PENDING",
-                    Title = $"【资料归还】待办结：{BuildReturnRecordSummary(r)}",
+                    Title = $"【资料归还】{ResolveReturnToDoTitle(r)}：{BuildReturnRecordSummary(r)}",
                     BizType = "YearlyArchiveReturnRecord",
                     BizId = r.Id,
                     BizNo = r.ReturnNo,
-                    Stage = "已登记待核对入库办结",
-                    CreatedTime = r.RegisteredAt ?? r.ReturnDate,
+                    Stage = ResolveReturnToDoStage(r),
+                    CreatedTime = r.SubmittedAt ?? r.RegisteredAt ?? r.ReturnDate,
                     Priority = "高"
                 }));
             }
@@ -139,17 +139,15 @@ namespace DocMgr.Services.YearlyArchive
             return record.Status switch
             {
                 YearlyArchiveOutboundRecord.Submitted => "已提交待审批",
-                YearlyArchiveOutboundRecord.Approved => "已审批待上传签字单",
-                YearlyArchiveOutboundRecord.SignedUploaded => "审批已办结待实物出库",
+                YearlyArchiveOutboundRecord.Approved => "已审批待实物交接",
+                YearlyArchiveOutboundRecord.SignedUploaded => "已实物交接待办结出库",
                 _ => record.StatusStr
             };
         }
 
         private static string ResolveOutboundBizType(int status)
         {
-            return status == YearlyArchiveOutboundRecord.SignedUploaded
-                ? "YearlyArchiveOutboundHandover"
-                : "YearlyArchiveOutboundApproval";
+            return "YearlyArchiveOutboundApproval";
         }
 
         private static string BuildOutboundSummary(YearlyArchiveOutboundRecord record)
@@ -179,6 +177,21 @@ namespace DocMgr.Services.YearlyArchive
                 ? $"{record.SourceOutboundNo} 等 {record.Items.Count} 项"
                 : $"{firstItem} 等 {record.Items.Count} 项";
         }
+
+        private static string ResolveReturnToDoTitle(YearlyArchiveReturnRecord record) =>
+            record.Status switch
+            {
+                YearlyArchiveReturnRecord.Submitted => "待审批",
+                YearlyArchiveReturnRecord.Approved => "待实物交接",
+                YearlyArchiveReturnRecord.SignedUploaded when !record.SignedAttachmentUploaded => "待上传签批交接单",
+                YearlyArchiveReturnRecord.SignedUploaded => "待办结",
+                _ => "待办理"
+            };
+
+        private static string ResolveReturnToDoStage(YearlyArchiveReturnRecord record) =>
+            YearlyArchiveReturnRecord.ResolveWorkflowStatusDisplay(
+                record.Status,
+                record.SignedAttachmentUploaded);
 
         private static string BuildPendingFilingStage(YearlyArchiveRegisterRecord record)
         {

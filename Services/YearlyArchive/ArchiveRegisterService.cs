@@ -875,7 +875,6 @@ namespace DocMgr.Services.YearlyArchive
 
             var users = await _archiveRegisterRepository.GetUsersAsync();
             var now = DateTime.Now;
-            var pageDomainOptions = await GetPageDomainOptionsAsync();
 
             var deptLeader = FindUserByDeptAndRole(users, record.ApplicantDept, "部门负责人");
             if (string.IsNullOrWhiteSpace(record.DeptAuditor) && !string.IsNullOrWhiteSpace(deptLeader))
@@ -888,10 +887,11 @@ namespace DocMgr.Services.YearlyArchive
                 record.DeptAuditDate = now;
             }
 
-            if (string.IsNullOrWhiteSpace(record.ProductionHeadOpinion))
-            {
-                record.ProductionHeadOpinion = pageDomainOptions.ProdOpinionOptions.FirstOrDefault() ?? string.Empty;
-            }
+            // 审批流程仅签字，不再预填意见；清空残留意见，避免部分节点「同意」、部分空白。
+            record.DeptAuditOpinion = string.Empty;
+            record.ArchiveRoomHeadOpinion = string.Empty;
+            record.ProductionHeadOpinion = string.Empty;
+            record.VicePresidentOpinion = string.Empty;
 
             if (string.IsNullOrWhiteSpace(record.ProductionHead))
             {
@@ -903,11 +903,6 @@ namespace DocMgr.Services.YearlyArchive
                 record.ProductionHeadDate = now;
             }
 
-            if (string.IsNullOrWhiteSpace(record.ArchiveRoomHeadOpinion))
-            {
-                record.ArchiveRoomHeadOpinion = pageDomainOptions.RndOpinionOptions.FirstOrDefault() ?? string.Empty;
-            }
-
             if (string.IsNullOrWhiteSpace(record.ArchiveRoomHead))
             {
                 record.ArchiveRoomHead = FindUserByRoleOrDept(users, "资料室");
@@ -916,11 +911,6 @@ namespace DocMgr.Services.YearlyArchive
             if (!record.ArchiveRoomHeadDate.HasValue)
             {
                 record.ArchiveRoomHeadDate = now;
-            }
-
-            if (string.IsNullOrWhiteSpace(record.VicePresidentOpinion))
-            {
-                record.VicePresidentOpinion = pageDomainOptions.DeputyOpinionOptions.FirstOrDefault() ?? string.Empty;
             }
 
             if (string.IsNullOrWhiteSpace(record.VicePresident))

@@ -1,4 +1,5 @@
 using DocMgr.Models.ArchiveContainers;
+using DocMgr.Models.Cabinets;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
@@ -17,20 +18,29 @@ namespace DocMgr.Services.YearlyArchive
             _outboundRepository = outboundRepository;
         }
 
-        public async Task SyncBoxesByIdsAsync(IReadOnlyCollection<int> boxIds, DateTime operatedAt)
+        public async Task<IReadOnlyList<EmptiedArchiveBoxHint>> SyncBoxesByIdsAsync(
+            IReadOnlyCollection<int> boxIds,
+            DateTime operatedAt)
         {
             if (boxIds == null || boxIds.Count == 0)
             {
-                return;
+                return [];
             }
 
+            var emptied = new List<EmptiedArchiveBoxHint>();
             foreach (int boxId in boxIds.Where(id => id > 0).Distinct())
             {
-                await SyncBoxAsync(boxId, operatedAt);
+                var hint = await SyncBoxAsync(boxId, operatedAt);
+                if (hint != null)
+                {
+                    emptied.Add(hint);
+                }
             }
+
+            return emptied;
         }
 
-        private async Task SyncBoxAsync(int boxId, DateTime operatedAt)
+        private async Task<EmptiedArchiveBoxHint?> SyncBoxAsync(int boxId, DateTime operatedAt)
         {
             var box = await _outboundRepository.GetYearlyArchiveBoxByIdForUpdateAsync(boxId);
             if (box == null
@@ -39,20 +49,20 @@ namespace DocMgr.Services.YearlyArchive
                     ArchiveContainerLifecycleStatus.InUse,
                     StringComparison.Ordinal))
             {
-                return;
+                return null;
             }
 
             var rows = await _outboundRepository.GetYearlyArchiveBoxMediaItemRowsForSyncAsync(box);
             var totals = ArchiveSimulatedBoxSlotOccupancySupport.AggregateRows(rows);
             if (!totals.ShouldReleaseSlot)
             {
-                return;
+                return null;
             }
 
-            ReleaseBoxSlot(box, rows, operatedAt);
+            return ReleaseBoxSlot(box, rows, operatedAt);
         }
 
-        private void ReleaseBoxSlot(
+        private EmptiedArchiveBoxHint? ReleaseBoxSlot(
             YearlyArchiveBox box,
             IReadOnlyList<YearlyArchiveBoxMediaItemRow> rows,
             DateTime operatedAt)
@@ -60,8 +70,10 @@ namespace DocMgr.Services.YearlyArchive
             string lastLocation = box.BoxLocationCode?.Trim() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(lastLocation))
             {
-                return;
+                return null;
             }
+
+            string archiveSequenceNo = box.ArchiveSequenceNo?.Trim() ?? string.Empty;
 
             _outboundRepository.RemoveArchiveBoxPlacementByBoxCode(lastLocation);
 
@@ -88,6 +100,7 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             _ = operatedAt;
+            return new EmptiedArchiveBoxHint(box.Id, archiveSequenceNo, lastLocation);
         }
     }
 }

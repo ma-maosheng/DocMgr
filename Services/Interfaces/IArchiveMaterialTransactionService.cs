@@ -25,6 +25,7 @@ namespace DocMgr.Services.Interfaces
 
         Task AppendReturnCompletionTransactionsAsync(
             YearlyArchiveReturnRecord returnRecord,
-            YearlyArchiveOutboundRecord outboundRecord);
+            YearlyArchiveOutboundRecord outboundRecord,
+            IReadOnlyDictionary<int, string>? afterLifecycleByFactId = null);
     }
 }

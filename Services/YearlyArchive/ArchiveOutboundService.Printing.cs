@@ -1,3 +1,4 @@
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Services.YearlyArchive
@@ -52,9 +53,12 @@ namespace DocMgr.Services.YearlyArchive
             var record = await _outboundRepository.GetByIdWithDetailsAsync(recordId)
                 ?? throw new InvalidOperationException("未找到指定的出库申请单。");
 
-            if (record.Status is not (YearlyArchiveOutboundRecord.SignedUploaded or YearlyArchiveOutboundRecord.Completed))
+            if (record.Status is not (
+                YearlyArchiveOutboundRecord.Approved
+                or YearlyArchiveOutboundRecord.SignedUploaded
+                or YearlyArchiveOutboundRecord.Completed))
             {
-                throw new InvalidOperationException("只有进入资料出库办理阶段的申请单可打印交接单。");
+                throw new InvalidOperationException("只有已审批及之后阶段的申请单可打印交接单。");
             }
 
             return await BuildHandoverPrintDataAsync(record, handoverRemark, blankHandoverSignatures);
@@ -85,14 +89,6 @@ namespace DocMgr.Services.YearlyArchive
 
             string printDate = DateTime.Now.ToString("yyyy-MM-dd");
 
-            string recipient = blankHandoverSignatures ? string.Empty : record.ApplicantName?.Trim() ?? string.Empty;
-            string admin = blankHandoverSignatures ? string.Empty : record.PhysicallyCompletedBy?.Trim() ?? string.Empty;
-            string recipientDate = blankHandoverSignatures ? BlankDateText : FormatDate(record.CompletedAt);
-            string adminDate = blankHandoverSignatures ? BlankDateText : FormatDate(record.CompletedAt);
-
-            string recipientSlot = string.IsNullOrWhiteSpace(recipient) ? "________________" : recipient;
-            string adminSlot = string.IsNullOrWhiteSpace(admin) ? "________________" : admin;
-
             return new ArchiveOutboundHandoverPrintData
             {
                 OutboundNo = record.OutboundNo,
@@ -103,7 +99,7 @@ namespace DocMgr.Services.YearlyArchive
                 ItemLines = ArchiveOutboundItemDescription.BuildHandoverPrintDetailLines(record.Items, factsById).ToList(),
                 HandoverSignatureBlock = blankHandoverSignatures
                     ? BuildBlankHandoverSignatureBlock()
-                    : $"领用人签字：{recipientSlot}    日期：{recipientDate}\n资料室资料员签字：{adminSlot}    日期：{adminDate}",
+                    : BuildFilledHandoverSignatureBlock(record),
                 HandoverRemark = remark,
                 PrintCount = record.PrintCount
             };
@@ -112,6 +108,18 @@ namespace DocMgr.Services.YearlyArchive
         private static string BuildBlankHandoverSignatureBlock() =>
             "\n领用人签字：                                            日期:______年___月___日\n" +
             "资料室资料员签字：                                 日期:______年___月___日";
+
+        private static string BuildFilledHandoverSignatureBlock(YearlyArchiveOutboundRecord record)
+        {
+            string recipient = record.ApplicantName?.Trim() ?? string.Empty;
+            string admin = record.PhysicallyCompletedBy?.Trim() ?? string.Empty;
+            string recipientSlot = string.IsNullOrWhiteSpace(recipient) ? "________________" : recipient;
+            string adminSlot = string.IsNullOrWhiteSpace(admin) ? "________________" : admin;
+            string dateText = FormatDate(record.CompletedAt);
+
+            return $"\n领用人签字：{recipientSlot}    日期：{dateText}\n" +
+                   $"资料室资料员签字：{adminSlot}    日期：{dateText}";
+        }
 
         private static ArchiveOutboundPrintData BuildPrintData(
             YearlyArchiveOutboundRecord record,
@@ -126,6 +134,13 @@ namespace DocMgr.Services.YearlyArchive
             string longTermDepletionNotice = depletedFilingFactIds.Count > 0
                 ? ArchiveSimulatedLongTermWithdrawalDepletionSupport.BuildPrintReviewNoticeText()
                 : string.Empty;
+
+            // 历史数据可能仅部分节点有「同意」；打印前规范为全有或全无。
+            var opinions = ApprovalOpinionUniformitySupport.NormalizeUniform(
+                blankApprovalSignatures ? string.Empty : record.DeptAuditOpinion,
+                blankApprovalSignatures ? string.Empty : record.ArchiveRoomHeadOpinion,
+                blankApprovalSignatures ? string.Empty : record.ProductionHeadOpinion,
+                blankApprovalSignatures ? string.Empty : record.VicePresidentOpinion);
 
             return new ArchiveOutboundPrintData
             {
@@ -146,23 +161,25 @@ namespace DocMgr.Services.YearlyArchive
                     .BuildPrintDetailLines(record.Items, depletedFilingFactIds)
                     .ToList(),
                 DeptAuditBlock = BuildApprovalBlock(
-                    blankApprovalSignatures ? string.Empty : record.DeptAuditOpinion,
+                    opinions[0],
                     blankApprovalSignatures ? string.Empty : record.DeptAuditor,
                     blankApprovalSignatures ? BlankDateText : FormatDate(record.DeptAuditDate)),
                 ArchiveRoomHeadBlock = BuildApprovalBlock(
-                    blankApprovalSignatures ? string.Empty : record.ArchiveRoomHeadOpinion,
+                    opinions[1],
                     blankApprovalSignatures ? string.Empty : record.ArchiveRoomHead,
                     blankApprovalSignatures ? BlankDateText : FormatDate(record.ArchiveRoomHeadDate)),
                 ProductionHeadBlock = BuildApprovalBlock(
-                    blankApprovalSignatures ? string.Empty : record.ProductionHeadOpinion,
+                    opinions[2],
                     blankApprovalSignatures ? string.Empty : record.ProductionHead,
                     blankApprovalSignatures ? BlankDateText : FormatDate(record.ProductionHeadDate)),
                 VicePresidentBlock = BuildApprovalBlock(
-                    blankApprovalSignatures ? string.Empty : record.VicePresidentOpinion,
+                    opinions[3],
                     blankApprovalSignatures ? string.Empty : record.VicePresident,
                     blankApprovalSignatures ? BlankDateText : FormatDate(record.VicePresidentDate)),
-                // 交接双方签字须留白，供线下亲笔签名（见 handover-signature-print-blank）。
-                HandoverSignatureBlock = BuildBlankHandoverSignatureBlock(),
+                // 办结前留白供手签；已办结重打时预填交接人（见 handover-signature-print-blank）。
+                HandoverSignatureBlock = record.IsCompleted
+                    ? BuildFilledHandoverSignatureBlock(record)
+                    : BuildBlankHandoverSignatureBlock(),
                 PrintCount = record.PrintCount
             };
         }

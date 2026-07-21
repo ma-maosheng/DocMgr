@@ -76,7 +76,7 @@
         <StackPanel Grid.Row="0" Margin="0,0,0,12">
             <TextBlock Text="流转台账" Style="{StaticResource PageTitleStyle}"/>
             <TextBlock Style="{StaticResource PageSubtitleStyle}"
-                       Text="按容器 → 业务单 → 子流程浏览立档入库后的出库、归还实物流转及出库流程节点；不含立档业务与迁档记录。"/>
+                       Text="按容器 → 业务单 → 明细时间线，浏览立档入库后的出库/归还落账与出库申请节点；不含立档业务与迁档记录。"/>
         </StackPanel>
 
         <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Padding="10,8" Margin="0,0,0,8">
@@ -112,7 +112,7 @@
                     </StackPanel>
 
                     <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
-                        <TextBlock Text="节点" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBlock Text="申请节点" Style="{StaticResource FilterLabelStyle}"/>
                         <ComboBox Width="96" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding NodeCategoryOptions}"
                                   DisplayMemberPath="Label"
@@ -189,7 +189,7 @@
                             <Border Style="{StaticResource SectionHeaderBarStyle}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="一级 · 档案盒" Style="{StaticResource SectionTitleStyle}"/>
-                                    <TextBlock Text="一行对应一个档案盒；汇总出库/归还流水与流程节点" Style="{StaticResource SectionHintStyle}"/>
+                                    <TextBlock Text="一行对应一个档案盒；汇总相关出库/归还与申请节点" Style="{StaticResource SectionHintStyle}"/>
                                 </StackPanel>
                             </Border>
                             <DataGrid Grid.Row="1" Margin="8"
@@ -234,7 +234,7 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="业务单" Binding="{Binding DisplayTitle}" Width="200"/>
                                     <DataGridTextColumn Header="最近活动" Binding="{Binding LatestOperatedAtDisplay}" Width="128"/>
-                                    <DataGridTextColumn Header="子项数" Binding="{Binding SubItemCount}" Width="56"/>
+                                    <DataGridTextColumn Header="明细数" Binding="{Binding SubItemCount}" Width="56"/>
                                     <DataGridTextColumn Header="出库状态" Binding="{Binding OutboundStatusDisplay}" Width="88"/>
                                     <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="72"/>
                                     <DataGridTextColumn Header="最近摘要" Binding="{Binding LatestSummary}" Width="*"/>
@@ -252,7 +252,10 @@
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             <Border Style="{StaticResource SectionHeaderBarStyle}">
-                                <TextBlock Text="{Binding SubItemDetailHeader}" Style="{StaticResource SectionTitleStyle}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding SubItemDetailHeader}" Style="{StaticResource SectionTitleStyle}"/>
+                                    <TextBlock Text="按时间合并：出库/归还落账与申请节点（预订/撤销/办结）" Style="{StaticResource SectionHintStyle}"/>
+                                </StackPanel>
                             </Border>
                             <DataGrid Grid.Row="1" Margin="8"
                                       AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
@@ -262,8 +265,7 @@
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="操作时间" Binding="{Binding OperatedAtDisplay}" Width="128"/>
-                                    <DataGridTextColumn Header="层级" Binding="{Binding LayerDisplay}" Width="72"/>
-                                    <DataGridTextColumn Header="类别" Binding="{Binding CategoryDisplay}" Width="80"/>
+                                    <DataGridTextColumn Header="事件类型" Binding="{Binding CategoryDisplay}" Width="80"/>
                                     <DataGridTextColumn Header="摘要" Binding="{Binding DetailDisplay}" Width="180"/>
                                     <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo}" Width="120"/>
                                     <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="120"/>
@@ -301,7 +303,7 @@
                             <Border Style="{StaticResource SectionHeaderBarStyle}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="一级 · 电子介质袋" Style="{StaticResource SectionTitleStyle}"/>
-                                    <TextBlock Text="一行对应一个电子介质袋；汇总出库/归还流水与流程节点" Style="{StaticResource SectionHintStyle}"/>
+                                    <TextBlock Text="一行对应一个电子介质袋；汇总相关出库/归还与申请节点" Style="{StaticResource SectionHintStyle}"/>
                                 </StackPanel>
                             </Border>
                             <DataGrid Grid.Row="1" Margin="8"
@@ -346,7 +348,7 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="业务单" Binding="{Binding DisplayTitle}" Width="200"/>
                                     <DataGridTextColumn Header="最近活动" Binding="{Binding LatestOperatedAtDisplay}" Width="128"/>
-                                    <DataGridTextColumn Header="子项数" Binding="{Binding SubItemCount}" Width="56"/>
+                                    <DataGridTextColumn Header="明细数" Binding="{Binding SubItemCount}" Width="56"/>
                                     <DataGridTextColumn Header="出库状态" Binding="{Binding OutboundStatusDisplay}" Width="88"/>
                                     <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="72"/>
                                     <DataGridTextColumn Header="最近摘要" Binding="{Binding LatestSummary}" Width="*"/>
@@ -364,7 +366,10 @@
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             <Border Style="{StaticResource SectionHeaderBarStyle}">
-                                <TextBlock Text="{Binding SubItemDetailHeader}" Style="{StaticResource SectionTitleStyle}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding SubItemDetailHeader}" Style="{StaticResource SectionTitleStyle}"/>
+                                    <TextBlock Text="按时间合并：出库/归还落账与申请节点（预订/撤销/办结）" Style="{StaticResource SectionHintStyle}"/>
+                                </StackPanel>
                             </Border>
                             <DataGrid Grid.Row="1" Margin="8"
                                       AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
@@ -374,8 +379,7 @@
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="操作时间" Binding="{Binding OperatedAtDisplay}" Width="128"/>
-                                    <DataGridTextColumn Header="层级" Binding="{Binding LayerDisplay}" Width="72"/>
-                                    <DataGridTextColumn Header="类别" Binding="{Binding CategoryDisplay}" Width="80"/>
+                                    <DataGridTextColumn Header="事件类型" Binding="{Binding CategoryDisplay}" Width="80"/>
                                     <DataGridTextColumn Header="摘要" Binding="{Binding DetailDisplay}" Width="180"/>
                                     <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo}" Width="120"/>
                                     <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="120"/>

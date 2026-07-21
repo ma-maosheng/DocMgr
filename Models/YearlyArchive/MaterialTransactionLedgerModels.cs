@@ -183,7 +183,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ActivitySummary =>
             HasCirculationActivity
-                ? $"实物流水 {TransactionCount} · 流程节点 {ProcessNodeCount}"
+                ? $"出库/归还 {TransactionCount} · 申请节点 {ProcessNodeCount}"
                 : CirculationLedgerDisplayValues.NeverCirculatedDisplay;
 
         public DateTime LatestOperatedAt { get; init; }
@@ -227,7 +227,7 @@ namespace DocMgr.Models.YearlyArchive
     }
 
     /// <summary>
-    /// 流转台账三级：业务子流程 / 实物流水明细。
+    /// 流转台账三级：业务单下的明细时间线行（出库/归还落账与申请节点合并）。
     /// </summary>
     public sealed class CirculationLedgerSubItemRow
     {
@@ -238,8 +238,6 @@ namespace DocMgr.Models.YearlyArchive
         public DateTime OperatedAt { get; init; }
 
         public string OperatedAtDisplay => OperatedAt.ToString("yyyy-MM-dd HH:mm");
-
-        public string LayerDisplay { get; init; } = string.Empty;
 
         public string CategoryDisplay { get; init; } = string.Empty;
 
@@ -285,12 +283,6 @@ namespace DocMgr.Models.YearlyArchive
             Return => "资料归还",
             _ => kind
         };
-    }
-
-    public static class CirculationLedgerSubItemLayerDisplay
-    {
-        public const string Process = "流程节点";
-        public const string Physical = "实物流转";
     }
 
     /// <summary>

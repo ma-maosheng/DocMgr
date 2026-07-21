@@ -290,66 +290,50 @@
                                         </StackPanel>
                                     </GroupBox>
 
-                                    <GroupBox Header="第二步：选择物理存放位置" Padding="15" Margin="0,0,0,20">
-                                        <Grid>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                            </Grid.RowDefinitions>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-
-                                            <TextBlock Text="选择柜子：" Grid.Row="0" Grid.Column="0" Margin="0,0,10,10"/>
-                                            <ComboBox Grid.Row="0" Grid.Column="1" Margin="0,0,20,10"
-                                                      ItemsSource="{Binding Cabinets}"
-                                                      SelectedItem="{Binding SelectedCabinet}"
-                                                      DisplayMemberPath="Name"
-                                                      IsEnabled="{Binding IsSimulatedLocationEditable}"/>
-
-                                            <TextBlock Text="A/B 面：" Grid.Row="0" Grid.Column="2" Margin="0,0,10,10"/>
-                                            <ComboBox Grid.Row="0" Grid.Column="3" Margin="0,0,0,10"
-                                                      ItemsSource="{Binding Sides}"
-                                                      SelectedItem="{Binding SelectedSide}"
-                                                      IsEnabled="{Binding IsSimulatedLocationEditable}"/>
-
-                                            <TextBlock Text="层：" Grid.Row="1" Grid.Column="0" Margin="0,0,10,0"/>
-                                            <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,0,20,0"
-                                                      ItemsSource="{Binding Rows}"
-                                                      SelectedItem="{Binding SelectedRow}"
-                                                      IsEnabled="{Binding IsSimulatedLocationEditable}"/>
-
-                                            <TextBlock Text="列：" Grid.Row="1" Grid.Column="2" Margin="0,0,10,0"/>
-                                            <ComboBox Grid.Row="1" Grid.Column="3"
-                                                      ItemsSource="{Binding Columns}"
-                                                      SelectedItem="{Binding SelectedColumn}"
-                                                      IsEnabled="{Binding IsSimulatedLocationEditable}"/>
-
-                                            <StackPanel Grid.Row="2"
-                                                         Grid.Column="3"
-                                                         Orientation="Horizontal"
-                                                         Margin="0,12,0,0"
-                                                         HorizontalAlignment="Left">
+                                    <GroupBox Header="第二步：选择物理存放位置" Padding="12" Margin="0,0,0,16">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal"
+                                                        VerticalAlignment="Center"
+                                                        Visibility="{Binding SimulatedStepTwoLocationSelectorVisibility}">
+                                                <TextBlock Text="档口编号："
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,8,0"/>
+                                                <ComboBox MinWidth="240"
+                                                          Height="{StaticResource FormControlHeight}"
+                                                          ItemsSource="{Binding SimulatedTargetLocationOptions}"
+                                                          SelectedItem="{Binding SelectedSimulatedTargetLocationOption}"
+                                                          DisplayMemberPath="DisplayText"
+                                                          IsEnabled="{Binding IsSimulatedLocationEditable}"
+                                                          VerticalAlignment="Center"/>
                                                 <Button Width="120"
-                                                         Content="建议档口位置"
-                                                         Command="{Binding SuggestSimulatedLocationCommand}"
-                                                         IsEnabled="{Binding IsSimulatedLocationEditable}"
-                                                         Style="{StaticResource ButtonNormalStyle}"/>
+                                                        Margin="10,0,0,0"
+                                                        Content="建议档口位置"
+                                                        Command="{Binding SuggestSimulatedLocationCommand}"
+                                                        IsEnabled="{Binding IsSimulatedLocationEditable}"
+                                                        Style="{StaticResource FormInlineButtonStyle}"/>
                                                 <Button Width="120"
-                                                         Margin="10,0,0,0"
-                                                         Content="档口占用快照"
-                                                         Command="{Binding ShowSimulatedSlotSnapshotCommand}"
-                                                         IsEnabled="{Binding CanShowSimulatedSlotSnapshot}"
-                                                         Style="{StaticResource ButtonNormalStyle}"/>
+                                                        Margin="10,0,0,0"
+                                                        Content="档口占用快照"
+                                                        Command="{Binding ShowSimulatedSlotSnapshotCommand}"
+                                                        IsEnabled="{Binding CanShowSimulatedSlotSnapshot}"
+                                                        Style="{StaticResource FormInlineButtonStyle}"/>
                                             </StackPanel>
-                                        </Grid>
+
+                                            <Border Padding="10,8"
+                                                    Background="#F8FAFC"
+                                                    BorderBrush="#CBD5E1"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Visibility="{Binding SimulatedStepTwoAppendNoticeVisibility}">
+                                                <TextBlock Foreground="#475569"
+                                                           FontSize="12"
+                                                           TextWrapping="Wrap"
+                                                           Text="当前场景为并档操作，无需选择新的档案盒物理存放位置。"/>
+                                            </Border>
+                                        </StackPanel>
                                     </GroupBox>
 
-                                    <GroupBox Header="第三步：赋码与确认" Padding="15">
+                                    <GroupBox Header="第三步：赋码与确认" Padding="12">
                                         <StackPanel>
                                             <Grid Margin="0,0,0,15">
                                                 <Grid.ColumnDefinitions>
@@ -364,10 +348,29 @@
                                                     <RowDefinition Height="Auto"/>
                                                 </Grid.RowDefinitions>
 
-                                                <TextBlock Text="档案盒编号：" Grid.Row="0" Grid.Column="0" Margin="0,0,10,0"/>
-                                                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,0,20,0" IsEnabled="{Binding IsSimulatedArchiveFieldsEditable}">
-                                                    <TextBox Width="140" FontWeight="Bold" FontSize="14" Text="{Binding ArchiveSequenceNo}" IsReadOnly="{Binding IsAppendMode}"/>
-                                                    <Button Content="自动生成" Margin="5,0,0,0" Command="{Binding GenSeqCommand}"/>
+                                                <TextBlock Text="档案盒编号："
+                                                           Grid.Row="0"
+                                                           Grid.Column="0"
+                                                           Margin="0,0,10,0"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Left"/>
+                                                <StackPanel Grid.Row="0"
+                                                            Grid.Column="1"
+                                                            Orientation="Horizontal"
+                                                            Margin="0,0,20,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Center"
+                                                            IsEnabled="{Binding IsSimulatedArchiveFieldsEditable}">
+                                                    <TextBox Width="140"
+                                                             Height="{StaticResource FormControlHeight}"
+                                                             FontWeight="Bold"
+                                                             FontSize="14"
+                                                             Text="{Binding ArchiveSequenceNo}"
+                                                             IsReadOnly="{Binding IsAppendMode}"/>
+                                                    <Button Content="自动生成"
+                                                            Margin="6,0,0,0"
+                                                            Style="{StaticResource FormInlineButtonStyle}"
+                                                            Command="{Binding GenSeqCommand}"/>
                                                 </StackPanel>
 
                                                 <TextBlock Text="物理盒号：" Grid.Row="0" Grid.Column="2" Margin="0,0,10,0"/>

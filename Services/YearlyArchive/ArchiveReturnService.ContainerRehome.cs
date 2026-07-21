@@ -74,6 +74,12 @@ namespace DocMgr.Services.YearlyArchive
             foreach (var item in items)
             {
                 string label = BuildItemLabel(item);
+                // 全额灭失无实物归位，不要求指定目标盒。
+                if (ArchiveReturnDomainValues.ResolveIntactReturnCopyCount(item) <= 0)
+                {
+                    continue;
+                }
+
                 if (item.BlocksWithoutRehome
                     && (item.RehomeTargetBoxId is null or <= 0))
                 {
@@ -110,6 +116,12 @@ namespace DocMgr.Services.YearlyArchive
                         item.MediaKind?.Trim(),
                         ArchiveRegisterDomainValues.MediaKindSimulated,
                         StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                // 全额灭失：无实物可归位，跳过改挂；空盒占格由后续 SyncBoxes 处理。
+                if (ArchiveReturnDomainValues.ResolveIntactReturnCopyCount(item) <= 0)
                 {
                     continue;
                 }

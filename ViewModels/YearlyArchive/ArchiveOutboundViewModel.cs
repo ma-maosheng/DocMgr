@@ -4,6 +4,7 @@ using System.IO;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Models.Shared;
+using DocMgr.Models.HardDiskMedia;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
@@ -50,7 +51,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ExpandAllItemDetailsCommand = new RelayCommand(_ => SetAllItemDetailsExpanded(true), _ => HasContainerUnits);
             CollapseAllItemDetailsCommand = new RelayCommand(_ => SetAllItemDetailsExpanded(false), _ => HasContainerUnits);
             SaveApprovalCommand = new RelayCommand(async _ => await SaveApprovalAsync(), _ => CanSaveApproval);
-            PrintApprovalCommand = new RelayCommand(async _ => await PrintApprovalAsync(), _ => CanPrintApproval);
+            PrintApprovalCommand = new RelayCommand(async _ => await PrintHandoverAsync(), _ => CanPrintHandover);
             UploadSignedApprovalCommand = new RelayCommand(
                 async _ => await UploadAttachmentAsync(ArchiveOutboundDomainValues.AttachmentKindSignedApprovalForm),
                 _ => CanUploadSignedAttachment);
@@ -256,25 +257,38 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         /// <summary>审批工作台顶部流程说明文案。</summary>
         public string ApprovalWorkspaceBannerText =>
-            "请先查看申请信息与拟领用资料明细，再按“审批通过→确认实物交接→上传签批交接单→打印审批单”的顺序办理。";
+            "请按“审批通过→确认实物交接→上传签批交接单→上传资料照片→业务办结”的顺序办理；交接单可随时打印核对。";
 
         public string ApproveHintText => CanSaveApproval
             ? "后续：审批通过后，请确认实物交接。"
             : "仅「已提交」且审批信息完整时可执行审批通过。";
 
         public string ConfirmHandoverHintText => CanConfirmPhysicalHandover
-            ? "后续：确认实物交接后，请上传签批交接单。"
+            ? "后续：确认实物交接后，请上传签批交接单与资料照片。"
             : "请先执行「审批通过」。";
 
         public string UploadHintText => CanUploadSignedAttachment
-            ? "后续：上传签批交接单后，可打印审批单。"
+            ? "后续：上传签批交接单与资料照片后，可执行业务办结。"
             : "请先执行「确认实物交接」，再上传签批交接单。";
 
         public string PrintApprovalHintText => CanPrintApproval
-            ? "可打印审批单供线下签字或归档留存。"
-            : "请先完成「确认实物交接」，再打印审批单。";
+            ? "可打印交接单供线下核对签字。"
+            : "请先完成「确认实物交接」，再打印交接单。";
 
-        public string StatusDisplay => Record.StatusStr;
+        public string CompleteHintText => CanCompleteHandover
+            ? "办结后将同步台账与立档事实，业务闭环。"
+            : "请先上传签批交接单与资料照片后再办结。";
+
+        public string StatusDisplay
+        {
+            get
+            {
+                bool hasSignedAttachment = SignedApprovalAttachments.Count > 0 || HandoverFormAttachments.Count > 0;
+                return HardDiskMediaApplication.ResolveOutboundWorkflowStatusDisplay(
+                    Record.Status,
+                    hasSignedAttachment);
+            }
+        }
 
         public bool IsBusy
         {
@@ -331,7 +345,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool ShowHandoverActions => _workspaceMode == ArchiveOutboundWorkspaceMode.Handover;
 
         public bool ShowHandoverWorkspaceContent =>
-            _workspaceMode == ArchiveOutboundWorkspaceMode.Handover
+            (_workspaceMode == ArchiveOutboundWorkspaceMode.Handover
+             || _workspaceMode == ArchiveOutboundWorkspaceMode.Approval)
             && (_record.IsSignedUploaded || _record.IsCompleted);
 
         public bool CanManageHandoverAttachments =>
@@ -339,12 +354,17 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool CanEditHandoverRemark => CanManageHandoverAttachments;
 
-        public bool CanPrintHandover => ShowHandoverWorkspaceContent;
+        public bool CanPrintHandover =>
+            (_workspaceMode == ArchiveOutboundWorkspaceMode.Approval
+             || _workspaceMode == ArchiveOutboundWorkspaceMode.Handover)
+            && (_record.IsApproved || _record.IsSignedUploaded || _record.IsCompleted);
 
         public bool CanCompleteHandover =>
-            CanManageHandoverAttachments && IsHandoverAttachmentsReadyForComplete();
+            ResolveApprovalButtonState().CanConfirmComplete
+            && IsHandoverAttachmentsReadyForComplete();
 
-        public bool CanOpenBusinessAssistant => ShowHandoverWorkspaceContent;
+        public bool CanOpenBusinessAssistant =>
+            ShowHandoverWorkspaceContent || (_workspaceMode == ArchiveOutboundWorkspaceMode.Approval && _record.IsApproved);
 
         /// <summary>是否可执行「审批通过」。</summary>
         public bool CanSaveApproval => ResolveApprovalButtonState().CanApprovePass;
@@ -862,12 +882,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             bool isOperatorAllowed = user != null && _outboundService.IsArchiveAdminUser(user);
             bool canExecuteApprovePass = _record.IsSubmitted && _record.HasApprovalInput;
 
-            // 出库审批页不承担最终「确认办结」，故禁用第 4 按钮（该动作在「资料出库」交接页完成）。
+            // 审批出库主页面内闭环：启用「业务办结」。
             return ApprovalWorkflowButtonSupport.Resolve(
                 ResolveApprovalPhase(),
                 isOperatorAllowed,
                 canExecuteApprovePass,
-                enableComplete: false);
+                enableComplete: true);
         }
 
         private bool IsApprovalWorkspaceActive =>
@@ -886,7 +906,13 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private bool IsApprovalAttachmentsReadyForComplete()
         {
-            if (SignedApprovalAttachments.Count == 0)
+            bool hasSignedForm = SignedApprovalAttachments.Count > 0 || HandoverFormAttachments.Count > 0;
+            if (!hasSignedForm)
+            {
+                return false;
+            }
+
+            if (MaterialPhotoAttachments.Count == 0)
             {
                 return false;
             }
@@ -910,10 +936,18 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanEditApprovalFields));
             OnPropertyChanged(nameof(CanManageApprovalAttachments));
             OnPropertyChanged(nameof(CanPrintApproval));
+            OnPropertyChanged(nameof(CanCompleteHandover));
+            OnPropertyChanged(nameof(CanPrintHandover));
+            OnPropertyChanged(nameof(CanManageHandoverAttachments));
+            OnPropertyChanged(nameof(CanEditHandoverRemark));
+            OnPropertyChanged(nameof(ShowHandoverWorkspaceContent));
+            OnPropertyChanged(nameof(CanOpenBusinessAssistant));
             OnPropertyChanged(nameof(ApproveHintText));
             OnPropertyChanged(nameof(ConfirmHandoverHintText));
             OnPropertyChanged(nameof(UploadHintText));
             OnPropertyChanged(nameof(PrintApprovalHintText));
+            OnPropertyChanged(nameof(CompleteHintText));
+            OnPropertyChanged(nameof(StatusDisplay));
             OnPropertyChanged(nameof(RequiresProofMaterialScanUpload));
             OnPropertyChanged(nameof(ShowProofMaterialAttachmentSection));
             OnPropertyChanged(nameof(CanManageProofMaterialAttachments));
@@ -936,10 +970,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private bool CanEditApproval() => CanViewApprovalWorkspace();
 
-        private bool IsHandoverAttachmentsReadyForComplete()
-        {
-            return HandoverFormAttachments.Count > 0 && MaterialPhotoAttachments.Count > 0;
-        }
+        private bool IsHandoverAttachmentsReadyForComplete() => IsApprovalAttachmentsReadyForComplete();
 
         private bool CanDeleteAttachment(SystemAttachment? attachment)
         {
@@ -980,6 +1011,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanEditHandoverRemark));
             OnPropertyChanged(nameof(CanPrintHandover));
             OnPropertyChanged(nameof(CanCompleteHandover));
+            OnPropertyChanged(nameof(CanOpenBusinessAssistant));
+            OnPropertyChanged(nameof(StatusDisplay));
+            OnPropertyChanged(nameof(CompleteHintText));
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         }
 
@@ -1100,7 +1134,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
-                bool blankApproval = _workspaceMode == ArchiveOutboundWorkspaceMode.Application;
+                // 已审批及之后（含已办结）预填审核审批；申请阶段留白供线下签批。
+                bool blankApproval = !_record.IsApproved && !_record.IsSignedUploaded && !_record.IsCompleted;
                 var data = await _outboundService.BuildPrintDataAsync(Record.Id, blankApproval);
                 var document = ArchiveOutboundPrintDocumentFactory.Create(data);
                 var exportOptions = new PrintPreviewExportOptions
@@ -1287,7 +1322,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
-                bool blankHandoverSignatures = true;
+                // 办结前留白供手签；已办结重打时预填交接人。
+                bool blankHandoverSignatures = !_record.IsCompleted;
                 var data = await _outboundService.BuildHandoverPrintDataAsync(Record.Id, HandoverRemark, blankHandoverSignatures);
                 var document = ArchiveOutboundHandoverPrintDocumentFactory.Create(data);
                 var previewWindow = new PrintPreviewWindow(document)

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using DocMgr.Models.Shared;
 
 namespace DocMgr.ViewModels.HardDiskMedia
 {
@@ -17,11 +18,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
         /// <summary>接收登记单：多行说明类内容行高。</summary>
         private const double RegistrationTextBlockRowHeight = 72;
 
-        /// <summary>接收登记单：关联介质摘要行高（约 5 行）。</summary>
-        private const double RegistrationMediumRowHeight = 100;
-
         /// <summary>接收登记单：双方交接签字行高（2 行）。</summary>
         private const double RegistrationHandoverRowHeight = 64;
+
+        private const double OutboundTitleChromeHeight = 90;
+        private const double OutboundHeaderHeight = 28;
+        private const double RegistrationTitleChromeHeight = 90;
+        private const double RegistrationHeaderHeight = 28;
+        /// <summary>硬盘表单单元格上下内边距约值（标签 Padding + 正文 Margin）。</summary>
+        private const double HardDiskRowChromeDip = 6;
 
         internal static FlowDocument Create(HardDiskMediaPrintData data)
         {
@@ -35,6 +40,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private static FlowDocument CreateOutboundApplicationDocument(HardDiskMediaPrintData data)
         {
             var document = CreateDocumentSkeleton(GetDocumentTitle(data.ApplicationType));
+            double mediumRowHeight = CalculateOutboundMediumRowHeight();
 
             document.Blocks.Add(CreateHeaderTable(
                 $"申请单编号：{data.ApplicationNo}",
@@ -42,7 +48,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             var rowGroup = new TableRowGroup();
             rowGroup.Rows.Add(CreateSingleRow("申请类型", data.ApplicationType, 20));
-            rowGroup.Rows.Add(CreateSingleRow("关联介质", CreateMediumSummary(data), 100));
+            rowGroup.Rows.Add(CreateSingleRow("关联介质", CreateMediumSummary(data), mediumRowHeight));
             rowGroup.Rows.Add(CreateSingleRow("当前位置", EmptyAsPlaceholder(data.CurrentLocation), 40));
             rowGroup.Rows.Add(CreateSingleRow("目标位置/去向", EmptyAsPlaceholder(data.TargetLocation), 40));
             rowGroup.Rows.Add(CreateDoubleRow("申请人", data.ApplicantName, "申请部门", EmptyAsPlaceholder(data.ApplicantDept)));
@@ -62,9 +68,26 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return document;
         }
 
+        private static double CalculateOutboundMediumRowHeight()
+        {
+            // 固定行内容高：申请类型/位置×2/双列×2/原因/备注/审核/审批/交接。
+            double fixedContentHeight = 20 + 40 + 40 + 40 + 40 + 90 + 60 + 48 + 82 + 72;
+            int fixedRowCount = 10;
+            double fixedTableHeight = fixedContentHeight
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, HardDiskRowChromeDip) * fixedRowCount;
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 3, lineHeightDip: 18, topMarginDip: 15);
+            double reservedHeight = OutboundTitleChromeHeight + OutboundHeaderHeight + footerHeight + fixedTableHeight;
+            return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
+                reservedHeight,
+                100,
+                HardDiskRowChromeDip);
+        }
+
         private static FlowDocument CreateRegistrationDocument(HardDiskMediaPrintData data)
         {
             var document = CreateDocumentSkeleton(GetDocumentTitle(data.ApplicationType));
+            bool includeInspection = IsNormalRegistrationReturn(data);
+            double mediumRowHeight = CalculateRegistrationMediumRowHeight(includeInspection);
 
             document.Blocks.Add(CreateHeaderTable(
                 $"登记单编号：{data.ApplicationNo}",
@@ -76,7 +99,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 "登记（借用）部门", EmptyAsPlaceholder(data.ApplicantDept),
                 RegistrationStandardRowHeight));
             rowGroup.Rows.Add(CreateSingleRow("登记类型", data.ApplicationType, RegistrationStandardRowHeight));
-            rowGroup.Rows.Add(CreateSingleRow("关联介质", CreateMediumSummary(data), RegistrationMediumRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("关联介质", CreateMediumSummary(data), mediumRowHeight));
             rowGroup.Rows.Add(CreateSingleRow("登记前位置", EmptyAsPlaceholder(data.CurrentLocation), RegistrationStandardRowHeight));
             rowGroup.Rows.Add(CreateSingleRow("登记后位置", EmptyAsPlaceholder(data.TargetLocation), RegistrationStandardRowHeight));
             rowGroup.Rows.Add(CreateDoubleRow(
@@ -94,7 +117,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 "资料室负责人签批",
                 BuildRegistrationSignatureSection(data.ApproverName, data.ApproverDateText),
                 RegistrationStandardRowHeight));
-            if (IsNormalRegistrationReturn(data))
+            if (includeInspection)
             {
                 rowGroup.Rows.Add(CreateSingleRow(
                     "资料室查验",
@@ -116,6 +139,29 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return document;
         }
 
+        private static double CalculateRegistrationMediumRowHeight(bool includeInspection)
+        {
+            // 固定行：登记人/类型/前后位置/日期状态(5) + 说明/备注(2) + 归还类型/两签批(+查验) + 交接。
+            int standardRows = includeInspection ? 8 : 7;
+            double fixedContentHeight =
+                RegistrationStandardRowHeight * standardRows
+                + RegistrationTextBlockRowHeight * 2
+                + RegistrationHandoverRowHeight;
+            int fixedRowCount = standardRows + 3; // 说明、备注、交接
+            double fixedTableHeight = fixedContentHeight
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, HardDiskRowChromeDip) * fixedRowCount;
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 3, lineHeightDip: 18, topMarginDip: 15);
+            double reservedHeight =
+                RegistrationTitleChromeHeight
+                + RegistrationHeaderHeight
+                + footerHeight
+                + fixedTableHeight;
+            return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
+                reservedHeight,
+                100,
+                HardDiskRowChromeDip);
+        }
+
         private static FlowDocument CreateDocumentSkeleton(string title)
         {
             var document = new FlowDocument
@@ -123,9 +169,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 FontFamily = BodyFont,
                 FontSize = 12,
                 LineHeight = 20,
-                PagePadding = new Thickness(80, 48, 80, 48),
                 ColumnWidth = double.PositiveInfinity
             };
+            PrintPageLayoutSupport.ApplyA4MediumMargins(document);
 
             document.Blocks.Add(new Paragraph(new Run(""))
             {
@@ -365,11 +411,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return "\n审批意见：\n                    签字：                              日期:______年___月___日";
             }
 
-            string renderedOpinion = string.IsNullOrWhiteSpace(opinion) ? "(无)" : opinion;
+            string renderedOpinion = string.IsNullOrWhiteSpace(opinion) ? string.Empty : opinion;
             string renderedSignature = string.IsNullOrWhiteSpace(signatureText)
                 ? "签字：                              日期:______年___月___日"
                 : signatureText;
-            return $"\n审批意见：{renderedOpinion}\n{renderedSignature}";
+            return string.IsNullOrWhiteSpace(renderedOpinion)
+                ? $"\n审批意见：\n{renderedSignature}"
+                : $"\n审批意见：{renderedOpinion}\n{renderedSignature}";
         }
 
         private const string BlankHandoverAdminSignatureLine =
@@ -377,17 +425,49 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private static string BuildHandoverSection(HardDiskMediaPrintData data)
         {
+            if (data.IsCompleted)
+            {
+                return BuildFilledTwoPartyHandoverBlock(
+                    "申请人签字：",
+                    data.HandoverApplicant,
+                    data.HandoverAdmin,
+                    data.HandoverDateText);
+            }
+
             return BuildBlankTwoPartyHandoverBlock("申请人签字：");
         }
 
         private static string BuildRegistrationHandoverSection(HardDiskMediaPrintData data)
         {
+            if (data.IsCompleted)
+            {
+                return BuildFilledTwoPartyHandoverBlock(
+                    "交接人签字：",
+                    data.HandoverApplicant,
+                    data.HandoverAdmin,
+                    data.HandoverDateText);
+            }
+
             return $"交接人签字：                                            日期:______年___月___日\n{BlankHandoverAdminSignatureLine}";
         }
 
         private static string BuildBlankTwoPartyHandoverBlock(string firstPartyLabel)
         {
             return $"\n{firstPartyLabel}                                            日期:______年___月___日\n{BlankHandoverAdminSignatureLine}";
+        }
+
+        private static string BuildFilledTwoPartyHandoverBlock(
+            string firstPartyLabel,
+            string? firstPartyName,
+            string? adminName,
+            string? dateText)
+        {
+            string firstSlot = string.IsNullOrWhiteSpace(firstPartyName) ? "________________" : firstPartyName.Trim();
+            string adminSlot = string.IsNullOrWhiteSpace(adminName) ? "________________" : adminName.Trim();
+            string renderedDate = string.IsNullOrWhiteSpace(dateText) ? "______年___月___日" : dateText.Trim();
+
+            return $"\n{firstPartyLabel}{firstSlot}    日期：{renderedDate}\n" +
+                   $"资料室资料管理员签字：{adminSlot}    日期：{renderedDate}";
         }
 
         private static string BuildSignatureLine(string? name, string? dateText)

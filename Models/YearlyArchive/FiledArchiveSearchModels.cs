@@ -69,6 +69,18 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ArchiveCopyRole { get; init; } = FilingFactArchiveCopyRole.Original;
 
+        /// <summary>模拟介质当前库内份数（已扣待还/不还/灭失）；电子介质恒为库存展示基数。</summary>
+        public int CurrentInArchiveCopyCount { get; init; }
+
+        /// <summary>模拟介质累计灭失份数。</summary>
+        public int LostCopyCount { get; init; }
+
+        /// <summary>模拟介质出库待还份数。</summary>
+        public int PendingReturnCopyCount { get; init; }
+
+        /// <summary>模拟介质出库不还份数。</summary>
+        public int NoReturnCopyCount { get; init; }
+
         public bool IsBackupCopy => string.Equals(
             ArchiveCopyRole,
             FilingFactArchiveCopyRole.Backup,
@@ -140,13 +152,13 @@ namespace DocMgr.Models.YearlyArchive
         public string StockCopyCountDisplay { get; init; } = string.Empty;
 
         /// <summary>
-        /// 检索列表份数展示：模拟介质取子项 <see cref="ContentCount"/>，电子介质取 <see cref="StockCopyCountDisplay"/>。
+        /// 检索列表份数展示：模拟介质为「当前库内/立档」，电子介质取 <see cref="StockCopyCountDisplay"/>。
         /// </summary>
         public string FilingCopyCountDisplay => string.Equals(
             MediaKind,
             ArchiveRegisterDomainValues.MediaKindSimulated,
             StringComparison.Ordinal)
-            ? ContentCountDisplay
+            ? $"{Math.Max(0, CurrentInArchiveCopyCount)}/{(ContentCount > 0 ? ContentCount : 1)}"
             : StockCopyCountDisplay;
 
         public bool IsBorrowHintHighlighted =>
@@ -350,6 +362,18 @@ namespace DocMgr.Models.YearlyArchive
 
         public int ContentCount { get; init; }
 
+        /// <summary>模拟介质当前库内份数（已扣待还/不还/灭失）。</summary>
+        public int CurrentInArchiveCopyCount { get; init; }
+
+        /// <summary>模拟介质累计灭失份数。</summary>
+        public int LostCopyCount { get; init; }
+
+        /// <summary>模拟介质出库待还份数。</summary>
+        public int PendingReturnCopyCount { get; init; }
+
+        /// <summary>模拟介质出库不还份数。</summary>
+        public int NoReturnCopyCount { get; init; }
+
         public ArchiveContainerKind ContainerKind { get; init; }
 
         public string ContainerCode { get; init; } = string.Empty;
@@ -399,6 +423,27 @@ namespace DocMgr.Models.YearlyArchive
         public string FiledAtDisplay => FiledAt.ToString("yyyy-MM-dd HH:mm");
 
         public string DataSizeDisplay => DataSizeMb > 0 ? $"{DataSizeMb:0.##} MB" : string.Empty;
+
+        /// <summary>模拟介质份数展示：当前库内/立档；含灭失时附加说明。</summary>
+        public string CopyCountStatusDisplay
+        {
+            get
+            {
+                if (!IsSimulatedMedia)
+                {
+                    return ContentCount > 0 ? $"{ContentCount}" : "—";
+                }
+
+                int filed = ContentCount > 0 ? ContentCount : 1;
+                string text = $"{Math.Max(0, CurrentInArchiveCopyCount)}/{filed}";
+                if (LostCopyCount > 0)
+                {
+                    text += $"（灭失{LostCopyCount}）";
+                }
+
+                return text;
+            }
+        }
 
         public string ContainerKindDisplay => ContainerKind switch
         {

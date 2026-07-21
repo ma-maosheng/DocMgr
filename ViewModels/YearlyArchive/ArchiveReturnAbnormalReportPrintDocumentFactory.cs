@@ -6,6 +6,8 @@ using System.Windows.Documents;
 
 using System.Windows.Media;
 
+using DocMgr.Models.Shared;
+
 using DocMgr.Models.YearlyArchive;
 
 
@@ -26,25 +28,19 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 
 
-        private const double PageWidth = 793.6;
-
-        private const double PageHeight = 1122.5;
-
-        private const double PagePaddingHorizontal = 56;
-
-        private const double PagePaddingTop = 36;
-
-        private const double PagePaddingBottom = 32;
-
         private const double TitleTopSpacerHeight = 20;
 
         private const double StandardRowHeight = 32;
 
-        private const double ItemDetailRowHeight = 96;
+        private const double SideDetailRowHeight = 72;
 
         private const double HandwritingRowHeight = 112;
 
         private const double ApprovalRowHeight = 32;
+
+        private const double TitleBlockHeight = 48;
+
+        private const double HeaderInfoHeight = 28;
 
         private const double CellPadding = 4;
 
@@ -70,15 +66,11 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 LineHeight = 18,
 
-                PageWidth = PageWidth,
-
-                PageHeight = PageHeight,
-
-                PagePadding = new Thickness(PagePaddingHorizontal, PagePaddingTop, PagePaddingHorizontal, PagePaddingBottom),
-
                 ColumnWidth = double.PositiveInfinity
 
             };
+
+            PrintPageLayoutSupport.ApplyA4MediumMargins(document);
 
 
 
@@ -130,13 +122,15 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             rowGroup.Rows.Add(CreateSingleRow("资料摘要", EmptyAsPlaceholder(data.MaterialSummary)));
 
+            double lossDetailRowHeight = CalculateLossDetailRowHeight(data);
+
             rowGroup.Rows.Add(CreateSingleRow(
 
                 "资料借出信息",
 
                 BuildItemText(data.BorrowItemLines),
 
-                ItemDetailRowHeight,
+                SideDetailRowHeight,
 
                 verticalTop: true));
 
@@ -146,7 +140,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 BuildItemText(data.IntactReturnItemLines),
 
-                ItemDetailRowHeight,
+                SideDetailRowHeight,
 
                 verticalTop: true));
 
@@ -156,7 +150,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 BuildItemText(data.LossItemLines),
 
-                ItemDetailRowHeight,
+                lossDetailRowHeight,
 
                 verticalTop: true));
 
@@ -191,6 +185,48 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 
             return document;
+
+        }
+
+        private static double CalculateLossDetailRowHeight(ArchiveReturnAbnormalReportPrintData data)
+
+        {
+
+            int approvalCount = data.OutboundApprovalLines?.Count ?? 0;
+
+            // 固定行：借出部门/源单号/摘要 + 借出信息/正常归还 + 灭失情况标签 + 手写 + 借出人签字 + 审批签字。
+
+            double fixedTableHeight =
+
+                PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 4
+
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(SideDetailRowHeight, CellPadding) * 2
+
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(HandwritingRowHeight, CellPadding)
+
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(ApprovalRowHeight, CellPadding) * (1 + approvalCount);
+
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 2, lineHeightDip: 16, topMarginDip: 8);
+
+            double reservedHeight =
+
+                TitleTopSpacerHeight
+
+                + TitleBlockHeight
+
+                + HeaderInfoHeight
+
+                + footerHeight
+
+                + fixedTableHeight;
+
+            return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
+
+                reservedHeight,
+
+                StandardRowHeight * 3,
+
+                CellPadding);
 
         }
 
@@ -358,7 +394,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
 
-            footer.Inlines.Add(new Run("1、资料灭失须由借出人与出库审核审批人手签确认。\n"));
+            footer.Inlines.Add(new Run("1、资料灭失须由借出人与借出时全部审核审批人（部门负责人、资料室负责人、生产科负责人、生产副院长）手签确认。\n"));
 
             footer.Inlines.Add(new Run("      2、签字后的灭失情况表应上传系统留存，方可继续打印归还回执并办结入库。"));
 

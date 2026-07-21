@@ -26,6 +26,11 @@ namespace DocMgr.Models.HardDiskMedia
         public string ApplicationStatus { get; init; } = string.Empty;
 
         /// <summary>
+        /// 是否已办结（重打表单时预填审核审批与交接人）。
+        /// </summary>
+        public bool IsCompleted { get; init; }
+
+        /// <summary>
         /// 硬盘编号。
         /// </summary>
         public string DiskCode { get; init; } = string.Empty;

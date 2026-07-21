@@ -283,6 +283,85 @@ namespace DocMgr.Services.YearlyArchive
             return slotBoxCounts;
         }
 
+        /// <summary>
+        /// 按档口汇总已占用的档内序号（年度在用盒 + 历史图件位置编码）。
+        /// </summary>
+        private async Task<Dictionary<string, HashSet<int>>> LoadOccupiedArchiveSlotSequenceIndexesAsync()
+        {
+            var slotSequences = new Dictionary<string, HashSet<int>>(StringComparer.OrdinalIgnoreCase);
+
+            AddArchiveSlotSequenceIndexes(
+                slotSequences,
+                await _archiveFilingRepository.GetYearlyArchiveBoxLocationCodesAsync());
+
+            AddArchiveSlotSequenceIndexes(
+                slotSequences,
+                await _archiveFilingRepository.GetTopoMapBoxNumbersAsync());
+
+            AddArchiveSlotSequenceIndexes(
+                slotSequences,
+                await _archiveFilingRepository.GetAerialPhotoBoxNumbersAsync());
+
+            AddArchiveSlotSequenceIndexes(
+                slotSequences,
+                await _archiveFilingRepository.GetOtherMapBoxNumbersAsync());
+
+            return slotSequences;
+        }
+
+        /// <summary>
+        /// 收集指定档口当前已占用的盒序号（含历史图件；可选排除某盒）。
+        /// </summary>
+        private async Task<IReadOnlyList<int>> CollectOccupiedBoxSequenceIndexesInSlotAsync(
+            string cabinetName,
+            string side,
+            int row,
+            int column,
+            int? excludeBoxId = null)
+        {
+            string slotKey = BuildArchiveSlotKey(cabinetName, side, row, column);
+            if (string.IsNullOrWhiteSpace(slotKey))
+            {
+                return Array.Empty<int>();
+            }
+
+            var occupied = new HashSet<int>();
+
+            var boxesInSlot = await _archiveFilingRepository.GetInUseYearlyArchiveBoxesInSlotAsync(
+                cabinetName,
+                side,
+                row,
+                column);
+            foreach (var box in boxesInSlot)
+            {
+                if (excludeBoxId is int excludedId && box.Id == excludedId)
+                {
+                    continue;
+                }
+
+                if (box.BoxIndex > 0)
+                {
+                    occupied.Add(box.BoxIndex);
+                }
+
+                if (ArchiveSlotLocationSupport.TryParseSequenceIndex(box.BoxLocationCode, out int fromCode))
+                {
+                    occupied.Add(fromCode);
+                }
+            }
+
+            var slotSequences = await LoadOccupiedArchiveSlotSequenceIndexesAsync();
+            if (slotSequences.TryGetValue(slotKey, out var historyIndexes))
+            {
+                foreach (int index in historyIndexes)
+                {
+                    occupied.Add(index);
+                }
+            }
+
+            return occupied.OrderBy(index => index).ToList();
+        }
+
         private static void AddArchiveSlotBoxCounts(IDictionary<string, int> slotBoxCounts, IEnumerable<string?> sourceValues)
         {
             ArgumentNullException.ThrowIfNull(slotBoxCounts);
@@ -300,6 +379,33 @@ namespace DocMgr.Services.YearlyArchive
                 slotBoxCounts[slotKey] = slotBoxCounts.TryGetValue(slotKey, out int count)
                     ? count + 1
                     : 1;
+            }
+        }
+
+        private static void AddArchiveSlotSequenceIndexes(
+            IDictionary<string, HashSet<int>> slotSequences,
+            IEnumerable<string?> sourceValues)
+        {
+            ArgumentNullException.ThrowIfNull(slotSequences);
+            ArgumentNullException.ThrowIfNull(sourceValues);
+
+            foreach (string boxCode in sourceValues
+                .SelectMany(SplitArchiveBoxCodes)
+                .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if (!TryBuildArchiveSlotKeyFromBoxCode(boxCode, out string slotKey)
+                    || !ArchiveSlotLocationSupport.TryParseSequenceIndex(boxCode, out int sequenceIndex))
+                {
+                    continue;
+                }
+
+                if (!slotSequences.TryGetValue(slotKey, out var indexes))
+                {
+                    indexes = new HashSet<int>();
+                    slotSequences[slotKey] = indexes;
+                }
+
+                indexes.Add(sequenceIndex);
             }
         }
 

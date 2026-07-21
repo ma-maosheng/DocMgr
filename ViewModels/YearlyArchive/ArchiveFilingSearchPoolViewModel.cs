@@ -318,12 +318,14 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     currentLocations.TryGetValue(item.FilingFactId, out string? currentLocation);
                     int filedCopyCount = 1;
-                    int withdrawnCopyCount = 0;
+                    int currentInArchiveCopyCount = 1;
+                    int lostCopyCount = 0;
                     if (IsSimulatedMediaPool
                         && inArchiveCopyCountInfo.TryGetValue(item.FilingFactId, out SimulatedInArchiveCopyCountInfo? copyCountInfo))
                     {
                         filedCopyCount = copyCountInfo.FiledCopyCount;
-                        withdrawnCopyCount = copyCountInfo.WithdrawnCopyCount;
+                        currentInArchiveCopyCount = copyCountInfo.CurrentInArchiveCopyCount;
+                        lostCopyCount = copyCountInfo.LostCopyCount;
                     }
 
                     PoolItems.Add(new SearchPoolItemRow(
@@ -346,7 +348,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                         requestedCopyCount: item.RequestedCopyCount,
                         isSimulatedMedia: IsSimulatedMediaPool,
                         filedCopyCount: filedCopyCount,
-                        withdrawnCopyCount: withdrawnCopyCount));
+                        currentInArchiveCopyCount: currentInArchiveCopyCount,
+                        lostCopyCount: lostCopyCount));
                 }
 
                 SelectedPoolItem = PoolItems.FirstOrDefault();

@@ -342,6 +342,23 @@ namespace DocMgr.Services.YearlyArchive
         }
 
         /// <inheritdoc/>
+        public async Task<int> GetMinimumAvailableBoxSequenceInCellAsync(
+            string cabinetName,
+            string side,
+            int row,
+            int col,
+            int? excludeBoxId = null)
+        {
+            var occupiedIndexes = await CollectOccupiedBoxSequenceIndexesInSlotAsync(
+                cabinetName,
+                side,
+                row,
+                col,
+                excludeBoxId);
+            return ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupiedIndexes);
+        }
+
+        /// <inheritdoc/>
         public async Task<int> GetElectronicUnitCountInCellAsync(string cabinetName, string side, int row, int col)
         {
             string slotCode = BuildElectronicUnitSlotCode(cabinetName, side, row, col);
@@ -375,7 +392,89 @@ namespace DocMgr.Services.YearlyArchive
             return ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupiedIndexes);
         }
 
+        public async Task<IReadOnlyList<ArchiveBoxTargetLocationOption>> GetArchiveBoxTargetLocationOptionsAsync(
+            string projectName,
+            string year,
+            string boxSpecification)
+        {
+            var enumeration = await EnumerateArchiveBoxLocationCandidatesAsync(projectName, year, boxSpecification);
+            if (enumeration == null)
+            {
+                return Array.Empty<ArchiveBoxTargetLocationOption>();
+            }
+
+            return enumeration.AllCandidates
+                .OrderBy(item => item.Priority)
+                .ThenBy(item => CabinetSelectionSupport.GetTraditionalCabinetNameOrder(item.CabinetName))
+                .ThenBy(item => item.CabinetName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.Side, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.Row)
+                .ThenBy(item => item.Column)
+                .Select(item => new ArchiveBoxTargetLocationOption
+                {
+                    Location = BuildArchiveSlotKey(item.CabinetName, item.Side, item.Row, item.Column),
+                    CabinetName = item.CabinetName,
+                    Side = item.Side,
+                    Row = item.Row,
+                    Column = item.Column,
+                    ExistingBoxCount = item.ExistingCount,
+                    Priority = item.Priority,
+                    FitsCapacity = item.FitsCapacity
+                })
+                .ToList();
+        }
+
         public async Task<ArchiveBoxLocationSuggestion?> SuggestArchiveBoxLocationAsync(string projectName, string year, string boxSpecification)
+        {
+            var enumeration = await EnumerateArchiveBoxLocationCandidatesAsync(projectName, year, boxSpecification);
+            if (enumeration == null || enumeration.AllCandidates.Count == 0)
+            {
+                return null;
+            }
+
+            var selectedCandidate = enumeration.CapacityCandidates
+                .OrderBy(item => item.Priority)
+                .ThenBy(item => CabinetSelectionSupport.GetTraditionalCabinetNameOrder(item.CabinetName))
+                .ThenBy(item => item.CabinetName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.Side, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.Row)
+                .ThenBy(item => item.Column)
+                .FirstOrDefault();
+
+            string summarySuffix = string.Empty;
+            if (string.IsNullOrWhiteSpace(selectedCandidate.CabinetName))
+            {
+                selectedCandidate = enumeration.AllCandidates
+                    .OrderBy(item => item.Priority)
+                    .ThenBy(item => item.ExistingCount)
+                    .ThenBy(item => CabinetSelectionSupport.GetTraditionalCabinetNameOrder(item.CabinetName))
+                    .ThenBy(item => item.CabinetName, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(item => item.Side, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(item => item.Row)
+                    .ThenBy(item => item.Column)
+                    .FirstOrDefault();
+                summarySuffix = " 当前未找到严格满足容量规则的档口，已回退为占用最少的可用档口建议，请人工确认。";
+            }
+
+            if (string.IsNullOrWhiteSpace(selectedCandidate.CabinetName))
+            {
+                return null;
+            }
+
+            return new ArchiveBoxLocationSuggestion(
+                selectedCandidate.CabinetName,
+                selectedCandidate.Side,
+                selectedCandidate.Row,
+                selectedCandidate.Column,
+                selectedCandidate.ExistingCount,
+                selectedCandidate.SuggestedCode,
+                selectedCandidate.Summary + summarySuffix);
+        }
+
+        private async Task<ArchiveBoxLocationCandidateEnumeration?> EnumerateArchiveBoxLocationCandidatesAsync(
+            string projectName,
+            string year,
+            string boxSpecification)
         {
             if (string.IsNullOrWhiteSpace(boxSpecification))
             {
@@ -399,6 +498,7 @@ namespace DocMgr.Services.YearlyArchive
                 cabinets.Where(item => item.Type == CabinetType.Standard).Select(item => item.Id).ToList());
             var existingBoxes = await _archiveFilingRepository.GetExistingYearlyArchiveBoxesWithCabinetAsync();
             var occupiedSlotBoxCounts = await LoadOccupiedArchiveSlotBoxCountsAsync();
+            var occupiedSlotSequenceIndexes = await LoadOccupiedArchiveSlotSequenceIndexesAsync();
             var placementLookup = (await _archiveFilingRepository.GetArchiveBoxPlacementsAsync())
                 .ToDictionary(item => item.BoxCode, item => item, StringComparer.OrdinalIgnoreCase);
 
@@ -419,12 +519,11 @@ namespace DocMgr.Services.YearlyArchive
                 ? ResolveFirstFullyEmptyStackBottomSlotKey(cabinets, occupiedSlotBoxCounts.Keys)
                 : string.Empty;
 
-            var candidates = new List<(int Priority, string CabinetName, string Side, int Row, int Column, int ExistingCount, string SuggestedCode, string Summary)>();
-            var fallbackCandidates = new List<(int Priority, string CabinetName, string Side, int Row, int Column, int ExistingCount, string SuggestedCode, string Summary)>();
+            var allCandidates = new List<ArchiveBoxLocationCandidate>();
+            var capacityCandidates = new List<ArchiveBoxLocationCandidate>();
 
             foreach (var cabinet in cabinets)
             {
-                string cabinetTypeCode = GetCabinetTypeCode(cabinet.Type);
                 decimal slotWidth = ResolveSlotWidth(cabinet.Type, slotSpecificationLookup);
 
                 var sides = cabinet.FaceCount > 1 ? new[] { "A", "B" } : new[] { "A" };
@@ -466,7 +565,15 @@ namespace DocMgr.Services.YearlyArchive
                                 ? slotBoxCount
                                 : 0;
                             int priority = stagePriority * 10 + (physicalBoxCount == 0 ? 0 : 1);
-                            int nextIndex = physicalBoxCount + 1;
+                            var occupiedIndexes = occupiedSlotSequenceIndexes.TryGetValue(currentSlotKey, out var indexes)
+                                ? indexes
+                                : (IEnumerable<int>)Array.Empty<int>();
+                            // 同档口年度在用盒的 BoxIndex 可能与位置编码不一致，一并纳入占用集合。
+                            var slotBoxIndexes = slotBoxes
+                                .Select(box => box.BoxIndex)
+                                .Where(index => index > 0)
+                                .Concat(occupiedIndexes);
+                            int nextIndex = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(slotBoxIndexes);
                             string suggestedCode = $"{cabinet.Name}{side}-{row}-{column}-{nextIndex:D2}";
                             string summary = stagePriority switch
                             {
@@ -479,59 +586,45 @@ namespace DocMgr.Services.YearlyArchive
                                     : $"建议使用仍有余量的档口 {cabinet.Name}{side}-{row}-{column}。"
                             };
 
-                            var slotCandidate = (priority, cabinet.Name, side, row, column, physicalBoxCount, suggestedCode, summary);
-                            fallbackCandidates.Add(slotCandidate);
+                            bool fitsCapacity = occupiedWidth + nextBoxWidth <= (double)slotWidth;
+                            var slotCandidate = new ArchiveBoxLocationCandidate(
+                                priority,
+                                cabinet.Name,
+                                side,
+                                row,
+                                column,
+                                physicalBoxCount,
+                                suggestedCode,
+                                summary,
+                                fitsCapacity);
 
-                            if (occupiedWidth + nextBoxWidth > (double)slotWidth)
+                            allCandidates.Add(slotCandidate);
+                            if (fitsCapacity)
                             {
-                                continue;
+                                capacityCandidates.Add(slotCandidate);
                             }
-
-                            candidates.Add(slotCandidate);
                         }
                     }
                 }
             }
 
-            var selectedCandidate = candidates
-                .OrderBy(item => item.Priority)
-                .ThenBy(item => CabinetSelectionSupport.GetTraditionalCabinetNameOrder(item.CabinetName))
-                .ThenBy(item => item.CabinetName, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(item => item.Side, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(item => item.Row)
-                .ThenBy(item => item.Column)
-                .FirstOrDefault();
-
-            if (string.IsNullOrWhiteSpace(selectedCandidate.CabinetName))
-            {
-                var fallbackCandidate = fallbackCandidates
-                    .OrderBy(item => item.Priority)
-                    .ThenBy(item => item.ExistingCount)
-                    .ThenBy(item => CabinetSelectionSupport.GetTraditionalCabinetNameOrder(item.CabinetName))
-                    .ThenBy(item => item.CabinetName, StringComparer.OrdinalIgnoreCase)
-                    .ThenBy(item => item.Side, StringComparer.OrdinalIgnoreCase)
-                    .ThenBy(item => item.Row)
-                    .ThenBy(item => item.Column)
-                    .FirstOrDefault();
-
-                if (!string.IsNullOrWhiteSpace(fallbackCandidate.CabinetName))
-                {
-                    selectedCandidate = (
-                        fallbackCandidate.Priority,
-                        fallbackCandidate.CabinetName,
-                        fallbackCandidate.Side,
-                        fallbackCandidate.Row,
-                        fallbackCandidate.Column,
-                        fallbackCandidate.ExistingCount,
-                        fallbackCandidate.SuggestedCode,
-                        $"{fallbackCandidate.Summary} 当前未找到严格满足容量规则的档口，已回退为占用最少的可用档口建议，请人工确认。");
-                }
-            }
-
-            return string.IsNullOrWhiteSpace(selectedCandidate.CabinetName)
-                ? null
-                : new ArchiveBoxLocationSuggestion(selectedCandidate.CabinetName, selectedCandidate.Side, selectedCandidate.Row, selectedCandidate.Column, selectedCandidate.ExistingCount, selectedCandidate.SuggestedCode, selectedCandidate.Summary);
+            return new ArchiveBoxLocationCandidateEnumeration(allCandidates, capacityCandidates);
         }
+
+        private readonly record struct ArchiveBoxLocationCandidate(
+            int Priority,
+            string CabinetName,
+            string Side,
+            int Row,
+            int Column,
+            int ExistingCount,
+            string SuggestedCode,
+            string Summary,
+            bool FitsCapacity);
+
+        private sealed record ArchiveBoxLocationCandidateEnumeration(
+            IReadOnlyList<ArchiveBoxLocationCandidate> AllCandidates,
+            IReadOnlyList<ArchiveBoxLocationCandidate> CapacityCandidates);
 
         public async Task CreateArchiveBoxAsync(YearlyArchiveBox newBox, List<int> mediaItemIds)
         {
@@ -541,6 +634,7 @@ namespace DocMgr.Services.YearlyArchive
                 ArgumentNullException.ThrowIfNull(newBox);
                 ValidateArchiveBox(newBox);
                 await ValidateYearlyArchiveBoxStorageLocationSlotCategoryAsync(newBox);
+                await EnsureArchiveBoxLocationCodeAvailableAsync(newBox);
 
                 DateTime archivedAt = DateTime.Now;
                 var mediaItems = await LoadSimulatedMediaItemsForArchivingAsync(mediaItemIds);
@@ -953,6 +1047,80 @@ namespace DocMgr.Services.YearlyArchive
             if (!string.IsNullOrWhiteSpace(issue))
             {
                 throw new InvalidOperationException(issue);
+            }
+        }
+
+        /// <summary>
+        /// 新建档案盒前校验完整盒位编码未被占用（含历史图件同码）。
+        /// </summary>
+        private async Task EnsureArchiveBoxLocationCodeAvailableAsync(YearlyArchiveBox box)
+        {
+            ArgumentNullException.ThrowIfNull(box);
+
+            string locationCode = box.BoxLocationCode?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(locationCode))
+            {
+                throw new InvalidOperationException("档案盒物理位置编码不能为空，请重新选择档口。");
+            }
+
+            var yearlyCodes = await _archiveFilingRepository.GetYearlyArchiveBoxLocationCodesAsync();
+            if (yearlyCodes.Any(code =>
+                    string.Equals(code?.Trim(), locationCode, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException(
+                    $"物理位置编码 [{locationCode}] 已被其他在用档案盒占用，请刷新档口后重试。");
+            }
+
+            var historyCodes = (await _archiveFilingRepository.GetTopoMapBoxNumbersAsync())
+                .Concat(await _archiveFilingRepository.GetAerialPhotoBoxNumbersAsync())
+                .Concat(await _archiveFilingRepository.GetOtherMapBoxNumbersAsync())
+                .SelectMany(SplitArchiveBoxCodes);
+
+            if (historyCodes.Any(code =>
+                    string.Equals(code.Trim(), locationCode, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException(
+                    $"物理位置编码 [{locationCode}] 已被历史资料占用，请刷新档口后重试。");
+            }
+        }
+
+        /// <summary>
+        /// 新建电子介质袋前校验完整存放位置未被占用。
+        /// </summary>
+        private async Task EnsureElectronicStorageLocationAvailableAsync(YearlyElectronicArchiveUnit unit)
+        {
+            ArgumentNullException.ThrowIfNull(unit);
+
+            string location = unit.StorageLocation?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(location))
+            {
+                return;
+            }
+
+            if (!ArchiveSlotLocationSupport.TryParseSlotLocation(
+                    location,
+                    out string cabinetName,
+                    out string side,
+                    out int row,
+                    out int column)
+                || !ArchiveSlotLocationSupport.TryParseSequenceIndex(location, out int sequenceIndex))
+            {
+                throw new InvalidOperationException(
+                    $"无法解析电子介质存放位置 [{location}]，请重新选择物理存放位置。");
+            }
+
+            string slotCode = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, side, row, column);
+            string slotPrefix = slotCode + "-";
+            int? excludeUnitId = unit.Id > 0 ? unit.Id : null;
+            var occupiedIndexes = await _archiveFilingRepository.GetElectronicUnitSequenceIndexesInSlotAsync(
+                slotCode,
+                slotPrefix,
+                excludeUnitId);
+
+            if (occupiedIndexes.Contains(sequenceIndex))
+            {
+                throw new InvalidOperationException(
+                    $"存放位置 [{location}] 已被占用，请刷新档口后重试。");
             }
         }
 

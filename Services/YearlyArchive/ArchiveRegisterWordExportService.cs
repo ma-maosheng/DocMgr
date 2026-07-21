@@ -1,4 +1,5 @@
 using System.IO;
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using NPOI.OpenXmlFormats.Wordprocessing;
@@ -25,11 +26,15 @@ namespace DocMgr.Services.YearlyArchive
         /// <summary>双列签字区两行高度 1.2cm（twips）。</summary>
         private const int SignatureBlockRowHeightTwips = 680;
 
-        /// <summary>A4 可打印区域宽度（twips），与页边距匹配。</summary>
-        private const int TableWidthDxa = 9360;
+        /// <summary>多行摘要类行高（留存硬盘/光盘台账）。</summary>
+        private const int MultiLineRowHeightTwips = 680;
 
-        // 标签列略宽，避免「资料名称」「开发室分管领导」等被截断。
-        private static readonly int[] ColumnWidthsDxa = { 1950, 2730, 1950, 2730 };
+        private const int TitleBlockHeightTwips = 720;
+        private const int HeaderInfoHeightTwips = 360;
+        private const int TableWidthDxa = PrintPageLayoutSupport.ContentWidthTwips;
+
+        // 标签列略宽，避免「资料名称」「开发室分管领导」等被截断；四列合计等于 ContentWidthTwips。
+        private static readonly int[] ColumnWidthsDxa = { 2044, 2829, 2044, 2829 };
 
         public void ExportToFile(ArchiveRegisterPrintData data, string filePath)
         {
@@ -66,7 +71,10 @@ namespace DocMgr.Services.YearlyArchive
             AddSingleRow(table, ref rowIndex, "提供单位", data.ProvideUnit, WordTableRowStyle.SingleLine);
 
             string contentText = data.ItemLines.Count > 0 ? string.Join("\n", data.ItemLines) : "(无)";
-            AddSingleRow(table, ref rowIndex, "资料内容", contentText, WordTableRowStyle.MultiLine);
+            bool hasRetainedHardDisk = !string.IsNullOrWhiteSpace(data.RetainedHardDiskRegistration);
+            bool hasOpticalDiscLedger = !string.IsNullOrWhiteSpace(data.OpticalDiscLedgerSummary);
+            int contentRowHeightTwips = CalculateContentRowHeightTwips(hasRetainedHardDisk, hasOpticalDiscLedger);
+            AddSingleRow(table, ref rowIndex, "资料内容", contentText, WordTableRowStyle.ItemDetail, contentRowHeightTwips);
 
             string proofText = data.ProofLines.Count > 0 ? string.Join("\n", data.ProofLines) : "(无)";
             var proofStyle = data.ProofLines.Count <= 1 ? WordTableRowStyle.SingleLine : WordTableRowStyle.MultiLine;
@@ -74,12 +82,12 @@ namespace DocMgr.Services.YearlyArchive
 
             AddDoubleRow(table, ref rowIndex, "库管模式", data.Purpose, "申请部门", data.Dept, WordTableRowStyle.SingleLine);
 
-            if (!string.IsNullOrWhiteSpace(data.RetainedHardDiskRegistration))
+            if (hasRetainedHardDisk)
             {
                 AddSingleRow(table, ref rowIndex, "留存硬盘登记", data.RetainedHardDiskRegistration, WordTableRowStyle.MultiLine);
             }
 
-            if (!string.IsNullOrWhiteSpace(data.OpticalDiscLedgerSummary))
+            if (hasOpticalDiscLedger)
             {
                 AddSingleRow(table, ref rowIndex, "光盘台账信息", data.OpticalDiscLedgerSummary, WordTableRowStyle.MultiLine);
             }
@@ -144,18 +152,18 @@ namespace DocMgr.Services.YearlyArchive
             var sectPr = body.sectPr ?? body.AddNewSectPr();
 
             var pgSz = sectPr.pgSz ?? sectPr.AddNewPgSz();
-            pgSz.w = (ulong)11906;
-            pgSz.h = (ulong)16838;
+            pgSz.w = (ulong)PrintPageLayoutSupport.PageWidthTwips;
+            pgSz.h = (ulong)PrintPageLayoutSupport.PageHeightTwips;
 
             if (sectPr.pgMar == null)
             {
                 sectPr.pgMar = new CT_PageMar();
             }
 
-            sectPr.pgMar.top = (ulong)850;
-            sectPr.pgMar.bottom = (ulong)850;
-            sectPr.pgMar.left = (ulong)1134;
-            sectPr.pgMar.right = (ulong)1134;
+            sectPr.pgMar.top = (ulong)PrintPageLayoutSupport.MarginVerticalTwips;
+            sectPr.pgMar.bottom = (ulong)PrintPageLayoutSupport.MarginVerticalTwips;
+            sectPr.pgMar.left = (ulong)PrintPageLayoutSupport.MarginHorizontalTwips;
+            sectPr.pgMar.right = (ulong)PrintPageLayoutSupport.MarginHorizontalTwips;
         }
 
         private static void AddTitle(XWPFDocument document)
@@ -213,10 +221,35 @@ namespace DocMgr.Services.YearlyArchive
             run.FontSize = FooterFontPoints;
         }
 
+        private static int CalculateContentRowHeightTwips(bool hasRetainedHardDisk, bool hasOpticalDiscLedger)
+        {
+            // 与 FlowDocument 登记单一致：固定行外高 + 表后 4 行说明同页。
+            int fixedTableHeight =
+                PrintPageLayoutSupport.GetTableRowOuterHeightTwips(SingleRowHeightTwips, CellMarginDxa) * 9
+                + PrintPageLayoutSupport.GetTableRowOuterHeightTwips(SignatureBlockRowHeightTwips, CellMarginDxa) * 2;
+            if (hasRetainedHardDisk)
+            {
+                fixedTableHeight += PrintPageLayoutSupport.GetTableRowOuterHeightTwips(MultiLineRowHeightTwips, CellMarginDxa);
+            }
+
+            if (hasOpticalDiscLedger)
+            {
+                fixedTableHeight += PrintPageLayoutSupport.GetTableRowOuterHeightTwips(MultiLineRowHeightTwips, CellMarginDxa);
+            }
+
+            int footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightTwips(lineCount: 4, lineHeightTwips: 270, topMarginTwips: 220);
+            int reservedHeight = TitleBlockHeightTwips + HeaderInfoHeightTwips + footerHeight + fixedTableHeight;
+            return PrintPageLayoutSupport.CalculateStretchRowHeightTwips(
+                reservedHeight,
+                SingleRowHeightTwips * 4,
+                CellMarginDxa);
+        }
+
         private enum WordTableRowStyle
         {
             SingleLine,
             MultiLine,
+            ItemDetail,
             SignatureBlock
         }
 
@@ -225,11 +258,12 @@ namespace DocMgr.Services.YearlyArchive
             ref int rowIndex,
             string label,
             string content,
-            WordTableRowStyle rowStyle)
+            WordTableRowStyle rowStyle,
+            int? explicitHeightTwips = null)
         {
             var row = GetOrCreateRow(table, ref rowIndex);
             EnsureCellCount(row, 4);
-            ApplyRowStyle(row, rowStyle);
+            ApplyRowStyle(row, rowStyle, explicitHeightTwips);
 
             WriteLabelCell(row.GetCell(0), label, rowStyle);
             WriteBodyCell(row.GetCell(1), content, rowStyle);
@@ -281,17 +315,18 @@ namespace DocMgr.Services.YearlyArchive
             rowIndex++;
         }
 
-        private static void ApplyRowStyle(XWPFTableRow row, WordTableRowStyle rowStyle)
+        private static void ApplyRowStyle(XWPFTableRow row, WordTableRowStyle rowStyle, int? explicitHeightTwips = null)
         {
-            switch (rowStyle)
+            int heightTwips = rowStyle switch
             {
-                case WordTableRowStyle.SingleLine:
-                    SetRowHeightExact(row, SingleRowHeightTwips);
-                    break;
-                case WordTableRowStyle.SignatureBlock:
-                    SetRowHeightExact(row, SignatureBlockRowHeightTwips);
-                    break;
-            }
+                WordTableRowStyle.SingleLine => SingleRowHeightTwips,
+                WordTableRowStyle.MultiLine => MultiLineRowHeightTwips,
+                WordTableRowStyle.ItemDetail => explicitHeightTwips ?? SingleRowHeightTwips * 4,
+                WordTableRowStyle.SignatureBlock => SignatureBlockRowHeightTwips,
+                _ => SingleRowHeightTwips
+            };
+
+            SetRowHeightExact(row, heightTwips);
         }
 
         private static void SetRowHeightExact(XWPFTableRow row, int heightTwips)
@@ -406,13 +441,14 @@ namespace DocMgr.Services.YearlyArchive
 
         private static void ApplyCellVerticalAlignment(XWPFTableCell cell, WordTableRowStyle rowStyle)
         {
-            cell.SetVerticalAlignment(rowStyle == WordTableRowStyle.MultiLine
+            bool alignTop = rowStyle is WordTableRowStyle.MultiLine or WordTableRowStyle.ItemDetail;
+            cell.SetVerticalAlignment(alignTop
                 ? XWPFTableCell.XWPFVertAlign.TOP
                 : XWPFTableCell.XWPFVertAlign.CENTER);
 
             var tcPr = cell.GetCTTc().tcPr ?? cell.GetCTTc().AddNewTcPr();
             var vAlign = tcPr.vAlign ?? tcPr.AddNewVAlign();
-            vAlign.val = rowStyle == WordTableRowStyle.MultiLine
+            vAlign.val = alignTop
                 ? ST_VerticalJc.top
                 : ST_VerticalJc.center;
         }

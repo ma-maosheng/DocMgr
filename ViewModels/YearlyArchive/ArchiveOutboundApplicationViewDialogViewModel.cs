@@ -7,6 +7,7 @@ using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 using DocMgr.Views.Shared;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -17,21 +18,27 @@ namespace DocMgr.ViewModels.YearlyArchive
     public sealed class ArchiveOutboundApplicationViewDialogViewModel : ViewModelBase
     {
         private readonly IArchiveOutboundService _outboundService;
+        private readonly IArchiveOutboundWordExportService _outboundWordExportService;
         private readonly IDialogService _dialogService;
         private YearlyArchiveOutboundRecord _record;
+        private string[] _uniformOpinions = [];
 
         public ArchiveOutboundApplicationViewDialogViewModel(
             IArchiveOutboundService outboundService,
+            IArchiveOutboundWordExportService outboundWordExportService,
             IDialogService dialogService,
             YearlyArchiveOutboundRecord record)
         {
             ArgumentNullException.ThrowIfNull(outboundService);
+            ArgumentNullException.ThrowIfNull(outboundWordExportService);
             ArgumentNullException.ThrowIfNull(dialogService);
             ArgumentNullException.ThrowIfNull(record);
 
             _outboundService = outboundService;
+            _outboundWordExportService = outboundWordExportService;
             _dialogService = dialogService;
             _record = record;
+            RefreshUniformOpinions();
 
             ViewAttachmentCommand = new RelayCommand(async attachment => await ViewAttachmentAsync(attachment as SystemAttachment), attachment => attachment is SystemAttachment);
             PrintCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrint);
@@ -58,17 +65,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ExpectedReturnDateDisplay => _record.ExpectedReturnDate?.ToString("yyyy-MM-dd") ?? "无";
         public string MaterialSummary => EmptyAsPlaceholder(_record.MaterialSummary);
 
-        // 2. 审批信息
-        public string DeptAuditOpinion => EmptyAsPlaceholder(_record.DeptAuditOpinion);
+        // 2. 审批信息（意见栏一致化：全有「同意」或全空，空意见不用「(无)」占位）
+        public string DeptAuditOpinion => _uniformOpinions[0];
         public string DeptAuditor => EmptyAsPlaceholder(_record.DeptAuditor);
         public string DeptAuditDateDisplay => FormatDate(_record.DeptAuditDate);
-        public string ArchiveRoomHeadOpinion => EmptyAsPlaceholder(_record.ArchiveRoomHeadOpinion);
+        public string ArchiveRoomHeadOpinion => _uniformOpinions[1];
         public string ArchiveRoomHead => EmptyAsPlaceholder(_record.ArchiveRoomHead);
         public string ArchiveRoomHeadDateDisplay => FormatDate(_record.ArchiveRoomHeadDate);
-        public string ProductionHeadOpinion => EmptyAsPlaceholder(_record.ProductionHeadOpinion);
+        public string ProductionHeadOpinion => _uniformOpinions[2];
         public string ProductionHead => EmptyAsPlaceholder(_record.ProductionHead);
         public string ProductionHeadDateDisplay => FormatDate(_record.ProductionHeadDate);
-        public string VicePresidentOpinion => EmptyAsPlaceholder(_record.VicePresidentOpinion);
+        public string VicePresidentOpinion => _uniformOpinions[3];
         public string VicePresident => EmptyAsPlaceholder(_record.VicePresident);
         public string VicePresidentDateDisplay => FormatDate(_record.VicePresidentDate);
 
@@ -106,7 +113,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             _record = loaded;
+            RefreshUniformOpinions();
             RaiseAllDisplayPropertiesChanged();
+        }
+
+        private void RefreshUniformOpinions()
+        {
+            _uniformOpinions = ApprovalOpinionUniformitySupport.NormalizeUniform(
+                _record.DeptAuditOpinion,
+                _record.ArchiveRoomHeadOpinion,
+                _record.ProductionHeadOpinion,
+                _record.VicePresidentOpinion);
         }
 
         private void SyncItems()
@@ -169,7 +186,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 bool blankApproval = !_record.IsApproved && !_record.IsSignedUploaded && !_record.IsCompleted;
                 var data = await _outboundService.BuildPrintDataAsync(_record.Id, blankApproval);
                 var document = ArchiveOutboundPrintDocumentFactory.Create(data);
-                var previewWindow = new PrintPreviewWindow(document)
+                var exportOptions = new PrintPreviewExportOptions
+                {
+                    ExportAsync = () => ExportOutboundWordAsync(data)
+                };
+                var previewWindow = new PrintPreviewWindow(document, exportOptions)
                 {
                     Owner = Application.Current.MainWindow
                 };
@@ -185,6 +206,38 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 _dialogService.ShowError("打印生成失败：" + ex.Message);
             }
+        }
+
+        private Task ExportOutboundWordAsync(ArchiveOutboundPrintData data)
+        {
+            try
+            {
+                string defaultName = string.IsNullOrWhiteSpace(data.OutboundNo)
+                    ? "年度资料出库申请审批单.docx"
+                    : $"{data.OutboundNo}.docx";
+                string? path = _dialogService.SaveFileDialog(
+                    "Word 文档|*.docx",
+                    "导出 Word",
+                    defaultName);
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    return Task.CompletedTask;
+                }
+
+                if (!path.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+                {
+                    path += ".docx";
+                }
+
+                _outboundWordExportService.ExportToFile(data, path);
+                _dialogService.ShowMessage($"Word 文档已保存：\n{path}");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError("导出 Word 失败：" + ex.Message);
+            }
+
+            return Task.CompletedTask;
         }
 
         private void RaiseAllDisplayPropertiesChanged()

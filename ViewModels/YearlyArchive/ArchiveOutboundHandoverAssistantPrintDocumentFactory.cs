@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -21,11 +22,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                 FontFamily = BodyFont,
                 FontSize = 12,
                 LineHeight = 18,
-                PageWidth = 793.6,
-                PageHeight = 1122.5,
-                PagePadding = new Thickness(56, 36, 56, 32),
                 ColumnWidth = double.PositiveInfinity
             };
+            PrintPageLayoutSupport.ApplyA4MediumMargins(document);
 
             document.Blocks.Add(new Paragraph(new Run("资料出库业务助手清单"))
             {

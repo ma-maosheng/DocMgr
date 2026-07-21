@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -12,15 +13,11 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static readonly FontFamily LabelFont = new("SimHei");
         private static readonly FontFamily BodyFont = new("SimSun");
 
-        private const double PageWidth = 793.6;
-        private const double PageHeight = 1122.5;
-        private const double PagePaddingHorizontal = 56;
-        private const double PagePaddingTop = 36;
-        private const double PagePaddingBottom = 32;
         private const double StandardRowHeight = 32;
         private const double SignatureRowHeight = 56;
         private const double RemarkRowHeight = 56;
-        private const double ItemDetailRowHeight = 120;
+        private const double TitleBlockHeight = 48;
+        private const double HeaderInfoHeight = 28;
         private const double CellPadding = 4;
         private const double BodyFontSize = 12;
 
@@ -28,16 +25,16 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             ArgumentNullException.ThrowIfNull(data);
 
+            double itemDetailRowHeight = CalculateItemDetailRowHeight();
+
             var document = new FlowDocument
             {
                 FontFamily = BodyFont,
                 FontSize = BodyFontSize,
                 LineHeight = 18,
-                PageWidth = PageWidth,
-                PageHeight = PageHeight,
-                PagePadding = new Thickness(PagePaddingHorizontal, PagePaddingTop, PagePaddingHorizontal, PagePaddingBottom),
                 ColumnWidth = double.PositiveInfinity
             };
+            PrintPageLayoutSupport.ApplyA4MediumMargins(document);
 
             document.Blocks.Add(new Paragraph(new Run("河北省第三测绘院资料室年度资料出库交接单"))
             {
@@ -58,7 +55,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             rowGroup.Rows.Add(CreateSingleRow(
                 "具体资料明细",
                 BuildItemText(data),
-                ItemDetailRowHeight,
+                itemDetailRowHeight,
                 verticalTop: true));
             rowGroup.Rows.Add(CreateSingleRow("交接签字", data.HandoverSignatureBlock, SignatureRowHeight, verticalTop: true));
             rowGroup.Rows.Add(CreateSingleRow(
@@ -71,6 +68,21 @@ namespace DocMgr.ViewModels.YearlyArchive
             document.Blocks.Add(CreateFooterParagraph(data));
 
             return document;
+        }
+
+        private static double CalculateItemDetailRowHeight()
+        {
+            // 固定行：申请部门、资料摘要、交接签字、备注（外高含内边距）。
+            double fixedTableHeight =
+                PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 2
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(SignatureRowHeight, CellPadding)
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(RemarkRowHeight, CellPadding);
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 3, lineHeightDip: 16, topMarginDip: 8);
+            double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
+            return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
+                reservedHeight,
+                StandardRowHeight * 4,
+                CellPadding);
         }
 
         private static string BuildItemText(ArchiveOutboundHandoverPrintData data) =>

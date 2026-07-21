@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -12,34 +13,40 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static readonly FontFamily LabelFont = new("SimHei");
         private static readonly FontFamily BodyFont = new("SimSun");
 
-        private const double PageWidth = 793.6;
-        private const double PageHeight = 1122.5;
-        private const double PagePaddingHorizontal = 56;
-        private const double PagePaddingTop = 36;
-        private const double PagePaddingBottom = 32;
-        private const double StandardRowHeight = 32;
-        private const double RemarkRowHeight = 56;
-        private const double ItemDetailRowHeight = 140;
-        private const double SignatureRowHeight = 56;
+        /// <summary>单行信息行高。</summary>
+        private const double StandardRowHeight = 34;
+        /// <summary>备注/灭失说明等多行文本行高。</summary>
+        private const double RemarkRowHeight = 52;
+        /// <summary>审核审批签字行高（单行签字栏）。</summary>
+        private const double ApprovalSignatureRowHeight = 34;
+        /// <summary>交接签字行高（归还人 + 资料员两行，列对齐排版）。</summary>
+        private const double HandoverSignatureRowHeight = 72;
+        private const double TitleBlockHeight = 48;
+        private const double HeaderInfoHeight = 28;
         private const double CellPadding = 4;
         private const double BodyFontSize = 12;
+        private const string BlankSignerSlot = "________________";
+        private const string BlankDateSlot = "______年___月___日";
 
         internal static FlowDocument Create(ArchiveReturnReceiptPrintData data)
         {
             ArgumentNullException.ThrowIfNull(data);
+
+            double itemDetailRowHeight = CalculateItemDetailRowHeight(data);
 
             var document = new FlowDocument
             {
                 FontFamily = BodyFont,
                 FontSize = BodyFontSize,
                 LineHeight = 18,
-                PageWidth = PageWidth,
-                PageHeight = PageHeight,
-                PagePadding = new Thickness(PagePaddingHorizontal, PagePaddingTop, PagePaddingHorizontal, PagePaddingBottom),
                 ColumnWidth = double.PositiveInfinity
             };
+            PrintPageLayoutSupport.ApplyA4MediumMargins(document);
 
-            document.Blocks.Add(new Paragraph(new Run("河北省第三测绘院资料室年度资料归还回执"))
+            string title = string.IsNullOrWhiteSpace(data.DocumentTitle)
+                ? "河北省第三测绘院资料室年度资料归还交接单"
+                : data.DocumentTitle.Trim();
+            document.Blocks.Add(new Paragraph(new Run(title))
             {
                 FontFamily = TitleFont,
                 FontSize = 20,
@@ -60,7 +67,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             rowGroup.Rows.Add(CreateSingleRow(
                 "归还资料明细",
                 BuildItemText(data),
-                ItemDetailRowHeight,
+                itemDetailRowHeight,
                 verticalTop: true));
             if (data.HasLossReturn)
             {
@@ -70,11 +77,16 @@ namespace DocMgr.ViewModels.YearlyArchive
                     RemarkRowHeight,
                     verticalTop: true));
             }
-            rowGroup.Rows.Add(CreateSingleRow(
-                "交接签字",
-                data.HandoverSignatureBlock,
-                SignatureRowHeight,
-                verticalTop: true));
+
+            foreach (var approvalLine in data.ApprovalSignatureLines)
+            {
+                rowGroup.Rows.Add(CreateSignatureRow(
+                    approvalLine.RoleLabel,
+                    BuildApprovalSignatureLine(approvalLine)));
+            }
+
+            rowGroup.Rows.Add(CreateHandoverSignatureRow(data.HandoverSignatureLines));
+
             rowGroup.Rows.Add(CreateSingleRow(
                 "备注",
                 EmptyAsPlaceholder(data.Remark),
@@ -85,6 +97,133 @@ namespace DocMgr.ViewModels.YearlyArchive
             document.Blocks.Add(CreateFooterParagraph(data));
 
             return document;
+        }
+
+        private static double CalculateItemDetailRowHeight(ArchiveReturnReceiptPrintData data)
+        {
+            // 固定行：借出部门、源出库单、应还日期、资料摘要、交接、备注；灭失描述可选；审批签字行数可变。
+            int approvalCount = data.ApprovalSignatureLines?.Count ?? 0;
+            double fixedTableHeight =
+                PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 4
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(ApprovalSignatureRowHeight, CellPadding) * approvalCount
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(HandoverSignatureRowHeight, CellPadding)
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(RemarkRowHeight, CellPadding);
+            if (data.HasLossReturn)
+            {
+                fixedTableHeight += PrintPageLayoutSupport.GetTableRowOuterHeightDip(RemarkRowHeight, CellPadding);
+            }
+
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 4, lineHeightDip: 16, topMarginDip: 8);
+            double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
+            return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
+                reservedHeight,
+                StandardRowHeight * 4,
+                CellPadding);
+        }
+
+        private static string BuildApprovalSignatureLine(ArchiveReturnApprovalSignatureLine line)
+        {
+            string signerSlot = string.IsNullOrWhiteSpace(line.SignerSlot)
+                ? BlankSignerSlot
+                : line.SignerSlot.Trim();
+            string dateText = string.IsNullOrWhiteSpace(line.DateText)
+                ? BlankDateSlot
+                : line.DateText.Trim();
+            return $"签字：{signerSlot}    日期：{dateText}";
+        }
+
+        private static TableRow CreateSignatureRow(string roleLabel, string signatureLine)
+        {
+            var row = new TableRow();
+            row.Cells.Add(CreateLabelCell(roleLabel, ApprovalSignatureRowHeight));
+            row.Cells.Add(CreateContentCell(signatureLine, 3, ApprovalSignatureRowHeight, verticalTop: false));
+            return row;
+        }
+
+        /// <summary>
+        /// 交接签字：两行四列网格，标签/签字位/日期标签/日期纵向对齐。
+        /// </summary>
+        private static TableRow CreateHandoverSignatureRow(
+            IReadOnlyList<ArchiveReturnApprovalSignatureLine> lines)
+        {
+            var row = new TableRow();
+            row.Cells.Add(CreateLabelCell("交接签字", HandoverSignatureRowHeight));
+            row.Cells.Add(CreateHandoverContentCell(lines));
+            return row;
+        }
+
+        private static TableCell CreateHandoverContentCell(
+            IReadOnlyList<ArchiveReturnApprovalSignatureLine> lines)
+        {
+            var root = new Grid { Height = HandoverSignatureRowHeight };
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            IReadOnlyList<ArchiveReturnApprovalSignatureLine> effectiveLines = lines.Count > 0
+                ? lines
+                :
+                [
+                    new() { RoleLabel = "归还人签字：", SignerSlot = string.Empty, DateText = BlankDateSlot },
+                    new() { RoleLabel = "资料室资料管理员签字：", SignerSlot = string.Empty, DateText = BlankDateSlot }
+                ];
+
+            for (int i = 0; i < effectiveLines.Count; i++)
+            {
+                root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            }
+
+            for (int i = 0; i < effectiveLines.Count; i++)
+            {
+                var line = effectiveLines[i];
+                string partyLabel = string.IsNullOrWhiteSpace(line.RoleLabel)
+                    ? string.Empty
+                    : line.RoleLabel.Trim();
+                string signerSlot = string.IsNullOrWhiteSpace(line.SignerSlot)
+                    ? BlankSignerSlot
+                    : line.SignerSlot.Trim();
+                string dateText = string.IsNullOrWhiteSpace(line.DateText)
+                    ? BlankDateSlot
+                    : line.DateText.Trim();
+
+                AddHandoverCellText(root, i, 0, partyLabel, TextAlignment.Left, margin: new Thickness(2, 0, 8, 0));
+                AddHandoverCellText(root, i, 1, signerSlot, TextAlignment.Left, margin: new Thickness(0, 0, 12, 0));
+                AddHandoverCellText(root, i, 2, "日期：", TextAlignment.Left, margin: new Thickness(0, 0, 4, 0));
+                AddHandoverCellText(root, i, 3, dateText, TextAlignment.Left, margin: new Thickness(0, 0, 4, 0));
+            }
+
+            return new TableCell(new BlockUIContainer(root))
+            {
+                ColumnSpan = 3,
+                BorderThickness = new Thickness(0, 0, 1, 1),
+                BorderBrush = Brushes.Black,
+                Padding = new Thickness(CellPadding)
+            };
+        }
+
+        private static void AddHandoverCellText(
+            Grid root,
+            int row,
+            int column,
+            string text,
+            TextAlignment alignment,
+            Thickness margin)
+        {
+            var textBlock = new TextBlock
+            {
+                Text = text,
+                TextWrapping = TextWrapping.NoWrap,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                TextAlignment = alignment,
+                FontFamily = BodyFont,
+                FontSize = BodyFontSize,
+                Margin = margin
+            };
+            Grid.SetRow(textBlock, row);
+            Grid.SetColumn(textBlock, column);
+            root.Children.Add(textBlock);
         }
 
         private static string BuildItemText(ArchiveReturnReceiptPrintData data) =>
@@ -127,10 +266,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 BorderThickness = new Thickness(2, 2, 0, 0)
             };
 
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
+            // 左侧标签列略加宽，保证「生产管理科负责人」等文字单行显示。
+            table.Columns.Add(new TableColumn { Width = new GridLength(1.9, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(3.1, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(1.9, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(3.1, GridUnitType.Star) });
             table.RowGroups.Add(rowGroup);
 
             return table;
@@ -146,9 +286,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             };
 
             footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
-            footer.Inlines.Add(new Run("1、资料归还时，借出人与资料室资料员须在回执上签字确认实物交接。\n"));
-            footer.Inlines.Add(new Run("      2、签字后的回执应留存备查，作为归还办结依据。\n"));
-            footer.Inlines.Add(new Run($"      3、本回执已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
+            footer.Inlines.Add(new Run("1、无论资料是否完好，均须打印本单并完成线下签字；扫描件由资料室资料管理员上传系统。\n"));
+            footer.Inlines.Add(new Run("      2、正常完好归还仅需部门负责人签字；存在灭失时，需借出时全部审核审批人（部门负责人、资料室负责人、生产科负责人、生产副院长）签字。\n"));
+            footer.Inlines.Add(new Run("      3、归还人与资料室资料管理员须在交接栏签字确认实物交接。\n"));
+            footer.Inlines.Add(new Run($"      4、本单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
 
             return footer;
         }
@@ -199,7 +340,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             grid.Children.Add(new TextBlock
             {
                 Text = text,
-                TextWrapping = TextWrapping.Wrap,
+                TextWrapping = label ? TextWrapping.NoWrap : TextWrapping.Wrap,
                 VerticalAlignment = verticalTop ? VerticalAlignment.Top : VerticalAlignment.Center,
                 HorizontalAlignment = label ? HorizontalAlignment.Center : HorizontalAlignment.Left,
                 TextAlignment = label ? TextAlignment.Center : TextAlignment.Left,

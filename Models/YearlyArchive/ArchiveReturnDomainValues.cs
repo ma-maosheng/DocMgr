@@ -70,6 +70,9 @@ namespace DocMgr.Models.YearlyArchive
 
         public const string AttachmentKindSignedAbnormalReturnReport = "SignedAbnormalReturnReport";
 
+        /// <summary>签批交接单附件类别。</summary>
+        public const string AttachmentKindSignedHandover = "签批交接单";
+
 
 
         public static IReadOnlyList<(string Value, string Display)> CompleteAndLossOptions { get; } =

@@ -746,14 +746,15 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             var attachments = await _outboundRepository.GetAttachmentsByBusinessIdAsync(record.Id);
-            bool hasHandover = attachments.Any(a =>
-                string.Equals(a.FileCategory, ArchiveOutboundDomainValues.AttachmentKindSignedHandoverForm, StringComparison.Ordinal));
+            bool hasSignedForm = attachments.Any(a =>
+                string.Equals(a.FileCategory, ArchiveOutboundDomainValues.AttachmentKindSignedApprovalForm, StringComparison.Ordinal)
+                || string.Equals(a.FileCategory, ArchiveOutboundDomainValues.AttachmentKindSignedHandoverForm, StringComparison.Ordinal));
             bool hasPhoto = attachments.Any(a =>
                 string.Equals(a.FileCategory, ArchiveOutboundDomainValues.AttachmentKindMaterialPhoto, StringComparison.Ordinal));
 
-            if (!hasHandover || !hasPhoto)
+            if (!hasSignedForm || !hasPhoto)
             {
-                return ArchiveOutboundFlowResult.Fail("请先上传“交接签字交接单”和“资料照片”。");
+                return ArchiveOutboundFlowResult.Fail("请先上传“签批交接单”（或历史交接签字单）和“资料照片”。");
             }
 
             string operatorName = string.IsNullOrWhiteSpace(admin.RealName) ? admin.LoginName : admin.RealName.Trim();
@@ -1192,16 +1193,17 @@ namespace DocMgr.Services.YearlyArchive
 
         private static void CopyApprovalFields(YearlyArchiveOutboundRecord target, YearlyArchiveOutboundRecord source)
         {
-            target.DeptAuditOpinion = source.DeptAuditOpinion?.Trim() ?? string.Empty;
+            // 出库审批 UI 为「仅签字、无需意见」；落库时统一清空意见，避免部分节点残留「同意」。
+            target.DeptAuditOpinion = string.Empty;
             target.DeptAuditor = source.DeptAuditor?.Trim() ?? string.Empty;
             target.DeptAuditDate = source.DeptAuditDate;
-            target.ArchiveRoomHeadOpinion = source.ArchiveRoomHeadOpinion?.Trim() ?? string.Empty;
+            target.ArchiveRoomHeadOpinion = string.Empty;
             target.ArchiveRoomHead = source.ArchiveRoomHead?.Trim() ?? string.Empty;
             target.ArchiveRoomHeadDate = source.ArchiveRoomHeadDate;
-            target.ProductionHeadOpinion = source.ProductionHeadOpinion?.Trim() ?? string.Empty;
+            target.ProductionHeadOpinion = string.Empty;
             target.ProductionHead = source.ProductionHead?.Trim() ?? string.Empty;
             target.ProductionHeadDate = source.ProductionHeadDate;
-            target.VicePresidentOpinion = source.VicePresidentOpinion?.Trim() ?? string.Empty;
+            target.VicePresidentOpinion = string.Empty;
             target.VicePresident = source.VicePresident?.Trim() ?? string.Empty;
             target.VicePresidentDate = source.VicePresidentDate;
         }

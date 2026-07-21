@@ -16,7 +16,7 @@ namespace DocMgr.Views.YearlyArchive
 
         public ArchiveReturnWorkbenchViewModel ViewModel { get; }
 
-        public ArchiveReturnWorkbenchPage(ArchiveReturnWorkspaceMode workspaceMode = ArchiveReturnWorkspaceMode.Handover)
+        public ArchiveReturnWorkbenchPage(ArchiveReturnWorkspaceMode workspaceMode = ArchiveReturnWorkspaceMode.Approval)
         {
             InitializeComponent();
             WorkspaceMode = workspaceMode;

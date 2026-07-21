@@ -4,7 +4,7 @@ using DocMgr.Models.YearlyArchive;
 namespace DocMgr.Services.YearlyArchive
 {
     /// <summary>
-    /// 流转台账三级结构：容器 → 业务单 → 子流程/明细。
+    /// 流转台账三级结构：容器 → 业务单 → 明细时间线。
     /// </summary>
     internal static class CirculationLedgerHierarchySupport
     {
@@ -173,7 +173,6 @@ namespace DocMgr.Services.YearlyArchive
                 ItemId = row.TransactionId,
                 Kind = CirculationLedgerSubItemKind.PhysicalTransaction,
                 OperatedAt = row.OperatedAt,
-                LayerDisplay = CirculationLedgerSubItemLayerDisplay.Physical,
                 CategoryDisplay = row.TransactionTypeDisplay,
                 DetailDisplay = row.Summary,
                 FilingFactNo = row.FilingFactNo,
@@ -194,7 +193,6 @@ namespace DocMgr.Services.YearlyArchive
                 ItemId = row.SyncEntryId,
                 Kind = CirculationLedgerSubItemKind.ProcessNode,
                 OperatedAt = row.OperatedAt,
-                LayerDisplay = CirculationLedgerSubItemLayerDisplay.Process,
                 CategoryDisplay = row.NodeCategoryDisplay,
                 DetailDisplay = row.ProcessNodeDisplay,
                 FilingFactNo = row.FilingFactNo,

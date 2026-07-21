@@ -71,12 +71,55 @@ namespace DocMgr.Models.YearlyArchive
         /// <summary>办结（核对入库）管理员。</summary>
         public string HandlerName { get; set; } = string.Empty;
 
+        /// <summary>审核人。</summary>
+        public string ReviewerName { get; set; } = string.Empty;
+
+        /// <summary>审核日期。</summary>
+        public DateTime? ReviewerDate { get; set; }
+
+        /// <summary>审批人。</summary>
+        public string ApprovedBy { get; set; } = string.Empty;
+
+        /// <summary>审批意见。</summary>
+        public string ApprovalOpinion { get; set; } = string.Empty;
+
+        /// <summary>生产科负责人（灭失归还审批录入）。</summary>
+        public string ProductionHead { get; set; } = string.Empty;
+
+        /// <summary>生产科负责人签字日期。</summary>
+        public DateTime? ProductionHeadDate { get; set; }
+
+        /// <summary>生产副院长（灭失归还审批录入）。</summary>
+        public string VicePresident { get; set; } = string.Empty;
+
+        /// <summary>生产副院长签字日期。</summary>
+        public DateTime? VicePresidentDate { get; set; }
+
+        /// <summary>办理交接人（归还人）。</summary>
+        public string HandoverApplicant { get; set; } = string.Empty;
+
+        /// <summary>办理交接人（资料管理员）。</summary>
+        public string HandoverAdmin { get; set; } = string.Empty;
+
+        /// <summary>办理交接日期。</summary>
+        public DateTime? HandoverDate { get; set; }
+
+        /// <summary>是否已上传签批交接单。</summary>
+        public bool SignedAttachmentUploaded { get; set; }
+
+        /// <summary>签批交接单上传人。</summary>
+        public string SignedAttachmentUploader { get; set; } = string.Empty;
+
+        /// <summary>签批交接单上传时间。</summary>
+        public DateTime? SignedAttachmentUploadedTime { get; set; }
+
         public DateTime? RegisteredAt { get; set; }
 
         public DateTime? SubmittedAt { get; set; }
 
         public DateTime? ApprovedAt { get; set; }
 
+        /// <summary>进入「已实物交接-待上传签批交接单」状态的时间。</summary>
         public DateTime? SignedUploadedAt { get; set; }
 
         public DateTime? CompletedAt { get; set; }
@@ -130,8 +173,22 @@ namespace DocMgr.Models.YearlyArchive
         [NotMapped]
         public bool IsVoided => IsWithdrawnVoid || IsForceVoided;
 
+        /// <summary>流程阶段展示（实物交接后区分「待上传签批」与「待办结」）。</summary>
         [NotMapped]
-        public string StatusStr => ApplicationWorkflowStatus.ToDisplay(Status);
+        public string StatusStr => ResolveWorkflowStatusDisplay(Status, SignedAttachmentUploaded);
+
+        /// <summary>解析归还流程状态展示文案。</summary>
+        public static string ResolveWorkflowStatusDisplay(int status, bool signedAttachmentUploaded)
+        {
+            if (status == SignedUploaded)
+            {
+                return signedAttachmentUploaded
+                    ? "已上传签批交接单-待办结"
+                    : ApplicationWorkflowStatus.TextSignedUploaded;
+            }
+
+            return ApplicationWorkflowStatus.ToDisplay(status);
+        }
 
         public void MarkAsDraft()
         {

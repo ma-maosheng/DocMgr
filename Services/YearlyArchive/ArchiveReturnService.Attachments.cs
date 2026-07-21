@@ -14,7 +14,7 @@ namespace DocMgr.Services.YearlyArchive
                 task => (IReadOnlyList<SystemAttachment>)task.Result,
                 TaskScheduler.Default);
 
-        public async Task<ArchiveReturnAttachmentFlowResult> UploadAbnormalReportAttachmentFlowAsync(
+        public async Task<ArchiveReturnAttachmentFlowResult> UploadSignedHandoverAttachmentFlowAsync(
             int recordId,
             SystemAttachment attachment,
             User user)
@@ -33,7 +33,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(user))
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("仅资料室管理员可上传灭失情况表扫描件。");
+                return ArchiveReturnAttachmentFlowResult.Fail("仅资料室管理员可上传签批交接单。");
             }
 
             var record = await _returnRepository.GetByIdWithDetailsAsync(recordId);
@@ -42,30 +42,37 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnAttachmentFlowResult.Fail("未找到指定的归还单。");
             }
 
-            if (record.Status != YearlyArchiveReturnRecord.Draft)
+            if (record.Status is YearlyArchiveReturnRecord.Completed
+                or YearlyArchiveReturnRecord.WithdrawnVoid
+                or YearlyArchiveReturnRecord.ForceVoided)
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("仅草稿状态的归还单可上传灭失情况表扫描件；提交后信息不可再改。");
+                return ArchiveReturnAttachmentFlowResult.Fail("当前归还单已完成或已作废，不允许上传签批交接单。");
             }
 
-            if (!ArchiveReturnDomainValues.HasAbnormalReturnItems(record.Items))
+            if (record.Status != YearlyArchiveReturnRecord.SignedUploaded)
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("当前归还单无灭失份数，无需上传灭失情况表扫描件。");
+                return ArchiveReturnAttachmentFlowResult.Fail("请先确认实物交接后再上传签批交接单。");
             }
 
             attachment.BusinessType = ArchiveReturnDomainValues.BusinessTypeAttachment;
             attachment.BusinessNo = record.ReturnNo;
             attachment.BusinessId = record.Id;
-            attachment.FileCategory = ArchiveReturnDomainValues.AttachmentKindSignedAbnormalReturnReport;
+            attachment.FileCategory = ArchiveReturnDomainValues.AttachmentKindSignedHandover;
             attachment.UploaderName = ResolveUserName(user);
             attachment.UploadTime = DateTime.Now;
 
             _returnRepository.AddAttachment(attachment);
-            await _returnRepository.SaveChangesAsync();
 
-            return ArchiveReturnAttachmentFlowResult.Ok("灭失情况表扫描件上传成功。");
+            record.SignedAttachmentUploaded = true;
+            record.SignedAttachmentUploadedTime = attachment.UploadTime;
+            record.SignedAttachmentUploader = attachment.UploaderName;
+            record.UpdatedAt = attachment.UploadTime;
+            await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
+
+            return ArchiveReturnAttachmentFlowResult.Ok("签批交接单上传成功。", attachment);
         }
 
-        public async Task<ArchiveReturnAttachmentFlowResult> DeleteAbnormalReportAttachmentFlowAsync(
+        public async Task<ArchiveReturnAttachmentFlowResult> DeleteSignedHandoverAttachmentFlowAsync(
             int recordId,
             SystemAttachment attachment,
             User user)
@@ -75,7 +82,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(user))
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("仅资料室管理员可删除扫描件。");
+                return ArchiveReturnAttachmentFlowResult.Fail("仅资料室管理员可删除签批交接单。");
             }
 
             var record = await _returnRepository.GetByIdWithDetailsAsync(recordId);
@@ -84,9 +91,11 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnAttachmentFlowResult.Fail("未找到指定的归还单。");
             }
 
-            if (record.Status != YearlyArchiveReturnRecord.Draft)
+            if (record.Status is YearlyArchiveReturnRecord.Completed
+                or YearlyArchiveReturnRecord.WithdrawnVoid
+                or YearlyArchiveReturnRecord.ForceVoided)
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("仅草稿状态的归还单可删除扫描件；提交后信息不可再改。");
+                return ArchiveReturnAttachmentFlowResult.Fail("当前归还单已完成或已作废，不允许删除签批交接单。");
             }
 
             var existing = await _returnRepository.GetAttachmentByIdAsync(attachment.Id);
@@ -97,15 +106,31 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!string.Equals(
                     existing.FileCategory,
-                    ArchiveReturnDomainValues.AttachmentKindSignedAbnormalReturnReport,
+                    ArchiveReturnDomainValues.AttachmentKindSignedHandover,
                     StringComparison.Ordinal))
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("该附件类型不允许删除。");
+                return ArchiveReturnAttachmentFlowResult.Fail("该附件类型不允许按签批交接单删除。");
             }
 
             _returnRepository.RemoveAttachment(existing);
-            await _returnRepository.SaveChangesAsync();
-            return ArchiveReturnAttachmentFlowResult.Ok("扫描件已删除。");
+
+            var remaining = await _returnRepository.GetAttachmentsByBusinessIdAsync(recordId);
+            bool stillHasSigned = remaining.Any(item =>
+                item.Id != existing.Id
+                && string.Equals(
+                    item.FileCategory,
+                    ArchiveReturnDomainValues.AttachmentKindSignedHandover,
+                    StringComparison.Ordinal));
+            if (!stillHasSigned)
+            {
+                record.SignedAttachmentUploaded = false;
+                record.SignedAttachmentUploader = string.Empty;
+                record.SignedAttachmentUploadedTime = null;
+            }
+
+            record.UpdatedAt = DateTime.Now;
+            await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
+            return ArchiveReturnAttachmentFlowResult.Ok("签批交接单已删除。");
         }
 
         public async Task<ArchiveReturnAttachmentFlowResult> PrepareAttachmentViewFlowAsync(SystemAttachment attachment)
@@ -121,38 +146,8 @@ namespace DocMgr.Services.YearlyArchive
             return ArchiveReturnAttachmentFlowResult.Ok("附件已就绪", full);
         }
 
-        private async Task<bool> HasUploadedAbnormalReportAsync(int recordId)
-        {
-            var attachments = await _returnRepository.GetAttachmentsByBusinessIdAsync(recordId);
-            return attachments.Any(attachment => string.Equals(
-                attachment.FileCategory,
-                ArchiveReturnDomainValues.AttachmentKindSignedAbnormalReturnReport,
-                StringComparison.Ordinal));
-        }
-
-        private async Task<bool> HasUploadedAbnormalReportForFlowAsync(YearlyArchiveReturnRecord record)
-        {
-            if (record.Id > 0 && await HasUploadedAbnormalReportAsync(record.Id))
-            {
-                return true;
-            }
-
-            if (string.IsNullOrWhiteSpace(record.ReturnNo))
-            {
-                return false;
-            }
-
-            var attachments = await _returnRepository.GetAttachmentsByBusinessNoAsync(
-                record.ReturnNo.Trim(),
-                ArchiveReturnDomainValues.BusinessTypeAttachment);
-            return attachments.Any(attachment => string.Equals(
-                attachment.FileCategory,
-                ArchiveReturnDomainValues.AttachmentKindSignedAbnormalReturnReport,
-                StringComparison.Ordinal));
-        }
-
         /// <summary>
-        /// 登记前校验：内容完整性、份数逻辑一致性、灭失信息与附件。
+        /// 登记前校验：内容完整性、份数逻辑一致性、灭失说明。
         /// </summary>
         private async Task<string?> ValidateForRegistrationAsync(
             YearlyArchiveReturnRecord record,
@@ -271,46 +266,34 @@ namespace DocMgr.Services.YearlyArchive
                 return containerError;
             }
 
-            if (ArchiveReturnDomainValues.HasAbnormalReturnItems(items))
+            if (ArchiveReturnDomainValues.HasAbnormalReturnItems(items)
+                && string.IsNullOrWhiteSpace(record.LossDescription))
             {
-                if (string.IsNullOrWhiteSpace(record.LossDescription))
-                {
-                    return "本单存在灭失份数，请填写资料灭失具体情况。";
-                }
-
-                if (!await HasUploadedAbnormalReportForFlowAsync(record))
-                {
-                    return "本单存在灭失份数，请上传灭失情况表扫描件后再登记。";
-                }
+                return "本单存在灭失份数，请填写资料灭失具体情况。";
             }
 
+            // 灭失说明写入签批交接单；签批交接单扫描件由资料室在审批入库侧上传。
             return null;
         }
 
-        private async Task<ArchiveReturnFlowResult> ValidateAbnormalReturnGateAsync(YearlyArchiveReturnRecord record)
+        private Task<ArchiveReturnFlowResult> ValidateAbnormalReturnGateAsync(YearlyArchiveReturnRecord record)
         {
             if (record.Status == YearlyArchiveReturnRecord.Completed)
             {
-                return ArchiveReturnFlowResult.Ok(string.Empty, record.Id);
+                return Task.FromResult(ArchiveReturnFlowResult.Ok(string.Empty, record.Id));
             }
 
             if (!ArchiveReturnDomainValues.HasAbnormalReturnItems(record.Items))
             {
-                return ArchiveReturnFlowResult.Ok(string.Empty, record.Id);
+                return Task.FromResult(ArchiveReturnFlowResult.Ok(string.Empty, record.Id));
             }
 
             if (string.IsNullOrWhiteSpace(record.LossDescription))
             {
-                return ArchiveReturnFlowResult.Fail("本单存在灭失份数，请填写资料灭失具体情况。");
+                return Task.FromResult(ArchiveReturnFlowResult.Fail("本单存在灭失份数，请填写资料灭失具体情况。"));
             }
 
-            if (await HasUploadedAbnormalReportForFlowAsync(record))
-            {
-                return ArchiveReturnFlowResult.Ok(string.Empty, record.Id);
-            }
-
-            return ArchiveReturnFlowResult.Fail(
-                "本单存在灭失份数，请先打印灭失情况表，完成线下签字后上传扫描件，方可打印回执或办结入库。");
+            return Task.FromResult(ArchiveReturnFlowResult.Ok(string.Empty, record.Id));
         }
 
         private static string BuildItemLabel(YearlyArchiveReturnItem item) =>

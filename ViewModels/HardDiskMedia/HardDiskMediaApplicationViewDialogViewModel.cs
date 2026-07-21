@@ -74,7 +74,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string ReviewerDateDisplay => HardDiskMediaApplicationViewModelHelper.FormatDate(_application.ReviewerDate);
         public string ApprovedBy => HardDiskMediaApplicationViewModelHelper.EmptyAsPlaceholder(_application.ApprovedBy);
         public string ApprovedTimeDisplay => HardDiskMediaApplicationViewModelHelper.FormatDate(_application.ApprovedTime);
-        public string ApprovalOpinion => HardDiskMediaApplicationViewModelHelper.EmptyAsPlaceholder(_application.ApprovalOpinion);
+        public string ApprovalOpinion =>
+            ApprovalOpinionUniformitySupport.FormatForDisplay(_application.ApprovalOpinion);
         public string ExecutedBy => HardDiskMediaApplicationViewModelHelper.EmptyAsPlaceholder(_application.ExecutedBy);
         public string ExecutedTimeDisplay => HardDiskMediaApplicationViewModelHelper.FormatDateTime(_application.ExecutedTime);
         public string PrintInfoDisplay => _application.PrintCount > 0

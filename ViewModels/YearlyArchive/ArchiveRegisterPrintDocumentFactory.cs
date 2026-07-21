@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -23,6 +24,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// <summary>打印表格双行高度（约 2 行正文）。</summary>
         private const double PrintRowHeightTwoLines = 50;
 
+        private const double TitleBlockHeight = 72;
+        private const double HeaderInfoHeight = 28;
+        private const double CellPadding = 4;
         private const double PrintContentFontSize = 12;
         private const double PrintContentLineHeight = 21;
         private static readonly Thickness PrintLabelPadding = new Thickness(4, 2, 4, 2);
@@ -34,16 +38,18 @@ namespace DocMgr.ViewModels.YearlyArchive
         internal static FlowDocument Create(ArchiveRegisterPrintData data, bool isApplicationPrint = false)
         {
             ArgumentNullException.ThrowIfNull(data);
+            // 签字留白由打印数据装配控制；本工厂仅负责版式（含资料内容行撑满）。
+            _ = isApplicationPrint;
 
             FlowDocument doc = new FlowDocument();
             doc.FontFamily = FontBody; // 默认宋体
             doc.FontSize = 12;
             doc.LineHeight = 21;
-            doc.PagePadding = new Thickness(70, 40, 70, 40);
             doc.ColumnWidth = double.PositiveInfinity;
+            PrintPageLayoutSupport.ApplyA4MediumMargins(doc);
 
             // 标题使用黑体，加粗，字号加大
-            var title = new Paragraph(new Run("\n\n河北省第三测绘院资料室年度资料入档申请审批单"))
+            var title = new Paragraph(new Run("河北省第三测绘院资料室年度资料入档申请审批单"))
             {
                 FontFamily = FontTitle,
                 FontSize = 22,
@@ -80,19 +86,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             t.Columns.Add(new TableColumn { Width = new GridLength(1.8, GridUnitType.Star) });
             t.Columns.Add(new TableColumn { Width = new GridLength(3.2, GridUnitType.Star) });
 
-            // 计算动态高度：资料内容占据剩余空间，其余行按 1 行或 2 行高度统一
-            double totalHeight = 230;
-
-            // 证明材料区最小 1 行高度
+            // 资料内容行撑满一页剩余空间；证明材料保持单行起步高度。
             double proofHeight = PrintRowHeightOneLine;
-
-            // 资料内容占据剩余的所有空间
-            double contentHeight = totalHeight - proofHeight;
-            // 申请单打印：审批签字区采用单行格式，将节省的高度补给资料内容区
-            if (isApplicationPrint)
-            {
-                contentHeight = Math.Max(80, contentHeight - PrintRowHeightOneLine);
-            }
+            double contentHeight = CalculateContentRowHeight(
+                hasRetainedHardDisk: !string.IsNullOrWhiteSpace(data.RetainedHardDiskRegistration),
+                hasOpticalDiscLedger: !string.IsNullOrWhiteSpace(data.OpticalDiscLedgerSummary));
 
             TableRowGroup g = new TableRowGroup();
             g.Rows.Add(CreateRow("资料名称", data.MaterialName, 3, PrintRowHeightOneLine));
@@ -165,6 +163,32 @@ namespace DocMgr.ViewModels.YearlyArchive
             doc.Blocks.Add(foot);
 
             return doc;
+        }
+
+        private static double CalculateContentRowHeight(bool hasRetainedHardDisk, bool hasOpticalDiscLedger)
+        {
+            // 固定行：名称/项目/单位/证明/库管/其他要求/申请人/部门审核/分管领导(9) + 两处双行签字区；
+            // 留存硬盘、光盘台账为可选双行。外高含单元格内边距。
+            double fixedTableHeight =
+                PrintPageLayoutSupport.GetTableRowOuterHeightDip(PrintRowHeightOneLine, CellPadding) * 9
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(PrintRowHeightTwoLines, CellPadding) * 2;
+            if (hasRetainedHardDisk)
+            {
+                fixedTableHeight += PrintPageLayoutSupport.GetTableRowOuterHeightDip(PrintRowHeightTwoLines, CellPadding);
+            }
+
+            if (hasOpticalDiscLedger)
+            {
+                fixedTableHeight += PrintPageLayoutSupport.GetTableRowOuterHeightDip(PrintRowHeightTwoLines, CellPadding);
+            }
+
+            // 备注 4 行说明。
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 4, lineHeightDip: 18, topMarginDip: 15);
+            double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
+            return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
+                reservedHeight,
+                PrintRowHeightOneLine * 4,
+                CellPadding);
         }
 
         private static TableRow CreateRow(string label, string content, int contentColSpan, double minHeight = 0, VerticalAlignment contentVerticalAlignment = VerticalAlignment.Center)

@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-07-20T06:10:51Z
+generatedAt: 2026-07-21T08:48:45Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -4239,6 +4239,66 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      ReviewerName:
+        chineseName: 审核人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ReviewerDate:
+        chineseName: 审核日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ApprovedBy:
+        chineseName: 审批人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApprovalOpinion:
+        chineseName: 审批意见
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      HandoverApplicant:
+        chineseName: 办理交接人（归还人）
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      HandoverAdmin:
+        chineseName: 办理交接人（资料管理员）
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      HandoverDate:
+        chineseName: 办理交接日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploaded:
+        chineseName: 已上传签批交接单
+        description: ''
+        clrType: Boolean
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploader:
+        chineseName: 签批交接单上传人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploadedTime:
+        chineseName: 签批交接单上传时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
       RegisteredAt:
         chineseName: 登记时间
         description: ''
@@ -4246,22 +4306,22 @@ tables:
         needsReview: false
         aliases: []
       SubmittedAt:
-        chineseName: 未映射字段
+        chineseName: 提交时间
         description: ''
         clrType: DateTime?
-        needsReview: true
+        needsReview: false
         aliases: []
       ApprovedAt:
-        chineseName: 未映射字段
+        chineseName: 审批时间
         description: ''
         clrType: DateTime?
-        needsReview: true
+        needsReview: false
         aliases: []
       SignedUploadedAt:
-        chineseName: 未映射字段
+        chineseName: 实物交接时间
         description: ''
         clrType: DateTime?
-        needsReview: true
+        needsReview: false
         aliases: []
       CompletedAt:
         chineseName: 办结时间
@@ -4270,10 +4330,10 @@ tables:
         needsReview: false
         aliases: []
       WithdrawnAt:
-        chineseName: 未映射字段
+        chineseName: 撤回时间
         description: ''
         clrType: DateTime?
-        needsReview: true
+        needsReview: false
         aliases: []
       VoidedAt:
         chineseName: 作废时间
@@ -4288,16 +4348,16 @@ tables:
         needsReview: false
         aliases: []
       ForceVoidReason:
-        chineseName: 未映射字段
+        chineseName: 强制作废原因
         description: ''
         clrType: String
-        needsReview: true
+        needsReview: false
         aliases: []
       ForceVoidedAt:
-        chineseName: 未映射字段
+        chineseName: 强制作废时间
         description: ''
         clrType: DateTime?
-        needsReview: true
+        needsReview: false
         aliases: []
       PrintCount:
         chineseName: 打印次数

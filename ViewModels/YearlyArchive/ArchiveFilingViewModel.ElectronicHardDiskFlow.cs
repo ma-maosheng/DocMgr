@@ -881,6 +881,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ElectronicStorageLocation = string.Empty;
                 ElectronicCellCountText = "-";
                 _currentElectronicCellMediumCount = 0;
+                _resolvedElectronicSequenceIndex = 1;
             }
             finally
             {
@@ -995,6 +996,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ElectronicStorageLocation = string.Empty;
                 ElectronicCellCountText = "-";
                 _currentElectronicCellMediumCount = 0;
+                _resolvedElectronicSequenceIndex = 1;
                 return;
             }
 
@@ -1005,13 +1007,18 @@ namespace DocMgr.ViewModels.YearlyArchive
                     SelectedElectronicSide,
                     row,
                     column);
+                _resolvedElectronicSequenceIndex = await _filingService.GetMinimumAvailableElectronicSequenceInCellAsync(
+                    SelectedElectronicCabinet.Name,
+                    SelectedElectronicSide,
+                    row,
+                    column);
 
                 ElectronicStorageLocation = ArchiveSlotLocationSupport.BuildFullElectronicLocation(
                     SelectedElectronicCabinet.Name,
                     SelectedElectronicSide,
                     row,
                     column,
-                    _currentElectronicCellMediumCount + 1);
+                    _resolvedElectronicSequenceIndex);
                 ElectronicCellCountText = $"{_currentElectronicCellMediumCount} 袋";
             }
             catch (Exception ex)

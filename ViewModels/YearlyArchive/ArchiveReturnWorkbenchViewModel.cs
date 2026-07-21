@@ -18,9 +18,9 @@ using System.Windows.Input;
 namespace DocMgr.ViewModels.YearlyArchive
 {
     /// <summary>
-    /// 资料归还工作台：发起归还（由已办结出库单生成）→ 登记 → 办结入库。
+    /// 资料归还工作台：申请侧发起；审批入库侧完成审批 → 交接 → 办结。
     /// </summary>
-    public sealed class ArchiveReturnWorkbenchViewModel : ViewModelBase
+    public sealed partial class ArchiveReturnWorkbenchViewModel : ViewModelBase
     {
         private const string FilterAll = "全部";
         private const string OutboundFilterOverdue = "超期未还";
@@ -28,6 +28,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveReturnService _returnService;
         private readonly IArchiveOutboundService _outboundService;
         private readonly IUserContextService _userContextService;
+        private readonly IUserService _userService;
         private readonly IDialogService _dialogService;
         private readonly List<YearlyArchiveOutboundRecord> _allReturnableOutbounds = new();
         private readonly List<YearlyArchiveReturnRecord> _allReturns = new();
@@ -41,9 +42,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private YearlyArchiveReturnRecord? _editingRecord;
         private string _editHeader = string.Empty;
         private string _abnormalFlowHint = string.Empty;
+        private string _workflowHintText = string.Empty;
         private bool _isBusy;
         private bool _isAdmin;
-        private bool _hasAbnormalReportUploaded;
         private bool _isLeftPanelExpanded = true;
         private bool _isActive = true;
 
@@ -55,12 +56,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             IArchiveReturnService returnService,
             IArchiveOutboundService outboundService,
             IUserContextService userContextService,
+            IUserService userService,
             IDialogService dialogService)
         {
             _workspaceMode = workspaceMode;
             _returnService = returnService;
             _outboundService = outboundService;
             _userContextService = userContextService;
+            _userService = userService;
             _dialogService = dialogService;
 
             SearchCommand = new RelayCommand(_ => ApplyFilters(), _ => !IsBusy);
@@ -74,11 +77,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             ConfirmHandoverCommand = new RelayCommand(async _ => await ConfirmHandoverAsync(), _ => !IsBusy && CanConfirmHandover);
             CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => !IsBusy && CanComplete);
             VoidCommand = new RelayCommand(async _ => await VoidAsync(), _ => !IsBusy && CanVoid);
-            PrintReceiptCommand = new RelayCommand(async _ => await PrintReceiptAsync(), _ => !IsBusy && CanPrintReceipt);
-            PrintAbnormalReportCommand = new RelayCommand(async _ => await PrintAbnormalReportAsync(), _ => !IsBusy && CanPrintAbnormalReport);
-            UploadAbnormalReportCommand = new RelayCommand(async _ => await UploadAbnormalReportAsync(), _ => !IsBusy && CanManageAbnormalReportAttachments);
-            ViewAbnormalReportCommand = new RelayCommand(async _ => await ViewAbnormalReportAsync(), _ => SelectedAbnormalReportAttachment != null);
-            DeleteAbnormalReportCommand = new RelayCommand(async _ => await DeleteAbnormalReportAsync(), _ => !IsBusy && CanManageAbnormalReportAttachments && SelectedAbnormalReportAttachment != null);
+            PrintSignedHandoverCommand = new RelayCommand(async _ => await PrintHandoverDocumentAsync(), _ => !IsBusy && CanPrintSignedHandoverOnApplication);
+            PrintHandoverSheetCommand = new RelayCommand(async _ => await PrintHandoverDocumentAsync(), _ => !IsBusy && CanPrintHandoverSheet);
+            UploadSignedAttachmentCommand = new RelayCommand(async _ => await UploadSignedAttachmentAsync(), _ => !IsBusy && CanUploadSignedAttachment);
+            ViewSignedAttachmentCommand = new RelayCommand(async _ => await ViewSignedAttachmentAsync(), _ => SelectedSignedAttachment != null);
+            DeleteSignedAttachmentCommand = new RelayCommand(async _ => await DeleteSignedAttachmentAsync(), _ => !IsBusy && CanDeleteSignedAttachment && SelectedSignedAttachment != null);
             CancelEditCommand = new RelayCommand(_ => CancelEdit(), _ => IsEditing);
             ToggleLeftPanelCommand = new RelayCommand(_ => IsLeftPanelExpanded = !IsLeftPanelExpanded);
             AssignRehomeTargetCommand = new RelayCommand<ArchiveReturnItemEditRowViewModel>(
@@ -100,16 +103,18 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string PageTitle => _workspaceMode switch
         {
             ArchiveReturnWorkspaceMode.Application => "资料归还申请",
-            ArchiveReturnWorkspaceMode.Approval => "资料归还审批",
-            _ => "资料归还入库"
+            _ => "资料审批入库"
         };
 
         public string PageSubtitle => _workspaceMode switch
         {
-            ArchiveReturnWorkspaceMode.Application => "由借出人发起归还申请并提交审批。",
-            ArchiveReturnWorkspaceMode.Approval => "对已提交的归还申请进行审批。",
-            _ => "办理实物交接、上传签批交接单并办结入库。"
+            ArchiveReturnWorkspaceMode.Application => "选择待归还出库单，填写归还申请；无论资料是否完好，均须打印签批交接单并完成线下签字后提交（扫描件由资料室上传）。",
+            _ => "审批、实物交接；由资料室资料管理员上传签批交接单并办结。"
         };
+
+        /// <summary>资料室侧工作台（审批入库；含兼容旧 Handover 入口）。</summary>
+        private bool IsAdminWorkbenchMode =>
+            _workspaceMode is ArchiveReturnWorkspaceMode.Approval or ArchiveReturnWorkspaceMode.Handover;
 
         public ObservableCollection<int> Years { get; } = new();
 
@@ -139,7 +144,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public ItemDetailsListPresenter<ArchiveReturnItemEditRowViewModel> EditItemDetailsPanel { get; }
 
-        public ObservableCollection<SystemAttachment> AbnormalReportAttachments { get; } = new();
+        public ObservableCollection<SystemAttachment> SignedAttachments { get; } = new();
 
         public string SearchKeyword
         {
@@ -170,11 +175,11 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand ConfirmHandoverCommand { get; }
         public RelayCommand CompleteCommand { get; }
         public RelayCommand VoidCommand { get; }
-        public RelayCommand PrintReceiptCommand { get; }
-        public RelayCommand PrintAbnormalReportCommand { get; }
-        public RelayCommand UploadAbnormalReportCommand { get; }
-        public RelayCommand ViewAbnormalReportCommand { get; }
-        public RelayCommand DeleteAbnormalReportCommand { get; }
+        public RelayCommand PrintSignedHandoverCommand { get; }
+        public RelayCommand PrintHandoverSheetCommand { get; }
+        public RelayCommand UploadSignedAttachmentCommand { get; }
+        public RelayCommand ViewSignedAttachmentCommand { get; }
+        public RelayCommand DeleteSignedAttachmentCommand { get; }
         public RelayCommand CancelEditCommand { get; }
         public RelayCommand ToggleLeftPanelCommand { get; }
         public RelayCommand<ArchiveReturnItemEditRowViewModel> AssignRehomeTargetCommand { get; }
@@ -215,9 +220,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                     OnPropertyChanged(nameof(ShowAbnormalReturnPanel));
                     OnPropertyChanged(nameof(CanComplete));
                     OnPropertyChanged(nameof(CanVoid));
-                    OnPropertyChanged(nameof(CanPrintReceipt));
-                    OnPropertyChanged(nameof(CanPrintAbnormalReport));
-                    OnPropertyChanged(nameof(CanManageAbnormalReportAttachments));
+                    OnPropertyChanged(nameof(CanPrintSignedHandoverOnApplication));
+                    OnPropertyChanged(nameof(CanPrintHandoverSheet));
                     OnPropertyChanged(nameof(HasAbnormalReturnItems));
                 }
             }
@@ -283,28 +287,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             private set => SetProperty(ref _isAdmin, value);
         }
 
-        public bool HasAbnormalReportUploaded
-        {
-            get => _hasAbnormalReportUploaded;
-            private set
-            {
-                if (SetProperty(ref _hasAbnormalReportUploaded, value))
-                {
-                    OnPropertyChanged(nameof(CanComplete));
-                    OnPropertyChanged(nameof(CanPrintReceipt));
-                    RefreshAbnormalFlowHint();
-                }
-            }
-        }
-
-        public SystemAttachment? SelectedAbnormalReportAttachment
-        {
-            get => _selectedAbnormalReportAttachment;
-            set => SetProperty(ref _selectedAbnormalReportAttachment, value);
-        }
-
-        private SystemAttachment? _selectedAbnormalReportAttachment;
-
         public bool IsEditing => EditingRecord != null;
 
         public bool IsEditable => EditingRecord is { Status: YearlyArchiveReturnRecord.Draft }
@@ -322,23 +304,42 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsEditable && _returnService.CanSubmitApplication(_userContextService.CurrentUser);
 
         public bool CanApprove =>
-            _workspaceMode == ArchiveReturnWorkspaceMode.Approval
+            IsAdminWorkbenchMode
             && IsAdmin
             && EditingRecord is { Id: > 0, Status: YearlyArchiveReturnRecord.Submitted };
 
         public bool CanConfirmHandover =>
-            _workspaceMode == ArchiveReturnWorkspaceMode.Handover
+            IsAdminWorkbenchMode
             && IsAdmin
-            && EditingRecord is { Id: > 0, Status: YearlyArchiveReturnRecord.Approved }
-            && (!HasAbnormalReturnItems || HasAbnormalReportUploaded);
+            && EditingRecord is { Id: > 0, Status: YearlyArchiveReturnRecord.Approved };
+
+        public bool CanUploadSignedAttachment =>
+            IsAdminWorkbenchMode
+            && IsAdmin
+            && EditingRecord is { Id: > 0, Status: YearlyArchiveReturnRecord.SignedUploaded };
+
+        public bool CanDeleteSignedAttachment =>
+            IsAdminWorkbenchMode
+            && IsAdmin
+            && EditingRecord is { Id: > 0 } record
+            && record.Status is not (
+                YearlyArchiveReturnRecord.Completed
+                or YearlyArchiveReturnRecord.WithdrawnVoid
+                or YearlyArchiveReturnRecord.ForceVoided);
 
         public bool ShowApplicationActions => _workspaceMode == ArchiveReturnWorkspaceMode.Application;
 
-        public bool ShowApprovalActions => _workspaceMode == ArchiveReturnWorkspaceMode.Approval;
+        /// <summary>审批入库工作台：同时展示审批与交接办结操作区。</summary>
+        public bool ShowApprovalActions => IsAdminWorkbenchMode;
 
-        public bool ShowHandoverActions => _workspaceMode == ArchiveReturnWorkspaceMode.Handover;
+        /// <summary>审批信息蓝框：仅在打开归还单后展示。</summary>
+        public bool ShowApprovalEditorPanel => ShowApprovalActions && IsEditing;
 
-        public bool ShowOutboundCandidatesPanel => _workspaceMode == ArchiveReturnWorkspaceMode.Application;
+        /// <summary>左侧「待归还出库单」：申请与审批入库页均展示（审批页仅查看/对照，不可发起）。</summary>
+        public bool ShowOutboundCandidatesPanel => true;
+
+        /// <summary>待归还出库单上的「发起归还」仅申请页可用。</summary>
+        public bool ShowStartReturnButton => _workspaceMode == ArchiveReturnWorkspaceMode.Application;
 
         public bool HasAbnormalReturnItems =>
             EditingRecord != null
@@ -347,35 +348,36 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool ShowAbnormalReturnPanel =>
             IsEditing && HasAbnormalReturnItems;
 
-        public bool CanPrintAbnormalReport =>
-            ShowAbnormalReturnPanel && EditingRecord is { Id: > 0 }
-            && EditingRecord.Status is YearlyArchiveReturnRecord.Draft
-                or YearlyArchiveReturnRecord.Submitted
-                or YearlyArchiveReturnRecord.Approved
-                or YearlyArchiveReturnRecord.SignedUploaded;
+        /// <summary>申请侧可打印签批交接单。</summary>
+        public bool CanPrintSignedHandoverOnApplication =>
+            ShowApplicationActions
+            && EditingRecord is { Id: > 0 } record
+            && record.Status is YearlyArchiveReturnRecord.Draft or YearlyArchiveReturnRecord.Submitted;
 
-        public bool CanManageAbnormalReportAttachments =>
-            ShowAbnormalReturnPanel
-            && EditingRecord is { Status: YearlyArchiveReturnRecord.Draft }
-            && _workspaceMode == ArchiveReturnWorkspaceMode.Application;
+        /// <summary>审批侧可打印交接单。</summary>
+        public bool CanPrintHandoverSheet =>
+            ShowApprovalActions
+            && EditingRecord is { Id: > 0 } record
+            && record.Status is YearlyArchiveReturnRecord.Approved
+                or YearlyArchiveReturnRecord.SignedUploaded
+                or YearlyArchiveReturnRecord.Completed;
 
-        /// <summary>已实物交接后可办结入库。</summary>
+        /// <summary>已上传签批交接单且已打印后可确认办结。</summary>
         public bool CanComplete =>
-            _workspaceMode == ArchiveReturnWorkspaceMode.Handover
+            IsAdminWorkbenchMode
             && IsAdmin
-            && EditingRecord is { Status: YearlyArchiveReturnRecord.SignedUploaded }
-            && (!HasAbnormalReturnItems || HasAbnormalReportUploaded);
+            && EditingRecord is { Status: YearlyArchiveReturnRecord.SignedUploaded, PrintCount: > 0, SignedAttachmentUploaded: true };
 
-        /// <summary>申请侧撤回作废；审批/交接侧强制作废。</summary>
+        /// <summary>申请侧撤回作废；审批侧逾期强制作废。</summary>
         public string VoidActionText => _workspaceMode == ArchiveReturnWorkspaceMode.Application
             ? "撤回作废"
             : "强制作废";
 
         public string VoidActionToolTip => _workspaceMode == ArchiveReturnWorkspaceMode.Application
             ? "申请人撤回，状态变为「已作废（撤回）」"
-            : "资料室管理员强制作废，状态变为「已作废（强制）」";
+            : "资料室管理员强制作废（须满足逾期时限），状态变为「已作废（强制）」";
 
-        /// <summary>办结前可作废：申请人仅草稿/已提交可撤回；管理员可强制作废未办结单。</summary>
+        /// <summary>申请人仅草稿/已提交可撤回；管理员仅草稿/已提交且逾期可强制。</summary>
         public bool CanVoid
         {
             get
@@ -403,17 +405,74 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 return IsAdmin
                        && record.Status is YearlyArchiveReturnRecord.Draft
-                           or YearlyArchiveReturnRecord.Submitted
-                           or YearlyArchiveReturnRecord.Approved
-                           or YearlyArchiveReturnRecord.SignedUploaded;
+                           or YearlyArchiveReturnRecord.Submitted;
             }
         }
 
-        /// <summary>实物交接后可打印回执。</summary>
-        public bool CanPrintReceipt => EditingRecord is { Id: > 0 } record
-            && record.Status is YearlyArchiveReturnRecord.SignedUploaded or YearlyArchiveReturnRecord.Completed
-            && (_workspaceMode == ArchiveReturnWorkspaceMode.Handover || record.Status == YearlyArchiveReturnRecord.Completed)
-            && (!HasAbnormalReturnItems || HasAbnormalReportUploaded || record.Status == YearlyArchiveReturnRecord.Completed);
+        public string WorkflowHintText
+        {
+            get => _workflowHintText;
+            private set => SetProperty(ref _workflowHintText, value);
+        }
+
+        public string ApproveHintText
+        {
+            get
+            {
+                if (CanApprove)
+                {
+                    return HasAbnormalReturnItems
+                        ? "本单存在灭失：签批交接单需借出时全部审核审批人（部门负责人、资料室负责人、生产科负责人、生产副院长）签字；请核对后点击“审批通过”。"
+                        : "本单资料完好归还：签批交接单仅需部门负责人签字，无需资料室负责人及其他审批人；请核对后点击“审批通过”。";
+                }
+
+                return EditingRecord?.Status == YearlyArchiveReturnRecord.Approved
+                    ? "审批已通过，请办理实物交接。"
+                    : string.Empty;
+            }
+        }
+
+        /// <summary>完好归还：仅展示部门负责人。</summary>
+        public bool ShowIntactApprovalSigner => IsEditing && !HasAbnormalReturnItems;
+
+        /// <summary>灭失归还：展示借出时全部四级审核审批人。</summary>
+        public bool ShowLossApprovalSigners => IsEditing && HasAbnormalReturnItems;
+
+        /// <summary>审核人字段标签。</summary>
+        public string ReviewerFieldLabel => HasAbnormalReturnItems
+            ? "部门负责人（借出时） *"
+            : "部门负责人 *";
+
+        /// <summary>资料室负责人字段标签（仅灭失时展示）。</summary>
+        public string ApproverFieldLabel => "资料室负责人（借出时） *";
+
+        public string ConfirmHandoverHintText
+        {
+            get
+            {
+                if (CanConfirmHandover)
+                {
+                    return "请确认交接双方与日期无误后办理实物交接；确认后请上传签批交接单。";
+                }
+
+                return EditingRecord?.Status == YearlyArchiveReturnRecord.SignedUploaded
+                       && EditingRecord is { SignedAttachmentUploaded: false }
+                    ? "后续：确认实物交接后，请上传签批交接单。"
+                    : string.Empty;
+            }
+        }
+
+        public string UploadHintText => CanUploadSignedAttachment
+            ? "后续：上传签批交接单后，请打印交接单并点击“确认办结”。"
+            : "请先确认实物交接，再上传签批交接单。";
+
+        public string CompleteHintText => CanComplete
+            ? "下一步：确认办结，完成资料收回入库。"
+            : EditingRecord is { Status: YearlyArchiveReturnRecord.SignedUploaded, SignedAttachmentUploaded: true, PrintCount: <= 0 }
+                ? "请先打印交接单，再确认办结。"
+                : EditingRecord is { Status: YearlyArchiveReturnRecord.SignedUploaded, SignedAttachmentUploaded: false }
+                    ? "请先上传签批交接单并打印交接单，再确认办结。"
+                    : "请先完成实物交接并上传签批交接单，再确认办结。";
 
         public async Task InitializeAsync()
         {
@@ -475,11 +534,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             int? selectedReturnId = SelectedReturn?.Id;
 
             _allReturnableOutbounds.Clear();
-            if (IsAdmin)
-            {
-                var returnable = await _returnService.GetReturnableOutboundsAsync(SelectedYear);
-                _allReturnableOutbounds.AddRange(returnable);
-            }
+            // 申请/审批入库页均加载待归还出库单，便于资料室对照借出情况。
+            var returnable = await _returnService.GetReturnableOutboundsAsync(SelectedYear);
+            _allReturnableOutbounds.AddRange(returnable);
 
             _allReturns.Clear();
             var returns = await _returnService.ListReturnsAsync(SelectedYear, user);
@@ -530,10 +587,26 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private bool MatchesReturnFilters(YearlyArchiveReturnRecord record)
         {
-            if (SelectedReturnStatus != FilterAll
-                && !string.Equals(record.StatusStr, SelectedReturnStatus, StringComparison.Ordinal))
+            if (SelectedReturnStatus != FilterAll)
             {
-                return false;
+                if (string.Equals(
+                        SelectedReturnStatus,
+                        ApplicationWorkflowStatus.TextSignedUploaded,
+                        StringComparison.Ordinal))
+                {
+                    if (record.Status != YearlyArchiveReturnRecord.SignedUploaded)
+                    {
+                        return false;
+                    }
+                }
+                else if (!string.Equals(
+                             ApplicationWorkflowStatus.ToDisplay(record.Status),
+                             SelectedReturnStatus,
+                             StringComparison.Ordinal)
+                         && !string.Equals(record.StatusStr, SelectedReturnStatus, StringComparison.Ordinal))
+                {
+                    return false;
+                }
             }
 
             return MatchesKeyword(
@@ -818,6 +891,30 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            if (string.IsNullOrWhiteSpace(ReviewerName))
+            {
+                _dialogService.ShowMessage("请填写部门负责人。");
+                return;
+            }
+
+            if (HasAbnormalReturnItems && string.IsNullOrWhiteSpace(ApproverName))
+            {
+                _dialogService.ShowMessage("存在灭失时请填写资料室负责人。");
+                return;
+            }
+
+            if (HasAbnormalReturnItems && string.IsNullOrWhiteSpace(ProductionHeadName))
+            {
+                _dialogService.ShowMessage("存在灭失时请填写生产科负责人。");
+                return;
+            }
+
+            if (HasAbnormalReturnItems && string.IsNullOrWhiteSpace(VicePresidentName))
+            {
+                _dialogService.ShowMessage("存在灭失时请填写生产副院长。");
+                return;
+            }
+
             if (!_dialogService.ShowConfirm($"确认审批通过归还单 {record.ReturnNo}？", "审批确认"))
             {
                 return;
@@ -826,7 +923,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsBusy = true;
             try
             {
-                var result = await _returnService.ApproveReturnFlowAsync(record.Id, user);
+                var result = await _returnService.ApproveReturnFlowAsync(record.Id, user, BuildApprovalInput());
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -856,6 +953,18 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            if (string.IsNullOrWhiteSpace(HandoverAdmin))
+            {
+                _dialogService.ShowMessage("请填写办理交接人（资料管理员）。");
+                return;
+            }
+
+            if (!HandoverDate.HasValue)
+            {
+                _dialogService.ShowMessage("请填写办理交接日期。");
+                return;
+            }
+
             if (!_dialogService.ShowConfirm($"确认归还单 {record.ReturnNo} 已完成实物交接？", "实物交接确认"))
             {
                 return;
@@ -864,7 +973,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsBusy = true;
             try
             {
-                var result = await _returnService.ConfirmHandoverFlowAsync(record.Id, user);
+                var result = await _returnService.ConfirmHandoverFlowAsync(record.Id, user, BuildHandoverInput());
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -894,7 +1003,24 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            if (!_dialogService.ShowConfirm($"确认办结归还单 {record.ReturnNo}？办结后将冲销出库提档对资料台账的影响，且不可撤销。", "办结确认"))
+            if (!CanComplete)
+            {
+                _dialogService.ShowMessage(
+                    record.SignedAttachmentUploaded && record.PrintCount <= 0
+                        ? "请先打印交接单，再确认办结。"
+                        : "请先上传签批交接单并打印交接单，再确认办结。");
+                return;
+            }
+
+            string confirmMessage =
+                $"确认办结归还单 {record.ReturnNo}？办结后将冲销出库提档对资料台账的影响，且不可撤销。";
+            if (HasAbnormalReturnItems)
+            {
+                confirmMessage +=
+                    "\n\n若灭失导致档口内档案盒变为空盒，办结后请资料管理员对空档案盒进行物理处置（取走、合并或注销）。";
+            }
+
+            if (!_dialogService.ShowConfirm(confirmMessage, "办结确认"))
             {
                 return;
             }
@@ -1006,6 +1132,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             EditingRecord = record;
             EditHeader = $"归还单 {record.ReturnNo}　源出库单 {record.SourceOutboundNo}　借出人 {record.BorrowerName}　状态 {record.StatusStr}";
             OnPropertyChanged(nameof(LossDescription));
+            _ = LoadApprovalFormFieldsAsync(record);
             _ = LoadAttachmentsAsync(record.Id);
             NotifyEditCommandStates();
         }
@@ -1014,11 +1141,20 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             OnPropertyChanged(nameof(HasAbnormalReturnItems));
             OnPropertyChanged(nameof(ShowAbnormalReturnPanel));
+            OnPropertyChanged(nameof(ShowIntactApprovalSigner));
+            OnPropertyChanged(nameof(ShowLossApprovalSigners));
             OnPropertyChanged(nameof(CanComplete));
-            OnPropertyChanged(nameof(CanPrintReceipt));
-            OnPropertyChanged(nameof(CanPrintAbnormalReport));
-            OnPropertyChanged(nameof(CanManageAbnormalReportAttachments));
+            OnPropertyChanged(nameof(CanPrintHandoverSheet));
+            OnPropertyChanged(nameof(ApproveHintText));
+            OnPropertyChanged(nameof(ReviewerFieldLabel));
+            OnPropertyChanged(nameof(ApproverFieldLabel));
             RefreshAbnormalFlowHint();
+            RefreshWorkflowHint();
+
+            if (IsAdminWorkbenchMode && EditingRecord is { } editingRecord)
+            {
+                _ = SyncApprovalSignersForLossStateAsync(editingRecord);
+            }
         }
 
         private async Task LoadAttachmentsAsync(int recordId)
@@ -1028,13 +1164,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            AbnormalReportAttachments.Clear();
-            SelectedAbnormalReportAttachment = null;
-            HasAbnormalReportUploaded = false;
+            SignedAttachments.Clear();
+            SelectedSignedAttachment = null;
 
             if (recordId <= 0)
             {
                 RefreshAbnormalFlowHint();
+                RefreshWorkflowHint();
                 return;
             }
 
@@ -1043,15 +1179,15 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (string.Equals(
                         attachment.FileCategory,
-                        ArchiveReturnDomainValues.AttachmentKindSignedAbnormalReturnReport,
+                        ArchiveReturnDomainValues.AttachmentKindSignedHandover,
                         StringComparison.Ordinal))
                 {
-                    AbnormalReportAttachments.Add(attachment);
+                    SignedAttachments.Add(attachment);
                 }
             }
 
-            HasAbnormalReportUploaded = AbnormalReportAttachments.Count > 0;
             RefreshAbnormalFlowHint();
+            RefreshWorkflowHint();
         }
 
         private void RefreshAbnormalFlowHint()
@@ -1062,13 +1198,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            AbnormalFlowHint = HasAbnormalReportUploaded
+            // 灭失说明写入签批交接单，不再单独上传灭失情况表。
+            AbnormalFlowHint = ShowApplicationActions
                 ? (IsEditable
-                    ? "灭失情况表扫描件已上传，可登记后打印回执并办结入库。"
-                    : "灭失情况表扫描件已上传，可打印回执并办结入库。")
-                : (IsEditable
-                    ? "本单存在灭失份数：请填写灭失具体情况，打印灭失情况表并完成线下签字后上传扫描件，再办理登记。"
-                    : "本单存在灭失份数，登记信息已锁定。");
+                    ? "本单存在灭失份数：请填写灭失具体情况（将写入签批交接单），打印并完成线下签字后提交；签批交接单扫描件由资料室资料管理员上传。"
+                    : "本单存在灭失份数：请打印签批交接单完成线下签字；签批交接单扫描件由资料室资料管理员上传。")
+                : "本单存在灭失份数：灭失说明已体现在签批交接单中，请核对明细与四级签字人后办理审批与交接。";
         }
 
         private void NotifyEditCommandStates()
@@ -1078,251 +1213,42 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanSubmit));
             OnPropertyChanged(nameof(CanApprove));
             OnPropertyChanged(nameof(CanConfirmHandover));
+            OnPropertyChanged(nameof(CanUploadSignedAttachment));
+            OnPropertyChanged(nameof(CanDeleteSignedAttachment));
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(CanVoid));
-            OnPropertyChanged(nameof(CanPrintReceipt));
-            OnPropertyChanged(nameof(CanPrintAbnormalReport));
-            OnPropertyChanged(nameof(CanManageAbnormalReportAttachments));
+            OnPropertyChanged(nameof(CanPrintSignedHandoverOnApplication));
+            OnPropertyChanged(nameof(CanPrintHandoverSheet));
             OnPropertyChanged(nameof(ShowAbnormalReturnPanel));
             OnPropertyChanged(nameof(HasAbnormalReturnItems));
+            OnPropertyChanged(nameof(ShowIntactApprovalSigner));
+            OnPropertyChanged(nameof(ShowLossApprovalSigners));
             OnPropertyChanged(nameof(ShowApplicationActions));
             OnPropertyChanged(nameof(ShowApprovalActions));
-            OnPropertyChanged(nameof(ShowHandoverActions));
+            OnPropertyChanged(nameof(ShowApprovalEditorPanel));
             OnPropertyChanged(nameof(ShowOutboundCandidatesPanel));
+            OnPropertyChanged(nameof(ShowStartReturnButton));
             OnPropertyChanged(nameof(CanStartReturn));
+            OnPropertyChanged(nameof(ApproveHintText));
+            OnPropertyChanged(nameof(ReviewerFieldLabel));
+            OnPropertyChanged(nameof(ApproverFieldLabel));
+            OnPropertyChanged(nameof(ConfirmHandoverHintText));
+            OnPropertyChanged(nameof(UploadHintText));
+            OnPropertyChanged(nameof(CompleteHintText));
             RefreshAbnormalFlowHint();
+            RefreshWorkflowHint();
             CommandManager.InvalidateRequerySuggested();
-        }
-
-        private async Task PrintReceiptAsync()
-        {
-            if (EditingRecord is not { Id: > 0 } record)
-            {
-                return;
-            }
-
-            IsBusy = true;
-            try
-            {
-                bool blankHandoverSignatures = true;
-                var data = await _returnService.BuildReceiptPrintDataAsync(record.Id, blankHandoverSignatures);
-                var document = ArchiveReturnPrintDocumentFactory.Create(data);
-                var previewWindow = new PrintPreviewWindow(document)
-                {
-                    Owner = Application.Current.MainWindow
-                };
-
-                await _returnService.RecordPrintAsync(record.Id);
-                previewWindow.ShowDialog();
-
-                var reloaded = await _returnService.GetReturnAsync(record.Id);
-                if (reloaded != null)
-                {
-                    LoadEditing(reloaded);
-                }
-            }
-            catch (InvalidOperationException ex)
-            {
-                _dialogService.ShowError(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                _dialogService.ShowError("归还回执打印生成失败：" + ex.Message);
-            }
-            finally
-            {
-                IsBusy = false;
-            }
-        }
-
-        private async Task PrintAbnormalReportAsync()
-        {
-            if (EditingRecord is not { Id: > 0 } record)
-            {
-                return;
-            }
-
-            IsBusy = true;
-            try
-            {
-                bool blankApprovalSignatures = true;
-                var data = await _returnService.BuildAbnormalReportPrintDataAsync(record.Id, blankApprovalSignatures);
-                var document = ArchiveReturnAbnormalReportPrintDocumentFactory.Create(data);
-                var previewWindow = new PrintPreviewWindow(document)
-                {
-                    Owner = Application.Current.MainWindow
-                };
-                previewWindow.ShowDialog();
-            }
-            catch (InvalidOperationException ex)
-            {
-                _dialogService.ShowError(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                _dialogService.ShowError("灭失情况表打印失败：" + ex.Message);
-            }
-            finally
-            {
-                IsBusy = false;
-            }
-        }
-
-        private async Task UploadAbnormalReportAsync()
-        {
-            if (EditingRecord is not { } record)
-            {
-                return;
-            }
-
-            if (record.Id <= 0)
-            {
-                _dialogService.ShowError("请先保存草稿后再上传灭失情况表扫描件。");
-                return;
-            }
-
-            var user = _userContextService.CurrentUser;
-            if (user == null)
-            {
-                return;
-            }
-
-            var dialog = new OpenFileDialog
-            {
-                Filter = SystemAttachmentUploadSupport.OpenFileDialogFilter
-            };
-
-            if (dialog.ShowDialog() != true)
-            {
-                return;
-            }
-
-            IsBusy = true;
-            try
-            {
-                byte[] content = await File.ReadAllBytesAsync(dialog.FileName);
-                string fileName = Path.GetFileName(dialog.FileName);
-                string extension = Path.GetExtension(fileName);
-
-                var attachment = new SystemAttachment
-                {
-                    FileName = fileName,
-                    Extension = extension,
-                    FileSize = content.LongLength,
-                    FileContent = content
-                };
-
-                var result = await _returnService.UploadAbnormalReportAttachmentFlowAsync(record.Id, attachment, user);
-                if (!result.Success)
-                {
-                    _dialogService.ShowError(result.Message);
-                    return;
-                }
-
-                await LoadAttachmentsAsync(record.Id);
-                _dialogService.ShowMessage(result.Message, "上传成功");
-            }
-            catch (Exception ex)
-            {
-                _dialogService.ShowError("上传灭失情况表扫描件失败：" + ex.Message);
-            }
-            finally
-            {
-                IsBusy = false;
-            }
-        }
-
-        private async Task ViewAbnormalReportAsync()
-        {
-            var attachment = SelectedAbnormalReportAttachment;
-            if (attachment == null)
-            {
-                return;
-            }
-
-            try
-            {
-                var result = await _returnService.PrepareAttachmentViewFlowAsync(attachment);
-                if (!result.Success || result.Attachment?.FileContent == null)
-                {
-                    _dialogService.ShowMessage(result.Message);
-                    return;
-                }
-
-                var full = result.Attachment;
-                if (_dialogService.ShowConfirm("直接打开？\n【确定】打开 【取消】另存为"))
-                {
-                    var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + "_" + full.FileName);
-                    await File.WriteAllBytesAsync(path, full.FileContent);
-                    Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-                }
-                else
-                {
-                    var dlg = new SaveFileDialog { FileName = full.FileName };
-                    if (dlg.ShowDialog() == true)
-                    {
-                        await File.WriteAllBytesAsync(dlg.FileName, full.FileContent);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _dialogService.ShowError("查看报备件失败：" + ex.Message);
-            }
-        }
-
-        private async Task DeleteAbnormalReportAsync()
-        {
-            if (EditingRecord is not { Id: > 0 } record)
-            {
-                return;
-            }
-
-            var attachment = SelectedAbnormalReportAttachment;
-            if (attachment == null)
-            {
-                return;
-            }
-
-            var user = _userContextService.CurrentUser;
-            if (user == null)
-            {
-                return;
-            }
-
-            if (!_dialogService.ShowConfirm($"确认删除报备件「{attachment.FileName}」？", "删除确认"))
-            {
-                return;
-            }
-
-            IsBusy = true;
-            try
-            {
-                var result = await _returnService.DeleteAbnormalReportAttachmentFlowAsync(record.Id, attachment, user);
-                if (!result.Success)
-                {
-                    _dialogService.ShowError(result.Message);
-                    return;
-                }
-
-                await LoadAttachmentsAsync(record.Id);
-                _dialogService.ShowMessage(result.Message);
-            }
-            finally
-            {
-                IsBusy = false;
-            }
         }
 
         private void CancelEdit()
         {
             EditItems.Clear();
-            AbnormalReportAttachments.Clear();
-            SelectedAbnormalReportAttachment = null;
-            HasAbnormalReportUploaded = false;
+            SignedAttachments.Clear();
+            SelectedSignedAttachment = null;
             EditingRecord = null;
             EditHeader = string.Empty;
             AbnormalFlowHint = string.Empty;
+            WorkflowHintText = string.Empty;
             NotifyEditCommandStates();
         }
     }
