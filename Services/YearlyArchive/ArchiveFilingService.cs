@@ -395,6 +395,8 @@ namespace DocMgr.Services.YearlyArchive
                 .ThenBy(item => CabinetSelectionSupport.GetTraditionalCabinetNameOrder(item.Name))
                 .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
+            var archiveCategoryLookup = await _archiveFilingRepository.GetArchiveSlotCategoryLookupForCabinetsAsync(
+                cabinets.Where(item => item.Type == CabinetType.Standard).Select(item => item.Id).ToList());
             var existingBoxes = await _archiveFilingRepository.GetExistingYearlyArchiveBoxesWithCabinetAsync();
             var occupiedSlotBoxCounts = await LoadOccupiedArchiveSlotBoxCountsAsync();
             var placementLookup = (await _archiveFilingRepository.GetArchiveBoxPlacementsAsync())
@@ -433,6 +435,11 @@ namespace DocMgr.Services.YearlyArchive
                         foreach (var side in sides)
                         {
                             if (!TryResolvePlacementMode(cabinet.Name, side, row, column, normalizedSpecification, specialRules, out string placementMode))
+                            {
+                                continue;
+                            }
+
+                            if (!IsYearlyMaterialsSlotCandidate(cabinet, side, row, column, archiveCategoryLookup))
                             {
                                 continue;
                             }
@@ -533,6 +540,7 @@ namespace DocMgr.Services.YearlyArchive
             {
                 ArgumentNullException.ThrowIfNull(newBox);
                 ValidateArchiveBox(newBox);
+                await ValidateYearlyArchiveBoxStorageLocationSlotCategoryAsync(newBox);
 
                 DateTime archivedAt = DateTime.Now;
                 var mediaItems = await LoadSimulatedMediaItemsForArchivingAsync(mediaItemIds);
@@ -908,6 +916,66 @@ namespace DocMgr.Services.YearlyArchive
             {
                 throw new InvalidOperationException($"模拟立档编号 [{box.ArchiveSequenceNo}] 不符合 年度模拟-年份-顺序号 规则。");
             }
+        }
+
+        /// <summary>
+        /// 校验年度模拟档案盒落位：标准滑道式档案柜须为「年度资料专用档口」。
+        /// </summary>
+        private async Task ValidateYearlyArchiveBoxStorageLocationSlotCategoryAsync(YearlyArchiveBox box)
+        {
+            ArgumentNullException.ThrowIfNull(box);
+
+            string cabinetName = box.CabinetName?.Trim() ?? string.Empty;
+            string faceCode = box.Side?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(cabinetName) || string.IsNullOrWhiteSpace(faceCode) || box.Row <= 0 || box.Column <= 0)
+            {
+                throw new InvalidOperationException("档案盒存放位置不完整，请重新选择档口。");
+            }
+
+            var cabinets = await _cabinetRepository.GetAllAsync();
+            var cabinet = cabinets.FirstOrDefault(item =>
+                string.Equals(item.Name, cabinetName, StringComparison.OrdinalIgnoreCase));
+            string slotCode = ArchiveStorageSlotCategorySupport.BuildSlotCode(box.Row, box.Column);
+            string? storedCategory = cabinet == null || cabinet.Type != CabinetType.Standard
+                ? null
+                : await _archiveFilingRepository.GetArchiveSlotCategoryNameAsync(cabinet.Id, faceCode, slotCode);
+
+            string locationDisplay = string.IsNullOrWhiteSpace(box.BoxLocationCode)
+                ? $"{cabinetName}{faceCode}-{slotCode}"
+                : box.BoxLocationCode.Trim();
+            string? issue = ArchiveStorageSlotCategorySupport.TryValidateStandardSlotCategory(
+                cabinet,
+                faceCode,
+                slotCode,
+                storedCategory,
+                ArchiveStorageSlotCategorySupport.ExpectedYearlyMaterialsCategory,
+                locationDisplay);
+            if (!string.IsNullOrWhiteSpace(issue))
+            {
+                throw new InvalidOperationException(issue);
+            }
+        }
+
+        private static bool IsYearlyMaterialsSlotCandidate(
+            Cabinet cabinet,
+            string faceCode,
+            int row,
+            int column,
+            IReadOnlyDictionary<string, string> archiveCategoryLookup)
+        {
+            if (cabinet.Type != CabinetType.Standard)
+            {
+                return true;
+            }
+
+            string key = ArchiveStorageSlotCategorySupport.BuildCategoryLookupKey(
+                cabinet.Id,
+                faceCode,
+                ArchiveStorageSlotCategorySupport.BuildSlotCode(row, column));
+            archiveCategoryLookup.TryGetValue(key, out string? storedCategory);
+            return ArchiveStorageSlotCategorySupport.MatchesExpectedCategory(
+                storedCategory,
+                ArchiveStorageSlotCategorySupport.ExpectedYearlyMaterialsCategory);
         }
 
         private static void UpdateSimulatedArchiveStatuses(IEnumerable<YearlyArchiveRegisterRecord> records, DateTime archivedAt)

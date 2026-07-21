@@ -403,6 +403,30 @@ namespace DocMgr.Services.Shared
             }
         }
 
+        public CabinetArchiveSlotCategoryEditResult? ShowCabinetArchiveSlotCategoryEditDialog(string title, string summary, string? initialCategoryName)
+        {
+            var dialog = new CabinetArchiveSlotCategoryEditDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+            var (scope, viewModel) = CreateScopedViewModel<CabinetArchiveSlotCategoryEditDialogViewModel>(title, summary, initialCategoryName);
+
+            dialog.DataContext = viewModel;
+
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            viewModel.RequestClose += HandleRequestClose;
+
+            try
+            {
+                return dialog.ShowDialog() == true ? viewModel.Result : null;
+            }
+            finally
+            {
+                viewModel.RequestClose -= HandleRequestClose;
+                scope.Dispose();
+            }
+        }
+
         public void ShowCabinetOpenDialog(CabinetOpenRequest request)
         {
             var dialog = new CabinetOpenDialog();

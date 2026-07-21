@@ -68,7 +68,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _suppressElectronicScenarioRefresh = true;
             try
             {
-                ResetElectronicLocationSelection();
+                ResetElectronicLocationSelection(reloadOptions: false);
                 ResetElectronicRetainedHardDiskState();
                 ClearElectronicAppendTargetFields();
             }
@@ -84,7 +84,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _suppressElectronicScenarioRefresh = true;
             try
             {
-                ResetElectronicLocationSelection();
+                ResetElectronicLocationSelection(reloadOptions: false);
                 ResetElectronicRetainedHardDiskState();
                 ClearElectronicNewModeEditableFields();
                 ElectronicArchiveNo = _draftNewElectronicArchiveNo;
@@ -97,6 +97,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             await PrefillElectronicFieldsFromSelectedRecordsAsync();
             EnsureElectronicBagDefaults();
+            await LoadElectronicTargetLocationOptionsAsync();
         }
 
         /// <summary>
@@ -118,7 +119,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void ResetElectronicFilingStepsFourThroughSixForModeChange()
         {
             var preservedExternalHardDisk = _registeredExternalHardDisk;
-            ResetElectronicLocationSelection();
+            ResetElectronicLocationSelection(reloadOptions: false);
 
             ClearSelectedHardDisk();
             ElectronicStorageCarrierType = string.Empty;

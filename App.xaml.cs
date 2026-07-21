@@ -231,6 +231,10 @@ namespace DocMgr
             scope.ServiceProvider.GetRequiredService<ICabinetService>()
                 .EnsureAllMagneticDiskSlotsUseBlankCategoryOnStartup();
 
+            initializationState.ReportProgress("正在补全标准滑道式档案柜未配置档口用途…");
+            scope.ServiceProvider.GetRequiredService<ICabinetService>()
+                .EnsureAllStandardArchiveSlotsUseUnsetCategoryOnStartup();
+
             initializationState.ReportProgress("正在同步历史档案盒位置…");
             CabinetArchiveBoxPlacementSyncService.SyncHistoryArchivePlacements(cabinetArchiveBoxPlacementSyncRepository);
 

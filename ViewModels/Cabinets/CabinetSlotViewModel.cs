@@ -58,6 +58,8 @@ namespace DocMgr.ViewModels.Cabinets
             IsHistoricalDataDiskDedicatedSlot = descriptor.IsHistoricalDataDiskDedicatedSlot;
             IsHistoricalDataOpticalDiscDedicatedSlot = descriptor.IsHistoricalDataOpticalDiscDedicatedSlot;
             IsBlankDiskDedicatedSlot = descriptor.IsBlankDiskDedicatedSlot;
+            IsYearlyMaterialsDedicatedSlot = descriptor.IsYearlyMaterialsDedicatedSlot;
+            IsHistoricalMaterialsDedicatedSlot = descriptor.IsHistoricalMaterialsDedicatedSlot;
             DedicatedSlotCategoryName = descriptor.DedicatedSlotCategoryName;
         }
 
@@ -168,6 +170,10 @@ namespace DocMgr.ViewModels.Cabinets
 
         public bool IsBlankDiskDedicatedSlot { get; }
 
+        public bool IsYearlyMaterialsDedicatedSlot { get; }
+
+        public bool IsHistoricalMaterialsDedicatedSlot { get; }
+
         public string DedicatedSlotCategoryName { get; }
 
         private bool UsesOpticalDiscDedicatedLayout =>
@@ -175,9 +181,37 @@ namespace DocMgr.ViewModels.Cabinets
             || IsHistoricalDataOpticalDiscDedicatedSlot
             || IsDamagedOpticalDiscDedicatedSlot;
 
-        public string PurposeDisplayText => string.IsNullOrWhiteSpace(DedicatedSlotCategoryName)
-            ? "通用"
-            : ResolveShortPurposeDisplayText(DedicatedSlotCategoryName);
+        public string PurposeDisplayText
+        {
+            get
+            {
+                if (!IsMagneticDiskSlot)
+                {
+                    if (string.IsNullOrWhiteSpace(DedicatedSlotCategoryName))
+                    {
+                        return string.Empty;
+                    }
+
+                    if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                            DedicatedSlotCategoryName,
+                            CabinetArchiveSlotCategoryAssignment.CategoryUnset))
+                    {
+                        return CabinetArchiveSlotCategoryAssignment.CategoryUnset;
+                    }
+
+                    return ResolveShortPurposeDisplayText(DedicatedSlotCategoryName);
+                }
+
+                return string.IsNullOrWhiteSpace(DedicatedSlotCategoryName)
+                    ? "通用"
+                    : ResolveShortPurposeDisplayText(DedicatedSlotCategoryName);
+            }
+        }
+
+        public Visibility ArchiveSlotPurposeVisibility =>
+            !IsMagneticDiskSlot && !string.IsNullOrWhiteSpace(PurposeDisplayText)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
         public InteractiveRelocationDropHighlightKind InteractiveRelocationDropHighlight
         {
@@ -221,6 +255,7 @@ namespace DocMgr.ViewModels.Cabinets
                 OnPropertyChanged(nameof(CompactBorderBrush));
                 OnPropertyChanged(nameof(CompactBorderThickness));
                 OnPropertyChanged(nameof(CompactSlotBackground));
+                NotifyInteractiveRelocationDropHighlightChanged();
             }
         }
 
@@ -242,41 +277,31 @@ namespace DocMgr.ViewModels.Cabinets
 
         public Visibility DamagedDiskSlotVisibility => IsDamagedDiskDedicatedSlot ? Visibility.Visible : Visibility.Collapsed;
 
-        public string DamagedDiskSlotMenuText => IsDamagedDiskDedicatedSlot ? "取消损坏硬盘专用档口" : "设为损坏硬盘专用档口";
-
         public Visibility DamagedOpticalDiscSlotVisibility => IsDamagedOpticalDiscDedicatedSlot ? Visibility.Visible : Visibility.Collapsed;
-
-        public string DamagedOpticalDiscSlotMenuText => IsDamagedOpticalDiscDedicatedSlot
-            ? $"取消{CabinetHardDiskSlotCategoryAssignment.CategoryDamagedOpticalDisc}"
-            : $"设为{CabinetHardDiskSlotCategoryAssignment.CategoryDamagedOpticalDisc}";
 
         public Visibility DataDiskSlotVisibility => IsDataDiskDedicatedSlot ? Visibility.Visible : Visibility.Collapsed;
 
-        public string DataDiskSlotMenuText => IsDataDiskDedicatedSlot
-            ? $"取消{CabinetHardDiskSlotCategoryAssignment.CategoryData}"
-            : $"设为{CabinetHardDiskSlotCategoryAssignment.CategoryData}";
-
         public Visibility DataOpticalDiscSlotVisibility => IsDataOpticalDiscDedicatedSlot ? Visibility.Visible : Visibility.Collapsed;
-
-        public string DataOpticalDiscSlotMenuText => IsDataOpticalDiscDedicatedSlot
-            ? $"取消{CabinetHardDiskSlotCategoryAssignment.CategoryDataOpticalDisc}"
-            : $"设为{CabinetHardDiskSlotCategoryAssignment.CategoryDataOpticalDisc}";
 
         public Visibility HistoricalDataDiskSlotVisibility => IsHistoricalDataDiskDedicatedSlot ? Visibility.Visible : Visibility.Collapsed;
 
-        public string HistoricalDataDiskSlotMenuText => IsHistoricalDataDiskDedicatedSlot
-            ? $"取消{CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataHardDisk}"
-            : $"设为{CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataHardDisk}";
-
         public Visibility HistoricalDataOpticalDiscSlotVisibility => IsHistoricalDataOpticalDiscDedicatedSlot ? Visibility.Visible : Visibility.Collapsed;
-
-        public string HistoricalDataOpticalDiscSlotMenuText => IsHistoricalDataOpticalDiscDedicatedSlot
-            ? $"取消{CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataOpticalDisc}"
-            : $"设为{CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataOpticalDisc}";
 
         public Visibility BlankDiskSlotVisibility => IsBlankDiskDedicatedSlot ? Visibility.Visible : Visibility.Collapsed;
 
-        public string BlankDiskSlotMenuText => IsBlankDiskDedicatedSlot ? "取消空白硬盘专用档口" : "设为空白硬盘专用档口";
+        public bool IsGeneralHardDiskSlotCategory =>
+            IsMagneticDiskSlot && string.IsNullOrWhiteSpace(DedicatedSlotCategoryName);
+
+        public Visibility YearlyMaterialsSlotVisibility => IsYearlyMaterialsDedicatedSlot ? Visibility.Visible : Visibility.Collapsed;
+
+        public Visibility HistoricalMaterialsSlotVisibility => IsHistoricalMaterialsDedicatedSlot ? Visibility.Visible : Visibility.Collapsed;
+
+        public bool IsUnsetArchiveSlotCategory =>
+            !IsMagneticDiskSlot
+            && (string.IsNullOrWhiteSpace(DedicatedSlotCategoryName)
+                || CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                    DedicatedSlotCategoryName,
+                    CabinetArchiveSlotCategoryAssignment.CategoryUnset));
 
         public bool IsContextMenuOpen
         {
@@ -306,7 +331,7 @@ namespace DocMgr.ViewModels.Cabinets
                     return "#FEF2F2";
                 }
 
-                return IsContextMenuOpen
+                return IsContextMenuOpen || IsSelected
                     ? "#DBEAFE"
                     : ResolveDedicatedSlotBackground() ?? ResolveSlotBackground(UtilizationRatio);
             }
@@ -326,7 +351,7 @@ namespace DocMgr.ViewModels.Cabinets
                     return "#DC2626";
                 }
 
-                return IsContextMenuOpen
+                return IsContextMenuOpen || IsSelected
                     ? "#2563EB"
                     : ResolveDedicatedSlotBorderBrush() ?? ResolveSlotBorderBrush(UtilizationRatio);
             }
@@ -344,9 +369,12 @@ namespace DocMgr.ViewModels.Cabinets
                 ? "#FCA5A5"
                 : ResolveDedicatedSlotMatrixBorderBrush() ?? "#CBD5E1";
 
-        public double SlotBorderThickness => InteractiveRelocationDropHighlight != InteractiveRelocationDropHighlightKind.None || IsContextMenuOpen
-            ? 2.5d
-            : 1d;
+        public double SlotBorderThickness =>
+            InteractiveRelocationDropHighlight != InteractiveRelocationDropHighlightKind.None
+            || IsContextMenuOpen
+            || IsSelected
+                ? 2.5d
+                : 1d;
 
         public string SlotAccentForeground
         {
@@ -362,7 +390,7 @@ namespace DocMgr.ViewModels.Cabinets
                     return "#B91C1C";
                 }
 
-                return IsContextMenuOpen ? "#1D4ED8" : ResolveSlotAccentForeground(UtilizationRatio);
+                return IsContextMenuOpen || IsSelected ? "#1D4ED8" : ResolveSlotAccentForeground(UtilizationRatio);
             }
         }
 
@@ -454,7 +482,27 @@ namespace DocMgr.ViewModels.Cabinets
                     && CanAcceptElectronicBatchRelocationTarget(sourceDedicatedCategoryName);
             }
 
-            return !IsMagneticDiskSlot;
+            if (IsMagneticDiskSlot)
+            {
+                return false;
+            }
+
+            // 年度模拟档案盒：标准滑道式须为年度资料专用档口；立式/卧式不限制用途标记。
+            if (IsYearlyMaterialsDedicatedSlot)
+            {
+                return true;
+            }
+
+            if (IsHistoricalMaterialsDedicatedSlot
+                || CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                    DedicatedSlotCategoryName,
+                    CabinetArchiveSlotCategoryAssignment.CategoryUnset))
+            {
+                return false;
+            }
+
+            // 无档口用途记录（如立式/卧式）仍允许迁入。
+            return string.IsNullOrWhiteSpace(DedicatedSlotCategoryName);
         }
 
         public bool IsYearlySimulatedOnlyArchiveSlot =>
@@ -622,6 +670,16 @@ namespace DocMgr.ViewModels.Cabinets
                 return "#F7FEE7";
             }
 
+            if (IsYearlyMaterialsDedicatedSlot)
+            {
+                return "#EFF6FF";
+            }
+
+            if (IsHistoricalMaterialsDedicatedSlot)
+            {
+                return "#F5F3FF";
+            }
+
             return null;
         }
 
@@ -660,6 +718,16 @@ namespace DocMgr.ViewModels.Cabinets
             if (IsBlankDiskDedicatedSlot)
             {
                 return "#BEF264";
+            }
+
+            if (IsYearlyMaterialsDedicatedSlot)
+            {
+                return "#93C5FD";
+            }
+
+            if (IsHistoricalMaterialsDedicatedSlot)
+            {
+                return "#C4B5FD";
             }
 
             return null;
@@ -702,6 +770,16 @@ namespace DocMgr.ViewModels.Cabinets
                 return "#ECFCCB";
             }
 
+            if (IsYearlyMaterialsDedicatedSlot)
+            {
+                return "#DBEAFE";
+            }
+
+            if (IsHistoricalMaterialsDedicatedSlot)
+            {
+                return "#EDE9FE";
+            }
+
             return null;
         }
 
@@ -742,6 +820,16 @@ namespace DocMgr.ViewModels.Cabinets
                 return "#D9F99D";
             }
 
+            if (IsYearlyMaterialsDedicatedSlot)
+            {
+                return "#BFDBFE";
+            }
+
+            if (IsHistoricalMaterialsDedicatedSlot)
+            {
+                return "#DDD6FE";
+            }
+
             return null;
         }
 
@@ -780,6 +868,21 @@ namespace DocMgr.ViewModels.Cabinets
             if (CabinetHardDiskSlotCategoryAssignment.MatchesCategory(categoryName, CabinetHardDiskSlotCategoryAssignment.CategoryBlank))
             {
                 return "空白专用";
+            }
+
+            if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(categoryName, CabinetArchiveSlotCategoryAssignment.CategoryYearlyMaterials))
+            {
+                return "年度资料";
+            }
+
+            if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(categoryName, CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials))
+            {
+                return "历史资料";
+            }
+
+            if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(categoryName, CabinetArchiveSlotCategoryAssignment.CategoryUnset))
+            {
+                return CabinetArchiveSlotCategoryAssignment.CategoryUnset;
             }
 
             return categoryName;

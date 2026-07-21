@@ -170,6 +170,13 @@ public interface IArchiveFilingRepository
 
     Task<string?> GetMagneticDiskSlotCategoryNameAsync(int cabinetId, string faceCode, string slotCode);
 
+    Task<string?> GetArchiveSlotCategoryNameAsync(int cabinetId, string faceCode, string slotCode);
+
+    /// <summary>
+    /// 批量读取标准档案柜档口用途；键为「柜体Id:面:档口编号」。
+    /// </summary>
+    Task<Dictionary<string, string>> GetArchiveSlotCategoryLookupForCabinetsAsync(IReadOnlyCollection<int> cabinetIds);
+
     Task<bool> IsMagneticDiskSlotFullyEmptyAsync(string slotCode, string slotPrefix);
 
     Task<List<string>> GetTopoMapBoxNumbersAsync();

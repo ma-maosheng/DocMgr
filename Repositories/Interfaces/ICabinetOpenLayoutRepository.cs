@@ -21,6 +21,8 @@ public interface ICabinetOpenLayoutRepository
 
     Dictionary<string, string> GetHardDiskSlotCategoryLookup(int cabinetId);
 
+    Dictionary<string, string> GetArchiveSlotCategoryLookup(int cabinetId);
+
     List<HardDiskMedium> GetHardDiskMediaWithLedger();
 
     List<HardDiskMediaTransaction> GetHardDiskMediaTransactionsByMediumIds(IReadOnlyCollection<int> mediumIds);

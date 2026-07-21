@@ -220,9 +220,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 SelectedCabinet = Cabinets[0];
             }
 
-            if (SelectedElectronicCabinet == null && ElectronicCabinets.Count > 0)
+            if (IsElectronicTrack
+                && ElectronicStepSevenLocationSelectorVisibility == Visibility.Visible
+                && ElectronicTargetLocationOptions.Count == 0)
             {
-                SelectedElectronicCabinet = ElectronicCabinets[0];
+                _ = LoadElectronicTargetLocationOptionsAsync();
             }
         }
 

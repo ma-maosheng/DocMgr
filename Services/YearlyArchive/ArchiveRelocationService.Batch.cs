@@ -238,7 +238,43 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             string? capacityIssue = await ValidateTargetSlotCapacityForBatchMoveAsync(request, sourceBoxes);
-            return capacityIssue;
+            if (!string.IsNullOrWhiteSpace(capacityIssue))
+            {
+                return capacityIssue;
+            }
+
+            return await ValidateTargetSlotCategoryForYearlyBatchMoveAsync(request);
+        }
+
+        private async Task<string?> ValidateTargetSlotCategoryForYearlyBatchMoveAsync(
+            BatchSimulatedSlotPhysicalMoveRequest request)
+        {
+            var cabinets = await _filingRepository.GetNonMagneticCabinetsAsync();
+            var targetCabinet = cabinets.FirstOrDefault(item =>
+                string.Equals(item.Name, request.TargetCabinetName.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (targetCabinet == null)
+            {
+                return $"未找到目标柜 [{request.TargetCabinetName}]。";
+            }
+
+            if (targetCabinet.Type != CabinetType.Standard)
+            {
+                return null;
+            }
+
+            string slotCode = ArchiveStorageSlotCategorySupport.BuildSlotCode(request.TargetRow, request.TargetColumn);
+            string faceCode = request.TargetFace.Trim();
+            string? storedCategory = await _filingRepository.GetArchiveSlotCategoryNameAsync(
+                targetCabinet.Id,
+                faceCode,
+                slotCode);
+            return ArchiveStorageSlotCategorySupport.TryValidateStandardSlotCategory(
+                targetCabinet,
+                faceCode,
+                slotCode,
+                storedCategory,
+                ArchiveStorageSlotCategorySupport.ExpectedYearlyMaterialsCategory,
+                $"{request.TargetCabinetName.Trim()}{faceCode}-{slotCode}");
         }
 
         private async Task<string?> ValidateTargetSlotCapacityForBatchMoveAsync(

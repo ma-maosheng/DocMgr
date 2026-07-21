@@ -41,7 +41,7 @@ namespace DocMgr.Views.Cabinets
             if (sender is ContextMenu { PlacementTarget: FrameworkElement { DataContext: CabinetSlotViewModel slot } } &&
                 DataContext is CabinetOpenViewModel viewModel)
             {
-                viewModel.PrepareCompactSlotContextMenu(slot);
+                viewModel.PrepareSlotContextMenu(slot);
             }
 
             SetSlotContextMenuState(sender, true);
@@ -104,7 +104,7 @@ namespace DocMgr.Views.Cabinets
 
             if (!viewModel.IsSingleSlotSnapshot)
             {
-                if (!viewModel.IsMagneticDiskCabinet)
+                if (!viewModel.SupportsSlotViewportSizing)
                 {
                     return;
                 }
@@ -142,14 +142,19 @@ namespace DocMgr.Views.Cabinets
                 return;
             }
 
-            if (!viewModel.IsCompactDisplayMode)
+            if (IsInteractiveSlotContent(e.OriginalSource as DependencyObject))
+            {
+                return;
+            }
+
+            if (viewModel.IsSingleSlotSnapshot)
             {
                 return;
             }
 
             bool ctrlPressed = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
             bool shiftPressed = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
-            viewModel.HandleCompactSlotSelection(slot, ctrlPressed, shiftPressed);
+            viewModel.HandleSlotSelection(slot, ctrlPressed, shiftPressed);
             e.Handled = true;
         }
 

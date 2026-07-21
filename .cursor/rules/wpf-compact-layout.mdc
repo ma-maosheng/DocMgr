@@ -1,0 +1,61 @@
+---
+description: WPF 表单/弹窗排版须紧凑规范，优先节约纵向占用空间
+globs: **/*.{xaml,cs}
+alwaysApply: false
+---
+
+# WPF 紧凑排版原则
+
+桌面弹窗与业务表单以**可读、可填**为前提，优先**压缩纵向占用**，避免大卡片堆叠浪费滚动高度。
+
+## 强制约定
+
+1. **同类字段横排**：签字人、日期、短文本等优先「标签 + 控件」同一行；禁止无必要地把标签一律放在控件上方再占一整行。
+2. **多节点双列/多列**：审批流、审核节点、成对字段等结构相似时，优先 `Grid` 双列并排，而不是五个大卡片纵向叠满一屏。
+3. **紧凑间距**：步骤卡片 `Padding`/`Margin` 宜小（如 `8,5` / `0,0,0,4`）；控件高度优先 `FormControlHeight`（28），非必要不用更大的对话框高度令牌。
+4. **信息密度匹配业务**：若业务只需签字、不需签意见，UI 不得再放意见 ComboBox/大段意见区；查看态与编辑态字段集合保持一致。
+5. **提示从简**：说明性文案一行即可，字号可略小（11–12），勿用大段说明抬高版心。
+6. **与现有样式复用**：审批紧凑行样式见 `ArchiveRegisterResources.xaml` 中 `ArchiveRegisterApprovalCompact*`；新页面优先复用或抽取同类紧凑样式，禁止平行发明第二套留白更大的卡片。
+
+## 推荐形态
+
+```xml
+<!-- ✅ 紧凑：双列 + 单行签字/日期 -->
+<Grid>
+  <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/>
+  </Grid.ColumnDefinitions>
+  <Border Grid.Column="0" Padding="8,5" Margin="0,0,0,4">
+    <DockPanel>
+      <TextBlock DockPanel.Dock="Left" Text="节点名" Width="78" VerticalAlignment="Center"/>
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <TextBlock Text="签字" VerticalAlignment="Center" Margin="0,0,4,0"/>
+        <TextBox Width="90" Height="{StaticResource FormControlHeight}"/>
+        <TextBlock Text="日期" Margin="10,0,4,0" VerticalAlignment="Center"/>
+        <DatePicker Width="124" Height="{StaticResource FormControlHeight}"/>
+      </StackPanel>
+    </DockPanel>
+  </Border>
+  <!-- 右侧对称节点… -->
+</Grid>
+```
+
+```xml
+<!-- ❌ 浪费纵向：每节点大卡片 + 标签在上 + 单列五连叠 -->
+<StackPanel>
+  <Border Padding="12,10" Margin="0,0,0,8">
+    <StackPanel>
+      <TextBlock Text="节点" Margin="0,0,0,8"/>
+      <TextBlock Text="签字"/><TextBox Margin="0,4,0,0"/>
+      <TextBlock Text="日期"/><DatePicker Margin="0,4,0,0"/>
+    </StackPanel>
+  </Border>
+  <!-- 再重复四次… -->
+</StackPanel>
+```
+
+## 改 UI 时自检
+
+- 新弹窗/改版后：审批区、办理区、多步骤表单是否可用双列或单行横排减半高度？
+- 是否出现「标签在上 × 多字段 × 多卡片」的无必要组合？
+- 只读查看与可编辑审批的字段集合是否一致、且无冗余意见区？

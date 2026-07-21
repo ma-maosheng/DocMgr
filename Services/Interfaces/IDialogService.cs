@@ -35,6 +35,7 @@ namespace DocMgr.Services.Interfaces
         bool ShowCabinetEditDialog(Cabinet cabinetToEdit);
         CabinetArchiveBoxPlacementMode? ShowCabinetArchiveBoxPlacementEditDialog(string title, string summary, CabinetArchiveBoxPlacementMode initialMode);
         CabinetHardDiskSlotCategoryEditResult? ShowCabinetHardDiskSlotCategoryEditDialog(string title, string summary, string? initialCategoryName);
+        CabinetArchiveSlotCategoryEditResult? ShowCabinetArchiveSlotCategoryEditDialog(string title, string summary, string? initialCategoryName);
         void ShowCabinetOpenDialog(CabinetOpenRequest request);
         void ShowCabinetSlotDetailDialog(CabinetOpenRequest request, CabinetSlotViewModel slot, bool canShowSlotZoom);
         void ShowCabinetArchiveBoxContentDialog(string boxCode);

@@ -33,10 +33,23 @@ public interface ICabinetRepository
 
     void RemoveSlotCategoryAssignment(CabinetHardDiskSlotCategoryAssignment assignment);
 
+    CabinetArchiveSlotCategoryAssignment? GetArchiveSlotCategoryAssignment(int cabinetId, string faceCode, string slotCode);
+
+    List<CabinetArchiveSlotCategoryAssignment> GetArchiveSlotCategoryAssignmentsByCabinetId(int cabinetId);
+
+    void AddArchiveSlotCategoryAssignment(CabinetArchiveSlotCategoryAssignment assignment);
+
+    void RemoveArchiveSlotCategoryAssignment(CabinetArchiveSlotCategoryAssignment assignment);
+
     /// <summary>
     /// 判断防磁磁盘柜指定档口是否仍有在库硬盘或光盘占用。
     /// </summary>
     bool HasInStockMediaInMagneticDiskSlot(string cabinetName, string faceCode, string slotCode);
+
+    /// <summary>
+    /// 判断标准滑道式档案柜指定档口是否仍有档案盒占用。
+    /// </summary>
+    bool HasArchiveBoxesInStandardSlot(string cabinetName, string faceCode, string slotCode);
 
     int SaveChanges();
 

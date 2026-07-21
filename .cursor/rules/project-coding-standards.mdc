@@ -49,7 +49,8 @@ alwaysApply: true
 2. UI 与业务严格分离：页面/ViewModel 负责展示与交互，复杂计算与数据逻辑放 Service/Repository。
 3. 数据绑定整洁，避免冗余重复绑定。
 4. 弹窗提示、加载状态、操作结果须完善，符合桌面软件习惯。
-5. **只读展示绑定**：`TextBox.Text` / `DatePicker.SelectedDate` 默认为 TwoWay；绑定到 ViewModel 只读属性（无 setter / `=>` / `*Display`）时必须写 `Mode=OneWay`，否则打开界面会抛未处理异常。细则见 `wpf-readonly-binding.mdc`。
+5. **只读展示绑定**：`TextBox.Text` / `DatePicker.SelectedDate` / **`Run.Text`** 默认为 TwoWay；绑定到 ViewModel 只读属性（无 setter / `=>` / `*Display`）时必须写 `Mode=OneWay`，否则打开界面会抛未处理异常。细则见 `wpf-readonly-binding.mdc`。
+6. **紧凑排版**：表单/弹窗优先节约纵向空间——同类字段横排、多节点双列、小间距与标准控件高度；业务只需签字时不放意见区。细则见 `wpf-compact-layout.mdc`。
 
 ## 五、异常处理与日志（内网轻量版）
 

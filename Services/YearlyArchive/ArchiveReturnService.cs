@@ -457,36 +457,42 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnFlowResult.Fail("仅登记人（部门资料管理员）或资料室管理员可作废该归还单。");
             }
 
-            if (record.Status is not (
-                    YearlyArchiveReturnRecord.Draft
-                    or YearlyArchiveReturnRecord.Submitted
-                    or YearlyArchiveReturnRecord.Approved
-                    or YearlyArchiveReturnRecord.SignedUploaded))
+            if (record.Status is YearlyArchiveReturnRecord.Completed
+                or YearlyArchiveReturnRecord.WithdrawnVoid
+                or YearlyArchiveReturnRecord.ForceVoided)
             {
                 return ArchiveReturnFlowResult.Fail(
                     record.Status == YearlyArchiveReturnRecord.Completed
                         ? "已办结的归还单不可作废。"
-                        : "该归还单当前状态不可作废。");
+                        : "该归还单已作废，无需重复操作。");
             }
 
-            if (record.Status is YearlyArchiveReturnRecord.Approved or YearlyArchiveReturnRecord.SignedUploaded
-                && !IsArchiveAdminUser(user))
+            if (isRoomAdmin)
+            {
+                if (record.Status is not (
+                        YearlyArchiveReturnRecord.Draft
+                        or YearlyArchiveReturnRecord.Submitted
+                        or YearlyArchiveReturnRecord.Approved
+                        or YearlyArchiveReturnRecord.SignedUploaded))
+                {
+                    return ArchiveReturnFlowResult.Fail("该归还单当前状态不可强制作废。");
+                }
+
+                record.MarkAsForceVoided(reason);
+                record.UpdatedAt = DateTime.Now;
+                await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
+                return ArchiveReturnFlowResult.Ok($"归还单 {record.ReturnNo} 已强制作废。", record.Id);
+            }
+
+            if (record.Status is not (YearlyArchiveReturnRecord.Draft or YearlyArchiveReturnRecord.Submitted))
             {
                 return ArchiveReturnFlowResult.Fail("审批后的归还单仅资料室管理员可强制作废。");
             }
 
-            if (record.Status is YearlyArchiveReturnRecord.Approved or YearlyArchiveReturnRecord.SignedUploaded)
-            {
-                record.MarkAsForceVoided(reason);
-            }
-            else
-            {
-                record.MarkAsWithdrawnVoid(reason);
-            }
+            record.MarkAsWithdrawnVoid(reason);
             record.UpdatedAt = DateTime.Now;
             await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
-
-            return ArchiveReturnFlowResult.Ok($"归还单 {record.ReturnNo} 已作废。", record.Id);
+            return ArchiveReturnFlowResult.Ok($"归还单 {record.ReturnNo} 已撤回作废。", record.Id);
         }
 
         private static FilingFactLifecycleUpdate BuildReturnLifecycleUpdate(

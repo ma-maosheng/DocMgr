@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
@@ -842,21 +843,85 @@ namespace DocMgr.ViewModels.YearlyArchive
             ElectronicMediaCount = 1;
         }
 
-        private void ResetElectronicLocationSelection()
+        private void ResetElectronicLocationSelection(bool reloadOptions = true)
         {
-            SelectedElectronicCabinet = null;
-            SelectedElectronicSide = string.Empty;
-            SelectedElectronicRow = string.Empty;
-            SelectedElectronicColumn = string.Empty;
-            ReplaceItems(ElectronicSides, Array.Empty<string>());
-            ReplaceItems(ElectronicRows, Array.Empty<string>());
-            ReplaceItems(ElectronicColumns, Array.Empty<string>());
-            ElectronicStorageLocation = string.Empty;
-            ElectronicCellCountText = "-";
-            _currentElectronicCellMediumCount = 0;
-            if (ElectronicCabinets.Count > 0)
+            ClearElectronicLocationSelectionCore();
+            Interlocked.Increment(ref _electronicTargetLocationOptionsGeneration);
+
+            if (reloadOptions
+                && IsElectronicTrack
+                && ElectronicStepSevenLocationSelectorVisibility == Visibility.Visible)
             {
-                SelectedElectronicCabinet = ElectronicCabinets[0];
+                _ = LoadElectronicTargetLocationOptionsAsync();
+                return;
+            }
+
+            ReplaceElectronicTargetLocationOptions(Array.Empty<HardDiskMediaReturnTargetLocationOption>());
+        }
+
+        private void ClearElectronicLocationSelectionCore()
+        {
+            _suppressElectronicLocationRecalc = true;
+            _suppressElectronicLocationOptionSync = true;
+            try
+            {
+                _selectedElectronicCabinet = null;
+                OnPropertyChanged(nameof(SelectedElectronicCabinet));
+                _selectedElectronicSide = string.Empty;
+                OnPropertyChanged(nameof(SelectedElectronicSide));
+                _selectedElectronicRow = string.Empty;
+                OnPropertyChanged(nameof(SelectedElectronicRow));
+                _selectedElectronicColumn = string.Empty;
+                OnPropertyChanged(nameof(SelectedElectronicColumn));
+                ReplaceItems(ElectronicSides, Array.Empty<string>());
+                ReplaceItems(ElectronicRows, Array.Empty<string>());
+                ReplaceItems(ElectronicColumns, Array.Empty<string>());
+                _selectedElectronicTargetLocationOption = null;
+                OnPropertyChanged(nameof(SelectedElectronicTargetLocationOption));
+                ElectronicStorageLocation = string.Empty;
+                ElectronicCellCountText = "-";
+                _currentElectronicCellMediumCount = 0;
+            }
+            finally
+            {
+                _suppressElectronicLocationRecalc = false;
+                _suppressElectronicLocationOptionSync = false;
+            }
+
+            RaiseSlotSnapshotAvailabilityChanged();
+        }
+
+        /// <summary>
+        /// 更新档口下拉项：在同步抑制下替换集合，避免 Clear 触发 SelectedItem=null 清空业务状态；
+        /// 刷新失败时调用方不得先清空，以保留原有 items。
+        /// </summary>
+        private void ReplaceElectronicTargetLocationOptions(
+            IReadOnlyList<HardDiskMediaReturnTargetLocationOption> options)
+        {
+            var ordered = options
+                .OrderBy(item => item.ExistingMediumCount)
+                .ThenBy(item => item.Location, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            string? selectedLocation = _selectedElectronicTargetLocationOption?.Location;
+
+            _suppressElectronicLocationOptionSync = true;
+            try
+            {
+                ElectronicTargetLocationOptions.Clear();
+                foreach (var option in ordered)
+                {
+                    ElectronicTargetLocationOptions.Add(option);
+                }
+
+                _selectedElectronicTargetLocationOption = FindElectronicTargetLocationOption(
+                    ElectronicTargetLocationOptions,
+                    selectedLocation);
+                OnPropertyChanged(nameof(SelectedElectronicTargetLocationOption));
+            }
+            finally
+            {
+                _suppressElectronicLocationOptionSync = false;
             }
         }
 
@@ -874,7 +939,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ElectronicSides.Add("B");
             }
 
-            if (ElectronicSides.Count > 0)
+            if (ElectronicSides.Count > 0 && string.IsNullOrWhiteSpace(SelectedElectronicSide))
             {
                 SelectedElectronicSide = ElectronicSides[0];
             }
@@ -899,12 +964,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ElectronicColumns.Add(i.ToString());
             }
 
-            if (ElectronicRows.Count > 0)
+            if (ElectronicRows.Count > 0 && string.IsNullOrWhiteSpace(SelectedElectronicRow))
             {
                 SelectedElectronicRow = ElectronicRows[0];
             }
 
-            if (ElectronicColumns.Count > 0)
+            if (ElectronicColumns.Count > 0 && string.IsNullOrWhiteSpace(SelectedElectronicColumn))
             {
                 SelectedElectronicColumn = ElectronicColumns[0];
             }
@@ -912,7 +977,12 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async void CalculateElectronicLocation()
         {
-            if (!IsElectronicTrack || !IsNewBoxMode)
+            if (_suppressElectronicLocationRecalc || !IsElectronicTrack)
+            {
+                return;
+            }
+
+            if (!IsNewBoxMode && !RequiresRetainedHardDiskAppendProcessing)
             {
                 return;
             }
@@ -936,7 +1006,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                     row,
                     column);
 
-                ElectronicStorageLocation = $"{SelectedElectronicCabinet.Name}{SelectedElectronicSide}-{row}-{column}-{_currentElectronicCellMediumCount + 1:D2}";
+                ElectronicStorageLocation = ArchiveSlotLocationSupport.BuildFullElectronicLocation(
+                    SelectedElectronicCabinet.Name,
+                    SelectedElectronicSide,
+                    row,
+                    column,
+                    _currentElectronicCellMediumCount + 1);
                 ElectronicCellCountText = $"{_currentElectronicCellMediumCount} 袋";
             }
             catch (Exception ex)
@@ -945,6 +1020,87 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ElectronicCellCountText = "位置计算失败";
                 MessageBox.Show("计算电子介质档口位置失败: " + ex.Message);
             }
+        }
+
+        private async Task LoadElectronicTargetLocationOptionsAsync(
+            string? preferredLocation = null,
+            bool preferSuggestedSelection = false)
+        {
+            if (!IsElectronicTrack || ElectronicStepSevenLocationSelectorVisibility != Visibility.Visible)
+            {
+                ReplaceElectronicTargetLocationOptions(Array.Empty<HardDiskMediaReturnTargetLocationOption>());
+                SyncSelectedElectronicTargetLocationOption(null);
+                return;
+            }
+
+            int generation = Interlocked.Increment(ref _electronicTargetLocationOptionsGeneration);
+            string? locationToPrefer = preferredLocation;
+            if (string.IsNullOrWhiteSpace(locationToPrefer) && !preferSuggestedSelection)
+            {
+                locationToPrefer = SelectedElectronicTargetLocationOption?.Location
+                    ?? ArchiveSlotLocationSupport.BuildSlotKey(ElectronicStorageLocation);
+            }
+
+            string categoryName = ResolveElectronicTargetLocationCategoryName();
+            IReadOnlyList<HardDiskMediaReturnTargetLocationOption> options;
+            try
+            {
+                options = await _hardDiskMediaService.GetDedicatedTargetLocationOptionsAsync(categoryName);
+            }
+            catch (Exception ex)
+            {
+                if (generation != Volatile.Read(ref _electronicTargetLocationOptionsGeneration))
+                {
+                    return;
+                }
+
+                // 刷新失败时保留原有 items，仅提示错误。
+                SetElectronicLocationSuggestion($"加载专用档口失败：{ex.Message}", isWarning: true);
+                return;
+            }
+
+            if (generation != Volatile.Read(ref _electronicTargetLocationOptionsGeneration))
+            {
+                return;
+            }
+
+            var orderedOptions = options
+                .OrderBy(item => item.ExistingMediumCount)
+                .ThenBy(item => item.Location, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            ReplaceElectronicTargetLocationOptions(orderedOptions);
+
+            HardDiskMediaReturnTargetLocationOption? selected = null;
+            if (preferSuggestedSelection)
+            {
+                selected = orderedOptions.FirstOrDefault();
+            }
+            else if (!string.IsNullOrWhiteSpace(locationToPrefer))
+            {
+                selected = FindElectronicTargetLocationOption(ElectronicTargetLocationOptions, locationToPrefer);
+            }
+
+            selected ??= ElectronicTargetLocationOptions.FirstOrDefault();
+
+            if (selected == null)
+            {
+                SyncSelectedElectronicTargetLocationOption(null);
+                ClearElectronicLocationSelectionCore();
+                string categoryDisplayName = ArchiveElectronicStorageSlotCategorySupport.ResolveCategoryDisplayName(categoryName);
+                SetElectronicLocationSuggestion($"未找到“{categoryDisplayName}档口”，请先在磁盘柜开柜界面完成设置。", isWarning: true);
+                return;
+            }
+
+            if (!TryApplyElectronicSlotCode(selected.Location))
+            {
+                SyncSelectedElectronicTargetLocationOption(null);
+                ClearElectronicLocationSelectionCore();
+                SetElectronicLocationSuggestion($"档口 [{selected.Location}] 解析失败，请重新选择。", isWarning: true);
+                return;
+            }
+
+            SyncSelectedElectronicTargetLocationOption(selected.Location);
         }
 
         private async Task SuggestElectronicLocationAsync()
@@ -962,14 +1118,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            if (UsesOpticalDiscCarrierForLabels)
-            {
-                await SuggestElectronicLocationByCategoryAsync(CabinetHardDiskSlotCategoryAssignment.CategoryDataOpticalDisc, "年度数据光盘专用", showDialogs);
-                return;
-            }
-
             if (SelectedElectronicSubmissionMode == ElectronicArchiveSubmissionMode.CopyNewHardDisk
-                && string.IsNullOrWhiteSpace(ElectronicLinkedMediumCodes))
+                && string.IsNullOrWhiteSpace(ElectronicLinkedMediumCodes)
+                && !UsesOpticalDiscCarrierForLabels)
             {
                 SetElectronicLocationSuggestion("请先选择入袋/拷贝目标硬盘，再进行档口推荐。", isWarning: true);
                 if (showDialogs)
@@ -979,34 +1130,23 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            string categoryName = ResolveElectronicSlotCategoryName();
-            await SuggestElectronicLocationByCategoryAsync(categoryName, categoryName == CabinetHardDiskSlotCategoryAssignment.CategoryDamaged ? "损坏硬盘专用" : "年度数据硬盘专用", showDialogs);
-        }
+            string categoryName = ResolveElectronicTargetLocationCategoryName();
+            string categoryDisplayName = ArchiveElectronicStorageSlotCategorySupport.ResolveCategoryDisplayName(categoryName);
 
-        private async Task SuggestElectronicLocationByCategoryAsync(string categoryName, string categoryDisplayName, bool showDialogs)
-        {
-            var options = await _hardDiskMediaService.GetDedicatedTargetLocationOptionsAsync(categoryName);
-            if (options.Count == 0)
+            // 建议档口：刷新占用数并更新 items，而不是先清空再重载。
+            await LoadElectronicTargetLocationOptionsAsync(preferSuggestedSelection: true);
+
+            var suggestedOption = ElectronicTargetLocationOptions
+                .OrderBy(item => item.ExistingMediumCount)
+                .ThenBy(item => item.Location, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault();
+
+            if (suggestedOption == null)
             {
                 SetElectronicLocationSuggestion($"未找到“{categoryDisplayName}档口”，请先在磁盘柜开柜界面完成设置。", isWarning: true);
                 if (showDialogs)
                 {
                     MessageBox.Show($"请先在磁盘柜开柜界面设置“{categoryDisplayName}档口”。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                return;
-            }
-
-            var suggestedOption = options
-                .OrderBy(item => item.ExistingMediumCount)
-                .ThenBy(item => item.Location, StringComparer.OrdinalIgnoreCase)
-                .First();
-
-            if (!TryApplyElectronicSlotCode(suggestedOption.Location))
-            {
-                SetElectronicLocationSuggestion($"建议档口 [{suggestedOption.Location}] 解析失败，请手动选择位置。", isWarning: true);
-                if (showDialogs)
-                {
-                    MessageBox.Show($"建议档口 [{suggestedOption.Location}] 解析失败，请手动选择位置。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 return;
             }
@@ -1018,6 +1158,48 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        private string ResolveElectronicTargetLocationCategoryName()
+        {
+            if (UsesOpticalDiscCarrierForLabels)
+            {
+                return CabinetHardDiskSlotCategoryAssignment.CategoryDataOpticalDisc;
+            }
+
+            return ResolveElectronicSlotCategoryName();
+        }
+
+        private static HardDiskMediaReturnTargetLocationOption? FindElectronicTargetLocationOption(
+            IEnumerable<HardDiskMediaReturnTargetLocationOption> options,
+            string? location)
+        {
+            if (string.IsNullOrWhiteSpace(location))
+            {
+                return null;
+            }
+
+            return options.FirstOrDefault(item => ArchiveSlotLocationSupport.IsSameSlot(item.Location, location));
+        }
+
+        private void SyncSelectedElectronicTargetLocationOption(string? location)
+        {
+            var matched = FindElectronicTargetLocationOption(ElectronicTargetLocationOptions, location);
+            if (ReferenceEquals(_selectedElectronicTargetLocationOption, matched))
+            {
+                return;
+            }
+
+            _suppressElectronicLocationOptionSync = true;
+            try
+            {
+                _selectedElectronicTargetLocationOption = matched;
+                OnPropertyChanged(nameof(SelectedElectronicTargetLocationOption));
+            }
+            finally
+            {
+                _suppressElectronicLocationOptionSync = false;
+            }
+        }
+
         private bool TryApplyElectronicSlotCode(string? slotCode)
         {
             if (string.IsNullOrWhiteSpace(slotCode))
@@ -1025,23 +1207,15 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return false;
             }
 
-            string trimmedSlotCode = slotCode.Trim();
-            var parts = trimmedSlotCode.Split('-', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 3)
+            if (!ArchiveSlotLocationSupport.TryParseSlotLocation(
+                    slotCode,
+                    out string cabinetName,
+                    out string side,
+                    out int row,
+                    out int column))
             {
                 return false;
             }
-
-            string cabinetAndSide = parts[0];
-            if (cabinetAndSide.Length < 2)
-            {
-                return false;
-            }
-
-            string side = cabinetAndSide[^1].ToString();
-            string cabinetName = cabinetAndSide[..^1];
-            string row = parts[1];
-            string column = parts[2];
 
             var matchedCabinet = ElectronicCabinets.FirstOrDefault(item => string.Equals(item.Name, cabinetName, StringComparison.OrdinalIgnoreCase));
             if (matchedCabinet == null)
@@ -1049,10 +1223,21 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return false;
             }
 
-            SelectedElectronicCabinet = matchedCabinet;
-            SelectedElectronicSide = side;
-            SelectedElectronicRow = row;
-            SelectedElectronicColumn = column;
+            _suppressElectronicLocationRecalc = true;
+            try
+            {
+                SelectedElectronicCabinet = matchedCabinet;
+                SelectedElectronicSide = side;
+                SelectedElectronicRow = row.ToString();
+                SelectedElectronicColumn = column.ToString();
+            }
+            finally
+            {
+                _suppressElectronicLocationRecalc = false;
+            }
+
+            CalculateElectronicLocation();
+            SyncSelectedElectronicTargetLocationOption(slotCode);
             return true;
         }
 

@@ -71,10 +71,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public string SubmitButtonText => "提交申请";
 
-        /// <summary>申请模式：显示保存草稿/提交申请/删除等操作。</summary>
+        /// <summary>申请模式：显示保存草稿/提交申请/撤回作废等操作。</summary>
         public bool ShowApplicationActions => _workspaceMode == HardDiskReturnWorkspaceMode.Application;
 
-        /// <summary>审批模式：显示审批通过/确认交接/上传签批交接单/打印/办结等操作。</summary>
+        /// <summary>审批模式：显示审批通过/确认交接/上传签批交接单/打印/办结/强制作废等操作。</summary>
         public bool ShowApprovalActions => _workspaceMode == HardDiskReturnWorkspaceMode.Approval;
 
         public string ReturnLocationLabel => InspectionResult switch

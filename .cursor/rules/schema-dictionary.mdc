@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-07-10T09:14:31Z
+> 生成时间（UTC）：2026-07-20T06:10:51Z
 
 ## 表索引
 
@@ -25,6 +25,7 @@ alwaysApply: true
 | 业务逻辑设置 | `BusinessLogicSettings` | `BusinessLogicSettings` | 表 |
 | 资料柜 | `Cabinet` | `Cabinets` | 表 |
 | 档案盒柜位分配 | `CabinetArchiveBoxPlacement` | `CabinetArchiveBoxPlacements` | 表 |
+| 标准档案柜档口用途 | `CabinetArchiveSlotCategoryAssignment` | `CabinetArchiveSlotCategoryAssignments` | 表 |
 | 资料柜硬盘槽位分类 | `CabinetHardDiskSlotCategoryAssignment` | `CabinetHardDiskSlotCategoryAssignments` | 表 |
 | 资料柜槽位特殊规则 | `CabinetSlotSpecialRule` | `CabinetSlotSpecialRules` | 表 |
 | 资料柜槽位规格 | `CabinetSlotSpecification` | `CabinetSlotSpecifications` | 表 |
@@ -160,6 +161,18 @@ alwaysApply: true
 | 创建时间 | `CreatedAt` | `String` | 否 |
 | 更新时间 | `UpdatedAt` | `String` | 否 |
 | 最后更新人 | `UpdatedBy` | `String` | 否 |
+
+### CabinetArchiveSlotCategoryAssignment（标准档案柜档口用途）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 柜体ID | `CabinetId` | `Int32` | 否 |
+| 门别编码 | `FaceCode` | `String` | 否 |
+| 档口编号 | `SlotCode` | `String` | 否 |
+| 档口用途 | `CategoryName` | `String` | 否 |
+| 创建时间 | `CreatedTime` | `DateTime` | 否 |
+| 更新时间 | `UpdatedTime` | `DateTime` | 否 |
 
 ### CabinetHardDiskSlotCategoryAssignment（资料柜硬盘槽位分类）
 
@@ -951,9 +964,15 @@ alwaysApply: true
 | 灭失具体情况 | `LossDescription` | `String` | 否 |
 | 办结管理员 | `HandlerName` | `String` | 否 |
 | 登记时间 | `RegisteredAt` | `DateTime?` | 否 |
+| 未映射字段 | `SubmittedAt` | `DateTime?` | 是 |
+| 未映射字段 | `ApprovedAt` | `DateTime?` | 是 |
+| 未映射字段 | `SignedUploadedAt` | `DateTime?` | 是 |
 | 办结时间 | `CompletedAt` | `DateTime?` | 否 |
+| 未映射字段 | `WithdrawnAt` | `DateTime?` | 是 |
 | 作废时间 | `VoidedAt` | `DateTime?` | 否 |
 | 作废原因 | `VoidReason` | `String` | 否 |
+| 未映射字段 | `ForceVoidReason` | `String` | 是 |
+| 未映射字段 | `ForceVoidedAt` | `DateTime?` | 是 |
 | 打印次数 | `PrintCount` | `Int32` | 否 |
 | 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |

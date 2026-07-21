@@ -60,21 +60,21 @@
                     <StackPanel DataContext="{Binding TableBrowseInfo}">
                         <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
                             <Run Text="表名：" FontWeight="Bold" Foreground="#37474F"/>
-                            <Run Text="{Binding TableName}" Foreground="#263238"/>
+                            <Run Text="{Binding TableName, Mode=OneWay}" Foreground="#263238"/>
                             <Run Text="　中文：" FontWeight="Bold" Foreground="#37474F"/>
-                            <Run Text="{Binding ChineseName}" Foreground="#263238"/>
+                            <Run Text="{Binding ChineseName, Mode=OneWay}" Foreground="#263238"/>
                         </TextBlock>
                         <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
                             <Run Text="说明：" FontWeight="Bold" Foreground="#37474F"/>
-                            <Run Text="{Binding Description}" Foreground="#455A64"/>
+                            <Run Text="{Binding Description, Mode=OneWay}" Foreground="#455A64"/>
                         </TextBlock>
                         <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
                             <Run Text="关联：" FontWeight="Bold" Foreground="#37474F"/>
-                            <Run Text="{Binding Relationships}" Foreground="#455A64"/>
+                            <Run Text="{Binding Relationships, Mode=OneWay}" Foreground="#455A64"/>
                         </TextBlock>
                         <TextBlock TextWrapping="Wrap" FontSize="12">
                             <Run Text="维护：" FontWeight="Bold" Foreground="#37474F"/>
-                            <Run Text="{Binding MaintenanceNotes}" Foreground="#6A1B9A"/>
+                            <Run Text="{Binding MaintenanceNotes, Mode=OneWay}" Foreground="#6A1B9A"/>
                         </TextBlock>
                     </StackPanel>
                 </Border>

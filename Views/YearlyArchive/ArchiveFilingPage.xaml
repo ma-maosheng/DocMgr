@@ -560,7 +560,7 @@
                                                             <TextBlock Grid.Column="2" VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding Disposition}"/>
                                                             <TextBlock Grid.Column="3" VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding MediumCode}"/>
                                                             <TextBlock Grid.Column="4" VerticalAlignment="Center" TextWrapping="Wrap">
-                                                                <Run Text="{Binding FilingStatus}"/>
+                                                                <Run Text="{Binding FilingStatus, Mode=OneWay}"/>
                                                                 <Run Text="（"/>
                                                                 <Run Text="{Binding FilingProgressText, Mode=OneWay}"/>
                                                                 <Run Text="）"/>
@@ -1122,108 +1122,63 @@
                                         </StackPanel>
                                     </GroupBox>
 
-                                    <GroupBox Header="{Binding ElectronicStepSevenTitle}" Padding="15" Margin="0,0,0,20">
-                                        <Grid>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                            </Grid.RowDefinitions>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-
-                                            <TextBlock Text="选择柜子：" Grid.Row="0" Grid.Column="0" Margin="0,0,10,10"
-                                                       Visibility="{Binding ElectronicStepSevenLocationSelectorVisibility}"/>
-                                            <ComboBox Grid.Row="0" Grid.Column="1" Margin="0,0,20,10"
-                                                      ItemsSource="{Binding ElectronicCabinets}"
-                                                      SelectedItem="{Binding SelectedElectronicCabinet}"
-                                                      DisplayMemberPath="Name"
-                                                      IsEnabled="{Binding IsElectronicLocationEditable}"
-                                                      Visibility="{Binding ElectronicStepSevenLocationSelectorVisibility}"/>
-
-                                            <TextBlock Text="A/B 面：" Grid.Row="0" Grid.Column="2" Margin="0,0,10,10"
-                                                       Visibility="{Binding ElectronicStepSevenLocationSelectorVisibility}"/>
-                                            <ComboBox Grid.Row="0" Grid.Column="3" Margin="0,0,0,10"
-                                                      ItemsSource="{Binding ElectronicSides}"
-                                                      SelectedItem="{Binding SelectedElectronicSide}"
-                                                      IsEnabled="{Binding IsElectronicLocationEditable}"
-                                                      Visibility="{Binding ElectronicStepSevenLocationSelectorVisibility}"/>
-
-                                            <TextBlock Text="层：" Grid.Row="1" Grid.Column="0" Margin="0,0,10,0"
-                                                       Visibility="{Binding ElectronicStepSevenLocationSelectorVisibility}"/>
-                                            <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,0,20,0"
-                                                      ItemsSource="{Binding ElectronicRows}"
-                                                      SelectedItem="{Binding SelectedElectronicRow}"
-                                                      IsEnabled="{Binding IsElectronicLocationEditable}"
-                                                      Visibility="{Binding ElectronicStepSevenLocationSelectorVisibility}"/>
-
-                                            <TextBlock Text="列：" Grid.Row="1" Grid.Column="2" Margin="0,0,10,0"
-                                                       Visibility="{Binding ElectronicStepSevenLocationSelectorVisibility}"/>
-                                            <ComboBox Grid.Row="1" Grid.Column="3"
-                                                      ItemsSource="{Binding ElectronicColumns}"
-                                                      SelectedItem="{Binding SelectedElectronicColumn}"
-                                                      IsEnabled="{Binding IsElectronicLocationEditable}"
-                                                      Visibility="{Binding ElectronicStepSevenLocationSelectorVisibility}"/>
-
-                                            <StackPanel Grid.Row="2"
-                                                         Grid.Column="3"
-                                                         Orientation="Horizontal"
-                                                         Margin="0,12,0,0"
-                                                         HorizontalAlignment="Left"
-                                                         Visibility="{Binding ElectronicStepSevenLocationSelectorVisibility}">
+                                    <GroupBox Header="{Binding ElectronicStepSevenTitle}" Padding="12" Margin="0,0,0,16">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal"
+                                                        VerticalAlignment="Center"
+                                                        Visibility="{Binding ElectronicStepSevenLocationSelectorVisibility}">
+                                                <TextBlock Text="档口编号："
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,8,0"/>
+                                                <ComboBox MinWidth="240"
+                                                          Height="{StaticResource FormControlHeight}"
+                                                          ItemsSource="{Binding ElectronicTargetLocationOptions}"
+                                                          SelectedItem="{Binding SelectedElectronicTargetLocationOption}"
+                                                          DisplayMemberPath="DisplayText"
+                                                          IsEnabled="{Binding IsElectronicLocationEditable}"
+                                                          VerticalAlignment="Center"
+                                                          ToolTip="{Binding ElectronicLocationActionHintText}"/>
                                                 <Button Width="120"
-                                                         Content="建议档口位置"
-                                                         Command="{Binding SuggestElectronicLocationCommand}"
-                                                         IsEnabled="{Binding IsElectronicStepSevenSuggestLocationEnabled}"
-                                                         Style="{StaticResource ButtonNormalStyle}"/>
+                                                        Margin="10,0,0,0"
+                                                        Content="建议档口位置"
+                                                        Command="{Binding SuggestElectronicLocationCommand}"
+                                                        IsEnabled="{Binding IsElectronicStepSevenSuggestLocationEnabled}"
+                                                        Style="{StaticResource FormInlineButtonStyle}"/>
                                                 <Button Width="120"
-                                                         Margin="10,0,0,0"
-                                                         Content="档口占用快照"
-                                                         Command="{Binding ShowElectronicSlotSnapshotCommand}"
-                                                         IsEnabled="{Binding CanShowElectronicSlotSnapshot}"
-                                                         Style="{StaticResource ButtonNormalStyle}"/>
+                                                        Margin="10,0,0,0"
+                                                        Content="档口占用快照"
+                                                        Command="{Binding ShowElectronicSlotSnapshotCommand}"
+                                                        IsEnabled="{Binding CanShowElectronicSlotSnapshot}"
+                                                        Style="{StaticResource FormInlineButtonStyle}"/>
+                                                <TextBlock Margin="12,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{Binding ElectronicLocationSuggestionBrush}"
+                                                           FontSize="12"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxWidth="280"
+                                                           Text="{Binding ElectronicLocationSuggestionHint}"
+                                                           Visibility="{Binding ElectronicLocationSuggestionHintVisibility}"/>
                                             </StackPanel>
 
-                                             <StackPanel Grid.Row="2"
-                                                         Grid.Column="0"
-                                                         Grid.ColumnSpan="3"
-                                                         Margin="0,12,12,0"
-                                                         Visibility="{Binding ElectronicLocationSuggestionHintVisibility}">
-                                                 <TextBlock Foreground="#4A5568"
-                                                            TextWrapping="Wrap"
-                                                            Text="{Binding ElectronicLocationActionHintText}"/>
-                                                 <TextBlock Margin="0,4,0,0"
-                                                            Foreground="{Binding ElectronicLocationSuggestionBrush}"
-                                                            TextWrapping="Wrap"
-                                                            Text="{Binding ElectronicLocationSuggestionHint}"/>
-                                             </StackPanel>
-
-                                             <Border Grid.Row="0"
-                                                     Grid.Column="0"
-                                                     Grid.ColumnSpan="4"
-                                                     Padding="10,8"
-                                                     Background="#F8FAFC"
-                                                     BorderBrush="#CBD5E1"
-                                                     BorderThickness="1"
-                                                     CornerRadius="4"
-                                                     Visibility="{Binding ElectronicStepSevenAppendNoticeVisibility}">
-                                                 <TextBlock Foreground="#475569"
-                                                            FontSize="12"
-                                                            TextWrapping="Wrap"
-                                                            Text="{Binding ElectronicStepSevenAppendNoticeText}"/>
-                                             </Border>
-                                        </Grid>
+                                            <Border Padding="10,8"
+                                                    Background="#F8FAFC"
+                                                    BorderBrush="#CBD5E1"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Visibility="{Binding ElectronicStepSevenAppendNoticeVisibility}">
+                                                <TextBlock Foreground="#475569"
+                                                           FontSize="12"
+                                                           TextWrapping="Wrap"
+                                                           Text="{Binding ElectronicStepSevenAppendNoticeText}"/>
+                                            </Border>
+                                        </StackPanel>
                                     </GroupBox>
 
                                     <GroupBox Header="{Binding ElectronicStepEightTitle}" Padding="12" Margin="0,0,0,16">
                                         <StackPanel>
                                             <UniformGrid Columns="5" Margin="0,0,0,12">
                                                 <StackPanel Orientation="Horizontal"
-                                                            HorizontalAlignment="Center"
+                                                            HorizontalAlignment="Left"
                                                             VerticalAlignment="Center"
                                                             Margin="4,0">
                                                     <TextBlock Text="介质袋编号：" Margin="0,0,6,0" VerticalAlignment="Center"/>

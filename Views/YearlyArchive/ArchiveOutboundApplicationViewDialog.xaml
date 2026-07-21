@@ -106,9 +106,9 @@
                                 <TextBlock Text="{Binding DeptAuditOpinion}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                 <TextBlock Margin="0,4,0,0">
                                     <Run Text="审核人：" Foreground="#64748B"/>
-                                    <Run Text="{Binding DeptAuditor}"/>
+                                    <Run Text="{Binding DeptAuditor, Mode=OneWay}"/>
                                     <Run Text="  日期：" Foreground="#64748B"/>
-                                    <Run Text="{Binding DeptAuditDateDisplay}"/>
+                                    <Run Text="{Binding DeptAuditDateDisplay, Mode=OneWay}"/>
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,10">
@@ -116,9 +116,9 @@
                                 <TextBlock Text="{Binding ArchiveRoomHeadOpinion}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                 <TextBlock Margin="0,4,0,0">
                                     <Run Text="负责人：" Foreground="#64748B"/>
-                                    <Run Text="{Binding ArchiveRoomHead}"/>
+                                    <Run Text="{Binding ArchiveRoomHead, Mode=OneWay}"/>
                                     <Run Text="  日期：" Foreground="#64748B"/>
-                                    <Run Text="{Binding ArchiveRoomHeadDateDisplay}"/>
+                                    <Run Text="{Binding ArchiveRoomHeadDateDisplay, Mode=OneWay}"/>
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
@@ -126,9 +126,9 @@
                                 <TextBlock Text="{Binding ProductionHeadOpinion}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                 <TextBlock Margin="0,4,0,0">
                                     <Run Text="负责人：" Foreground="#64748B"/>
-                                    <Run Text="{Binding ProductionHead}"/>
+                                    <Run Text="{Binding ProductionHead, Mode=OneWay}"/>
                                     <Run Text="  日期：" Foreground="#64748B"/>
-                                    <Run Text="{Binding ProductionHeadDateDisplay}"/>
+                                    <Run Text="{Binding ProductionHeadDateDisplay, Mode=OneWay}"/>
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,0">
@@ -136,9 +136,9 @@
                                 <TextBlock Text="{Binding VicePresidentOpinion}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                 <TextBlock Margin="0,4,0,0">
                                     <Run Text="签字：" Foreground="#64748B"/>
-                                    <Run Text="{Binding VicePresident}"/>
+                                    <Run Text="{Binding VicePresident, Mode=OneWay}"/>
                                     <Run Text="  日期：" Foreground="#64748B"/>
-                                    <Run Text="{Binding VicePresidentDateDisplay}"/>
+                                    <Run Text="{Binding VicePresidentDateDisplay, Mode=OneWay}"/>
                                 </TextBlock>
                             </StackPanel>
                         </Grid>

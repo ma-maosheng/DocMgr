@@ -439,13 +439,14 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveRegisterFlowResult.Fail("当前状态不允许再次执行审批通过。");
             }
 
+            // 审批流程仅要求签字人，不要求签署具体意见。
             var approvalErrors = new List<string>();
-            if (string.IsNullOrWhiteSpace(record.ProdDeptOpinion) || string.IsNullOrWhiteSpace(record.ProdLeader)) approvalErrors.Add("• 生产管理科审批信息缺失");
-            if (string.IsNullOrWhiteSpace(record.RndDeptOpinion) || string.IsNullOrWhiteSpace(record.RndLeader)) approvalErrors.Add("• 科研开发室审批信息缺失");
-            if (string.IsNullOrWhiteSpace(record.DeputyOpinion) || string.IsNullOrWhiteSpace(record.DeputyLeader)) approvalErrors.Add("• 分管领导审批信息缺失");
+            if (string.IsNullOrWhiteSpace(record.ProdLeader)) approvalErrors.Add("• 生产管理科负责人签字缺失");
+            if (string.IsNullOrWhiteSpace(record.RndLeader)) approvalErrors.Add("• 科研开发室负责人签字缺失");
+            if (string.IsNullOrWhiteSpace(record.DeputyLeader)) approvalErrors.Add("• 分管领导签字缺失");
             if (approvalErrors.Count > 0)
             {
-                return ArchiveRegisterFlowResult.Fail("审批信息不完整，无法审批通过：\n\n" + string.Join(Environment.NewLine, approvalErrors));
+                return ArchiveRegisterFlowResult.Fail("审批签字信息不完整，无法审批通过：\n\n" + string.Join(Environment.NewLine, approvalErrors));
             }
 
             ArchiveRegisterBusinessRules.MergeMediaItemConfidentialLevels(existing, mediaEntries);
@@ -747,8 +748,8 @@ namespace DocMgr.Services.YearlyArchive
             var errors = new List<string>();
             var attachmentList = attachments ?? Array.Empty<SystemAttachment>();
 
+            // 办结校验仅要求签字人；历史记录若仍有意见值则校验域值合法性。
             var pageDomainOptions = CreatePageDomainOptions(GetPageDomainDefinitions());
-
             var prodOpinionOptions = pageDomainOptions.ProdOpinionOptions;
             var rndOpinionOptions = pageDomainOptions.RndOpinionOptions;
             var deputyOpinionOptions = pageDomainOptions.DeputyOpinionOptions;
@@ -760,12 +761,12 @@ namespace DocMgr.Services.YearlyArchive
             if (!string.IsNullOrWhiteSpace(record.DeputyOpinion) && !IsAllowedDomainValue(record.DeputyOpinion, deputyOpinionOptions))
                 errors.Add($"• 分管领导意见不在域值定义中（允许值：{string.Join("、", deputyOpinionOptions)}）");
 
-            if (string.IsNullOrWhiteSpace(record.ProdDeptOpinion) || string.IsNullOrWhiteSpace(record.ProdLeader)) errors.Add("• 生产管理科审批信息缺失");
-            if (string.IsNullOrWhiteSpace(record.RndDeptOpinion) || string.IsNullOrWhiteSpace(record.RndLeader)) errors.Add("• 科研开发室审批信息缺失");
-            if (string.IsNullOrWhiteSpace(record.DeputyOpinion) || string.IsNullOrWhiteSpace(record.DeputyLeader)) errors.Add("• 分管领导审批信息缺失");
-            if (string.IsNullOrWhiteSpace(record.Deliverer)) errors.Add("• 移交人缺失");
-            if (string.IsNullOrWhiteSpace(record.Administrator)) errors.Add("• 资料员缺失");
-            if (string.IsNullOrWhiteSpace(record.DeptLeader)) errors.Add("• 部门负责人缺失");
+            if (string.IsNullOrWhiteSpace(record.ProdLeader)) errors.Add("• 生产管理科负责人签字缺失");
+            if (string.IsNullOrWhiteSpace(record.RndLeader)) errors.Add("• 科研开发室负责人签字缺失");
+            if (string.IsNullOrWhiteSpace(record.DeputyLeader)) errors.Add("• 分管领导签字缺失");
+            if (string.IsNullOrWhiteSpace(record.Deliverer)) errors.Add("• 移交人签字缺失");
+            if (string.IsNullOrWhiteSpace(record.Administrator)) errors.Add("• 资料员签字缺失");
+            if (string.IsNullOrWhiteSpace(record.DeptLeader)) errors.Add("• 部门负责人签字缺失");
 
             errors.AddRange(CollectMandatoryAttachmentErrors(attachmentList));
 
@@ -829,36 +830,22 @@ namespace DocMgr.Services.YearlyArchive
             var users = await _archiveRegisterRepository.GetUsersAsync();
             var now = DateTime.Now;
 
-            var pageDomainOptions = await GetPageDomainOptionsAsync();
-
-            var prodOpinionOptions = pageDomainOptions.ProdOpinionOptions;
-            var rndOpinionOptions = pageDomainOptions.RndOpinionOptions;
-            var deputyOpinionOptions = pageDomainOptions.DeputyOpinionOptions;
-
             var deptLeader = FindUserByDeptAndRole(users, record.ApplicantDept, "部门负责人");
             if (!string.IsNullOrWhiteSpace(deptLeader))
                 record.DeptLeader = deptLeader;
             if (!record.DeptDate.HasValue)
                 record.DeptDate = now;
 
-            if (string.IsNullOrWhiteSpace(record.ProdDeptOpinion))
-                record.ProdDeptOpinion = prodOpinionOptions.FirstOrDefault() ?? string.Empty;
-
+            // 审批流程仅签字，不再预填意见。
             if (string.IsNullOrWhiteSpace(record.ProdLeader))
                 record.ProdLeader = FindUserByRoleOrDept(users, "生产管理科");
             if (!record.ProdDate.HasValue)
                 record.ProdDate = now;
 
-            if (string.IsNullOrWhiteSpace(record.RndDeptOpinion))
-                record.RndDeptOpinion = rndOpinionOptions.FirstOrDefault() ?? string.Empty;
-
             if (string.IsNullOrWhiteSpace(record.RndLeader))
                 record.RndLeader = FindUserByRoleOrDept(users, "资料室");
             if (!record.RndDate.HasValue)
                 record.RndDate = now;
-
-            if (string.IsNullOrWhiteSpace(record.DeputyOpinion))
-                record.DeputyOpinion = deputyOpinionOptions.FirstOrDefault() ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(record.DeputyLeader))
                 record.DeputyLeader = FindUserByRoleOrDept(users, "分管资料副院长");

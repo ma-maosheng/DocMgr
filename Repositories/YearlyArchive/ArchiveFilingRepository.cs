@@ -811,6 +811,47 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
             .FirstOrDefaultAsync();
     }
 
+    public Task<string?> GetArchiveSlotCategoryNameAsync(int cabinetId, string faceCode, string slotCode)
+    {
+        string normalizedFace = faceCode.Trim();
+        string normalizedSlot = slotCode.Trim();
+        return _dbContext.CabinetArchiveSlotCategoryAssignments
+            .AsNoTracking()
+            .Where(item => item.CabinetId == cabinetId)
+            .Where(item => item.FaceCode == normalizedFace && item.SlotCode == normalizedSlot)
+            .Select(item => item.CategoryName)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<Dictionary<string, string>> GetArchiveSlotCategoryLookupForCabinetsAsync(IReadOnlyCollection<int> cabinetIds)
+    {
+        if (cabinetIds == null || cabinetIds.Count == 0)
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var idSet = cabinetIds.Where(id => id > 0).Distinct().ToList();
+        if (idSet.Count == 0)
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var rows = await _dbContext.CabinetArchiveSlotCategoryAssignments
+            .AsNoTracking()
+            .Where(item => idSet.Contains(item.CabinetId))
+            .Select(item => new { item.CabinetId, item.FaceCode, item.SlotCode, item.CategoryName })
+            .ToListAsync();
+
+        var lookup = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in rows)
+        {
+            string key = $"{row.CabinetId}:{row.FaceCode.Trim()}:{row.SlotCode.Trim()}";
+            lookup[key] = row.CategoryName;
+        }
+
+        return lookup;
+    }
+
     public async Task<bool> IsMagneticDiskSlotFullyEmptyAsync(string slotCode, string slotPrefix)
     {
         if (string.IsNullOrWhiteSpace(slotCode))

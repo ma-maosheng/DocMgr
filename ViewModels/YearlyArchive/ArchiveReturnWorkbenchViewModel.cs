@@ -366,15 +366,48 @@ namespace DocMgr.ViewModels.YearlyArchive
             && EditingRecord is { Status: YearlyArchiveReturnRecord.SignedUploaded }
             && (!HasAbnormalReturnItems || HasAbnormalReportUploaded);
 
-        /// <summary>办结前可作废；审批后仅管理员可强制。</summary>
-        public bool CanVoid => EditingRecord is { } record
-            && record.Id > 0
-            && record.Status is YearlyArchiveReturnRecord.Draft
-                or YearlyArchiveReturnRecord.Submitted
-                or YearlyArchiveReturnRecord.Approved
-                or YearlyArchiveReturnRecord.SignedUploaded
-            && (_workspaceMode != ArchiveReturnWorkspaceMode.Application
-                || record.Status is YearlyArchiveReturnRecord.Draft or YearlyArchiveReturnRecord.Submitted);
+        /// <summary>申请侧撤回作废；审批/交接侧强制作废。</summary>
+        public string VoidActionText => _workspaceMode == ArchiveReturnWorkspaceMode.Application
+            ? "撤回作废"
+            : "强制作废";
+
+        public string VoidActionToolTip => _workspaceMode == ArchiveReturnWorkspaceMode.Application
+            ? "申请人撤回，状态变为「已作废（撤回）」"
+            : "资料室管理员强制作废，状态变为「已作废（强制）」";
+
+        /// <summary>办结前可作废：申请人仅草稿/已提交可撤回；管理员可强制作废未办结单。</summary>
+        public bool CanVoid
+        {
+            get
+            {
+                if (EditingRecord is not { Id: > 0 } record)
+                {
+                    return false;
+                }
+
+                if (record.Status is YearlyArchiveReturnRecord.Completed
+                    or YearlyArchiveReturnRecord.WithdrawnVoid
+                    or YearlyArchiveReturnRecord.ForceVoided)
+                {
+                    return false;
+                }
+
+                if (_workspaceMode == ArchiveReturnWorkspaceMode.Application)
+                {
+                    var user = _userContextService.CurrentUser;
+                    return user != null
+                           && record.RegisteredByUserId == user.Id
+                           && record.Status is YearlyArchiveReturnRecord.Draft
+                               or YearlyArchiveReturnRecord.Submitted;
+                }
+
+                return IsAdmin
+                       && record.Status is YearlyArchiveReturnRecord.Draft
+                           or YearlyArchiveReturnRecord.Submitted
+                           or YearlyArchiveReturnRecord.Approved
+                           or YearlyArchiveReturnRecord.SignedUploaded;
+            }
+        }
 
         /// <summary>实物交接后可打印回执。</summary>
         public bool CanPrintReceipt => EditingRecord is { Id: > 0 } record
@@ -899,7 +932,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            if (!_dialogService.ShowConfirm($"确认作废归还单 {record.ReturnNo}？", "作废确认"))
+            if (!_dialogService.ShowConfirm($"确认{VoidActionText}归还单 {record.ReturnNo}？", $"{VoidActionText}确认"))
             {
                 return;
             }

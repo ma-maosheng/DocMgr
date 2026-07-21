@@ -137,11 +137,6 @@ namespace DocMgr.Services.Interfaces
         Task SaveApplicationAsync(HardDiskMediaApplication application, User? currentUser);
 
         /// <summary>
-        /// 删除业务申请。
-        /// </summary>
-        Task DeleteApplicationAsync(int applicationId);
-
-        /// <summary>
         /// 提交业务申请。
         /// </summary>
         Task SubmitApplicationAsync(int applicationId, User? currentUser);

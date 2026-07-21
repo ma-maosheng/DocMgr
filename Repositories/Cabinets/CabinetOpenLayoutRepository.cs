@@ -57,6 +57,14 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
             .ToDictionary(item => $"{item.FaceCode}:{item.SlotCode}", item => item.CategoryName, StringComparer.OrdinalIgnoreCase);
     }
 
+    public Dictionary<string, string> GetArchiveSlotCategoryLookup(int cabinetId)
+    {
+        return _dbContext.CabinetArchiveSlotCategoryAssignments
+            .AsNoTracking()
+            .Where(item => item.CabinetId == cabinetId)
+            .ToDictionary(item => $"{item.FaceCode}:{item.SlotCode}", item => item.CategoryName, StringComparer.OrdinalIgnoreCase);
+    }
+
     public List<HardDiskMedium> GetHardDiskMediaWithLedger()
     {
         return _dbContext.HardDiskMedia

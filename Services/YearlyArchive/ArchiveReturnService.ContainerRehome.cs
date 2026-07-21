@@ -161,6 +161,12 @@ namespace DocMgr.Services.YearlyArchive
                         $"归还目标盒 [{targetBox.ArchiveSequenceNo}] 不可用（明细：{BuildItemLabel(item)}）。");
                 }
 
+                string? categoryIssue = await ValidateYearlyMaterialsSlotCategoryForBoxAsync(targetBox);
+                if (!string.IsNullOrWhiteSpace(categoryIssue))
+                {
+                    throw new InvalidOperationException($"{categoryIssue}（明细：{BuildItemLabel(item)}）");
+                }
+
                 await EnsureMediaItemLinkOnBoxAsync(fact, targetBox, operatedAt);
                 ApplyFactToBox(fact, targetBox, operatedAt, operatorName, "资料归还入库（原盒失效，改挂目标盒）");
                 targetBox.ContainerLifecycleStatus = ArchiveContainerLifecycleStatus.InUse;
@@ -232,7 +238,17 @@ namespace DocMgr.Services.YearlyArchive
                 boxes = await _outboundRepository.ListInUseSimulatedArchiveBoxesAsync(null, null);
             }
 
-            return boxes
+            var allowedBoxes = new List<YearlyArchiveBox>();
+            foreach (var box in boxes)
+            {
+                string? categoryIssue = await ValidateYearlyMaterialsSlotCategoryForBoxAsync(box);
+                if (string.IsNullOrWhiteSpace(categoryIssue))
+                {
+                    allowedBoxes.Add(box);
+                }
+            }
+
+            return allowedBoxes
                 .Select(box => new ArchiveReturnRehomeTargetOption
                 {
                     BoxId = box.Id,
@@ -283,6 +299,12 @@ namespace DocMgr.Services.YearlyArchive
                 || string.IsNullOrWhiteSpace(target.BoxLocationCode))
             {
                 return ArchiveReturnFlowResult.Fail("所选归还目标盒不可用。");
+            }
+
+            string? categoryIssue = await ValidateYearlyMaterialsSlotCategoryForBoxAsync(target);
+            if (!string.IsNullOrWhiteSpace(categoryIssue))
+            {
+                return ArchiveReturnFlowResult.Fail(categoryIssue);
             }
 
             item.RehomeTargetBoxId = targetBoxId;
@@ -339,6 +361,17 @@ namespace DocMgr.Services.YearlyArchive
                 request.Row,
                 request.Column,
                 request.BoxIndex <= 0 ? 1 : request.BoxIndex);
+
+            string? categoryIssue = await ValidateYearlyMaterialsSlotCategoryAsync(
+                request.CabinetName.Trim(),
+                request.Side.Trim(),
+                request.Row,
+                request.Column,
+                location);
+            if (!string.IsNullOrWhiteSpace(categoryIssue))
+            {
+                return ArchiveReturnFlowResult.Fail(categoryIssue);
+            }
 
             var fact = await _outboundRepository.GetFilingFactByIdAsync(item.FilingFactId);
             string year = string.IsNullOrWhiteSpace(request.Year)
@@ -417,6 +450,51 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return $"{prefix}{nextSeq:D3}";
+        }
+
+        private async Task<string?> ValidateYearlyMaterialsSlotCategoryForBoxAsync(YearlyArchiveBox box)
+        {
+            ArgumentNullException.ThrowIfNull(box);
+            return await ValidateYearlyMaterialsSlotCategoryAsync(
+                box.CabinetName,
+                box.Side,
+                box.Row,
+                box.Column,
+                box.BoxLocationCode);
+        }
+
+        private async Task<string?> ValidateYearlyMaterialsSlotCategoryAsync(
+            string? cabinetName,
+            string? faceCode,
+            int row,
+            int column,
+            string? locationDisplay)
+        {
+            string normalizedCabinetName = cabinetName?.Trim() ?? string.Empty;
+            string normalizedFace = faceCode?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedCabinetName)
+                || string.IsNullOrWhiteSpace(normalizedFace)
+                || row <= 0
+                || column <= 0)
+            {
+                return "档案盒存放位置不完整，请重新选择档口。";
+            }
+
+            var cabinets = await _filingRepository.GetNonMagneticCabinetsAsync();
+            var cabinet = cabinets.FirstOrDefault(item =>
+                string.Equals(item.Name, normalizedCabinetName, StringComparison.OrdinalIgnoreCase));
+            string slotCode = ArchiveStorageSlotCategorySupport.BuildSlotCode(row, column);
+            string? storedCategory = cabinet == null || cabinet.Type != CabinetType.Standard
+                ? null
+                : await _filingRepository.GetArchiveSlotCategoryNameAsync(cabinet.Id, normalizedFace, slotCode);
+
+            return ArchiveStorageSlotCategorySupport.TryValidateStandardSlotCategory(
+                cabinet,
+                normalizedFace,
+                slotCode,
+                storedCategory,
+                ArchiveStorageSlotCategorySupport.ExpectedYearlyMaterialsCategory,
+                locationDisplay ?? $"{normalizedCabinetName}{normalizedFace}-{slotCode}");
         }
     }
 }

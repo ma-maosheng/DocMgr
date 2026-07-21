@@ -184,6 +184,43 @@ namespace DocMgr.Data.Migrations
                     b.ToTable("CabinetArchiveBoxPlacements");
                 });
 
+            modelBuilder.Entity("DocMgr.Models.Cabinets.CabinetArchiveSlotCategoryAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CabinetId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CategoryName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FaceCode")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SlotCode")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedTime")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CabinetId", "CategoryName");
+
+                    b.HasIndex("CabinetId", "FaceCode", "SlotCode")
+                        .IsUnique();
+
+                    b.ToTable("CabinetArchiveSlotCategoryAssignments");
+                });
+
             modelBuilder.Entity("DocMgr.Models.Cabinets.CabinetHardDiskSlotCategoryAssignment", b =>
                 {
                     b.Property<int>("Id")
@@ -3361,6 +3398,17 @@ namespace DocMgr.Data.Migrations
                     b.HasIndex("RegisterRecordsId");
 
                     b.ToTable("YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.Cabinets.CabinetArchiveSlotCategoryAssignment", b =>
+                {
+                    b.HasOne("DocMgr.Models.Cabinets.Cabinet", "Cabinet")
+                        .WithMany()
+                        .HasForeignKey("CabinetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Cabinet");
                 });
 
             modelBuilder.Entity("DocMgr.Models.Cabinets.CabinetHardDiskSlotCategoryAssignment", b =>

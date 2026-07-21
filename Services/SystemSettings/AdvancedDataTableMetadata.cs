@@ -37,13 +37,18 @@ namespace DocMgr.Services.SystemSettings
 
             [nameof(Cabinet)] = new(
                 "资料室物理柜体主数据，包含柜名、规格及布局相关属性。",
-                "← 被 CabinetHardDiskSlotCategoryAssignments、CabinetArchiveBoxPlacements、YearlyArchiveBoxes 等引用。",
+                "← 被 CabinetHardDiskSlotCategoryAssignments、CabinetArchiveSlotCategoryAssignments、CabinetArchiveBoxPlacements、YearlyArchiveBoxes 等引用。",
                 "可维护。柜名在保存时会自动规范化；删除前需先清理柜位分配与档案盒关联。"),
 
             [nameof(CabinetHardDiskSlotCategoryAssignment)] = new(
                 "定义某资料柜指定面/槽位可存放的硬盘介质分类。",
                 "→ 引用 Cabinets（CabinetId，级联删除）。",
                 "只读浏览。通常由柜体布局初始化或业务配置写入。"),
+
+            [nameof(CabinetArchiveSlotCategoryAssignment)] = new(
+                "定义标准滑道式档案柜指定面/档口的模拟介质资料存放用途（未设置、年度资料专用、历史资料专用）。",
+                "→ 引用 Cabinets（CabinetId，级联删除）。",
+                "只读浏览。通常由开柜界面设置或启动补全写入。"),
 
             [nameof(CabinetArchiveBoxPlacement)] = new(
                 "记录档案盒在资料柜中的物理位置（柜名、面、槽位）及来源业务键。",

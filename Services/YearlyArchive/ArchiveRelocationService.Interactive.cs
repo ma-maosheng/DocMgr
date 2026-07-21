@@ -197,7 +197,7 @@ namespace DocMgr.Services.YearlyArchive
             YearlyArchiveBox source)
         {
             string newLocation = string.Empty;
-            string slotPurposeText = "标准档案柜档口";
+            string slotPurposeText = CabinetArchiveSlotCategoryAssignment.CategoryUnset;
             string slotSpaceText = string.Empty;
 
             if (string.IsNullOrWhiteSpace(request.TargetCabinetName)
@@ -213,6 +213,34 @@ namespace DocMgr.Services.YearlyArchive
             if (targetCabinet == null)
             {
                 return InteractiveTargetValidationResult.Fail($"未找到目标档案柜 [{request.TargetCabinetName}]，模拟介质只能迁入滑道式/立式/卧式档案柜。");
+            }
+
+            if (targetCabinet.Type == CabinetType.Standard)
+            {
+                string slotCode = $"{request.TargetRow}-{request.TargetColumn}";
+                string? storedCategory = await _filingRepository.GetArchiveSlotCategoryNameAsync(
+                    targetCabinet.Id,
+                    request.TargetFace.Trim(),
+                    slotCode);
+                slotPurposeText = string.IsNullOrWhiteSpace(storedCategory)
+                    ? CabinetArchiveSlotCategoryAssignment.CategoryUnset
+                    : CabinetArchiveSlotCategoryAssignment.NormalizeCategoryName(storedCategory);
+
+                string? categoryIssue = ArchiveStorageSlotCategorySupport.TryValidateStandardSlotCategory(
+                    targetCabinet,
+                    request.TargetFace.Trim(),
+                    slotCode,
+                    storedCategory,
+                    ArchiveStorageSlotCategorySupport.ExpectedYearlyMaterialsCategory,
+                    $"{request.TargetCabinetName.Trim()}{request.TargetFace.Trim()}-{slotCode}");
+                if (!string.IsNullOrWhiteSpace(categoryIssue))
+                {
+                    return InteractiveTargetValidationResult.Fail(categoryIssue);
+                }
+            }
+            else
+            {
+                slotPurposeText = "标准档案柜档口";
             }
 
             int sequence = await ResolveInteractiveSimulatedTargetSequenceAsync(source, request);

@@ -25,6 +25,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private int _selectedRecordsChangedGeneration;
         private int _simulatedBoxIndexCalculationGeneration;
         private bool _suppressSimulatedLocationRecalc;
+        private bool _suppressElectronicLocationRecalc;
+        private bool _suppressElectronicLocationOptionSync;
+        private int _electronicTargetLocationOptionsGeneration;
         private readonly SemaphoreSlim _selectedRecordsChangedGate = new(1, 1);
         private bool _isInitialized;
         private int _currentCellBoxCount;
@@ -70,6 +73,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ElectronicSides = new ObservableCollection<string>();
             ElectronicRows = new ObservableCollection<string>();
             ElectronicColumns = new ObservableCollection<string>();
+            ElectronicTargetLocationOptions = new ObservableCollection<HardDiskMediaReturnTargetLocationOption>();
             ExistingBoxes = new ObservableCollection<YearlyArchiveBox>();
             ExistingElectronicUnits = new ObservableCollection<ExistingElectronicArchiveUnitListItem>();
             SimulatedRecordItems = new ObservableCollection<SelectableSimulatedArchiveItemViewModel>();
@@ -142,6 +146,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<string> ElectronicSides { get; }
         public ObservableCollection<string> ElectronicRows { get; }
         public ObservableCollection<string> ElectronicColumns { get; }
+        public ObservableCollection<HardDiskMediaReturnTargetLocationOption> ElectronicTargetLocationOptions { get; }
         public ObservableCollection<YearlyArchiveBox> ExistingBoxes { get; }
         public ObservableCollection<ExistingElectronicArchiveUnitListItem> ExistingElectronicUnits { get; }
         public ObservableCollection<SelectableSimulatedArchiveItemViewModel> SimulatedRecordItems { get; }
@@ -693,7 +698,40 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ElectronicSelectedMediumStatus
         {
             get => _electronicSelectedMediumStatus;
-            set => SetProperty(ref _electronicSelectedMediumStatus, value);
+            set
+            {
+                if (SetProperty(ref _electronicSelectedMediumStatus, value)
+                    && IsElectronicTrack
+                    && ElectronicStepSevenLocationSelectorVisibility == Visibility.Visible)
+                {
+                    _ = LoadElectronicTargetLocationOptionsAsync();
+                }
+            }
+        }
+
+        private HardDiskMediaReturnTargetLocationOption? _selectedElectronicTargetLocationOption;
+        public HardDiskMediaReturnTargetLocationOption? SelectedElectronicTargetLocationOption
+        {
+            get => _selectedElectronicTargetLocationOption;
+            set
+            {
+                if (!SetProperty(ref _selectedElectronicTargetLocationOption, value)
+                    || _suppressElectronicLocationOptionSync)
+                {
+                    return;
+                }
+
+                if (value == null)
+                {
+                    ClearElectronicLocationSelectionCore();
+                    return;
+                }
+
+                if (!TryApplyElectronicSlotCode(value.Location))
+                {
+                    ClearElectronicLocationSelectionCore();
+                }
+            }
         }
 
         private Cabinet? _selectedElectronicCabinet;
@@ -706,7 +744,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     UpdateElectronicSides();
                     UpdateElectronicRowsAndCols();
-                    CalculateElectronicLocation();
+                    if (!_suppressElectronicLocationRecalc)
+                    {
+                        CalculateElectronicLocation();
+                    }
+
                     RaiseSlotSnapshotAvailabilityChanged();
                 }
             }
@@ -720,7 +762,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedElectronicSide, value))
                 {
-                    CalculateElectronicLocation();
+                    if (!_suppressElectronicLocationRecalc)
+                    {
+                        CalculateElectronicLocation();
+                    }
+
                     RaiseSlotSnapshotAvailabilityChanged();
                 }
             }
@@ -734,7 +780,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedElectronicRow, value))
                 {
-                    CalculateElectronicLocation();
+                    if (!_suppressElectronicLocationRecalc)
+                    {
+                        CalculateElectronicLocation();
+                    }
+
                     RaiseSlotSnapshotAvailabilityChanged();
                 }
             }
@@ -748,7 +798,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedElectronicColumn, value))
                 {
-                    CalculateElectronicLocation();
+                    if (!_suppressElectronicLocationRecalc)
+                    {
+                        CalculateElectronicLocation();
+                    }
+
                     RaiseSlotSnapshotAvailabilityChanged();
                 }
             }
@@ -1154,13 +1208,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 if (RequiresRetainedHardDiskAppendProcessing)
                 {
-                    if (!TryApplyElectronicSlotCode(SelectedExistingElectronicUnit.StorageLocation))
-                    {
-                        SelectedElectronicCabinet = null;
-                        SelectedElectronicSide = string.Empty;
-                        SelectedElectronicRow = string.Empty;
-                        SelectedElectronicColumn = string.Empty;
-                    }
+                    _ = LoadElectronicTargetLocationOptionsAsync(SelectedExistingElectronicUnit.StorageLocation);
                 }
 
                 RaiseSlotSnapshotAvailabilityChanged();
@@ -1170,6 +1218,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             if (IsElectronicTrack && !IsNewBoxMode)
             {
                 ClearElectronicAppendTargetFields();
+                if (ElectronicStepSevenLocationSelectorVisibility == Visibility.Visible)
+                {
+                    _ = LoadElectronicTargetLocationOptionsAsync();
+                }
             }
 
             RaiseElectronicStepFourPresentationChanged();

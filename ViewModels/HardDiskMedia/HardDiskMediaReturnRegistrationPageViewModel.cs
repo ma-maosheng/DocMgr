@@ -26,6 +26,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
         private readonly IUserService _userService;
+        private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
         private readonly List<HardDiskMediaApplication> _allApplications = new();
         private readonly List<HardDiskMediaReturnCandidate> _allReturnCandidates = new();
         private readonly Dictionary<int, string> _sourceBorrowApplicationNoByReturnId = new();
@@ -34,6 +35,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private string _searchKeyword = string.Empty;
         private string _selectedStatus = ReturnStageAll;
         private string _selectedApplicationType = ReturnStageAll;
+        private string _applicationOverdueSettingCode = ApplicationOverdueDomainValues.Default;
         private HardDiskMediaApplication? _selectedApplication;
         private HardDiskMediaReturnCandidate? _selectedCandidate;
         private bool _isLeftPanelExpanded = true;
@@ -44,7 +46,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ICabinetService cabinetService,
             IDialogService dialogService,
             IUserContextService userContextService,
-            IUserService userService)
+            IUserService userService,
+            IBusinessLogicSettingsService businessLogicSettingsService)
         {
             _workspaceMode = workspaceMode;
             _hardDiskMediaService = hardDiskMediaService;
@@ -52,12 +55,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _dialogService = dialogService;
             _userContextService = userContextService;
             _userService = userService;
+            _businessLogicSettingsService = businessLogicSettingsService;
 
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
             StartReturnCommand = new RelayCommand(async _ => await StartReturnAsync(), _ => CanStartReturn());
             OpenReturnCommand = new RelayCommand(async _ => await OpenReturnAsync(), _ => CanOpenReturn());
-            DeleteCommand = new RelayCommand(async _ => await DeleteApplicationAsync(), _ => CanDeleteSelectedApplication());
+            WithdrawCommand = new RelayCommand(async _ => await WithdrawApplicationAsync(), _ => CanWithdrawSelectedApplication());
+            ForceWithdrawCommand = new RelayCommand(async _ => await ForceWithdrawApplicationAsync(), _ => CanForceWithdrawSelectedApplication());
             ToggleLeftPanelCommand = new RelayCommand(_ => IsLeftPanelExpanded = !IsLeftPanelExpanded);
 
             RecommendTargetLocationCommand = new RelayCommand(async _ => await RecommendTargetLocationAsync(), _ => CanRecommendTargetLocation);
@@ -195,7 +200,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public RelayCommand OpenReturnCommand { get; }
 
-        public RelayCommand DeleteCommand { get; }
+        public RelayCommand WithdrawCommand { get; }
+
+        public RelayCommand ForceWithdrawCommand { get; }
 
         public RelayCommand ToggleLeftPanelCommand { get; }
 
@@ -238,6 +245,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             try
             {
+                _applicationOverdueSettingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
+
                 int? selectedApplicationId = SelectedApplication?.Id ?? _editingApplication?.Id;
                 string? selectedCandidateKey = SelectedCandidate == null ? null : BuildCandidateKey(SelectedCandidate);
                 string? keyword = string.IsNullOrWhiteSpace(SearchKeyword) ? null : SearchKeyword;
@@ -463,27 +472,67 @@ namespace DocMgr.ViewModels.HardDiskMedia
             await LoadEditorSessionAsync(editable);
         }
 
-        private async Task DeleteApplicationAsync()
+        private async Task WithdrawApplicationAsync()
         {
-            HardDiskMediaApplication? target = _editingApplication?.Id > 0
-                ? _editingApplication
-                : SelectedApplication;
-            if (target == null || target.Id <= 0)
+            HardDiskMediaApplication? target = ResolveVoidTargetApplication();
+            if (target == null)
             {
                 return;
             }
 
-            if (!_dialogService.ShowConfirm($"确定要删除登记单 [{target.ApplicationNo}] 吗？", "提示"))
+            if (!_dialogService.ShowConfirm($"确定要撤回作废归还单 [{target.ApplicationNo}] 吗？", "提示"))
             {
                 return;
             }
 
             try
             {
-                await _hardDiskMediaService.DeleteApplicationAsync(target.Id);
+                var result = await _hardDiskMediaService.WithdrawApplicationAsync(
+                    target,
+                    _userContextService.CurrentUser,
+                    null);
+                _dialogService.ShowMessage(result.Message);
+                if (!result.Success)
+                {
+                    return;
+                }
+
                 CancelEdit();
                 await SearchAsync();
-                _dialogService.ShowMessage("删除成功。");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private async Task ForceWithdrawApplicationAsync()
+        {
+            HardDiskMediaApplication? target = ResolveVoidTargetApplication();
+            if (target == null)
+            {
+                return;
+            }
+
+            if (!_dialogService.ShowConfirm($"确定要强制作废归还单 [{target.ApplicationNo}] 吗？", "提示"))
+            {
+                return;
+            }
+
+            try
+            {
+                var result = await _hardDiskMediaService.ForceWithdrawApplicationAsync(
+                    target,
+                    _userContextService.CurrentUser,
+                    null);
+                _dialogService.ShowMessage(result.Message);
+                if (!result.Success)
+                {
+                    return;
+                }
+
+                CancelEdit();
+                await SearchAsync();
             }
             catch (InvalidOperationException ex)
             {
@@ -503,22 +552,61 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return SelectedApplication != null;
         }
 
-        private bool CanDeleteSelectedApplication()
+        private bool CanWithdrawSelectedApplication()
         {
-            HardDiskMediaApplication? target = _editingApplication?.Id > 0
-                ? _editingApplication
-                : SelectedApplication;
-            if (target == null || target.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)
+            if (_workspaceMode != HardDiskReturnWorkspaceMode.Application)
             {
                 return false;
             }
 
-            if (_workspaceMode == HardDiskReturnWorkspaceMode.Approval)
+            HardDiskMediaApplication? target = ResolveVoidTargetApplication();
+            if (target == null || !IsCurrentUserApplicant(target))
             {
-                return IsCurrentUserArchiveAdmin();
+                return false;
             }
 
-            return target.ApplicationStatus == HardDiskMediaApplication.StatusDraft;
+            return target.ApplicationStatus == HardDiskMediaApplication.StatusDraft
+                   || target.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted;
+        }
+
+        private bool CanForceWithdrawSelectedApplication()
+        {
+            if (_workspaceMode != HardDiskReturnWorkspaceMode.Approval || !IsCurrentUserArchiveAdmin())
+            {
+                return false;
+            }
+
+            HardDiskMediaApplication? target = ResolveVoidTargetApplication();
+            if (target == null)
+            {
+                return false;
+            }
+
+            if (target.ApplicationStatus != HardDiskMediaApplication.StatusDraft
+                && target.ApplicationStatus != HardDiskMediaApplication.StatusSubmitted)
+            {
+                return false;
+            }
+
+            return _businessLogicSettingsService.IsEligibleForAdminForceVoid(
+                target.ApplyTime,
+                _applicationOverdueSettingCode);
+        }
+
+        private HardDiskMediaApplication? ResolveVoidTargetApplication()
+        {
+            HardDiskMediaApplication? target = _editingApplication?.Id > 0
+                ? _editingApplication
+                : SelectedApplication;
+            return target is { Id: > 0 } ? target : null;
+        }
+
+        private bool IsCurrentUserApplicant(HardDiskMediaApplication application)
+        {
+            return string.Equals(
+                application.ApplicantName?.Trim(),
+                _userContextService.CurrentUser?.RealName?.Trim(),
+                StringComparison.OrdinalIgnoreCase);
         }
 
         private bool IsCurrentUserArchiveAdmin()

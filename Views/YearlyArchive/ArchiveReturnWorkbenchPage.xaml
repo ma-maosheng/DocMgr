@@ -284,7 +284,8 @@
                             <Button Content="办结入库" Command="{Binding CompleteCommand}" Width="96" Height="32" Margin="0,0,10,0"
                                     ToolTip="办结归还，冲销台账并归位入库（业务闭环）"
                                     Visibility="{Binding ShowHandoverActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                            <Button Content="作废" Command="{Binding VoidCommand}" Width="80" Height="32" Margin="0,0,10,0" ToolTip="作废本归还单"/>
+                            <Button Content="{Binding VoidActionText}" Command="{Binding VoidCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                    ToolTip="{Binding VoidActionToolTip}"/>
                             <Button Content="取消" Command="{Binding CancelEditCommand}" Width="80" Height="32" ToolTip="取消编辑，关闭当前表单"/>
                         </StackPanel>
                     </StackPanel>

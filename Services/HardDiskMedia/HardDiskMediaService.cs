@@ -844,37 +844,6 @@ namespace DocMgr.Services.HardDiskMedia
         }
 
         /// <inheritdoc/>
-        public async Task DeleteApplicationAsync(int applicationId)
-        {
-            var existing = await _hardDiskMediaRepository.GetApplicationByIdAsync(applicationId);
-            if (existing == null)
-            {
-                throw new InvalidOperationException("未找到要删除的业务申请记录。");
-            }
-
-            if (existing.ApplicationStatus == HardDiskMediaApplication.StatusCompleted ||
-                existing.ApplicationStatus == HardDiskMediaApplication.StatusPendingProcess ||
-                existing.ApplicationStatus == HardDiskMediaApplication.StatusForceWithdrawn ||
-                existing.ApplicationStatus == HardDiskMediaApplication.StatusWithdrawn ||
-                existing.SignedAttachmentUploaded)
-            {
-                throw new InvalidOperationException("当前申请已进入交接办理阶段，不允许撤销。请联系资料室管理员处理。");
-            }
-
-            if (IsOutboundLockableType(existing.ApplicationType))
-            {
-                var medium = await _hardDiskMediaRepository.GetActiveMediumWithLedgerByIdForUpdateAsync(existing.MediumId);
-                if (medium != null)
-                {
-                    UnlockOutboundMedium(existing.Id, medium);
-                }
-            }
-
-            _hardDiskMediaRepository.RemoveApplication(existing);
-            await _hardDiskMediaRepository.SaveChangesAsync();
-        }
-
-        /// <inheritdoc/>
         public async Task SubmitApplicationAsync(int applicationId, User? currentUser)
         {
             var existing = await _hardDiskMediaRepository.GetApplicationWithMediumLedgerByIdAsync(applicationId);

@@ -2,6 +2,7 @@ using DocMgr.Data;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.OpticalDiscMedia;
+using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using Microsoft.EntityFrameworkCore;
@@ -97,6 +98,37 @@ public class CabinetRepository : ICabinetRepository
         _dbContext.CabinetHardDiskSlotCategoryAssignments.Remove(assignment);
     }
 
+    public CabinetArchiveSlotCategoryAssignment? GetArchiveSlotCategoryAssignment(int cabinetId, string faceCode, string slotCode)
+    {
+        string normalizedFaceCode = faceCode.Trim();
+        string normalizedSlotCode = slotCode.Trim();
+        return _dbContext.CabinetArchiveSlotCategoryAssignments
+            .AsEnumerable()
+            .FirstOrDefault(item =>
+                item.CabinetId == cabinetId
+                && string.Equals(item.FaceCode, normalizedFaceCode, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(item.SlotCode, normalizedSlotCode, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public List<CabinetArchiveSlotCategoryAssignment> GetArchiveSlotCategoryAssignmentsByCabinetId(int cabinetId)
+    {
+        return _dbContext.CabinetArchiveSlotCategoryAssignments
+            .Where(item => item.CabinetId == cabinetId)
+            .ToList();
+    }
+
+    public void AddArchiveSlotCategoryAssignment(CabinetArchiveSlotCategoryAssignment assignment)
+    {
+        ArgumentNullException.ThrowIfNull(assignment);
+        _dbContext.CabinetArchiveSlotCategoryAssignments.Add(assignment);
+    }
+
+    public void RemoveArchiveSlotCategoryAssignment(CabinetArchiveSlotCategoryAssignment assignment)
+    {
+        ArgumentNullException.ThrowIfNull(assignment);
+        _dbContext.CabinetArchiveSlotCategoryAssignments.Remove(assignment);
+    }
+
     public bool HasInStockMediaInMagneticDiskSlot(string cabinetName, string faceCode, string slotCode)
     {
         if (string.IsNullOrWhiteSpace(cabinetName)
@@ -136,6 +168,43 @@ public class CabinetRepository : ICabinetRepository
             .ToList();
 
         return opticalDiscLocations.Any(location => IsSameMagneticDiskSlot(location, slotKey));
+    }
+
+    public bool HasArchiveBoxesInStandardSlot(string cabinetName, string faceCode, string slotCode)
+    {
+        if (string.IsNullOrWhiteSpace(cabinetName)
+            || string.IsNullOrWhiteSpace(faceCode)
+            || string.IsNullOrWhiteSpace(slotCode)
+            || !TryParseMagneticDiskSlotRowColumn(slotCode, out int row, out int column))
+        {
+            return false;
+        }
+
+        string normalizedCabinetName = CabinetNameNormalizer.Normalize(cabinetName);
+        string normalizedFaceCode = faceCode.Trim();
+        string normalizedSlotCode = slotCode.Trim();
+
+        bool hasPlacement = _dbContext.CabinetArchiveBoxPlacements
+            .AsNoTracking()
+            .AsEnumerable()
+            .Any(item =>
+                string.Equals(CabinetNameNormalizer.Normalize(item.CabinetName), normalizedCabinetName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(item.FaceCode, normalizedFaceCode, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(item.SlotCode, normalizedSlotCode, StringComparison.OrdinalIgnoreCase));
+        if (hasPlacement)
+        {
+            return true;
+        }
+
+        return _dbContext.YearlyArchiveBoxes
+            .AsNoTracking()
+            .Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+            .AsEnumerable()
+            .Any(box =>
+                string.Equals(CabinetNameNormalizer.Normalize(box.CabinetName), normalizedCabinetName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(box.Side, normalizedFaceCode, StringComparison.OrdinalIgnoreCase)
+                && box.Row == row
+                && box.Column == column);
     }
 
     private static bool IsSameMagneticDiskSlot(string? storageLocation, string slotKey)

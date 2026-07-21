@@ -62,6 +62,10 @@ namespace DocMgr.Models.Cabinets
 
         public bool IsBlankDiskDedicatedSlot { get; init; }
 
+        public bool IsYearlyMaterialsDedicatedSlot { get; init; }
+
+        public bool IsHistoricalMaterialsDedicatedSlot { get; init; }
+
         public string DedicatedSlotCategoryName { get; init; } = string.Empty;
     }
 }

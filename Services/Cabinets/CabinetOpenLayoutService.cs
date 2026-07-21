@@ -63,6 +63,9 @@ namespace DocMgr.Services.Cabinets
 
             var archiveBoxesBySlot = BuildArchiveBoxesBySlot(request, assignments, placementLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, pendingReturnByBoxId, activeWithdrawalLockByBoxId);
             var slotMetricsBySlot = BuildSlotMetricsBySlot(request, assignments, placementLookup, boxSpecificationLookup, slotCanvasWidth);
+            var archiveCategoryLookup = request.CabinetType == CabinetType.Standard
+                ? _cabinetOpenLayoutRepository.GetArchiveSlotCategoryLookup(request.CabinetId)
+                : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             for (int visualRowIndex = 0; visualRowIndex < request.LayerCount; visualRowIndex++)
             {
@@ -71,13 +74,23 @@ namespace DocMgr.Services.Cabinets
                 for (int visualColumnIndex = 0; visualColumnIndex < request.ColumnCount; visualColumnIndex++)
                 {
                     int columnIndex = visualColumnIndex + 1;
+                    string slotCode = $"{layerIndex}-{columnIndex}";
 
-                    slotMetricsBySlot.TryGetValue($"{layerIndex}-{columnIndex}", out var metrics);
-                    archiveBoxesBySlot.TryGetValue($"{layerIndex}-{columnIndex}", out var archiveBoxes);
+                    slotMetricsBySlot.TryGetValue(slotCode, out var metrics);
+                    archiveBoxesBySlot.TryGetValue(slotCode, out var archiveBoxes);
                     archiveBoxes ??= [];
                     string slotToolTipText = AppendSimulatedBoxPendingReturnHint(
                         metrics?.ToolTipText ?? string.Empty,
                         archiveBoxes);
+                    string dedicatedSlotCategoryName = archiveCategoryLookup.TryGetValue($"{request.Face}:{slotCode}", out var categoryName)
+                        ? CabinetArchiveSlotCategoryAssignment.NormalizeCategoryName(categoryName)
+                        : string.Empty;
+                    bool isYearlyMaterialsSlot = CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                        dedicatedSlotCategoryName,
+                        CabinetArchiveSlotCategoryAssignment.CategoryYearlyMaterials);
+                    bool isHistoricalMaterialsSlot = CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                        dedicatedSlotCategoryName,
+                        CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials);
 
                     slots.Add(new CabinetSlotDescriptor
                     {
@@ -85,7 +98,7 @@ namespace DocMgr.Services.Cabinets
                         VisualColumnIndex = visualColumnIndex,
                         LayerIndex = layerIndex,
                         ColumnIndex = columnIndex,
-                        SlotCode = $"{layerIndex}-{columnIndex}",
+                        SlotCode = slotCode,
                         Face = request.Face,
                         ArchiveBoxes = archiveBoxes,
                         SlotCanvasWidth = slotCanvasWidth,
@@ -98,7 +111,10 @@ namespace DocMgr.Services.Cabinets
                         SlotToolTipText = slotToolTipText,
                         IsCrossFaceLinked = metrics?.IsCrossFaceLinked ?? false,
                         IsSpecialRule = metrics?.IsSpecialRule ?? false,
-                        SpecialRuleText = metrics?.SpecialRuleText ?? string.Empty
+                        SpecialRuleText = metrics?.SpecialRuleText ?? string.Empty,
+                        IsYearlyMaterialsDedicatedSlot = isYearlyMaterialsSlot,
+                        IsHistoricalMaterialsDedicatedSlot = isHistoricalMaterialsSlot,
+                        DedicatedSlotCategoryName = dedicatedSlotCategoryName
                     });
                 }
             }

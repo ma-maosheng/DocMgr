@@ -430,12 +430,15 @@
                                 <Button Content="{Binding SaveButtonText}" Command="{Binding SaveDraftCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
                                 <Button Content="{Binding SubmitButtonText}" Command="{Binding SubmitCommand}" Width="112" Height="32" Margin="0,0,10,0"/>
                                 <Button Content="打印签批交接单" Command="{Binding PrintSignedHandoverCommand}" Width="128" Height="32" Margin="0,0,10,0"/>
+                                <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                        ToolTip="申请人撤回，状态变为「已作废（撤回）」"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <Button Content="打印交接单" Command="{Binding PrintHandoverSheetCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
                                 <Button Content="确认办结" Command="{Binding CompleteCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
+                                <Button Content="强制作废" Command="{Binding ForceWithdrawCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                        ToolTip="资料室管理员强制作废（须满足逾期时限），状态变为「已作废（强制）」"/>
                             </StackPanel>
-                            <Button Content="删除" Command="{Binding DeleteCommand}" Width="80" Height="32" Margin="0,0,10,0"/>
                             <Button Content="关闭" Command="{Binding CancelEditCommand}" Width="80" Height="32"/>
                         </StackPanel>
                     </Grid>

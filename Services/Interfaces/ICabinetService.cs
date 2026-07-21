@@ -32,6 +32,26 @@ namespace DocMgr.Services.Interfaces
         /// </summary>
         void ResetAllMagneticDiskSlotsToBlankCategory();
 
+        /// <summary>
+        /// 设置标准滑道式档案柜档口用途。
+        /// </summary>
+        void SetArchiveDedicatedSlotCategory(int cabinetId, string faceCode, string slotCode, string categoryName);
+
+        /// <summary>
+        /// 将标准滑道式档案柜档口用途重设为「未设置」。
+        /// </summary>
+        void ClearArchiveDedicatedSlotCategory(int cabinetId, string faceCode, string slotCode);
+
+        /// <summary>
+        /// 启动时为尚未配置用途的标准滑道式档案柜格口补默认「未设置」；不覆盖用户已设置的用途。
+        /// </summary>
+        void EnsureAllStandardArchiveSlotsUseUnsetCategoryOnStartup();
+
+        /// <summary>
+        /// 将全部标准滑道式档案柜格口用途重置为「未设置」（仅测试数据准备等场景使用）。
+        /// </summary>
+        void ResetAllStandardArchiveSlotsToUnsetCategory();
+
         void DeleteCabinet(int cabinetId);
         Task<List<Cabinet>> GetAllCabinetsAsync();
     }

@@ -26,6 +26,7 @@ namespace DocMgr.Data
         public DbSet<Department> Departments { get; set; }
         public DbSet<Cabinet> Cabinets { get; set; }
         public DbSet<CabinetHardDiskSlotCategoryAssignment> CabinetHardDiskSlotCategoryAssignments { get; set; }
+        public DbSet<CabinetArchiveSlotCategoryAssignment> CabinetArchiveSlotCategoryAssignments { get; set; }
         public DbSet<CabinetArchiveBoxPlacement> CabinetArchiveBoxPlacements { get; set; }
         public DbSet<CabinetSlotSpecification> CabinetSlotSpecifications { get; set; }
         public DbSet<ArchiveBoxSpecification> ArchiveBoxSpecifications { get; set; }
@@ -111,6 +112,19 @@ namespace DocMgr.Data
             });
 
             modelBuilder.Entity<CabinetHardDiskSlotCategoryAssignment>(entity =>
+            {
+                entity.HasIndex(item => new { item.CabinetId, item.FaceCode, item.SlotCode })
+                    .IsUnique();
+
+                entity.HasIndex(item => new { item.CabinetId, item.CategoryName });
+
+                entity.HasOne(item => item.Cabinet)
+                    .WithMany()
+                    .HasForeignKey(item => item.CabinetId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<CabinetArchiveSlotCategoryAssignment>(entity =>
             {
                 entity.HasIndex(item => new { item.CabinetId, item.FaceCode, item.SlotCode })
                     .IsUnique();
