@@ -764,6 +764,46 @@ namespace DocMgr.Services.Shared
             }
         }
 
+        public bool ShowHardDiskDisposalEditDialog(HardDiskDisposalRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+
+            var dialog = new HardDiskDisposalEditDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+
+            IServiceScope? scope = null;
+            HardDiskDisposalEditDialogViewModel? viewModel = null;
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+
+            try
+            {
+                (scope, viewModel) = CreateScopedViewModel<HardDiskDisposalEditDialogViewModel>(
+                    new[] { typeof(HardDiskDisposalRecord) },
+                    record);
+
+                dialog.DataContext = viewModel;
+                viewModel.RequestClose += HandleRequestClose;
+                dialog.ShowDialog();
+                return viewModel.HasCommittedChanges;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"打开硬盘离库处置窗口失败：{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (viewModel != null)
+                {
+                    viewModel.RequestClose -= HandleRequestClose;
+                }
+
+                scope?.Dispose();
+            }
+        }
+
         public bool ShowArchiveRegisterEditDialog(ArchiveRegisterWorkspaceMode workspaceMode, out int? committedRecordId, int? initialRecordId = null)
         {
             committedRecordId = null;

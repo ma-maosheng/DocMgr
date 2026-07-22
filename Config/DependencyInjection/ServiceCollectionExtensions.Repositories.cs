@@ -39,6 +39,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IArchiveReturnRepository, ArchiveReturnRepository>();
         services.AddScoped<IArchiveMaterialTransactionRepository, ArchiveMaterialTransactionRepository>();
         services.AddScoped<IHardDiskMediaRepository, HardDiskMediaRepository>();
+        services.AddScoped<IHardDiskDisposalRepository, HardDiskDisposalRepository>();
         services.AddScoped<IDbOperationLogRepository, DbOperationLogRepository>();
         return services;
     }

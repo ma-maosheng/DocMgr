@@ -469,6 +469,7 @@ namespace DocMgr.Views
                 HardDiskMediaOutboundApplicationPage => BtnDiskBorrow,
                 HardDiskMediaApprovalPage => BtnDiskApproval,
                 HardDiskMediaReturnRegistrationPage page => ResolveHardDiskReturnNavButton(page),
+                HardDiskDisposalPage => BtnDiskOffWarehouse,
                 HardDiskMediaTransactionPage => BtnDiskDispose,
                 OpticalDiscMediumLedgerPage => BtnOpticalDiscLedger,
                 UserManagementPage => BtnUserMgr,
@@ -596,6 +597,7 @@ namespace DocMgr.Views
                     : "介质管理（硬盘·归还申请）",
                 HardDiskMediaTransactionPage => "介质管理（硬盘·硬盘台账）",
                 HardDiskMediaApprovalPage => "介质管理（硬盘·出库审批）",
+                HardDiskDisposalPage => "介质管理（硬盘·离库处置）",
                 HardDiskMediaPage => "介质管理（硬盘·概览）",
                 UserManagementPage => "系统设置（用户管理）",
                 DeptSettingPage => "系统设置（部门设置）",
@@ -760,6 +762,7 @@ namespace DocMgr.Views
             SetNavButton(BtnDiskApproval, canMediaAdmin);
             SetNavButton(BtnDiskReturnApply, canSubmitApplication);
             SetNavButton(BtnDiskReturnApproval, canMediaAdmin);
+            SetNavButton(BtnDiskOffWarehouse, canMediaAdmin);
             SetNavButton(BtnDiskDispose, true);
             SetNavButton(BtnOpticalDiscOverview, true);
             SetNavButton(BtnOpticalDiscRegister, true);
@@ -1243,6 +1246,12 @@ namespace DocMgr.Views
         private void BtnDiskReturnApproval_Click(object sender, RoutedEventArgs e)
         {
             NavigateToHardDiskReturnPage(HardDiskReturnWorkspaceMode.Approval);
+        }
+
+        private void BtnDiskOffWarehouse_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "介质管理（硬盘·离库处置）";
+            MainContentFrame.Navigate(new HardDiskDisposalPage());
         }
 
         private void NavigateToHardDiskReturnPage(HardDiskReturnWorkspaceMode mode)

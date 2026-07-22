@@ -40,6 +40,8 @@ namespace DocMgr.Data
         public DbSet<HardDiskRegisterLock> HardDiskRegisterLocks { get; set; }
         public DbSet<HardDiskMediaApplication> HardDiskMediaApplications { get; set; }
         public DbSet<HardDiskMediaTransaction> HardDiskMediaTransactions { get; set; }
+        public DbSet<HardDiskDisposalRecord> HardDiskDisposalRecords { get; set; }
+        public DbSet<HardDiskDisposalItem> HardDiskDisposalItems { get; set; }
 
         // === 年度资料登记相关表 ===
         public DbSet<YearlyArchiveRegisterRecord> YearlyArchiveRegisterRecords { get; set; }
@@ -245,13 +247,37 @@ namespace DocMgr.Data
 
                 entity.HasOne(item => item.Medium)
                     .WithMany(medium => medium.Transactions)
-                    .HasForeignKey(item => item.MediumId)
+                    .HasForeignKey(transaction => transaction.MediumId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(item => item.Application)
                     .WithMany()
                     .HasForeignKey(item => item.ApplicationId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<HardDiskDisposalRecord>(entity =>
+            {
+                entity.HasIndex(item => item.DisposalNo).IsUnique();
+                entity.HasIndex(item => item.Status);
+                entity.HasIndex(item => item.ApplyTime);
+
+                entity.HasMany(item => item.Items)
+                    .WithOne(item => item.DisposalRecord)
+                    .HasForeignKey(item => item.DisposalRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<HardDiskDisposalItem>(entity =>
+            {
+                entity.HasIndex(item => item.DisposalRecordId);
+                entity.HasIndex(item => item.MediumId);
+                entity.HasIndex(item => new { item.DisposalRecordId, item.MediumId }).IsUnique();
+
+                entity.HasOne(item => item.Medium)
+                    .WithMany()
+                    .HasForeignKey(item => item.MediumId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<YearlyElectronicArchiveUnit>(entity =>

@@ -484,6 +484,7 @@
                                         <Button x:Name="BtnDiskApproval" Content="出库审批" Style="{StaticResource SubSubNavButton}" Click="BtnDiskApproval_Click"/>
                                         <Button x:Name="BtnDiskReturnApply" Content="归还申请" Style="{StaticResource SubSubNavButton}" Click="BtnDiskReturnApply_Click"/>
                                         <Button x:Name="BtnDiskReturnApproval" Content="审批入库" Style="{StaticResource SubSubNavButton}" Click="BtnDiskReturnApproval_Click"/>
+                                        <Button x:Name="BtnDiskOffWarehouse" Content="离库处置" Style="{StaticResource SubSubNavButton}" Click="BtnDiskOffWarehouse_Click"/>
                                         <Button x:Name="BtnDiskDispose"  Content="硬盘台账" Style="{StaticResource SubSubNavButton}" Click="BtnDiskTransaction_Click"/>
                                     </StackPanel>
                                 </Expander>

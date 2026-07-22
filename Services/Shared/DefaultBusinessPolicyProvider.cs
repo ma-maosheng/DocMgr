@@ -82,6 +82,13 @@ namespace DocMgr.Services.Shared
                     WorkflowMode: BusinessWorkflowMode.Apply,
                     SequenceLength: 4,
                     ApprovalPolicy: ApplyApprovalPolicy,
+                    AttachmentPolicy: ApplyAttachmentPolicy),
+                [BusinessNoCategory.DiskDisposalApply] = new(
+                    BusinessNoCategory.DiskDisposalApply,
+                    Prefix: "盘离-申",
+                    WorkflowMode: BusinessWorkflowMode.Apply,
+                    SequenceLength: 3,
+                    ApprovalPolicy: ApplyApprovalPolicy,
                     AttachmentPolicy: ApplyAttachmentPolicy)
             };
 

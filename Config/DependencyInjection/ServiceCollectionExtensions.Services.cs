@@ -28,6 +28,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<ICabinetOpenLayoutService, CabinetOpenLayoutService>();
         services.AddScoped<ICabinetArchiveBoxContentService, CabinetArchiveBoxContentService>();
         services.AddScoped<IHardDiskMediaService, HardDiskMediaService>();
+        services.AddScoped<IHardDiskDisposalService, HardDiskDisposalService>();
         services.AddScoped<IAerialPhotoService, AerialPhotoService>();
         services.AddScoped<IOtherMapService, OtherMapService>();
         services.AddScoped<ITopoMapService, TopoMapService>();

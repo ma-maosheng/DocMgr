@@ -21,6 +21,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<HardDiskMediumLedgerViewModel>();
         services.AddTransient<OpticalDiscMediumLedgerViewModel>();
         services.AddTransient<HardDiskMediaOutboundApplicationPageViewModel>();
+        services.AddTransient<HardDiskDisposalPageViewModel>();
         services.AddTransient<Func<HardDiskReturnWorkspaceMode, HardDiskMediaReturnRegistrationPageViewModel>>(sp =>
             mode => ActivatorUtilities.CreateInstance<HardDiskMediaReturnRegistrationPageViewModel>(sp, mode));
         services.AddTransient<HardDiskMediaApprovalPageViewModel>();

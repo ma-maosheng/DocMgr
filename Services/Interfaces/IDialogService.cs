@@ -58,6 +58,7 @@ namespace DocMgr.Services.Interfaces
         /// </summary>
         IReadOnlyList<HardDiskMedium>? ShowHardDiskMediumSelectionDialog(IEnumerable<string>? initialSelectedCodes = null, int? currentElectronicArchiveUnitId = null, string? selectionMode = null);
         bool ShowHardDiskMediaOutboundApplicationEditDialog(HardDiskMediaApplication applicationToEdit);
+        bool ShowHardDiskDisposalEditDialog(HardDiskDisposalRecord record);
         bool ShowArchiveRegisterEditDialog(ArchiveRegisterWorkspaceMode workspaceMode, out int? committedRecordId, int? initialRecordId = null);
 
         /// <summary>

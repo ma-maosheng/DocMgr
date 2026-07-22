@@ -11,17 +11,20 @@ namespace DocMgr.Services.Shared
         private readonly IArchiveOutboundRepository _archiveOutboundRepository;
         private readonly IArchiveReturnRepository _archiveReturnRepository;
         private readonly IHardDiskMediaRepository _hardDiskMediaRepository;
+        private readonly IHardDiskDisposalRepository _hardDiskDisposalRepository;
 
         public DefaultBusinessNoGenerator(
             IArchiveRegisterRepository archiveRegisterRepository,
             IArchiveOutboundRepository archiveOutboundRepository,
             IArchiveReturnRepository archiveReturnRepository,
-            IHardDiskMediaRepository hardDiskMediaRepository)
+            IHardDiskMediaRepository hardDiskMediaRepository,
+            IHardDiskDisposalRepository hardDiskDisposalRepository)
         {
             _archiveRegisterRepository = archiveRegisterRepository;
             _archiveOutboundRepository = archiveOutboundRepository;
             _archiveReturnRepository = archiveReturnRepository;
             _hardDiskMediaRepository = hardDiskMediaRepository;
+            _hardDiskDisposalRepository = hardDiskDisposalRepository;
         }
 
         /// <summary>
@@ -61,6 +64,7 @@ namespace DocMgr.Services.Shared
                 BusinessNoCategory.DiskInboundRegister or
                 BusinessNoCategory.DiskOutboundApply or
                 BusinessNoCategory.DiskDestroyApply => _hardDiskMediaRepository.GetLastApplicationNoByPrefixAsync(prefix),
+                BusinessNoCategory.DiskDisposalApply => _hardDiskDisposalRepository.GetLastDisposalNoByPrefixAsync(prefix),
                 _ => throw new ArgumentException($"不支持的业务编号类别：{category}", nameof(category))
             };
         }
