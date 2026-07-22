@@ -94,6 +94,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string ArchiveCopyRoleDisplay => Hit.ArchiveCopyRoleDisplay;
 
+        public string LifecycleStatusDisplay => Hit.LifecycleStatusDisplay;
+
     }
 
 

@@ -116,6 +116,10 @@ namespace DocMgr.Repositories.Interfaces
         /// <summary>按档案盒加载资料子项份数行（含可跟踪的立档事实，供占格同步）。</summary>
         Task<List<YearlyArchiveBoxMediaItemRow>> GetYearlyArchiveBoxMediaItemRowsForSyncAsync(YearlyArchiveBox box);
 
+        /// <summary>按电子介质袋加载资料子项份数行（含可跟踪的立档事实，供占格同步）。</summary>
+        Task<List<YearlyArchiveBoxMediaItemRow>> GetElectronicArchiveUnitMediaItemRowsForSyncAsync(
+            YearlyElectronicArchiveUnit unit);
+
         /// <summary>移除档案盒在开柜布局中的占位记录。</summary>
         void RemoveArchiveBoxPlacementByBoxCode(string boxCode);
 

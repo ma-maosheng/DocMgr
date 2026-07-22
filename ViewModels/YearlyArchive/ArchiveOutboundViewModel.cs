@@ -57,7 +57,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _ => CanUploadSignedAttachment);
             UploadProofMaterialScanCommand = new RelayCommand(
                 async _ => await UploadAttachmentAsync(ArchiveOutboundDomainValues.AttachmentKindProofMaterialScan),
-                _ => CanManageProofMaterialAttachments);
+                _ => CanUploadProofMaterialAttachment);
             ConfirmPhysicalHandoverCommand = new RelayCommand(async _ => await ConfirmPhysicalHandoverAsync(), _ => CanConfirmPhysicalHandover);
             ViewAttachmentCommand = new RelayCommand(async param => await ViewAttachmentAsync(param as SystemAttachment));
             DeleteAttachmentCommand = new RelayCommand(
@@ -65,10 +65,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 param => CanDeleteAttachment(param as SystemAttachment));
             UploadHandoverCommand = new RelayCommand(
                 async _ => await UploadAttachmentAsync(ArchiveOutboundDomainValues.AttachmentKindSignedHandoverForm),
-                _ => CanManageHandoverAttachments);
+                _ => CanUploadSignedAttachment);
             UploadMaterialPhotoCommand = new RelayCommand(
                 async _ => await UploadAttachmentAsync(ArchiveOutboundDomainValues.AttachmentKindMaterialPhoto),
-                _ => CanManageHandoverAttachments);
+                _ => CanUploadSignedAttachment);
+            UploadOtherAttachmentCommand = new RelayCommand(
+                async _ => await UploadAttachmentAsync(ArchiveOutboundDomainValues.AttachmentKindOther),
+                _ => CanUploadSignedAttachment);
             PrintHandoverCommand = new RelayCommand(async _ => await PrintHandoverAsync(), _ => CanPrintHandover);
             CompleteHandoverCommand = new RelayCommand(async _ => await CompleteHandoverAsync(), _ => CanCompleteHandover);
             OpenBusinessAssistantCommand = new RelayCommand(_ => OpenBusinessAssistant(), _ => CanOpenBusinessAssistant);
@@ -99,6 +102,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<SystemAttachment> HandoverFormAttachments { get; } = new();
 
         public ObservableCollection<SystemAttachment> MaterialPhotoAttachments { get; } = new();
+
+        public ObservableCollection<SystemAttachment> OtherAttachments { get; } = new();
 
         private string _handoverRemark = string.Empty;
 
@@ -185,6 +190,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(RequiresProofMaterialScanUpload));
             OnPropertyChanged(nameof(ShowProofMaterialAttachmentSection));
             OnPropertyChanged(nameof(CanManageProofMaterialAttachments));
+            OnPropertyChanged(nameof(CanUploadProofMaterialAttachment));
+            OnPropertyChanged(nameof(ProofMaterialAttachmentHint));
             OnPropertyChanged(nameof(Record));
             RefreshApprovalCommandStates();
         }
@@ -229,9 +236,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        public string ExpectedReturnDateHint =>
-            "需归还的提档资料或需归还的库内硬盘，请在对应盒/袋的领用设置中填写预计归还日期。";
-
         public string HandoverRemark
         {
             get => _handoverRemark;
@@ -257,7 +261,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         /// <summary>审批工作台顶部流程说明文案。</summary>
         public string ApprovalWorkspaceBannerText =>
-            "请按“审批通过→确认实物交接→上传签批交接单→上传资料照片→业务办结”的顺序办理；交接单可随时打印核对。";
+            "请按“审批通过→确认实物交接→分区上传附件→业务办结”的顺序办理；签批交接单与资料照片必传，证明材料按申请声明，其他附件可选。";
 
         public string ApproveHintText => CanSaveApproval
             ? "后续：审批通过后，请确认实物交接。"
@@ -277,13 +281,15 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string CompleteHintText => CanCompleteHandover
             ? "办结后将同步台账与立档事实，业务闭环。"
-            : "请先上传签批交接单与资料照片后再办结。";
+            : (RequiresProofMaterialScanUpload
+                ? "请先在附件区上传签批交接单、资料照片及证明材料后再办结。"
+                : "请先在附件区上传签批交接单和资料照片后再办结。");
 
         public string StatusDisplay
         {
             get
             {
-                bool hasSignedAttachment = SignedApprovalAttachments.Count > 0 || HandoverFormAttachments.Count > 0;
+                bool hasSignedAttachment = SignedApprovalAttachments.Count > 0;
                 return HardDiskMediaApplication.ResolveOutboundWorkflowStatusDisplay(
                     Record.Status,
                     hasSignedAttachment);
@@ -321,6 +327,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand UploadHandoverCommand { get; }
 
         public RelayCommand UploadMaterialPhotoCommand { get; }
+
+        public RelayCommand UploadOtherAttachmentCommand { get; }
 
         public RelayCommand PrintHandoverCommand { get; }
 
@@ -384,15 +392,22 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// <summary>仅「已提交、未审批」阶段可编辑审批字段。</summary>
         public bool CanEditApprovalFields => CanSaveApproval;
 
-        public bool ShowProofMaterialAttachmentSection => RequiresProofMaterialScanUpload;
+        /// <summary>证明材料分区始终展示；是否必传由申请声明决定。</summary>
+        public bool ShowProofMaterialAttachmentSection => true;
 
         public bool RequiresProofMaterialScanUpload =>
             ArchiveOutboundDomainValues.RequiresProofMaterialScan(Record.ProofMaterialNote);
 
-        public bool CanManageProofMaterialAttachments =>
-            CanViewApprovalWorkspace()
-            && RequiresProofMaterialScanUpload
-            && (_record.IsSubmitted || _record.IsApproved);
+        public string ProofMaterialAttachmentHint => RequiresProofMaterialScanUpload
+            ? "申请时已声明有证明材料，须上传扫描件后方可办结。"
+            : "申请时未声明证明材料，本区可不上传。";
+
+        /// <summary>实物交接后、办结前可上传证明材料扫描件（与建档一致）。</summary>
+        public bool CanUploadProofMaterialAttachment =>
+            CanUploadSignedAttachment && RequiresProofMaterialScanUpload;
+
+        /// <summary>兼容旧绑定名：与 <see cref="CanUploadProofMaterialAttachment"/> 相同。</summary>
+        public bool CanManageProofMaterialAttachments => CanUploadProofMaterialAttachment;
 
         public bool CanEditApplicationHeader =>
             _workspaceMode == ArchiveOutboundWorkspaceMode.Application && _record.IsDraft;
@@ -449,6 +464,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             SignedApprovalAttachments.Clear();
             HandoverFormAttachments.Clear();
             MaterialPhotoAttachments.Clear();
+            OtherAttachments.Clear();
 
             if (Record.Id <= 0)
             {
@@ -462,23 +478,32 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     ProofMaterialAttachments.Add(attachment);
                 }
-                else if (string.Equals(attachment.FileCategory, ArchiveOutboundDomainValues.AttachmentKindSignedApprovalForm, StringComparison.Ordinal))
+                else if (ArchiveOutboundDomainValues.IsSignedFormAttachmentKind(attachment.FileCategory))
                 {
                     SignedApprovalAttachments.Add(attachment);
-                }
-                else if (string.Equals(attachment.FileCategory, ArchiveOutboundDomainValues.AttachmentKindSignedHandoverForm, StringComparison.Ordinal))
-                {
-                    HandoverFormAttachments.Add(attachment);
+                    if (string.Equals(
+                            attachment.FileCategory,
+                            ArchiveOutboundDomainValues.AttachmentKindSignedHandoverForm,
+                            StringComparison.Ordinal))
+                    {
+                        HandoverFormAttachments.Add(attachment);
+                    }
                 }
                 else if (string.Equals(attachment.FileCategory, ArchiveOutboundDomainValues.AttachmentKindMaterialPhoto, StringComparison.Ordinal))
                 {
                     MaterialPhotoAttachments.Add(attachment);
+                }
+                else if (string.Equals(attachment.FileCategory, ArchiveOutboundDomainValues.AttachmentKindOther, StringComparison.Ordinal))
+                {
+                    OtherAttachments.Add(attachment);
                 }
             }
 
             OnPropertyChanged(nameof(RequiresProofMaterialScanUpload));
             OnPropertyChanged(nameof(ShowProofMaterialAttachmentSection));
             OnPropertyChanged(nameof(CanManageProofMaterialAttachments));
+            OnPropertyChanged(nameof(CanUploadProofMaterialAttachment));
+            OnPropertyChanged(nameof(ProofMaterialAttachmentHint));
             RefreshApprovalCommandStates();
             RefreshHandoverCommandStates();
         }
@@ -701,6 +726,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ProofMaterialName));
             OnPropertyChanged(nameof(ShowProofMaterialAttachmentSection));
             OnPropertyChanged(nameof(CanManageProofMaterialAttachments));
+            OnPropertyChanged(nameof(CanUploadProofMaterialAttachment));
+            OnPropertyChanged(nameof(ProofMaterialAttachmentHint));
             RefreshApprovalCommandStates();
             RefreshHandoverCommandStates();
             OnPropertyChanged(nameof(ItemRows));
@@ -906,8 +933,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private bool IsApprovalAttachmentsReadyForComplete()
         {
-            bool hasSignedForm = SignedApprovalAttachments.Count > 0 || HandoverFormAttachments.Count > 0;
-            if (!hasSignedForm)
+            if (SignedApprovalAttachments.Count == 0)
             {
                 return false;
             }
@@ -951,6 +977,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(RequiresProofMaterialScanUpload));
             OnPropertyChanged(nameof(ShowProofMaterialAttachmentSection));
             OnPropertyChanged(nameof(CanManageProofMaterialAttachments));
+            OnPropertyChanged(nameof(CanUploadProofMaterialAttachment));
+            OnPropertyChanged(nameof(ProofMaterialAttachmentHint));
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         }
 
@@ -965,7 +993,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                        attachment.FileCategory,
                        ArchiveOutboundDomainValues.AttachmentKindProofMaterialScan,
                        StringComparison.Ordinal)
-                   && CanManageProofMaterialAttachments;
+                   && CanUploadProofMaterialAttachment;
         }
 
         private bool CanEditApproval() => CanViewApprovalWorkspace();
@@ -984,25 +1012,30 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return true;
             }
 
-            if (CanManageApprovalAttachments
-                && string.Equals(
-                    attachment.FileCategory,
-                    ArchiveOutboundDomainValues.AttachmentKindSignedApprovalForm,
-                    StringComparison.Ordinal))
+            if (!CanUploadSignedAttachment)
             {
-                return true;
+                return false;
             }
 
-            return CanManageHandoverAttachments && IsHandoverAttachmentCategory(attachment.FileCategory);
+            return ArchiveOutboundDomainValues.IsSignedFormAttachmentKind(attachment.FileCategory)
+                || string.Equals(
+                    attachment.FileCategory,
+                    ArchiveOutboundDomainValues.AttachmentKindMaterialPhoto,
+                    StringComparison.Ordinal)
+                || string.Equals(
+                    attachment.FileCategory,
+                    ArchiveOutboundDomainValues.AttachmentKindOther,
+                    StringComparison.Ordinal);
         }
 
         private static bool IsApprovalAttachmentCategory(string? category) =>
             string.Equals(category, ArchiveOutboundDomainValues.AttachmentKindProofMaterialScan, StringComparison.Ordinal)
-            || string.Equals(category, ArchiveOutboundDomainValues.AttachmentKindSignedApprovalForm, StringComparison.Ordinal);
+            || ArchiveOutboundDomainValues.IsSignedFormAttachmentKind(category);
 
         private static bool IsHandoverAttachmentCategory(string? category) =>
-            string.Equals(category, ArchiveOutboundDomainValues.AttachmentKindSignedHandoverForm, StringComparison.Ordinal)
-            || string.Equals(category, ArchiveOutboundDomainValues.AttachmentKindMaterialPhoto, StringComparison.Ordinal);
+            ArchiveOutboundDomainValues.IsSignedFormAttachmentKind(category)
+            || string.Equals(category, ArchiveOutboundDomainValues.AttachmentKindMaterialPhoto, StringComparison.Ordinal)
+            || string.Equals(category, ArchiveOutboundDomainValues.AttachmentKindOther, StringComparison.Ordinal);
 
         private void RefreshHandoverCommandStates()
         {
@@ -1302,7 +1335,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             if (!IsHandoverAttachmentsReadyForComplete())
             {
-                _dialogService.ShowError("请先上传交接签字单和资料照片后再办结。");
+                _dialogService.ShowError(RequiresProofMaterialScanUpload
+                    ? "请先上传签批交接单、资料照片及证明材料后再办结。"
+                    : "请先上传签批交接单和资料照片后再办结。");
                 return;
             }
 
@@ -1463,6 +1498,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 SignedApprovalAttachments.Remove(attachment);
                 HandoverFormAttachments.Remove(attachment);
                 MaterialPhotoAttachments.Remove(attachment);
+                OtherAttachments.Remove(attachment);
                 RefreshApprovalCommandStates();
                 RefreshHandoverCommandStates();
                 _dialogService.ShowMessage(result.Message, "删除成功");

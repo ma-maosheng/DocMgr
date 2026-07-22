@@ -35,6 +35,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             ArchivedBy = group.ArchivedBy;
             ArchivedDateText = group.ArchivedDate?.ToString("yyyy-MM-dd") ?? string.Empty;
             Remarks = group.Remarks;
+            ContainerLifecycleStatusDisplay = CirculationLedgerDisplayValues.MapContainerStatusDisplay(
+                group.ContainerLifecycleStatus);
             MatchedItemCount = group.MatchedItemCount;
 
             ToggleExpandCommand = new RelayCommand(_ => IsExpanded = !IsExpanded);
@@ -62,6 +64,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ArchivedDateText { get; }
 
         public string Remarks { get; }
+
+        /// <summary>档案盒容器状态展示（在用/已清空/已销号等）。</summary>
+        public string ContainerLifecycleStatusDisplay { get; }
 
         public int MatchedItemCount { get; }
 

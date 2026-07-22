@@ -41,6 +41,9 @@ namespace DocMgr.Models.YearlyArchive
 
         public string Remarks { get; init; } = string.Empty;
 
+        /// <summary>档案盒容器生命周期状态（InUse/Emptied/Retired 等）。</summary>
+        public string ContainerLifecycleStatus { get; init; } = string.Empty;
+
         public IReadOnlyList<FiledArchiveSearchGroupHit> ItemGroups { get; init; } =
             Array.Empty<FiledArchiveSearchGroupHit>();
 

@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="ArchiveEmptiedContainerVerify" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="Assets\DocMgrAppIcon.ico" />
     <Resource Include="Assets\docmgr-app-icon.png" />
   </ItemGroup>

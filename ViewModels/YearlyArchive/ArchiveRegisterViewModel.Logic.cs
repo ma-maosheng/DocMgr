@@ -24,6 +24,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             SelectedProject = null;
             SelectedSourceType = GetDefaultSourceType();
             SelectedArchivePurpose = GetDefaultArchivePurpose();
+            HasProofMaterial = false;
 
             MediaEntries.Clear();
             Attachments.Clear();
@@ -107,6 +108,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 SelectedProject = null;
                 SelectedSourceType = GetDefaultSourceType();
                 SelectedArchivePurpose = GetDefaultArchivePurpose();
+                HasProofMaterial = false;
                 MediaEntries.Clear();
                 Attachments.Clear();
                 OnPropertyChanged(nameof(CurrentRecord));
@@ -126,6 +128,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     CurrentRecord.SourceType = SelectedSourceType ?? string.Empty;
                     CurrentRecord.ArchivePurpose = SelectedArchivePurpose ?? string.Empty;
+                    ApplyProofMaterialNoteToRecord();
+                }
+
+                if (!ValidateProofMaterialInput())
+                {
+                    return false;
                 }
 
                 var result = await _archiveRegisterService.SaveDraftFlowAsync(
@@ -304,6 +312,11 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             CurrentRecord.SourceType = SelectedSourceType ?? string.Empty;
             CurrentRecord.ArchivePurpose = SelectedArchivePurpose ?? string.Empty;
+            ApplyProofMaterialNoteToRecord();
+            if (!ValidateProofMaterialInput())
+            {
+                return;
+            }
 
             var mediaEntries = BuildMediaEntries();
             if (!_dialogService.ShowConfirm("确认提交申请吗？\n\n提交后所有审批信息将被重置，状态流转为“已提交”。")) return;
@@ -327,6 +340,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        private bool ValidateProofMaterialInput()
+        {
+            if (HasProofMaterial && string.IsNullOrWhiteSpace(ProofMaterialName))
+            {
+                _dialogService.ShowError("已选择附有证明材料，请填写证明材料名称。");
+                return false;
+            }
+
+            return true;
+        }
+
         private void UpdateUIState()
         {
             var state = _archiveRegisterService.ResolveUiPermissionState(_userContextService.CurrentUser, CurrentRecord);
@@ -348,6 +372,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(UploadHintText));
             OnPropertyChanged(nameof(CompleteHintText));
             OnPropertyChanged(nameof(PrintHintText));
+            OnPropertyChanged(nameof(RequiresProofMaterialScanUpload));
+            OnPropertyChanged(nameof(ProofMaterialAttachmentHint));
+            OnPropertyChanged(nameof(CanUploadProofMaterialAttachment));
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -360,10 +387,14 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            var validation = await _archiveRegisterService.ValidateMandatoryAttachmentsAsync(Attachments.ToList());
+            var validation = await _archiveRegisterService.ValidateMandatoryAttachmentsAsync(
+                CurrentRecord,
+                Attachments.ToList());
             AttachmentsMeetMandatoryRequirements = validation.IsValid;
             AttachmentRequirementHint = validation.IsValid
-                ? "必备附件已齐全：登记申请单、资料照片。"
+                ? (RequiresProofMaterialScanUpload
+                    ? "必备附件已齐全：签批交接单、资料照片、证明材料。"
+                    : "必备附件已齐全：签批交接单、资料照片。")
                 : "必备附件未齐全：\n" + validation.ErrorMessage;
 
             OnPropertyChanged(nameof(CanConfirmPhysicalHandover));
@@ -372,6 +403,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ConfirmHandoverHintText));
             OnPropertyChanged(nameof(UploadHintText));
             OnPropertyChanged(nameof(CompleteHintText));
+            OnPropertyChanged(nameof(RequiresProofMaterialScanUpload));
+            OnPropertyChanged(nameof(ProofMaterialAttachmentHint));
+            OnPropertyChanged(nameof(CanUploadProofMaterialAttachment));
             CommandManager.InvalidateRequerySuggested();
         }
 

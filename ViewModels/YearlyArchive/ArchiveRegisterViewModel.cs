@@ -68,6 +68,10 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public ObservableCollection<MediaEntryViewModel> MediaEntries { get; } = new();
         public ObservableCollection<SystemAttachment> Attachments { get; } = new();
+        public ObservableCollection<SystemAttachment> SignedHandoverAttachments { get; } = new();
+        public ObservableCollection<SystemAttachment> MaterialPhotoAttachments { get; } = new();
+        public ObservableCollection<SystemAttachment> ProofMaterialAttachments { get; } = new();
+        public ObservableCollection<SystemAttachment> OtherAttachments { get; } = new();
 
         // Selections
         private string? _selectedProjectYear;
@@ -135,6 +139,83 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool IsArchivePurposeOtherSelected =>
             string.Equals(SelectedArchivePurpose?.Trim(), "其他", StringComparison.Ordinal);
+
+        private bool _hasProofMaterialSelected;
+        /// <summary>申请时是否附有证明材料。</summary>
+        public bool HasProofMaterial
+        {
+            get => _hasProofMaterialSelected;
+            set
+            {
+                if (_hasProofMaterialSelected == value)
+                {
+                    return;
+                }
+
+                _hasProofMaterialSelected = value;
+                if (!value && CurrentRecord != null)
+                {
+                    CurrentRecord.ProofMaterialNote = ArchiveRegisterDomainValues.ProofMaterialNoneText;
+                }
+                else if (value
+                         && CurrentRecord != null
+                         && (string.Equals(
+                                 CurrentRecord.ProofMaterialNote?.Trim(),
+                                 ArchiveRegisterDomainValues.ProofMaterialNoneText,
+                                 StringComparison.Ordinal)
+                             || string.IsNullOrWhiteSpace(CurrentRecord.ProofMaterialNote)))
+                {
+                    CurrentRecord.ProofMaterialNote = string.Empty;
+                }
+
+                NotifyProofMaterialStateChanged();
+            }
+        }
+
+        /// <summary>证明材料名称（仅在 <see cref="HasProofMaterial"/> 为 true 时有效）。</summary>
+        public string ProofMaterialName
+        {
+            get => HasProofMaterial ? CurrentRecord?.ProofMaterialNote?.Trim() ?? string.Empty : string.Empty;
+            set
+            {
+                if (!HasProofMaterial || CurrentRecord == null)
+                {
+                    return;
+                }
+
+                string normalized = value?.Trim() ?? string.Empty;
+                if (string.Equals(CurrentRecord.ProofMaterialNote, normalized, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                CurrentRecord.ProofMaterialNote = normalized;
+                NotifyProofMaterialStateChanged();
+            }
+        }
+
+        public string HasProofMaterialDisplay => HasProofMaterial ? "是" : "否";
+
+        public string ProofMaterialDisplay =>
+            HasProofMaterial
+                ? (string.IsNullOrWhiteSpace(CurrentRecord?.ProofMaterialNote)
+                    ? "-"
+                    : CurrentRecord.ProofMaterialNote.Trim())
+                : ArchiveRegisterDomainValues.ProofMaterialNoneText;
+
+        private void NotifyProofMaterialStateChanged()
+        {
+            OnPropertyChanged(nameof(HasProofMaterial));
+            OnPropertyChanged(nameof(ProofMaterialName));
+            OnPropertyChanged(nameof(HasProofMaterialDisplay));
+            OnPropertyChanged(nameof(ProofMaterialDisplay));
+            OnPropertyChanged(nameof(UploadHintText));
+            OnPropertyChanged(nameof(CompleteHintText));
+            OnPropertyChanged(nameof(AttachmentRequirementHint));
+            OnPropertyChanged(nameof(RequiresProofMaterialScanUpload));
+            OnPropertyChanged(nameof(ProofMaterialAttachmentHint));
+            OnPropertyChanged(nameof(CanUploadProofMaterialAttachment));
+        }
 
         private bool _isExternalSource;
         public bool IsExternalSource
@@ -225,11 +306,22 @@ namespace DocMgr.ViewModels.YearlyArchive
             ? "请核实移交人、资料员、部门负责人签字后确认实物交接。"
             : "请先执行「审批通过」。";
         public string UploadHintText => CanUploadSignedAttachment
-            ? "请上传登记申请单、资料照片各1个。"
+            ? "请在「附件材料」分区分别上传签批交接单、资料照片"
+                + (RequiresProofMaterialScanUpload ? "与证明材料" : string.Empty)
+                + "（格式限 PDF/图像）。"
             : "请先执行「审批通过」并确认实物交接。";
+        public bool RequiresProofMaterialScanUpload =>
+            ArchiveRegisterDomainValues.RequiresProofMaterialAttachment(CurrentRecord?.ProofMaterialNote);
+        public string ProofMaterialAttachmentHint => RequiresProofMaterialScanUpload
+            ? "申请时已声明有证明材料，须上传扫描件后方可办结。"
+            : "申请时未声明证明材料，本区可不上传。";
+        public bool CanUploadProofMaterialAttachment =>
+            CanUploadSignedAttachment && RequiresProofMaterialScanUpload;
         public string CompleteHintText => CanCompleteApproval
             ? "确认办结后，可打印交接单。"
-            : "请先上传签批交接单和资料照片后再确认办结。";
+            : (RequiresProofMaterialScanUpload
+                ? "请先在附件区上传签批交接单、资料照片及证明材料后再确认办结。"
+                : "请先在附件区上传签批交接单和资料照片后再确认办结。");
         public string PrintHintText => CanPrintHandoverSheet
             ? "流程已办结，可打印交接单。"
             : "请先完成「确认办结」。";
@@ -237,7 +329,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         // Commands & Views
         public ListCollectionView DataElectronicMediaView { get; private set; } = null!;
         public ListCollectionView DataSimulatedMediaView { get; private set; } = null!;
-        public ListCollectionView ProofSimulatedMediaView { get; private set; } = null!;
 
         public RelayCommand? GenerateIdCommand { get; }
         public RelayCommand SaveApprovalCommand { get; }
@@ -251,7 +342,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public RelayCommand AddDataElectronicMediaEntryCommand { get; }
         public RelayCommand AddDataSimulatedMediaEntryCommand { get; }
-        public RelayCommand AddProofSimulatedMediaEntryCommand { get; }
 
         public RelayCommand<MediaEntryViewModel> AddMediaItemCommand { get; }
         public RelayCommand<MediaEntryViewModel> RemoveMediaEntryCommand { get; }
@@ -262,7 +352,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand<MediaItemViewModel> ClearElectronicContentCommand { get; }
         public RelayCommand<MediaItemViewModel> ViewElectronicContentEntriesCommand { get; }
 
-        public RelayCommand UploadAttachmentCommand { get; }
+        public RelayCommand UploadSignedHandoverAttachmentCommand { get; }
+        public RelayCommand UploadMaterialPhotoAttachmentCommand { get; }
+        public RelayCommand UploadProofMaterialAttachmentCommand { get; }
+        public RelayCommand UploadOtherAttachmentCommand { get; }
         public RelayCommand<SystemAttachment> DeleteAttachmentCommand { get; }
         public RelayCommand<SystemAttachment> ViewAttachmentCommand { get; }
         public RelayCommand FillDefaultApprovalInfoCommand { get; }
@@ -302,7 +395,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             AddDataElectronicMediaEntryCommand = new RelayCommand(_ => AddDataElectronicMediaEntry(), _ => CanEditForm);
             AddDataSimulatedMediaEntryCommand = new RelayCommand(_ => AddDataSimulatedMediaEntry(), _ => CanEditForm);
-            AddProofSimulatedMediaEntryCommand = new RelayCommand(_ => AddProofSimulatedMediaEntry(), _ => CanEditForm);
             AddMediaItemCommand = new RelayCommand<MediaEntryViewModel>(m => AddMediaItem(m), _ => CanEditForm);
             RemoveMediaEntryCommand = new RelayCommand<MediaEntryViewModel>(m => RemoveMediaEntry(m), _ => CanEditForm);
             RemoveMediaItemCommand = new RelayCommand<MediaItemViewModel>(m => RemoveMediaItem(m), _ => CanEditForm);
@@ -322,7 +414,18 @@ namespace DocMgr.ViewModels.YearlyArchive
                 item => ViewElectronicContentEntries(item),
                 item => item != null && item.HasScannedEntries && CanViewElectronicContentEntries());
 
-            UploadAttachmentCommand = new RelayCommand(async _ => await UploadSignedAttachmentAsync(), _ => CanUploadSignedAttachment);
+            UploadSignedHandoverAttachmentCommand = new RelayCommand(
+                async _ => await UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindSignedHandoverForm),
+                _ => CanUploadSignedAttachment);
+            UploadMaterialPhotoAttachmentCommand = new RelayCommand(
+                async _ => await UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindMaterialPhoto),
+                _ => CanUploadSignedAttachment);
+            UploadProofMaterialAttachmentCommand = new RelayCommand(
+                async _ => await UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindProofMaterialScan),
+                _ => CanUploadProofMaterialAttachment);
+            UploadOtherAttachmentCommand = new RelayCommand(
+                async _ => await UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindOther),
+                _ => CanUploadSignedAttachment);
             DeleteAttachmentCommand = new RelayCommand<SystemAttachment>(async a => await DeleteAttachment(a), _ => CanUpload);
             ViewAttachmentCommand = new RelayCommand<SystemAttachment>(a => ViewAttachment(a));
             FillDefaultApprovalInfoCommand = new RelayCommand(async _ => await FillDefaultApprovalInfoAsync(), _ => CanApproveProd && CurrentRecord != null);

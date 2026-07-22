@@ -1,4 +1,4 @@
-<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveReturnWorkbenchPage"
+﻿<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveReturnWorkbenchPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:local="clr-namespace:DocMgr.Views.YearlyArchive"
@@ -460,6 +460,7 @@
                                         <ListView.View>
                                             <GridView>
                                                 <GridViewColumn Header="文件名" Width="220" DisplayMemberBinding="{Binding FileName}"/>
+                                                <GridViewColumn Header="附件分类" Width="90" DisplayMemberBinding="{Binding FileCategoryDisplay}"/>
                                                 <GridViewColumn Header="上传时间" Width="130" DisplayMemberBinding="{Binding UploadTime, StringFormat='yyyy-MM-dd HH:mm'}"/>
                                                 <GridViewColumn Header="上传人" Width="80" DisplayMemberBinding="{Binding UploaderName}"/>
                                             </GridView>

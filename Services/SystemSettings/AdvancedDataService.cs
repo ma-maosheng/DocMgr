@@ -55,12 +55,17 @@ namespace DocMgr.Services.SystemSettings
                 bool isSharedType = AdvancedDataDictionaryEntitySupport.IsDictionaryBackedEntity(entity);
                 bool canMaintain = CanMaintainTable(entity.Name);
 
+                var shortName = entity.ClrType != null && !isSharedType
+                    ? entity.ClrType.Name
+                    : entity.Name;
                 var tableName = entity.GetTableName() ?? entity.Name;
-                var displayName = tableName;
+                var chineseName = GetEntityDisplayNameZh(shortName, tableName, isSharedType);
+                var baseDisplayName = $"{shortName}（{chineseName}）";
+                var displayName = baseDisplayName;
                 var index = 2;
                 while (!usedDisplayNames.Add(displayName))
                 {
-                    displayName = $"{tableName} #{index++}";
+                    displayName = $"{baseDisplayName} #{index++}";
                 }
 
                 result.Add(new TableBrowseEntryDto(

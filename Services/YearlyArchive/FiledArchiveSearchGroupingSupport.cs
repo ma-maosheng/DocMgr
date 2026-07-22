@@ -42,6 +42,7 @@ namespace DocMgr.Services.YearlyArchive
                         ArchivedBy = NormalizeText(box?.ArchivedBy),
                         ArchivedDate = box?.ArchivedDate,
                         Remarks = NormalizeText(box?.Remarks),
+                        ContainerLifecycleStatus = NormalizeText(box?.ContainerLifecycleStatus),
                         ItemGroups = orderedItemGroups
                     };
                 })

@@ -50,6 +50,8 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IArchiveMaterialTransactionService, ArchiveMaterialTransactionService>();
         services.AddScoped<IArchiveMaterialTransactionWriter, ArchiveMaterialTransactionWriter>();
         services.AddScoped<IArchiveSimulatedBoxSlotSyncService, ArchiveSimulatedBoxSlotSyncService>();
+        services.AddScoped<IArchiveElectronicBagSlotSyncService, ArchiveElectronicBagSlotSyncService>();
+        services.AddScoped<IArchiveEmptiedContainerLegacyRepairService, ArchiveEmptiedContainerLegacyRepairService>();
         services.AddScoped<IArchiveOutboundPendingReturnContainerService, ArchiveOutboundPendingReturnContainerService>();
         services.AddSingleton<IArchiveFilingSearchPoolSession, ArchiveFilingSearchPoolSession>();
         services.AddScoped<IArchiveRelocationService, ArchiveRelocationService>();

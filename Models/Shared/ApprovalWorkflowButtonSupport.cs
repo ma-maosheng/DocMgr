@@ -3,6 +3,7 @@ namespace DocMgr.Models.Shared
     /// <summary>
     /// 审批弹窗五按钮统一规则（与硬盘出库审批对齐）：
     /// 审批通过 → 确认实物交接 → 上传签批交接单 → 确认办结 → 打印交接单。
+    /// 「待确认办结」阶段仍允许继续上传附件，确认办结后才关闭上传。
     /// </summary>
     public static class ApprovalWorkflowButtonSupport
     {
@@ -18,7 +19,7 @@ namespace DocMgr.Models.Shared
             /// <summary>已实物交接，待上传签批交接单。</summary>
             PendingSignedUpload,
 
-            /// <summary>已上传签批交接单，待确认办结。</summary>
+            /// <summary>必备附件已齐，待确认办结（仍可继续上传附件）。</summary>
             PendingComplete,
 
             /// <summary>已办结。</summary>
@@ -75,7 +76,8 @@ namespace DocMgr.Models.Shared
                 Phase.PendingApproval => new ButtonState(canExecuteApprovePass, false, false, false, false),
                 Phase.PendingPhysicalHandover => new ButtonState(false, true, false, false, true),
                 Phase.PendingSignedUpload => new ButtonState(false, false, true, false, true),
-                Phase.PendingComplete => new ButtonState(false, false, false, enableComplete, true),
+                // 必备附件齐全后仍可补传（如其他附件），确认办结后再关闭上传。
+                Phase.PendingComplete => new ButtonState(false, false, true, enableComplete, true),
                 Phase.Completed => new ButtonState(false, false, false, false, true),
                 _ => new ButtonState(false, false, false, false, false)
             };

@@ -53,17 +53,30 @@ namespace DocMgr.Models.YearlyArchive
     /// </summary>
     public static class CirculationLedgerListingMode
     {
-        /// <summary>仅展示有出库/归还流水的容器。</summary>
+        /// <summary>仅展示有出库/归还（或申请节点）活动的容器。</summary>
         public const string CirculationOnly = "CirculationOnly";
 
-        /// <summary>同时展示已立档入库、从未出库/归还的在库容器。</summary>
+        /// <summary>仅展示已立档入库、从未出库/归还的在库容器。</summary>
+        public const string NeverCirculatedOnly = "NeverCirculatedOnly";
+
+        /// <summary>有流转活动与未流转在库容器的并集（全部）。</summary>
         public const string IncludeNeverCirculated = "IncludeNeverCirculated";
 
         public static string MapDisplay(string mode) => mode switch
         {
-            IncludeNeverCirculated => "含未流转在库容器",
-            _ => "仅有流转记录"
+            NeverCirculatedOnly => "无流转记录的容器",
+            IncludeNeverCirculated => "全部容器",
+            _ => "有流转记录的容器"
         };
+
+        /// <summary>是否需要加载未流转在库容器。</summary>
+        public static bool NeedsNeverCirculated(string? mode) =>
+            string.Equals(mode, NeverCirculatedOnly, StringComparison.Ordinal)
+            || string.Equals(mode, IncludeNeverCirculated, StringComparison.Ordinal);
+
+        /// <summary>是否仅展示未流转在库容器（不合并流转活动容器）。</summary>
+        public static bool IsNeverCirculatedOnly(string? mode) =>
+            string.Equals(mode, NeverCirculatedOnly, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -151,6 +164,12 @@ namespace DocMgr.Models.YearlyArchive
         public string ContainerLocationDisplay { get; init; } = string.Empty;
 
         public string ContainerStatusDisplay { get; init; } = string.Empty;
+
+        /// <summary>归还流水是否含资料灭失（摘要/备注含「灭失」）。</summary>
+        public bool HasLoss { get; init; }
+
+        public string LossMarkerDisplay =>
+            HasLoss ? CirculationLedgerDisplayValues.LossMarkerDisplay : string.Empty;
     }
 
     /// <summary>
@@ -194,6 +213,12 @@ namespace DocMgr.Models.YearlyArchive
 
         public int RepresentativeFilingFactId { get; init; }
 
+        /// <summary>该容器相关流水中是否出现过资料灭失。</summary>
+        public bool HasLoss { get; init; }
+
+        public string LossMarkerDisplay =>
+            HasLoss ? CirculationLedgerDisplayValues.HasLossInScopeDisplay : string.Empty;
+
         public bool HasCirculationTransactions => HasCirculationActivity;
     }
 
@@ -209,7 +234,9 @@ namespace DocMgr.Models.YearlyArchive
 
         public string BusinessNo { get; init; } = string.Empty;
 
-        public string DisplayTitle => $"{BusinessKindDisplay} · {BusinessNo}";
+        public string DisplayTitle => HasLoss
+            ? $"{BusinessKindDisplay} · {BusinessNo} · {CirculationLedgerDisplayValues.HasLossInScopeDisplay}"
+            : $"{BusinessKindDisplay} · {BusinessNo}";
 
         public DateTime LatestOperatedAt { get; init; }
 
@@ -224,6 +251,12 @@ namespace DocMgr.Models.YearlyArchive
         public string ApplicantName { get; init; } = string.Empty;
 
         public int RepresentativeFilingFactId { get; init; }
+
+        /// <summary>本业务单明细中是否存在资料灭失。</summary>
+        public bool HasLoss { get; init; }
+
+        public string LossMarkerDisplay =>
+            HasLoss ? CirculationLedgerDisplayValues.HasLossInScopeDisplay : string.Empty;
     }
 
     /// <summary>
@@ -264,6 +297,12 @@ namespace DocMgr.Models.YearlyArchive
         public string Remark { get; init; } = string.Empty;
 
         public int FilingFactId { get; init; }
+
+        /// <summary>本明细是否为资料灭失相关归还流水。</summary>
+        public bool HasLoss { get; init; }
+
+        public string LossMarkerDisplay =>
+            HasLoss ? CirculationLedgerDisplayValues.LossMarkerDisplay : string.Empty;
     }
 
     public enum CirculationLedgerSubItemKind
@@ -348,6 +387,20 @@ namespace DocMgr.Models.YearlyArchive
         };
 
         public const string NeverCirculatedDisplay = "未流转";
+
+        /// <summary>明细行灭失标记。</summary>
+        public const string LossMarkerDisplay = "灭失";
+
+        /// <summary>容器/业务单范围含灭失时的标记。</summary>
+        public const string HasLossInScopeDisplay = "含灭失";
+
+        /// <summary>根据归还办结写入的摘要/备注判断是否含灭失。</summary>
+        public static bool IsLossRelatedText(string? summary, string? remark) =>
+            ContainsLossMarker(summary) || ContainsLossMarker(remark);
+
+        private static bool ContainsLossMarker(string? text) =>
+            !string.IsNullOrWhiteSpace(text)
+            && text.Contains("灭失", StringComparison.Ordinal);
     }
 
     /// <summary>

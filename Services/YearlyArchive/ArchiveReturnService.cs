@@ -21,6 +21,7 @@ namespace DocMgr.Services.YearlyArchive
         private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
         private readonly IArchiveMaterialTransactionWriter _materialTransactionWriter;
         private readonly IArchiveSimulatedBoxSlotSyncService _simulatedBoxSlotSyncService;
+        private readonly IArchiveElectronicBagSlotSyncService _electronicBagSlotSyncService;
 
         public ArchiveReturnService(
             IArchiveReturnRepository returnRepository,
@@ -32,7 +33,8 @@ namespace DocMgr.Services.YearlyArchive
             IBusinessRuleService businessRuleService,
             IBusinessLogicSettingsService businessLogicSettingsService,
             IArchiveMaterialTransactionWriter materialTransactionWriter,
-            IArchiveSimulatedBoxSlotSyncService simulatedBoxSlotSyncService)
+            IArchiveSimulatedBoxSlotSyncService simulatedBoxSlotSyncService,
+            IArchiveElectronicBagSlotSyncService electronicBagSlotSyncService)
         {
             _returnRepository = returnRepository;
             _outboundRepository = outboundRepository;
@@ -44,6 +46,7 @@ namespace DocMgr.Services.YearlyArchive
             _businessLogicSettingsService = businessLogicSettingsService;
             _materialTransactionWriter = materialTransactionWriter;
             _simulatedBoxSlotSyncService = simulatedBoxSlotSyncService;
+            _electronicBagSlotSyncService = electronicBagSlotSyncService;
         }
 
         public bool IsArchiveAdminUser(User? user) => _archiveRegisterService.IsArchiveAdminUser(user);
@@ -511,6 +514,32 @@ namespace DocMgr.Services.YearlyArchive
                         Remark = BuildReturnSyncRemark(record, item, intactCopyCount, lossCopyCount),
                         CreatedAt = now
                     });
+
+                    if (intactCopyCount > 0
+                        && factsById.TryGetValue(item.FilingFactId, out var returnFact))
+                    {
+                        if (RequiresFiledHardDiskReturnSync(item, outboundItem, returnFact))
+                        {
+                            await CompleteFiledHardDiskReturnAsync(
+                                record,
+                                item,
+                                outboundItem,
+                                returnFact,
+                                operatorName,
+                                now);
+                        }
+
+                        if (RequiresFiledOpticalDiscReturnSync(item, outboundItem, returnFact))
+                        {
+                            await CompleteFiledOpticalDiscReturnAsync(
+                                record,
+                                item,
+                                outboundItem,
+                                returnFact,
+                                operatorName,
+                                now);
+                        }
+                    }
                 }
 
                 foreach (var pair in returnEffectsByFactId)
@@ -540,6 +569,7 @@ namespace DocMgr.Services.YearlyArchive
                 await _returnRepository.SaveChangesAsync();
 
                 var emptiedBoxes = await SyncSimulatedArchiveBoxSlotsAfterReturnAsync(record, factsById, now);
+                await SyncElectronicArchiveBagSlotsAfterReturnAsync(record, factsById, now);
                 var lossBoxIds = ResolveLossRelatedSimulatedBoxIds(record, factsById);
                 var emptiedByLoss = emptiedBoxes
                     .Where(box => lossBoxIds.Contains(box.BoxId))

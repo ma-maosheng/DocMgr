@@ -245,6 +245,18 @@ namespace DocMgr
             var filingFactRepository = scope.ServiceProvider.GetRequiredService<IArchiveFilingFactRepository>();
             filingFactRepository.BackfillFromExistingLinksAsync().GetAwaiter().GetResult();
 
+            initializationState.ReportProgress("正在纠偏空盒/空袋残留在库状态…");
+            int repairedEmptyContainers = scope.ServiceProvider
+                .GetRequiredService<IArchiveEmptiedContainerLegacyRepairService>()
+                .RepairAsync()
+                .GetAwaiter()
+                .GetResult();
+            if (repairedEmptyContainers > 0)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"空盒/空袋历史纠偏：已对齐 {repairedEmptyContainers} 条立档事实生命周期。");
+            }
+
             var outboundService = scope.ServiceProvider.GetRequiredService<IArchiveOutboundService>();
             int voidedCount = outboundService.ProcessOverdueAutoForceVoidAsync(DateTime.Now).GetAwaiter().GetResult();
             if (voidedCount > 0)

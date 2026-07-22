@@ -58,9 +58,16 @@
             <Setter Property="ResizeDirection" Value="Rows"/>
             <Setter Property="Cursor" Value="SizeNS"/>
         </Style>
-        <Style x:Key="FilterGroupPanelStyle" TargetType="StackPanel">
-            <Setter Property="Orientation" Value="Horizontal"/>
-            <Setter Property="Margin" Value="0,0,14,8"/>
+        <Style x:Key="LossHighlightRowStyle" TargetType="DataGridRow">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasLoss}" Value="True">
+                    <Setter Property="Background" Value="#FFF3E0"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="LossMarkerTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#C62828"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
     </Page.Resources>
@@ -80,88 +87,116 @@
         </StackPanel>
 
         <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Padding="10,8" Margin="0,0,0,8">
-            <StackPanel>
-                <TextBlock Text="筛选条件" FontWeight="SemiBold" Foreground="#37474F" Margin="0,0,0,8"/>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                <WrapPanel>
-                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
-                        <TextBlock Text="自" Style="{StaticResource FilterLabelStyle}"/>
-                        <DatePicker Width="108" Style="{StaticResource FilterDatePickerStyle}"
+                <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <Grid MinHeight="28">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="6"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="108"/>
+                            <ColumnDefinition Width="6"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="108"/>
+                            <ColumnDefinition Width="6"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="96"/>
+                            <ColumnDefinition Width="6"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="6"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="96"/>
+                            <ColumnDefinition Width="6"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="88"/>
+                            <ColumnDefinition Width="6"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="88"/>
+                            <ColumnDefinition Width="6"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="140" MinWidth="100"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="筛选条件" FontWeight="SemiBold" Foreground="#37474F" VerticalAlignment="Center"/>
+
+                        <TextBlock Grid.Column="2" Text="自" Style="{StaticResource FilterLabelStyle}"/>
+                        <DatePicker Grid.Column="3" Style="{StaticResource FilterDatePickerStyle}"
                                     SelectedDate="{Binding OperatedFrom, Mode=TwoWay}"/>
-                    </StackPanel>
 
-                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
-                        <TextBlock Text="至" Style="{StaticResource FilterLabelStyle}"/>
-                        <DatePicker Width="108" Style="{StaticResource FilterDatePickerStyle}"
+                        <TextBlock Grid.Column="5" Text="至" Style="{StaticResource FilterLabelStyle}"/>
+                        <DatePicker Grid.Column="6" Style="{StaticResource FilterDatePickerStyle}"
                                     SelectedDate="{Binding OperatedTo, Mode=TwoWay}"/>
-                    </StackPanel>
 
-                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
-                        <TextBlock Text="业务" Style="{StaticResource FilterLabelStyle}"/>
-                        <ComboBox Width="96" Style="{StaticResource FilterInputStyle}"
+                        <TextBlock Grid.Column="8" Text="业务" Style="{StaticResource FilterLabelStyle}"/>
+                        <ComboBox Grid.Column="9" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding TransactionTypeOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedTransactionType, Mode=TwoWay}"/>
-                    </StackPanel>
 
-                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
-                        <TextBlock Text="单号" Style="{StaticResource FilterLabelStyle}"/>
-                        <TextBox Width="120" Style="{StaticResource SearchTextBoxStyle}"
+                        <TextBlock Grid.Column="11" Text="单号" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBox Grid.Column="12" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding BusinessNo, UpdateSourceTrigger=PropertyChanged}"/>
-                    </StackPanel>
 
-                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
-                        <TextBlock Text="申请节点" Style="{StaticResource FilterLabelStyle}"/>
-                        <ComboBox Width="96" Style="{StaticResource FilterInputStyle}"
+                        <TextBlock Grid.Column="14" Text="节点" Style="{StaticResource FilterLabelStyle}" ToolTip="申请节点"/>
+                        <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding NodeCategoryOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
-                                  SelectedValue="{Binding SelectedNodeCategory, Mode=TwoWay}"/>
-                    </StackPanel>
+                                  SelectedValue="{Binding SelectedNodeCategory, Mode=TwoWay}"
+                                  ToolTip="申请节点"/>
 
-                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
-                        <TextBlock Text="申请人" Style="{StaticResource FilterLabelStyle}"/>
-                        <TextBox Width="88" Style="{StaticResource SearchTextBoxStyle}"
+                        <TextBlock Grid.Column="17" Text="申请人" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBox Grid.Column="18" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding ApplicantName, UpdateSourceTrigger=PropertyChanged}"/>
-                    </StackPanel>
 
-                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
-                        <TextBlock Text="操作人" Style="{StaticResource FilterLabelStyle}"/>
-                        <TextBox Width="88" Style="{StaticResource SearchTextBoxStyle}"
+                        <TextBlock Grid.Column="20" Text="操作人" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBox Grid.Column="21" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding OperatorName, UpdateSourceTrigger=PropertyChanged}"/>
-                    </StackPanel>
 
-                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}">
-                        <TextBlock Text="关键字" Style="{StaticResource FilterLabelStyle}"/>
-                        <TextBox MinWidth="140" Width="160" Style="{StaticResource SearchTextBoxStyle}"
+                        <TextBlock Grid.Column="23" Text="关键字" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBox Grid.Column="24" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
                             </TextBox.InputBindings>
                         </TextBox>
-                    </StackPanel>
 
-                    <StackPanel Style="{StaticResource FilterGroupPanelStyle}" Margin="0,0,0,8">
-                        <Button Content="查询" Margin="0,0,8,0" Command="{Binding SearchCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
-                        <Button Content="重置" Margin="0,0,8,0" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
-                        <Button Content="定位立档" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
-                    </StackPanel>
-                </WrapPanel>
+                        <StackPanel Grid.Column="26" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                            <Button Content="重置" Margin="4,0,0,0" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                            <Button Content="定位立档" Margin="6,0,0,0" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
 
-                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                    <TextBlock Text="容器范围" Style="{StaticResource FilterLabelStyle}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                    <RadioButton Content="仅有流转记录" GroupName="CirculationListingMode"
-                                 IsChecked="{Binding IsCirculationOnlyListingMode, Mode=TwoWay}"
-                                 VerticalAlignment="Center"/>
-                    <RadioButton Content="含未流转在库容器" GroupName="CirculationListingMode" Margin="16,0,0,0"
-                                 IsChecked="{Binding IsIncludeNeverCirculatedListingMode, Mode=TwoWay}"
-                                 VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding ListingModeLimitedHint}" Margin="16,0,0,0" FontSize="11" Foreground="#B45309"
-                               VerticalAlignment="Center" TextWrapping="Wrap"
-                               Visibility="{Binding ShowListingModeLimitedHint, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                </StackPanel>
-            </StackPanel>
+                <ScrollViewer Grid.Row="1" Margin="0,8,0,0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Horizontal" MinHeight="24">
+                        <TextBlock Text="容器范围" Style="{StaticResource FilterLabelStyle}" Width="56" Margin="0,0,8,0"/>
+                        <RadioButton Content="有流转记录的容器" GroupName="CirculationListingMode"
+                                     IsChecked="{Binding IsCirculationOnlyListingMode, Mode=TwoWay}"
+                                     VerticalAlignment="Center" VerticalContentAlignment="Center"/>
+                        <RadioButton Content="无流转记录的容器" GroupName="CirculationListingMode" Margin="16,0,0,0"
+                                     IsChecked="{Binding IsNeverCirculatedOnlyListingMode, Mode=TwoWay}"
+                                     VerticalAlignment="Center" VerticalContentAlignment="Center"/>
+                        <RadioButton Content="全部容器" GroupName="CirculationListingMode" Margin="16,0,0,0"
+                                     IsChecked="{Binding IsAllContainersListingMode, Mode=TwoWay}"
+                                     VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                     ToolTip="有流转记录与未流转在库容器的并集"/>
+                        <TextBlock Text="{Binding ListingModeLimitedHint}" Margin="16,0,0,0" FontSize="11" Foreground="#B45309"
+                                   VerticalAlignment="Center" TextWrapping="NoWrap"
+                                   Visibility="{Binding ShowListingModeLimitedHint, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
         </Border>
 
         <Border Grid.Row="2" Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1"
@@ -196,10 +231,16 @@
                                       AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
                                       SelectionMode="Single" RowHeight="34" ColumnHeaderHeight="34"
                                       GridLinesVisibility="Horizontal" BorderThickness="0"
+                                      RowStyle="{StaticResource LossHighlightRowStyle}"
                                       ItemsSource="{Binding ContainerMasters}"
                                       SelectedItem="{Binding SelectedContainer, Mode=TwoWay}"
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
+                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="56">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource LossMarkerTextStyle}"/>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
                                     <DataGridTextColumn Header="档案盒编号" Binding="{Binding ContainerCode}" Width="120"/>
                                     <DataGridTextColumn Header="年度" Binding="{Binding Year}" Width="56"/>
                                     <DataGridTextColumn Header="项目" Binding="{Binding ProjectName}" Width="140"/>
@@ -228,11 +269,17 @@
                                       AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
                                       SelectionMode="Single" RowHeight="34" ColumnHeaderHeight="34"
                                       GridLinesVisibility="Horizontal" BorderThickness="0"
+                                      RowStyle="{StaticResource LossHighlightRowStyle}"
                                       ItemsSource="{Binding BusinessRows}"
                                       SelectedItem="{Binding SelectedBusiness, Mode=TwoWay}"
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="业务单" Binding="{Binding DisplayTitle}" Width="200"/>
+                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="56">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource LossMarkerTextStyle}"/>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="业务单" Binding="{Binding DisplayTitle}" Width="220"/>
                                     <DataGridTextColumn Header="最近活动" Binding="{Binding LatestOperatedAtDisplay}" Width="128"/>
                                     <DataGridTextColumn Header="明细数" Binding="{Binding SubItemCount}" Width="56"/>
                                     <DataGridTextColumn Header="出库状态" Binding="{Binding OutboundStatusDisplay}" Width="88"/>
@@ -261,9 +308,15 @@
                                       AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
                                       SelectionMode="Single" RowHeight="34" ColumnHeaderHeight="34"
                                       GridLinesVisibility="Horizontal" BorderThickness="0"
+                                      RowStyle="{StaticResource LossHighlightRowStyle}"
                                       ItemsSource="{Binding SubItemRows}"
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
+                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="48">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource LossMarkerTextStyle}"/>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
                                     <DataGridTextColumn Header="操作时间" Binding="{Binding OperatedAtDisplay}" Width="128"/>
                                     <DataGridTextColumn Header="事件类型" Binding="{Binding CategoryDisplay}" Width="80"/>
                                     <DataGridTextColumn Header="摘要" Binding="{Binding DetailDisplay}" Width="180"/>
@@ -310,10 +363,16 @@
                                       AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
                                       SelectionMode="Single" RowHeight="34" ColumnHeaderHeight="34"
                                       GridLinesVisibility="Horizontal" BorderThickness="0"
+                                      RowStyle="{StaticResource LossHighlightRowStyle}"
                                       ItemsSource="{Binding ContainerMasters}"
                                       SelectedItem="{Binding SelectedContainer, Mode=TwoWay}"
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
+                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="56">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource LossMarkerTextStyle}"/>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
                                     <DataGridTextColumn Header="介质袋编号" Binding="{Binding ContainerCode}" Width="120"/>
                                     <DataGridTextColumn Header="年度" Binding="{Binding Year}" Width="56"/>
                                     <DataGridTextColumn Header="项目" Binding="{Binding ProjectName}" Width="140"/>
@@ -342,11 +401,17 @@
                                       AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
                                       SelectionMode="Single" RowHeight="34" ColumnHeaderHeight="34"
                                       GridLinesVisibility="Horizontal" BorderThickness="0"
+                                      RowStyle="{StaticResource LossHighlightRowStyle}"
                                       ItemsSource="{Binding BusinessRows}"
                                       SelectedItem="{Binding SelectedBusiness, Mode=TwoWay}"
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="业务单" Binding="{Binding DisplayTitle}" Width="200"/>
+                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="56">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource LossMarkerTextStyle}"/>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="业务单" Binding="{Binding DisplayTitle}" Width="220"/>
                                     <DataGridTextColumn Header="最近活动" Binding="{Binding LatestOperatedAtDisplay}" Width="128"/>
                                     <DataGridTextColumn Header="明细数" Binding="{Binding SubItemCount}" Width="56"/>
                                     <DataGridTextColumn Header="出库状态" Binding="{Binding OutboundStatusDisplay}" Width="88"/>
@@ -375,9 +440,15 @@
                                       AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
                                       SelectionMode="Single" RowHeight="34" ColumnHeaderHeight="34"
                                       GridLinesVisibility="Horizontal" BorderThickness="0"
+                                      RowStyle="{StaticResource LossHighlightRowStyle}"
                                       ItemsSource="{Binding SubItemRows}"
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
+                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="48">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource LossMarkerTextStyle}"/>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
                                     <DataGridTextColumn Header="操作时间" Binding="{Binding OperatedAtDisplay}" Width="128"/>
                                     <DataGridTextColumn Header="事件类型" Binding="{Binding CategoryDisplay}" Width="80"/>
                                     <DataGridTextColumn Header="摘要" Binding="{Binding DetailDisplay}" Width="180"/>

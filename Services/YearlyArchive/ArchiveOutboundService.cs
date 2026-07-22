@@ -20,6 +20,7 @@ namespace DocMgr.Services.YearlyArchive
         private readonly IArchiveMaterialTransactionWriter _materialTransactionWriter;
         private readonly IArchiveMaterialTransactionRepository _materialTransactionRepository;
         private readonly IArchiveSimulatedBoxSlotSyncService _simulatedBoxSlotSyncService;
+        private readonly IArchiveElectronicBagSlotSyncService _electronicBagSlotSyncService;
 
         public ArchiveOutboundService(
             IArchiveOutboundRepository outboundRepository,
@@ -31,7 +32,8 @@ namespace DocMgr.Services.YearlyArchive
             IBusinessLogicSettingsService businessLogicSettingsService,
             IArchiveMaterialTransactionWriter materialTransactionWriter,
             IArchiveMaterialTransactionRepository materialTransactionRepository,
-            IArchiveSimulatedBoxSlotSyncService simulatedBoxSlotSyncService)
+            IArchiveSimulatedBoxSlotSyncService simulatedBoxSlotSyncService,
+            IArchiveElectronicBagSlotSyncService electronicBagSlotSyncService)
         {
             _outboundRepository = outboundRepository;
             _searchService = searchService;
@@ -43,6 +45,7 @@ namespace DocMgr.Services.YearlyArchive
             _materialTransactionWriter = materialTransactionWriter;
             _materialTransactionRepository = materialTransactionRepository;
             _simulatedBoxSlotSyncService = simulatedBoxSlotSyncService;
+            _electronicBagSlotSyncService = electronicBagSlotSyncService;
         }
 
         public bool IsArchiveAdminUser(User? user) => _archiveRegisterService.IsArchiveAdminUser(user);
@@ -532,49 +535,40 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveOutboundFlowResult.Fail("申请单号为空，无法上传附件。");
             }
 
+            bool isOther = string.Equals(
+                attachmentKind,
+                ArchiveOutboundDomainValues.AttachmentKindOther,
+                StringComparison.Ordinal);
             bool isProofMaterialScan = string.Equals(
                 attachmentKind,
                 ArchiveOutboundDomainValues.AttachmentKindProofMaterialScan,
                 StringComparison.Ordinal);
-            bool isSignedApproval = string.Equals(
-                attachmentKind,
-                ArchiveOutboundDomainValues.AttachmentKindSignedApprovalForm,
-                StringComparison.Ordinal);
 
-            if (isProofMaterialScan || isSignedApproval)
+            if (!ArchiveOutboundDomainValues.IsKnownAttachmentKind(attachmentKind))
             {
-                if (!IsArchiveAdminUser(user))
-                {
-                    return ArchiveOutboundFlowResult.Fail("仅资料室管理员可上传审批附件。");
-                }
-
-                if (isProofMaterialScan)
-                {
-                    if (record.Status is not (YearlyArchiveOutboundRecord.Submitted or YearlyArchiveOutboundRecord.Approved))
-                    {
-                        return ArchiveOutboundFlowResult.Fail("仅已提交或已审批通过的申请单可上传证明材料扫描件。");
-                    }
-                }
-                else if (record.Status != YearlyArchiveOutboundRecord.SignedUploaded)
-                {
-                    return ArchiveOutboundFlowResult.Fail("请先确认实物交接后再上传签批交接单。");
-                }
+                return ArchiveOutboundFlowResult.Fail("不支持的附件类别。");
             }
 
-            bool isHandoverAttachment = string.Equals(attachmentKind, ArchiveOutboundDomainValues.AttachmentKindSignedHandoverForm, StringComparison.Ordinal)
-                || string.Equals(attachmentKind, ArchiveOutboundDomainValues.AttachmentKindMaterialPhoto, StringComparison.Ordinal);
-
-            if (isHandoverAttachment)
+            if (!IsArchiveAdminUser(user))
             {
-                if (!IsArchiveAdminUser(user))
-                {
-                    return ArchiveOutboundFlowResult.Fail("仅资料室管理员可上传出库附件。");
-                }
+                return ArchiveOutboundFlowResult.Fail("仅资料室管理员可上传出库附件。");
+            }
 
-                if (record.Status != YearlyArchiveOutboundRecord.SignedUploaded)
-                {
-                    return ArchiveOutboundFlowResult.Fail("只有「已办结审批」状态的申请单可上传交接附件。");
-                }
+            bool canUploadInWorkflow = record.Status == YearlyArchiveOutboundRecord.SignedUploaded;
+            bool canSupplementOtherAfterComplete =
+                record.Status == YearlyArchiveOutboundRecord.Completed && isOther;
+            if (!canUploadInWorkflow && !canSupplementOtherAfterComplete)
+            {
+                return ArchiveOutboundFlowResult.Fail(
+                    record.Status == YearlyArchiveOutboundRecord.Completed
+                        ? "办结后仅可增补「其他附件」。"
+                        : "请先确认实物交接后再上传附件。");
+            }
+
+            if (isProofMaterialScan
+                && !ArchiveOutboundDomainValues.RequiresProofMaterialScan(record.ProofMaterialNote))
+            {
+                return ArchiveOutboundFlowResult.Fail("申请时未声明证明材料，无需上传证明材料扫描件。");
             }
 
             attachment.BusinessType = ArchiveOutboundDomainValues.BusinessTypeAttachment;
@@ -627,34 +621,21 @@ namespace DocMgr.Services.YearlyArchive
                 existing.FileCategory,
                 ArchiveOutboundDomainValues.AttachmentKindProofMaterialScan,
                 StringComparison.Ordinal);
-            bool isSignedApproval = string.Equals(
-                existing.FileCategory,
-                ArchiveOutboundDomainValues.AttachmentKindSignedApprovalForm,
-                StringComparison.Ordinal);
-            bool isApprovalAttachment = isProofMaterialScan || isSignedApproval;
-            bool isHandoverAttachment = existing.FileCategory is
-                ArchiveOutboundDomainValues.AttachmentKindSignedHandoverForm
-                or ArchiveOutboundDomainValues.AttachmentKindMaterialPhoto;
 
-            if (!isApprovalAttachment && !isHandoverAttachment)
+            if (!ArchiveOutboundDomainValues.IsKnownAttachmentKind(existing.FileCategory))
             {
                 return ArchiveOutboundAttachmentFlowResult.Fail("该附件类型不允许删除。");
             }
 
-            if (isProofMaterialScan
-                && record.Status is not (YearlyArchiveOutboundRecord.Submitted or YearlyArchiveOutboundRecord.Approved))
-            {
-                return ArchiveOutboundAttachmentFlowResult.Fail("当前状态不允许删除证明材料扫描件。");
-            }
-
-            if (isSignedApproval && record.Status != YearlyArchiveOutboundRecord.SignedUploaded)
+            if (record.Status != YearlyArchiveOutboundRecord.SignedUploaded)
             {
                 return ArchiveOutboundAttachmentFlowResult.Fail("请先确认实物交接后再删除附件。");
             }
 
-            if (isHandoverAttachment && record.Status != YearlyArchiveOutboundRecord.SignedUploaded)
+            if (isProofMaterialScan
+                && !ArchiveOutboundDomainValues.RequiresProofMaterialScan(record.ProofMaterialNote))
             {
-                return ArchiveOutboundAttachmentFlowResult.Fail("当前状态不允许删除交接附件。");
+                return ArchiveOutboundAttachmentFlowResult.Fail("当前申请未声明证明材料，无法删除该类别附件。");
             }
 
             _outboundRepository.RemoveAttachment(existing);
@@ -679,11 +660,7 @@ namespace DocMgr.Services.YearlyArchive
         {
             ArgumentNullException.ThrowIfNull(record);
 
-            IReadOnlyList<SystemAttachment> attachments = record.Id > 0
-                ? await _outboundRepository.GetAttachmentsByBusinessIdAsync(record.Id)
-                : Array.Empty<SystemAttachment>();
-
-            var errors = CollectApprovalPhaseErrors(record, attachments);
+            var errors = CollectApprovalPhaseErrors(record);
             return new ArchiveOutboundApprovalValidationResult(errors);
         }
 
@@ -711,8 +688,7 @@ namespace DocMgr.Services.YearlyArchive
             CopyApprovalFields(existing, record);
             existing.UpdatedAt = DateTime.Now;
 
-            var attachments = await _outboundRepository.GetAttachmentsByBusinessIdAsync(existing.Id);
-            var errors = CollectApprovalPhaseErrors(existing, attachments);
+            var errors = CollectApprovalPhaseErrors(existing);
             if (errors.Count > 0)
             {
                 return ArchiveOutboundFlowResult.Fail("审批信息验证未通过：\n\n" + string.Join(Environment.NewLine, errors));
@@ -747,14 +723,20 @@ namespace DocMgr.Services.YearlyArchive
 
             var attachments = await _outboundRepository.GetAttachmentsByBusinessIdAsync(record.Id);
             bool hasSignedForm = attachments.Any(a =>
-                string.Equals(a.FileCategory, ArchiveOutboundDomainValues.AttachmentKindSignedApprovalForm, StringComparison.Ordinal)
-                || string.Equals(a.FileCategory, ArchiveOutboundDomainValues.AttachmentKindSignedHandoverForm, StringComparison.Ordinal));
+                ArchiveOutboundDomainValues.IsSignedFormAttachmentKind(a.FileCategory));
             bool hasPhoto = attachments.Any(a =>
                 string.Equals(a.FileCategory, ArchiveOutboundDomainValues.AttachmentKindMaterialPhoto, StringComparison.Ordinal));
+            bool hasProofScan = attachments.Any(a =>
+                string.Equals(a.FileCategory, ArchiveOutboundDomainValues.AttachmentKindProofMaterialScan, StringComparison.Ordinal));
 
             if (!hasSignedForm || !hasPhoto)
             {
-                return ArchiveOutboundFlowResult.Fail("请先上传“签批交接单”（或历史交接签字单）和“资料照片”。");
+                return ArchiveOutboundFlowResult.Fail("请先上传“签批交接单”和“资料照片”。");
+            }
+
+            if (ArchiveOutboundDomainValues.RequiresProofMaterialScan(record.ProofMaterialNote) && !hasProofScan)
+            {
+                return ArchiveOutboundFlowResult.Fail("申请时已声明有证明材料，请上传证明材料扫描件后再办结。");
             }
 
             string operatorName = string.IsNullOrWhiteSpace(admin.RealName) ? admin.LoginName : admin.RealName.Trim();
@@ -772,6 +754,7 @@ namespace DocMgr.Services.YearlyArchive
                 var boxSyncFactIds = record.Items.Select(item => item.FilingFactId).Where(id => id > 0).Distinct().ToList();
                 var boxSyncFactsById = await _outboundRepository.GetFilingFactsByIdsForUpdateAsync(boxSyncFactIds);
                 await SyncSimulatedArchiveBoxSlotsAfterOutboundAsync(record, boxSyncFactsById, DateTime.Now);
+                await SyncElectronicArchiveBagSlotsAfterOutboundAsync(record, boxSyncFactsById, DateTime.Now);
 
                 await _materialTransactionWriter.AppendOutboundCompletionTransactionsAsync(record);
                 await _materialTransactionRepository.SaveChangesAsync();
@@ -1132,9 +1115,7 @@ namespace DocMgr.Services.YearlyArchive
 
         private static bool VicePresidentDatePresent(YearlyArchiveOutboundRecord record) => record.VicePresidentDate.HasValue;
 
-        private static List<string> CollectApprovalPhaseErrors(
-            YearlyArchiveOutboundRecord record,
-            IReadOnlyList<SystemAttachment> attachments)
+        private static List<string> CollectApprovalPhaseErrors(YearlyArchiveOutboundRecord record)
         {
             var errors = new List<string>();
 
@@ -1178,15 +1159,7 @@ namespace DocMgr.Services.YearlyArchive
                 errors.Add("• 请填写生产副院长审核日期。");
             }
 
-            if (ArchiveOutboundDomainValues.RequiresProofMaterialScan(record.ProofMaterialNote))
-            {
-                bool hasProofScan = attachments.Any(a =>
-                    string.Equals(a.FileCategory, ArchiveOutboundDomainValues.AttachmentKindProofMaterialScan, StringComparison.Ordinal));
-                if (!hasProofScan)
-                {
-                    errors.Add("• 申请时已声明有证明材料，请上传证明材料扫描件。");
-                }
-            }
+            // 证明材料扫描件在确认实物交接后上传，办结前校验（与建档一致）。
 
             return errors;
         }

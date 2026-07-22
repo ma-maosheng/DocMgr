@@ -138,8 +138,32 @@ namespace DocMgr.Models.YearlyArchive
         public const string AttachmentKindSignedHandoverForm = "SignedHandoverForm";
         public const string AttachmentKindMaterialPhoto = "MaterialPhoto";
         public const string AttachmentKindProofMaterialScan = "ProofMaterialScan";
+        public const string AttachmentKindOther = "Other";
 
         public const string ProofMaterialNoneText = "无";
+
+        public static string GetAttachmentKindDisplayName(string? attachmentKind) =>
+            (attachmentKind?.Trim() ?? string.Empty) switch
+            {
+                AttachmentKindSignedApprovalForm or AttachmentKindSignedHandoverForm => "签批交接单",
+                AttachmentKindMaterialPhoto => "资料照片",
+                AttachmentKindProofMaterialScan => "证明材料",
+                AttachmentKindOther => "其他附件",
+                _ => "附件"
+            };
+
+        public static bool IsSignedFormAttachmentKind(string? attachmentKind) =>
+            string.Equals(attachmentKind, AttachmentKindSignedApprovalForm, StringComparison.Ordinal)
+            || string.Equals(attachmentKind, AttachmentKindSignedHandoverForm, StringComparison.Ordinal);
+
+        public static bool IsKnownAttachmentKind(string? attachmentKind)
+        {
+            string kind = attachmentKind?.Trim() ?? string.Empty;
+            return IsSignedFormAttachmentKind(kind)
+                || string.Equals(kind, AttachmentKindMaterialPhoto, StringComparison.Ordinal)
+                || string.Equals(kind, AttachmentKindProofMaterialScan, StringComparison.Ordinal)
+                || string.Equals(kind, AttachmentKindOther, StringComparison.Ordinal);
+        }
 
         /// <summary>归档目的：院管资料、长期存档（电子介质仅允许拷贝借出）。</summary>
         public const string ArchivePurposeLongTermStorage = "院管资料、长期存档";

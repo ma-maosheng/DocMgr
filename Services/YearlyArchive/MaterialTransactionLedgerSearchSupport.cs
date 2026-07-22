@@ -45,7 +45,8 @@ namespace DocMgr.Services.YearlyArchive
                 ContainerYear = containerContext.Year,
                 ContainerProjectName = containerContext.ProjectName,
                 ContainerLocationDisplay = containerContext.LocationDisplay,
-                ContainerStatusDisplay = containerContext.StatusDisplay
+                ContainerStatusDisplay = containerContext.StatusDisplay,
+                HasLoss = CirculationLedgerDisplayValues.IsLossRelatedText(transaction.Summary, transaction.Remark)
             };
         }
 

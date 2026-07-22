@@ -804,12 +804,12 @@
                                                                 <ColumnDefinition Width="Auto"/>
                                                             </Grid.ColumnDefinitions>
                                                             <TextBox Grid.Column="0"
-                                                                     Height="28"
+                                                                     Height="{StaticResource FormControlHeight}"
                                                                      Margin="0,0,8,0"
                                                                      Text="{Binding ElectronicLinkedMediumCodes}"
                                                                      ToolTip="所选库内空盘将转为数据盘并关联到本电子袋。"/>
                                                             <Button Grid.Column="1"
-                                                                    Height="28"
+                                                                    Style="{StaticResource FormInlineButtonStyle}"
                                                                     Width="132"
                                                                     Content="选择库内空盘"
                                                                     Command="{Binding SelectElectronicMediaCommand}"

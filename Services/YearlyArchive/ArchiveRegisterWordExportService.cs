@@ -239,10 +239,13 @@ namespace DocMgr.Services.YearlyArchive
 
             int footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightTwips(lineCount: 4, lineHeightTwips: 270, topMarginTwips: 220);
             int reservedHeight = TitleBlockHeightTwips + HeaderInfoHeightTwips + footerHeight + fixedTableHeight;
-            return PrintPageLayoutSupport.CalculateStretchRowHeightTwips(
+            int stretchHeight = PrintPageLayoutSupport.CalculateStretchRowHeightTwips(
                 reservedHeight,
                 SingleRowHeightTwips * 4,
                 CellMarginDxa);
+            // 与 FlowDocument 一致：资料内容栏再加 2 行正文高度（约 21DIP/行 ≈ 315 twips）。
+            const int twoContentLinesTwips = 315 * 2;
+            return stretchHeight + twoContentLinesTwips;
         }
 
         private enum WordTableRowStyle

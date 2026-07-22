@@ -115,10 +115,13 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 4, lineHeightDip: 16, topMarginDip: 8);
             double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
-            return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
+            double stretchHeight = PrintPageLayoutSupport.CalculateStretchRowHeightDip(
                 reservedHeight,
                 StandardRowHeight * 4,
                 CellPadding);
+            // 「归还资料明细」减少一行（与正文 LineHeight 一致），避免签批交接单超出一页。
+            const double oneContentLineHeight = 18;
+            return Math.Max(stretchHeight - oneContentLineHeight, StandardRowHeight * 4);
         }
 
         private static string BuildApprovalSignatureLine(ArchiveReturnApprovalSignatureLine line)

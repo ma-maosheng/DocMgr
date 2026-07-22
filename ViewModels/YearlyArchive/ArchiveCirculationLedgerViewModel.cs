@@ -145,8 +145,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (SetProperty(ref _listingMode, value))
                 {
                     OnPropertyChanged(nameof(IsCirculationOnlyListingMode));
-                    OnPropertyChanged(nameof(IsIncludeNeverCirculatedListingMode));
+                    OnPropertyChanged(nameof(IsNeverCirculatedOnlyListingMode));
+                    OnPropertyChanged(nameof(IsAllContainersListingMode));
                     OnPropertyChanged(nameof(ShowListingModeLimitedHint));
+                    OnPropertyChanged(nameof(ListingModeLimitedHint));
                     if (_isInitialized)
                     {
                         _ = SearchAsync();
@@ -167,7 +169,19 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        public bool IsIncludeNeverCirculatedListingMode
+        public bool IsNeverCirculatedOnlyListingMode
+        {
+            get => CirculationLedgerListingMode.IsNeverCirculatedOnly(ListingMode);
+            set
+            {
+                if (value)
+                {
+                    ListingMode = CirculationLedgerListingMode.NeverCirculatedOnly;
+                }
+            }
+        }
+
+        public bool IsAllContainersListingMode
         {
             get => string.Equals(ListingMode, CirculationLedgerListingMode.IncludeNeverCirculated, StringComparison.Ordinal);
             set
@@ -180,13 +194,15 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         public bool ShowListingModeLimitedHint =>
-            string.Equals(ListingMode, CirculationLedgerListingMode.IncludeNeverCirculated, StringComparison.Ordinal)
+            CirculationLedgerListingMode.NeedsNeverCirculated(ListingMode)
             && !CirculationLedgerNeverCirculatedSupport.CanIncludeNeverCirculated(
                 BuildCirculationCriteria(),
                 BuildProcessNodeCriteria());
 
         public string ListingModeLimitedHint =>
-            "已选「含未流转在库容器」，但当前业务/单号/申请节点/人员筛选不适用于未流转容器；请清空后重新查询。";
+            CirculationLedgerListingMode.IsNeverCirculatedOnly(ListingMode)
+                ? "已选「无流转记录的容器」，但当前业务/单号/申请节点/人员筛选不适用于未流转容器；请清空后重新查询。"
+                : "已选「全部容器」，但当前业务/单号/申请节点/人员筛选不适用于未流转容器；仅显示有流转记录的容器。";
 
         public ObservableCollection<CirculationContainerMasterRow> ContainerMasters { get; } = new();
 
@@ -273,16 +289,20 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 var circulationCriteria = BuildCirculationCriteria();
                 var processNodeCriteria = BuildProcessNodeCriteria();
+                bool loadNeverCirculated = CirculationLedgerNeverCirculatedSupport.CanIncludeNeverCirculated(
+                    circulationCriteria,
+                    processNodeCriteria);
+                bool loadCirculationActivity = !CirculationLedgerListingMode.IsNeverCirculatedOnly(ListingMode);
 
-                _allCirculationRows = (await _ledgerService.SearchCirculationAsync(circulationCriteria)).ToList();
+                _allCirculationRows = loadCirculationActivity
+                    ? (await _ledgerService.SearchCirculationAsync(circulationCriteria)).ToList()
+                    : new List<MaterialTransactionLedgerRow>();
 
-                _allProcessNodeRows = ShouldLoadProcessNodes()
+                _allProcessNodeRows = loadCirculationActivity && ShouldLoadProcessNodes()
                     ? (await _ledgerService.SearchOutboundProcessNodesAsync(processNodeCriteria)).ToList()
                     : new List<MaterialOutboundProcessNodeSearchRow>();
 
-                _neverCirculatedMasters = CirculationLedgerNeverCirculatedSupport.CanIncludeNeverCirculated(
-                        circulationCriteria,
-                        processNodeCriteria)
+                _neverCirculatedMasters = loadNeverCirculated
                     ? (await _ledgerService.SearchNeverCirculatedContainersAsync(circulationCriteria)).ToList()
                     : new List<CirculationContainerMasterRow>();
 
@@ -309,6 +329,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 UpdateSummaryText();
+                OnPropertyChanged(nameof(ShowListingModeLimitedHint));
+                OnPropertyChanged(nameof(ListingModeLimitedHint));
                 CommandManager.InvalidateRequerySuggested();
             }
             catch (Exception ex)
@@ -430,11 +452,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             int electronicNeverCount = _neverCirculatedMasters.Count(row => row.ContainerKind == ArchiveContainerKind.ElectronicBag);
             string currentLabel = IsSimulatedSubTab ? "档案盒" : "电子介质袋";
             int currentNeverCount = IsSimulatedSubTab ? archiveBoxNeverCount : electronicNeverCount;
+            string listingLabel = CirculationLedgerListingMode.MapDisplay(ListingMode);
 
             SummaryText =
-                $"档案盒 {archiveBoxCount} 个 · 电子介质袋 {electronicCount} 个 · 出库/归还 {_allCirculationRows.Count} 条 · 申请节点 {_allProcessNodeRows.Count} 条；当前 {currentLabel} {ContainerMasters.Count} 个"
-                + (currentNeverCount > 0 ? $"（含未流转 {currentNeverCount} 个）" : string.Empty)
-                + (ShowListingModeLimitedHint ? "；未流转容器需清空业务/单号/申请节点/人员筛选" : string.Empty);
+                $"范围：{listingLabel} · 档案盒 {archiveBoxCount} 个 · 电子介质袋 {electronicCount} 个 · 出库/归还 {_allCirculationRows.Count} 条 · 申请节点 {_allProcessNodeRows.Count} 条；当前 {currentLabel} {ContainerMasters.Count} 个"
+                + (IsAllContainersListingMode && currentNeverCount > 0
+                    ? $"（含未流转 {currentNeverCount} 个）"
+                    : string.Empty)
+                + (ShowListingModeLimitedHint
+                    ? "；未流转容器需清空业务/单号/申请节点/人员筛选"
+                    : string.Empty);
         }
 
         private int CountMastersForKind(ArchiveContainerKind containerKind)

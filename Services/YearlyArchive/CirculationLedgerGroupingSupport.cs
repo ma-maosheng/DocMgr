@@ -47,7 +47,8 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return merged
-                .OrderByDescending(row => row.HasCirculationActivity)
+                .OrderByDescending(row => row.HasLoss)
+                .ThenByDescending(row => row.HasCirculationActivity)
                 .ThenByDescending(row => row.LatestOperatedAt)
                 .ThenBy(row => row.ContainerCode, StringComparer.OrdinalIgnoreCase)
                 .ToList();
@@ -195,7 +196,8 @@ namespace DocMgr.Services.YearlyArchive
                 TransactionCount = groupRows.Count,
                 LatestOperatedAt = latest.OperatedAt,
                 LatestTransactionTypeDisplay = latest.TransactionTypeDisplay,
-                RepresentativeFilingFactId = latest.FilingFactId
+                RepresentativeFilingFactId = latest.FilingFactId,
+                HasLoss = groupRows.Any(row => row.HasLoss)
             };
         }
 

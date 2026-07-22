@@ -216,6 +216,27 @@ namespace DocMgr.Models.YearlyArchive
         private string _archivePurpose = string.Empty;
 
         /// <summary>
+        /// 证明材料备注（「无」表示未附证明材料；有材料时填写名称）。
+        /// </summary>
+        public string ProofMaterialNote
+        {
+            get => _proofMaterialNote;
+            set
+            {
+                string v = value ?? string.Empty;
+                if (string.Equals(_proofMaterialNote, v, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _proofMaterialNote = v;
+                NotifyPropertyChanged();
+            }
+        }
+
+        private string _proofMaterialNote = ArchiveRegisterDomainValues.ProofMaterialNoneText;
+
+        /// <summary>
         /// 其他要求
         /// </summary>
         public string OtherRequests

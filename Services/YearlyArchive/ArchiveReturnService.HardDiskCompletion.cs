@@ -92,6 +92,18 @@ namespace DocMgr.Services.YearlyArchive
             if (unit != null)
             {
                 unit.StorageLocation = restoreLocation;
+                if (!string.IsNullOrWhiteSpace(restoreLocation)
+                    && !string.Equals(
+                        unit.UnitLifecycleStatus,
+                        ArchiveContainerLifecycleStatus.Disposed,
+                        StringComparison.Ordinal)
+                    && !string.Equals(
+                        unit.UnitLifecycleStatus,
+                        ArchiveContainerLifecycleStatus.Relocated,
+                        StringComparison.Ordinal))
+                {
+                    unit.UnitLifecycleStatus = ArchiveContainerLifecycleStatus.InUse;
+                }
             }
         }
 

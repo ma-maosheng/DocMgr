@@ -266,6 +266,16 @@ namespace DocMgr.Services.YearlyArchive
                 }
             }
 
+            if (!item.NeedReturn)
+            {
+                return new FilingFactLifecycleUpdate(
+                    fact.Id,
+                    FilingFactLifecycleStatus.Transferred,
+                    FilingFactBorrowHintLevel.None,
+                    string.Empty,
+                    $"出库单 {record.OutboundNo} 提档不还");
+            }
+
             return new FilingFactLifecycleUpdate(
                 fact.Id,
                 FilingFactLifecycleStatus.Borrowed,

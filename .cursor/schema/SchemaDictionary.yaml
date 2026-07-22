@@ -3707,6 +3707,12 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      ProofMaterialNote:
+        chineseName: 证明材料备注
+        description: 申请时声明是否附有证明材料；「无」表示未附，有材料时填写名称。
+        clrType: String
+        needsReview: false
+        aliases: []
       OtherRequests:
         chineseName: 其他要求
         description: ''

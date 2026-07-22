@@ -28,6 +28,22 @@ namespace DocMgr.Services.YearlyArchive
 
         public static SimulatedBoxCopyCountTotals AggregateRows(IEnumerable<YearlyArchiveBoxMediaItemRow> rows)
         {
+            return AggregateRows(rows, ArchiveRegisterDomainValues.MediaKindSimulated);
+        }
+
+        /// <summary>
+        /// 汇总电子介质袋内资料子项份数（电子不存在部分提档，待还不还灭失按整件表达）。
+        /// </summary>
+        public static SimulatedBoxCopyCountTotals AggregateElectronicRows(
+            IEnumerable<YearlyArchiveBoxMediaItemRow> rows)
+        {
+            return AggregateRows(rows, ArchiveRegisterDomainValues.MediaKindElectronic);
+        }
+
+        private static SimulatedBoxCopyCountTotals AggregateRows(
+            IEnumerable<YearlyArchiveBoxMediaItemRow> rows,
+            string mediaKind)
+        {
             int currentInArchive = 0;
             int pendingReturn = 0;
             int noReturn = 0;
@@ -37,7 +53,7 @@ namespace DocMgr.Services.YearlyArchive
             {
                 if (!string.Equals(
                         row.Fact.MediaKind,
-                        ArchiveRegisterDomainValues.MediaKindSimulated,
+                        mediaKind,
                         StringComparison.Ordinal))
                 {
                     continue;

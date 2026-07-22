@@ -96,10 +96,17 @@ namespace DocMgr.Services.YearlyArchive
                     continue;
                 }
 
-                row.Fact.CurrentStorageLocation = string.Empty;
+                var breakdown = ArchiveBoxMediaItemCopyCountSupport.Resolve(
+                    row.Fact,
+                    row.PendingReturnCopyCount,
+                    row.NoReturnCopyCount,
+                    row.LostCopyCount);
+                ArchiveEmptiedContainerFactLifecycleSupport.ApplyOnContainerEmptied(
+                    row.Fact,
+                    breakdown,
+                    operatedAt);
             }
 
-            _ = operatedAt;
             return new EmptiedArchiveBoxHint(box.Id, archiveSequenceNo, lastLocation);
         }
     }

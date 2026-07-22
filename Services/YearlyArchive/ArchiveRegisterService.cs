@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -162,7 +162,8 @@ namespace DocMgr.Services.YearlyArchive
             {
                 CreatedDate = DateTime.Now,
                 ApplicantDate = DateTime.Now,
-                Status = YearlyArchiveRegisterRecord.Draft
+                Status = YearlyArchiveRegisterRecord.Draft,
+                ProofMaterialNote = ArchiveRegisterDomainValues.ProofMaterialNoneText
             };
 
             if (currentUser != null)
@@ -397,6 +398,7 @@ namespace DocMgr.Services.YearlyArchive
 
             await EnsureFormNoAsync(record);
 
+            record.ProofMaterialNote = ArchiveRegisterDomainValues.NormalizeProofMaterialNote(record.ProofMaterialNote);
             record.MarkAsDraft();
             record.MediaEntries = mediaEntries?.ToList() ?? new List<YearlyArchiveRegisterMedia>();
             await SaveOrUpdateAsync(record);
@@ -653,7 +655,14 @@ namespace DocMgr.Services.YearlyArchive
             return ArchiveRegisterFlowResult.Ok("申请单强制作废成功。");
         }
 
-        public async Task<ArchiveRegisterAttachmentFlowResult> UploadAttachmentFlowAsync(YearlyArchiveRegisterRecord? record, User? currentUser, string fileName, string extension, long fileSize, byte[] fileContent)
+        public async Task<ArchiveRegisterAttachmentFlowResult> UploadAttachmentFlowAsync(
+            YearlyArchiveRegisterRecord? record,
+            User? currentUser,
+            string attachmentKind,
+            string fileName,
+            string extension,
+            long fileSize,
+            byte[] fileContent)
         {
             if (record == null || string.IsNullOrWhiteSpace(record.FormNo))
             {
@@ -665,19 +674,38 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveRegisterAttachmentFlowResult.Fail("附件内容为空，无法上传。");
             }
 
+            string kind = attachmentKind?.Trim() ?? string.Empty;
+            if (!ArchiveRegisterDomainValues.IsKnownAttachmentKind(kind))
+            {
+                return ArchiveRegisterAttachmentFlowResult.Fail("未知的附件类别，无法上传。");
+            }
+
+            if (string.Equals(kind, ArchiveRegisterDomainValues.AttachmentKindProofMaterialScan, StringComparison.Ordinal)
+                && !ArchiveRegisterDomainValues.RequiresProofMaterialAttachment(record.ProofMaterialNote))
+            {
+                return ArchiveRegisterAttachmentFlowResult.Fail("申请时未声明附有证明材料，无需上传证明材料扫描件。");
+            }
+
             string? formatError = SystemAttachmentUploadSupport.ValidateUploadFormat(fileName, extension, fileContent);
             if (!string.IsNullOrWhiteSpace(formatError))
             {
                 return ArchiveRegisterAttachmentFlowResult.Fail(formatError);
             }
 
+            if (!IsArchiveAdminUser(currentUser))
+            {
+                return ArchiveRegisterAttachmentFlowResult.Fail("仅资料室资料管理员可上传审批附件。");
+            }
+
             var attachment = new SystemAttachment
             {
                 BusinessType = "YearlyArchiveRegister",
                 BusinessNo = record.FormNo,
+                BusinessId = record.Id,
                 FileName = fileName,
                 Extension = extension ?? string.Empty,
                 FileSize = fileSize,
+                FileCategory = kind,
                 UploadTime = DateTime.Now,
                 UploaderName = currentUser?.RealName ?? string.Empty,
                 FileContent = fileContent
@@ -688,9 +716,18 @@ namespace DocMgr.Services.YearlyArchive
                 var persisted = await GetByIdAsync(record.Id);
                 if (persisted != null)
                 {
-                    if (!persisted.IsApprovedReceived && !persisted.IsSignedUploaded)
+                    bool isOther = string.Equals(
+                        kind,
+                        ArchiveRegisterDomainValues.AttachmentKindOther,
+                        StringComparison.Ordinal);
+                    bool canUploadInWorkflow = persisted.IsApprovedReceived || persisted.IsSignedUploaded;
+                    bool canSupplementOtherAfterComplete = persisted.IsArchived && isOther;
+                    if (!canUploadInWorkflow && !canSupplementOtherAfterComplete)
                     {
-                        return ArchiveRegisterAttachmentFlowResult.Fail("当前状态不允许上传签批交接单，请先执行“审批通过”并确认实物交接。");
+                        return ArchiveRegisterAttachmentFlowResult.Fail(
+                            persisted.IsArchived
+                                ? "办结后仅可增补「其他附件」。"
+                                : "当前状态不允许上传附件，请先执行“审批通过”并确认实物交接。");
                     }
 
                     await UploadAttachmentAsync(attachment);
@@ -698,7 +735,7 @@ namespace DocMgr.Services.YearlyArchive
                     if (persisted.IsApprovedReceived)
                     {
                         var currentAttachments = await GetAttachmentsByFormNoAsync(persisted.FormNo);
-                        var validation = await ValidateMandatoryAttachmentsAsync(currentAttachments);
+                        var validation = await ValidateMandatoryAttachmentsAsync(persisted, currentAttachments);
                         if (validation.IsValid)
                         {
                             persisted.MarkAsSignedUploaded();
@@ -768,50 +805,47 @@ namespace DocMgr.Services.YearlyArchive
             if (string.IsNullOrWhiteSpace(record.Administrator)) errors.Add("• 资料员签字缺失");
             if (string.IsNullOrWhiteSpace(record.DeptLeader)) errors.Add("• 部门负责人签字缺失");
 
-            errors.AddRange(CollectMandatoryAttachmentErrors(attachmentList));
+            errors.AddRange(CollectMandatoryAttachmentErrors(record, attachmentList));
 
             return Task.FromResult(new ArchiveRegisterApprovalValidationResult(errors));
         }
 
-        public Task<ArchiveRegisterApprovalValidationResult> ValidateMandatoryAttachmentsAsync(IReadOnlyCollection<SystemAttachment> attachments)
+        public Task<ArchiveRegisterApprovalValidationResult> ValidateMandatoryAttachmentsAsync(
+            YearlyArchiveRegisterRecord record,
+            IReadOnlyCollection<SystemAttachment> attachments)
         {
-            var errors = CollectMandatoryAttachmentErrors(attachments ?? Array.Empty<SystemAttachment>());
+            ArgumentNullException.ThrowIfNull(record);
+            var errors = CollectMandatoryAttachmentErrors(record, attachments ?? Array.Empty<SystemAttachment>());
             return Task.FromResult(new ArchiveRegisterApprovalValidationResult(errors));
         }
 
-        private static List<string> CollectMandatoryAttachmentErrors(IReadOnlyCollection<SystemAttachment> attachmentList)
+        private static List<string> CollectMandatoryAttachmentErrors(
+            YearlyArchiveRegisterRecord record,
+            IReadOnlyCollection<SystemAttachment> attachmentList)
         {
             var errors = new List<string>();
-            var fileNames = attachmentList
-                .Where(a => !string.IsNullOrWhiteSpace(a.FileName))
-                .Select(a => a.FileName.Trim())
-                .ToList();
+            var attachments = attachmentList ?? Array.Empty<SystemAttachment>();
 
-            if (!fileNames.Any(name => name.Contains("登记申请单", StringComparison.OrdinalIgnoreCase)))
+            bool HasKind(string kind) =>
+                attachments.Any(a => string.Equals(
+                    ArchiveRegisterDomainValues.ResolveAttachmentKind(a.FileCategory, a.FileName),
+                    kind,
+                    StringComparison.Ordinal));
+
+            if (!HasKind(ArchiveRegisterDomainValues.AttachmentKindSignedHandoverForm))
             {
-                errors.Add("• 缺少“登记申请单”附件（文件名需包含“登记申请单”）");
+                errors.Add("• 缺少“签批交接单”附件");
             }
 
-            if (!fileNames.Any(name => name.Contains("资料照片", StringComparison.OrdinalIgnoreCase)))
+            if (!HasKind(ArchiveRegisterDomainValues.AttachmentKindMaterialPhoto))
             {
-                errors.Add("• 缺少“资料照片”附件（文件名需包含“资料照片”）");
+                errors.Add("• 缺少“资料照片”附件");
             }
 
-            var allowedKinds = new[] { "登记申请单", "资料照片" };
-            var unexpectedFiles = fileNames
-                .Where(name => !allowedKinds.Any(kind => name.Contains(kind, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
-
-            if (unexpectedFiles.Count > 0)
+            if (ArchiveRegisterDomainValues.RequiresProofMaterialAttachment(record.ProofMaterialNote)
+                && !HasKind(ArchiveRegisterDomainValues.AttachmentKindProofMaterialScan))
             {
-                errors.Add("• 附件仅允许“登记申请单”“资料照片”两类，存在不允许文件：" + string.Join("、", unexpectedFiles));
-            }
-
-            int requiredAttachmentCount = fileNames.Count(name =>
-                allowedKinds.Any(kind => name.Contains(kind, StringComparison.OrdinalIgnoreCase)));
-            if (requiredAttachmentCount != 2)
-            {
-                errors.Add($"• 附件数量必须且只能为2个（登记申请单、资料照片各1个），当前匹配到 {requiredAttachmentCount} 个。");
+                errors.Add("• 申请时已声明有证明材料，请上传证明材料扫描件");
             }
 
             return errors;
@@ -938,7 +972,6 @@ namespace DocMgr.Services.YearlyArchive
             var archivePurposeOptions = pageDomainOptions.ArchivePurposes;
             var dataElectronicMediaTypeOptions = pageDomainOptions.DataElectronicMediaTypes;
             var dataSimulatedMediaTypeOptions = pageDomainOptions.DataSimulatedMediaTypes;
-            var proofSimulatedMediaTypeOptions = pageDomainOptions.ProofSimulatedMediaTypes;
             var dataElectronicDispositionOptions = pageDomainOptions.DataElectronicDispositions;
             var dataSimulatedDispositionOptions = pageDomainOptions.DataSimulatedDispositions;
 
@@ -946,6 +979,8 @@ namespace DocMgr.Services.YearlyArchive
             if (string.IsNullOrWhiteSpace(record.MaterialName)) errors.Add("• 资料名称未填写");
             if (!IsAllowedDomainValue(sourceType, sourceTypeOptions))
                 errors.Add($"• 资料来源不在域值定义中（允许值：{string.Join("、", sourceTypeOptions)}）");
+
+            record.ProofMaterialNote = ArchiveRegisterDomainValues.NormalizeProofMaterialNote(record.ProofMaterialNote);
 
             if (isExternalSource)
             {
@@ -1000,12 +1035,17 @@ namespace DocMgr.Services.YearlyArchive
                         continue;
                     }
 
+                    // 历史证明介质行：校验时忽略类型域（新申请不再录入证明介质）
                     var hasProofItem = media.Items.Any(x => string.Equals(x.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.OrdinalIgnoreCase));
-                    var simulatedTypeOptions = hasProofItem ? proofSimulatedMediaTypeOptions : dataSimulatedMediaTypeOptions;
-                    if (!IsAllowedDomainValue(media.MediaType, simulatedTypeOptions))
-                        errors.Add($"• 第{seq}条模拟介质类型不在域值定义中（允许值：{string.Join("、", simulatedTypeOptions)}）");
+                    if (hasProofItem)
+                    {
+                        continue;
+                    }
 
-                    if (!hasProofItem && !string.IsNullOrWhiteSpace(media.Disposition) && !IsAllowedDomainValue(media.Disposition, dataSimulatedDispositionOptions))
+                    if (!IsAllowedDomainValue(media.MediaType, dataSimulatedMediaTypeOptions))
+                        errors.Add($"• 第{seq}条模拟介质类型不在域值定义中（允许值：{string.Join("、", dataSimulatedMediaTypeOptions)}）");
+
+                    if (!string.IsNullOrWhiteSpace(media.Disposition) && !IsAllowedDomainValue(media.Disposition, dataSimulatedDispositionOptions))
                         errors.Add($"• 第{seq}条模拟处置方式不在域值定义中（允许值：{string.Join("、", dataSimulatedDispositionOptions)}）");
                 }
 

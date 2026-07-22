@@ -1,0 +1,57 @@
+---
+description: 空盒/空袋占格释放与立档事实生命周期、检索「在库」三端对齐
+globs: Services/YearlyArchive/ArchiveSimulatedBoxSlotSyncService.cs,Services/YearlyArchive/ArchiveElectronicBagSlotSyncService.cs,Services/YearlyArchive/ArchiveEmptiedContainer*.cs,Services/YearlyArchive/ArchiveOutboundService*.cs,Services/YearlyArchive/ArchiveReturnService*.cs,Repositories/YearlyArchive/ArchiveFilingFactRepository.cs,Repositories/YearlyArchive/ArchiveOutboundRepository.cs
+alwaysApply: false
+---
+
+# 空盒 / 空袋与检索三端对齐
+
+## 口径
+
+- **系统自动**释放档口占位；资料管理员负责**物理取盒/取袋处置**（办结提示已说明）。
+- **开柜、资料检索「在库」、实物占位**三者须同源：仅 `InUse` 容器占柜；仅有效在库立档事实可被「在库」检索命中。
+
+## 容器状态
+
+| 状态 | 场景 |
+|------|------|
+| `InUse` | 在柜占用 |
+| `Emptied` | 不还/灭失导致空盒或空袋，自动释档 |
+| `Retired` | 模拟迁档并档 / 迁入空盒销号（见 `archive-box-retirement.mdc`） |
+| `Relocated` / `Disposed` | 电子迁档并档 / 介质处置（迁档路径，勿改成 `Emptied`） |
+
+开柜与占位统计**仅**包含 `InUse`。
+
+## 空盒 / 空袋释放条件
+
+库内份数 = 0 且待还 = 0，且存在不还或灭失份数时释放（`ArchiveSimulatedBoxSlotOccupancySupport.ShouldReleaseSlot`）。
+
+有待还时**保留**占格（或电子袋离柜位置语义），不标清空。
+
+## 立档事实同步
+
+释放占位时（`ReleaseBoxSlot` / `ReleaseBagSlot`）：
+
+- 清空 `CurrentStorageLocation`
+- 按该事实份数：纯灭失 → `Destroyed`；含不还（或与灭失混合）→ `Transferred`
+- 清空借出提示；**保留** `CurrentContainerCode` 便于履历追溯
+
+出库提档办结：
+
+- `NeedReturn == true` → `Borrowed`
+- `NeedReturn == false` → `Transferred`
+
+归还全额灭失：`Destroyed`（既有 `BuildReturnLifecycleUpdate`）。
+
+## 检索「在库」
+
+主条件：`LifecycleStatus == InArchive`。  
+兜底：所属容器 `ContainerLifecycleStatus` / `UnitLifecycleStatus` 非 `InUse` 时，即使事实仍为 `InArchive` 也不命中。
+
+## 实现入口
+
+- 模拟盒：`ArchiveSimulatedBoxSlotSyncService`
+- 电子袋：`ArchiveElectronicBagSlotSyncService`
+- 出库后同步：`SyncSimulatedArchiveBoxSlotsAfterOutboundAsync` / `SyncElectronicArchiveBagSlotsAfterOutboundAsync`
+- 归还后同步：`SyncSimulatedArchiveBoxSlotsAfterReturnAsync` / `SyncElectronicArchiveBagSlotsAfterReturnAsync`
+- 历史纠偏：`ArchiveEmptiedContainerLegacyRepairService`（启动后台维护幂等执行）

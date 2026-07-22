@@ -106,8 +106,19 @@ namespace DocMgr.Services.YearlyArchive
                 RetainedHardDiskRegistration = retainedHardDiskRegistration,
                 OpticalDiscLedgerSummary = string.Empty,
                 ItemLines = BuildItemLinesForPrint(entries, "资料", pageDomainOptions.ConfidentialLevels),
-                ProofLines = BuildItemLinesForPrint(entries, ArchiveRegisterDomainValues.ItemTypeProof, pageDomainOptions.ConfidentialLevels)
+                ProofLines = BuildProofLinesForPrint(record)
             };
+        }
+
+        private static List<string> BuildProofLinesForPrint(YearlyArchiveRegisterRecord record)
+        {
+            string note = ArchiveRegisterDomainValues.NormalizeProofMaterialNote(record.ProofMaterialNote);
+            if (!ArchiveRegisterDomainValues.HasProofMaterial(note))
+            {
+                return new List<string>();
+            }
+
+            return new List<string> { note };
         }
 
         /// <inheritdoc/>

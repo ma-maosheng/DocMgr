@@ -856,6 +856,7 @@ alwaysApply: true
 | 资料来源 | `SourceType` | `String` | 否 |
 | 提供单位 | `ProvideUnit` | `String` | 否 |
 | 库管模式 | `ArchivePurpose` | `String` | 否 |
+| 证明材料备注 | `ProofMaterialNote` | `String` | 否 |
 | 其他要求 | `OtherRequests` | `String` | 否 |
 | 申请人 | `ApplicantName` | `String` | 否 |
 | 申请部门 | `ApplicantDept` | `String` | 否 |

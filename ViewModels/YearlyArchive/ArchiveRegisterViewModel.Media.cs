@@ -60,7 +60,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             DataElectronicMediaView = new ListCollectionView(MediaEntries) { Filter = m => IsDataElectronic(m as MediaEntryViewModel) };
             DataSimulatedMediaView = new ListCollectionView(MediaEntries) { Filter = m => IsDataSimulated(m as MediaEntryViewModel) };
-            ProofSimulatedMediaView = new ListCollectionView(MediaEntries) { Filter = m => IsProofMedia(m as MediaEntryViewModel) };
             MediaEntries.CollectionChanged += MediaEntries_CollectionChanged;
         }
 
@@ -174,7 +173,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             DataElectronicMediaView.Refresh();
             DataSimulatedMediaView.Refresh();
-            ProofSimulatedMediaView.Refresh();
             OnPropertyChanged(nameof(DataElectronicMediaCount));
         }
 
@@ -228,8 +226,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             RecalculateQuantities();
         }
 
-        // Predicates
+        // Predicates（历史证明介质以 ItemType=证明 标识；新申请改用主表 ProofMaterialNote，不再录入证明介质）
         private static bool IsProofMedia(MediaEntryViewModel? m) => m?.Items.Any(i => string.Equals(i.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.Ordinal)) == true;
+        private static bool IsProofMediaEntity(YearlyArchiveRegisterMedia? m) =>
+            m?.Items?.Any(i => string.Equals(i.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.Ordinal)) == true;
         private static bool IsDataElectronic(MediaEntryViewModel? m) => m != null && string.Equals(m.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal) && !IsProofMedia(m);
         private static bool IsDataSimulated(MediaEntryViewModel? m) => m != null && string.Equals(m.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal) && !IsProofMedia(m);
 
@@ -240,7 +240,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             AddMediaEntry(ArchiveRegisterDomainValues.MediaKindElectronic, ArchiveRegisterDomainValues.ItemTypeData);
         }
         private void AddDataSimulatedMediaEntry() => AddMediaEntry(ArchiveRegisterDomainValues.MediaKindSimulated, ArchiveRegisterDomainValues.ItemTypeData);
-        private void AddProofSimulatedMediaEntry() => AddMediaEntry(ArchiveRegisterDomainValues.MediaKindSimulated, ArchiveRegisterDomainValues.ItemTypeProof);
         private void AddMediaEntry(string kind, string itemType)
         {
             bool isElectronic = string.Equals(kind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal);
@@ -273,7 +272,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ? CreateDefaultElectronicMediaItem(ArchiveRegisterDomainValues.ItemTypeData)
                 : new MediaItemViewModel
                 {
-                    ItemType = IsProofMedia(m) ? ArchiveRegisterDomainValues.ItemTypeProof : ArchiveRegisterDomainValues.ItemTypeData,
+                    ItemType = ArchiveRegisterDomainValues.ItemTypeData,
                     ConfidentialLevel = ConfidentialLevelOptions.FirstOrDefault() ?? ArchiveRegisterDomainValues.ConfidentialLevelNone
                 });
         }
@@ -283,11 +282,77 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             MediaEntries.Clear();
             if (CurrentRecord?.MediaEntries != null)
-                foreach (var m in CurrentRecord.MediaEntries) MediaEntries.Add(CreateMediaEntryViewModel(m));
+            {
+                MigrateLegacyProofMediaToProofMaterialNote(CurrentRecord);
+                foreach (var m in CurrentRecord.MediaEntries.Where(media => !IsProofMediaEntity(media)))
+                {
+                    MediaEntries.Add(CreateMediaEntryViewModel(m));
+                }
+            }
 
+            SyncProofMaterialSelectionFromRecord();
             SyncElectronicMediaSettingsFromEntries();
             RecalculateAllQuantities();
             EnsureUserBorrowedHardDiskListIncludesSelected();
+        }
+
+        /// <summary>
+        /// 将历史「证明材料介质」明细回填到主表 <see cref="YearlyArchiveRegisterRecord.ProofMaterialNote"/>。
+        /// </summary>
+        private static void MigrateLegacyProofMediaToProofMaterialNote(YearlyArchiveRegisterRecord record)
+        {
+            if (ArchiveRegisterDomainValues.HasProofMaterial(record.ProofMaterialNote))
+            {
+                return;
+            }
+
+            var proofNames = record.MediaEntries
+                .Where(IsProofMediaEntity)
+                .SelectMany(media => media.Items ?? [])
+                .Where(item => string.Equals(item.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.Ordinal))
+                .Select(item => item.ContentDesc?.Trim() ?? string.Empty)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            if (proofNames.Count == 0)
+            {
+                record.ProofMaterialNote = ArchiveRegisterDomainValues.NormalizeProofMaterialNote(record.ProofMaterialNote);
+                return;
+            }
+
+            record.ProofMaterialNote = string.Join("；", proofNames);
+        }
+
+        private void SyncProofMaterialSelectionFromRecord()
+        {
+            if (CurrentRecord == null)
+            {
+                _hasProofMaterialSelected = false;
+                NotifyProofMaterialStateChanged();
+                return;
+            }
+
+            CurrentRecord.ProofMaterialNote = ArchiveRegisterDomainValues.NormalizeProofMaterialNote(CurrentRecord.ProofMaterialNote);
+            _hasProofMaterialSelected = ArchiveRegisterDomainValues.HasProofMaterial(CurrentRecord.ProofMaterialNote);
+            NotifyProofMaterialStateChanged();
+        }
+
+        /// <summary>将界面选择同步到主表证明材料字段（保存/提交前调用）。</summary>
+        private void ApplyProofMaterialNoteToRecord()
+        {
+            if (CurrentRecord == null)
+            {
+                return;
+            }
+
+            if (!HasProofMaterial)
+            {
+                CurrentRecord.ProofMaterialNote = ArchiveRegisterDomainValues.ProofMaterialNoneText;
+                return;
+            }
+
+            CurrentRecord.ProofMaterialNote = ProofMaterialName.Trim();
         }
 
         private void EnsureUserBorrowedHardDiskListIncludesSelected()
@@ -378,8 +443,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             EnsureElectronicMediaSelections();
             RecalculateAllQuantities();
 
-            return MediaEntries.Select(m => new YearlyArchiveRegisterMedia
-            {
+            // 证明材料已改为主表字段，保存时不再写入证明介质行。
+            return MediaEntries
+                .Where(m => !IsProofMedia(m))
+                .Select(m => new YearlyArchiveRegisterMedia
+                {
                 MediaKind = m.MediaKind,
                 MediaType = IsDataElectronic(m) ? ResolveSelectedElectronicMediaType() : m.MediaType,
                 MediaCount = IsDataElectronic(m) ? 1 : m.MediaCount,
@@ -438,11 +506,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private string ResolveDefaultMediaType(string kind, string itemType)
         {
-            if (string.Equals(itemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.Ordinal))
-            {
-                return ProofSimulatedMediaTypeOptions.FirstOrDefault() ?? string.Empty;
-            }
-
             return string.Equals(kind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
                 ? (DataElectronicMediaTypeOptions.FirstOrDefault() ?? string.Empty)
                 : (DataSimulatedMediaTypeOptions.FirstOrDefault() ?? string.Empty);
@@ -1073,11 +1136,55 @@ namespace DocMgr.ViewModels.YearlyArchive
             Attachments.Clear();
             if (CurrentRecord != null && !string.IsNullOrEmpty(CurrentRecord.FormNo))
             {
-                try { var list = await _archiveRegisterService.GetAttachmentsByFormNoAsync(CurrentRecord.FormNo); foreach (var item in list) Attachments.Add(item); }
-                catch (Exception ex) { Debug.WriteLine("加载附件失败: " + ex.Message); }
+                try
+                {
+                    var list = await _archiveRegisterService.GetAttachmentsByFormNoAsync(CurrentRecord.FormNo);
+                    foreach (var item in list)
+                    {
+                        Attachments.Add(item);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("加载附件失败: " + ex.Message);
+                }
+            }
+
+            RedistributeAttachmentsByKind();
+        }
+
+        private void RedistributeAttachmentsByKind()
+        {
+            SignedHandoverAttachments.Clear();
+            MaterialPhotoAttachments.Clear();
+            ProofMaterialAttachments.Clear();
+            OtherAttachments.Clear();
+
+            foreach (var attachment in Attachments)
+            {
+                string kind = ArchiveRegisterDomainValues.ResolveAttachmentKind(
+                    attachment.FileCategory,
+                    attachment.FileName);
+                if (string.Equals(kind, ArchiveRegisterDomainValues.AttachmentKindSignedHandoverForm, StringComparison.Ordinal))
+                {
+                    SignedHandoverAttachments.Add(attachment);
+                }
+                else if (string.Equals(kind, ArchiveRegisterDomainValues.AttachmentKindMaterialPhoto, StringComparison.Ordinal))
+                {
+                    MaterialPhotoAttachments.Add(attachment);
+                }
+                else if (string.Equals(kind, ArchiveRegisterDomainValues.AttachmentKindProofMaterialScan, StringComparison.Ordinal))
+                {
+                    ProofMaterialAttachments.Add(attachment);
+                }
+                else
+                {
+                    OtherAttachments.Add(attachment);
+                }
             }
         }
-        private async Task UploadSignedAttachmentAsync()
+
+        private async Task UploadAttachmentByKindAsync(string attachmentKind)
         {
             if (CurrentRecord == null || string.IsNullOrEmpty(CurrentRecord.FormNo))
             {
@@ -1087,65 +1194,99 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             if (!CanUploadSignedAttachment)
             {
-                _dialogService.ShowMessage("请先执行「审批通过」，再上传签字件。");
+                _dialogService.ShowMessage("请先执行「审批通过」并确认实物交接后再上传附件。");
                 return;
             }
 
+            if (string.Equals(attachmentKind, ArchiveRegisterDomainValues.AttachmentKindProofMaterialScan, StringComparison.Ordinal)
+                && !CanUploadProofMaterialAttachment)
+            {
+                _dialogService.ShowMessage("申请时未声明附有证明材料，无需上传证明材料扫描件。");
+                return;
+            }
+
+            string displayName = ArchiveRegisterDomainValues.GetAttachmentKindDisplayName(attachmentKind);
             var dlg = new OpenFileDialog
             {
                 Multiselect = true,
-                Title = "请选择附件（仅允许登记申请单、资料照片，且各1个）",
+                Title = $"请选择{displayName}（{SystemAttachmentUploadSupport.AllowedFormatsDescription}）",
                 Filter = SystemAttachmentUploadSupport.OpenFileDialogFilter
             };
-            if (dlg.ShowDialog() == true)
+            if (dlg.ShowDialog() != true)
             {
-                foreach (var f in dlg.FileNames)
-                {
-                    try
-                    {
-                        var fi = new FileInfo(f);
-                        var fileContent = await File.ReadAllBytesAsync(f);
-                        var result = await _archiveRegisterService.UploadAttachmentFlowAsync(CurrentRecord, _userContextService.CurrentUser, fi.Name, fi.Extension, fi.Length, fileContent);
-                        if (result.Success && result.Attachment != null)
-                        {
-                            Attachments.Add(result.Attachment);
-                        }
-                        else
-                        {
-                            _dialogService.ShowMessage(result.Message);
-                        }
-                    }
-                    catch (Exception ex) { _dialogService.ShowError($"上传失败: {ex.Message}"); }
-                }
+                return;
+            }
 
-                await RefreshAttachmentRequirementsAsync();
-                if (!AttachmentsMeetMandatoryRequirements)
+            bool anySuccess = false;
+            foreach (var f in dlg.FileNames)
+            {
+                try
                 {
-                    _dialogService.ShowMessage("附件已上传，但尚不满足继续办理要求：\n\n" + AttachmentRequirementHint);
+                    var fi = new FileInfo(f);
+                    var fileContent = await File.ReadAllBytesAsync(f);
+                    var result = await _archiveRegisterService.UploadAttachmentFlowAsync(
+                        CurrentRecord,
+                        _userContextService.CurrentUser,
+                        attachmentKind,
+                        fi.Name,
+                        fi.Extension,
+                        fi.Length,
+                        fileContent);
+                    if (result.Success && result.Attachment != null)
+                    {
+                        Attachments.Add(result.Attachment);
+                        anySuccess = true;
+                    }
+                    else
+                    {
+                        _dialogService.ShowMessage(result.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _dialogService.ShowError($"上传失败: {ex.Message}");
+                }
+            }
+
+            if (!anySuccess)
+            {
+                return;
+            }
+
+            RedistributeAttachmentsByKind();
+            await RefreshAttachmentRequirementsAsync();
+
+            if (CurrentRecord.IsApprovedReceived && AttachmentsMeetMandatoryRequirements)
+            {
+                CurrentRecord.MarkAsSignedUploaded();
+                try
+                {
+                    await _archiveRegisterService.SaveOrUpdateAsync(CurrentRecord);
+                }
+                catch (Exception ex)
+                {
+                    _dialogService.ShowError("附件已上传，但状态保存失败：" + ex.Message);
                     return;
                 }
 
-                if (CurrentRecord.IsApprovedReceived)
-                {
-                    CurrentRecord.MarkAsSignedUploaded();
-                    try
-                    {
-                        await _archiveRegisterService.SaveOrUpdateAsync(CurrentRecord);
-                    }
-                    catch (Exception ex)
-                    {
-                        _dialogService.ShowError("附件已齐全，但状态保存失败：" + ex.Message);
-                        return;
-                    }
-
-                    OnPropertyChanged(nameof(CurrentRecord));
-                    UpdateUIState();
-                }
-
+                OnPropertyChanged(nameof(CurrentRecord));
+                UpdateUIState();
                 MarkCommitted();
                 _dialogService.ShowMessage("必备附件已齐全，记录状态已更新。下一步：确认办结。");
+                return;
+            }
+
+            MarkCommitted();
+            if (!AttachmentsMeetMandatoryRequirements)
+            {
+                _dialogService.ShowMessage($"{displayName}已上传。\n\n当前尚未满足办结要求：\n{AttachmentRequirementHint}");
+            }
+            else
+            {
+                _dialogService.ShowMessage($"{displayName}上传成功。");
             }
         }
+
         private async Task DeleteAttachment(SystemAttachment a)
         {
             if (a == null) return;
@@ -1157,6 +1298,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     if (result.Success)
                     {
                         Attachments.Remove(a);
+                        RedistributeAttachmentsByKind();
                         await RefreshAttachmentRequirementsAsync();
                         if (!AttachmentsMeetMandatoryRequirements)
                         {

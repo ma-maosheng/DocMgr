@@ -77,7 +77,14 @@ namespace DocMgr.Services.Interfaces
         Task<ArchiveRegisterFlowResult> ForceCleanupRegisterFlowAsync(YearlyArchiveRegisterRecord? record, User? currentUser);
 
         // 流程编排：上传附件
-        Task<ArchiveRegisterAttachmentFlowResult> UploadAttachmentFlowAsync(YearlyArchiveRegisterRecord? record, User? currentUser, string fileName, string extension, long fileSize, byte[] fileContent);
+        Task<ArchiveRegisterAttachmentFlowResult> UploadAttachmentFlowAsync(
+            YearlyArchiveRegisterRecord? record,
+            User? currentUser,
+            string attachmentKind,
+            string fileName,
+            string extension,
+            long fileSize,
+            byte[] fileContent);
 
         // 流程编排：删除附件
         Task<ArchiveRegisterAttachmentFlowResult> DeleteAttachmentFlowAsync(SystemAttachment? attachment);
@@ -112,8 +119,10 @@ namespace DocMgr.Services.Interfaces
         // 校验审批保存所需业务规则（含域值与附件完整性）
         Task<ArchiveRegisterApprovalValidationResult> ValidateApprovalAsync(YearlyArchiveRegisterRecord record, IReadOnlyCollection<SystemAttachment> attachments);
 
-        // 校验附件材料是否包含必须的“登记申请单”“资料照片”
-        Task<ArchiveRegisterApprovalValidationResult> ValidateMandatoryAttachmentsAsync(IReadOnlyCollection<SystemAttachment> attachments);
+        // 校验附件材料是否包含必须的“登记申请单”“资料照片”（有证明材料时另须“证明材料”）
+        Task<ArchiveRegisterApprovalValidationResult> ValidateMandatoryAttachmentsAsync(
+            YearlyArchiveRegisterRecord record,
+            IReadOnlyCollection<SystemAttachment> attachments);
 
         // 填充审批默认信息（仅资料室资料管理员可执行）
         Task ApplyDefaultApprovalInfoAsync(YearlyArchiveRegisterRecord record, User currentUser);

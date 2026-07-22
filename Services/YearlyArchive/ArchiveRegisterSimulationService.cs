@@ -855,6 +855,7 @@ namespace DocMgr.Services.YearlyArchive
             record.SourceType = template.SourceType;
             record.ProvideUnit = template.ProvideUnit;
             record.ArchivePurpose = template.ArchivePurpose;
+            record.ProofMaterialNote = ArchiveRegisterDomainValues.NormalizeProofMaterialNote(template.ProofMaterialNote);
             record.OtherRequests = $"{SimulationMarker} {template.OtherRequests}";
         }
 
@@ -978,7 +979,6 @@ namespace DocMgr.Services.YearlyArchive
             string opticalDiskType = PickByKeywordOrFallback(domainOptions.DataElectronicMediaTypes, new[] { "光盘", "DVD", "蓝光" }, "光盘");
             string usbDiskType = PickByKeywordOrFallback(domainOptions.DataElectronicMediaTypes, new[] { "U盘", "移动" }, "U盘");
             string simulatedDataType = PickFirstNonEmpty(domainOptions.DataSimulatedMediaTypes, "档案盒");
-            string proofSimulatedType = PickFirstNonEmpty(domainOptions.ProofSimulatedMediaTypes, simulatedDataType);
 
             var internalProject = projects.FirstOrDefault();
             string internalProvideUnit = !string.IsNullOrWhiteSpace(internalProject?.CapitalMgrDept)
@@ -1021,10 +1021,9 @@ namespace DocMgr.Services.YearlyArchive
                     "模拟生成：硬盘电子资料和纸质证明并存，适合测试混合立档。",
                     [
                         CreateElectronicMedia(hardDiskType, electronicDisposition,
-                            CreateElectronicItem("DOM/DEM/矢量一体化成果", 3, "/archive/2026/harddisk/hd-03/data", "包含成果、质检与说明", domainOptions)),
-                        CreateSimulatedMedia(proofSimulatedType, 1, simulatedDisposition,
-                            CreateItem(ArchiveRegisterDomainValues.ItemTypeProof, "项目批复及移交证明", 4, note: "签章纸质证明"))
-                    ]),
+                            CreateElectronicItem("DOM/DEM/矢量一体化成果", 3, "/archive/2026/harddisk/hd-03/data", "包含成果、质检与说明", domainOptions))
+                    ],
+                    "项目批复及移交证明"),
                 new(
                     null,
                     null,
@@ -1051,10 +1050,9 @@ namespace DocMgr.Services.YearlyArchive
                             CreateElectronicItem("空三加密成果", 2, "/archive/2026/complex/harddisk-05/at", "空三报告与质量检查", domainOptions),
                             CreateElectronicItem("数据库发布包", 1, "/archive/2026/complex/harddisk-05/release", "含发布脚本", domainOptions)),
                         CreateSimulatedMedia(simulatedDataType, 3, simulatedDisposition,
-                            CreateItem(ArchiveRegisterDomainValues.ItemTypeData, "纸质成图及索引", 18, note: "含分幅索引与装订图册")),
-                        CreateSimulatedMedia(proofSimulatedType, 1, simulatedDisposition,
-                            CreateItem(ArchiveRegisterDomainValues.ItemTypeProof, "验收会签材料", 6, note: "验收单、签收单、备忘录"))
-                    ])
+                            CreateItem(ArchiveRegisterDomainValues.ItemTypeData, "纸质成图及索引", 18, note: "含分幅索引与装订图册"))
+                    ],
+                    "验收会签材料")
             };
 
             ApplyConfidentialLevelToMediaEntries(templates.SelectMany(template => template.MediaEntries), confidentialLevel);
@@ -1099,7 +1097,6 @@ namespace DocMgr.Services.YearlyArchive
             string noneDisposition = PickByKeywordOrFallback(domainOptions.DataElectronicDispositions, new[] { "无需", "不处置", "免处置" }, ArchiveRegisterDomainValues.ElectronicDispositionNone);
             string simulatedDisposition = ArchiveRegisterDomainValues.SimulatedDispositionRetain;
             string simulatedDataType = PickFirstNonEmpty(domainOptions.DataSimulatedMediaTypes, "档案盒");
-            string proofSimulatedType = PickFirstNonEmpty(domainOptions.ProofSimulatedMediaTypes, simulatedDataType);
 
             var templates = new List<SimulationTemplate>(DefaultComplexElectronicSimulationCount);
 
@@ -1133,6 +1130,7 @@ namespace DocMgr.Services.YearlyArchive
 
                 var mediaEntries = new List<YearlyArchiveRegisterMedia>();
                 string detail;
+                string proofMaterialNote = ArchiveRegisterDomainValues.ProofMaterialNoneText;
 
                 switch (sequence)
                 {
@@ -1162,8 +1160,7 @@ namespace DocMgr.Services.YearlyArchive
                         detail = "硬盘带回+证明材料";
                         mediaEntries.Add(CreateElectronicMedia(hardDiskType, returnDisposition,
                             CreateElectronicItem("外协提交成果", 2, BuildComplexElectronicItemStoragePath("disk-return", sequence, 1), "介质带回", domainOptions)));
-                        mediaEntries.Add(CreateSimulatedMedia(proofSimulatedType, 1, simulatedDisposition,
-                            CreateItem(ArchiveRegisterDomainValues.ItemTypeProof, "签收与移交证明", 3, "混合立档校验")));
+                        proofMaterialNote = "签收与移交证明";
                         break;
                     case 8:
                     case 12:
@@ -1207,8 +1204,7 @@ namespace DocMgr.Services.YearlyArchive
 
                         if (sequence % 4 == 0)
                         {
-                            mediaEntries.Add(CreateSimulatedMedia(proofSimulatedType, 1, simulatedDisposition,
-                                CreateItem(ArchiveRegisterDomainValues.ItemTypeProof, $"验收证明材料 {sequence:D2}", 2 + sequence % 3, "复杂审批链模拟")));
+                            proofMaterialNote = $"验收证明材料 {sequence:D2}";
                         }
 
                         detail = sequence <= 10
@@ -1227,7 +1223,8 @@ namespace DocMgr.Services.YearlyArchive
                     $"复杂电子单-{sequence:D2}：{complexityLabel}场景",
                     archivePurpose,
                     $"复杂场景{sequence:D2}：{detail}，覆盖介质处置与立档组合测试。",
-                    mediaEntries));
+                    mediaEntries,
+                    proofMaterialNote));
             }
 
             ApplyConfidentialLevelToMediaEntries(templates.SelectMany(template => template.MediaEntries), confidentialLevel);
@@ -1363,6 +1360,7 @@ namespace DocMgr.Services.YearlyArchive
             string MaterialName,
             string ArchivePurpose,
             string OtherRequests,
-            IReadOnlyList<YearlyArchiveRegisterMedia> MediaEntries);
+            IReadOnlyList<YearlyArchiveRegisterMedia> MediaEntries,
+            string ProofMaterialNote = ArchiveRegisterDomainValues.ProofMaterialNoneText);
     }
 }

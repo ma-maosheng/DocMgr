@@ -122,7 +122,29 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
 
         if (!string.IsNullOrWhiteSpace(criteria.LifecycleStatus))
         {
-            query = query.Where(fact => fact.LifecycleStatus == criteria.LifecycleStatus);
+            string lifecycleStatus = criteria.LifecycleStatus.Trim();
+            query = query.Where(fact => fact.LifecycleStatus == lifecycleStatus);
+
+            // 「在库」兜底：所属容器已非 InUse（已清空/销号等）时不作为在库命中。
+            if (string.Equals(lifecycleStatus, FilingFactLifecycleStatus.InArchive, StringComparison.Ordinal))
+            {
+                if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
+                {
+                    query = query.Where(fact =>
+                        fact.ContainerId <= 0
+                        || !_dbContext.YearlyArchiveBoxes.Any(box =>
+                            box.Id == fact.ContainerId
+                            && box.ContainerLifecycleStatus != ArchiveContainerLifecycleStatus.InUse));
+                }
+                else if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
+                {
+                    query = query.Where(fact =>
+                        fact.ContainerId <= 0
+                        || !_dbContext.YearlyElectronicArchiveUnits.Any(unit =>
+                            unit.Id == fact.ContainerId
+                            && unit.UnitLifecycleStatus != ArchiveContainerLifecycleStatus.InUse));
+                }
+            }
         }
 
         if (criteria.FiledFrom.HasValue)

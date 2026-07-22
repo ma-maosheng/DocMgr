@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -9,17 +10,20 @@ using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
 using DocMgr.Views.Shared;
+using Microsoft.Win32;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
     /// <summary>
     /// 资料建档（登记）申请单只读查看弹窗 ViewModel。仅展示申请、审批流程与附件信息，支持打印与关闭。
+    /// 资料室资料管理员可在办结后增补「其他附件」（仅新增、不可删除）。
     /// </summary>
     public sealed class ArchiveRegisterApplicationViewDialogViewModel : ViewModelBase
     {
         private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly IArchiveRegisterWordExportService _archiveRegisterWordExportService;
         private readonly IDialogService _dialogService;
+        private readonly IUserContextService _userContextService;
         private YearlyArchiveRegisterRecord _record;
         private string[] _uniformOpinions = [];
 
@@ -27,20 +31,28 @@ namespace DocMgr.ViewModels.YearlyArchive
             IArchiveRegisterService archiveRegisterService,
             IArchiveRegisterWordExportService archiveRegisterWordExportService,
             IDialogService dialogService,
+            IUserContextService userContextService,
             YearlyArchiveRegisterRecord record)
         {
             ArgumentNullException.ThrowIfNull(archiveRegisterService);
             ArgumentNullException.ThrowIfNull(archiveRegisterWordExportService);
             ArgumentNullException.ThrowIfNull(dialogService);
+            ArgumentNullException.ThrowIfNull(userContextService);
             ArgumentNullException.ThrowIfNull(record);
 
             _archiveRegisterService = archiveRegisterService;
             _archiveRegisterWordExportService = archiveRegisterWordExportService;
             _dialogService = dialogService;
+            _userContextService = userContextService;
             _record = record;
             RefreshUniformOpinions();
 
-            ViewAttachmentCommand = new RelayCommand(async attachment => await ViewAttachmentAsync(attachment as SystemAttachment), attachment => attachment is SystemAttachment);
+            ViewAttachmentCommand = new RelayCommand(
+                async attachment => await ViewAttachmentAsync(attachment as SystemAttachment),
+                attachment => attachment is SystemAttachment);
+            SupplementOtherAttachmentCommand = new RelayCommand(
+                async _ => await SupplementOtherAttachmentAsync(),
+                _ => CanSupplementOtherAttachments);
             PrintCommand = new RelayCommand(_ => Print(), _ => CanPrint);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
@@ -49,7 +61,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string WindowTitle => $"查看申请 · {FormNo} · {StatusDisplay}";
 
-        public string WorkspaceBannerText => "本窗口仅用于查看资料建档申请信息，不允许编辑。";
+        public string WorkspaceBannerText => CanSupplementOtherAttachments
+            ? "本窗口以查看为主；办结后资料室资料管理员可增补「其他附件」，不可删除已有附件。"
+            : "本窗口仅用于查看资料建档申请信息，不允许编辑。";
 
         // 1. 资料信息
         public string MaterialName => EmptyAsPlaceholder(_record.MaterialName);
@@ -58,6 +72,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string SourceType => EmptyAsPlaceholder(_record.SourceType);
         public string ArchivePurpose => EmptyAsPlaceholder(_record.ArchivePurpose);
         public string OtherRequests => EmptyAsPlaceholder(_record.OtherRequests);
+        public string HasProofMaterialDisplay =>
+            ArchiveRegisterDomainValues.HasProofMaterial(_record.ProofMaterialNote) ? "是" : "否";
+        public string ProofMaterialDisplay =>
+            ArchiveRegisterDomainValues.HasProofMaterial(_record.ProofMaterialNote)
+                ? EmptyAsPlaceholder(_record.ProofMaterialNote)
+                : ArchiveRegisterDomainValues.ProofMaterialNoneText;
 
         // 2. 申请信息
         public string FormNo => string.IsNullOrWhiteSpace(_record.FormNo) ? "待编单" : _record.FormNo.Trim();
@@ -87,7 +107,17 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool CanPrint => _record.Id > 0;
 
+        /// <summary>办结后，资料室资料管理员可增补其他附件。</summary>
+        public bool CanSupplementOtherAttachments =>
+            _record.Id > 0
+            && _record.IsArchived
+            && _archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser);
+
+        public string SupplementAttachmentHint =>
+            "办结后仅可增补「其他附件」；请确保文件命名清晰准确。本页不可删除已有附件。";
+
         public ICommand ViewAttachmentCommand { get; }
+        public ICommand SupplementOtherAttachmentCommand { get; }
         public ICommand PrintCommand { get; }
         public ICommand CloseCommand { get; }
 
@@ -97,6 +127,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             await EnsureRecordLoadedAsync();
             await LoadAttachmentsAsync();
+            OnPropertyChanged(nameof(CanSupplementOtherAttachments));
+            OnPropertyChanged(nameof(WorkspaceBannerText));
+            System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         }
 
         private async Task EnsureRecordLoadedAsync()
@@ -137,6 +170,61 @@ namespace DocMgr.ViewModels.YearlyArchive
             foreach (var attachment in attachments)
             {
                 Attachments.Add(attachment);
+            }
+        }
+
+        private async Task SupplementOtherAttachmentAsync()
+        {
+            if (!CanSupplementOtherAttachments)
+            {
+                return;
+            }
+
+            var dlg = new OpenFileDialog
+            {
+                Multiselect = true,
+                Title = $"请选择其他附件（{SystemAttachmentUploadSupport.AllowedFormatsDescription}）；请确保文件命名清晰准确",
+                Filter = SystemAttachmentUploadSupport.OpenFileDialogFilter
+            };
+            if (dlg.ShowDialog() != true)
+            {
+                return;
+            }
+
+            bool anySuccess = false;
+            foreach (var path in dlg.FileNames)
+            {
+                try
+                {
+                    var fi = new FileInfo(path);
+                    var fileContent = await File.ReadAllBytesAsync(path);
+                    var result = await _archiveRegisterService.UploadAttachmentFlowAsync(
+                        _record,
+                        _userContextService.CurrentUser,
+                        ArchiveRegisterDomainValues.AttachmentKindOther,
+                        fi.Name,
+                        fi.Extension,
+                        fi.Length,
+                        fileContent);
+                    if (result.Success && result.Attachment != null)
+                    {
+                        Attachments.Add(result.Attachment);
+                        anySuccess = true;
+                    }
+                    else
+                    {
+                        _dialogService.ShowMessage(result.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _dialogService.ShowError($"增补附件失败：{ex.Message}");
+                }
+            }
+
+            if (anySuccess)
+            {
+                _dialogService.ShowMessage("其他附件已增补。", "增补附件");
             }
         }
 
@@ -226,12 +314,15 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void RaiseAllDisplayPropertiesChanged()
         {
             OnPropertyChanged(nameof(WindowTitle));
+            OnPropertyChanged(nameof(WorkspaceBannerText));
             OnPropertyChanged(nameof(MaterialName));
             OnPropertyChanged(nameof(ProjectName));
             OnPropertyChanged(nameof(ProvideUnit));
             OnPropertyChanged(nameof(SourceType));
             OnPropertyChanged(nameof(ArchivePurpose));
             OnPropertyChanged(nameof(OtherRequests));
+            OnPropertyChanged(nameof(HasProofMaterialDisplay));
+            OnPropertyChanged(nameof(ProofMaterialDisplay));
             OnPropertyChanged(nameof(FormNo));
             OnPropertyChanged(nameof(StatusDisplay));
             OnPropertyChanged(nameof(ApplicantName));
@@ -253,6 +344,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(Administrator));
             OnPropertyChanged(nameof(AdminDateDisplay));
             OnPropertyChanged(nameof(CanPrint));
+            OnPropertyChanged(nameof(CanSupplementOtherAttachments));
         }
 
         private static string EmptyAsPlaceholder(string? value) =>

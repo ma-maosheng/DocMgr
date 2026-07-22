@@ -185,10 +185,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             // 备注 4 行说明。
             double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 4, lineHeightDip: 18, topMarginDip: 15);
             double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
-            return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
+            double stretchHeight = PrintPageLayoutSupport.CalculateStretchRowHeightDip(
                 reservedHeight,
                 PrintRowHeightOneLine * 4,
                 CellPadding);
+            // 页面仍有富余，资料内容栏再加 2 行正文高度。
+            return stretchHeight + PrintContentLineHeight * 2;
         }
 
         private static TableRow CreateRow(string label, string content, int contentColSpan, double minHeight = 0, VerticalAlignment contentVerticalAlignment = VerticalAlignment.Center)

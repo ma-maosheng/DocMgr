@@ -42,7 +42,7 @@
                 <TextBlock Text="选择数据表：" VerticalAlignment="Center" FontSize="14" FontWeight="Bold"/>
                 <ComboBox Width="400" Margin="10,0,0,0"
                           ItemsSource="{Binding Tables}"
-                          DisplayMemberPath="TableName"
+                          DisplayMemberPath="DisplayName"
                           SelectedItem="{Binding SelectedTable, Mode=TwoWay}"/>
                 <Button Content="📤 导出到 Excel" Command="{Binding ExportToExcelCommand}" Margin="10,0,0,0" Padding="10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
                 <Button Content="🔄 刷新数据" Command="{Binding RefreshCommand}" Margin="10,0,0,0" Padding="10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>

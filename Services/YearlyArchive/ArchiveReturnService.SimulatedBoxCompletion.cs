@@ -37,6 +37,35 @@ namespace DocMgr.Services.YearlyArchive
             return await _simulatedBoxSlotSyncService.SyncBoxesByIdsAsync(boxIds, operatedAt);
         }
 
+        private async Task SyncElectronicArchiveBagSlotsAfterReturnAsync(
+            YearlyArchiveReturnRecord record,
+            IReadOnlyDictionary<int, YearlyArchiveFilingFact> factsById,
+            DateTime operatedAt)
+        {
+            var unitIds = record.Items
+                .Where(item => string.Equals(
+                    item.MediaKind,
+                    ArchiveRegisterDomainValues.MediaKindElectronic,
+                    StringComparison.Ordinal))
+                .Select(item => item.FilingFactId)
+                .Where(id => id > 0)
+                .Distinct()
+                .Select(id => factsById.TryGetValue(id, out var fact) ? fact : null)
+                .Where(fact => fact != null
+                    && fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                    && fact.ContainerId > 0)
+                .Select(fact => fact!.ContainerId)
+                .Distinct()
+                .ToList();
+
+            if (unitIds.Count == 0)
+            {
+                return;
+            }
+
+            _ = await _electronicBagSlotSyncService.SyncUnitsByIdsAsync(unitIds, operatedAt);
+        }
+
         /// <summary>
         /// 本单灭失明细涉及的模拟档案盒 Id（用于筛选“因灭失变空盒”的提示）。
         /// </summary>

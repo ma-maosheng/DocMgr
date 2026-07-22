@@ -1,5 +1,6 @@
 ﻿using System;
-using System.ComponentModel.DataAnnotations.Schema; // 引用 NotMapped
+using System.ComponentModel.DataAnnotations.Schema;
+using DocMgr.Models.Shared;
 
 namespace DocMgr.Models.SystemSettings
 {
@@ -22,7 +23,7 @@ namespace DocMgr.Models.SystemSettings
         public byte[]? FileContent { get; set; }   // 二进制内容 (Blob)
 
         // === 审计与分类 ===
-        // 附件分类 (e.g. "审批单扫描件", "电子原稿", "红头文件")
+        // 附件分类 (e.g. "SignedHandoverForm", "MaterialPhoto", "签批交接单")
         public string FileCategory { get; set; } = "一般附件";
         public DateTime UploadTime { get; set; }
         public string UploaderName { get; set; } = string.Empty;
@@ -30,5 +31,10 @@ namespace DocMgr.Models.SystemSettings
         // 新增：不映射到数据库，仅用于显示
         [NotMapped]
         public string FileSizeStr => (FileSize / 1024.0).ToString("F1");
+
+        /// <summary>附件分类中文显示名（列表「附件分类」列绑定）。</summary>
+        [NotMapped]
+        public string FileCategoryDisplay =>
+            SystemAttachmentCategoryDisplaySupport.ResolveDisplayName(FileCategory, FileName);
     }
 }

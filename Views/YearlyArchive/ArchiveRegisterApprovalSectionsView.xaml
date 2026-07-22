@@ -1,4 +1,4 @@
-<UserControl x:Class="DocMgr.Views.YearlyArchive.ArchiveRegisterApprovalSectionsView"
+﻿<UserControl x:Class="DocMgr.Views.YearlyArchive.ArchiveRegisterApprovalSectionsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
@@ -6,6 +6,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="ArchiveRegisterResources.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         </ResourceDictionary>
     </UserControl.Resources>
     <StackPanel>
@@ -105,7 +106,7 @@
                         <TextBlock DockPanel.Dock="Left" Text="资料交接" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                         <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
-                                <TextBlock Text="移交人" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                <TextBlock Text="移交" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                                 <TextBox Width="90"
                                          Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
                                          Text="{Binding CurrentRecord.Deliverer, UpdateSourceTrigger=PropertyChanged}"/>
@@ -130,31 +131,173 @@
 
         <GroupBox Header="附件材料" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
             <StackPanel>
-                <ListView ItemsSource="{Binding Attachments}" Height="120" BorderBrush="#EEE" BorderThickness="1">
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Header="文件名" Width="250" DisplayMemberBinding="{Binding FileName}"/>
-                            <GridViewColumn Header="上传时间" Width="140" DisplayMemberBinding="{Binding UploadTime, StringFormat='yyyy-MM-dd HH:mm'}"/>
-                            <GridViewColumn Header="大小 (B)" Width="80" DisplayMemberBinding="{Binding FileSize}"/>
-                            <GridViewColumn Header="操作" Width="120">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Button Content="查看" Style="{StaticResource ButtonNormalStyle}" Margin="0,0,5,0"
-                                                    Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                                    CommandParameter="{Binding}"/>
-                                            <Button Content="删除" Style="{StaticResource ButtonCautionStyle}"
-                                                    Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                                    CommandParameter="{Binding}"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                        </GridView>
-                    </ListView.View>
-                </ListView>
+                <TextBlock Text="格式限 PDF / 常见图像；签批交接单、资料照片必传，证明材料按申请声明，其他附件可选，各上传附件的命名应清晰明确。"
+                           Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 签批交接单 -->
+                    <Border Grid.Row="0" Grid.Column="0" Margin="0,0,0,8" Padding="8,6"
+                            Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
+                        <DockPanel LastChildFill="True">
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
+                                <Button DockPanel.Dock="Right" Content="上传"
+                                        Command="{Binding UploadSignedHandoverAttachmentCommand}"
+                                        Padding="8,2" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                <TextBlock Text="签批交接单" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <ListView ItemsSource="{Binding SignedHandoverAttachments}" Height="72"
+                                      BorderBrush="#EEE" BorderThickness="1">
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Header="文件名" Width="160" DisplayMemberBinding="{Binding FileName}"/>
+                                        <GridViewColumn Header="附件分类" Width="90" DisplayMemberBinding="{Binding FileCategoryDisplay}"/>
+                                        <GridViewColumn Header="时间" Width="110" DisplayMemberBinding="{Binding UploadTime, StringFormat=yyyy-MM-dd HH:mm}"/>
+                                        <GridViewColumn Header="操作" Width="100">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Content="查看" Padding="6,1" Margin="0,0,4,0"
+                                                                Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                CommandParameter="{Binding}"/>
+                                                        <Button Content="删除" Padding="6,1"
+                                                                Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                CommandParameter="{Binding}"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- 资料照片 -->
+                    <Border Grid.Row="0" Grid.Column="2" Margin="0,0,0,8" Padding="8,6"
+                            Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
+                        <DockPanel LastChildFill="True">
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
+                                <Button DockPanel.Dock="Right" Content="上传"
+                                        Command="{Binding UploadMaterialPhotoAttachmentCommand}"
+                                        Padding="8,2" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                <TextBlock Text="资料照片" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <ListView ItemsSource="{Binding MaterialPhotoAttachments}" Height="72"
+                                      BorderBrush="#EEE" BorderThickness="1">
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Header="文件名" Width="160" DisplayMemberBinding="{Binding FileName}"/>
+                                        <GridViewColumn Header="附件分类" Width="90" DisplayMemberBinding="{Binding FileCategoryDisplay}"/>
+                                        <GridViewColumn Header="时间" Width="110" DisplayMemberBinding="{Binding UploadTime, StringFormat=yyyy-MM-dd HH:mm}"/>
+                                        <GridViewColumn Header="操作" Width="100">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Content="查看" Padding="6,1" Margin="0,0,4,0"
+                                                                Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                CommandParameter="{Binding}"/>
+                                                        <Button Content="删除" Padding="6,1"
+                                                                Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                CommandParameter="{Binding}"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- 证明材料 -->
+                    <Border Grid.Row="1" Grid.Column="0" Margin="0,0,0,0" Padding="8,6"
+                            Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
+                        <DockPanel LastChildFill="True">
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
+                                <Button DockPanel.Dock="Right" Content="上传"
+                                        Command="{Binding UploadProofMaterialAttachmentCommand}"
+                                        Padding="8,2" IsEnabled="{Binding CanUploadProofMaterialAttachment}"/>
+                                <TextBlock Text="证明材料" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <TextBlock DockPanel.Dock="Bottom" Text="{Binding ProofMaterialAttachmentHint, Mode=OneWay}"
+                                       Margin="0,4,0,0" Foreground="#B45309" TextWrapping="Wrap" FontSize="11"/>
+                            <ListView ItemsSource="{Binding ProofMaterialAttachments}" Height="72"
+                                      BorderBrush="#EEE" BorderThickness="1">
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Header="文件名" Width="160" DisplayMemberBinding="{Binding FileName}"/>
+                                        <GridViewColumn Header="附件分类" Width="90" DisplayMemberBinding="{Binding FileCategoryDisplay}"/>
+                                        <GridViewColumn Header="时间" Width="110" DisplayMemberBinding="{Binding UploadTime, StringFormat=yyyy-MM-dd HH:mm}"/>
+                                        <GridViewColumn Header="操作" Width="100">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Content="查看" Padding="6,1" Margin="0,0,4,0"
+                                                                Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                CommandParameter="{Binding}"/>
+                                                        <Button Content="删除" Padding="6,1"
+                                                                Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                CommandParameter="{Binding}"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- 其他附件 -->
+                    <Border Grid.Row="1" Grid.Column="2" Margin="0,0,0,0" Padding="8,6"
+                            Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
+                        <DockPanel LastChildFill="True">
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
+                                <Button DockPanel.Dock="Right" Content="上传"
+                                        Command="{Binding UploadOtherAttachmentCommand}"
+                                        Padding="8,2" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                <TextBlock Text="其他附件（可选）" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <TextBlock DockPanel.Dock="Bottom" Text="非办结必备，按需上传即可。"
+                                       Margin="0,4,0,0" Foreground="#64748B" TextWrapping="Wrap" FontSize="11"/>
+                            <ListView ItemsSource="{Binding OtherAttachments}" Height="72"
+                                      BorderBrush="#EEE" BorderThickness="1">
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Header="文件名" Width="160" DisplayMemberBinding="{Binding FileName}"/>
+                                        <GridViewColumn Header="附件分类" Width="90" DisplayMemberBinding="{Binding FileCategoryDisplay}"/>
+                                        <GridViewColumn Header="时间" Width="110" DisplayMemberBinding="{Binding UploadTime, StringFormat=yyyy-MM-dd HH:mm}"/>
+                                        <GridViewColumn Header="操作" Width="100">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Content="查看" Padding="6,1" Margin="0,0,4,0"
+                                                                Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                CommandParameter="{Binding}"/>
+                                                        <Button Content="删除" Padding="6,1"
+                                                                Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                CommandParameter="{Binding}"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </DockPanel>
+                    </Border>
+                </Grid>
                 <TextBlock Text="{Binding AttachmentRequirementHint}"
-                           Margin="0,6,0,0"
+                           Margin="0,8,0,0"
                            Foreground="#B45309"
                            TextWrapping="Wrap"
                            FontSize="11"/>
@@ -182,9 +325,6 @@
                 ToolTip="{Binding ConfirmHandoverHintText}"
                 MinWidth="140" Height="40" Padding="20,0"
                 FontSize="16" FontWeight="Bold" Cursor="Hand" Margin="0,0,20,0" Style="{StaticResource ButtonNormalStyle}"/>
-            <Button Content="上传签批交接单和资料照片" Command="{Binding UploadAttachmentCommand}"
-                ToolTip="{Binding UploadHintText}"
-                MinWidth="220" Height="40" Padding="20,0" FontSize="16" FontWeight="Bold" Cursor="Hand" Margin="0,0,20,0" Style="{StaticResource ButtonNormalStyle}"/>
             <Button Content="确认办结" Command="{Binding CompleteCommand}"
                 ToolTip="{Binding CompleteHintText}"
                 MinWidth="120" Height="40" Padding="20,0" FontSize="16" FontWeight="Bold" Cursor="Hand" Margin="0,0,20,0" Style="{StaticResource ButtonNormalStyle}"/>

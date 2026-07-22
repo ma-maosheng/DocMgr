@@ -19,10 +19,7 @@ namespace DocMgr.Services.YearlyArchive
         {
             ArgumentNullException.ThrowIfNull(criteria);
 
-            if (!string.Equals(
-                    criteria.ListingMode,
-                    CirculationLedgerListingMode.IncludeNeverCirculated,
-                    StringComparison.Ordinal))
+            if (!CirculationLedgerListingMode.NeedsNeverCirculated(criteria.ListingMode))
             {
                 return false;
             }

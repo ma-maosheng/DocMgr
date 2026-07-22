@@ -49,7 +49,8 @@ namespace DocMgr.Services.YearlyArchive
 
             var circulated = keys.Values
                 .Select(builder => builder.Build())
-                .OrderByDescending(row => row.HasCirculationActivity)
+                .OrderByDescending(row => row.HasLoss)
+                .ThenByDescending(row => row.HasCirculationActivity)
                 .ThenByDescending(row => row.LatestOperatedAt)
                 .ThenBy(row => row.ContainerCode, StringComparer.OrdinalIgnoreCase)
                 .ToList();
@@ -100,7 +101,8 @@ namespace DocMgr.Services.YearlyArchive
 
             return groups.Values
                 .Select(builder => builder.Build())
-                .OrderByDescending(row => row.LatestOperatedAt)
+                .OrderByDescending(row => row.HasLoss)
+                .ThenByDescending(row => row.LatestOperatedAt)
                 .ThenBy(row => row.BusinessNo, StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
@@ -144,7 +146,8 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return items
-                .OrderByDescending(row => row.OperatedAt)
+                .OrderByDescending(row => row.HasLoss)
+                .ThenByDescending(row => row.OperatedAt)
                 .ThenByDescending(row => row.ItemId)
                 .ToList();
         }
@@ -182,7 +185,8 @@ namespace DocMgr.Services.YearlyArchive
                 LifecycleChangeDisplay = row.LifecycleChangeDisplay,
                 OperatorName = row.OperatorName,
                 Remark = row.Remark,
-                FilingFactId = row.FilingFactId
+                FilingFactId = row.FilingFactId,
+                HasLoss = row.HasLoss
             };
         }
 
@@ -224,7 +228,7 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             builder.PhysicalTransactionCount++;
-            builder.TouchActivity(row.OperatedAt, row.TransactionTypeDisplay, row.FilingFactId);
+            builder.TouchActivity(row.OperatedAt, row.TransactionTypeDisplay, row.FilingFactId, row.HasLoss);
         }
 
         private static bool TryCreateContainerKey(
@@ -261,6 +265,8 @@ namespace DocMgr.Services.YearlyArchive
 
             public int RepresentativeFilingFactId { get; private set; }
 
+            public bool HasLoss { get; private set; }
+
             private ContainerMasterBuilder(CirculationContainerKey key)
             {
                 _key = key;
@@ -275,7 +281,8 @@ namespace DocMgr.Services.YearlyArchive
                     _year = row.ContainerYear,
                     _projectName = row.ContainerProjectName,
                     _locationDisplay = row.ContainerLocationDisplay,
-                    _statusDisplay = row.ContainerStatusDisplay
+                    _statusDisplay = row.ContainerStatusDisplay,
+                    HasLoss = row.HasLoss
                 };
             }
 
@@ -290,8 +297,13 @@ namespace DocMgr.Services.YearlyArchive
                 };
             }
 
-            public void TouchActivity(DateTime operatedAt, string activityDisplay, int filingFactId)
+            public void TouchActivity(DateTime operatedAt, string activityDisplay, int filingFactId, bool hasLoss = false)
             {
+                if (hasLoss)
+                {
+                    HasLoss = true;
+                }
+
                 if (filingFactId > 0)
                 {
                     _filingFactIds.Add(filingFactId);
@@ -320,7 +332,8 @@ namespace DocMgr.Services.YearlyArchive
                     ProcessNodeCount = ProcessNodeCount,
                     LatestOperatedAt = LatestOperatedAt,
                     LatestTransactionTypeDisplay = LatestActivityDisplay,
-                    RepresentativeFilingFactId = RepresentativeFilingFactId
+                    RepresentativeFilingFactId = RepresentativeFilingFactId,
+                    HasLoss = HasLoss
                 };
             }
         }
@@ -346,9 +359,16 @@ namespace DocMgr.Services.YearlyArchive
 
             private int RepresentativeFilingFactId { get; set; }
 
+            private bool HasLoss { get; set; }
+
             public void AddTransaction(MaterialTransactionLedgerRow row)
             {
                 SubItemCount++;
+                if (row.HasLoss)
+                {
+                    HasLoss = true;
+                }
+
                 Touch(row.OperatedAt, row.Summary, row.FilingFactId);
             }
 
@@ -381,7 +401,8 @@ namespace DocMgr.Services.YearlyArchive
                     SubItemCount = SubItemCount,
                     OutboundStatusDisplay = OutboundStatusDisplay,
                     ApplicantName = ApplicantName,
-                    RepresentativeFilingFactId = RepresentativeFilingFactId
+                    RepresentativeFilingFactId = RepresentativeFilingFactId,
+                    HasLoss = HasLoss
                 };
             }
         }

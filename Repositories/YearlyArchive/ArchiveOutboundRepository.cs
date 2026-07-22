@@ -721,6 +721,57 @@ namespace DocMgr.Repositories.YearlyArchive
                 facts = await BuildSyntheticFactsFromMediaItemLinksForSyncAsync(box);
             }
 
+            return await AttachCopyCountsForSyncAsync(facts);
+        }
+
+        public async Task<List<YearlyArchiveBoxMediaItemRow>> GetElectronicArchiveUnitMediaItemRowsForSyncAsync(
+            YearlyElectronicArchiveUnit unit)
+        {
+            ArgumentNullException.ThrowIfNull(unit);
+
+            string normalizedLocation = unit.StorageLocation?.Trim() ?? string.Empty;
+            string archiveNo = unit.ElectronicArchiveNo?.Trim() ?? string.Empty;
+            var facts = await _dbContext.YearlyArchiveFilingFacts
+                .Where(fact => fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                    && (fact.ContainerId == unit.Id
+                        || (!string.IsNullOrWhiteSpace(archiveNo)
+                            && (fact.ContainerCode == archiveNo
+                                || fact.CurrentContainerCode == archiveNo))
+                        || (!string.IsNullOrWhiteSpace(normalizedLocation)
+                            && (fact.CurrentStorageLocation == normalizedLocation
+                                || fact.StorageLocation == normalizedLocation))))
+                .OrderBy(fact => fact.FormNo)
+                .ThenBy(fact => fact.ItemName)
+                .ThenBy(fact => fact.Id)
+                .ToListAsync();
+
+            if (facts.Count == 0)
+            {
+                return [];
+            }
+
+            return await AttachCopyCountsForSyncAsync(facts);
+        }
+
+        public void RemoveArchiveBoxPlacementByBoxCode(string boxCode)
+        {
+            if (string.IsNullOrWhiteSpace(boxCode))
+            {
+                return;
+            }
+
+            string normalized = boxCode.Trim();
+            var placement = _dbContext.CabinetArchiveBoxPlacements
+                .FirstOrDefault(item => item.BoxCode == normalized);
+            if (placement != null)
+            {
+                _dbContext.CabinetArchiveBoxPlacements.Remove(placement);
+            }
+        }
+
+        private async Task<List<YearlyArchiveBoxMediaItemRow>> AttachCopyCountsForSyncAsync(
+            List<YearlyArchiveFilingFact> facts)
+        {
             if (facts.Count == 0)
             {
                 return [];
@@ -791,22 +842,6 @@ namespace DocMgr.Repositories.YearlyArchive
                 NoReturnCopyCount = fact.Id > 0 ? noReturnByFactId.GetValueOrDefault(fact.Id) : 0,
                 LostCopyCount = fact.Id > 0 ? lostByFactId.GetValueOrDefault(fact.Id) : 0,
             }).ToList();
-        }
-
-        public void RemoveArchiveBoxPlacementByBoxCode(string boxCode)
-        {
-            if (string.IsNullOrWhiteSpace(boxCode))
-            {
-                return;
-            }
-
-            string normalized = boxCode.Trim();
-            var placement = _dbContext.CabinetArchiveBoxPlacements
-                .FirstOrDefault(item => item.BoxCode == normalized);
-            if (placement != null)
-            {
-                _dbContext.CabinetArchiveBoxPlacements.Remove(placement);
-            }
         }
 
         private async Task<List<YearlyArchiveFilingFact>> BuildSyntheticFactsFromMediaItemLinksForSyncAsync(YearlyArchiveBox box)
