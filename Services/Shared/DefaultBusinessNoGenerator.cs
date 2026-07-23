@@ -11,6 +11,7 @@ namespace DocMgr.Services.Shared
         private readonly IArchiveOutboundRepository _archiveOutboundRepository;
         private readonly IArchiveReturnRepository _archiveReturnRepository;
         private readonly IHardDiskMediaRepository _hardDiskMediaRepository;
+        private readonly IHardDiskInventoryRegisterRepository _hardDiskInventoryRegisterRepository;
         private readonly IHardDiskDisposalRepository _hardDiskDisposalRepository;
 
         public DefaultBusinessNoGenerator(
@@ -18,12 +19,14 @@ namespace DocMgr.Services.Shared
             IArchiveOutboundRepository archiveOutboundRepository,
             IArchiveReturnRepository archiveReturnRepository,
             IHardDiskMediaRepository hardDiskMediaRepository,
+            IHardDiskInventoryRegisterRepository hardDiskInventoryRegisterRepository,
             IHardDiskDisposalRepository hardDiskDisposalRepository)
         {
             _archiveRegisterRepository = archiveRegisterRepository;
             _archiveOutboundRepository = archiveOutboundRepository;
             _archiveReturnRepository = archiveReturnRepository;
             _hardDiskMediaRepository = hardDiskMediaRepository;
+            _hardDiskInventoryRegisterRepository = hardDiskInventoryRegisterRepository;
             _hardDiskDisposalRepository = hardDiskDisposalRepository;
         }
 
@@ -62,8 +65,8 @@ namespace DocMgr.Services.Shared
                 BusinessNoCategory.AssetOutboundApply or
                 BusinessNoCategory.AssetDestroyApply => GetLastArchiveBusinessNoAsync(prefix),
                 BusinessNoCategory.DiskInboundRegister or
-                BusinessNoCategory.DiskOutboundApply or
-                BusinessNoCategory.DiskDestroyApply => _hardDiskMediaRepository.GetLastApplicationNoByPrefixAsync(prefix),
+                BusinessNoCategory.DiskOutboundApply => _hardDiskMediaRepository.GetLastApplicationNoByPrefixAsync(prefix),
+                BusinessNoCategory.DiskInventoryRegister => _hardDiskInventoryRegisterRepository.GetLastRegisterNoByPrefixAsync(prefix),
                 BusinessNoCategory.DiskDisposalApply => _hardDiskDisposalRepository.GetLastDisposalNoByPrefixAsync(prefix),
                 _ => throw new ArgumentException($"不支持的业务编号类别：{category}", nameof(category))
             };

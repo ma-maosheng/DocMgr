@@ -80,7 +80,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string StatusDisplay => HardDiskDisposalDomainValues.ToStatusDisplay(_record.Status);
 
         public string BannerText =>
-            "仅「在库(空盘)」「在库(损坏)」可离库处置；提交时核验未被其他业务征用，提交后由本单征用锁定。流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批通过 → 确认可上传 → 上传签批单与硬盘照片 → 办结。";
+            "仅「在库(空盘)」「在库(损坏)」「在库(盘失)」可离库处置；库内异常请先走「盘库登记」。提交时核验未被其他业务征用，提交后由本单征用锁定。流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批通过 → 确认可上传 → 上传签批单与硬盘照片 → 办结。";
 
         public ObservableCollection<string> ReasonOptions { get; } = new(HardDiskDisposalDomainValues.ReasonOptions);
 

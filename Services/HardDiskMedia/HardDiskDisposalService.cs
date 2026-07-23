@@ -368,6 +368,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             CompletedBy = record.CompletedBy,
             CompletedDateText = record.CompletedAt?.ToString("yyyy-MM-dd") ?? string.Empty,
             IsCompleted = record.IsCompleted,
+            PrintCount = record.PrintCount,
             Items = record.Items
                 .OrderBy(item => item.SortOrder)
                 .Select(item => new HardDiskDisposalPrintItemData
@@ -376,6 +377,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
                     DiskCode = item.DiskCode,
                     SerialNumber = item.SerialNumber,
                     BeforeMediaStatus = item.BeforeMediaStatus,
+                    BeforeMediaNature = item.BeforeMediaNature,
                     BeforeStorageLocation = item.BeforeStorageLocation
                 })
                 .ToList()
@@ -551,7 +553,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             string status = medium.Ledger?.MediaStatus?.Trim() ?? string.Empty;
             if (!IsInStockStatus(status))
             {
-                throw new InvalidOperationException($"硬盘【{medium.DiskCode}】当前状态为“{status}”，仅「在库(空盘)」「在库(损坏)」可离库处置。");
+                throw new InvalidOperationException($"硬盘【{medium.DiskCode}】当前状态为“{status}”，仅「在库(空盘)」「在库(损坏)」「在库(盘失)」可离库处置。");
             }
 
             if (await _repository.ExistsActiveDisposalForMediumAsync(medium.Id, excludeRecordId))
@@ -705,7 +707,8 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
     {
         string normalized = status?.Trim() ?? string.Empty;
         return string.Equals(normalized, HardDiskMedium.StatusInStockBlank, StringComparison.Ordinal)
-            || string.Equals(normalized, HardDiskMedium.StatusInStockDamaged, StringComparison.Ordinal);
+            || string.Equals(normalized, HardDiskMedium.StatusInStockDamaged, StringComparison.Ordinal)
+            || string.Equals(normalized, HardDiskMedium.StatusInStockLost, StringComparison.Ordinal);
     }
 
     private static HardDiskLedger EnsureLedger(HardDiskMedium medium, DateTime now)

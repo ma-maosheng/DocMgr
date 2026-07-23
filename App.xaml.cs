@@ -224,6 +224,9 @@ namespace DocMgr
             initializationState.ReportProgress("正在归一化硬盘申请单状态…");
             NormalizeHardDiskApplicationStatusStorage(db);
 
+            initializationState.ReportProgress("正在归一化硬盘台账状态文案…");
+            NormalizeHardDiskLedgerStatusStorage(db);
+
             initializationState.ReportProgress("正在归一化资料归还单状态…");
             NormalizeYearlyArchiveReturnStatusStorage(db);
 
@@ -346,6 +349,106 @@ namespace DocMgr
         private static void NormalizeHardDiskApplicationStatusStorage(AppDbContext db)
         {
             ArgumentNullException.ThrowIfNull(db);
+        }
+
+        /// <summary>
+        /// 硬盘台账/流水状态文案迁移：出库(销毁)→离库(处置)；
+        /// 已办结离库处置「盘失」对应台账若仍为出库(挂失)则改为在库(盘失)。
+        /// </summary>
+        private static void NormalizeHardDiskLedgerStatusStorage(AppDbContext db)
+        {
+            ArgumentNullException.ThrowIfNull(db);
+
+            bool changed = false;
+
+            foreach (var ledger in db.HardDiskLedgers)
+            {
+                string normalized = HardDiskMediaStatusNormalizer.Normalize(ledger.MediaStatus);
+                if (!string.Equals(ledger.MediaStatus, normalized, StringComparison.Ordinal))
+                {
+                    ledger.MediaStatus = normalized;
+                    changed = true;
+                }
+            }
+
+            foreach (var transaction in db.HardDiskMediaTransactions)
+            {
+                string before = HardDiskMediaStatusNormalizer.Normalize(transaction.BeforeStatus);
+                string after = HardDiskMediaStatusNormalizer.Normalize(transaction.AfterStatus);
+                string type = HardDiskMediaStatusNormalizer.NormalizeTransactionType(transaction.TransactionType);
+
+                if (!string.Equals(transaction.BeforeStatus, before, StringComparison.Ordinal)
+                    || !string.Equals(transaction.AfterStatus, after, StringComparison.Ordinal)
+                    || !string.Equals(transaction.TransactionType, type, StringComparison.Ordinal))
+                {
+                    transaction.BeforeStatus = before;
+                    transaction.AfterStatus = after;
+                    transaction.TransactionType = type;
+                    changed = true;
+                }
+            }
+
+            var disposalLostMediumIds = db.HardDiskDisposalRecords
+                .Where(record => record.Status == HardDiskDisposalRecord.StatusCompleted
+                    && record.DisposalReason == HardDiskDisposalDomainValues.ReasonLost)
+                .SelectMany(record => record.Items.Select(item => item.MediumId))
+                .Distinct()
+                .ToList();
+
+            if (disposalLostMediumIds.Count > 0)
+            {
+                var lostLedgers = db.HardDiskLedgers
+                    .Where(ledger => disposalLostMediumIds.Contains(ledger.MediumId))
+                    .ToList();
+
+                foreach (var ledger in lostLedgers)
+                {
+                    string current = HardDiskMediaStatusNormalizer.Normalize(ledger.MediaStatus);
+                    if (string.Equals(current, HardDiskMedium.StatusOutLost, StringComparison.Ordinal)
+                        || string.Equals(current, HardDiskMediaStatusNormalizer.LegacyStatusOutDestroyed, StringComparison.Ordinal))
+                    {
+                        ledger.MediaStatus = HardDiskMedium.StatusInStockLost;
+                        changed = true;
+                    }
+                }
+
+                var disposalNos = db.HardDiskDisposalRecords
+                    .Where(record => record.Status == HardDiskDisposalRecord.StatusCompleted
+                        && record.DisposalReason == HardDiskDisposalDomainValues.ReasonLost)
+                    .Select(record => record.DisposalNo)
+                    .ToList();
+
+                var relatedTransactions = db.HardDiskMediaTransactions
+                    .Where(item => disposalNos.Contains(item.RelatedBatch)
+                        && disposalLostMediumIds.Contains(item.MediumId))
+                    .ToList();
+
+                foreach (var transaction in relatedTransactions)
+                {
+                    string after = HardDiskMediaStatusNormalizer.Normalize(transaction.AfterStatus);
+                    if (string.Equals(after, HardDiskMedium.StatusOutLost, StringComparison.Ordinal)
+                        || string.Equals(after, HardDiskMedium.StatusDisposed, StringComparison.Ordinal)
+                        || string.Equals(after, HardDiskMediaStatusNormalizer.LegacyStatusOutDestroyed, StringComparison.Ordinal))
+                    {
+                        transaction.AfterStatus = HardDiskMedium.StatusInStockLost;
+                        changed = true;
+                    }
+
+                    string type = HardDiskMediaStatusNormalizer.NormalizeTransactionType(transaction.TransactionType);
+                    if (string.Equals(type, HardDiskMediaTransaction.TypeLossRegistration, StringComparison.Ordinal)
+                        || string.Equals(type, HardDiskMediaTransaction.TypeDisposal, StringComparison.Ordinal)
+                        || string.Equals(type, HardDiskMediaStatusNormalizer.LegacyStatusOutDestroyed, StringComparison.Ordinal))
+                    {
+                        transaction.TransactionType = HardDiskMediaTransaction.TypeInventoryLost;
+                        changed = true;
+                    }
+                }
+            }
+
+            if (changed)
+            {
+                db.SaveChanges();
+            }
         }
 
         /// <summary>

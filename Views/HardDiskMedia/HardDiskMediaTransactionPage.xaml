@@ -114,7 +114,18 @@
                             <DataGridTextColumn Header="台账登记日期" Binding="{Binding Ledger.RegisterDate, StringFormat=yyyy-MM-dd}" Width="120"/>
                             <DataGridTextColumn Header="状态" Binding="{Binding Ledger.MediaStatus}" Width="110"/>
                             <DataGridTextColumn Header="属性" Binding="{Binding Ledger.MediaNature}" Width="110"/>
-                            <DataGridTextColumn Header="征用锁" Binding="{Binding RegisterLockDisplayText}" Width="180"/>
+                            <DataGridTemplateColumn Header="征用" Width="50">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding RegisterLockMarkText}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   FontWeight="Bold"
+                                                   Foreground="#DC2626"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="征用详情" Binding="{Binding RegisterLockDisplayText}" Width="180"/>
                             <DataGridTextColumn Header="台账备注" Binding="{Binding Ledger.Remark}" Width="*"/>
                         </DataGrid.Columns>
                     </DataGrid>

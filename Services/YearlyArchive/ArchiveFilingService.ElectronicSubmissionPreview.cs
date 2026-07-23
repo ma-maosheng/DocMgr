@@ -335,7 +335,7 @@ namespace DocMgr.Services.YearlyArchive
             var ledger = medium.Ledger
                 ?? throw new InvalidOperationException($"硬盘 [{medium.DiskCode}] 缺少台账信息。");
 
-            if (ledger.MediaStatus == HardDiskMedium.StatusOutDestroyed || ledger.MediaStatus == HardDiskMedium.StatusOutLost)
+            if (HardDiskMedium.IsTerminalUnavailableStatus(ledger.MediaStatus))
             {
                 throw new InvalidOperationException($"硬盘 [{medium.DiskCode}] 当前状态为 {ledger.MediaStatus}，不能关联电子立档。");
             }

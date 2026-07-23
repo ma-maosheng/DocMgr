@@ -10,10 +10,14 @@ namespace DocMgr.Services.HardDiskMedia
     public class HardDiskMediaToDoProvider : IToDoProvider
     {
         private readonly IHardDiskMediaRepository _hardDiskMediaRepository;
+        private readonly IHardDiskDisposalRepository _hardDiskDisposalRepository;
 
-        public HardDiskMediaToDoProvider(IHardDiskMediaRepository hardDiskMediaRepository)
+        public HardDiskMediaToDoProvider(
+            IHardDiskMediaRepository hardDiskMediaRepository,
+            IHardDiskDisposalRepository hardDiskDisposalRepository)
         {
             _hardDiskMediaRepository = hardDiskMediaRepository;
+            _hardDiskDisposalRepository = hardDiskDisposalRepository;
         }
 
         /// <inheritdoc/>
@@ -54,6 +58,20 @@ namespace DocMgr.Services.HardDiskMedia
                     BizNo = item.ApplicationNo,
                     Stage = BuildApprovalPendingStage(item),
                     CreatedTime = item.ApplyTime,
+                    Priority = "高"
+                }));
+
+                // 离库处置：提交后直至办结前保留资料室待办（不含草稿/作废/已办结）。
+                var pendingDisposals = await _hardDiskDisposalRepository.GetPendingRecordsForToDoAsync(200);
+                result.AddRange(pendingDisposals.Select(item => new ToDoItem
+                {
+                    Id = $"HDD-{item.Id}-DISPOSAL-PENDING",
+                    Title = $"【硬盘离库处置】{ResolveDisposalToDoTitle(item)}：{BuildDisposalSummary(item)}",
+                    BizType = "HardDiskDisposal",
+                    BizId = item.Id,
+                    BizNo = item.DisposalNo,
+                    Stage = BuildDisposalPendingStage(item),
+                    CreatedTime = item.SubmittedAt ?? item.ApplyTime,
                     Priority = "高"
                 }));
             }
@@ -97,6 +115,45 @@ namespace DocMgr.Services.HardDiskMedia
                 HardDiskMediaApplication.StatusSignedUploaded => "已上传签批交接单-待办结",
                 _ => ApplicationWorkflowStatus.ToDisplay(application.ApplicationStatus)
             };
+        }
+
+        private static string ResolveDisposalToDoTitle(HardDiskDisposalRecord record) =>
+            record.Status switch
+            {
+                HardDiskDisposalRecord.StatusSubmitted => "待审批",
+                HardDiskDisposalRecord.StatusApproved => "待确认可上传",
+                HardDiskDisposalRecord.StatusSignedUploaded
+                    when !record.SignedAttachmentUploaded || !record.DiskPhotoUploaded => "待上传签批单/照片",
+                HardDiskDisposalRecord.StatusSignedUploaded => "待办结",
+                _ => "待办理"
+            };
+
+        private static string BuildDisposalPendingStage(HardDiskDisposalRecord record) =>
+            record.Status switch
+            {
+                HardDiskDisposalRecord.StatusSubmitted => "已提交-待审批",
+                HardDiskDisposalRecord.StatusApproved => "已审批-待确认可上传",
+                HardDiskDisposalRecord.StatusSignedUploaded
+                    when !record.SignedAttachmentUploaded || !record.DiskPhotoUploaded => "已确认可上传-待上传签批单/照片",
+                HardDiskDisposalRecord.StatusSignedUploaded => "已上传附件-待办结",
+                _ => HardDiskDisposalDomainValues.ToStatusDisplay(record.Status)
+            };
+
+        private static string BuildDisposalSummary(HardDiskDisposalRecord record)
+        {
+            string reason = record.DisposalReason?.Trim() ?? string.Empty;
+            string disks = record.DiskCodesSummary?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(disks))
+            {
+                disks = record.ItemCount > 0 ? $"{record.ItemCount} 块硬盘" : record.DisposalNo;
+            }
+
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                return disks;
+            }
+
+            return $"{reason} / {disks}";
         }
 
         private static bool IsArchiveRoomAdmin(User user)

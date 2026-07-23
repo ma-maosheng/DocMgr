@@ -1,7 +1,7 @@
-<Page x:Class="DocMgr.Views.HardDiskMedia.HardDiskDisposalPage"
+<Page x:Class="DocMgr.Views.HardDiskMedia.HardDiskInventoryRegisterPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      Title="HardDiskDisposalPage"
+      Title="HardDiskInventoryRegisterPage"
       Background="#F0F2F5">
     <Grid>
         <Grid.RowDefinitions>
@@ -12,12 +12,12 @@
 
         <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Margin="0" CornerRadius="0" Padding="16,12">
             <StackPanel Orientation="Horizontal">
-                <Button Content="新增处置" Command="{Binding AddCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
+                <Button Content="新增登记" Command="{Binding AddCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
                 <Button Content="打开办理" Command="{Binding OpenCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
                 <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="110" Margin="0,0,16,0"/>
 
                 <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                <ComboBox Width="200"
+                <ComboBox Width="160"
                           Style="{StaticResource ToolbarFilterComboBoxStyle}"
                           ItemsSource="{Binding StatusOptions}"
                           SelectedItem="{Binding SelectedStatus, Mode=TwoWay}"/>
@@ -53,7 +53,7 @@
                 <Border Grid.Row="0" Background="#B98A2E"/>
 
                 <TextBlock Grid.Row="1"
-                           Text="硬盘离库处置办理表"
+                           Text="硬盘盘库登记办理表"
                            Margin="0,12,0,4"
                            FontSize="22"
                            FontWeight="Bold"
@@ -62,7 +62,7 @@
                            TextDecorations="Underline"/>
 
                 <TextBlock Grid.Row="2"
-                           Text="Hard Disk Off-Warehouse Disposal Ledger"
+                           Text="Hard Disk Inventory Register Ledger"
                            Margin="0,0,0,8"
                            FontSize="12"
                            Foreground="#9A7B3F"
@@ -75,7 +75,7 @@
                         BorderBrush="#E2C98F"
                         BorderThickness="1"
                         CornerRadius="4">
-                    <TextBlock Text="适用于淘汰、损毁、盘失及其他原因的正式离库处置（含盘库登记后的在库盘失清账）；整单处置方式唯一。办结前须上传纸质签批单与硬盘照片。库内日常损坏/盘失请使用「盘库登记」。"
+                    <TextBlock Text="库内空白/损坏硬盘异常即时登记：损坏并改档口、盘失、损坏档口调整。确认办结即时写台账，无需审批签批。正式离库请使用「离库处置」。"
                                Foreground="#6F4A00"
                                TextWrapping="Wrap"
                                HorizontalAlignment="Center"/>
@@ -96,18 +96,15 @@
                       BorderThickness="0"
                       MouseDoubleClick="DgRecords_MouseDoubleClick">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="处置单编号" Binding="{Binding DisposalNo}" Width="150"/>
-                    <DataGridTextColumn Header="离库原因" Binding="{Binding DisposalReason}" Width="80"/>
-                    <DataGridTextColumn Header="处置方式" Binding="{Binding DispositionMethod}" Width="100"/>
+                    <DataGridTextColumn Header="登记单编号" Binding="{Binding RegisterNo}" Width="150"/>
+                    <DataGridTextColumn Header="登记类型" Binding="{Binding RegisterKind}" Width="120"/>
                     <DataGridTextColumn Header="硬盘数" Binding="{Binding ItemCount}" Width="70"/>
-                    <DataGridTextColumn Header="硬盘清单" Binding="{Binding DiskCodesSummary}" Width="220"/>
-                    <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="160"/>
-                    <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="90"/>
-                    <DataGridTextColumn Header="申请日期" Binding="{Binding ApplyTime, StringFormat=yyyy-MM-dd}" Width="110"/>
-                    <DataGridTextColumn Header="审批人" Binding="{Binding ApprovedBy}" Width="90"/>
-                    <DataGridCheckBoxColumn Header="已传签批单" Binding="{Binding SignedAttachmentUploaded}" Width="90"/>
-                    <DataGridCheckBoxColumn Header="已传照片" Binding="{Binding DiskPhotoUploaded}" Width="80"/>
-                    <DataGridTextColumn Header="备注" Binding="{Binding Remark}" Width="*"/>
+                    <DataGridTextColumn Header="硬盘清单" Binding="{Binding DiskCodesSummary}" Width="240"/>
+                    <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="100"/>
+                    <DataGridTextColumn Header="登记人" Binding="{Binding ApplicantName}" Width="90"/>
+                    <DataGridTextColumn Header="登记日期" Binding="{Binding ApplyTime, StringFormat=yyyy-MM-dd}" Width="110"/>
+                    <DataGridTextColumn Header="办结人" Binding="{Binding CompletedBy}" Width="90"/>
+                    <DataGridTextColumn Header="登记说明" Binding="{Binding Reason}" Width="*"/>
                 </DataGrid.Columns>
             </DataGrid>
         </Border>

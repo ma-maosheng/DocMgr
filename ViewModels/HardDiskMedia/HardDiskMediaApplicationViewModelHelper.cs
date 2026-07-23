@@ -121,7 +121,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
         internal static bool IsOutboundApplicationType(string? applicationType)
         {
             return IsSelectableOutboundApplicationType(applicationType) ||
-                   applicationType == HardDiskMediaApplication.TypeOutboundDestroy ||
                    applicationType == HardDiskMediaApplication.TypeRelocate;
         }
 

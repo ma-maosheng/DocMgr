@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using DocMgr.Models.Cabinets;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Models.HardDiskMedia
@@ -14,20 +15,20 @@ namespace DocMgr.Models.HardDiskMedia
         public const string StatusInStockBlank = "在库(空盘)";
         public const string StatusInStockData = "在库(资料)";
         public const string StatusInStockDamaged = "在库(损坏)";
+        public const string StatusInStockLost = "在库(盘失)";
         public const string StatusOutTemporary = "出库(临时)";
         public const string StatusOutLongTerm = "出库(长期)";
         public const string StatusOutPermanent = "出库(永久)";
-        public const string StatusOutDestroyed = "出库(销毁)";
         public const string StatusOutLost = "出库(挂失)";
+        public const string StatusDisposed = "离库(处置)";
 
         public const string StatusBlankInStock = StatusInStockBlank;
         public const string StatusBorrowed = StatusOutTemporary;
         public const string StatusCarrierInStock = StatusInStockData;
         public const string StatusTransferred = StatusOutPermanent;
-        public const string StatusDestroyed = StatusOutDestroyed;
 
         /// <summary>
-        /// 判断硬盘是否处于在库可迁档状态（含资料盘与损坏盘）。
+        /// 判断硬盘是否处于在库可迁档状态（含资料盘与损坏盘；不含盘失终态）。
         /// </summary>
         public static bool IsInStockRelocatableStatus(string? status)
         {
@@ -39,6 +40,22 @@ namespace DocMgr.Models.HardDiskMedia
             string normalized = status.Trim();
             return string.Equals(normalized, StatusInStockData, StringComparison.Ordinal)
                 || string.Equals(normalized, StatusInStockDamaged, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// 是否为不可再业务占用的终态（离库处置 / 出库挂失 / 在库盘失）。
+        /// </summary>
+        public static bool IsTerminalUnavailableStatus(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+            {
+                return false;
+            }
+
+            string normalized = status.Trim();
+            return string.Equals(normalized, StatusDisposed, StringComparison.Ordinal)
+                || string.Equals(normalized, StatusOutLost, StringComparison.Ordinal)
+                || string.Equals(normalized, StatusInStockLost, StringComparison.Ordinal);
         }
 
         public const string RegistrationMethodImported = "文件导入登记";
@@ -146,7 +163,15 @@ namespace DocMgr.Models.HardDiskMedia
         public virtual HardDiskRegisterLock? RegisterLock { get; set; }
 
         /// <summary>
-        /// 台账列表征用锁列显示文本。
+        /// 台账列表征用标识列标记（有征用锁时显示锁图标；WPF 多为单色，界面以红色显示）。
+        /// </summary>
+        [NotMapped]
+        public string RegisterLockMarkText => RegisterLock != null
+            ? CabinetOccupationLockSupport.LockBadgeMark
+            : string.Empty;
+
+        /// <summary>
+        /// 台账列表征用详情列显示文本。
         /// </summary>
         [NotMapped]
         public string RegisterLockDisplayText => HardDiskRegisterLockFilterSupport.GetGridDisplayText(RegisterLock);

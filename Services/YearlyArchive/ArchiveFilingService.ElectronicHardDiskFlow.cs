@@ -1190,7 +1190,7 @@ namespace DocMgr.Services.YearlyArchive
             foreach (var medium in media)
             {
                 var ledger = EnsureHardDiskLedger(medium, archivedAt);
-                if (ledger.MediaStatus == HardDiskMedium.StatusOutDestroyed || ledger.MediaStatus == HardDiskMedium.StatusOutLost)
+                if (HardDiskMedium.IsTerminalUnavailableStatus(ledger.MediaStatus))
                 {
                     throw new InvalidOperationException($"硬盘 [{medium.DiskCode}] 当前状态为 {ledger.MediaStatus}，不能关联电子立档。");
                 }

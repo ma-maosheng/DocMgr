@@ -19,7 +19,6 @@ namespace DocMgr.Services.HardDiskMedia
                 HardDiskMediaApplication.TypeOutboundTemporary => HardDiskMediaTransaction.TypeOutboundTemporary,
                 HardDiskMediaApplication.TypeOutboundLongTerm => HardDiskMediaTransaction.TypeOutboundLongTerm,
                 HardDiskMediaApplication.TypeOutboundPermanent => HardDiskMediaTransaction.TypeOutboundPermanent,
-                HardDiskMediaApplication.TypeOutboundDestroy => HardDiskMediaTransaction.TypeOutboundDestroy,
                 HardDiskMediaApplication.TypeReturnBlankRegistration => HardDiskMediaTransaction.TypeReturnRegistration,
                 HardDiskMediaApplication.TypeReturnDataRegistration => HardDiskMediaTransaction.TypeReturnRegistration,
                 HardDiskMediaApplication.TypeReturnDamagedRegistration => HardDiskMediaTransaction.TypeReturnRegistration,
@@ -58,11 +57,6 @@ namespace DocMgr.Services.HardDiskMedia
                     ledger.MediaStatus = HardDiskMedium.StatusOutPermanent;
                     ledger.HolderOrOrganization = string.IsNullOrWhiteSpace(application.TargetPersonOrUnit) ? ledger.HolderOrOrganization : application.TargetPersonOrUnit.Trim();
                     ledger.StorageLocation = string.IsNullOrWhiteSpace(application.TargetLocation) ? ledger.StorageLocation : application.TargetLocation.Trim();
-                    ledger.NeedReturn = false;
-                    break;
-
-                case HardDiskMediaApplication.TypeOutboundDestroy:
-                    ledger.MediaStatus = HardDiskMedium.StatusOutDestroyed;
                     ledger.NeedReturn = false;
                     break;
 
@@ -287,7 +281,6 @@ namespace DocMgr.Services.HardDiskMedia
             bool requiresReason = application.ApplicationType == HardDiskMediaApplication.TypeOutboundTemporary ||
                                   application.ApplicationType == HardDiskMediaApplication.TypeOutboundLongTerm ||
                                   application.ApplicationType == HardDiskMediaApplication.TypeOutboundPermanent ||
-                                  application.ApplicationType == HardDiskMediaApplication.TypeOutboundDestroy ||
                                   application.ApplicationType == HardDiskMediaApplication.TypeRelocate ||
                                   application.ApplicationType == HardDiskMediaApplication.TypeReturnDamagedRegistration ||
                                   application.ApplicationType == HardDiskMediaApplication.TypeLossRegistration ||
@@ -344,7 +337,6 @@ namespace DocMgr.Services.HardDiskMedia
                 applicationType == HardDiskMediaApplication.TypeOutboundTemporary ||
                 applicationType == HardDiskMediaApplication.TypeOutboundLongTerm ||
                 applicationType == HardDiskMediaApplication.TypeOutboundPermanent ||
-                applicationType == HardDiskMediaApplication.TypeOutboundDestroy ||
                 applicationType == HardDiskMediaApplication.TypeRelocate;
 
             bool isReturnApply = IsReturnOrLossRegistrationType(applicationType);
@@ -357,15 +349,11 @@ namespace DocMgr.Services.HardDiskMedia
             if (applicationType == HardDiskMediaApplication.TypeOutboundTemporary ||
                 applicationType == HardDiskMediaApplication.TypeOutboundLongTerm ||
                 applicationType == HardDiskMediaApplication.TypeOutboundPermanent ||
-                applicationType == HardDiskMediaApplication.TypeRelocate ||
-                applicationType == HardDiskMediaApplication.TypeOutboundDestroy)
+                applicationType == HardDiskMediaApplication.TypeRelocate)
             {
                 if (!IsInStockStatus(mediaStatus))
                 {
-                    throw new InvalidOperationException(
-                        applicationType == HardDiskMediaApplication.TypeOutboundDestroy
-                            ? "仅在库介质可发起出库(销毁)申请。"
-                            : "仅在库介质可发起出库/调整申请。");
+                    throw new InvalidOperationException("仅在库介质可发起出库/调整申请。");
                 }
 
                 return;
@@ -407,7 +395,6 @@ namespace DocMgr.Services.HardDiskMedia
                 HardDiskMediaApplication.TypeOutboundTemporary or
                 HardDiskMediaApplication.TypeOutboundLongTerm or
                 HardDiskMediaApplication.TypeOutboundPermanent or
-                HardDiskMediaApplication.TypeOutboundDestroy or
                 HardDiskMediaApplication.TypeRelocate
                     => new[]
                     {

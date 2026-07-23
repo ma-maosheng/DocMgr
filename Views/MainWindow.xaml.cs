@@ -469,6 +469,7 @@ namespace DocMgr.Views
                 HardDiskMediaOutboundApplicationPage => BtnDiskBorrow,
                 HardDiskMediaApprovalPage => BtnDiskApproval,
                 HardDiskMediaReturnRegistrationPage page => ResolveHardDiskReturnNavButton(page),
+                HardDiskInventoryRegisterPage => BtnDiskInventoryRegister,
                 HardDiskDisposalPage => BtnDiskOffWarehouse,
                 HardDiskMediaTransactionPage => BtnDiskDispose,
                 OpticalDiscMediumLedgerPage => BtnOpticalDiscLedger,
@@ -597,6 +598,7 @@ namespace DocMgr.Views
                     : "介质管理（硬盘·归还申请）",
                 HardDiskMediaTransactionPage => "介质管理（硬盘·硬盘台账）",
                 HardDiskMediaApprovalPage => "介质管理（硬盘·出库审批）",
+                HardDiskInventoryRegisterPage => "介质管理（硬盘·盘库登记）",
                 HardDiskDisposalPage => "介质管理（硬盘·离库处置）",
                 HardDiskMediaPage => "介质管理（硬盘·概览）",
                 UserManagementPage => "系统设置（用户管理）",
@@ -642,6 +644,13 @@ namespace DocMgr.Views
             if (item.BizType == "HardDiskMediaReturnRegistration")
             {
                 NavigateToHardDiskReturnPage(HardDiskReturnWorkspaceMode.Approval);
+                return Task.CompletedTask;
+            }
+
+            if (item.BizType == "HardDiskDisposal")
+            {
+                TxtPageTitle.Text = "介质管理（硬盘·离库处置）";
+                MainContentFrame.Navigate(new HardDiskDisposalPage());
                 return Task.CompletedTask;
             }
 
@@ -762,6 +771,7 @@ namespace DocMgr.Views
             SetNavButton(BtnDiskApproval, canMediaAdmin);
             SetNavButton(BtnDiskReturnApply, canSubmitApplication);
             SetNavButton(BtnDiskReturnApproval, canMediaAdmin);
+            SetNavButton(BtnDiskInventoryRegister, canMediaAdmin);
             SetNavButton(BtnDiskOffWarehouse, canMediaAdmin);
             SetNavButton(BtnDiskDispose, true);
             SetNavButton(BtnOpticalDiscOverview, true);
@@ -1246,6 +1256,12 @@ namespace DocMgr.Views
         private void BtnDiskReturnApproval_Click(object sender, RoutedEventArgs e)
         {
             NavigateToHardDiskReturnPage(HardDiskReturnWorkspaceMode.Approval);
+        }
+
+        private void BtnDiskInventoryRegister_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "介质管理（硬盘·盘库登记）";
+            MainContentFrame.Navigate(new HardDiskInventoryRegisterPage());
         }
 
         private void BtnDiskOffWarehouse_Click(object sender, RoutedEventArgs e)

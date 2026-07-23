@@ -11,10 +11,10 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
-        <LinearGradientBrush x:Key="DisposalHeaderBrush" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#6F4A00" Offset="0"/>
-            <GradientStop Color="#8B6914" Offset="0.55"/>
-            <GradientStop Color="#B98A2E" Offset="1"/>
+        <LinearGradientBrush x:Key="DisposalHeaderBrush" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#FFFBEB" Offset="0"/>
+            <GradientStop Color="#FFF3D6" Offset="0.5"/>
+            <GradientStop Color="#F5E6C8" Offset="1"/>
         </LinearGradientBrush>
         <LinearGradientBrush x:Key="DisposalCardAccentBrush" StartPoint="0,0" EndPoint="1,0">
             <GradientStop Color="#B98A2E" Offset="0"/>
@@ -73,16 +73,20 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- 顶栏：咖金渐变 -->
-        <Border Grid.Row="0" Background="{StaticResource DisposalHeaderBrush}" Padding="16,14">
+        <!-- 顶栏：浅米黄，避免深色过硬 -->
+        <Border Grid.Row="0"
+                Background="{StaticResource DisposalHeaderBrush}"
+                BorderBrush="#E2C98F"
+                BorderThickness="0,0,0,1"
+                Padding="16,14">
             <StackPanel>
                 <TextBlock Text="{Binding WindowTitle}"
                            FontSize="18"
                            FontWeight="Bold"
-                           Foreground="#FFFDF7"/>
+                           Foreground="#6F4A00"/>
                 <TextBlock Text="{Binding BannerText}"
                            Margin="0,6,0,0"
-                           Foreground="#F5E6C8"
+                           Foreground="#9A7B3F"
                            FontSize="12"
                            TextWrapping="Wrap"/>
             </StackPanel>

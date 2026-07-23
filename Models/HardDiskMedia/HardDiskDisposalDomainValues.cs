@@ -50,11 +50,12 @@ namespace DocMgr.Models.HardDiskMedia
             AttachmentCategoryOther
         ];
 
-        /// <summary>可纳入离库处置的介质状态（不含在库资料盘）。</summary>
+        /// <summary>可纳入离库处置的介质状态（含盘库登记后的在库盘失）。</summary>
         public static IReadOnlyList<string> SelectableMediaStatusOptions { get; } =
         [
             HardDiskMedium.StatusInStockBlank,
-            HardDiskMedium.StatusInStockDamaged
+            HardDiskMedium.StatusInStockDamaged,
+            HardDiskMedium.StatusInStockLost
         ];
 
         /// <summary>是否为有效离库原因。</summary>
@@ -71,13 +72,11 @@ namespace DocMgr.Models.HardDiskMedia
             return DispositionMethodOptions.Any(item => string.Equals(item, normalized, StringComparison.Ordinal));
         }
 
-        /// <summary>按离库原因解析办结后介质状态。</summary>
+        /// <summary>办结后统一写入「离库(处置)」终态（含原因=盘失的正式清账）。</summary>
         public static string ResolveTerminalMediaStatus(string? reason)
         {
-            string normalized = reason?.Trim() ?? string.Empty;
-            return string.Equals(normalized, ReasonLost, StringComparison.Ordinal)
-                ? HardDiskMedium.StatusOutLost
-                : HardDiskMedium.StatusOutDestroyed;
+            _ = reason;
+            return HardDiskMedium.StatusDisposed;
         }
 
         /// <summary>按离库原因解析流转类型。</summary>
@@ -85,8 +84,8 @@ namespace DocMgr.Models.HardDiskMedia
         {
             string normalized = reason?.Trim() ?? string.Empty;
             return string.Equals(normalized, ReasonLost, StringComparison.Ordinal)
-                ? HardDiskMediaTransaction.TypeLossRegistration
-                : HardDiskMediaTransaction.TypeOutboundDestroy;
+                ? HardDiskMediaTransaction.TypeInventoryLost
+                : HardDiskMediaTransaction.TypeDisposal;
         }
 
         /// <summary>是否需要填写「其他」说明（原因或其他处置方式为「其他」）。</summary>

@@ -902,11 +902,6 @@ namespace DocMgr.Services.HardDiskMedia
 
         private static BusinessNoCategory ResolveBusinessNoCategory(string applicationType)
         {
-            if (string.Equals(applicationType, HardDiskMediaApplication.TypeOutboundDestroy, StringComparison.Ordinal))
-            {
-                return BusinessNoCategory.DiskDestroyApply;
-            }
-
             if (IsReturnOrLossRegistrationType(applicationType))
             {
                 return BusinessNoCategory.DiskInboundRegister;

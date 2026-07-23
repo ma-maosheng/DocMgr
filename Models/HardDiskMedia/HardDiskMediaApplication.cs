@@ -46,7 +46,6 @@ namespace DocMgr.Models.HardDiskMedia
         public const string TypeOutboundTemporary = "出库(临时)申请";
         public const string TypeOutboundLongTerm = "出库(长期)申请";
         public const string TypeOutboundPermanent = "出库(永久)申请";
-        public const string TypeOutboundDestroy = "出库(销毁)申请";
         public const string TypeReturnBlankRegistration = "归还登记(空盘)";
         public const string TypeReturnDataRegistration = "归还登记(资料)";
         public const string TypeReturnDamagedRegistration = "归还登记(损坏)";
@@ -56,7 +55,6 @@ namespace DocMgr.Models.HardDiskMedia
         public const string TypeReturn = TypeReturnBlankRegistration;
         public const string TypeConvertCarrier = TypeReturnDataRegistration;
         public const string TypeTransferOut = TypeOutboundPermanent;
-        public const string TypeDestroy = TypeOutboundDestroy;
         public const string TypeRelocate = "位置调整申请";
 
         /// <summary>

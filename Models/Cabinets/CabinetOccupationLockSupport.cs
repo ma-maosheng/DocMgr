@@ -1,5 +1,3 @@
-using DocMgr.Models.HardDiskMedia;
-
 namespace DocMgr.Models.Cabinets
 {
     /// <summary>
@@ -7,48 +5,15 @@ namespace DocMgr.Models.Cabinets
     /// </summary>
     public static class CabinetOccupationLockSupport
     {
-        private const string WithdrawalLockKindText = "出库预订";
+        /// <summary>占用/征用角标统一符号（WPF 多为单色字形，界面以红色区分）。</summary>
+        public const string LockBadgeMark = "🔒";
 
         /// <summary>
-        /// 解析档口卡片角标短文案。
+        /// 解析档口卡片角标短文案：有占用时统一显示锁标记。
         /// </summary>
         public static string ResolveBadgeText(CabinetOccupationLockDescriptor descriptor)
         {
-            if (!descriptor.HasLock)
-            {
-                return string.Empty;
-            }
-
-            return ResolveBadgeText(descriptor.LockKindText, descriptor.BusinessTypeText);
-        }
-
-        /// <summary>
-        /// 按占用类别与业务类型解析角标短文案。
-        /// </summary>
-        public static string ResolveBadgeText(string? lockKindText, string? businessTypeText)
-        {
-            string businessType = businessTypeText?.Trim() ?? string.Empty;
-            if (string.Equals(businessType, HardDiskRegisterLock.BusinessTypeArchiveOutboundRequisition, StringComparison.Ordinal))
-            {
-                return "征用";
-            }
-
-            if (string.Equals(businessType, HardDiskRegisterLock.BusinessTypeArchiveRegister, StringComparison.Ordinal))
-            {
-                return "登记";
-            }
-
-            if (string.Equals(businessType, HardDiskRegisterLock.BusinessTypeOutboundApplication, StringComparison.Ordinal))
-            {
-                return "借出";
-            }
-
-            if (string.Equals(lockKindText?.Trim(), WithdrawalLockKindText, StringComparison.Ordinal))
-            {
-                return "预订";
-            }
-
-            return "占用";
+            return descriptor.HasLock ? LockBadgeMark : string.Empty;
         }
     }
 }

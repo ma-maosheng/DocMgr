@@ -265,11 +265,12 @@ public static partial class FieldDomainSeedService
                         new(string.Empty, HardDiskMedium.StatusInStockBlank, HardDiskMedium.StatusInStockBlank, true, 10),
                         new(string.Empty, HardDiskMedium.StatusInStockData, HardDiskMedium.StatusInStockData, true, 20),
                         new(string.Empty, HardDiskMedium.StatusInStockDamaged, HardDiskMedium.StatusInStockDamaged, true, 30),
-                        new(string.Empty, HardDiskMedium.StatusOutTemporary, HardDiskMedium.StatusOutTemporary, true, 40),
-                        new(string.Empty, HardDiskMedium.StatusOutLongTerm, HardDiskMedium.StatusOutLongTerm, true, 50),
-                        new(string.Empty, HardDiskMedium.StatusOutPermanent, HardDiskMedium.StatusOutPermanent, true, 60),
-                        new(string.Empty, HardDiskMedium.StatusOutDestroyed, HardDiskMedium.StatusOutDestroyed, true, 70),
-                        new(string.Empty, HardDiskMedium.StatusOutLost, HardDiskMedium.StatusOutLost, true, 80)
+                        new(string.Empty, HardDiskMedium.StatusInStockLost, HardDiskMedium.StatusInStockLost, true, 40),
+                        new(string.Empty, HardDiskMedium.StatusOutTemporary, HardDiskMedium.StatusOutTemporary, true, 50),
+                        new(string.Empty, HardDiskMedium.StatusOutLongTerm, HardDiskMedium.StatusOutLongTerm, true, 60),
+                        new(string.Empty, HardDiskMedium.StatusOutPermanent, HardDiskMedium.StatusOutPermanent, true, 70),
+                        new(string.Empty, HardDiskMedium.StatusOutLost, HardDiskMedium.StatusOutLost, true, 80),
+                        new(string.Empty, HardDiskMedium.StatusDisposed, HardDiskMedium.StatusDisposed, true, 90)
                     }),
                 new(
                     nameof(HardDiskLedger),
@@ -283,11 +284,12 @@ public static partial class FieldDomainSeedService
                         new(string.Empty, HardDiskMedium.StatusInStockBlank, HardDiskMedium.StatusInStockBlank, true, 10),
                         new(string.Empty, HardDiskMedium.StatusInStockData, HardDiskMedium.StatusInStockData, true, 20),
                         new(string.Empty, HardDiskMedium.StatusInStockDamaged, HardDiskMedium.StatusInStockDamaged, true, 30),
-                        new(string.Empty, HardDiskMedium.StatusOutTemporary, HardDiskMedium.StatusOutTemporary, true, 40),
-                        new(string.Empty, HardDiskMedium.StatusOutLongTerm, HardDiskMedium.StatusOutLongTerm, true, 50),
-                        new(string.Empty, HardDiskMedium.StatusOutPermanent, HardDiskMedium.StatusOutPermanent, true, 60),
-                        new(string.Empty, HardDiskMedium.StatusOutDestroyed, HardDiskMedium.StatusOutDestroyed, true, 70),
-                        new(string.Empty, HardDiskMedium.StatusOutLost, HardDiskMedium.StatusOutLost, true, 80)
+                        new(string.Empty, HardDiskMedium.StatusInStockLost, HardDiskMedium.StatusInStockLost, true, 40),
+                        new(string.Empty, HardDiskMedium.StatusOutTemporary, HardDiskMedium.StatusOutTemporary, true, 50),
+                        new(string.Empty, HardDiskMedium.StatusOutLongTerm, HardDiskMedium.StatusOutLongTerm, true, 60),
+                        new(string.Empty, HardDiskMedium.StatusOutPermanent, HardDiskMedium.StatusOutPermanent, true, 70),
+                        new(string.Empty, HardDiskMedium.StatusOutLost, HardDiskMedium.StatusOutLost, true, 80),
+                        new(string.Empty, HardDiskMedium.StatusDisposed, HardDiskMedium.StatusDisposed, true, 90)
                     }),
                 new(
                     nameof(HardDiskLedger),
@@ -313,12 +315,11 @@ public static partial class FieldDomainSeedService
                         new(string.Empty, HardDiskMediaApplication.TypeOutboundTemporary, HardDiskMediaApplication.TypeOutboundTemporary, true, 10),
                         new(string.Empty, HardDiskMediaApplication.TypeOutboundLongTerm, HardDiskMediaApplication.TypeOutboundLongTerm, true, 20),
                         new(string.Empty, HardDiskMediaApplication.TypeOutboundPermanent, HardDiskMediaApplication.TypeOutboundPermanent, true, 30),
-                        new(string.Empty, HardDiskMediaApplication.TypeOutboundDestroy, HardDiskMediaApplication.TypeOutboundDestroy, false, 40),
-                        new(string.Empty, HardDiskMediaApplication.TypeReturnBlankRegistration, HardDiskMediaApplication.TypeReturnBlankRegistration, true, 50),
-                        new(string.Empty, HardDiskMediaApplication.TypeReturnDataRegistration, HardDiskMediaApplication.TypeReturnDataRegistration, true, 60),
-                        new(string.Empty, HardDiskMediaApplication.TypeReturnDamagedRegistration, HardDiskMediaApplication.TypeReturnDamagedRegistration, true, 70),
-                        new(string.Empty, HardDiskMediaApplication.TypeLossRegistration, HardDiskMediaApplication.TypeLossRegistration, true, 80),
-                        new(string.Empty, HardDiskMediaApplication.TypeRelocate, HardDiskMediaApplication.TypeRelocate, true, 90)
+                        new(string.Empty, HardDiskMediaApplication.TypeReturnBlankRegistration, HardDiskMediaApplication.TypeReturnBlankRegistration, true, 40),
+                        new(string.Empty, HardDiskMediaApplication.TypeReturnDataRegistration, HardDiskMediaApplication.TypeReturnDataRegistration, true, 50),
+                        new(string.Empty, HardDiskMediaApplication.TypeReturnDamagedRegistration, HardDiskMediaApplication.TypeReturnDamagedRegistration, true, 60),
+                        new(string.Empty, HardDiskMediaApplication.TypeLossRegistration, HardDiskMediaApplication.TypeLossRegistration, true, 70),
+                        new(string.Empty, HardDiskMediaApplication.TypeRelocate, HardDiskMediaApplication.TypeRelocate, true, 80)
                     }),
                 new(
                     "HardDiskMediaApplication",
@@ -350,10 +351,14 @@ public static partial class FieldDomainSeedService
                         new(string.Empty, HardDiskMediaTransaction.TypeOutboundTemporary, HardDiskMediaTransaction.TypeOutboundTemporary, true, 20),
                         new(string.Empty, HardDiskMediaTransaction.TypeOutboundLongTerm, HardDiskMediaTransaction.TypeOutboundLongTerm, true, 30),
                         new(string.Empty, HardDiskMediaTransaction.TypeOutboundPermanent, HardDiskMediaTransaction.TypeOutboundPermanent, true, 40),
-                        new(string.Empty, HardDiskMediaTransaction.TypeOutboundDestroy, HardDiskMediaTransaction.TypeOutboundDestroy, true, 50),
+                        new(string.Empty, HardDiskMediaTransaction.TypeDisposal, HardDiskMediaTransaction.TypeDisposal, true, 50),
                         new(string.Empty, HardDiskMediaTransaction.TypeReturnRegistration, HardDiskMediaTransaction.TypeReturnRegistration, true, 60),
                         new(string.Empty, HardDiskMediaTransaction.TypeLossRegistration, HardDiskMediaTransaction.TypeLossRegistration, true, 70),
-                        new(string.Empty, HardDiskMediaTransaction.TypeRelocate, HardDiskMediaTransaction.TypeRelocate, true, 80)
+                        new(string.Empty, HardDiskMediaTransaction.TypeInventoryLost, HardDiskMediaTransaction.TypeInventoryLost, true, 80),
+                        new(string.Empty, HardDiskMediaTransaction.TypeInventoryRegisterDamage, HardDiskMediaTransaction.TypeInventoryRegisterDamage, true, 85),
+                        new(string.Empty, HardDiskMediaTransaction.TypeInventoryRegisterLost, HardDiskMediaTransaction.TypeInventoryRegisterLost, true, 86),
+                        new(string.Empty, HardDiskMediaTransaction.TypeInventoryRegisterRelocate, HardDiskMediaTransaction.TypeInventoryRegisterRelocate, true, 87),
+                        new(string.Empty, HardDiskMediaTransaction.TypeRelocate, HardDiskMediaTransaction.TypeRelocate, true, 90)
                     })
             };
     }

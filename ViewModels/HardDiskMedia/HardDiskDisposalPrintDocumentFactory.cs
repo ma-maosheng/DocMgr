@@ -1,4 +1,6 @@
+using System.Text;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using DocMgr.Models.HardDiskMedia;
@@ -15,26 +17,35 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private static readonly FontFamily LabelFont = new("SimHei");
         private static readonly FontFamily BodyFont = new("SimSun");
 
+        private const double TitleChromeHeight = 90;
+        private const double HeaderHeight = 28;
+        /// <summary>单行内容统一行高（原因/方式、说明、申请人、备注等）。</summary>
+        private const double StandardRowHeight = 36;
+        /// <summary>资料室审批（意见+签字，约 2 行）。</summary>
+        private const double ApprovalRowHeight = 72;
+        /// <summary>签批签字（三方签字，约 3 行）。</summary>
+        private const double SignatureRowHeight = 96;
+        private const double RowChromeDip = 6;
+        private const string BlankDateSuffix = "日期:______年___月___日";
+
         internal static FlowDocument Create(HardDiskDisposalPrintData data)
         {
             ArgumentNullException.ThrowIfNull(data);
 
-            var document = new FlowDocument
-            {
-                FontFamily = BodyFont,
-                FontSize = 12,
-                PagePadding = new Thickness(0),
-                ColumnWidth = double.PositiveInfinity
-            };
-            PrintPageLayoutSupport.ApplyA4MediumMargins(document);
+            double itemRowHeight = CalculateItemRowHeight();
+            var document = CreateDocumentSkeleton();
 
-            document.Blocks.Add(new Paragraph(new Run("硬盘离库处置签批单"))
+            document.Blocks.Add(new Paragraph(new Run(""))
+            {
+                Margin = new Thickness(0, 0, 0, 28)
+            });
+            document.Blocks.Add(new Paragraph(new Run("河北省第三测绘院资料室硬盘离库处置签批单"))
             {
                 FontFamily = TitleFont,
-                FontSize = 20,
+                FontSize = 22,
                 FontWeight = FontWeights.Bold,
                 TextAlignment = TextAlignment.Center,
-                Margin = new Thickness(0, 0, 0, 12)
+                Margin = new Thickness(0, 0, 0, 18)
             });
 
             document.Blocks.Add(CreateHeaderTable(
@@ -42,25 +53,62 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 $"申请日期：{EmptyAsPlaceholder(data.ApplyDateText)}"));
 
             var rowGroup = new TableRowGroup();
-            rowGroup.Rows.Add(CreateDoubleRow("离库原因", data.DisposalReason, "处置方式", data.DispositionMethod));
-            rowGroup.Rows.Add(CreateSingleRow("其他说明", EmptyAsPlaceholder(data.OtherRemark), 48));
-            rowGroup.Rows.Add(CreateSingleRow("申请说明", EmptyAsPlaceholder(data.Reason), 72));
-            rowGroup.Rows.Add(CreateSingleRow("待处置硬盘清单", BuildItemList(data), CalculateItemRowHeight(data.Items.Count)));
-            rowGroup.Rows.Add(CreateDoubleRow("申请人", EmptyAsPlaceholder(data.ApplicantName), "申请部门", EmptyAsPlaceholder(data.ApplicantDept)));
-            rowGroup.Rows.Add(CreateSingleRow("资料室审批", BuildApprovalSection(data), 56));
-            rowGroup.Rows.Add(CreateSingleRow("签批签字", BuildSignatureSection(data), 96));
-            rowGroup.Rows.Add(CreateSingleRow("备注", EmptyAsPlaceholder(data.Remark), 48));
+            rowGroup.Rows.Add(CreateDoubleRow(
+                "离库原因", EmptyAsPlaceholder(data.DisposalReason),
+                "处置方式", EmptyAsPlaceholder(data.DispositionMethod),
+                StandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("其他说明", EmptyAsPlaceholder(data.OtherRemark), StandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("申请说明", EmptyAsPlaceholder(data.Reason), StandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow(
+                "待处置硬盘清单",
+                BuildItemList(data),
+                itemRowHeight,
+                verticalAlignTop: true));
+            rowGroup.Rows.Add(CreateDoubleRow(
+                "申请人", EmptyAsPlaceholder(data.ApplicantName),
+                "申请部门", EmptyAsPlaceholder(data.ApplicantDept),
+                StandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("资料室审批", BuildApprovalSection(data), ApprovalRowHeight, verticalAlignTop: true));
+            rowGroup.Rows.Add(CreateSingleRow("签批签字", BuildSignatureSection(data), SignatureRowHeight, verticalAlignTop: true));
+            rowGroup.Rows.Add(CreateSingleRow("备注", EmptyAsPlaceholder(data.Remark), StandardRowHeight));
 
             document.Blocks.Add(CreateMainTable(rowGroup));
-            document.Blocks.Add(new Paragraph(new Run(
-                "说明：1. 本单由资料室资料管理员发起；2. 请线下完成申请人、资料室负责人、资料室分管领导签字后上传系统；3. 办结前须同时上传签批单与待处置硬盘照片。"))
-            {
-                FontSize = 11,
-                Foreground = Brushes.DimGray,
-                Margin = new Thickness(0, 12, 0, 0),
-                TextAlignment = TextAlignment.Left
-            });
+            document.Blocks.Add(CreateFooterParagraph(data));
 
+            return document;
+        }
+
+        private static double CalculateItemRowHeight()
+        {
+            // 固定行：原因方式、其他说明、申请说明、申请人、审批、签字、备注（前 5 行为统一单行高）。
+            double fixedContentHeight =
+                StandardRowHeight * 5
+                + ApprovalRowHeight
+                + SignatureRowHeight;
+            const int fixedRowCount = 7;
+            double fixedTableHeight = fixedContentHeight
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, RowChromeDip) * fixedRowCount;
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(
+                lineCount: 4,
+                lineHeightDip: 18,
+                topMarginDip: 15);
+            double reservedHeight = TitleChromeHeight + HeaderHeight + footerHeight + fixedTableHeight;
+            return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
+                reservedHeight,
+                minimumRowHeightDip: 100,
+                stretchRowCellPaddingDip: RowChromeDip);
+        }
+
+        private static FlowDocument CreateDocumentSkeleton()
+        {
+            var document = new FlowDocument
+            {
+                FontFamily = BodyFont,
+                FontSize = 12,
+                LineHeight = 20,
+                ColumnWidth = double.PositiveInfinity
+            };
+            PrintPageLayoutSupport.ApplyA4MediumMargins(document);
             return document;
         }
 
@@ -71,39 +119,107 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return "（无）";
             }
 
-            return string.Join("\n", data.Items.Select(item =>
-                $"{item.SortOrder}. {item.DiskCode}　序列号：{EmptyAsPlaceholder(item.SerialNumber)}　原状态：{EmptyAsPlaceholder(item.BeforeMediaStatus)}　原位置：{EmptyAsPlaceholder(item.BeforeStorageLocation)}"));
-        }
+            // 压缩为一行一条：编号 / 序列号 / 原状态 / 属性 / 原位置
+            var builder = new StringBuilder();
+            builder.Append($"共{data.Items.Count}块（编号 / 序列号 / 原状态 / 属性 / 原位置）");
+            foreach (var item in data.Items)
+            {
+                builder.AppendLine();
+                builder.Append(
+                    $"{item.SortOrder}. {EmptyAsPlaceholder(item.DiskCode)}" +
+                    $" / {EmptyAsPlaceholder(item.SerialNumber)}" +
+                    $" / {EmptyAsPlaceholder(item.BeforeMediaStatus)}" +
+                    $" / {EmptyAsPlaceholder(item.BeforeMediaNature)}" +
+                    $" / {EmptyAsPlaceholder(item.BeforeStorageLocation)}");
+            }
 
-        private static double CalculateItemRowHeight(int itemCount)
-        {
-            int lines = Math.Max(itemCount, 1);
-            return Math.Min(220, Math.Max(72, lines * 22d + 16d));
+            return builder.ToString();
         }
 
         private static string BuildApprovalSection(HardDiskDisposalPrintData data)
         {
-            if (string.IsNullOrWhiteSpace(data.ApprovedBy) && string.IsNullOrWhiteSpace(data.ApprovalOpinion))
+            bool hasApproval = !string.IsNullOrWhiteSpace(data.ApprovedBy)
+                || !string.IsNullOrWhiteSpace(data.ApprovalOpinion)
+                || !string.IsNullOrWhiteSpace(data.ApprovedDateText);
+
+            if (!hasApproval)
             {
-                return "意见：____________________    审批人：__________    日期:______年___月___日";
+                return "审批意见：\n                    签字：                              " + BlankDateSuffix;
             }
 
-            return $"意见：{EmptyAsPlaceholder(data.ApprovalOpinion)}    审批人：{EmptyAsPlaceholder(data.ApprovedBy)}    日期：{EmptyAsPlaceholder(data.ApprovedDateText)}";
+            string opinion = string.IsNullOrWhiteSpace(data.ApprovalOpinion)
+                ? string.Empty
+                : data.ApprovalOpinion.Trim();
+            string signature = BuildFilledSignatureLine(data.ApprovedBy, data.ApprovedDateText);
+            return string.IsNullOrWhiteSpace(opinion)
+                ? $"审批意见：\n{signature}"
+                : $"审批意见：{opinion}\n{signature}";
         }
 
         private static string BuildSignatureSection(HardDiskDisposalPrintData data)
         {
-            if (data.IsCompleted)
+            // 办结前供线下亲笔签名：签字栏与日期栏留白。
+            if (!data.IsCompleted)
             {
-                string dateText = EmptyAsPlaceholder(data.CompletedDateText);
-                return $"申请人签字：{EmptyAsPlaceholder(data.ApplicantName)}    日期：{dateText}\n"
-                     + $"资料室负责人签字：____________________    日期：{dateText}\n"
-                     + $"资料室分管领导签字：____________________    日期：{dateText}";
+                return "申请人签字：                                            " + BlankDateSuffix + "\n"
+                     + "资料室负责人签字：                                      " + BlankDateSuffix + "\n"
+                     + "资料室分管领导签字：                                    " + BlankDateSuffix;
             }
 
-            return "申请人签字：                                 日期:______年___月___日\n"
-                 + "资料室负责人签字：                           日期:______年___月___日\n"
-                 + "资料室分管领导签字：                         日期:______年___月___日";
+            // 已办结重打：预填已知签字人；负责人/分管领导为线下签批，系统无独立字段，日期与办结日一致。
+            string dateText = string.IsNullOrWhiteSpace(data.CompletedDateText)
+                ? "______年___月___日"
+                : data.CompletedDateText.Trim();
+            string applicant = string.IsNullOrWhiteSpace(data.ApplicantName)
+                ? "________________"
+                : data.ApplicantName.Trim();
+
+            return $"申请人签字：{applicant}    日期：{dateText}\n"
+                 + $"资料室负责人签字：____________________    日期：{dateText}\n"
+                 + $"资料室分管领导签字：____________________    日期：{dateText}";
+        }
+
+        private static string BuildFilledSignatureLine(string? name, string? dateText)
+        {
+            string normalizedName = name?.Trim() ?? string.Empty;
+            string normalizedDate = dateText?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(normalizedName) && string.IsNullOrWhiteSpace(normalizedDate))
+            {
+                return "签字：                              " + BlankDateSuffix;
+            }
+
+            if (string.IsNullOrWhiteSpace(normalizedName))
+            {
+                return $"签字：    日期：{normalizedDate}";
+            }
+
+            if (string.IsNullOrWhiteSpace(normalizedDate))
+            {
+                return $"签字：{normalizedName}";
+            }
+
+            return $"签字：{normalizedName}    日期：{normalizedDate}";
+        }
+
+        private static Paragraph CreateFooterParagraph(HardDiskDisposalPrintData data)
+        {
+            var footer = new Paragraph
+            {
+                FontSize = 10.5,
+                Margin = new Thickness(0, 15, 0, 0),
+                LineHeight = 18
+            };
+
+            footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
+            footer.Inlines.Add(new Run(
+                "1、本单由资料室资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批、上传签批单与硬盘照片、办结”流程办理。\n"));
+            footer.Inlines.Add(new Run(
+                "      2、请线下完成申请人、资料室负责人、资料室分管领导签字后回传系统；办结前须同时上传签批单与待处置硬盘照片。\n"));
+            footer.Inlines.Add(new Run(
+                $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
+
+            return footer;
         }
 
         private static Table CreateHeaderTable(string left, string right)
@@ -122,82 +238,101 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private static Table CreateMainTable(TableRowGroup rowGroup)
         {
-            var table = new Table { CellSpacing = 0, BorderBrush = Brushes.Black, BorderThickness = new Thickness(1) };
-            table.Columns.Add(new TableColumn { Width = new GridLength(110) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+            var table = new Table
+            {
+                CellSpacing = 0,
+                BorderBrush = Brushes.Black,
+                BorderThickness = new Thickness(2, 2, 0, 0)
+            };
+            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
             table.RowGroups.Add(rowGroup);
             return table;
         }
 
-        private static TableRow CreateSingleRow(string label, string value, double minHeight)
+        private static TableRow CreateSingleRow(
+            string label,
+            string value,
+            double minHeight,
+            bool verticalAlignTop = false)
         {
             var row = new TableRow();
-            row.Cells.Add(CreateLabelCell(label, minHeight));
-            row.Cells.Add(CreateValueCell(value, minHeight));
+            row.Cells.Add(CreateLabelCell(label));
+            row.Cells.Add(CreateValueCell(value, columnSpan: 3, minHeight, verticalAlignTop));
             return row;
         }
 
-        private static TableRow CreateDoubleRow(string leftLabel, string leftValue, string rightLabel, string rightValue)
+        private static TableRow CreateDoubleRow(
+            string leftLabel,
+            string leftValue,
+            string rightLabel,
+            string rightValue,
+            double minHeight)
         {
             var row = new TableRow();
-            row.Cells.Add(CreateLabelCell(leftLabel, 36));
-
-            var inner = new Table { CellSpacing = 0 };
-            inner.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
-            inner.Columns.Add(new TableColumn { Width = new GridLength(90) });
-            inner.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
-            var group = new TableRowGroup();
-            var innerRow = new TableRow();
-            innerRow.Cells.Add(CreateValueCell(leftValue, 36, border: false));
-            innerRow.Cells.Add(CreateLabelCell(rightLabel, 36));
-            innerRow.Cells.Add(CreateValueCell(rightValue, 36, border: false));
-            group.Rows.Add(innerRow);
-            inner.RowGroups.Add(group);
-
-            var cell = new TableCell(inner)
-            {
-                BorderBrush = Brushes.Black,
-                BorderThickness = new Thickness(0.5),
-                Padding = new Thickness(0)
-            };
-            row.Cells.Add(cell);
+            row.Cells.Add(CreateLabelCell(leftLabel));
+            row.Cells.Add(CreateValueCell(leftValue, columnSpan: 1, minHeight));
+            row.Cells.Add(CreateLabelCell(rightLabel));
+            row.Cells.Add(CreateValueCell(rightValue, columnSpan: 1, minHeight));
             return row;
         }
 
-        private static TableCell CreateLabelCell(string text, double minHeight)
+        private static TableCell CreateLabelCell(string text)
         {
             return new TableCell(new Paragraph(new Run(text))
             {
                 FontFamily = LabelFont,
+                FontWeight = FontWeights.Bold,
                 FontSize = 12,
-                Margin = new Thickness(4)
+                TextAlignment = TextAlignment.Center
             })
             {
+                BorderThickness = new Thickness(0, 0, 1, 1),
                 BorderBrush = Brushes.Black,
-                BorderThickness = new Thickness(0.5),
-                Background = new SolidColorBrush(Color.FromRgb(245, 245, 245)),
-                TextAlignment = TextAlignment.Center,
-                Padding = new Thickness(4),
-                // MinHeight is applied via paragraph line height approximation
+                Padding = new Thickness(2, 6, 2, 2)
             };
         }
 
-        private static TableCell CreateValueCell(string text, double minHeight, bool border = true)
+        private static TableCell CreateValueCell(
+            string text,
+            int columnSpan,
+            double minHeight,
+            bool verticalAlignTop = false)
         {
-            var paragraph = new Paragraph(new Run(text))
+            Block block;
+            if (minHeight > 0)
             {
-                FontFamily = BodyFont,
-                FontSize = 12,
-                Margin = new Thickness(4),
-                LineHeight = 18
-            };
+                var grid = new Grid { MinHeight = minHeight };
+                grid.Children.Add(new TextBlock
+                {
+                    Text = text,
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(4),
+                    FontFamily = BodyFont,
+                    FontSize = 12,
+                    VerticalAlignment = verticalAlignTop
+                        ? VerticalAlignment.Top
+                        : VerticalAlignment.Center
+                });
+                block = new BlockUIContainer(grid);
+            }
+            else
+            {
+                block = new Paragraph(new Run(text))
+                {
+                    FontFamily = BodyFont,
+                    FontSize = 12,
+                    Margin = new Thickness(4)
+                };
+            }
 
-            return new TableCell(paragraph)
+            return new TableCell(block)
             {
-                BorderBrush = Brushes.Black,
-                BorderThickness = border ? new Thickness(0.5) : new Thickness(0),
-                Padding = new Thickness(4),
-                TextAlignment = TextAlignment.Left
+                ColumnSpan = columnSpan,
+                BorderThickness = new Thickness(0, 0, 1, 1),
+                BorderBrush = Brushes.Black
             };
         }
 

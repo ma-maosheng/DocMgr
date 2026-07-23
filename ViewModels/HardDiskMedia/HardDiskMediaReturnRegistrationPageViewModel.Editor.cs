@@ -234,7 +234,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             IsRegistrationEditable && GetAllowedFormatConfirmationOptions(InspectionResult).Count > 1;
 
         public bool CanRecommendTargetLocation =>
-            CanEditTargetLocation && SelectedMedium != null;
+            CanEditTargetLocation && SelectedMedium != null && !IsLossInspectionScenario;
 
         public bool CanShowTargetLocationSnapshot =>
             !IsLossInspectionScenario &&
@@ -242,6 +242,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public Visibility TargetLocationSnapshotButtonVisibility =>
             IsLossInspectionScenario ? Visibility.Collapsed : Visibility.Visible;
+
+        /// <summary>
+        /// 推荐档口按钮独立可见性：不依赖选项列表是否已加载，避免推荐过程中按钮被隐去。
+        /// </summary>
+        public Visibility RecommendTargetLocationButtonVisibility =>
+            CanEditTargetLocation && !IsLossInspectionScenario
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
         private bool IsDamagedInspectionScenario => HardDiskMediaReturnDomainValues.IsDamagedReturnInspection(InspectionResult);
         private bool IsLossInspectionScenario => HardDiskMediaReturnDomainValues.IsLossRegistrationInspection(InspectionResult);
@@ -265,6 +273,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 if (IsLossInspectionScenario)
                 {
                     return HardDiskMediaReturnDomainValues.LossReturnTargetLocationDisplay;
+                }
+
+                if (SelectedReturnTargetLocationOption != null
+                    && !string.IsNullOrWhiteSpace(SelectedReturnTargetLocationOption.Location))
+                {
+                    return SelectedReturnTargetLocationOption.DisplayText;
                 }
 
                 return string.IsNullOrWhiteSpace(TargetLocation)
@@ -389,10 +403,17 @@ namespace DocMgr.ViewModels.HardDiskMedia
             get => _selectedReturnTargetLocationOption;
             set
             {
-                if (SetProperty(ref _selectedReturnTargetLocationOption, value) && value != null)
+                if (!SetProperty(ref _selectedReturnTargetLocationOption, value))
+                {
+                    return;
+                }
+
+                if (value != null)
                 {
                     TargetLocation = value.Location;
                 }
+
+                OnPropertyChanged(nameof(TargetLocationDisplay));
             }
         }
 
@@ -688,6 +709,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 ? await _hardDiskMediaService.GenerateNextReturnRegistrationNoAsync()
                 : _editingApplication.ApplicationNo;
 
+            // 切换归还单时先断开下拉绑定：Applicant/Medium 为 record，值相等时 SetProperty 不会换引用，
+            // ComboBox 会继续指向已移出 ItemsSource 的旧对象，表现为仅单号刷新、其余详情残留。
+            ClearEditorSelectionBindings();
+
             SelectedApplicant = ResolveInitialApplicant();
             if (SelectedApplicant != null)
             {
@@ -729,6 +754,25 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             await UpdateReturnTargetLocationAsync();
             InitializeApprovalInputsFromApplication();
+        }
+
+        /// <summary>
+        /// 清空归还人/介质下拉的当前选中（绕过 SetProperty 相等短路），确保随后重新赋值能刷新 UI。
+        /// </summary>
+        private void ClearEditorSelectionBindings()
+        {
+            if (_selectedMedium != null)
+            {
+                _selectedMedium = null;
+                OnPropertyChanged(nameof(SelectedMedium));
+            }
+
+            if (_selectedApplicant != null)
+            {
+                _selectedApplicant = null;
+                OnPropertyChanged(nameof(SelectedApplicant));
+                OnPropertyChanged(nameof(IsMediumSelectionEnabled));
+            }
         }
 
         /// <summary>
@@ -1496,9 +1540,17 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
-            int? selectedSourceApplicationId = SelectedMedium?.SourceApplicationId ?? _editingApplication.SourceApplicationId;
-            int? selectedSourceOutboundRecordId = SelectedMedium?.SourceOutboundRecordId ?? _editingApplication.SourceOutboundRecordId;
-            int selectedMediumId = SelectedMedium?.Id ?? _editingApplication.MediumId;
+            // 载入编辑会话时以当前归还单为准，避免沿用上一次选中的介质键导致串单。
+            bool useEditingApplicationIdentity = !_isEditorSessionReady;
+            int? selectedSourceApplicationId = useEditingApplicationIdentity
+                ? _editingApplication.SourceApplicationId
+                : SelectedMedium?.SourceApplicationId ?? _editingApplication.SourceApplicationId;
+            int? selectedSourceOutboundRecordId = useEditingApplicationIdentity
+                ? _editingApplication.SourceOutboundRecordId
+                : SelectedMedium?.SourceOutboundRecordId ?? _editingApplication.SourceOutboundRecordId;
+            int selectedMediumId = useEditingApplicationIdentity
+                ? _editingApplication.MediumId
+                : SelectedMedium?.Id ?? _editingApplication.MediumId;
 
             MediumOptions.Clear();
             if (_editingApplication.Id == 0)
@@ -1554,6 +1606,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     ExpectedReturnDate = _editingApplication.ExpectedReturnDate,
                     DisplayText = $"{_editingApplication.ApplicationNo} / 已登记记录"
                 });
+            }
+
+            // 先清空再赋值，避免与上一介质 record 值相等时 ComboBox 不刷新。
+            if (_selectedMedium != null)
+            {
+                _selectedMedium = null;
+                OnPropertyChanged(nameof(SelectedMedium));
             }
 
             SelectedMedium = selectedSourceOutboundRecordId is > 0
@@ -1615,19 +1674,22 @@ namespace DocMgr.ViewModels.HardDiskMedia
             bool preferRecommended = _preferRecommendedTargetLocationForCurrentKind;
             _preferRecommendedTargetLocationForCurrentKind = false;
 
+            // 先清空再异步加载；不在清空时立刻通知可见性，避免推荐后 TargetLocation 未变时
+            // 下拉/推荐按钮一直停留在 Collapsed，只读框只显示档口码而丢失“现有 N 盘”。
             ReturnTargetLocationOptions.Clear();
             SelectedReturnTargetLocationOption = null;
-            NotifyTargetLocationSelectionChanged();
 
             if (SelectedMedium == null)
             {
                 TargetLocation = string.Empty;
+                NotifyTargetLocationSelectionChanged();
                 return;
             }
 
             if (IsLossInspectionScenario)
             {
                 TargetLocation = HardDiskMediaReturnDomainValues.LossReturnTargetLocationDisplay;
+                NotifyTargetLocationSelectionChanged();
                 return;
             }
 
@@ -1654,6 +1716,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             if (SelectedMedium == null)
             {
                 TargetLocation = string.Empty;
+                NotifyTargetLocationSelectionChanged();
                 return;
             }
 
@@ -1694,6 +1757,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     ReturnTargetLocationOptions.FirstOrDefault(item =>
                         string.Equals(item.Location, persistedLocation, StringComparison.OrdinalIgnoreCase));
                 TargetLocation = SelectedReturnTargetLocationOption?.Location ?? string.Empty;
+                NotifyTargetLocationSelectionChanged();
                 return;
             }
 
@@ -1723,6 +1787,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
 
             TargetLocation = SelectedReturnTargetLocationOption?.Location ?? string.Empty;
+            // TargetLocation 未变化时 setter 不会通知；必须显式刷新，否则推荐后下拉与盘数展示无法恢复。
+            NotifyTargetLocationSelectionChanged();
         }
 
         private async void RefreshReturnTargetLocationAsync()
@@ -1751,6 +1817,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(TargetLocationReadOnlyVisibility));
             OnPropertyChanged(nameof(TargetLocationTextVisibility));
             OnPropertyChanged(nameof(CanRecommendTargetLocation));
+            OnPropertyChanged(nameof(RecommendTargetLocationButtonVisibility));
             OnPropertyChanged(nameof(CanShowTargetLocationSnapshot));
             OnPropertyChanged(nameof(TargetLocationSnapshotButtonVisibility));
             OnPropertyChanged(nameof(TargetLocationDisplay));

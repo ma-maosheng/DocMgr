@@ -1,17 +1,21 @@
 using DocMgr.Data;
 using DocMgr.Models.HardDiskMedia;
-using DocMgr.Models.SystemSettings;
 using DocMgr.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocMgr.Repositories.HardDiskMedia;
 
 /// <summary>
-/// 硬盘离库处置仓储。
+/// 硬盘盘库登记仓储。
 /// </summary>
-public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
+public sealed class HardDiskInventoryRegisterRepository : IHardDiskInventoryRegisterRepository
 {
-    private static readonly int[] ActiveStatuses =
+    private static readonly int[] ActiveRegisterStatuses =
+    [
+        HardDiskInventoryRegisterRecord.StatusDraft
+    ];
+
+    private static readonly int[] ActiveDisposalStatuses =
     [
         HardDiskDisposalRecord.StatusDraft,
         HardDiskDisposalRecord.StatusSubmitted,
@@ -21,14 +25,14 @@ public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
 
     private readonly AppDbContext _dbContext;
 
-    public HardDiskDisposalRepository(AppDbContext dbContext)
+    public HardDiskInventoryRegisterRepository(AppDbContext dbContext)
     {
         _dbContext = dbContext;
     }
 
-    public async Task<List<HardDiskDisposalRecord>> SearchRecordsAsync(string? keyword, int? status, int? applyYear)
+    public async Task<List<HardDiskInventoryRegisterRecord>> SearchRecordsAsync(string? keyword, int? status, int? applyYear)
     {
-        IQueryable<HardDiskDisposalRecord> query = _dbContext.HardDiskDisposalRecords
+        IQueryable<HardDiskInventoryRegisterRecord> query = _dbContext.HardDiskInventoryRegisterRecords
             .AsNoTracking()
             .Include(item => item.Items)
             .AsQueryable();
@@ -48,10 +52,10 @@ public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
         {
             string trimmed = keyword.Trim();
             query = query.Where(item =>
-                item.DisposalNo.Contains(trimmed)
+                item.RegisterNo.Contains(trimmed)
                 || item.ApplicantName.Contains(trimmed)
-                || item.DisposalReason.Contains(trimmed)
-                || item.DispositionMethod.Contains(trimmed)
+                || item.RegisterKind.Contains(trimmed)
+                || item.Reason.Contains(trimmed)
                 || item.Items.Any(detail => detail.DiskCode.Contains(trimmed) || detail.SerialNumber.Contains(trimmed)));
         }
 
@@ -61,22 +65,22 @@ public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
             .ToListAsync();
     }
 
-    public Task<HardDiskDisposalRecord?> GetRecordByIdAsync(int recordId)
+    public Task<HardDiskInventoryRegisterRecord?> GetRecordByIdAsync(int recordId)
     {
-        return _dbContext.HardDiskDisposalRecords
+        return _dbContext.HardDiskInventoryRegisterRecords
             .AsNoTracking()
             .Include(item => item.Items)
             .FirstOrDefaultAsync(item => item.Id == recordId);
     }
 
-    public Task<HardDiskDisposalRecord?> GetRecordByIdForUpdateAsync(int recordId)
+    public Task<HardDiskInventoryRegisterRecord?> GetRecordByIdForUpdateAsync(int recordId)
     {
-        return _dbContext.HardDiskDisposalRecords
+        return _dbContext.HardDiskInventoryRegisterRecords
             .Include(item => item.Items)
             .FirstOrDefaultAsync(item => item.Id == recordId);
     }
 
-    public async Task<string?> GetLastDisposalNoByPrefixAsync(string prefix)
+    public async Task<string?> GetLastRegisterNoByPrefixAsync(string prefix)
     {
         if (string.IsNullOrWhiteSpace(prefix))
         {
@@ -84,11 +88,11 @@ public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
         }
 
         string trimmed = prefix.Trim();
-        return await _dbContext.HardDiskDisposalRecords
+        return await _dbContext.HardDiskInventoryRegisterRecords
             .AsNoTracking()
-            .Where(item => item.DisposalNo.StartsWith(trimmed))
-            .OrderByDescending(item => item.DisposalNo)
-            .Select(item => item.DisposalNo)
+            .Where(item => item.RegisterNo.StartsWith(trimmed))
+            .OrderByDescending(item => item.RegisterNo)
+            .Select(item => item.RegisterNo)
             .FirstOrDefaultAsync();
     }
 
@@ -98,14 +102,21 @@ public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
             ? new HashSet<int>()
             : excludeMediumIds.Where(id => id > 0).ToHashSet();
 
-        var activeDisposalMediumIds = await _dbContext.HardDiskDisposalItems
+        var activeRegisterMediumIds = await _dbContext.HardDiskInventoryRegisterItems
             .AsNoTracking()
-            .Where(item => ActiveStatuses.Contains(item.DisposalRecord!.Status))
+            .Where(item => ActiveRegisterStatuses.Contains(item.RegisterRecord!.Status))
             .Select(item => item.MediumId)
             .Distinct()
             .ToListAsync();
 
-        HashSet<int> busyMediumIds = activeDisposalMediumIds.ToHashSet();
+        var activeDisposalMediumIds = await _dbContext.HardDiskDisposalItems
+            .AsNoTracking()
+            .Where(item => ActiveDisposalStatuses.Contains(item.DisposalRecord!.Status))
+            .Select(item => item.MediumId)
+            .Distinct()
+            .ToListAsync();
+
+        HashSet<int> busyMediumIds = activeRegisterMediumIds.Concat(activeDisposalMediumIds).ToHashSet();
         busyMediumIds.ExceptWith(excluded);
 
         return await _dbContext.HardDiskMedia
@@ -115,12 +126,11 @@ public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
             .Where(item => !item.IsDeleted)
             .Where(item => item.Ledger != null
                            && (item.Ledger.MediaStatus == HardDiskMedium.StatusInStockBlank
-                               || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockDamaged
-                               || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockLost))
+                               || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockDamaged))
             .Where(item => !busyMediumIds.Contains(item.Id))
             .Where(item => item.RegisterLock == null
                            || (excluded.Contains(item.Id)
-                               && item.RegisterLock.BusinessType == HardDiskRegisterLock.BusinessTypeDisposal))
+                               && item.RegisterLock.BusinessType == HardDiskRegisterLock.BusinessTypeInventoryRegister))
             .OrderBy(item => item.DiskCode)
             .ToListAsync();
     }
@@ -145,81 +155,43 @@ public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
             .ToListAsync();
     }
 
-    public Task<bool> ExistsActiveDisposalForMediumAsync(int mediumId, int? excludeRecordId = null)
+    public Task<bool> ExistsActiveRegisterForMediumAsync(int mediumId, int? excludeRecordId = null)
     {
-        IQueryable<HardDiskDisposalItem> query = _dbContext.HardDiskDisposalItems
+        IQueryable<HardDiskInventoryRegisterItem> query = _dbContext.HardDiskInventoryRegisterItems
             .AsNoTracking()
             .Where(item => item.MediumId == mediumId
-                           && ActiveStatuses.Contains(item.DisposalRecord!.Status));
+                           && ActiveRegisterStatuses.Contains(item.RegisterRecord!.Status));
 
         if (excludeRecordId.HasValue && excludeRecordId.Value > 0)
         {
             int excludeId = excludeRecordId.Value;
-            query = query.Where(item => item.DisposalRecordId != excludeId);
+            query = query.Where(item => item.RegisterRecordId != excludeId);
         }
 
         return query.AnyAsync();
     }
 
-    public Task<List<HardDiskDisposalRecord>> GetPendingRecordsForToDoAsync(int takeCount)
+    public Task<bool> ExistsActiveDisposalForMediumAsync(int mediumId)
     {
-        return _dbContext.HardDiskDisposalRecords
+        return _dbContext.HardDiskDisposalItems
             .AsNoTracking()
-            .Include(item => item.Items)
-            .Where(item => item.Status == HardDiskDisposalRecord.StatusSubmitted
-                           || item.Status == HardDiskDisposalRecord.StatusApproved
-                           || item.Status == HardDiskDisposalRecord.StatusSignedUploaded)
-            .OrderByDescending(item => item.SubmittedAt ?? item.ApplyTime)
-            .ThenByDescending(item => item.Id)
-            .Take(takeCount)
-            .ToListAsync();
+            .AnyAsync(item => item.MediumId == mediumId
+                              && ActiveDisposalStatuses.Contains(item.DisposalRecord!.Status));
     }
 
-    public Task<List<SystemAttachment>> GetAttachmentsAsync(string disposalNo)
+    public void AddRecord(HardDiskInventoryRegisterRecord record)
     {
-        if (string.IsNullOrWhiteSpace(disposalNo))
-        {
-            return Task.FromResult(new List<SystemAttachment>());
-        }
-
-        string trimmed = disposalNo.Trim();
-        return _dbContext.SystemAttachments
-            .AsNoTracking()
-            .Where(item => item.BusinessType == HardDiskDisposalDomainValues.AttachmentBusinessType
-                           && item.BusinessNo == trimmed)
-            .OrderByDescending(item => item.UploadTime)
-            .ThenByDescending(item => item.Id)
-            .ToListAsync();
+        _dbContext.HardDiskInventoryRegisterRecords.Add(record);
     }
 
-    public Task<SystemAttachment?> GetAttachmentByIdAsync(int attachmentId)
+    public void RemoveItems(IEnumerable<HardDiskInventoryRegisterItem> items)
     {
-        return _dbContext.SystemAttachments.FirstOrDefaultAsync(item => item.Id == attachmentId);
-    }
-
-    public void AddRecord(HardDiskDisposalRecord record)
-    {
-        _dbContext.HardDiskDisposalRecords.Add(record);
-    }
-
-    public void RemoveItems(IEnumerable<HardDiskDisposalItem> items)
-    {
-        _dbContext.HardDiskDisposalItems.RemoveRange(items);
+        _dbContext.HardDiskInventoryRegisterItems.RemoveRange(items);
     }
 
     public void AddTransaction(HardDiskMediaTransaction transaction)
     {
         _dbContext.HardDiskMediaTransactions.Add(transaction);
-    }
-
-    public void AddAttachment(SystemAttachment attachment)
-    {
-        _dbContext.SystemAttachments.Add(attachment);
-    }
-
-    public void RemoveAttachment(SystemAttachment attachment)
-    {
-        _dbContext.SystemAttachments.Remove(attachment);
     }
 
     public void RemoveRegisterLock(HardDiskRegisterLock lockItem)

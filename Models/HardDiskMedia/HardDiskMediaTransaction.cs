@@ -9,9 +9,13 @@ namespace DocMgr.Models.HardDiskMedia
         public const string TypeOutboundTemporary = "出库(临时)";
         public const string TypeOutboundLongTerm = "出库(长期)";
         public const string TypeOutboundPermanent = "出库(永久)";
-        public const string TypeOutboundDestroy = "出库(销毁)";
+        public const string TypeDisposal = "离库(处置)";
         public const string TypeReturnRegistration = "归还登记";
         public const string TypeLossRegistration = "挂失登记";
+        public const string TypeInventoryLost = "在库(盘失)";
+        public const string TypeInventoryRegisterDamage = "盘库登记(损坏)";
+        public const string TypeInventoryRegisterLost = "盘库登记(盘失)";
+        public const string TypeInventoryRegisterRelocate = "盘库登记(调档)";
         public const string TypeRelocate = "位置调整";
 
         public const string TypeBorrow = TypeOutboundTemporary;
@@ -19,7 +23,6 @@ namespace DocMgr.Models.HardDiskMedia
         public const string TypeConvertCarrier = TypeReturnRegistration;
         public const string TypeInStockCarrier = TypeReturnRegistration;
         public const string TypeTransferOut = TypeOutboundPermanent;
-        public const string TypeDestroy = TypeOutboundDestroy;
 
         /// <summary>
         /// 主键。

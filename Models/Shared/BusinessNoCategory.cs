@@ -11,7 +11,7 @@ namespace DocMgr.Models.Shared
         AssetDestroyApply,
         DiskInboundRegister,
         DiskOutboundApply,
-        DiskDestroyApply,
+        DiskInventoryRegister,
         DiskDisposalApply
     }
 

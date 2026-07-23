@@ -62,6 +62,12 @@
         <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Margin="0" CornerRadius="0" Padding="16,12">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="借出/归还人:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox Width="120"
+                              Style="{StaticResource ToolbarFilterComboBoxStyle}"
+                              ItemsSource="{Binding ApplicantFilterOptions}"
+                              SelectedItem="{Binding SelectedApplicantFilter}"
+                              Margin="0,0,16,0"/>
                     <TextBlock Text="归还状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <ComboBox Width="140" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" Margin="0,0,16,0"/>
                     <TextBlock Text="登记类型:" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -214,20 +220,20 @@
                                     </Grid.RowDefinitions>
 
                                     <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
-                                        <TextBlock Text="归还人 *" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <ComboBox Height="{StaticResource DialogFormControlHeight}"
-                                                  ItemsSource="{Binding ApplicantOptions}"
-                                                  SelectedItem="{Binding SelectedApplicant}"
-                                                  DisplayMemberPath="DisplayText"
-                                                  IsEnabled="{Binding IsRegistrationEditable}"/>
+                                        <TextBlock Text="归还人" Foreground="#666666" Margin="0,0,0,4"/>
+                                        <TextBox Height="{StaticResource DialogFormControlHeight}"
+                                                 Text="{Binding SelectedApplicant.DisplayText, Mode=OneWay}"
+                                                 IsReadOnly="True"
+                                                 Background="#F9FAFB"
+                                                 ToolTip="由出库申请带入，不可更改"/>
                                     </StackPanel>
                                     <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10">
-                                        <TextBlock Text="归还介质 *" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <ComboBox Height="{StaticResource DialogFormControlHeight}"
-                                                  ItemsSource="{Binding MediumOptions}"
-                                                  SelectedItem="{Binding SelectedMedium}"
-                                                  DisplayMemberPath="DisplayText"
-                                                  IsEnabled="{Binding IsMediumSelectionEnabled}"/>
+                                        <TextBlock Text="归还介质" Foreground="#666666" Margin="0,0,0,4"/>
+                                        <TextBox Height="{StaticResource DialogFormControlHeight}"
+                                                 Text="{Binding SelectedMedium.DisplayText, Mode=OneWay}"
+                                                 IsReadOnly="True"
+                                                 Background="#F9FAFB"
+                                                 ToolTip="由出库申请带入，不可更改"/>
                                     </StackPanel>
 
                                     <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
@@ -269,7 +275,7 @@
                                                     Content="推荐档口"
                                                     Style="{StaticResource FormInlineButtonStyle}"
                                                     Command="{Binding RecommendTargetLocationCommand}"
-                                                    Visibility="{Binding TargetLocationSelectionVisibility}"/>
+                                                    Visibility="{Binding RecommendTargetLocationButtonVisibility}"/>
                                             <Button Grid.Column="2"
                                                     Margin="8,0,0,0"
                                                     Content="档口快照"

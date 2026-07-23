@@ -33,6 +33,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private bool _isPageInitialized;
         private int _applicationYear = DateTime.Today.Year;
         private string _searchKeyword = string.Empty;
+        private string _selectedApplicantFilter = ReturnStageAll;
         private string _selectedStatus = ReturnStageAll;
         private string _selectedApplicationType = ReturnStageAll;
         private string _applicationOverdueSettingCode = ApplicationOverdueDomainValues.Default;
@@ -94,6 +95,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public ObservableCollection<HardDiskMediaReturnCandidate> ReturnCandidates { get; } = new();
 
+        public ObservableCollection<string> ApplicantFilterOptions { get; } = new();
+
         public ObservableCollection<string> StatusOptions { get; } = new();
 
         public ObservableCollection<string> ApplicationTypeOptions { get; } = new();
@@ -119,6 +122,22 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             get => _searchKeyword;
             set => SetProperty(ref _searchKeyword, value);
+        }
+
+        /// <summary>工具栏「借出/归还人」筛选；「全部」不过滤。</summary>
+        public string SelectedApplicantFilter
+        {
+            get => _selectedApplicantFilter;
+            set
+            {
+                if (SetProperty(ref _selectedApplicantFilter, value))
+                {
+                    if (_isPageInitialized)
+                    {
+                        ApplyListFilters();
+                    }
+                }
+            }
         }
 
         public string SelectedStatus
@@ -226,6 +245,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task LoadFilterOptionsAsync()
         {
+            ApplicantFilterOptions.Clear();
+            ApplicantFilterOptions.Add(ReturnStageAll);
+            SelectedApplicantFilter = ReturnStageAll;
+
             StatusOptions.Clear();
             StatusOptions.Add(ReturnStageAll);
             foreach (var (_, label) in ApplicationWorkflowStatus.AllOptions)
@@ -260,6 +283,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 _allReturnCandidates.AddRange(candidates);
 
                 await LoadSourceBorrowApplicationNosAsync();
+                UpdateApplicantFilterOptions();
                 UpdateYearOptions();
                 ApplyListFilters(selectedApplicationId, selectedCandidateKey);
             }
@@ -276,6 +300,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             var filteredApplications = _allApplications
                 .Where(MatchesSelectedBorrowApplicationYear)
+                .Where(MatchesSelectedApplicantFilter)
                 .Where(MatchesSelectedRegistrationKind)
                 .Where(MatchesSelectedReturnStage)
                 .ToList();
@@ -288,6 +313,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             var filteredCandidates = _allReturnCandidates
                 .Where(MatchesSelectedBorrowApplicationYear)
+                .Where(MatchesSelectedApplicantFilter)
                 .OrderBy(item => item.ExpectedReturnDate ?? DateTime.MaxValue)
                 .ThenBy(item => item.DiskCode, StringComparer.Ordinal)
                 .ToList();
@@ -323,6 +349,34 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     _sourceBorrowApplicationNoByReturnId[application.Id] = sourceBorrowApplicationNo.Trim();
                 }
             }
+        }
+
+        private void UpdateApplicantFilterOptions()
+        {
+            string previous = SelectedApplicantFilter;
+            var names = _allReturnCandidates
+                .Select(item => item.ApplicantName?.Trim())
+                .Concat(_allApplications.Select(item => item.ApplicantName?.Trim()))
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Cast<string>()
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            ApplicantFilterOptions.Clear();
+            ApplicantFilterOptions.Add(ReturnStageAll);
+            foreach (string name in names)
+            {
+                ApplicantFilterOptions.Add(name);
+            }
+
+            _selectedApplicantFilter = ApplicantFilterOptions.Any(item =>
+                    string.Equals(item, previous, StringComparison.OrdinalIgnoreCase))
+                ? previous
+                : ReturnStageAll;
+
+            // ItemsSource 重建后须强制刷新 SelectedItem 绑定，否则 ComboBox 会短暂处于校验失败（红边、文本空白）。
+            OnPropertyChanged(nameof(SelectedApplicantFilter));
         }
 
         private void UpdateYearOptions()
@@ -361,6 +415,32 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             // ItemsSource 重建后须强制刷新 SelectedItem 绑定，否则 ComboBox 会短暂处于校验失败（红边、文本空白）。
             OnPropertyChanged(nameof(ApplicationYear));
+        }
+
+        private bool MatchesSelectedApplicantFilter(HardDiskMediaApplication application)
+        {
+            if (string.Equals(SelectedApplicantFilter, ReturnStageAll, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return string.Equals(
+                application.ApplicantName?.Trim(),
+                SelectedApplicantFilter?.Trim(),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool MatchesSelectedApplicantFilter(HardDiskMediaReturnCandidate candidate)
+        {
+            if (string.Equals(SelectedApplicantFilter, ReturnStageAll, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return string.Equals(
+                candidate.ApplicantName?.Trim(),
+                SelectedApplicantFilter?.Trim(),
+                StringComparison.OrdinalIgnoreCase);
         }
 
         private bool MatchesSelectedBorrowApplicationYear(HardDiskMediaApplication application)

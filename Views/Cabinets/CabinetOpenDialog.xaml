@@ -857,7 +857,7 @@
                                                                                         <TextBlock Text="{Binding OccupationLockBadgeText}"
                                                                                                    FontSize="10"
                                                                                                    FontWeight="Bold"
-                                                                                                   Foreground="#92400E"/>
+                                                                                                   Foreground="#DC2626"/>
                                                                                     </Border>
                                                                                 </StackPanel>
 
@@ -989,7 +989,7 @@
                                                                                             CornerRadius="2"
                                                                                             ToolTip="{Binding OccupationLockToolTipText}"
                                                                                             Visibility="{Binding OccupationLockBadgeVisibility}">
-                                                                                        <TextBlock Text="{Binding OccupationLockBadgeText}" Style="{StaticResource SnapFs9}" FontWeight="Bold" Foreground="#92400E"/>
+                                                                                        <TextBlock Text="{Binding OccupationLockBadgeText}" Style="{StaticResource SnapFs9}" FontWeight="Bold" Foreground="#DC2626"/>
                                                                                     </Border>
                                                                                 </StackPanel>
 
@@ -1109,7 +1109,7 @@
                                                                                     <TextBlock Text="{Binding OccupationLockBadgeText}"
                                                                                                Style="{StaticResource SnapFs8}"
                                                                                                FontWeight="Bold"
-                                                                                               Foreground="#92400E"/>
+                                                                                               Foreground="#DC2626"/>
                                                                                 </Border>
                                                                             </StackPanel>
 
@@ -1419,7 +1419,7 @@
                                                                                     <TextBlock Text="{Binding OccupationLockBadgeText}"
                                                                                                Style="{StaticResource SnapFs8}"
                                                                                                FontWeight="Bold"
-                                                                                               Foreground="#92400E"/>
+                                                                                               Foreground="#DC2626"/>
                                                                                 </Border>
                                                                             </Grid>
                                                                         </Border>

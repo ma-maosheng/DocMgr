@@ -13,6 +13,8 @@ namespace DocMgr.Models.HardDiskMedia
             (HardDiskRegisterLock.BusinessTypeArchiveRegister, "年度资料登记（已借出硬盘）"),
             (HardDiskRegisterLock.BusinessTypeOutboundApplication, "硬盘借出申请（库内空盘）"),
             (HardDiskRegisterLock.BusinessTypeArchiveOutboundRequisition, "资料出库征用（库内空盘）"),
+            (HardDiskRegisterLock.BusinessTypeInventoryRegister, "硬盘盘库登记"),
+            (HardDiskRegisterLock.BusinessTypeDisposal, "硬盘离库处置"),
         ];
 
         private static readonly Dictionary<string, string> DisplayToBusinessType =
@@ -32,7 +34,7 @@ namespace DocMgr.Models.HardDiskMedia
         ];
 
         /// <summary>
-        /// 台账列表征用锁列显示文本。
+        /// 台账列表征用详情列显示文本。
         /// </summary>
         public static string GetGridDisplayText(HardDiskRegisterLock? registerLock)
         {

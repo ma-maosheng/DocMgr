@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.ViewModels.Cabinets;
 using DocMgr.ViewModels.YearlyArchive;
@@ -59,6 +60,7 @@ namespace DocMgr.Services.Interfaces
         IReadOnlyList<HardDiskMedium>? ShowHardDiskMediumSelectionDialog(IEnumerable<string>? initialSelectedCodes = null, int? currentElectronicArchiveUnitId = null, string? selectionMode = null);
         bool ShowHardDiskMediaOutboundApplicationEditDialog(HardDiskMediaApplication applicationToEdit);
         bool ShowHardDiskDisposalEditDialog(HardDiskDisposalRecord record);
+        bool ShowHardDiskInventoryRegisterEditDialog(HardDiskInventoryRegisterRecord record);
         bool ShowArchiveRegisterEditDialog(ArchiveRegisterWorkspaceMode workspaceMode, out int? committedRecordId, int? initialRecordId = null);
 
         /// <summary>

@@ -35,6 +35,9 @@ namespace DocMgr.Models.HardDiskMedia
 
         public bool IsCompleted { get; init; }
 
+        /// <summary>已累计打印次数（不含本次）。</summary>
+        public int PrintCount { get; init; }
+
         public IReadOnlyList<HardDiskDisposalPrintItemData> Items { get; init; } = Array.Empty<HardDiskDisposalPrintItemData>();
     }
 
@@ -50,6 +53,8 @@ namespace DocMgr.Models.HardDiskMedia
         public string SerialNumber { get; init; } = string.Empty;
 
         public string BeforeMediaStatus { get; init; } = string.Empty;
+
+        public string BeforeMediaNature { get; init; } = string.Empty;
 
         public string BeforeStorageLocation { get; init; } = string.Empty;
     }

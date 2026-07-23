@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DocMgr.Models.ArchiveContainers;
 using DocMgr.Models.Cabinets;
+using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.Shared;
@@ -42,6 +43,8 @@ namespace DocMgr.Data
         public DbSet<HardDiskMediaTransaction> HardDiskMediaTransactions { get; set; }
         public DbSet<HardDiskDisposalRecord> HardDiskDisposalRecords { get; set; }
         public DbSet<HardDiskDisposalItem> HardDiskDisposalItems { get; set; }
+        public DbSet<HardDiskInventoryRegisterRecord> HardDiskInventoryRegisterRecords { get; set; }
+        public DbSet<HardDiskInventoryRegisterItem> HardDiskInventoryRegisterItems { get; set; }
 
         // === 年度资料登记相关表 ===
         public DbSet<YearlyArchiveRegisterRecord> YearlyArchiveRegisterRecords { get; set; }
@@ -280,6 +283,30 @@ namespace DocMgr.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            modelBuilder.Entity<HardDiskInventoryRegisterRecord>(entity =>
+            {
+                entity.HasIndex(item => item.RegisterNo).IsUnique();
+                entity.HasIndex(item => item.Status);
+                entity.HasIndex(item => item.ApplyTime);
+
+                entity.HasMany(item => item.Items)
+                    .WithOne(item => item.RegisterRecord)
+                    .HasForeignKey(item => item.RegisterRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<HardDiskInventoryRegisterItem>(entity =>
+            {
+                entity.HasIndex(item => item.RegisterRecordId);
+                entity.HasIndex(item => item.MediumId);
+                entity.HasIndex(item => new { item.RegisterRecordId, item.MediumId }).IsUnique();
+
+                entity.HasOne(item => item.Medium)
+                    .WithMany()
+                    .HasForeignKey(item => item.MediumId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
             modelBuilder.Entity<YearlyElectronicArchiveUnit>(entity =>
             {
                 entity.HasIndex(item => item.ElectronicArchiveNo)
@@ -454,7 +481,7 @@ namespace DocMgr.Data
                 {
                     if (entry.Entity.Ledger != null)
                     {
-                        entry.Entity.Ledger.MediaStatus = NormalizeMediumStatusText(entry.Entity.Ledger.MediaStatus);
+                        entry.Entity.Ledger.MediaStatus = HardDiskMediaStatusNormalizer.Normalize(entry.Entity.Ledger.MediaStatus);
                     }
                 }
             }

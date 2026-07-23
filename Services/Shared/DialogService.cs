@@ -804,6 +804,46 @@ namespace DocMgr.Services.Shared
             }
         }
 
+        public bool ShowHardDiskInventoryRegisterEditDialog(HardDiskInventoryRegisterRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+
+            var dialog = new HardDiskInventoryRegisterEditDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+
+            IServiceScope? scope = null;
+            HardDiskInventoryRegisterEditDialogViewModel? viewModel = null;
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+
+            try
+            {
+                (scope, viewModel) = CreateScopedViewModel<HardDiskInventoryRegisterEditDialogViewModel>(
+                    new[] { typeof(HardDiskInventoryRegisterRecord) },
+                    record);
+
+                dialog.DataContext = viewModel;
+                viewModel.RequestClose += HandleRequestClose;
+                dialog.ShowDialog();
+                return viewModel.HasCommittedChanges;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"打开硬盘盘库登记窗口失败：{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (viewModel != null)
+                {
+                    viewModel.RequestClose -= HandleRequestClose;
+                }
+
+                scope?.Dispose();
+            }
+        }
+
         public bool ShowArchiveRegisterEditDialog(ArchiveRegisterWorkspaceMode workspaceMode, out int? committedRecordId, int? initialRecordId = null)
         {
             committedRecordId = null;

@@ -76,11 +76,11 @@ namespace DocMgr.Services.Shared
                     SequenceLength: 4,
                     ApprovalPolicy: ApplyApprovalPolicy,
                     AttachmentPolicy: ApplyAttachmentPolicy),
-                [BusinessNoCategory.DiskDestroyApply] = new(
-                    BusinessNoCategory.DiskDestroyApply,
-                    Prefix: "盘-销-申",
-                    WorkflowMode: BusinessWorkflowMode.Apply,
-                    SequenceLength: 4,
+                [BusinessNoCategory.DiskInventoryRegister] = new(
+                    BusinessNoCategory.DiskInventoryRegister,
+                    Prefix: "盘库-登",
+                    WorkflowMode: BusinessWorkflowMode.Register,
+                    SequenceLength: 3,
                     ApprovalPolicy: ApplyApprovalPolicy,
                     AttachmentPolicy: ApplyAttachmentPolicy),
                 [BusinessNoCategory.DiskDisposalApply] = new(

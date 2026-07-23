@@ -21,7 +21,7 @@ namespace DocMgr.Models.Cabinets
         /// <summary>追加到 ToolTip 的占用说明。</summary>
         public string ToolTipSupplement { get; init; } = string.Empty;
 
-        /// <summary>档口卡片角标短文案（如「征用」「预订」）。</summary>
+        /// <summary>档口卡片角标短文案（统一为锁标记）。</summary>
         public string BadgeText => CabinetOccupationLockSupport.ResolveBadgeText(this);
     }
 }
