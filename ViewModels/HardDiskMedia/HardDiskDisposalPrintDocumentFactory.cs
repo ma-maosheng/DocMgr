@@ -119,9 +119,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return "（无）";
             }
 
-            // 压缩为一行一条：编号 / 序列号 / 原状态 / 属性 / 原位置
+            // 压缩为一行一条：编号 / 序列号 / 原状态 / 原位置 / 离库原因 / 处置方式 / 属性
             var builder = new StringBuilder();
-            builder.Append($"共{data.Items.Count}块（编号 / 序列号 / 原状态 / 属性 / 原位置）");
+            builder.Append($"共{data.Items.Count}块（编号 / 序列号 / 原状态 / 原位置 / 离库原因 / 处置方式 / 属性）");
             foreach (var item in data.Items)
             {
                 builder.AppendLine();
@@ -129,8 +129,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     $"{item.SortOrder}. {EmptyAsPlaceholder(item.DiskCode)}" +
                     $" / {EmptyAsPlaceholder(item.SerialNumber)}" +
                     $" / {EmptyAsPlaceholder(item.BeforeMediaStatus)}" +
-                    $" / {EmptyAsPlaceholder(item.BeforeMediaNature)}" +
-                    $" / {EmptyAsPlaceholder(item.BeforeStorageLocation)}");
+                    $" / {EmptyAsPlaceholder(item.BeforeStorageLocation)}" +
+                    $" / {EmptyAsPlaceholder(item.DisposalReason)}" +
+                    $" / {EmptyAsPlaceholder(item.DispositionMethod)}" +
+                    $" / {EmptyAsPlaceholder(item.BeforeMediaNature)}");
             }
 
             return builder.ToString();

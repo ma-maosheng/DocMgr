@@ -61,6 +61,8 @@ namespace DocMgr.Services.Interfaces
         bool ShowHardDiskMediaOutboundApplicationEditDialog(HardDiskMediaApplication applicationToEdit);
         bool ShowHardDiskDisposalEditDialog(HardDiskDisposalRecord record);
         bool ShowHardDiskInventoryRegisterEditDialog(HardDiskInventoryRegisterRecord record);
+        bool ShowSimulatedArchiveInventoryRegisterEditDialog(YearlyArchiveInventoryRegisterRecord record);
+        bool ShowElectronicArchiveInventoryRegisterEditDialog(YearlyArchiveInventoryRegisterRecord record);
         bool ShowArchiveRegisterEditDialog(ArchiveRegisterWorkspaceMode workspaceMode, out int? committedRecordId, int? initialRecordId = null);
 
         /// <summary>

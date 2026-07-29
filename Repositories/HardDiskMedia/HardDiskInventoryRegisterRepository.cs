@@ -1,5 +1,6 @@
 using DocMgr.Data;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -117,6 +118,15 @@ public sealed class HardDiskInventoryRegisterRepository : IHardDiskInventoryRegi
             .ToListAsync();
 
         HashSet<int> busyMediumIds = activeRegisterMediumIds.Concat(activeDisposalMediumIds).ToHashSet();
+
+        var electronicBagHardDiskIds = await _dbContext.YearlyElectronicArchiveUnitMediumLinks
+            .AsNoTracking()
+            .Where(link => link.ElectronicArchiveUnit!.UnitLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+            .Select(link => link.HardDiskMediumId)
+            .Distinct()
+            .ToListAsync();
+
+        busyMediumIds.UnionWith(electronicBagHardDiskIds);
         busyMediumIds.ExceptWith(excluded);
 
         return await _dbContext.HardDiskMedia

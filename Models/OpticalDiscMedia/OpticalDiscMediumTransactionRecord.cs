@@ -6,6 +6,16 @@ namespace DocMgr.Models.OpticalDiscMedia
     public sealed class OpticalDiscMediumTransactionRecord
     {
         /// <summary>
+        /// 流转记录主键。
+        /// </summary>
+        public int Id { get; init; }
+
+        /// <summary>
+        /// 光盘主表 ID。
+        /// </summary>
+        public int MediumId { get; init; }
+
+        /// <summary>
         /// 光盘编号。
         /// </summary>
         public string DiscCode { get; init; } = string.Empty;
@@ -19,6 +29,16 @@ namespace DocMgr.Models.OpticalDiscMedia
         /// 业务单号。
         /// </summary>
         public string BusinessNo { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 流转前状态。
+        /// </summary>
+        public string BeforeStatus { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 流转后状态。
+        /// </summary>
+        public string AfterStatus { get; init; } = string.Empty;
 
         /// <summary>
         /// 前位置。
@@ -39,6 +59,11 @@ namespace DocMgr.Models.OpticalDiscMedia
         /// 办理时间。
         /// </summary>
         public DateTime OperateTime { get; init; }
+
+        /// <summary>
+        /// 业务说明。
+        /// </summary>
+        public string Description { get; init; } = string.Empty;
 
         /// <summary>
         /// 备注。

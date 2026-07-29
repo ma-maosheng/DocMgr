@@ -15,6 +15,9 @@ namespace DocMgr.Models.Cabinets
 
         public int LostCopyCount { get; init; }
 
+        /// <summary>盘库登记累计丢失份数（优先于 Fact 字段，用于同步查询行）。</summary>
+        public int InventoryLostCopyCount { get; init; }
+
         /// <summary>登记申请所属项目的实施年度。</summary>
         public string ProjectYear { get; init; } = string.Empty;
 

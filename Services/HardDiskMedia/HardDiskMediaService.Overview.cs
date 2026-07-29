@@ -4,11 +4,12 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using DocMgr.Services.YearlyArchive;
 
 namespace DocMgr.Services.HardDiskMedia
 {
     /// <summary>
-    /// 硬盘介质总览统计与洞察分析。
+    /// 硬盘介质总览统计与洞察分析（对齐现行台账、申请工作流、离库处置、盘库登记与征用锁）。
     /// </summary>
     public partial class HardDiskMediaService
     {
@@ -16,6 +17,8 @@ namespace DocMgr.Services.HardDiskMedia
         public async Task<HardDiskMediaOverview> GetOverviewAsync()
         {
             var media = await _hardDiskMediaRepository.GetOverviewMediaAsync();
+            int missingLedgerCount = media.Count(item => item.Ledger == null);
+
             var mediaItems = media
                 .Where(item => item.Ledger != null)
                 .Select(item => new OverviewMediumSnapshot(
@@ -24,40 +27,72 @@ namespace DocMgr.Services.HardDiskMedia
                     item.Ledger.HolderOrOrganization,
                     item.Capacity,
                     item.Ledger.MediaNature,
-                    item.Ledger.NeedReturn))
+                    item.Ledger.NeedReturn,
+                    item.RegisterLock != null,
+                    item.RegisterLock?.BusinessType))
                 .ToList();
 
             var applicationItems = (await _hardDiskMediaRepository.GetOverviewApplicationsAsync())
-                .Select(item => new OverviewApplicationSnapshot(item.ApplicationType, item.ApplicationStatus, item.SignedAttachmentUploaded))
+                .Select(item => new OverviewApplicationSnapshot(
+                    item.ApplicationType,
+                    item.ApplicationStatus,
+                    item.SignedAttachmentUploaded))
                 .ToList();
 
             var transactionItems = (await _hardDiskMediaRepository.GetOverviewTransactionsAsync())
                 .Select(item => new OverviewTransactionSnapshot(item.TransactionType, item.OperateTime))
                 .ToList();
 
+            var disposalItems = await _hardDiskMediaRepository.GetOverviewDisposalRecordsAsync();
+            var inventoryItems = await _hardDiskMediaRepository.GetOverviewInventoryRegisterRecordsAsync();
+            var overdueApplications = await _hardDiskMediaRepository.GetOverdueOutboundApplicationsForToDoAsync(DateTime.Now, 500);
+
+            int pendingHandoverCount = applicationItems.Count(IsPendingHandover);
+            int pendingSignedCount = applicationItems.Count(IsPendingSignedUpload);
+            int pendingCompleteCount = applicationItems.Count(IsPendingComplete);
+
             return new HardDiskMediaOverview
             {
                 TotalMediumCount = mediaItems.Count,
+                MissingLedgerMediumCount = missingLedgerCount,
                 BlankInStockCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockBlank),
-                BorrowedCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusOutTemporary || item.CurrentStatus == HardDiskMedium.StatusOutLongTerm),
                 DataCarrierInStockCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockData),
                 DamagedInStockCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockDamaged),
-                TransferOutCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusOutPermanent || item.CurrentStatus == HardDiskMedium.StatusDisposed || item.CurrentStatus == HardDiskMedium.StatusOutLost || item.CurrentStatus == HardDiskMedium.StatusInStockLost),
+                InStockLostCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockLost),
+                BorrowedCount = mediaItems.Count(IsBorrowedStatus),
+                PermanentTransferCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusOutPermanent),
+                DisposedCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusDisposed),
+                OutLostCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusOutLost),
                 NeedReturnMediumCount = mediaItems.Count(item => item.NeedReturn),
-                LongTermNeedReturnMediumCount = mediaItems.Count(item => item.NeedReturn && item.CurrentStatus == HardDiskMedium.StatusOutLongTerm),
-                TemporaryNeedReturnMediumCount = mediaItems.Count(item => item.NeedReturn && item.CurrentStatus == HardDiskMedium.StatusOutTemporary),
-                MissingLocationMediumCount = mediaItems.Count(item => string.IsNullOrWhiteSpace(item.CurrentLocation)),
+                TemporaryNeedReturnMediumCount = mediaItems.Count(item =>
+                    item.NeedReturn && item.CurrentStatus == HardDiskMedium.StatusOutTemporary),
+                LongTermNeedReturnMediumCount = mediaItems.Count(item =>
+                    item.NeedReturn && item.CurrentStatus == HardDiskMedium.StatusOutLongTerm),
+                OverdueNeedReturnCount = overdueApplications.Count,
+                MissingLocationMediumCount = mediaItems.Count(item =>
+                    IsLocatableInStockStatus(item) && string.IsNullOrWhiteSpace(item.CurrentLocation)),
                 OutboundWithoutKeeperMediumCount = mediaItems.Count(item =>
-                    IsOutboundStatus(item) &&
-                    string.IsNullOrWhiteSpace(item.CurrentHolder)),
-                PendingProcessApplicationCount = applicationItems.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusPendingProcess),
-                PendingSignedFileCount = applicationItems.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusPendingUpload),
-                SubmittedApplicationCount = applicationItems.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted),
+                    IsActiveOutboundStatus(item) && string.IsNullOrWhiteSpace(item.CurrentHolder)),
+                LockedMediumCount = mediaItems.Count(item => item.IsLocked),
+                SubmittedApplicationCount = applicationItems.Count(item =>
+                    item.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted),
+                PendingHandoverApplicationCount = pendingHandoverCount,
+                PendingSignedFileCount = pendingSignedCount,
+                PendingCompleteApplicationCount = pendingCompleteCount,
+                PendingDisposalCount = disposalItems.Count(IsPendingDisposal),
+                DraftInventoryRegisterCount = inventoryItems.Count(item =>
+                    item.Status == HardDiskInventoryRegisterRecord.StatusDraft),
                 LocationInsights = BuildLocationInsights(mediaItems),
                 OutboundCapacityInsights = BuildOutboundCapacityInsights(mediaItems),
-                HandoverInsights = BuildHandoverInsights(applicationItems, transactionItems),
+                HandoverInsights = BuildHandoverInsights(applicationItems, transactionItems, disposalItems, inventoryItems),
                 LifecycleInsights = BuildLifecycleInsights(mediaItems),
-                RiskInsights = BuildRiskInsights(mediaItems, applicationItems)
+                RiskInsights = BuildRiskInsights(
+                    mediaItems,
+                    applicationItems,
+                    disposalItems,
+                    inventoryItems,
+                    missingLedgerCount,
+                    overdueApplications.Count)
             };
         }
 
@@ -70,7 +105,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             var allLocations = FormatDistribution(
                 mediaItems
-                    .GroupBy(item => NormalizeLocation(item.CurrentLocation))
+                    .GroupBy(item => NormalizeLocationGroup(item.CurrentLocation))
                     .Select(group => new DistributionItem(group.Key, group.Count()))
                     .OrderByDescending(item => item.Count)
                     .ThenBy(item => item.Label)
@@ -78,8 +113,8 @@ namespace DocMgr.Services.HardDiskMedia
 
             var inStockSummary = FormatDistribution(
                 mediaItems
-                    .Where(IsInStockStatus)
-                    .GroupBy(item => NormalizeLocation(item.CurrentLocation))
+                    .Where(IsLocatableInStockStatus)
+                    .GroupBy(item => NormalizeLocationGroup(item.CurrentLocation))
                     .Select(group => new DistributionItem(group.Key, group.Count()))
                     .OrderByDescending(item => item.Count)
                     .ThenBy(item => item.Label)
@@ -87,71 +122,69 @@ namespace DocMgr.Services.HardDiskMedia
 
             var keeperSummary = FormatDistribution(
                 mediaItems
-                    .Where(IsOutboundStatus)
+                    .Where(IsBorrowedStatus)
                     .GroupBy(item => NormalizeKeeper(item))
                     .Select(group => new DistributionItem(group.Key, group.Count()))
                     .OrderByDescending(item => item.Count)
                     .ThenBy(item => item.Label)
                     .Take(4));
 
+            var lockSummary = FormatDistribution(
+                mediaItems
+                    .Where(item => item.IsLocked)
+                    .GroupBy(item => string.IsNullOrWhiteSpace(item.LockBusinessType) ? "(未登记占用类型)" : item.LockBusinessType!.Trim())
+                    .Select(group => new DistributionItem(group.Key, group.Count()))
+                    .OrderByDescending(item => item.Count)
+                    .ThenBy(item => item.Label));
+
             return
             [
-                $"当前位置分布前五：{allLocations}。",
+                $"当前位置（按档口归并）前五：{allLocations}。",
                 $"资料室在库位置：{inStockSummary}。",
-                $"出库在外保管分布：{keeperSummary}。"
+                $"临时/长期借出保管分布：{keeperSummary}。",
+                $"征用锁占用：{lockSummary}。"
             ];
         }
 
         private static IReadOnlyList<string> BuildOutboundCapacityInsights(IReadOnlyList<OverviewMediumSnapshot> mediaItems)
         {
-            var outboundMedia = mediaItems.Where(IsOutboundStatus).ToList();
-            if (outboundMedia.Count == 0)
+            var borrowedMedia = mediaItems.Where(IsBorrowedStatus).ToList();
+            var terminalMedia = mediaItems.Where(IsTerminalAwayStatus).ToList();
+
+            if (borrowedMedia.Count == 0 && terminalMedia.Count == 0)
             {
-                return ["当前无出库状态硬盘，容量占用风险为 0。"];
+                return ["当前无借出或终态离库硬盘，容量占用风险为 0。"];
             }
 
-            var totalCapacitySummary = FormatDistribution(
-                outboundMedia
-                    .GroupBy(item => NormalizeCapacity(item.Capacity))
-                    .Select(group => new DistributionItem(group.Key, group.Count()))
-                    .OrderByDescending(item => item.Count)
-                    .ThenBy(item => item.Label));
-
             var borrowCapacitySummary = FormatDistribution(
-                outboundMedia
-                    .Where(item => item.CurrentStatus == HardDiskMedium.StatusOutTemporary || item.CurrentStatus == HardDiskMedium.StatusOutLongTerm)
+                borrowedMedia
                     .GroupBy(item => NormalizeCapacity(item.Capacity))
                     .Select(group => new DistributionItem(group.Key, group.Count()))
                     .OrderByDescending(item => item.Count)
                     .ThenBy(item => item.Label));
 
-            var closedCapacitySummary = FormatDistribution(
-                outboundMedia
-                    .Where(item => item.CurrentStatus == HardDiskMedium.StatusOutPermanent || item.CurrentStatus == HardDiskMedium.StatusDisposed || item.CurrentStatus == HardDiskMedium.StatusOutLost || item.CurrentStatus == HardDiskMedium.StatusInStockLost)
+            var terminalCapacitySummary = FormatDistribution(
+                terminalMedia
                     .GroupBy(item => NormalizeCapacity(item.Capacity))
                     .Select(group => new DistributionItem(group.Key, group.Count()))
                     .OrderByDescending(item => item.Count)
                     .ThenBy(item => item.Label));
 
-            double totalCapacityGb = outboundMedia.Sum(GetCapacityInGb);
-            double borrowCapacityGb = outboundMedia
-                .Where(item => item.CurrentStatus == HardDiskMedium.StatusOutTemporary || item.CurrentStatus == HardDiskMedium.StatusOutLongTerm)
-                .Sum(GetCapacityInGb);
-            double closedCapacityGb = outboundMedia
-                .Where(item => item.CurrentStatus == HardDiskMedium.StatusOutPermanent || item.CurrentStatus == HardDiskMedium.StatusDisposed || item.CurrentStatus == HardDiskMedium.StatusOutLost || item.CurrentStatus == HardDiskMedium.StatusInStockLost)
-                .Sum(GetCapacityInGb);
+            double borrowCapacityGb = borrowedMedia.Sum(GetCapacityInGb);
+            double terminalCapacityGb = terminalMedia.Sum(GetCapacityInGb);
 
             return
             [
-                $"全部出库介质共 {outboundMedia.Count} 块，已登记容量约 {FormatCapacityAmount(totalCapacityGb)}；容量档分布：{totalCapacitySummary}。",
-                $"临时/长期借出容量约 {FormatCapacityAmount(borrowCapacityGb)}，容量档分布：{borrowCapacitySummary}。",
-                $"永久移交/离库处置/挂失/盘失容量约 {FormatCapacityAmount(closedCapacityGb)}，容量档分布：{closedCapacitySummary}。"
+                $"临时/长期借出 {borrowedMedia.Count} 块，容量约 {FormatCapacityAmount(borrowCapacityGb)}；容量档分布：{borrowCapacitySummary}。",
+                $"永久移交/离库处置/出库挂失 {terminalMedia.Count} 块，容量约 {FormatCapacityAmount(terminalCapacityGb)}；容量档分布：{terminalCapacitySummary}。"
             ];
         }
 
         private static IReadOnlyList<string> BuildHandoverInsights(
             IReadOnlyList<OverviewApplicationSnapshot> applicationItems,
-            IReadOnlyList<OverviewTransactionSnapshot> transactionItems)
+            IReadOnlyList<OverviewTransactionSnapshot> transactionItems,
+            IReadOnlyList<HardDiskDisposalRecord> disposalItems,
+            IReadOnlyList<HardDiskInventoryRegisterRecord> inventoryItems)
         {
             var outboundApplications = applicationItems.Where(item => !IsReturnOrLossRegistrationType(item.ApplicationType)).ToList();
             var registrationApplications = applicationItems.Where(item => IsReturnOrLossRegistrationType(item.ApplicationType)).ToList();
@@ -164,7 +197,9 @@ namespace DocMgr.Services.HardDiskMedia
             [
                 $"出库申请环节：{BuildApplicationStageSummary(outboundApplications)}。",
                 $"归还/挂失登记环节：{BuildApplicationStageSummary(registrationApplications)}。",
-                $"近90天交接记录：{BuildTransactionStageSummary(recentTransactions)}。"
+                $"离库处置环节：{BuildDisposalStageSummary(disposalItems)}。",
+                $"盘库登记环节：{BuildInventoryStageSummary(inventoryItems)}。",
+                $"近90天流转记录：{BuildTransactionStageSummary(recentTransactions)}。"
             ];
         }
 
@@ -178,8 +213,10 @@ namespace DocMgr.Services.HardDiskMedia
             int blankCount = mediaItems.Count(item => item.MediaNature == HardDiskMedium.NatureBlank);
             int carrierCount = mediaItems.Count(item => item.MediaNature == HardDiskMedium.NatureDataCarrier);
             int needReturnCount = mediaItems.Count(item => item.NeedReturn);
-            int temporaryNeedReturnCount = mediaItems.Count(item => item.NeedReturn && item.CurrentStatus == HardDiskMedium.StatusOutTemporary);
-            int longTermNeedReturnCount = mediaItems.Count(item => item.NeedReturn && item.CurrentStatus == HardDiskMedium.StatusOutLongTerm);
+            int temporaryNeedReturnCount = mediaItems.Count(item =>
+                item.NeedReturn && item.CurrentStatus == HardDiskMedium.StatusOutTemporary);
+            int longTermNeedReturnCount = mediaItems.Count(item =>
+                item.NeedReturn && item.CurrentStatus == HardDiskMedium.StatusOutLongTerm);
 
             int inStockBlank = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockBlank);
             int inStockData = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockData);
@@ -190,10 +227,11 @@ namespace DocMgr.Services.HardDiskMedia
             int outPermanent = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusOutPermanent);
             int disposed = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusDisposed);
             int outLost = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusOutLost);
+            int locked = mediaItems.Count(item => item.IsLocked);
 
             return
             [
-                $"介质属性结构：空白介质 {blankCount} 块，资料载体 {carrierCount} 块，纳入需归还控制的介质 {needReturnCount} 块。",
+                $"介质属性结构：空白介质 {blankCount} 块，资料载体 {carrierCount} 块，纳入需归还控制 {needReturnCount} 块，征用锁占用 {locked} 块。",
                 $"在库结构：空盘 {inStockBlank} 块、资料载体 {inStockData} 块、损坏待处置 {inStockDamaged} 块、盘失 {inStockLost} 块。",
                 $"在外/终态结构：临时借出 {outTemporary} 块、长期借出 {outLongTerm} 块、永久移交 {outPermanent} 块、离库处置 {disposed} 块、出库挂失 {outLost} 块。",
                 $"归还控制结构：临时借出且需归还 {temporaryNeedReturnCount} 块，长期借出且需归还 {longTermNeedReturnCount} 块。"
@@ -202,34 +240,41 @@ namespace DocMgr.Services.HardDiskMedia
 
         private static IReadOnlyList<string> BuildRiskInsights(
             IReadOnlyList<OverviewMediumSnapshot> mediaItems,
-            IReadOnlyList<OverviewApplicationSnapshot> applicationItems)
+            IReadOnlyList<OverviewApplicationSnapshot> applicationItems,
+            IReadOnlyList<HardDiskDisposalRecord> disposalItems,
+            IReadOnlyList<HardDiskInventoryRegisterRecord> inventoryItems,
+            int missingLedgerCount,
+            int overdueCount)
         {
-            int missingLocationCount = mediaItems.Count(item => string.IsNullOrWhiteSpace(item.CurrentLocation));
+            int missingLocationCount = mediaItems.Count(item =>
+                IsLocatableInStockStatus(item) && string.IsNullOrWhiteSpace(item.CurrentLocation));
             int outboundWithoutKeeperCount = mediaItems.Count(item =>
-                IsOutboundStatus(item) &&
-                string.IsNullOrWhiteSpace(item.CurrentHolder));
+                IsActiveOutboundStatus(item) && string.IsNullOrWhiteSpace(item.CurrentHolder));
 
             int needReturnCount = mediaItems.Count(item => item.NeedReturn);
-            int temporaryNeedReturnCount = mediaItems.Count(item => item.NeedReturn && item.CurrentStatus == HardDiskMedium.StatusOutTemporary);
-            int longTermNeedReturnCount = mediaItems.Count(item => item.NeedReturn && item.CurrentStatus == HardDiskMedium.StatusOutLongTerm);
+            int temporaryNeedReturnCount = mediaItems.Count(item =>
+                item.NeedReturn && item.CurrentStatus == HardDiskMedium.StatusOutTemporary);
+            int longTermNeedReturnCount = mediaItems.Count(item =>
+                item.NeedReturn && item.CurrentStatus == HardDiskMedium.StatusOutLongTerm);
             int longTermBorrowedCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusOutLongTerm);
             int damagedInStockCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockDamaged);
             int lostCount = mediaItems.Count(item =>
                 item.CurrentStatus == HardDiskMedium.StatusOutLost
                 || item.CurrentStatus == HardDiskMedium.StatusInStockLost);
+            int lockedCount = mediaItems.Count(item => item.IsLocked);
 
             int submittedCount = applicationItems.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted);
-            int pendingHandoverCount = applicationItems.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusApproved);
-            int pendingUploadCount = applicationItems.Count(item =>
-                item.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded && !item.SignedAttachmentUploaded);
-            int pendingCompleteCount = applicationItems.Count(item =>
-                item.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded && item.SignedAttachmentUploaded);
+            int pendingHandoverCount = applicationItems.Count(IsPendingHandover);
+            int pendingUploadCount = applicationItems.Count(IsPendingSignedUpload);
+            int pendingCompleteCount = applicationItems.Count(IsPendingComplete);
+            int pendingDisposalCount = disposalItems.Count(IsPendingDisposal);
+            int draftInventoryCount = inventoryItems.Count(item => item.Status == HardDiskInventoryRegisterRecord.StatusDraft);
 
             return
             [
-                $"归还控制风险：需归还介质 {needReturnCount} 块，其中临时借出且需归还 {temporaryNeedReturnCount} 块、长期借出且需归还 {longTermNeedReturnCount} 块。",
-                $"基础台账风险：未登记当前位置 {missingLocationCount} 块，出库但未明确保管人/接收单位 {outboundWithoutKeeperCount} 块。",
-                    $"流程积压风险：待审批 {submittedCount} 单，待实物交接 {pendingHandoverCount} 单，待上传签批交接单 {pendingUploadCount} 单，待办结 {pendingCompleteCount} 单，已办结 {applicationItems.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)} 单，已作废（撤回） {applicationItems.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusWithdrawn)} 单，已作废（强制） {applicationItems.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusForceWithdrawn)} 单",
+                $"归还控制风险：需归还 {needReturnCount} 块（临时 {temporaryNeedReturnCount}、长期 {longTermNeedReturnCount}），逾期未归还 {overdueCount} 单。",
+                $"基础台账风险：缺台账 {missingLedgerCount} 块，在库未登记位置 {missingLocationCount} 块，出库未明确保管 {outboundWithoutKeeperCount} 块，征用锁占用 {lockedCount} 块。",
+                $"流程积压风险：申请待审批 {submittedCount} / 待实物交接 {pendingHandoverCount} / 待上传签批 {pendingUploadCount} / 待办结 {pendingCompleteCount}；离库处置进行中 {pendingDisposalCount} 单；盘库草稿 {draftInventoryCount} 单。",
                 $"介质状态风险：长期借出 {longTermBorrowedCount} 块，在库损坏 {damagedInStockCount} 块，挂失/盘失 {lostCount} 块。"
             ];
         }
@@ -241,7 +286,61 @@ namespace DocMgr.Services.HardDiskMedia
                 return "暂无记录";
             }
 
-            return $"待审批 {applications.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted)} 单，待实物交接 {applications.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusApproved)} 单，待上传签批交接单 {applications.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded && !item.SignedAttachmentUploaded)} 单，待办结 {applications.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded && item.SignedAttachmentUploaded)} 单，已办结 {applications.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)} 单，已作废（撤回） {applications.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusWithdrawn)} 单，已作废（强制） {applications.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusForceWithdrawn)} 单";
+            return string.Join("，",
+            [
+                $"草稿 {applications.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusDraft)} 单",
+                $"待审批 {applications.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted)} 单",
+                $"待实物交接 {applications.Count(IsPendingHandover)} 单",
+                $"待上传签批 {applications.Count(IsPendingSignedUpload)} 单",
+                $"待办结 {applications.Count(IsPendingComplete)} 单",
+                $"已办结 {applications.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)} 单",
+                $"已作废（撤回） {applications.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusWithdrawn)} 单",
+                $"已作废（强制） {applications.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusForceWithdrawn)} 单"
+            ]);
+        }
+
+        private static string BuildDisposalStageSummary(IReadOnlyList<HardDiskDisposalRecord> disposalItems)
+        {
+            if (disposalItems.Count == 0)
+            {
+                return "暂无记录";
+            }
+
+            return string.Join("，",
+            [
+                $"草稿 {disposalItems.Count(item => item.Status == HardDiskDisposalRecord.StatusDraft)} 单",
+                $"待审批 {disposalItems.Count(item => item.Status == HardDiskDisposalRecord.StatusSubmitted)} 单",
+                $"待确认可上传 {disposalItems.Count(item => item.Status == HardDiskDisposalRecord.StatusApproved)} 单",
+                $"待上传签批 {disposalItems.Count(item => item.Status == HardDiskDisposalRecord.StatusSignedUploaded && !item.SignedAttachmentUploaded)} 单",
+                $"待办结 {disposalItems.Count(item => item.Status == HardDiskDisposalRecord.StatusSignedUploaded && item.SignedAttachmentUploaded)} 单",
+                $"已办结 {disposalItems.Count(item => item.Status == HardDiskDisposalRecord.StatusCompleted)} 单",
+                $"已作废 {disposalItems.Count(item => item.Status is HardDiskDisposalRecord.StatusWithdrawn or HardDiskDisposalRecord.StatusForceWithdrawn)} 单"
+            ]);
+        }
+
+        private static string BuildInventoryStageSummary(IReadOnlyList<HardDiskInventoryRegisterRecord> inventoryItems)
+        {
+            if (inventoryItems.Count == 0)
+            {
+                return "暂无记录";
+            }
+
+            var kindSummary = FormatDistribution(
+                inventoryItems
+                    .Where(item => item.Status == HardDiskInventoryRegisterRecord.StatusCompleted)
+                    .GroupBy(item => string.IsNullOrWhiteSpace(item.RegisterKind) ? "(未登记类型)" : item.RegisterKind.Trim())
+                    .Select(group => new DistributionItem(group.Key, group.Count()))
+                    .OrderByDescending(item => item.Count)
+                    .ThenBy(item => item.Label),
+                suffix: "单");
+
+            return string.Join("，",
+            [
+                $"草稿 {inventoryItems.Count(item => item.Status == HardDiskInventoryRegisterRecord.StatusDraft)} 单",
+                $"已办结 {inventoryItems.Count(item => item.Status == HardDiskInventoryRegisterRecord.StatusCompleted)} 单",
+                $"已作废 {inventoryItems.Count(item => item.Status == HardDiskInventoryRegisterRecord.StatusWithdrawn)} 单",
+                $"已办结类型分布：{kindSummary}"
+            ]);
         }
 
         private static string BuildTransactionStageSummary(IReadOnlyList<OverviewTransactionSnapshot> transactions)
@@ -272,9 +371,18 @@ namespace DocMgr.Services.HardDiskMedia
             return string.Join("、", materialized.Select(item => $"{item.Label} {item.Count}{suffix}"));
         }
 
-        private static string NormalizeLocation(string? location)
+        /// <summary>
+        /// 位置洞察按档口键归并（忽略盒内序号），无法解析时回退原文。
+        /// </summary>
+        private static string NormalizeLocationGroup(string? location)
         {
-            return string.IsNullOrWhiteSpace(location) ? "(未登记位置)" : location.Trim();
+            if (string.IsNullOrWhiteSpace(location))
+            {
+                return "(未登记位置)";
+            }
+
+            string slotKey = ArchiveSlotLocationSupport.BuildSlotKey(location);
+            return string.IsNullOrWhiteSpace(slotKey) ? location.Trim() : slotKey;
         }
 
         private static string NormalizeCapacity(string? capacity)
@@ -325,25 +433,53 @@ namespace DocMgr.Services.HardDiskMedia
                 return item.CurrentHolder.Trim();
             }
 
-            return NormalizeLocation(item.CurrentLocation);
+            return string.IsNullOrWhiteSpace(item.CurrentLocation) ? "(未明确保管)" : item.CurrentLocation.Trim();
         }
 
-        private static bool IsOutboundStatus(OverviewMediumSnapshot item)
+        /// <summary>临时/长期借出（可归还的在外状态）。</summary>
+        private static bool IsBorrowedStatus(OverviewMediumSnapshot item)
         {
-            return item.CurrentStatus == HardDiskMedium.StatusOutTemporary ||
-                   item.CurrentStatus == HardDiskMedium.StatusOutLongTerm ||
-                   item.CurrentStatus == HardDiskMedium.StatusOutPermanent ||
-                   item.CurrentStatus == HardDiskMedium.StatusDisposed ||
-                   item.CurrentStatus == HardDiskMedium.StatusOutLost ||
-                   item.CurrentStatus == HardDiskMedium.StatusInStockLost;
+            return item.CurrentStatus == HardDiskMedium.StatusOutTemporary
+                || item.CurrentStatus == HardDiskMedium.StatusOutLongTerm;
         }
 
-        private static bool IsInStockStatus(OverviewMediumSnapshot item)
+        /// <summary>仍处于资料室外的有效出库状态（不含离库处置、在库盘失）。</summary>
+        private static bool IsActiveOutboundStatus(OverviewMediumSnapshot item)
         {
-            return item.CurrentStatus == HardDiskMedium.StatusInStockBlank ||
-                   item.CurrentStatus == HardDiskMedium.StatusInStockData ||
-                   item.CurrentStatus == HardDiskMedium.StatusInStockDamaged;
+            return IsBorrowedStatus(item)
+                || item.CurrentStatus == HardDiskMedium.StatusOutPermanent
+                || item.CurrentStatus == HardDiskMedium.StatusOutLost;
         }
+
+        /// <summary>终态离库：永久移交 / 离库处置 / 出库挂失。</summary>
+        private static bool IsTerminalAwayStatus(OverviewMediumSnapshot item)
+        {
+            return item.CurrentStatus == HardDiskMedium.StatusOutPermanent
+                || item.CurrentStatus == HardDiskMedium.StatusDisposed
+                || item.CurrentStatus == HardDiskMedium.StatusOutLost;
+        }
+
+        /// <summary>资料室在库且通常需要档口定位的状态（不含盘失）。</summary>
+        private static bool IsLocatableInStockStatus(OverviewMediumSnapshot item)
+        {
+            return item.CurrentStatus == HardDiskMedium.StatusInStockBlank
+                || item.CurrentStatus == HardDiskMedium.StatusInStockData
+                || item.CurrentStatus == HardDiskMedium.StatusInStockDamaged;
+        }
+
+        private static bool IsPendingHandover(OverviewApplicationSnapshot item)
+            => item.ApplicationStatus == HardDiskMediaApplication.StatusApproved;
+
+        private static bool IsPendingSignedUpload(OverviewApplicationSnapshot item)
+            => item.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded && !item.SignedAttachmentUploaded;
+
+        private static bool IsPendingComplete(OverviewApplicationSnapshot item)
+            => item.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded && item.SignedAttachmentUploaded;
+
+        private static bool IsPendingDisposal(HardDiskDisposalRecord item)
+            => item.Status is HardDiskDisposalRecord.StatusSubmitted
+                or HardDiskDisposalRecord.StatusApproved
+                or HardDiskDisposalRecord.StatusSignedUploaded;
 
         private sealed record OverviewMediumSnapshot(
             string CurrentStatus,
@@ -351,7 +487,9 @@ namespace DocMgr.Services.HardDiskMedia
             string CurrentHolder,
             string Capacity,
             string MediaNature,
-            bool NeedReturn);
+            bool NeedReturn,
+            bool IsLocked,
+            string? LockBusinessType);
 
         private sealed record OverviewApplicationSnapshot(string ApplicationType, int ApplicationStatus, bool SignedAttachmentUploaded);
 

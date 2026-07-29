@@ -95,6 +95,8 @@ public interface IArchiveFilingRepository
 
     Task<HardDiskMedium?> GetHardDiskMediumByIdWithLedgerAsync(int mediumId);
 
+    Task<OpticalDiscMedium?> GetOpticalDiscMediumByIdWithLedgerAsync(int mediumId);
+
     Task<HardDiskMedium?> GetHardDiskMediumByDiskCodeWithLedgerAsync(string diskCode);
 
     Task<List<HardDiskMedium>> GetHardDiskMediaByCodesWithLedgerAsync(IReadOnlyCollection<string> diskCodes);

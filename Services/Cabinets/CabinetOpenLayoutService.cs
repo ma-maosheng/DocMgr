@@ -52,6 +52,7 @@ namespace DocMgr.Services.Cabinets
                 .Distinct()
                 .ToList();
             var pendingReturnByBoxId = BuildSimulatedBoxPendingReturnLookup(yearlyBoxIds);
+            var inventoryMarkByBoxId = BuildSimulatedBoxInventoryMarkLookup(yearlyBoxIds);
             var activeWithdrawalLockByBoxId = yearlyBoxIds.Count == 0
                 ? new Dictionary<int, CabinetOccupationLockDescriptor>()
                 : _cabinetOpenLayoutRepository.GetActiveWithdrawalLocksByArchiveBoxIds(yearlyBoxIds);
@@ -61,7 +62,7 @@ namespace DocMgr.Services.Cabinets
                 return BuildMagneticDiskSlots(request, normalizedCabinetName, slotCanvasWidth, slotCanvasHeight);
             }
 
-            var archiveBoxesBySlot = BuildArchiveBoxesBySlot(request, assignments, placementLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, pendingReturnByBoxId, activeWithdrawalLockByBoxId);
+            var archiveBoxesBySlot = BuildArchiveBoxesBySlot(request, assignments, placementLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, pendingReturnByBoxId, inventoryMarkByBoxId, activeWithdrawalLockByBoxId);
             var slotMetricsBySlot = BuildSlotMetricsBySlot(request, assignments, placementLookup, boxSpecificationLookup, slotCanvasWidth);
             var archiveCategoryLookup = request.CabinetType == CabinetType.Standard
                 ? _cabinetOpenLayoutRepository.GetArchiveSlotCategoryLookup(request.CabinetId)
@@ -185,6 +186,12 @@ namespace DocMgr.Services.Cabinets
                 .GroupBy(item => item.MediumId)
                 .ToDictionary(group => group.Key, group => group.OrderByDescending(item => item.OperateTime).First());
 
+            var inventoryEmptyUnitIds = BuildInventoryEmptyElectronicUnitIds(
+                media,
+                opticalDiscMedia,
+                mediumArchiveLookup,
+                opticalDiscArchiveLookup);
+
             foreach (var medium in media)
             {
                 if (medium.Ledger == null)
@@ -203,10 +210,33 @@ namespace DocMgr.Services.Cabinets
                     MediumArchiveContext? archiveContext = mediumArchiveLookup.TryGetValue(medium.Id, out var loadedContext)
                         ? loadedContext
                         : null;
+
+                    // 盘失且未挂电子袋：不占柜展示（硬盘盘库盘失已清空位置；资料盘库盘失必挂袋）。
+                    if (string.Equals(
+                            NormalizeStatusText(medium.Ledger.MediaStatus),
+                            NormalizeStatusText(HardDiskMedium.StatusInStockLost),
+                            StringComparison.OrdinalIgnoreCase)
+                        && archiveContext == null)
+                    {
+                        continue;
+                    }
+
                     var outboundApplicationLock = medium.RegisterLock == null
                         ? activeOutboundApplicationLockByMediumId.GetValueOrDefault(medium.Id, CabinetOccupationLockDescriptor.Empty)
                         : CabinetOccupationLockDescriptor.Empty;
-                    AddMedium(inStockMediaBySlot, location.SlotCode, CreateHardDiskDescriptor(medium, false, archiveContext, usedDataSizeLookup, ResolveElectronicUnitWithdrawalLock(archiveContext, activeWithdrawalLockByUnitId), outboundApplicationLock));
+                    bool isEmptyBag = archiveContext.HasValue
+                        && inventoryEmptyUnitIds.Contains(archiveContext.Value.ElectronicArchiveUnitId);
+                    AddMedium(
+                        inStockMediaBySlot,
+                        location.SlotCode,
+                        CreateHardDiskDescriptor(
+                            medium,
+                            false,
+                            archiveContext,
+                            usedDataSizeLookup,
+                            ResolveElectronicUnitWithdrawalLock(archiveContext, activeWithdrawalLockByUnitId),
+                            outboundApplicationLock,
+                            isEmptyBag));
                     continue;
                 }
 
@@ -246,7 +276,27 @@ namespace DocMgr.Services.Cabinets
                         continue;
                     }
 
-                    AddMedium(inStockMediaBySlot, location.SlotCode, CreateOpticalDiscDescriptor(opticalDiscMedium, false, opticalDiscArchiveContext, usedDataSizeLookup, ResolveElectronicUnitWithdrawalLock(opticalDiscArchiveContext, activeWithdrawalLockByUnitId)));
+                    if (string.Equals(
+                            NormalizeStatusText(opticalDiscMedium.Ledger.MediaStatus),
+                            NormalizeStatusText(OpticalDiscMedium.StatusLost),
+                            StringComparison.OrdinalIgnoreCase)
+                        && opticalDiscArchiveContext == null)
+                    {
+                        continue;
+                    }
+
+                    bool isEmptyBag = opticalDiscArchiveContext.HasValue
+                        && inventoryEmptyUnitIds.Contains(opticalDiscArchiveContext.Value.ElectronicArchiveUnitId);
+                    AddMedium(
+                        inStockMediaBySlot,
+                        location.SlotCode,
+                        CreateOpticalDiscDescriptor(
+                            opticalDiscMedium,
+                            false,
+                            opticalDiscArchiveContext,
+                            usedDataSizeLookup,
+                            ResolveElectronicUnitWithdrawalLock(opticalDiscArchiveContext, activeWithdrawalLockByUnitId),
+                            isEmptyBag));
                     continue;
                 }
 
@@ -405,6 +455,44 @@ namespace DocMgr.Services.Cabinets
             return lookup;
         }
 
+        /// <summary>
+        /// 模拟档案盒盘库标识：空（盘库致空仍占格）/ 失（部分丢失）。
+        /// </summary>
+        private Dictionary<int, string> BuildSimulatedBoxInventoryMarkLookup(IReadOnlyCollection<int> boxIds)
+        {
+            if (boxIds.Count == 0)
+            {
+                return new Dictionary<int, string>();
+            }
+
+            var lookup = new Dictionary<int, string>();
+            foreach (var box in _cabinetOpenLayoutRepository.GetYearlyArchiveBoxesByIds(boxIds))
+            {
+                var simulatedRows = _cabinetOpenLayoutRepository.GetYearlyArchiveBoxMediaItemRows(box)
+                    .Where(row => string.Equals(
+                        row.Fact.MediaKind,
+                        ArchiveRegisterDomainValues.MediaKindSimulated,
+                        StringComparison.Ordinal))
+                    .ToList();
+                if (simulatedRows.Count == 0)
+                {
+                    continue;
+                }
+
+                var totals = ArchiveSimulatedBoxSlotOccupancySupport.AggregateRows(simulatedRows);
+                if (totals.IsInventoryEmptyMark)
+                {
+                    lookup[box.Id] = "空";
+                }
+                else if (totals.IsInventoryLostMark)
+                {
+                    lookup[box.Id] = "失";
+                }
+            }
+
+            return lookup;
+        }
+
         private static string AppendSimulatedBoxPendingReturnHint(
             string slotToolTipText,
             IReadOnlyList<CabinetArchiveBoxDescriptor> archiveBoxes)
@@ -424,7 +512,7 @@ namespace DocMgr.Services.Cabinets
                 : $"{slotToolTipText}\n{pendingHint}";
         }
 
-        private static Dictionary<string, IReadOnlyList<CabinetArchiveBoxDescriptor>> BuildArchiveBoxesBySlot(CabinetOpenRequest request, IEnumerable<ExpandedArchiveBoxAssignment> assignments, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight, IReadOnlyDictionary<int, int> pendingReturnByBoxId, IReadOnlyDictionary<int, CabinetOccupationLockDescriptor> activeWithdrawalLockByBoxId)
+        private static Dictionary<string, IReadOnlyList<CabinetArchiveBoxDescriptor>> BuildArchiveBoxesBySlot(CabinetOpenRequest request, IEnumerable<ExpandedArchiveBoxAssignment> assignments, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight, IReadOnlyDictionary<int, int> pendingReturnByBoxId, IReadOnlyDictionary<int, string> inventoryMarkByBoxId, IReadOnlyDictionary<int, CabinetOccupationLockDescriptor> activeWithdrawalLockByBoxId)
         {
             var groupedBoxes = assignments
                 .Where(assignment => ResolveFaceCode(assignment, placementLookup) == request.Face.ToString())
@@ -439,7 +527,7 @@ namespace DocMgr.Services.Cabinets
                             .ToList();
                         var layouts = CalculateBoxLayouts(boxGroups, placementLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight);
                         return (IReadOnlyList<CabinetArchiveBoxDescriptor>)boxGroups
-                            .Select(item => CreateArchiveBoxDescriptor(item, placementLookup, layouts[item.Key], pendingReturnByBoxId, activeWithdrawalLockByBoxId))
+                            .Select(item => CreateArchiveBoxDescriptor(item, placementLookup, layouts[item.Key], pendingReturnByBoxId, inventoryMarkByBoxId, activeWithdrawalLockByBoxId))
                             .ToList();
                     },
                     StringComparer.OrdinalIgnoreCase);
@@ -447,7 +535,7 @@ namespace DocMgr.Services.Cabinets
             return groupedBoxes;
         }
 
-        private static CabinetArchiveBoxDescriptor CreateArchiveBoxDescriptor(IGrouping<string, ExpandedArchiveBoxAssignment> group, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, BoxRenderLayout layout, IReadOnlyDictionary<int, int> pendingReturnByBoxId, IReadOnlyDictionary<int, CabinetOccupationLockDescriptor> activeWithdrawalLockByBoxId)
+        private static CabinetArchiveBoxDescriptor CreateArchiveBoxDescriptor(IGrouping<string, ExpandedArchiveBoxAssignment> group, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, BoxRenderLayout layout, IReadOnlyDictionary<int, int> pendingReturnByBoxId, IReadOnlyDictionary<int, string> inventoryMarkByBoxId, IReadOnlyDictionary<int, CabinetOccupationLockDescriptor> activeWithdrawalLockByBoxId)
         {
             var first = group.First();
             var relatedBoxCodes = group
@@ -520,6 +608,9 @@ namespace DocMgr.Services.Cabinets
                 LayoutHeight = layout.Height,
                 YearlyArchiveBoxId = yearlyArchiveBoxId,
                 PendingReturnCopyCount = pendingReturnCopyCount,
+                InventoryMarkBadgeText = yearlyArchiveBoxId > 0
+                    ? inventoryMarkByBoxId.GetValueOrDefault(yearlyArchiveBoxId) ?? string.Empty
+                    : string.Empty,
                 HasOccupationLock = withdrawalLock.HasLock,
                 OccupationLockToolTipText = withdrawalLock.ToolTipSupplement,
                 OccupationLockBadgeText = withdrawalLock.BadgeText
@@ -531,7 +622,8 @@ namespace DocMgr.Services.Cabinets
             bool isPendingReturn,
             MediumArchiveContext? archiveContext,
             IReadOnlyDictionary<string, decimal> usedDataSizeLookup,
-            CabinetOccupationLockDescriptor? withdrawalLock = null)
+            CabinetOccupationLockDescriptor? withdrawalLock = null,
+            bool isInventoryEmptyBag = false)
         {
             ArgumentNullException.ThrowIfNull(medium);
 
@@ -544,7 +636,14 @@ namespace DocMgr.Services.Cabinets
             string holderText = string.IsNullOrWhiteSpace(medium.Ledger?.HolderOrOrganization) ? "未登记" : medium.Ledger.HolderOrOrganization.Trim();
             string electronicArchiveNo = archiveContext?.ElectronicArchiveNo ?? string.Empty;
             string electronicArchiveLocation = archiveContext?.StorageLocation ?? string.Empty;
-            bool isYearlyArchiveDisplay = archiveContext != null;
+            bool isYearlyArchiveDisplay = archiveContext != null
+                && (string.Equals(statusText, OpticalDiscMedium.StatusInStock, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(statusText, OpticalDiscMedium.StatusDamaged, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(statusText, OpticalDiscMedium.StatusLost, StringComparison.OrdinalIgnoreCase));
+            string inventoryMarkBadgeText = ResolveYearlyMediumInventoryMarkBadge(
+                statusText,
+                isYearlyArchiveDisplay,
+                isInventoryEmptyBag);
             decimal usedMb = ResolveUsedCapacityMb(discCode, archiveContext, usedDataSizeLookup);
             string yearText = archiveContext?.Year ?? string.Empty;
             string projectText = archiveContext?.ProjectName ?? string.Empty;
@@ -587,7 +686,8 @@ namespace DocMgr.Services.Cabinets
                 IsBlankInStock = false,
                 HasOccupationLock = occupationLock.HasLock,
                 OccupationLockToolTipText = occupationLock.ToolTipSupplement,
-                OccupationLockBadgeText = occupationLock.BadgeText
+                OccupationLockBadgeText = occupationLock.BadgeText,
+                InventoryMarkBadgeText = inventoryMarkBadgeText
             };
         }
 
@@ -685,7 +785,8 @@ namespace DocMgr.Services.Cabinets
             MediumArchiveContext? archiveContext,
             IReadOnlyDictionary<string, decimal> usedDataSizeLookup,
             CabinetOccupationLockDescriptor? withdrawalLock = null,
-            CabinetOccupationLockDescriptor? outboundApplicationLock = null)
+            CabinetOccupationLockDescriptor? outboundApplicationLock = null,
+            bool isInventoryEmptyBag = false)
         {
             var ledger = medium.Ledger;
             string diskCode = string.IsNullOrWhiteSpace(medium.DiskCode) ? "未编号" : medium.DiskCode.Trim();
@@ -696,7 +797,13 @@ namespace DocMgr.Services.Cabinets
             string electronicArchiveNo = archiveContext?.ElectronicArchiveNo ?? string.Empty;
             string electronicArchiveLocation = archiveContext?.StorageLocation ?? string.Empty;
             bool isYearlyArchiveDisplay = archiveContext != null
-                && string.Equals(statusText, HardDiskMedium.StatusInStockData, StringComparison.OrdinalIgnoreCase);
+                && (string.Equals(statusText, HardDiskMedium.StatusInStockData, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(statusText, HardDiskMedium.StatusInStockDamaged, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(statusText, HardDiskMedium.StatusInStockLost, StringComparison.OrdinalIgnoreCase));
+            string inventoryMarkBadgeText = ResolveYearlyMediumInventoryMarkBadge(
+                statusText,
+                isYearlyArchiveDisplay,
+                isInventoryEmptyBag);
             decimal usedMb = ResolveUsedCapacityMb(diskCode, archiveContext, usedDataSizeLookup);
             decimal totalMb = ElectronicMediaCapacitySupport.ParseCapacityTextToMb(medium.Capacity);
             decimal remainingMb = totalMb > 0 ? Math.Max(0, totalMb - usedMb) : 0;
@@ -741,11 +848,11 @@ namespace DocMgr.Services.Cabinets
                 ToolTipText = AppendOccupationLockToolTip(baseToolTipText, occupationLock),
                 ElectronicArchiveUnitId = archiveContext?.ElectronicArchiveUnitId ?? 0,
                 MediumId = medium.Id,
-                IsBlankInStock = string.Equals(statusText, HardDiskMedium.StatusInStockBlank, StringComparison.OrdinalIgnoreCase)
-                    && medium.RegisterLock == null,
+                IsBlankInStock = string.Equals(statusText, HardDiskMedium.StatusInStockBlank, StringComparison.OrdinalIgnoreCase),
                 HasOccupationLock = occupationLock.HasLock,
                 OccupationLockToolTipText = occupationLock.ToolTipSupplement,
-                OccupationLockBadgeText = occupationLock.BadgeText
+                OccupationLockBadgeText = occupationLock.BadgeText,
+                InventoryMarkBadgeText = inventoryMarkBadgeText
             };
         }
 
@@ -1134,19 +1241,115 @@ namespace DocMgr.Services.Cabinets
             return matchedItems.Count > 0 ? matchedItems : mediumItems;
         }
 
+        private static HashSet<int> BuildInventoryEmptyElectronicUnitIds(
+            IReadOnlyList<HardDiskMedium> hardDiskMedia,
+            IReadOnlyList<OpticalDiscMedium> opticalDiscMedia,
+            IReadOnlyDictionary<int, MediumArchiveContext> hardDiskArchiveLookup,
+            IReadOnlyDictionary<int, MediumArchiveContext> opticalDiscArchiveLookup)
+        {
+            var statusesByUnitId = new Dictionary<int, List<string>>();
+
+            void AddStatus(int unitId, string? status)
+            {
+                if (unitId <= 0 || string.IsNullOrWhiteSpace(status))
+                {
+                    return;
+                }
+
+                if (!statusesByUnitId.TryGetValue(unitId, out var list))
+                {
+                    list = new List<string>();
+                    statusesByUnitId[unitId] = list;
+                }
+
+                list.Add(status.Trim());
+            }
+
+            foreach (var medium in hardDiskMedia)
+            {
+                if (medium.Ledger == null
+                    || !IsInStockStatus(medium.Ledger.MediaStatus)
+                    || !hardDiskArchiveLookup.TryGetValue(medium.Id, out var context))
+                {
+                    continue;
+                }
+
+                AddStatus(context.ElectronicArchiveUnitId, medium.Ledger.MediaStatus);
+            }
+
+            foreach (var medium in opticalDiscMedia)
+            {
+                if (medium.Ledger == null
+                    || !IsOpticalDiscInStockStatus(medium.Ledger.MediaStatus)
+                    || !opticalDiscArchiveLookup.TryGetValue(medium.Id, out var context))
+                {
+                    continue;
+                }
+
+                AddStatus(context.ElectronicArchiveUnitId, medium.Ledger.MediaStatus);
+            }
+
+            return statusesByUnitId
+                .Where(pair => pair.Value.Count > 0 && pair.Value.All(IsInventoryAbnormalMediumStatus))
+                .Select(pair => pair.Key)
+                .ToHashSet();
+        }
+
+        private static string ResolveYearlyMediumInventoryMarkBadge(
+            string? statusText,
+            bool isYearlyArchiveDisplay,
+            bool isInventoryEmptyBag = false)
+        {
+            if (!isYearlyArchiveDisplay)
+            {
+                return string.Empty;
+            }
+
+            if (isInventoryEmptyBag)
+            {
+                return "空";
+            }
+
+            string normalized = NormalizeStatusText(statusText);
+            if (string.Equals(normalized, NormalizeStatusText(HardDiskMedium.StatusInStockDamaged), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, NormalizeStatusText(OpticalDiscMedium.StatusDamaged), StringComparison.OrdinalIgnoreCase))
+            {
+                return "X";
+            }
+
+            if (string.Equals(normalized, NormalizeStatusText(HardDiskMedium.StatusInStockLost), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, NormalizeStatusText(OpticalDiscMedium.StatusLost), StringComparison.OrdinalIgnoreCase))
+            {
+                return "失";
+            }
+
+            return string.Empty;
+        }
+
+        private static bool IsInventoryAbnormalMediumStatus(string? statusText)
+        {
+            string normalized = NormalizeStatusText(statusText);
+            return string.Equals(normalized, NormalizeStatusText(HardDiskMedium.StatusInStockDamaged), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, NormalizeStatusText(HardDiskMedium.StatusInStockLost), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, NormalizeStatusText(OpticalDiscMedium.StatusDamaged), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, NormalizeStatusText(OpticalDiscMedium.StatusLost), StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool IsInStockStatus(string? statusText)
         {
             string normalizedStatus = NormalizeStatusText(statusText);
             return string.Equals(normalizedStatus, NormalizeStatusText(HardDiskMedium.StatusInStockBlank), StringComparison.OrdinalIgnoreCase)
                 || string.Equals(normalizedStatus, NormalizeStatusText(HardDiskMedium.StatusInStockData), StringComparison.OrdinalIgnoreCase)
-                || string.Equals(normalizedStatus, NormalizeStatusText(HardDiskMedium.StatusInStockDamaged), StringComparison.OrdinalIgnoreCase);
+                || string.Equals(normalizedStatus, NormalizeStatusText(HardDiskMedium.StatusInStockDamaged), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizedStatus, NormalizeStatusText(HardDiskMedium.StatusInStockLost), StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsOpticalDiscInStockStatus(string? statusText)
         {
             string normalizedStatus = NormalizeStatusText(statusText);
             return string.Equals(normalizedStatus, NormalizeStatusText(OpticalDiscMedium.StatusInStock), StringComparison.OrdinalIgnoreCase)
-                || string.Equals(normalizedStatus, NormalizeStatusText(OpticalDiscMedium.StatusDamaged), StringComparison.OrdinalIgnoreCase);
+                || string.Equals(normalizedStatus, NormalizeStatusText(OpticalDiscMedium.StatusDamaged), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizedStatus, NormalizeStatusText(OpticalDiscMedium.StatusLost), StringComparison.OrdinalIgnoreCase);
         }
 
         private static string NormalizeStatusText(string? statusText)

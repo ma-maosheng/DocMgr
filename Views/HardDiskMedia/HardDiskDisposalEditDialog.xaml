@@ -7,43 +7,33 @@
         MinWidth="1040"
         MinHeight="720"
         WindowStartupLocation="CenterOwner"
-        Background="#F5F0E8">
+        Background="#F0F2F5">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-
-        <LinearGradientBrush x:Key="DisposalHeaderBrush" StartPoint="0,0" EndPoint="1,0">
-            <GradientStop Color="#FFFBEB" Offset="0"/>
-            <GradientStop Color="#FFF3D6" Offset="0.5"/>
-            <GradientStop Color="#F5E6C8" Offset="1"/>
-        </LinearGradientBrush>
-        <LinearGradientBrush x:Key="DisposalCardAccentBrush" StartPoint="0,0" EndPoint="1,0">
-            <GradientStop Color="#B98A2E" Offset="0"/>
-            <GradientStop Color="#E2C98F" Offset="1"/>
-        </LinearGradientBrush>
 
         <Style x:Key="DisposalSectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#6F4A00"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
             <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
         <Style x:Key="DisposalFieldLabelStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#9A7B3F"/>
+            <Setter Property="Foreground" Value="#64748B"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
         <Style x:Key="DisposalFilterLabelStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#9A7B3F"/>
+            <Setter Property="Foreground" Value="#64748B"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0,0,6,0"/>
         </Style>
         <Style x:Key="DisposalCardBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="#FFFDF7"/>
-            <Setter Property="BorderBrush" Value="#E2C98F"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="12"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
         <Style x:Key="DisposalFooterButtonStyle" TargetType="Button" BasedOn="{StaticResource DialogPrimaryActionButtonStyle}">
@@ -73,20 +63,19 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- 顶栏：浅米黄，避免深色过硬 -->
         <Border Grid.Row="0"
-                Background="{StaticResource DisposalHeaderBrush}"
-                BorderBrush="#E2C98F"
+                Background="White"
+                BorderBrush="#E0E0E0"
                 BorderThickness="0,0,0,1"
                 Padding="16,14">
             <StackPanel>
                 <TextBlock Text="{Binding WindowTitle}"
                            FontSize="18"
                            FontWeight="Bold"
-                           Foreground="#6F4A00"/>
+                           Foreground="#37474F"/>
                 <TextBlock Text="{Binding BannerText}"
                            Margin="0,6,0,0"
-                           Foreground="#9A7B3F"
+                           Foreground="#546E7A"
                            FontSize="12"
                            TextWrapping="Wrap"/>
             </StackPanel>
@@ -102,331 +91,311 @@
 
             <!-- 处置信息 -->
             <Border Grid.Row="0" Style="{StaticResource DisposalCardBorderStyle}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="4"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Background="{StaticResource DisposalCardAccentBrush}" CornerRadius="6,6,0,0"/>
-                    <StackPanel Grid.Row="1" Margin="12">
-                        <TextBlock Text="处置信息" Style="{StaticResource DisposalSectionTitleStyle}"/>
-                        <Grid Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="10"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="10"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="10"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="离库原因 *" Style="{StaticResource DisposalFieldLabelStyle}"/>
-                                <ComboBox ItemsSource="{Binding ReasonOptions}"
-                                          SelectedItem="{Binding DisposalReason}"
-                                          IsEnabled="{Binding CanEditHeader}"
-                                          Height="{StaticResource DialogFormControlHeight}"
-                                          VerticalContentAlignment="Center"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="处置方式 *" Style="{StaticResource DisposalFieldLabelStyle}"/>
-                                <ComboBox ItemsSource="{Binding DispositionMethodOptions}"
-                                          SelectedItem="{Binding DispositionMethod}"
-                                          IsEnabled="{Binding CanEditHeader}"
-                                          Height="{StaticResource DialogFormControlHeight}"
-                                          VerticalContentAlignment="Center"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="4">
-                                <TextBlock Text="申请人" Style="{StaticResource DisposalFieldLabelStyle}"/>
-                                <TextBox Text="{Binding ApplicantName, Mode=OneWay}"
-                                         IsReadOnly="True"
-                                         Background="#FFF8E7"
-                                         Height="{StaticResource DialogFormControlHeight}"
-                                         Padding="8,0"
-                                         VerticalContentAlignment="Center"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="6">
-                                <TextBlock Text="申请部门" Style="{StaticResource DisposalFieldLabelStyle}"/>
-                                <TextBox Text="{Binding ApplicantDept, Mode=OneWay}"
-                                         IsReadOnly="True"
-                                         Background="#FFF8E7"
-                                         Height="{StaticResource DialogFormControlHeight}"
-                                         Padding="8,0"
-                                         VerticalContentAlignment="Center"/>
-                            </StackPanel>
-                        </Grid>
+                <StackPanel>
+                    <TextBlock Text="处置信息" Style="{StaticResource DisposalSectionTitleStyle}"/>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="申请人" Style="{StaticResource DisposalFieldLabelStyle}"/>
+                            <TextBox Text="{Binding ApplicantName, Mode=OneWay}"
+                                     IsReadOnly="True"
+                                     Background="#F9FAFB"
+                                     Height="{StaticResource DialogFormControlHeight}"
+                                     Padding="8,0"
+                                     VerticalContentAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="申请部门" Style="{StaticResource DisposalFieldLabelStyle}"/>
+                            <TextBox Text="{Binding ApplicantDept, Mode=OneWay}"
+                                     IsReadOnly="True"
+                                     Background="#F9FAFB"
+                                     Height="{StaticResource DialogFormControlHeight}"
+                                     Padding="8,0"
+                                     VerticalContentAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
 
-                        <StackPanel Margin="0,0,0,8"
-                                    Visibility="{Binding RequiresOtherRemark, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock Text="其他说明 *" Style="{StaticResource DisposalFieldLabelStyle}"/>
-                            <TextBox Text="{Binding OtherRemark, UpdateSourceTrigger=PropertyChanged}"
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="申请说明 *" Style="{StaticResource DisposalFieldLabelStyle}"/>
+                            <TextBox Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
                                      IsEnabled="{Binding CanEditHeader}"
-                                     Height="40"
+                                     Height="44"
                                      Padding="8,6"
                                      TextWrapping="Wrap"
                                      AcceptsReturn="True"/>
                         </StackPanel>
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="2*"/>
-                                <ColumnDefinition Width="10"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="申请说明 *" Style="{StaticResource DisposalFieldLabelStyle}"/>
-                                <TextBox Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
-                                         IsEnabled="{Binding CanEditHeader}"
-                                         Height="44"
-                                         Padding="8,6"
-                                         TextWrapping="Wrap"
-                                         AcceptsReturn="True"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="备注" Style="{StaticResource DisposalFieldLabelStyle}"/>
-                                <TextBox Text="{Binding Remark, UpdateSourceTrigger=PropertyChanged}"
-                                         IsEnabled="{Binding CanEditHeader}"
-                                         Height="44"
-                                         Padding="8,6"
-                                         TextWrapping="Wrap"
-                                         AcceptsReturn="True"/>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </Grid>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="备注" Style="{StaticResource DisposalFieldLabelStyle}"/>
+                            <TextBox Text="{Binding Remark, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEnabled="{Binding CanEditHeader}"
+                                     Height="44"
+                                     Padding="8,6"
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="True"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
             </Border>
 
             <!-- 硬盘选取：占满剩余高度 -->
-            <Border Grid.Row="1" Style="{StaticResource DisposalCardBorderStyle}">
+            <Border Grid.Row="1" Style="{StaticResource DisposalCardBorderStyle}" Padding="12">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="4"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Background="{StaticResource DisposalCardAccentBrush}" CornerRadius="6,6,0,0"/>
-                    <Grid Grid.Row="1" Margin="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
 
-                        <DockPanel Grid.Row="0" Margin="0,0,0,8">
-                            <TextBlock Text="硬盘选取" Style="{StaticResource DisposalSectionTitleStyle}" Margin="0"/>
-                            <TextBlock DockPanel.Dock="Right"
-                                       Text="仅空盘 / 损坏盘；提交后征用锁定"
-                                       Foreground="#9A7B3F"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"/>
+                    <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                        <TextBlock Text="硬盘选取" Style="{StaticResource DisposalSectionTitleStyle}" Margin="0"/>
+                        <TextBlock DockPanel.Dock="Right"
+                                   Text="空盘→淘汰 / 损坏→损坏 / 盘失→盘失+库内注销；提交后征用锁定"
+                                   Foreground="#64748B"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"/>
+                    </DockPanel>
+
+                    <WrapPanel Grid.Row="1" Margin="0,0,0,8" IsEnabled="{Binding CanEditHeader}">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,12,6">
+                            <TextBlock Text="介质状态" Style="{StaticResource DisposalFilterLabelStyle}"/>
+                            <ComboBox Width="120"
+                                      Height="{StaticResource DialogFormControlHeight}"
+                                      VerticalContentAlignment="Center"
+                                      ItemsSource="{Binding MediaStatusFilterOptions}"
+                                      SelectedItem="{Binding FilterMediaStatus}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,12,6">
+                            <TextBlock Text="关键词" Style="{StaticResource DisposalFilterLabelStyle}"/>
+                            <TextBox Width="120"
+                                     Height="{StaticResource DialogFormControlHeight}"
+                                     Padding="8,0"
+                                     VerticalContentAlignment="Center"
+                                     Text="{Binding FilterKeyword, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,12,6">
+                            <TextBlock Text="接口" Style="{StaticResource DisposalFilterLabelStyle}"/>
+                            <ComboBox Width="96"
+                                      Height="{StaticResource DialogFormControlHeight}"
+                                      VerticalContentAlignment="Center"
+                                      ItemsSource="{Binding InterfaceTypeFilterOptions}"
+                                      SelectedItem="{Binding FilterInterfaceType}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,12,6">
+                            <TextBlock Text="容量" Style="{StaticResource DisposalFilterLabelStyle}"/>
+                            <ComboBox Width="96"
+                                      Height="{StaticResource DialogFormControlHeight}"
+                                      VerticalContentAlignment="Center"
+                                      ItemsSource="{Binding CapacityFilterOptions}"
+                                      SelectedItem="{Binding FilterCapacity}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,12,6">
+                            <TextBlock Text="出厂日期" Style="{StaticResource DisposalFilterLabelStyle}"/>
+                            <DatePicker Width="120"
+                                        Height="{StaticResource DialogFormControlHeight}"
+                                        VerticalContentAlignment="Center"
+                                        SelectedDate="{Binding FilterFactoryDateFrom, Mode=TwoWay}"
+                                        Margin="0,0,6,0"/>
+                            <TextBlock Text="至" Style="{StaticResource DisposalFilterLabelStyle}" Margin="0,0,6,0"/>
+                            <DatePicker Width="120"
+                                        Height="{StaticResource DialogFormControlHeight}"
+                                        VerticalContentAlignment="Center"
+                                        SelectedDate="{Binding FilterFactoryDateTo, Mode=TwoWay}"/>
+                        </StackPanel>
+                        <Button Content="清空筛选"
+                                Command="{Binding ClearFiltersCommand}"
+                                Style="{StaticResource ToolbarActionButtonStyle}"
+                                Height="{StaticResource DialogFormControlHeight}"
+                                Margin="0,0,0,6"
+                                VerticalAlignment="Center"/>
+                    </WrapPanel>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="96"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <DockPanel Grid.Column="0" Margin="0,0,6,0">
+                            <TextBlock DockPanel.Dock="Top"
+                                       Text="{Binding AvailableDisksTitle}"
+                                       FontWeight="SemiBold"
+                                       Foreground="#37474F"
+                                       Margin="0,0,0,6"/>
+                            <DataGrid ItemsSource="{Binding AvailableDisks}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      HeadersVisibility="Column"
+                                      SelectionMode="Extended"
+                                      IsReadOnly="False"
+                                      IsEnabled="{Binding CanEditHeader}"
+                                      RowHeight="36">
+                                <DataGrid.Columns>
+                                    <DataGridCheckBoxColumn Header="" Binding="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="36"/>
+                                    <DataGridTextColumn Header="编号" Binding="{Binding DiskCode}" Width="90" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="70" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="接口" Binding="{Binding InterfaceType}" Width="70" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="出厂日期" Binding="{Binding FactoryDateText}" Width="90" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="状态" Binding="{Binding MediaStatus}" Width="90" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="位置" Binding="{Binding StorageLocation}" Width="*" IsReadOnly="True"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
                         </DockPanel>
 
-                        <WrapPanel Grid.Row="1" Margin="0,0,0,8" IsEnabled="{Binding CanEditHeader}">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,12,6">
-                                <TextBlock Text="介质状态" Style="{StaticResource DisposalFilterLabelStyle}"/>
-                                <ComboBox Width="120"
-                                          Height="{StaticResource DialogFormControlHeight}"
-                                          VerticalContentAlignment="Center"
-                                          ItemsSource="{Binding MediaStatusFilterOptions}"
-                                          SelectedItem="{Binding FilterMediaStatus}"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,12,6">
-                                <TextBlock Text="关键词" Style="{StaticResource DisposalFilterLabelStyle}"/>
-                                <TextBox Width="120"
-                                         Height="{StaticResource DialogFormControlHeight}"
-                                         Padding="8,0"
-                                         VerticalContentAlignment="Center"
-                                         Text="{Binding FilterKeyword, UpdateSourceTrigger=PropertyChanged}"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,12,6">
-                                <TextBlock Text="接口" Style="{StaticResource DisposalFilterLabelStyle}"/>
-                                <ComboBox Width="96"
-                                          Height="{StaticResource DialogFormControlHeight}"
-                                          VerticalContentAlignment="Center"
-                                          ItemsSource="{Binding InterfaceTypeFilterOptions}"
-                                          SelectedItem="{Binding FilterInterfaceType}"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,12,6">
-                                <TextBlock Text="容量" Style="{StaticResource DisposalFilterLabelStyle}"/>
-                                <ComboBox Width="96"
-                                          Height="{StaticResource DialogFormControlHeight}"
-                                          VerticalContentAlignment="Center"
-                                          ItemsSource="{Binding CapacityFilterOptions}"
-                                          SelectedItem="{Binding FilterCapacity}"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,12,6">
-                                <TextBlock Text="出厂日期" Style="{StaticResource DisposalFilterLabelStyle}"/>
-                                <DatePicker Width="120"
-                                            Height="{StaticResource DialogFormControlHeight}"
-                                            VerticalContentAlignment="Center"
-                                            SelectedDate="{Binding FilterFactoryDateFrom, Mode=TwoWay}"
-                                            Margin="0,0,6,0"/>
-                                <TextBlock Text="至" Style="{StaticResource DisposalFilterLabelStyle}" Margin="0,0,6,0"/>
-                                <DatePicker Width="120"
-                                            Height="{StaticResource DialogFormControlHeight}"
-                                            VerticalContentAlignment="Center"
-                                            SelectedDate="{Binding FilterFactoryDateTo, Mode=TwoWay}"/>
-                            </StackPanel>
-                            <Button Content="清空筛选"
-                                    Command="{Binding ClearFiltersCommand}"
-                                    Style="{StaticResource ToolbarActionButtonStyle}"
-                                    Height="{StaticResource DialogFormControlHeight}"
-                                    Margin="0,0,0,6"
-                                    VerticalAlignment="Center"/>
-                        </WrapPanel>
+                        <StackPanel Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Center"
+                                    IsEnabled="{Binding CanEditHeader}">
+                            <Button Content="移入 ▶"
+                                    Command="{Binding MoveToDisposalCommand}"
+                                    Style="{StaticResource DisposalTransferButtonStyle}"
+                                    ToolTip="将左侧勾选硬盘移入待处置"/>
+                            <Button Content="◀ 移出"
+                                    Command="{Binding MoveToAvailableCommand}"
+                                    Style="{StaticResource DisposalTransferButtonStyle}"
+                                    Margin="0"
+                                    ToolTip="将右侧勾选硬盘移回可选列表"/>
+                        </StackPanel>
 
-                        <Grid Grid.Row="2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="96"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <DockPanel Grid.Column="0" Margin="0,0,6,0">
-                                <TextBlock DockPanel.Dock="Top"
-                                           Text="{Binding AvailableDisksTitle}"
-                                           FontWeight="SemiBold"
-                                           Foreground="#5D4037"
-                                           Margin="0,0,0,6"/>
-                                <DataGrid ItemsSource="{Binding AvailableDisks}"
-                                          AutoGenerateColumns="False"
-                                          CanUserAddRows="False"
-                                          HeadersVisibility="Column"
-                                          SelectionMode="Extended"
-                                          IsReadOnly="False"
-                                          IsEnabled="{Binding CanEditHeader}">
-                                    <DataGrid.Columns>
-                                        <DataGridCheckBoxColumn Header="" Binding="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="36"/>
-                                        <DataGridTextColumn Header="编号" Binding="{Binding DiskCode}" Width="90" IsReadOnly="True"/>
-                                        <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="70" IsReadOnly="True"/>
-                                        <DataGridTextColumn Header="接口" Binding="{Binding InterfaceType}" Width="70" IsReadOnly="True"/>
-                                        <DataGridTextColumn Header="出厂日期" Binding="{Binding FactoryDateText}" Width="90" IsReadOnly="True"/>
-                                        <DataGridTextColumn Header="状态" Binding="{Binding MediaStatus}" Width="90" IsReadOnly="True"/>
-                                        <DataGridTextColumn Header="位置" Binding="{Binding StorageLocation}" Width="*" IsReadOnly="True"/>
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </DockPanel>
-
-                            <StackPanel Grid.Column="1"
-                                        VerticalAlignment="Center"
-                                        HorizontalAlignment="Center"
+                        <DockPanel Grid.Column="2" Margin="6,0,0,0">
+                            <TextBlock DockPanel.Dock="Top"
+                                       Text="{Binding DisposalDisksTitle}"
+                                       FontWeight="SemiBold"
+                                       Foreground="#37474F"
+                                       Margin="0,0,0,6"/>
+                            <StackPanel DockPanel.Dock="Top"
+                                        Margin="0,0,0,8"
                                         IsEnabled="{Binding CanEditHeader}">
-                                <Button Content="移入 ▶"
-                                        Command="{Binding MoveToDisposalCommand}"
-                                        Style="{StaticResource DisposalTransferButtonStyle}"
-                                        ToolTip="将左侧勾选硬盘移入待处置"/>
-                                <Button Content="◀ 移出"
-                                        Command="{Binding MoveToAvailableCommand}"
-                                        Style="{StaticResource DisposalTransferButtonStyle}"
-                                        Margin="0"
-                                        ToolTip="将右侧勾选硬盘移回可选列表"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="处置方式"
+                                               Style="{StaticResource DisposalFilterLabelStyle}"/>
+                                    <ComboBox Width="140"
+                                              Height="{StaticResource DialogFormControlHeight}"
+                                              VerticalContentAlignment="Center"
+                                              ItemsSource="{Binding DispositionMethodOptions}"
+                                              SelectedItem="{Binding BatchDispositionMethod}"
+                                              Margin="0,0,8,0"
+                                              ToolTip="先勾选同一原状态的待处置硬盘，再选择处置方式进行赋值"/>
+                                    <Button Content="赋值"
+                                            Command="{Binding ApplyDispositionMethodCommand}"
+                                            Style="{StaticResource ToolbarActionButtonStyle}"
+                                            Height="{StaticResource DialogFormControlHeight}"
+                                            ToolTip="将当前处置方式写入勾选的待处置硬盘（须同一原状态）"/>
+                                </StackPanel>
+                                <StackPanel Visibility="{Binding RequiresOtherRemark, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Text="其他说明 *" Style="{StaticResource DisposalFieldLabelStyle}"/>
+                                    <TextBox Text="{Binding OtherRemark, UpdateSourceTrigger=PropertyChanged}"
+                                             Height="40"
+                                             Padding="8,6"
+                                             TextWrapping="Wrap"
+                                             AcceptsReturn="True"/>
+                                </StackPanel>
                             </StackPanel>
-
-                            <DockPanel Grid.Column="2" Margin="6,0,0,0">
-                                <TextBlock DockPanel.Dock="Top"
-                                           Text="{Binding DisposalDisksTitle}"
-                                           FontWeight="SemiBold"
-                                           Foreground="#5D4037"
-                                           Margin="0,0,0,6"/>
-                                <DataGrid ItemsSource="{Binding Items}"
-                                          AutoGenerateColumns="False"
-                                          CanUserAddRows="False"
-                                          HeadersVisibility="Column"
-                                          SelectionMode="Extended"
-                                          IsReadOnly="False"
-                                          IsEnabled="{Binding CanEditHeader}">
-                                    <DataGrid.Columns>
-                                        <DataGridCheckBoxColumn Header="" Binding="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="36"/>
-                                        <DataGridTextColumn Header="序号" Binding="{Binding SortOrder}" Width="40" IsReadOnly="True"/>
-                                        <DataGridTextColumn Header="编号" Binding="{Binding DiskCode}" Width="90" IsReadOnly="True"/>
-                                        <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="70" IsReadOnly="True"/>
-                                        <DataGridTextColumn Header="接口" Binding="{Binding InterfaceType}" Width="70" IsReadOnly="True"/>
-                                        <DataGridTextColumn Header="出厂日期" Binding="{Binding FactoryDateText}" Width="90" IsReadOnly="True"/>
-                                        <DataGridTextColumn Header="原状态" Binding="{Binding BeforeMediaStatus}" Width="90" IsReadOnly="True"/>
-                                        <DataGridTextColumn Header="原位置" Binding="{Binding BeforeStorageLocation}" Width="*" IsReadOnly="True"/>
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </DockPanel>
-                        </Grid>
+                            <DataGrid ItemsSource="{Binding Items}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      HeadersVisibility="Column"
+                                      SelectionMode="Extended"
+                                      IsReadOnly="False"
+                                      IsEnabled="{Binding CanEditHeader}"
+                                      RowHeight="36">
+                                <DataGrid.Columns>
+                                    <DataGridCheckBoxColumn Header="" Binding="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="36"/>
+                                    <DataGridTextColumn Header="序号" Binding="{Binding SortOrder}" Width="40" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="编号" Binding="{Binding DiskCode}" Width="70" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="50" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="接口" Binding="{Binding InterfaceType}" Width="50" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="出厂日期" Binding="{Binding FactoryDateText}" Width="75" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="原状态" Binding="{Binding BeforeMediaStatus}" Width="70" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="原位置" Binding="{Binding BeforeStorageLocation}" Width="*" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="离库原因" Binding="{Binding DisposalReason}" Width="60" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="处置方式" Binding="{Binding DispositionMethod}" Width="70" IsReadOnly="True"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
                     </Grid>
                 </Grid>
             </Border>
 
             <!-- 审批与附件 -->
             <Border Grid.Row="2" Style="{StaticResource DisposalCardBorderStyle}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="4"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Background="{StaticResource DisposalCardAccentBrush}" CornerRadius="6,6,0,0"/>
-                    <StackPanel Grid.Row="1" Margin="12">
-                        <TextBlock Text="审批与附件" Style="{StaticResource DisposalSectionTitleStyle}"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <TextBlock Text="审批意见" Style="{StaticResource DisposalFilterLabelStyle}"/>
-                            <TextBox Width="240"
-                                     Height="{StaticResource DialogFormControlHeight}"
-                                     Padding="8,0"
-                                     VerticalContentAlignment="Center"
-                                     Text="{Binding ApprovalOpinion, UpdateSourceTrigger=PropertyChanged}"
-                                     IsEnabled="{Binding CanApprove}"
-                                     Margin="0,0,16,0"/>
-                            <TextBlock Text="上传分类" Style="{StaticResource DisposalFilterLabelStyle}"/>
-                            <ComboBox Width="140"
-                                      Height="{StaticResource DialogFormControlHeight}"
-                                      VerticalContentAlignment="Center"
-                                      ItemsSource="{Binding UploadCategoryOptions}"
-                                      SelectedItem="{Binding UploadCategory}"
-                                      Margin="0,0,8,0"/>
-                            <Button Content="上传附件"
-                                    Command="{Binding UploadAttachmentCommand}"
-                                    Style="{StaticResource ToolbarActionButtonStyle}"
-                                    Height="{StaticResource DialogFormControlHeight}"/>
-                        </StackPanel>
-                        <DataGrid ItemsSource="{Binding Attachments}"
-                                  SelectedItem="{Binding SelectedAttachment}"
-                                  AutoGenerateColumns="False"
-                                  IsReadOnly="True"
-                                  CanUserAddRows="False"
-                                  Height="100"
-                                  HeadersVisibility="Column">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="分类" Binding="{Binding FileCategory}" Width="90"/>
-                                <DataGridTextColumn Header="文件名" Binding="{Binding FileName}" Width="*"/>
-                                <DataGridTextColumn Header="上传人" Binding="{Binding UploaderName}" Width="90"/>
-                                <DataGridTextColumn Header="上传时间" Binding="{Binding UploadTime, StringFormat=yyyy-MM-dd HH:mm}" Width="130"/>
-                                <DataGridTemplateColumn Header="操作" Width="150">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Button Content="查看"
-                                                        Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"
-                                                        Style="{StaticResource ToolbarActionButtonStyle}"
-                                                        Height="{StaticResource DialogFormControlHeight}"
-                                                        MinWidth="56"
-                                                        Margin="0,0,6,0"/>
-                                                <Button Content="删除"
-                                                        Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"
-                                                        Style="{StaticResource ToolbarDangerButtonStyle}"
-                                                        Height="{StaticResource DialogFormControlHeight}"
-                                                        MinWidth="56"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                <StackPanel>
+                    <TextBlock Text="审批与附件" Style="{StaticResource DisposalSectionTitleStyle}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="审批意见" Style="{StaticResource DisposalFilterLabelStyle}"/>
+                        <TextBox Width="240"
+                                 Height="{StaticResource DialogFormControlHeight}"
+                                 Padding="8,0"
+                                 VerticalContentAlignment="Center"
+                                 Text="{Binding ApprovalOpinion, UpdateSourceTrigger=PropertyChanged}"
+                                 IsEnabled="{Binding CanApprove}"
+                                 Margin="0,0,16,0"/>
+                        <TextBlock Text="上传分类" Style="{StaticResource DisposalFilterLabelStyle}"/>
+                        <ComboBox Width="140"
+                                  Height="{StaticResource DialogFormControlHeight}"
+                                  VerticalContentAlignment="Center"
+                                  ItemsSource="{Binding UploadCategoryOptions}"
+                                  SelectedItem="{Binding UploadCategory}"
+                                  Margin="0,0,8,0"/>
+                        <Button Content="上传附件"
+                                Command="{Binding UploadAttachmentCommand}"
+                                Style="{StaticResource ToolbarActionButtonStyle}"
+                                Height="{StaticResource DialogFormControlHeight}"/>
                     </StackPanel>
-                </Grid>
+                    <DataGrid ItemsSource="{Binding Attachments}"
+                              SelectedItem="{Binding SelectedAttachment}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              Height="100"
+                              HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="分类" Binding="{Binding FileCategory}" Width="90"/>
+                            <DataGridTextColumn Header="文件名" Binding="{Binding FileName}" Width="*"/>
+                            <DataGridTextColumn Header="上传人" Binding="{Binding UploaderName}" Width="90"/>
+                            <DataGridTextColumn Header="上传时间" Binding="{Binding UploadTime, StringFormat=yyyy-MM-dd HH:mm}" Width="130"/>
+                            <DataGridTemplateColumn Header="操作" Width="150">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Content="查看"
+                                                    Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{StaticResource ToolbarActionButtonStyle}"
+                                                    Height="{StaticResource DialogFormControlHeight}"
+                                                    MinWidth="56"
+                                                    Margin="0,0,6,0"/>
+                                            <Button Content="删除"
+                                                    Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{StaticResource ToolbarDangerButtonStyle}"
+                                                    Height="{StaticResource DialogFormControlHeight}"
+                                                    MinWidth="56"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
             </Border>
 
             <!-- 底栏 -->
             <Border Grid.Row="3"
-                    Background="#FFFBEB"
-                    BorderBrush="#E2C98F"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
                     BorderThickness="1"
-                    CornerRadius="6"
+                    CornerRadius="4"
                     Padding="10,8">
                 <WrapPanel HorizontalAlignment="Right">
                     <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Style="{StaticResource DisposalFooterButtonStyle}"/>

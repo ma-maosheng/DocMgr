@@ -145,6 +145,49 @@ public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
             .ToListAsync();
     }
 
+    /// <inheritdoc />
+    public async Task<Dictionary<int, string>> GetInventoryLostBeforeLocationsAsync(IReadOnlyCollection<int> mediumIds)
+    {
+        if (mediumIds == null || mediumIds.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        List<int> ids = mediumIds.Where(id => id > 0).Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        var rows = await _dbContext.HardDiskMediaTransactions
+            .AsNoTracking()
+            .Where(item => ids.Contains(item.MediumId)
+                           && item.TransactionType == HardDiskMediaTransaction.TypeInventoryRegisterLost
+                           && item.BeforeLocation != null
+                           && item.BeforeLocation != string.Empty)
+            .OrderByDescending(item => item.OperateTime)
+            .ThenByDescending(item => item.Id)
+            .Select(item => new { item.MediumId, item.BeforeLocation })
+            .ToListAsync();
+
+        var result = new Dictionary<int, string>();
+        foreach (var row in rows)
+        {
+            if (result.ContainsKey(row.MediumId))
+            {
+                continue;
+            }
+
+            string location = row.BeforeLocation?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(location))
+            {
+                result[row.MediumId] = location;
+            }
+        }
+
+        return result;
+    }
+
     public Task<bool> ExistsActiveDisposalForMediumAsync(int mediumId, int? excludeRecordId = null)
     {
         IQueryable<HardDiskDisposalItem> query = _dbContext.HardDiskDisposalItems

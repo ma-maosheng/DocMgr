@@ -1,0 +1,69 @@
+---
+description: 年度资料盘库登记：模拟丢失份数与电子袋内介质损坏/盘失；盘库空占格；与业务空盒释档分流
+globs: Services/YearlyArchive/ArchiveInventoryRegister*.cs,Repositories/YearlyArchive/ArchiveInventoryRegister*.cs,ViewModels/YearlyArchive/ArchiveInventoryRegister*.cs,Views/YearlyArchive/ArchiveInventoryRegister*.cs,Services/Cabinets/CabinetOpenLayoutService.cs,Services/YearlyArchive/ArchiveSimulatedBoxSlotOccupancySupport.cs,Services/YearlyArchive/SimulatedInArchiveCopyCountSupport.cs
+alwaysApply: false
+---
+
+# 年度资料盘库登记
+
+## 菜单位置
+
+「年度资料档案化管理」→「盘库登记」→「模拟资料盘库」/「电子资料盘库」（在「资料流转」之后）。
+
+## 口径
+
+1. **盘库空 vs 业务空**
+   - 盘库导致空盒/空袋：仍占档口，开柜标红色「空」；后期「离库处置」再清账移走。
+   - 业务空（出库不还 / 归还灭失，已经过审批）：仍按 `archive-emptied-container-alignment.mdc` **自动释档**。
+2. **电子盘库对象**：袋内关联的**硬盘或光盘**损坏/丢失，不是电子袋本身；介质袋物理位置不变。
+3. **模拟盘库对象**：资料子项（立档事实）；支持**盘失登记**与**拟销登记**（无存档价值资料），均登记扣减份数。
+4. **拟销登记**：仅模拟轨；办结效应与盘失相同（扣减 `InventoryLostCopyCount`、写履历），语义标记为拟销而非丢失。
+
+## 流程
+
+- 草稿 → 确认登记办结（无审批、无签批）；权限：资料室资料管理员。
+- 编号前缀：`资盘-登`（`BusinessNoCategory.ArchiveInventoryRegister`）。
+
+## 份数公式（模拟）
+
+```text
+库内 = 立档份数 - 待还 - 不还 - 归还灭失 - 盘库丢失(InventoryLostCopyCount)
+```
+
+- `InventoryLostCopyCount` 挂在 `YearlyArchiveFilingFact`，与归还灭失分流。
+- `ShouldReleaseSlot`：**仅**「库内=0 且待还=0 且（不还>0 或 归还灭失>0）」；盘库丢失单独致空**不释档**。
+
+## 电子办结效应
+
+- 介质台账 → `在库(损坏)` / `在库(盘失)`，**保留** `StorageLocation`（不迁损坏专用档口、盘失不清空位置）。
+- 关联立档事实 → `Destroyed`；检索「在库」不再命中。
+- 电子袋保持 `InUse` 占位。
+
+## 开柜标识（优先级：空 > 失/X > 待还/预订）
+
+| 标记 | 模拟档案盒 | 电子袋介质卡 |
+|------|------------|--------------|
+| 空 | 盘库致空仍占格 | 袋内介质全部损坏/盘失 |
+| 失 | 部分盘库丢失 | 资料载体 `在库(盘失)` |
+| X | （无） | 资料载体 `在库(损坏)` |
+
+## 与硬盘盘库互斥
+
+- 已关联 `InUse` 电子袋的资料硬盘**不可**纳入介质管理「硬盘盘库登记」候选（避免盘失清空档口与资料盘库留袋冲突）。
+- 同介质不可并行未办结的资料盘库 / 硬盘盘库 / 离库处置。
+
+## 借出影响
+
+- 模拟：出库提档可用份数含盘库丢失，不足则阻断。
+- 电子：损坏/盘失介质上事实已销毁，不可再入检索借出；草稿期征用锁互斥。
+- 不可把待还份数登记为盘库丢失。
+
+## 后期离库处置（本期不做）
+
+中间态：盒/袋 `InUse` + 空/失/X；介质 `在库(损坏|盘失)`；事实 `Destroyed`。正式清账预留容器/事实 `Disposed`。
+
+## 实现入口
+
+- Service：`ArchiveInventoryRegisterService`（Simulated / Electronic partial）
+- 占格：`ArchiveSimulatedBoxSlotOccupancySupport`
+- 开柜：`CabinetOpenLayoutService` + `ArchiveBoxItemViewModel` / `CabinetHardDiskMediumItemViewModel`

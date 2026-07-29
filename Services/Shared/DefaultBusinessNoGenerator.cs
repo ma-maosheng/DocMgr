@@ -13,6 +13,7 @@ namespace DocMgr.Services.Shared
         private readonly IHardDiskMediaRepository _hardDiskMediaRepository;
         private readonly IHardDiskInventoryRegisterRepository _hardDiskInventoryRegisterRepository;
         private readonly IHardDiskDisposalRepository _hardDiskDisposalRepository;
+        private readonly IArchiveInventoryRegisterRepository _archiveInventoryRegisterRepository;
 
         public DefaultBusinessNoGenerator(
             IArchiveRegisterRepository archiveRegisterRepository,
@@ -20,7 +21,8 @@ namespace DocMgr.Services.Shared
             IArchiveReturnRepository archiveReturnRepository,
             IHardDiskMediaRepository hardDiskMediaRepository,
             IHardDiskInventoryRegisterRepository hardDiskInventoryRegisterRepository,
-            IHardDiskDisposalRepository hardDiskDisposalRepository)
+            IHardDiskDisposalRepository hardDiskDisposalRepository,
+            IArchiveInventoryRegisterRepository archiveInventoryRegisterRepository)
         {
             _archiveRegisterRepository = archiveRegisterRepository;
             _archiveOutboundRepository = archiveOutboundRepository;
@@ -28,6 +30,7 @@ namespace DocMgr.Services.Shared
             _hardDiskMediaRepository = hardDiskMediaRepository;
             _hardDiskInventoryRegisterRepository = hardDiskInventoryRegisterRepository;
             _hardDiskDisposalRepository = hardDiskDisposalRepository;
+            _archiveInventoryRegisterRepository = archiveInventoryRegisterRepository;
         }
 
         /// <summary>
@@ -68,6 +71,7 @@ namespace DocMgr.Services.Shared
                 BusinessNoCategory.DiskOutboundApply => _hardDiskMediaRepository.GetLastApplicationNoByPrefixAsync(prefix),
                 BusinessNoCategory.DiskInventoryRegister => _hardDiskInventoryRegisterRepository.GetLastRegisterNoByPrefixAsync(prefix),
                 BusinessNoCategory.DiskDisposalApply => _hardDiskDisposalRepository.GetLastDisposalNoByPrefixAsync(prefix),
+                BusinessNoCategory.ArchiveInventoryRegister => _archiveInventoryRegisterRepository.GetLastRegisterNoByPrefixAsync(prefix),
                 _ => throw new ArgumentException($"不支持的业务编号类别：{category}", nameof(category))
             };
         }

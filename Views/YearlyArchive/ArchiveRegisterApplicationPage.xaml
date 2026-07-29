@@ -34,49 +34,12 @@
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <Border Width="180"
-                                Height="32"
-                                Background="#EEF2F7"
-                                BorderBrush="#C7CED8"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Padding="8,0"
-                                ToolTipService.InitialShowDelay="0"
-                                ToolTipService.ShowDuration="30000">
-                            <Border.ToolTip>
-                                <ToolTip>
-                                    <StackPanel>
-                                        <TextBlock Text="审批状态已锁定为【全部】" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                                        <TextBlock Text="包含状态："/>
-                                        <TextBlock Text="1. 当前草稿-待提交"/>
-                                        <TextBlock Text="2. 已提交-待审批"/>
-                                        <TextBlock Text="3. 已审批-待实物交接"/>
-                                        <TextBlock Text="4. 已实物交接-待上传签批交接单"/>
-                                        <TextBlock Text="5. 已办结（业务已闭环）"/>
-                                        <TextBlock Text="6. 已作废（撤回）"/>
-                                        <TextBlock Text="7. 已作废（强制）"/>
-                                    </StackPanel>
-                                </ToolTip>
-                            </Border.ToolTip>
-                            <DockPanel LastChildFill="True">
-                                <TextBlock Text="&#xE72E;"
-                                           FontFamily="Segoe MDL2 Assets"
-                                           VerticalAlignment="Center"
-                                           Foreground="#6B7280"
-                                           Margin="0,0,6,0"
-                                           DockPanel.Dock="Left"/>
-                                <TextBlock Text="全部"
-                                           VerticalAlignment="Center"
-                                           Foreground="#374151"
-                                           FontWeight="SemiBold"/>
-                                <TextBlock Text="&#xE946;"
-                                           FontFamily="Segoe MDL2 Assets"
-                                           VerticalAlignment="Center"
-                                           Foreground="#6B7280"
-                                           Margin="6,0,0,0"
-                                           DockPanel.Dock="Right"/>
-                            </DockPanel>
-                        </Border>
+                        <ComboBox Width="180"
+                                  Style="{StaticResource ToolbarFilterComboBoxStyle}"
+                                  ItemsSource="{Binding StatusFilterOptions}"
+                                  SelectedItem="{Binding SelectedStatusFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  DisplayMemberPath="Label"
+                                  ToolTip="可按状态筛选；选【全部】列出各状态申请（含未提交）"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">

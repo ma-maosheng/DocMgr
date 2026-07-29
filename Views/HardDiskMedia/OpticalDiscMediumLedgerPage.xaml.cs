@@ -1,3 +1,4 @@
+using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.ViewModels.HardDiskMedia;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
@@ -8,11 +9,25 @@ namespace DocMgr.Views.HardDiskMedia
     public partial class OpticalDiscMediumLedgerPage : Page
     {
         private readonly IServiceScope _pageScope;
+        private readonly string? _initialStatus;
+        private readonly OpticalDiscLedgerQuickFilter _quickFilter;
+        private readonly bool _recentTransactionsOnly;
 
         public OpticalDiscMediumLedgerPage()
+            : this(null, OpticalDiscLedgerQuickFilter.None, false)
+        {
+        }
+
+        public OpticalDiscMediumLedgerPage(
+            string? initialStatus,
+            OpticalDiscLedgerQuickFilter quickFilter = OpticalDiscLedgerQuickFilter.None,
+            bool recentTransactionsOnly = false)
         {
             InitializeComponent();
 
+            _initialStatus = initialStatus;
+            _quickFilter = quickFilter;
+            _recentTransactionsOnly = recentTransactionsOnly;
             _pageScope = App.CurrentProvider.CreateScope();
             DataContext = _pageScope.ServiceProvider.GetRequiredService<OpticalDiscMediumLedgerViewModel>();
 
@@ -24,7 +39,7 @@ namespace DocMgr.Views.HardDiskMedia
         {
             if (DataContext is OpticalDiscMediumLedgerViewModel viewModel)
             {
-                await viewModel.InitializeAsync();
+                await viewModel.InitializeAsync(_initialStatus, _quickFilter, _recentTransactionsOnly);
             }
         }
 
@@ -33,14 +48,6 @@ namespace DocMgr.Views.HardDiskMedia
             Loaded -= OpticalDiscMediumLedgerPage_Loaded;
             Unloaded -= OpticalDiscMediumLedgerPage_Unloaded;
             _pageScope.Dispose();
-        }
-
-        private async void BtnSearchTransactions_Click(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is OpticalDiscMediumLedgerViewModel viewModel)
-            {
-                await viewModel.SearchTransactionsAsync();
-            }
         }
     }
 }

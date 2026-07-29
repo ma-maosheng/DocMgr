@@ -4,7 +4,7 @@ namespace DocMgr.Services.YearlyArchive
 {
     /// <summary>
     /// 模拟介质资料子项份数：立档份数取 <see cref="YearlyArchiveFilingFact.ContentCount"/>；
-    /// 当前库内份数按「立档 = 库内 + 待还 + 不还 + 灭失」公式实时计算（非登记介质 <see cref="YearlyArchiveRegisterMedia.MediaCount"/>）。
+    /// 当前库内份数按「立档 = 库内 + 待还 + 不还 + 归还灭失 + 盘库丢失」公式实时计算。
     /// </summary>
     public static class SimulatedInArchiveCopyCountSupport
     {
@@ -17,13 +17,15 @@ namespace DocMgr.Services.YearlyArchive
             int filedCopyCount,
             int pendingReturnCopyCount,
             int noReturnCopyCount,
-            int lostCopyCount)
+            int lostCopyCount,
+            int inventoryLostCopyCount = 0)
         {
             int filed = ResolveFiledCopyCount(filedCopyCount);
             int current = filed
                 - Math.Max(0, pendingReturnCopyCount)
                 - Math.Max(0, noReturnCopyCount)
-                - Math.Max(0, lostCopyCount);
+                - Math.Max(0, lostCopyCount)
+                - Math.Max(0, inventoryLostCopyCount);
             return Math.Max(0, current);
         }
 
@@ -36,7 +38,8 @@ namespace DocMgr.Services.YearlyArchive
                 filedCopyCount,
                 snapshot.PendingReturnCopyCount,
                 snapshot.NoReturnCopyCount,
-                snapshot.LostCopyCount);
+                snapshot.LostCopyCount,
+                snapshot.InventoryLostCopyCount);
         }
 
         /// <summary>展示当前库内/立档，如「2/5」。</summary>
@@ -48,7 +51,7 @@ namespace DocMgr.Services.YearlyArchive
         }
 
         /// <summary>
-        /// 兼容旧调用：仅扣减待还份数（不含不还/灭失）。新逻辑请用四元公式或 <see cref="FormatCurrentVsFiled"/>。
+        /// 兼容旧调用：仅扣减待还份数（不含不还/灭失/盘库丢失）。新逻辑请用完整公式或 <see cref="FormatCurrentVsFiled"/>。
         /// </summary>
         public static string FormatDisplay(int filedCopyCount, int withdrawnCopyCount) =>
             FormatCurrentVsFiled(
@@ -73,6 +76,7 @@ namespace DocMgr.Services.YearlyArchive
                 PendingReturnCopyCount = Math.Max(0, snapshot.PendingReturnCopyCount),
                 NoReturnCopyCount = Math.Max(0, snapshot.NoReturnCopyCount),
                 LostCopyCount = Math.Max(0, snapshot.LostCopyCount),
+                InventoryLostCopyCount = Math.Max(0, snapshot.InventoryLostCopyCount),
                 CurrentInArchiveCopyCount = currentInArchiveCopyCount,
                 Display = FormatCurrentVsFiled(currentInArchiveCopyCount, filedCopyCount)
             };

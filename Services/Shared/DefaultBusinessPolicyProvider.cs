@@ -89,7 +89,14 @@ namespace DocMgr.Services.Shared
                     WorkflowMode: BusinessWorkflowMode.Apply,
                     SequenceLength: 3,
                     ApprovalPolicy: ApplyApprovalPolicy,
-                    AttachmentPolicy: ApplyAttachmentPolicy)
+                    AttachmentPolicy: ApplyAttachmentPolicy),
+                [BusinessNoCategory.ArchiveInventoryRegister] = new(
+                    BusinessNoCategory.ArchiveInventoryRegister,
+                    Prefix: "资盘-登",
+                    WorkflowMode: BusinessWorkflowMode.Register,
+                    SequenceLength: 3,
+                    ApprovalPolicy: RegisterApprovalPolicy,
+                    AttachmentPolicy: RegisterAttachmentPolicy)
             };
 
         /// <summary>

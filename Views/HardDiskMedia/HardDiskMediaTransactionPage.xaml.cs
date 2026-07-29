@@ -1,3 +1,4 @@
+using DocMgr.Models.HardDiskMedia;
 using DocMgr.ViewModels.HardDiskMedia;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
@@ -8,11 +9,25 @@ namespace DocMgr.Views.HardDiskMedia
     public partial class HardDiskMediaTransactionPage : Page
     {
         private readonly IServiceScope _pageScope;
+        private readonly string? _initialStatus;
+        private readonly string? _initialLockFilter;
+        private readonly HardDiskLedgerQuickFilter _quickFilter;
 
         public HardDiskMediaTransactionPage()
+            : this(null, null, HardDiskLedgerQuickFilter.None)
+        {
+        }
+
+        public HardDiskMediaTransactionPage(
+            string? initialStatus,
+            string? initialLockFilter = null,
+            HardDiskLedgerQuickFilter quickFilter = HardDiskLedgerQuickFilter.None)
         {
             InitializeComponent();
 
+            _initialStatus = initialStatus;
+            _initialLockFilter = initialLockFilter;
+            _quickFilter = quickFilter;
             _pageScope = App.CurrentProvider.CreateScope();
             DataContext = _pageScope.ServiceProvider.GetRequiredService<HardDiskMediaTransactionPageViewModel>();
 
@@ -24,7 +39,7 @@ namespace DocMgr.Views.HardDiskMedia
         {
             if (DataContext is HardDiskMediaTransactionPageViewModel viewModel)
             {
-                await viewModel.InitializeAsync();
+                await viewModel.InitializeAsync(_initialStatus, _initialLockFilter, _quickFilter);
             }
         }
 

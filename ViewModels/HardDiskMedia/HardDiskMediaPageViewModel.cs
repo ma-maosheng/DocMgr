@@ -1,11 +1,14 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
+using DocMgr.Models.HardDiskMedia;
 using DocMgr.ViewModels.Base;
+using DocMgr.Views;
 
 namespace DocMgr.ViewModels.HardDiskMedia
 {
     /// <summary>
-    /// 硬盘介质模块首页 ViewModel。
+    /// 硬盘介质模块首页 ViewModel（概览页，对齐现行硬盘业务菜单与统计口径）。
     /// </summary>
     public class HardDiskMediaPageViewModel : ViewModelBase
     {
@@ -36,7 +39,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _sectionFocus, value);
         }
 
-        private string _businessReference = "参考：年度资料档案化管理 / 资料登记";
+        private string _businessReference = "参考：硬盘台账 / 出库申请 / 归还登记 / 盘库登记 / 离库处置";
         public string BusinessReference
         {
             get => _businessReference;
@@ -71,6 +74,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _totalMediumCount, value);
         }
 
+        private int _missingLedgerMediumCount;
+        public int MissingLedgerMediumCount
+        {
+            get => _missingLedgerMediumCount;
+            set => SetProperty(ref _missingLedgerMediumCount, value);
+        }
+
         private int _blankInStockCount;
         public int BlankInStockCount
         {
@@ -99,11 +109,32 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _damagedInStockCount, value);
         }
 
-        private int _transferOutCount;
-        public int TransferOutCount
+        private int _inStockLostCount;
+        public int InStockLostCount
         {
-            get => _transferOutCount;
-            set => SetProperty(ref _transferOutCount, value);
+            get => _inStockLostCount;
+            set => SetProperty(ref _inStockLostCount, value);
+        }
+
+        private int _permanentTransferCount;
+        public int PermanentTransferCount
+        {
+            get => _permanentTransferCount;
+            set => SetProperty(ref _permanentTransferCount, value);
+        }
+
+        private int _disposedCount;
+        public int DisposedCount
+        {
+            get => _disposedCount;
+            set => SetProperty(ref _disposedCount, value);
+        }
+
+        private int _outLostCount;
+        public int OutLostCount
+        {
+            get => _outLostCount;
+            set => SetProperty(ref _outLostCount, value);
         }
 
         private int _needReturnMediumCount;
@@ -127,6 +158,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _temporaryNeedReturnMediumCount, value);
         }
 
+        private int _overdueNeedReturnCount;
+        public int OverdueNeedReturnCount
+        {
+            get => _overdueNeedReturnCount;
+            set => SetProperty(ref _overdueNeedReturnCount, value);
+        }
+
         private int _missingLocationMediumCount;
         public int MissingLocationMediumCount
         {
@@ -141,11 +179,25 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _outboundWithoutKeeperMediumCount, value);
         }
 
+        private int _lockedMediumCount;
+        public int LockedMediumCount
+        {
+            get => _lockedMediumCount;
+            set => SetProperty(ref _lockedMediumCount, value);
+        }
+
         private int _submittedApplicationCount;
         public int SubmittedApplicationCount
         {
             get => _submittedApplicationCount;
             set => SetProperty(ref _submittedApplicationCount, value);
+        }
+
+        private int _pendingHandoverApplicationCount;
+        public int PendingHandoverApplicationCount
+        {
+            get => _pendingHandoverApplicationCount;
+            set => SetProperty(ref _pendingHandoverApplicationCount, value);
         }
 
         private int _pendingSignedFileCount;
@@ -155,11 +207,25 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _pendingSignedFileCount, value);
         }
 
-        private int _pendingProcessApplicationCount;
-        public int PendingProcessApplicationCount
+        private int _pendingCompleteApplicationCount;
+        public int PendingCompleteApplicationCount
         {
-            get => _pendingProcessApplicationCount;
-            set => SetProperty(ref _pendingProcessApplicationCount, value);
+            get => _pendingCompleteApplicationCount;
+            set => SetProperty(ref _pendingCompleteApplicationCount, value);
+        }
+
+        private int _pendingDisposalCount;
+        public int PendingDisposalCount
+        {
+            get => _pendingDisposalCount;
+            set => SetProperty(ref _pendingDisposalCount, value);
+        }
+
+        private int _draftInventoryRegisterCount;
+        public int DraftInventoryRegisterCount
+        {
+            get => _draftInventoryRegisterCount;
+            set => SetProperty(ref _draftInventoryRegisterCount, value);
         }
 
         public ObservableCollection<string> WorkflowSteps { get; } = new();
@@ -171,6 +237,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public ObservableCollection<string> RiskInsights { get; } = new();
 
         public ICommand RefreshCommand { get; }
+        public ICommand NavigateKpiCommand { get; }
 
         public HardDiskMediaPageViewModel(IHardDiskMediaService hardDiskMediaService, IDialogService dialogService)
         {
@@ -178,6 +245,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _dialogService = dialogService;
 
             RefreshCommand = new RelayCommand(async _ => await RefreshOverviewAsync());
+            NavigateKpiCommand = new RelayCommand(parameter => NavigateKpi(parameter));
         }
 
         public async Task InitializeAsync(HardDiskMediaWorkbenchSection section)
@@ -205,19 +273,28 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             var overview = await _hardDiskMediaService.GetOverviewAsync();
             TotalMediumCount = overview.TotalMediumCount;
+            MissingLedgerMediumCount = overview.MissingLedgerMediumCount;
             BlankInStockCount = overview.BlankInStockCount;
             BorrowedCount = overview.BorrowedCount;
             DataCarrierInStockCount = overview.DataCarrierInStockCount;
             DamagedInStockCount = overview.DamagedInStockCount;
-            TransferOutCount = overview.TransferOutCount;
+            InStockLostCount = overview.InStockLostCount;
+            PermanentTransferCount = overview.PermanentTransferCount;
+            DisposedCount = overview.DisposedCount;
+            OutLostCount = overview.OutLostCount;
             NeedReturnMediumCount = overview.NeedReturnMediumCount;
             LongTermNeedReturnMediumCount = overview.LongTermNeedReturnMediumCount;
             TemporaryNeedReturnMediumCount = overview.TemporaryNeedReturnMediumCount;
+            OverdueNeedReturnCount = overview.OverdueNeedReturnCount;
             MissingLocationMediumCount = overview.MissingLocationMediumCount;
             OutboundWithoutKeeperMediumCount = overview.OutboundWithoutKeeperMediumCount;
+            LockedMediumCount = overview.LockedMediumCount;
             SubmittedApplicationCount = overview.SubmittedApplicationCount;
+            PendingHandoverApplicationCount = overview.PendingHandoverApplicationCount;
             PendingSignedFileCount = overview.PendingSignedFileCount;
-            PendingProcessApplicationCount = overview.PendingProcessApplicationCount;
+            PendingCompleteApplicationCount = overview.PendingCompleteApplicationCount;
+            PendingDisposalCount = overview.PendingDisposalCount;
+            DraftInventoryRegisterCount = overview.DraftInventoryRegisterCount;
 
             ReplaceCollection(LocationInsights, overview.LocationInsights);
             ReplaceCollection(OutboundCapacityInsights, overview.OutboundCapacityInsights);
@@ -242,103 +319,50 @@ namespace DocMgr.ViewModels.HardDiskMedia
             WorkflowSteps.Clear();
             SectionHighlights.Clear();
 
-            switch (section)
+            // 各业务已拆为独立页面；本页仅保留概览。其余 section 枚举保留兼容导航参数。
+            SectionHighlights.Add("初始登记");
+            SectionHighlights.Add("出库申请/审批");
+            SectionHighlights.Add("归还申请/审批入库");
+            SectionHighlights.Add("盘库登记");
+            SectionHighlights.Add("离库处置");
+            SectionHighlights.Add("硬盘台账");
+
+            SectionTitle = "硬盘概览";
+            SectionDescription = "按现行台账状态、申请工作流、盘库登记与离库处置汇总库存结构、流程积压与风险指标。";
+            SectionFocus = "口径说明：待上传签批 ≠ 待办结；永久移交 / 离库处置 / 挂失 / 盘失分列统计。点击上方 KPI 卡片可跳转到对应业务列表（带初始筛选）。";
+            BusinessReference = "参考：介质管理 → 硬盘（初始登记、出库、归还、盘库、离库处置、台账）";
+
+            WorkflowSteps.Add("初始登记：维护硬盘基础信息与在库空白台账，支持模板导入导出。");
+            WorkflowSteps.Add("出库申请 → 审批 → 实物交接 → 上传签批交接单 → 办结回写台账与流转流水。");
+            WorkflowSteps.Add("归还/挂失登记：对临时/长期借出介质办理归还或挂失，签字回传后办结。");
+            WorkflowSteps.Add("盘库登记：损坏登记、盘失登记（草稿直接办结）。损坏盘档口调整请开柜迁档。");
+            WorkflowSteps.Add("离库处置：淘汰/损坏/盘失等介质提交处置（按盘自动带出原因），办结后进入「离库(处置)」。");
+            WorkflowSteps.Add("硬盘台账：按时间线查看登记、出库、归还、盘库、处置等流转履历。");
+
+            _ = section;
+        }
+
+        private void NavigateKpi(object? parameter)
+        {
+            HardDiskOverviewKpiKind? kind = parameter switch
             {
-                case HardDiskMediaWorkbenchSection.Ledger:
-                    SectionHighlights.Add("线上申请");
-                    SectionHighlights.Add("打印审批单");
-                    SectionHighlights.Add("线下签字");
-                    SectionHighlights.Add("拍照上传");
-                    SectionHighlights.Add("业务办理");
-                    SectionTitle = "初始登记";
-                    SectionDescription = "统一查看硬盘基础信息、当前位置、当前状态和介质属性，后续作为所有业务办理的基础台账入口。";
-                    SectionFocus = "首版重点：先打通台账、状态、位置与生命周期主线，不直接在界面层写业务规则。";
-                    WorkflowSteps.Add("新增或导入空白硬盘基础信息，默认进入“在库空白”。");
-                    WorkflowSteps.Add("同一块硬盘始终保留一条主记录，通过申请和流转台账追踪后续变化。");
-                    WorkflowSteps.Add("载体转化后仍保留原编号，避免“空白硬盘”和“有数据硬盘”拆成两条孤立记录。");
-                    break;
+                HardDiskOverviewKpiKind value => value,
+                string text when Enum.TryParse(text, ignoreCase: true, out HardDiskOverviewKpiKind parsed) => parsed,
+                _ => null
+            };
 
-                case HardDiskMediaWorkbenchSection.OutboundApplication:
-                    SectionHighlights.Add("线上申请");
-                    SectionHighlights.Add("打印审批单");
-                    SectionHighlights.Add("线下签字");
-                    SectionHighlights.Add("拍照上传");
-                    SectionHighlights.Add("业务办理");
-                    SectionTitle = "介质出库申请";
-                    SectionDescription = "临时、长期、永久和销毁等出库动作统一从申请入口发起，并进入审批办理闭环。";
-                    SectionFocus = "首版重点：形成申请单主档、打印页、签字件上传和办理前置校验。";
-                    WorkflowSteps.Add("申请人在线填写介质出库申请并提交。");
-                    WorkflowSteps.Add("系统打印审批单，线下完成签字确认。");
-                    WorkflowSteps.Add("上传签字后的照片或扫描件，进入“待办理”。");
-                    WorkflowSteps.Add("资料室按签字件办理实际流转，并回写主表状态与流转台账。");
-                    break;
-
-                case HardDiskMediaWorkbenchSection.Approval:
-                    SectionHighlights.Add("线上申请");
-                    SectionHighlights.Add("打印审批单");
-                    SectionHighlights.Add("线下签字");
-                    SectionHighlights.Add("拍照上传");
-                    SectionHighlights.Add("业务办理");
-                    SectionTitle = "审批办理";
-                    SectionDescription = "审批办理区同时承接“线上审批留痕”和“线下签字回传后的业务执行”，适应当前网络环境的混合办公模式。";
-                    SectionFocus = "首版重点：将“审批通过”和“业务已办结”分开，避免纯线上审批直接改状态。";
-                    WorkflowSteps.Add("资料室管理员接收已提交申请，完成线上审批结论记录。");
-                    WorkflowSteps.Add("确认纸质签字件已回传后，申请单状态转为“待办理”。");
-                    WorkflowSteps.Add("只有“待办理”状态的申请单允许正式执行业务动作。");
-                    WorkflowSteps.Add("办理完成后自动写入流转台账，并将申请单置为“已办结”。");
-                    break;
-
-                case HardDiskMediaWorkbenchSection.ReturnRegistration:
-                    SectionHighlights.Add("归还登记");
-                    SectionHighlights.Add("挂失登记");
-                    SectionHighlights.Add("打印登记单");
-                    SectionHighlights.Add("线下签字");
-                    SectionHighlights.Add("业务办理");
-                    SectionTitle = "介质归还登记";
-                    SectionDescription = "临时或长期出库的介质，由申请人发起归还/挂失登记，登记无审批环节，签字回传后直接办理。";
-                    SectionFocus = "首版重点：登记单与审批申请分离，确保“登记类无审批、签字后办理”的流程边界。";
-                    WorkflowSteps.Add("登记人选择归还(空盘/资料/损坏)或挂失登记类型。");
-                    WorkflowSteps.Add("打印登记单并完成申请人与资料室管理员交接签字。");
-                    WorkflowSteps.Add("上传签字件后进入“待办理”并执行状态回写。");
-                    WorkflowSteps.Add("办理完成后自动写入流转台账，形成闭环痕迹。");
-                    break;
-
-                case HardDiskMediaWorkbenchSection.Transaction:
-                    SectionHighlights.Add("线上申请");
-                    SectionHighlights.Add("打印审批单");
-                    SectionHighlights.Add("线下签字");
-                    SectionHighlights.Add("拍照上传");
-                    SectionHighlights.Add("业务办理");
-                    SectionTitle = "流转台账";
-                    SectionDescription = "按时间线查询每块硬盘从登记、借出、归还、转化、移交到销毁的全过程。";
-                    SectionFocus = "首版重点：主表看当前，流转表看历史，避免靠备注拼业务过程。";
-                    WorkflowSteps.Add("每次状态变化都落一条流转台账记录。");
-                    WorkflowSteps.Add("对外移交单独建语义，不等同于“借出未归还”。");
-                    WorkflowSteps.Add("转为资料载体是独立业务动作，不通过手工改状态代替。");
-                    break;
-
-                case HardDiskMediaWorkbenchSection.Overview:
-                    SectionHighlights.Add("初始登记");
-                    SectionHighlights.Add("介质出库申请");
-                    SectionHighlights.Add("审批办理");
-                    SectionHighlights.Add("介质归还登记");
-                    SectionHighlights.Add("流转台账");
-                    SectionTitle = "硬盘概览";
-                    SectionDescription = "汇总展示硬盘介质模块的核心入口、位置分布、容量占用、生命周期结构和交接办理主线。";
-                    SectionFocus = "本页侧重全局分析：既看介质当前位置，也看出库容量体量、生命周期结构与借出、归还、挂失等交接环节风险。";
-                    WorkflowSteps.Add("初始登记：维护基础信息，执行模板导出、模板说明和台账导入。");
-                    WorkflowSteps.Add("介质出库申请：发起临时/长期/永久/销毁等出库申请，并打印审批单。");
-                    WorkflowSteps.Add("审批办理：记录审批结论，回传签字件，办结实际业务。");
-                    WorkflowSteps.Add("介质归还登记：办理归还/挂失登记并回传签字件后办结。");
-                    WorkflowSteps.Add("流转台账：按时间线追踪状态、位置和办理过程。");
-                    break;
-
-                default:
-                    SectionTitle = "介质管理（硬盘）";
-                    SectionDescription = "硬盘介质全生命周期工作台。";
-                    SectionFocus = string.Empty;
-                    break;
+            if (kind == null)
+            {
+                return;
             }
+
+            if (Application.Current.MainWindow is MainWindow mainWindow)
+            {
+                mainWindow.NavigateFromHardDiskOverviewKpi(kind.Value);
+                return;
+            }
+
+            _dialogService.ShowError("无法跳转到业务列表：主窗口不可用。");
         }
 
         private static void ReplaceCollection(ObservableCollection<string> target, IReadOnlyList<string> source)

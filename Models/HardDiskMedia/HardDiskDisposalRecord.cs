@@ -28,10 +28,10 @@ namespace DocMgr.Models.HardDiskMedia
         /// <summary>工作流状态。</summary>
         public int Status { get; set; } = StatusDraft;
 
-        /// <summary>离库原因（整单唯一）：淘汰/损毁/盘失/其他。</summary>
+        /// <summary>离库原因汇总（由明细原因去重拼接，供列表/检索；权威值在明细）。</summary>
         public string DisposalReason { get; set; } = string.Empty;
 
-        /// <summary>离库后处置方式（整单唯一）：直接销毁/退还办公室/其他。</summary>
+        /// <summary>离库后处置方式汇总（由明细去重拼接，供列表/检索；权威值在明细）。</summary>
         public string DispositionMethod { get; set; } = string.Empty;
 
         /// <summary>其他原因或处置方式说明。</summary>

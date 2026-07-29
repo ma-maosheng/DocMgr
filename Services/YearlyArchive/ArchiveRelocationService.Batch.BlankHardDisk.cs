@@ -304,7 +304,10 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             var allHardDiskLocations = await _hardDiskMediaRepository.GetInStockHardDiskStorageLocationsInSlotAsync(targetSlotKey);
-            var targetBlankMedia = await _hardDiskMediaRepository.GetInStockBlankHardDisksInSlotAsync(targetSlotKey);
+            // 目标档口物理占用须含征用锁盘；否则在库被征用空白盘会被误判为「非空白占用」。
+            var targetBlankMedia = await _hardDiskMediaRepository.GetInStockBlankHardDisksInSlotAsync(
+                targetSlotKey,
+                unlockedOnly: false);
             if (allHardDiskLocations.Count != targetBlankMedia.Count)
             {
                 return "目标档口存在非空白硬盘占用，请选择仅存放空白硬盘的档口。";

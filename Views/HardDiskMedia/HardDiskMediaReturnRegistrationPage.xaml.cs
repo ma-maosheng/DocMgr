@@ -11,14 +11,26 @@ namespace DocMgr.Views.HardDiskMedia
     public partial class HardDiskMediaReturnRegistrationPage : Page
     {
         private readonly IServiceScope _pageScope;
+        private readonly bool _overdueOnly;
+        private readonly bool _matchAllYears;
 
         public HardDiskReturnWorkspaceMode WorkspaceMode { get; }
 
         public HardDiskMediaReturnRegistrationPage(
             HardDiskReturnWorkspaceMode workspaceMode = HardDiskReturnWorkspaceMode.Application)
+            : this(workspaceMode, overdueOnly: false, matchAllYears: false)
+        {
+        }
+
+        public HardDiskMediaReturnRegistrationPage(
+            HardDiskReturnWorkspaceMode workspaceMode,
+            bool overdueOnly,
+            bool matchAllYears = false)
         {
             InitializeComponent();
             WorkspaceMode = workspaceMode;
+            _overdueOnly = overdueOnly;
+            _matchAllYears = matchAllYears;
 
             _pageScope = App.CurrentProvider.CreateScope();
             var vmFactory = _pageScope.ServiceProvider
@@ -33,7 +45,7 @@ namespace DocMgr.Views.HardDiskMedia
         {
             if (DataContext is HardDiskMediaReturnRegistrationPageViewModel viewModel)
             {
-                await viewModel.InitializeAsync();
+                await viewModel.InitializeAsync(_overdueOnly, _matchAllYears);
             }
         }
 

@@ -20,6 +20,11 @@ public interface IHardDiskDisposalRepository
 
     Task<List<HardDiskMedium>> GetMediaWithLedgerByIdsAsync(IReadOnlyCollection<int> mediumIds);
 
+    /// <summary>
+    /// 取各介质最近一次「盘库登记(盘失)」流转前位置（盘失清档口前的原档口）。
+    /// </summary>
+    Task<Dictionary<int, string>> GetInventoryLostBeforeLocationsAsync(IReadOnlyCollection<int> mediumIds);
+
     Task<bool> ExistsActiveDisposalForMediumAsync(int mediumId, int? excludeRecordId = null);
 
     /// <summary>

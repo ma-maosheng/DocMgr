@@ -9,10 +9,19 @@ namespace DocMgr.Views.HardDiskMedia
     public partial class HardDiskInventoryRegisterPage : Page
     {
         private readonly IServiceScope _pageScope;
+        private readonly string? _initialStatus;
+        private readonly bool _matchAllYears;
 
         public HardDiskInventoryRegisterPage()
+            : this(null, false)
+        {
+        }
+
+        public HardDiskInventoryRegisterPage(string? initialStatus, bool matchAllYears = false)
         {
             InitializeComponent();
+            _initialStatus = initialStatus;
+            _matchAllYears = matchAllYears;
             _pageScope = App.CurrentProvider.CreateScope();
             DataContext = _pageScope.ServiceProvider.GetRequiredService<HardDiskInventoryRegisterPageViewModel>();
             Loaded += HardDiskInventoryRegisterPage_Loaded;
@@ -23,7 +32,7 @@ namespace DocMgr.Views.HardDiskMedia
         {
             if (DataContext is HardDiskInventoryRegisterPageViewModel viewModel)
             {
-                await viewModel.InitializeAsync();
+                await viewModel.InitializeAsync(_initialStatus, _matchAllYears);
             }
         }
 

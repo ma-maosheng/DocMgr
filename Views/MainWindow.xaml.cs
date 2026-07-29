@@ -4,6 +4,8 @@ using System.Windows.Controls;
 using System.Windows.Navigation;
 using System.Windows.Threading;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.OpticalDiscMedia;
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.Views.Cabinets;
@@ -459,6 +461,7 @@ namespace DocMgr.Views
                 ArchiveOutboundApprovalPage => BtnArchiveOutboundApproval,
                 ArchiveReturnWorkbenchPage page => ResolveArchiveReturnNavButton(page),
                 ArchiveCirculationLedgerPage => BtnArchiveCirculationLedger,
+                ArchiveInventoryRegisterPage page => ResolveArchiveInventoryRegisterNavButton(page),
                 TopoMapPage => BtnHistMap,
                 AerialPhotoPage => BtnHistAerial,
                 OtherMapPage => BtnOtherData,
@@ -472,6 +475,7 @@ namespace DocMgr.Views
                 HardDiskInventoryRegisterPage => BtnDiskInventoryRegister,
                 HardDiskDisposalPage => BtnDiskOffWarehouse,
                 HardDiskMediaTransactionPage => BtnDiskDispose,
+                OpticalDiscMediaPage => BtnOpticalDiscOverview,
                 OpticalDiscMediumLedgerPage => BtnOpticalDiscLedger,
                 UserManagementPage => BtnUserMgr,
                 DeptSettingPage => BtnDeptMgr,
@@ -576,6 +580,12 @@ namespace DocMgr.Views
                 ArchiveFilingLedgerPage => "年度资料档案化管理（资料建档·立档台账）",
                 ArchiveRelocationLedgerPage => "年度资料档案化管理（资料迁档·迁档台账）",
                 ArchiveCirculationLedgerPage => "年度资料档案化管理（资料流转·流转台账）",
+                ArchiveInventoryRegisterPage page => string.Equals(
+                        page.MediaKind,
+                        ArchiveInventoryRegisterDomainValues.MediaKindElectronic,
+                        StringComparison.Ordinal)
+                    ? "年度资料档案化管理（盘库登记·电子资料盘库）"
+                    : "年度资料档案化管理（盘库登记·模拟资料盘库）",
                 ArchiveSimulatedRelocationPage => "年度资料档案化管理（资料迁档·模拟介质资料迁档）",
                 ArchiveElectronicRelocationPage => "年度资料档案化管理（资料迁档·电子介质资料迁档）",
                 ArchiveOutboundApplyPage => "年度资料档案化管理（资料流转·借出申请）",
@@ -591,6 +601,7 @@ namespace DocMgr.Views
                 OtherMapPage => "历史存档资料管理（其他图件）",
                 AerialPhotoPage => "历史存档资料管理（航摄影像）",
                 HardDiskMediumLedgerPage => "介质管理（硬盘·初始登记）",
+                OpticalDiscMediaPage => "介质管理（光盘·概览）",
                 OpticalDiscMediumLedgerPage => "介质管理（光盘·流转台账）",
                 HardDiskMediaOutboundApplicationPage => "介质管理（硬盘·出库申请）",
                 HardDiskMediaReturnRegistrationPage page => page.WorkspaceMode == HardDiskReturnWorkspaceMode.Approval
@@ -747,6 +758,8 @@ namespace DocMgr.Views
             SetNavButton(BtnArchiveReturnApproval, isArchiveAdmin);
             SetNavButton(BtnArchiveSimulatedRelocation, isArchiveAdmin);
             SetNavButton(BtnArchiveElectronicRelocation, isArchiveAdmin);
+            SetNavButton(BtnArchiveSimulatedInventoryRegister, isArchiveAdmin);
+            SetNavButton(BtnArchiveElectronicInventoryRegister, isArchiveAdmin);
             SetNavButton(BtnArchiveDispose, true);
 
             SetNavButton(BtnNetRegister, true);
@@ -775,7 +788,6 @@ namespace DocMgr.Views
             SetNavButton(BtnDiskOffWarehouse, canMediaAdmin);
             SetNavButton(BtnDiskDispose, true);
             SetNavButton(BtnOpticalDiscOverview, true);
-            SetNavButton(BtnOpticalDiscRegister, true);
             SetNavButton(BtnOpticalDiscLedger, true);
 
             SetNavButton(BtnHelpDoc, true);
@@ -1037,6 +1049,44 @@ namespace DocMgr.Views
             MainContentFrame.Navigate(new ArchiveCirculationLedgerPage());
         }
 
+        private void BtnArchiveSimulatedInventoryRegister_Click(object sender, RoutedEventArgs e)
+        {
+            NavigateToArchiveInventoryRegisterPage(ArchiveInventoryRegisterDomainValues.MediaKindSimulated);
+        }
+
+        private void BtnArchiveElectronicInventoryRegister_Click(object sender, RoutedEventArgs e)
+        {
+            NavigateToArchiveInventoryRegisterPage(ArchiveInventoryRegisterDomainValues.MediaKindElectronic);
+        }
+
+        private void NavigateToArchiveInventoryRegisterPage(string mediaKind)
+        {
+            if (!CanAccessArchiveRelocation())
+            {
+                MessageBox.Show("仅资料室管理员可办理盘库登记。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            bool isElectronic = string.Equals(
+                mediaKind,
+                ArchiveInventoryRegisterDomainValues.MediaKindElectronic,
+                StringComparison.Ordinal);
+            TxtPageTitle.Text = isElectronic
+                ? "年度资料档案化管理（盘库登记·电子资料盘库）"
+                : "年度资料档案化管理（盘库登记·模拟资料盘库）";
+            MainContentFrame.Navigate(new ArchiveInventoryRegisterPage(mediaKind));
+        }
+
+        private Button? ResolveArchiveInventoryRegisterNavButton(ArchiveInventoryRegisterPage page)
+        {
+            return string.Equals(
+                    page.MediaKind,
+                    ArchiveInventoryRegisterDomainValues.MediaKindElectronic,
+                    StringComparison.Ordinal)
+                ? BtnArchiveElectronicInventoryRegister
+                : BtnArchiveSimulatedInventoryRegister;
+        }
+
         private void BtnArchiveFiling_Click(object sender, RoutedEventArgs e)
         {
             TxtPageTitle.Text = "年度资料档案化管理（资料建档·资料立档）";
@@ -1217,18 +1267,64 @@ namespace DocMgr.Views
 
         private void BtnOpticalDiscLedger_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "介质管理（光盘·流转台账）";
-            MainContentFrame.Navigate(new OpticalDiscMediumLedgerPage());
+            NavigateToOpticalDiscLedgerPage();
         }
 
         private void BtnOpticalDiscOverview_Click(object sender, RoutedEventArgs e)
         {
-            ShowMenuNotReady("介质管理（光盘·概览）");
+            TxtPageTitle.Text = "介质管理（光盘·概览）";
+            MainContentFrame.Navigate(new OpticalDiscMediaPage());
         }
 
-        private void BtnOpticalDiscRegister_Click(object sender, RoutedEventArgs e)
+        private void NavigateToOpticalDiscLedgerPage(
+            string? initialStatus = null,
+            OpticalDiscLedgerQuickFilter quickFilter = OpticalDiscLedgerQuickFilter.None,
+            bool recentTransactionsOnly = false)
         {
-            ShowMenuNotReady("介质管理（光盘·初始登记）");
+            TxtPageTitle.Text = recentTransactionsOnly
+                ? "介质管理（光盘·流转台账·近90天）"
+                : "介质管理（光盘·流转台账）";
+            MainContentFrame.Navigate(new OpticalDiscMediumLedgerPage(initialStatus, quickFilter, recentTransactionsOnly));
+        }
+
+        /// <summary>
+        /// 光盘概览 KPI 卡片下钻到流转台账（可带初始筛选）。
+        /// </summary>
+        public void NavigateFromOpticalDiscOverviewKpi(OpticalDiscOverviewKpiKind kind)
+        {
+            switch (kind)
+            {
+                case OpticalDiscOverviewKpiKind.TotalMedia:
+                    NavigateToOpticalDiscLedgerPage();
+                    break;
+                case OpticalDiscOverviewKpiKind.InStock:
+                    NavigateToOpticalDiscLedgerPage(OpticalDiscMedium.StatusInStock);
+                    break;
+                case OpticalDiscOverviewKpiKind.OutTemporary:
+                    NavigateToOpticalDiscLedgerPage(OpticalDiscMedium.StatusOut);
+                    break;
+                case OpticalDiscOverviewKpiKind.DamagedInStock:
+                    NavigateToOpticalDiscLedgerPage(OpticalDiscMedium.StatusDamaged);
+                    break;
+                case OpticalDiscOverviewKpiKind.Destroyed:
+                    NavigateToOpticalDiscLedgerPage(OpticalDiscMedium.StatusDestroyed);
+                    break;
+                case OpticalDiscOverviewKpiKind.NeedReturn:
+                    NavigateToOpticalDiscLedgerPage(quickFilter: OpticalDiscLedgerQuickFilter.NeedReturn);
+                    break;
+                case OpticalDiscOverviewKpiKind.MissingLocation:
+                    NavigateToOpticalDiscLedgerPage(quickFilter: OpticalDiscLedgerQuickFilter.MissingLocation);
+                    break;
+                case OpticalDiscOverviewKpiKind.RecentTransactions:
+                    NavigateToOpticalDiscLedgerPage(recentTransactionsOnly: true);
+                    break;
+                case OpticalDiscOverviewKpiKind.OutboundWithoutKeeper:
+                    NavigateToOpticalDiscLedgerPage(quickFilter: OpticalDiscLedgerQuickFilter.OutboundWithoutKeeper);
+                    break;
+                default:
+                    NavigateToOpticalDiscLedgerPage();
+                    break;
+            }
         }
 
         private void BtnDiskApplication_Click(object sender, RoutedEventArgs e)
@@ -1272,16 +1368,25 @@ namespace DocMgr.Views
 
         private void NavigateToHardDiskReturnPage(HardDiskReturnWorkspaceMode mode)
         {
+            NavigateToHardDiskReturnPage(mode, overdueOnly: false, matchAllYears: false);
+        }
+
+        private void NavigateToHardDiskReturnPage(
+            HardDiskReturnWorkspaceMode mode,
+            bool overdueOnly,
+            bool matchAllYears)
+        {
             TxtPageTitle.Text = mode == HardDiskReturnWorkspaceMode.Approval
                 ? "介质管理（硬盘·审批入库）"
-                : "介质管理（硬盘·归还申请）";
-            MainContentFrame.Navigate(new HardDiskMediaReturnRegistrationPage(mode));
+                : overdueOnly
+                    ? "介质管理（硬盘·归还申请·逾期）"
+                    : "介质管理（硬盘·归还申请）";
+            MainContentFrame.Navigate(new HardDiskMediaReturnRegistrationPage(mode, overdueOnly, matchAllYears));
         }
 
         private void BtnDiskTransaction_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "介质管理（硬盘·硬盘台账）";
-            MainContentFrame.Navigate(new HardDiskMediaTransactionPage());
+            NavigateToHardDiskTransactionPage();
         }
 
         private void BtnDiskImportExport_Click(object sender, RoutedEventArgs e)
@@ -1326,14 +1431,123 @@ namespace DocMgr.Views
 
         private void NavigateToHardDiskApprovalPage()
         {
-            TxtPageTitle.Text = "介质管理（硬盘·出库审批）";
-            MainContentFrame.Navigate(new HardDiskMediaApprovalPage());
+            NavigateToHardDiskApprovalPage(null, null, null, false);
         }
 
         private void NavigateToHardDiskApprovalPage(int applicationId)
         {
+            NavigateToHardDiskApprovalPage(applicationId, null, null, false);
+        }
+
+        private void NavigateToHardDiskApprovalPage(
+            int? applicationId,
+            string? initialStatusLabel,
+            bool? signedAttachmentUploadedFilter,
+            bool matchAllYears)
+        {
             TxtPageTitle.Text = "介质管理（硬盘·出库审批）";
-            MainContentFrame.Navigate(new HardDiskMediaApprovalPage(applicationId));
+            MainContentFrame.Navigate(new HardDiskMediaApprovalPage(
+                applicationId,
+                initialStatusLabel,
+                signedAttachmentUploadedFilter,
+                matchAllYears));
+        }
+
+        private void NavigateToHardDiskTransactionPage(
+            string? initialStatus = null,
+            string? initialLockFilter = null,
+            HardDiskLedgerQuickFilter quickFilter = HardDiskLedgerQuickFilter.None)
+        {
+            TxtPageTitle.Text = "介质管理（硬盘·硬盘台账）";
+            MainContentFrame.Navigate(new HardDiskMediaTransactionPage(initialStatus, initialLockFilter, quickFilter));
+        }
+
+        /// <summary>
+        /// 硬盘概览 KPI 卡片下钻到对应业务列表（可带初始筛选）。
+        /// </summary>
+        public void NavigateFromHardDiskOverviewKpi(HardDiskOverviewKpiKind kind)
+        {
+            switch (kind)
+            {
+                case HardDiskOverviewKpiKind.TotalMedia:
+                    NavigateToHardDiskTransactionPage();
+                    break;
+                case HardDiskOverviewKpiKind.BlankInStock:
+                    NavigateToHardDiskTransactionPage(HardDiskMedium.StatusInStockBlank);
+                    break;
+                case HardDiskOverviewKpiKind.DataInStock:
+                    NavigateToHardDiskTransactionPage(HardDiskMedium.StatusInStockData);
+                    break;
+                case HardDiskOverviewKpiKind.Borrowed:
+                    NavigateToHardDiskTransactionPage(quickFilter: HardDiskLedgerQuickFilter.BorrowedTempOrLong);
+                    break;
+                case HardDiskOverviewKpiKind.DamagedInStock:
+                    NavigateToHardDiskTransactionPage(HardDiskMedium.StatusInStockDamaged);
+                    break;
+                case HardDiskOverviewKpiKind.InStockLost:
+                    NavigateToHardDiskTransactionPage(HardDiskMedium.StatusInStockLost);
+                    break;
+                case HardDiskOverviewKpiKind.PermanentTransfer:
+                    NavigateToHardDiskTransactionPage(HardDiskMedium.StatusOutPermanent);
+                    break;
+                case HardDiskOverviewKpiKind.DisposedMedia:
+                    NavigateToHardDiskTransactionPage(HardDiskMedium.StatusDisposed);
+                    break;
+                case HardDiskOverviewKpiKind.SubmittedApproval:
+                    NavigateToHardDiskApprovalPage(null, ApplicationWorkflowStatus.TextSubmitted, null, matchAllYears: true);
+                    break;
+                case HardDiskOverviewKpiKind.PendingHandover:
+                    NavigateToHardDiskApprovalPage(null, ApplicationWorkflowStatus.TextApproved, null, matchAllYears: true);
+                    break;
+                case HardDiskOverviewKpiKind.PendingSignedUpload:
+                    NavigateToHardDiskApprovalPage(
+                        null,
+                        ApplicationWorkflowStatus.TextSignedUploaded,
+                        signedAttachmentUploadedFilter: false,
+                        matchAllYears: true);
+                    break;
+                case HardDiskOverviewKpiKind.PendingComplete:
+                    NavigateToHardDiskApprovalPage(
+                        null,
+                        ApplicationWorkflowStatus.TextSignedUploaded,
+                        signedAttachmentUploadedFilter: true,
+                        matchAllYears: true);
+                    break;
+                case HardDiskOverviewKpiKind.OverdueNeedReturn:
+                    NavigateToHardDiskReturnPage(
+                        HardDiskReturnWorkspaceMode.Application,
+                        overdueOnly: true,
+                        matchAllYears: true);
+                    break;
+                case HardDiskOverviewKpiKind.Locked:
+                    NavigateToHardDiskTransactionPage(initialLockFilter: HardDiskRegisterLockFilterSupport.Any);
+                    break;
+                case HardDiskOverviewKpiKind.PendingDisposal:
+                    TxtPageTitle.Text = "介质管理（硬盘·离库处置）";
+                    MainContentFrame.Navigate(new HardDiskDisposalPage(pendingInProgress: true, matchAllYears: true));
+                    break;
+                case HardDiskOverviewKpiKind.DraftInventory:
+                    TxtPageTitle.Text = "介质管理（硬盘·盘库登记）";
+                    MainContentFrame.Navigate(new HardDiskInventoryRegisterPage(
+                        ApplicationWorkflowStatus.TextDraft,
+                        matchAllYears: true));
+                    break;
+                case HardDiskOverviewKpiKind.NeedReturn:
+                    NavigateToHardDiskTransactionPage(quickFilter: HardDiskLedgerQuickFilter.NeedReturn);
+                    break;
+                case HardDiskOverviewKpiKind.MissingLocation:
+                    NavigateToHardDiskTransactionPage(quickFilter: HardDiskLedgerQuickFilter.MissingLocationInStock);
+                    break;
+                case HardDiskOverviewKpiKind.MissingLedger:
+                    NavigateToHardDiskTransactionPage(quickFilter: HardDiskLedgerQuickFilter.MissingLedger);
+                    break;
+                case HardDiskOverviewKpiKind.OutboundWithoutKeeper:
+                    NavigateToHardDiskTransactionPage(quickFilter: HardDiskLedgerQuickFilter.OutboundWithoutKeeper);
+                    break;
+                default:
+                    NavigateToHardDiskTransactionPage();
+                    break;
+            }
         }
 
         private void UpdateMenuVisibility()

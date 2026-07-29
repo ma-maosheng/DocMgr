@@ -5,43 +5,6 @@ namespace DocMgr.Services.YearlyArchive
 {
     public sealed partial class ArchiveRelocationService
     {
-        public async Task<ArchiveRelocationPreview> PreviewInteractiveItemPhysicalMoveAsync(InteractiveItemPhysicalMoveRequest request)
-        {
-            EnsureArchiveAdmin();
-            if (string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal))
-            {
-                return await BuildInteractiveBlankHardDiskPreviewAsync(request);
-            }
-
-            return string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
-                ? await BuildInteractiveElectronicPreviewAsync(request)
-                : await BuildInteractiveSimulatedPreviewAsync(request);
-        }
-
-        public async Task<ArchiveRelocationResult> ExecuteInteractiveItemPhysicalMoveAsync(InteractiveItemPhysicalMoveRequest request)
-        {
-            EnsureArchiveAdmin();
-            var preview = await PreviewInteractiveItemPhysicalMoveAsync(request);
-            if (!preview.CanExecute)
-            {
-                return ArchiveRelocationResult.Fail(preview.BlockReason);
-            }
-
-            if (string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal))
-            {
-                return await ExecuteInteractiveBlankHardDiskPhysicalMoveAsync(request);
-            }
-
-            if (string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
-            {
-                var electronicRequest = await BuildInteractiveElectronicRelocationRequestAsync(request);
-                return await ExecuteElectronicRelocationAsync(electronicRequest);
-            }
-
-            var simulatedRequest = await BuildInteractiveSimulatedRelocationRequestAsync(request);
-            return await ExecuteSimulatedRelocationAsync(simulatedRequest);
-        }
-
         private async Task<ArchiveRelocationPreview> BuildInteractiveSimulatedPreviewAsync(InteractiveItemPhysicalMoveRequest request)
         {
             if (request.SourceBoxId <= 0)

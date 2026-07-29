@@ -363,8 +363,16 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DisposalReason")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("DisposalRecordId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("DispositionMethod")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("MediumId")
                         .HasColumnType("INTEGER");
@@ -2041,6 +2049,9 @@ namespace DocMgr.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("InventoryLostCopyCount")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("ItemName")
                         .IsRequired()
                         .HasMaxLength(512)
@@ -2148,6 +2159,166 @@ namespace DocMgr.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("YearlyArchiveFilingFacts", (string)null);
+                });
+
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveInventoryRegisterItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("BeforeAvailableCopyCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BeforeMediaStatus")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BeforeStorageLocation")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ContainerCode")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ContainerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ElectronicArchiveNo")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ElectronicArchiveUnitId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FilingFactId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("LostCopyCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MaterialName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MediaItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MediumCode")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MediumId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MediumKind")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RegisterRecordId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FilingFactId");
+
+                    b.HasIndex("MediumId");
+
+                    b.HasIndex("RegisterRecordId");
+
+                    b.HasIndex("RegisterRecordId", "FilingFactId");
+
+                    b.HasIndex("RegisterRecordId", "MediumKind", "MediumId");
+
+                    b.ToTable("YearlyArchiveInventoryRegisterItems");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveInventoryRegisterRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ApplicantDept")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ApplicantName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ApplicantUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("ApplyTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CompletedBy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MediaKind")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RegisterKind")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RegisterNo")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Remark")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WithdrawReason")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("WithdrawnAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplyTime");
+
+                    b.HasIndex("MediaKind");
+
+                    b.HasIndex("RegisterNo")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("YearlyArchiveInventoryRegisterRecords");
                 });
 
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveMaterialTransaction", b =>
@@ -3931,6 +4102,25 @@ namespace DocMgr.Data.Migrations
                     b.Navigation("MediaItem");
                 });
 
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveInventoryRegisterItem", b =>
+                {
+                    b.HasOne("DocMgr.Models.YearlyArchive.YearlyArchiveFilingFact", "FilingFact")
+                        .WithMany()
+                        .HasForeignKey("FilingFactId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DocMgr.Models.YearlyArchive.YearlyArchiveInventoryRegisterRecord", "RegisterRecord")
+                        .WithMany("Items")
+                        .HasForeignKey("RegisterRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FilingFact");
+
+                    b.Navigation("RegisterRecord");
+                });
+
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveOutboundItem", b =>
                 {
                     b.HasOne("DocMgr.Models.YearlyArchive.YearlyArchiveOutboundRecord", "OutboundRecord")
@@ -4176,6 +4366,11 @@ namespace DocMgr.Data.Migrations
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveBox", b =>
                 {
                     b.Navigation("MediaItemLinks");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveInventoryRegisterRecord", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveOutboundRecord", b =>

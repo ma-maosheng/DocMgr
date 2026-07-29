@@ -72,7 +72,7 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
         ArgumentNullException.ThrowIfNull(draft);
         ArgumentNullException.ThrowIfNull(items);
 
-        ValidateHeader(draft.RegisterKind, draft.Reason);
+        ValidateHeader(draft.RegisterKind, draft.Reason, requireCreatable: true);
         var media = await LoadAndValidateMediaAsync(draft.RegisterKind, items, excludeRecordId: null);
 
         DateTime now = DateTime.Now;
@@ -127,7 +127,10 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
             throw new InvalidOperationException("仅草稿状态可修改。");
         }
 
-        ValidateHeader(draft.RegisterKind, draft.Reason);
+        bool keepLegacyRelocate =
+            string.Equals(existing.RegisterKind, HardDiskInventoryRegisterDomainValues.KindRelocateDamaged, StringComparison.Ordinal)
+            && string.Equals(draft.RegisterKind?.Trim(), HardDiskInventoryRegisterDomainValues.KindRelocateDamaged, StringComparison.Ordinal);
+        ValidateHeader(draft.RegisterKind, draft.Reason, requireCreatable: !keepLegacyRelocate);
         var media = await LoadAndValidateMediaAsync(draft.RegisterKind, items, excludeRecordId: existing.Id);
 
         DateTime now = DateTime.Now;
@@ -505,11 +508,19 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
         }
     }
 
-    private static void ValidateHeader(string? registerKind, string? reason)
+    private static void ValidateHeader(string? registerKind, string? reason, bool requireCreatable = false)
     {
-        if (!HardDiskInventoryRegisterDomainValues.IsValidRegisterKind(registerKind))
+        if (requireCreatable)
         {
-            throw new InvalidOperationException("请选择登记类型（损坏登记/盘失登记/损坏档口调整）。");
+            if (!HardDiskInventoryRegisterDomainValues.IsCreatableRegisterKind(registerKind))
+            {
+                throw new InvalidOperationException(
+                    "请选择登记类型（损坏登记/盘失登记）。损坏盘档口调整请在开柜界面使用交互式迁档。");
+            }
+        }
+        else if (!HardDiskInventoryRegisterDomainValues.IsValidRegisterKind(registerKind))
+        {
+            throw new InvalidOperationException("请选择登记类型（损坏登记/盘失登记）。");
         }
 
         if (string.IsNullOrWhiteSpace(reason))

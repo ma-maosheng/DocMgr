@@ -199,7 +199,17 @@ namespace DocMgr.Services.YearlyArchive
                 throw new InvalidOperationException("源档口存在无资料子项的电子介质袋，请先整理后再批量搬迁。");
             }
 
-            return OrderElectronicUnitsBySequence(units);
+            var withdrawalLocks = _cabinetOpenLayoutRepository.GetActiveWithdrawalLocksByElectronicUnitIds(
+                units.Select(unit => unit.Id).ToList());
+            var relocatable = units
+                .Where(unit => IsElectronicUnitAvailableAsRelocationSource(unit, withdrawalLocks))
+                .ToList();
+            if (relocatable.Count == 0)
+            {
+                throw new InvalidOperationException("源档口内电子介质袋均存在征用/预订占用，暂不可批量迁档。");
+            }
+
+            return OrderElectronicUnitsBySequence(relocatable);
         }
 
         private async Task<string?> ValidateTargetMagneticDiskSlotForBatchMoveAsync(

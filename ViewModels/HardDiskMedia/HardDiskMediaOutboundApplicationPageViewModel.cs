@@ -127,7 +127,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string SelectedStatus
         {
             get => _selectedStatus;
-            set => SetProperty(ref _selectedStatus, value);
+            set
+            {
+                if (SetProperty(ref _selectedStatus, value) && _isInitialized)
+                {
+                    ApplyApplicationFilters();
+                }
+            }
         }
 
         public string SelectedApplicationType
@@ -453,7 +459,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             var filteredItems = _allApplications
                 .Where(item => (selectedApplicants.Count == 0 || selectedApplicants.Contains(item.ApplicantName?.Trim() ?? string.Empty)) &&
-                               item.ApplyTime.Year == _applicationYear)
+                               item.ApplyTime.Year == _applicationYear &&
+                               (string.Equals(SelectedStatus, "全部", StringComparison.Ordinal)
+                                || string.IsNullOrWhiteSpace(SelectedStatus)
+                                || string.Equals(item.StatusStr, SelectedStatus, StringComparison.Ordinal)))
                 .ToList();
 
             Applications.Clear();

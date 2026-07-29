@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -11,6 +12,7 @@ namespace DocMgr.Views.Cabinets
     {
         private Point? _interactiveDragStartPoint;
         private bool _interactiveDragInProgress;
+        private InteractiveItemRelocationDragPayload? _pendingInteractiveDragPayload;
 
         public CabinetOpenDialog()
         {
@@ -34,6 +36,25 @@ namespace DocMgr.Views.Cabinets
             }
 
             PlayCabinetOpenAnimation(GetCabinetType());
+        }
+
+        private void Window_Closing(object sender, CancelEventArgs e)
+        {
+            if (DataContext is not CabinetOpenViewModel viewModel)
+            {
+                return;
+            }
+
+            if (viewModel.AllowClose || !viewModel.HasSessionRelocations)
+            {
+                return;
+            }
+
+            e.Cancel = true;
+            if (!viewModel.IsCloseGateInProgress)
+            {
+                _ = viewModel.TryCloseWithSessionGateAsync();
+            }
         }
 
         private void SlotContextMenu_Opened(object sender, RoutedEventArgs e)
@@ -182,7 +203,9 @@ namespace DocMgr.Views.Cabinets
 
             if (DataContext is CabinetOpenViewModel viewModel)
             {
-                viewModel.SelectArchiveBox(archiveBox);
+                bool ctrlPressed = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+                bool shiftPressed = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+                viewModel.SelectArchiveBox(archiveBox, ctrlPressed, shiftPressed);
             }
 
             e.Handled = true;
@@ -197,7 +220,9 @@ namespace DocMgr.Views.Cabinets
 
             if (DataContext is CabinetOpenViewModel viewModel)
             {
-                viewModel.SelectHardDiskMedium(medium);
+                bool ctrlPressed = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+                bool shiftPressed = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+                viewModel.SelectHardDiskMedium(medium, ctrlPressed, shiftPressed);
             }
 
             e.Handled = true;
@@ -217,34 +242,30 @@ namespace DocMgr.Views.Cabinets
                 return;
             }
 
+            InteractiveItemRelocationDragPayload? payload = null;
             if (element.DataContext is ArchiveBoxItemViewModel archiveBox)
             {
-                if (viewModel.TryCreateDragPayloadFromArchiveBox(archiveBox) == null)
-                {
-                    ResetInteractiveDragTracking();
-                    return;
-                }
+                payload = viewModel.TryCreateDragPayloadFromArchiveBox(archiveBox);
             }
             else if (element.DataContext is CabinetHardDiskMediumItemViewModel medium)
             {
-                if (viewModel.TryCreateDragPayloadFromMedium(medium) == null)
-                {
-                    ResetInteractiveDragTracking();
-                    return;
-                }
+                payload = viewModel.TryCreateDragPayloadFromMedium(medium);
             }
-            else
+
+            if (payload == null)
             {
                 ResetInteractiveDragTracking();
                 return;
             }
 
+            // 在选中变更（MouseLeftButtonDown）之前快照载荷，避免多选被收成单项。
+            _pendingInteractiveDragPayload = payload;
             _interactiveDragStartPoint = e.GetPosition(null);
         }
 
         private void InteractiveItemDrag_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (_interactiveDragInProgress || _interactiveDragStartPoint == null)
+            if (_interactiveDragInProgress || _interactiveDragStartPoint == null || _pendingInteractiveDragPayload == null)
             {
                 return;
             }
@@ -269,22 +290,7 @@ namespace DocMgr.Views.Cabinets
                 return;
             }
 
-            InteractiveItemRelocationDragPayload? payload = null;
-            if (sender is FrameworkElement { DataContext: ArchiveBoxItemViewModel archiveBox })
-            {
-                payload = viewModel.TryCreateDragPayloadFromArchiveBox(archiveBox);
-            }
-            else if (sender is FrameworkElement { DataContext: CabinetHardDiskMediumItemViewModel medium })
-            {
-                payload = viewModel.TryCreateDragPayloadFromMedium(medium);
-            }
-
-            if (payload == null)
-            {
-                ResetInteractiveDragTracking();
-                return;
-            }
-
+            var payload = _pendingInteractiveDragPayload;
             _interactiveDragInProgress = true;
             var dataObject = new DataObject(InteractiveItemRelocationDragPayload.DataFormat, payload);
             try
@@ -373,6 +379,7 @@ namespace DocMgr.Views.Cabinets
         private void ResetInteractiveDragTracking()
         {
             _interactiveDragStartPoint = null;
+            _pendingInteractiveDragPayload = null;
         }
 
         private CabinetType GetCabinetType()

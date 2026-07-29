@@ -9,10 +9,19 @@ namespace DocMgr.Views.HardDiskMedia
     public partial class HardDiskDisposalPage : Page
     {
         private readonly IServiceScope _pageScope;
+        private readonly bool _pendingInProgress;
+        private readonly bool _matchAllYears;
 
         public HardDiskDisposalPage()
+            : this(false, false)
+        {
+        }
+
+        public HardDiskDisposalPage(bool pendingInProgress, bool matchAllYears = false)
         {
             InitializeComponent();
+            _pendingInProgress = pendingInProgress;
+            _matchAllYears = matchAllYears;
             _pageScope = App.CurrentProvider.CreateScope();
             DataContext = _pageScope.ServiceProvider.GetRequiredService<HardDiskDisposalPageViewModel>();
             Loaded += HardDiskDisposalPage_Loaded;
@@ -23,7 +32,7 @@ namespace DocMgr.Views.HardDiskMedia
         {
             if (DataContext is HardDiskDisposalPageViewModel viewModel)
             {
-                await viewModel.InitializeAsync();
+                await viewModel.InitializeAsync(_pendingInProgress, _matchAllYears);
             }
         }
 

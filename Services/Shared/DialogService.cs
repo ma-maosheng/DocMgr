@@ -844,6 +844,86 @@ namespace DocMgr.Services.Shared
             }
         }
 
+        public bool ShowSimulatedArchiveInventoryRegisterEditDialog(YearlyArchiveInventoryRegisterRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+
+            var dialog = new SimulatedArchiveInventoryRegisterEditDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+
+            IServiceScope? scope = null;
+            SimulatedArchiveInventoryRegisterEditDialogViewModel? viewModel = null;
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+
+            try
+            {
+                (scope, viewModel) = CreateScopedViewModel<SimulatedArchiveInventoryRegisterEditDialogViewModel>(
+                    new[] { typeof(YearlyArchiveInventoryRegisterRecord) },
+                    record);
+
+                dialog.DataContext = viewModel;
+                viewModel.RequestClose += HandleRequestClose;
+                dialog.ShowDialog();
+                return viewModel.HasCommittedChanges;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"打开模拟资料盘库登记窗口失败：{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (viewModel != null)
+                {
+                    viewModel.RequestClose -= HandleRequestClose;
+                }
+
+                scope?.Dispose();
+            }
+        }
+
+        public bool ShowElectronicArchiveInventoryRegisterEditDialog(YearlyArchiveInventoryRegisterRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+
+            var dialog = new ElectronicArchiveInventoryRegisterEditDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+
+            IServiceScope? scope = null;
+            ElectronicArchiveInventoryRegisterEditDialogViewModel? viewModel = null;
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+
+            try
+            {
+                (scope, viewModel) = CreateScopedViewModel<ElectronicArchiveInventoryRegisterEditDialogViewModel>(
+                    new[] { typeof(YearlyArchiveInventoryRegisterRecord) },
+                    record);
+
+                dialog.DataContext = viewModel;
+                viewModel.RequestClose += HandleRequestClose;
+                dialog.ShowDialog();
+                return viewModel.HasCommittedChanges;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"打开电子资料盘库登记窗口失败：{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (viewModel != null)
+                {
+                    viewModel.RequestClose -= HandleRequestClose;
+                }
+
+                scope?.Dispose();
+            }
+        }
+
         public bool ShowArchiveRegisterEditDialog(ArchiveRegisterWorkspaceMode workspaceMode, out int? committedRecordId, int? initialRecordId = null)
         {
             committedRecordId = null;

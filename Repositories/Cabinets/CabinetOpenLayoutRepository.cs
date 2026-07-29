@@ -412,21 +412,22 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
         var projectYearByRegisterRecordId = LoadRegisterRecordContextById(
             facts.Select(fact => fact.RegisterRecordId).Where(id => id > 0).Distinct().ToList());
 
-        return facts.Select(fact =>
-        {
-            var context = fact.RegisterRecordId > 0
-                ? projectYearByRegisterRecordId.GetValueOrDefault(fact.RegisterRecordId, RegisterRecordDisplayContext.Empty)
-                : RegisterRecordDisplayContext.Empty;
-
-            return new YearlyArchiveBoxMediaItemRow
+            return facts.Select(fact =>
             {
-                Fact = fact,
-                PendingReturnCopyCount = fact.Id > 0 ? pendingReturnByFactId.GetValueOrDefault(fact.Id) : 0,
-                NoReturnCopyCount = fact.Id > 0 ? noReturnByFactId.GetValueOrDefault(fact.Id) : 0,
-                LostCopyCount = fact.Id > 0 ? lostByFactId.GetValueOrDefault(fact.Id) : 0,
-                ProjectYear = context.ProjectYear,
-                ArchivePurpose = context.ArchivePurpose,
-                Supplement = fact.MediaItemId > 0
+                var context = fact.RegisterRecordId > 0
+                    ? projectYearByRegisterRecordId.GetValueOrDefault(fact.RegisterRecordId, RegisterRecordDisplayContext.Empty)
+                    : RegisterRecordDisplayContext.Empty;
+
+                return new YearlyArchiveBoxMediaItemRow
+                {
+                    Fact = fact,
+                    PendingReturnCopyCount = fact.Id > 0 ? pendingReturnByFactId.GetValueOrDefault(fact.Id) : 0,
+                    NoReturnCopyCount = fact.Id > 0 ? noReturnByFactId.GetValueOrDefault(fact.Id) : 0,
+                    LostCopyCount = fact.Id > 0 ? lostByFactId.GetValueOrDefault(fact.Id) : 0,
+                    InventoryLostCopyCount = Math.Max(0, fact.InventoryLostCopyCount),
+                    ProjectYear = context.ProjectYear,
+                    ArchivePurpose = context.ArchivePurpose,
+                    Supplement = fact.MediaItemId > 0
                     ? supplementByMediaItemId.GetValueOrDefault(fact.MediaItemId, CabinetArchiveBoxMediaItemSupplement.Empty)
                     : CabinetArchiveBoxMediaItemSupplement.Empty,
             };

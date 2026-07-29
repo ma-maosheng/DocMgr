@@ -7,6 +7,7 @@ namespace DocMgr.Models.HardDiskMedia
     {
         public const string All = "全部";
         public const string None = "无征用锁";
+        public const string Any = "有征用锁";
 
         private static readonly (string BusinessType, string DisplayLabel)[] BusinessTypeOptions =
         [
@@ -24,12 +25,13 @@ namespace DocMgr.Models.HardDiskMedia
             BusinessTypeOptions.ToDictionary(item => item.BusinessType, item => item.DisplayLabel, StringComparer.Ordinal);
 
         /// <summary>
-        /// 征用锁筛选下拉选项（含全部、无征用及各类业务征用）。
+        /// 征用锁筛选下拉选项（含全部、无征用、有征用及各类业务征用）。
         /// </summary>
         public static IReadOnlyList<string> FilterOptions { get; } =
         [
             All,
             None,
+            Any,
             ..BusinessTypeOptions.Select(item => item.DisplayLabel),
         ];
 
@@ -78,6 +80,11 @@ namespace DocMgr.Models.HardDiskMedia
             if (string.Equals(normalized, None, StringComparison.Ordinal))
             {
                 return items.Where(item => item.RegisterLock == null);
+            }
+
+            if (string.Equals(normalized, Any, StringComparison.Ordinal))
+            {
+                return items.Where(item => item.RegisterLock != null);
             }
 
             if (DisplayToBusinessType.TryGetValue(normalized, out string? businessType))

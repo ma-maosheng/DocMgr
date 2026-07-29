@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Text;
+using System.Windows;
 using System.Windows.Input;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.Shared;
@@ -20,6 +22,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly List<HardDiskInventoryRegisterRecord> _allRecords = new();
 
         private bool _isInitialized;
+        private bool _matchAllYears;
         private int _applyYear = DateTime.Today.Year;
         private string _searchKeyword = string.Empty;
         private string _selectedStatus = "全部";
@@ -43,6 +46,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public ObservableCollection<HardDiskInventoryRegisterRecord> Records { get; } = new();
 
+        public ObservableCollection<HardDiskInventoryRegisterDetailRow> DetailItems { get; } = new();
+
         public ObservableCollection<int> ApplyYears { get; } = new();
 
         public ObservableCollection<string> StatusOptions { get; } = new();
@@ -60,6 +65,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 if (SetProperty(ref _applyYear, value) && _isInitialized)
                 {
+                    _matchAllYears = false;
                     ApplyFilters();
                 }
             }
@@ -84,8 +90,70 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 if (SetProperty(ref _selectedRecord, value))
                 {
+                    RefreshDetailPane();
                     CommandManager.InvalidateRequerySuggested();
                 }
+            }
+        }
+
+        public bool HasSelectedRecord => SelectedRecord != null;
+
+        public Visibility DetailEmptyVisibility =>
+            HasSelectedRecord ? Visibility.Collapsed : Visibility.Visible;
+
+        public Visibility DetailContentVisibility =>
+            HasSelectedRecord ? Visibility.Visible : Visibility.Collapsed;
+
+        /// <summary>右侧详情区摘要文字。</summary>
+        public string DetailSummaryText
+        {
+            get
+            {
+                if (SelectedRecord == null)
+                {
+                    return string.Empty;
+                }
+
+                var record = SelectedRecord;
+                var builder = new StringBuilder();
+                builder.Append(string.IsNullOrWhiteSpace(record.RegisterNo) ? "待编单" : record.RegisterNo.Trim());
+                builder.Append(" · ");
+                builder.Append(string.IsNullOrWhiteSpace(record.RegisterKind) ? "未选类型" : record.RegisterKind.Trim());
+                builder.Append(" · ");
+                builder.Append(record.StatusDisplay);
+                builder.Append(" · 登记人 ");
+                builder.Append(string.IsNullOrWhiteSpace(record.ApplicantName) ? "-" : record.ApplicantName.Trim());
+                builder.Append(" · ");
+                builder.Append(record.ApplyTime.ToString("yyyy-MM-dd"));
+                builder.Append(" · 硬盘 ");
+                builder.Append(record.ItemCount);
+                builder.Append(" 块");
+
+                if (!string.IsNullOrWhiteSpace(record.DiskCodesSummary))
+                {
+                    builder.Append(" · 编号 ");
+                    builder.Append(record.DiskCodesSummary);
+                }
+
+                if (!string.IsNullOrWhiteSpace(record.Reason))
+                {
+                    builder.Append(" · 说明：");
+                    builder.Append(record.Reason.Trim());
+                }
+
+                if (!string.IsNullOrWhiteSpace(record.Remark))
+                {
+                    builder.Append(" · 备注：");
+                    builder.Append(record.Remark.Trim());
+                }
+
+                if (!string.IsNullOrWhiteSpace(record.CompletedBy))
+                {
+                    builder.Append(" · 办结人 ");
+                    builder.Append(record.CompletedBy.Trim());
+                }
+
+                return builder.ToString();
             }
         }
 
@@ -103,10 +171,17 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public RelayCommand OpenCommand { get; }
         public RelayCommand WithdrawCommand { get; }
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(string? initialStatus = null, bool matchAllYears = false)
         {
             if (_isInitialized)
             {
+                _matchAllYears = matchAllYears;
+                if (!string.IsNullOrWhiteSpace(initialStatus))
+                {
+                    SelectedStatus = initialStatus.Trim();
+                }
+
+                ApplyFilters();
                 return;
             }
 
@@ -121,6 +196,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             for (int year = currentYear; year >= currentYear - 5; year--)
             {
                 ApplyYears.Add(year);
+            }
+
+            _matchAllYears = matchAllYears;
+            if (!string.IsNullOrWhiteSpace(initialStatus)
+                && StatusOptions.Contains(initialStatus))
+            {
+                _selectedStatus = initialStatus.Trim();
+                OnPropertyChanged(nameof(SelectedStatus));
             }
 
             await RefreshAsync();
@@ -142,6 +225,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 {
                     SelectedRecord = Records.FirstOrDefault(item => item.Id == selectedId.Value);
                 }
+                else
+                {
+                    RefreshDetailPane();
+                }
             }
             catch (Exception ex)
             {
@@ -152,7 +239,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private void ApplyFilters()
         {
             IEnumerable<HardDiskInventoryRegisterRecord> query = _allRecords;
-            query = query.Where(item => item.ApplyTime.Year == ApplyYear);
+            if (!_matchAllYears)
+            {
+                query = query.Where(item => item.ApplyTime.Year == ApplyYear);
+            }
 
             if (!string.Equals(SelectedStatus, "全部", StringComparison.Ordinal)
                 && !string.IsNullOrWhiteSpace(SelectedStatus))
@@ -180,7 +270,33 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 Records.Add(item);
             }
 
+            if (SelectedRecord != null && !Records.Contains(SelectedRecord))
+            {
+                SelectedRecord = null;
+            }
+            else
+            {
+                RefreshDetailPane();
+            }
+
             CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void RefreshDetailPane()
+        {
+            DetailItems.Clear();
+            if (SelectedRecord?.Items != null)
+            {
+                foreach (var item in SelectedRecord.Items.OrderBy(detail => detail.SortOrder).ThenBy(detail => detail.Id))
+                {
+                    DetailItems.Add(HardDiskInventoryRegisterDetailRow.FromItem(item));
+                }
+            }
+
+            OnPropertyChanged(nameof(HasSelectedRecord));
+            OnPropertyChanged(nameof(DetailEmptyVisibility));
+            OnPropertyChanged(nameof(DetailContentVisibility));
+            OnPropertyChanged(nameof(DetailSummaryText));
         }
 
         private async Task AddAsync()
@@ -250,6 +366,37 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 _dialogService.ShowError(ex.Message);
             }
+        }
+    }
+
+    /// <summary>硬盘盘库登记办理表右侧明细行。</summary>
+    public sealed class HardDiskInventoryRegisterDetailRow
+    {
+        public string DiskCode { get; init; } = string.Empty;
+
+        public string SerialNumber { get; init; } = string.Empty;
+
+        public string BeforeMediaStatus { get; init; } = string.Empty;
+
+        public string BeforeStorageLocation { get; init; } = string.Empty;
+
+        public string TargetStorageLocation { get; init; } = string.Empty;
+
+        public string TargetStorageLocationDisplay =>
+            string.IsNullOrWhiteSpace(TargetStorageLocation) ? "-" : TargetStorageLocation.Trim();
+
+        public static HardDiskInventoryRegisterDetailRow FromItem(HardDiskInventoryRegisterItem item)
+        {
+            ArgumentNullException.ThrowIfNull(item);
+
+            return new HardDiskInventoryRegisterDetailRow
+            {
+                DiskCode = item.DiskCode?.Trim() ?? string.Empty,
+                SerialNumber = item.SerialNumber?.Trim() ?? string.Empty,
+                BeforeMediaStatus = item.BeforeMediaStatus?.Trim() ?? string.Empty,
+                BeforeStorageLocation = item.BeforeStorageLocation?.Trim() ?? string.Empty,
+                TargetStorageLocation = item.TargetStorageLocation?.Trim() ?? string.Empty
+            };
         }
     }
 }

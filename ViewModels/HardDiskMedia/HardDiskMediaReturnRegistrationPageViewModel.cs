@@ -31,6 +31,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly List<HardDiskMediaReturnCandidate> _allReturnCandidates = new();
         private readonly Dictionary<int, string> _sourceBorrowApplicationNoByReturnId = new();
         private bool _isPageInitialized;
+        private bool _overdueOnly;
+        private bool _matchAllYears;
         private int _applicationYear = DateTime.Today.Year;
         private string _searchKeyword = string.Empty;
         private string _selectedApplicantFilter = ReturnStageAll;
@@ -112,6 +114,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 {
                     if (_isPageInitialized)
                     {
+                        _matchAllYears = false;
                         ApplyListFilters();
                     }
                 }
@@ -231,10 +234,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public RelayCommand UploadSignedAttachmentCommand { get; }
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(bool overdueOnly = false, bool matchAllYears = false)
         {
+            _overdueOnly = overdueOnly;
+            _matchAllYears = matchAllYears;
+
             if (_isPageInitialized)
             {
+                await SearchAsync();
                 return;
             }
 
@@ -314,6 +321,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             var filteredCandidates = _allReturnCandidates
                 .Where(MatchesSelectedBorrowApplicationYear)
                 .Where(MatchesSelectedApplicantFilter)
+                .Where(MatchesOverdueOnlyFilter)
                 .OrderBy(item => item.ExpectedReturnDate ?? DateTime.MaxValue)
                 .ThenBy(item => item.DiskCode, StringComparer.Ordinal)
                 .ToList();
@@ -445,6 +453,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private bool MatchesSelectedBorrowApplicationYear(HardDiskMediaApplication application)
         {
+            if (_matchAllYears)
+            {
+                return true;
+            }
+
             return _sourceBorrowApplicationNoByReturnId.TryGetValue(application.Id, out string? sourceBorrowApplicationNo)
                    && HardDiskMediaApplicationNoSupport.TryParseBusinessNoYear(sourceBorrowApplicationNo, out int year)
                    && year == _applicationYear;
@@ -452,8 +465,24 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private bool MatchesSelectedBorrowApplicationYear(HardDiskMediaReturnCandidate candidate)
         {
+            if (_matchAllYears)
+            {
+                return true;
+            }
+
             return HardDiskMediaApplicationNoSupport.TryParseBusinessNoYear(candidate.SourceApplicationNo, out int year)
                    && year == _applicationYear;
+        }
+
+        private bool MatchesOverdueOnlyFilter(HardDiskMediaReturnCandidate candidate)
+        {
+            if (!_overdueOnly)
+            {
+                return true;
+            }
+
+            return candidate.ExpectedReturnDate.HasValue
+                   && candidate.ExpectedReturnDate.Value.Date < DateTime.Today;
         }
 
         private async Task RefreshListsKeepingEditorAsync()

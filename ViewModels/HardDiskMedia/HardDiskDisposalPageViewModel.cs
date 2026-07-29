@@ -13,12 +13,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
     /// </summary>
     public sealed class HardDiskDisposalPageViewModel : ViewModelBase
     {
+        public const string PendingInProgressStatus = "进行中（待办结前）";
+
         private readonly IHardDiskDisposalService _disposalService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
         private readonly List<HardDiskDisposalRecord> _allRecords = new();
 
         private bool _isInitialized;
+        private bool _matchAllYears;
         private int _applyYear = DateTime.Today.Year;
         private string _searchKeyword = string.Empty;
         private string _selectedStatus = "全部";
@@ -59,6 +62,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 if (SetProperty(ref _applyYear, value) && _isInitialized)
                 {
+                    _matchAllYears = false;
                     ApplyFilters();
                 }
             }
@@ -104,15 +108,23 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public RelayCommand OpenCommand { get; }
         public RelayCommand WithdrawCommand { get; }
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(bool pendingInProgress = false, bool matchAllYears = false)
         {
             if (_isInitialized)
             {
+                _matchAllYears = matchAllYears;
+                if (pendingInProgress)
+                {
+                    SelectedStatus = PendingInProgressStatus;
+                }
+
+                ApplyFilters();
                 return;
             }
 
             StatusOptions.Clear();
             StatusOptions.Add("全部");
+            StatusOptions.Add(PendingInProgressStatus);
             foreach (var option in ApplicationWorkflowStatus.AllOptions)
             {
                 StatusOptions.Add(option.Label);
@@ -123,6 +135,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
             for (int year = currentYear; year >= currentYear - 5; year--)
             {
                 ApplyYears.Add(year);
+            }
+
+            _matchAllYears = matchAllYears;
+            if (pendingInProgress)
+            {
+                _selectedStatus = PendingInProgressStatus;
+                OnPropertyChanged(nameof(SelectedStatus));
             }
 
             await RefreshAsync();
@@ -155,9 +174,19 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             IEnumerable<HardDiskDisposalRecord> query = _allRecords;
 
-            query = query.Where(item => item.ApplyTime.Year == ApplyYear);
+            if (!_matchAllYears)
+            {
+                query = query.Where(item => item.ApplyTime.Year == ApplyYear);
+            }
 
-            if (!string.Equals(SelectedStatus, "全部", StringComparison.Ordinal)
+            if (string.Equals(SelectedStatus, PendingInProgressStatus, StringComparison.Ordinal))
+            {
+                query = query.Where(item =>
+                    item.Status is HardDiskDisposalRecord.StatusSubmitted
+                        or HardDiskDisposalRecord.StatusApproved
+                        or HardDiskDisposalRecord.StatusSignedUploaded);
+            }
+            else if (!string.Equals(SelectedStatus, "全部", StringComparison.Ordinal)
                 && !string.IsNullOrWhiteSpace(SelectedStatus))
             {
                 var matched = ApplicationWorkflowStatus.AllOptions

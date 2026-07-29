@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
+using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
@@ -32,6 +33,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _isUpdatingFilters;
         private bool _isApplicantPopupOpen;
         private int _selectedYear = DateTime.Today.Year;
+        private RegisterStatusFilterOption? _selectedStatusFilter;
         private YearlyArchiveRegisterRecord? _selectedRecord;
         private string _applicationOverdueSettingCode = ApplicationOverdueDomainValues.Default;
 
@@ -52,6 +54,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             _workspaceMode = workspaceMode;
             _pendingSelectionRecordId = initialRecordId > 0 ? initialRecordId : null;
 
+            StatusFilterOptions = CreateStatusFilterOptions(workspaceMode);
+            _selectedStatusFilter = StatusFilterOptions.FirstOrDefault();
+
             AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanAdd());
             OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null);
             ViewCommand = new RelayCommand(_ => ViewSelectedRecord(), _ => SelectedRecord != null);
@@ -65,6 +70,20 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<YearlyArchiveRegisterRecord> Records { get; } = new();
 
         public ObservableCollection<ArchiveRegisterFilterOptionViewModel> ApplicantOptions { get; } = new();
+
+        public IReadOnlyList<RegisterStatusFilterOption> StatusFilterOptions { get; }
+
+        public RegisterStatusFilterOption? SelectedStatusFilter
+        {
+            get => _selectedStatusFilter;
+            set
+            {
+                if (SetProperty(ref _selectedStatusFilter, value) && _isInitialized)
+                {
+                    ApplyRecordFilters();
+                }
+            }
+        }
 
         public int SelectedYear
         {
@@ -233,8 +252,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 .Select(item => item.Label)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+            int? statusFilter = SelectedStatusFilter?.Value;
+
             var filteredItems = _allRecords
                 .Where(item => selectedApplicants.Count == 0 || selectedApplicants.Contains(item.ApplicantName?.Trim() ?? string.Empty))
+                .Where(item => !statusFilter.HasValue || item.Status == statusFilter.Value)
                 .OrderByDescending(item => item.FormNo)
                 .ToList();
 
@@ -463,6 +485,41 @@ namespace DocMgr.ViewModels.YearlyArchive
                 await LoadRecordsAsync();
             }
         }
+
+        private static IReadOnlyList<RegisterStatusFilterOption> CreateStatusFilterOptions(
+            ArchiveRegisterWorkspaceMode workspaceMode)
+        {
+            // 申请页与审批页均提供完整状态筛选（默认【全部】）。
+            _ = workspaceMode;
+
+            return new List<RegisterStatusFilterOption>
+            {
+                new("全部", null),
+                new(ApplicationWorkflowStatus.TextDraft, YearlyArchiveRegisterRecord.Unsubmitted),
+                new(ApplicationWorkflowStatus.TextSubmitted, YearlyArchiveRegisterRecord.Submitted),
+                new(ApplicationWorkflowStatus.TextApproved, YearlyArchiveRegisterRecord.Approved),
+                new(ApplicationWorkflowStatus.TextSignedUploaded, YearlyArchiveRegisterRecord.SignedUploaded),
+                new(ApplicationWorkflowStatus.TextCompleted, YearlyArchiveRegisterRecord.Completed),
+                new(ApplicationWorkflowStatus.TextWithdrawn, YearlyArchiveRegisterRecord.WithdrawnVoid),
+                new(ApplicationWorkflowStatus.TextForceWithdrawn, YearlyArchiveRegisterRecord.ForceVoided),
+            };
+        }
+    }
+
+    /// <summary>
+    /// 资料登记列表状态筛选项。
+    /// </summary>
+    public sealed class RegisterStatusFilterOption
+    {
+        public RegisterStatusFilterOption(string label, int? value)
+        {
+            Label = label;
+            Value = value;
+        }
+
+        public string Label { get; }
+
+        public int? Value { get; }
     }
 
     public sealed class ArchiveRegisterFilterOptionViewModel : ViewModelBase

@@ -14,6 +14,16 @@ public interface IHardDiskDisposalService
 
     Task<IReadOnlyList<HardDiskMedium>> GetSelectableMediaAsync(int? currentRecordId = null);
 
+    /// <summary>
+    /// 解析介质处置前存放位置（盘失清档口时回退盘库登记流转前位置）。
+    /// </summary>
+    Task<IReadOnlyDictionary<int, string>> ResolveBeforeStorageLocationsAsync(IReadOnlyList<HardDiskMedium> media);
+
+    /// <summary>
+    /// 按介质 ID 解析盘失前存放位置（已办结明细回填用）。
+    /// </summary>
+    Task<IReadOnlyDictionary<int, string>> GetInventoryLostBeforeLocationsAsync(IReadOnlyCollection<int> mediumIds);
+
     /// <summary>生成下一处置单号（打开新建单时预取，保存时复用）。</summary>
     Task<string> GenerateNextDisposalNoAsync();
 

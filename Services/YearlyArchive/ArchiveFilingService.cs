@@ -412,7 +412,9 @@ namespace DocMgr.Services.YearlyArchive
                 .ThenBy(item => item.Column)
                 .Select(item => new ArchiveBoxTargetLocationOption
                 {
-                    Location = BuildArchiveSlotKey(item.CabinetName, item.Side, item.Row, item.Column),
+                    // 注意：此处必须用可解析的档口键（如 甲A-1-2），供 IsSameSlot 匹配与下拉展示；
+                    // 不能用内部 pipe 键 BuildArchiveSlotKey，否则选中项无法回填。
+                    Location = ArchiveSlotLocationSupport.BuildSlotKey(item.CabinetName, item.Side, item.Row, item.Column),
                     CabinetName = item.CabinetName,
                     Side = item.Side,
                     Row = item.Row,

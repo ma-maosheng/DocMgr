@@ -100,7 +100,8 @@ namespace DocMgr.Services.YearlyArchive
                     row.Fact,
                     row.PendingReturnCopyCount,
                     row.NoReturnCopyCount,
-                    row.LostCopyCount);
+                    row.LostCopyCount,
+                    row.InventoryLostCopyCount > 0 ? row.InventoryLostCopyCount : row.Fact.InventoryLostCopyCount);
                 ArchiveEmptiedContainerFactLifecycleSupport.ApplyOnContainerEmptied(
                     row.Fact,
                     breakdown,

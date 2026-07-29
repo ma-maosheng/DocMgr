@@ -13,6 +13,11 @@ namespace DocMgr.Services.Interfaces
         Task<HardDiskMediaOverview> GetOverviewAsync();
 
         /// <summary>
+        /// 获取数据光盘模块概览统计。
+        /// </summary>
+        Task<OpticalDiscMediaOverview> GetOpticalDiscOverviewAsync();
+
+        /// <summary>
         /// 查询介质台账。
         /// </summary>
         Task<IReadOnlyList<HardDiskMedium>> SearchMediaAsync(string? keyword, string? status, string? nature);
@@ -33,9 +38,13 @@ namespace DocMgr.Services.Interfaces
         Task<IReadOnlyList<OpticalDiscMediumTransactionRecord>> SearchOpticalDiscTransactionsAsync(string? keyword);
 
         /// <summary>
-        /// 按光盘编号和业务单号查询光盘流转记录。
+        /// 按光盘编号、业务单号、介质与流转类型查询光盘流转记录。
         /// </summary>
-        Task<IReadOnlyList<OpticalDiscMediumTransactionRecord>> SearchOpticalDiscTransactionsAsync(string? discCodeKeyword, string? businessNoKeyword);
+        Task<IReadOnlyList<OpticalDiscMediumTransactionRecord>> SearchOpticalDiscTransactionsAsync(
+            string? discCodeKeyword,
+            string? businessNoKeyword,
+            int? mediumId = null,
+            string? transactionType = null);
 
         /// <summary>
         /// 获取可用于申请的介质列表。

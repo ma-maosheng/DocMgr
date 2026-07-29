@@ -8,6 +8,7 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
         Loaded="Window_Loaded"
+        Closing="Window_Closing"
         SizeChanged="Window_SizeChanged"
         Background="#F5F7FA">
 
@@ -859,6 +860,20 @@
                                                                                                    FontWeight="Bold"
                                                                                                    Foreground="#DC2626"/>
                                                                                     </Border>
+
+                                                                                    <Border HorizontalAlignment="Right"
+                                                                                            Margin="0,1.2,0,0"
+                                                                                            Padding="0.8,0.2"
+                                                                                            Background="#FEE2E2"
+                                                                                            BorderBrush="#FCA5A5"
+                                                                                            BorderThickness="0.4"
+                                                                                            CornerRadius="1.6"
+                                                                                            Visibility="{Binding InventoryMarkBadgeVisibility}">
+                                                                                        <TextBlock Text="{Binding InventoryMarkBadgeText}"
+                                                                                                   FontSize="10"
+                                                                                                   FontWeight="Bold"
+                                                                                                   Foreground="#B91C1C"/>
+                                                                                    </Border>
                                                                                 </StackPanel>
 
                                                                                 <Viewbox Grid.Column="1"
@@ -991,6 +1006,16 @@
                                                                                             Visibility="{Binding OccupationLockBadgeVisibility}">
                                                                                         <TextBlock Text="{Binding OccupationLockBadgeText}" Style="{StaticResource SnapFs9}" FontWeight="Bold" Foreground="#DC2626"/>
                                                                                     </Border>
+                                                                                    <Border HorizontalAlignment="Right"
+                                                                                            Margin="0,2,0,0"
+                                                                                            Padding="2,1"
+                                                                                            Background="#FEE2E2"
+                                                                                            BorderBrush="#FCA5A5"
+                                                                                            BorderThickness="0.4"
+                                                                                            CornerRadius="2"
+                                                                                            Visibility="{Binding InventoryMarkBadgeVisibility}">
+                                                                                        <TextBlock Text="{Binding InventoryMarkBadgeText}" Style="{StaticResource SnapFs9}" FontWeight="Bold" Foreground="#B91C1C"/>
+                                                                                    </Border>
                                                                                 </StackPanel>
 
                                                                                 <StackPanel Grid.Column="1"
@@ -1110,6 +1135,20 @@
                                                                                                Style="{StaticResource SnapFs8}"
                                                                                                FontWeight="Bold"
                                                                                                Foreground="#DC2626"/>
+                                                                                </Border>
+
+                                                                                <Border HorizontalAlignment="Right"
+                                                                                        Margin="0,1.2,0,0"
+                                                                                        Padding="1.2,0.4"
+                                                                                        Background="#FEE2E2"
+                                                                                        BorderBrush="#FCA5A5"
+                                                                                        BorderThickness="0.4"
+                                                                                        CornerRadius="2.2"
+                                                                                        Visibility="{Binding InventoryMarkBadgeVisibility}">
+                                                                                    <TextBlock Text="{Binding InventoryMarkBadgeText}"
+                                                                                               Style="{StaticResource SnapFs8}"
+                                                                                               FontWeight="Bold"
+                                                                                               Foreground="#B91C1C"/>
                                                                                 </Border>
                                                                             </StackPanel>
 

@@ -45,6 +45,14 @@ namespace DocMgr.Services.Interfaces
 
         Task<ArchiveRelocationResult> ExecuteBatchBlankHardDiskSlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);
 
+        Task<ArchiveRelocationPreview> PreviewBatchDamagedHardDiskSlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);
+
+        Task<ArchiveRelocationResult> ExecuteBatchDamagedHardDiskSlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);
+
+        Task<ArchiveRelocationPreview> PreviewBatchDamagedOpticalDiscSlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);
+
+        Task<ArchiveRelocationResult> ExecuteBatchDamagedOpticalDiscSlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);
+
         /// <summary>空白硬盘档口批量搬迁前：若源档口有待归还空白硬盘，返回确认提示文案；否则 null。</summary>
         Task<string?> GetBatchBlankHardDiskPendingReturnConfirmMessageAsync(
             BatchSimulatedSlotPhysicalMoveRequest request);
@@ -52,6 +60,12 @@ namespace DocMgr.Services.Interfaces
         Task<ArchiveRelocationPreview> PreviewInteractiveItemPhysicalMoveAsync(InteractiveItemPhysicalMoveRequest request);
 
         Task<ArchiveRelocationResult> ExecuteInteractiveItemPhysicalMoveAsync(InteractiveItemPhysicalMoveRequest request);
+
+        /// <summary>同档口多件物理迁档预览（目标按剩余空间合计校验）。</summary>
+        Task<ArchiveRelocationPreview> PreviewInteractiveItemsPhysicalMoveAsync(InteractiveItemsPhysicalMoveRequest request);
+
+        /// <summary>同档口多件物理迁档执行（同一事务）。</summary>
+        Task<ArchiveRelocationResult> ExecuteInteractiveItemsPhysicalMoveAsync(InteractiveItemsPhysicalMoveRequest request);
 
         /// <summary>迁档/销号前：若源盒存在待归还提档，返回确认提示文案；否则 null。</summary>
         Task<string?> GetSimulatedPendingReturnConfirmMessageAsync(int sourceBoxId, string actionLabel);

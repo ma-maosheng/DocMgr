@@ -378,7 +378,9 @@ namespace DocMgr.Services.Cabinets
 
                 row.NoReturnCopyCount,
 
-                row.LostCopyCount);
+                row.LostCopyCount,
+
+                row.InventoryLostCopyCount > 0 ? row.InventoryLostCopyCount : fact.InventoryLostCopyCount);
 
 
 

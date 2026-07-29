@@ -21,6 +21,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private string _selectedStatus = "全部";
         private string _selectedNature = "全部";
         private string _selectedRegisterLockFilter = HardDiskRegisterLockFilterSupport.All;
+        private HardDiskLedgerQuickFilter _quickFilter = HardDiskLedgerQuickFilter.None;
         private HardDiskMedium? _selectedMedium;
 
         public HardDiskMediaTransactionPageViewModel(IHardDiskMediaService hardDiskMediaService, IDialogService dialogService)
@@ -55,6 +56,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 if (SetProperty(ref _selectedStatus, value) && _isInitialized)
                 {
+                    _quickFilter = HardDiskLedgerQuickFilter.None;
                     RefreshByFilterChange();
                 }
             }
@@ -67,6 +69,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 if (SetProperty(ref _selectedNature, value) && _isInitialized)
                 {
+                    _quickFilter = HardDiskLedgerQuickFilter.None;
                     RefreshByFilterChange();
                 }
             }
@@ -139,16 +142,44 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public RelayCommand SearchCommand { get; }
         public RelayCommand RefreshCommand { get; }
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(
+            string? initialStatus = null,
+            string? initialLockFilter = null,
+            HardDiskLedgerQuickFilter quickFilter = HardDiskLedgerQuickFilter.None)
         {
             if (_isInitialized)
             {
+                ApplyInitialFilters(initialStatus, initialLockFilter, quickFilter);
+                await SearchAsync();
                 return;
             }
 
             await LoadFilterOptionsAsync();
+            ApplyInitialFilters(initialStatus, initialLockFilter, quickFilter);
             await SearchAsync();
             _isInitialized = true;
+        }
+
+        private void ApplyInitialFilters(
+            string? initialStatus,
+            string? initialLockFilter,
+            HardDiskLedgerQuickFilter quickFilter)
+        {
+            _quickFilter = quickFilter;
+
+            if (!string.IsNullOrWhiteSpace(initialStatus)
+                && StatusOptions.Contains(initialStatus))
+            {
+                _selectedStatus = initialStatus.Trim();
+                OnPropertyChanged(nameof(SelectedStatus));
+            }
+
+            if (!string.IsNullOrWhiteSpace(initialLockFilter)
+                && RegisterLockFilterOptions.Contains(initialLockFilter))
+            {
+                _selectedRegisterLockFilter = initialLockFilter.Trim();
+                OnPropertyChanged(nameof(SelectedRegisterLockFilter));
+            }
         }
 
         private async Task LoadFilterOptionsAsync()
@@ -184,12 +215,16 @@ namespace DocMgr.ViewModels.HardDiskMedia
             try
             {
                 int? selectedId = SelectedMedium?.Id;
-                string? status = SelectedStatus == "全部" ? null : SelectedStatus;
+                string? status = SelectedStatus == "全部" || _quickFilter != HardDiskLedgerQuickFilter.None
+                    ? null
+                    : SelectedStatus;
                 string? nature = SelectedNature == "全部" ? null : SelectedNature;
 
                 var items = HardDiskRegisterLockFilterSupport.ApplyFilter(
                     await _hardDiskMediaService.SearchMediaAsync(SearchKeyword, status, nature),
                     SelectedRegisterLockFilter);
+
+                items = ApplyQuickFilter(items, _quickFilter);
 
                 MediaItems.Clear();
                 foreach (var item in items)
@@ -207,6 +242,45 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 _dialogService.ShowError($"加载硬盘台账失败：{ex.Message}");
             }
+        }
+
+        private static IEnumerable<HardDiskMedium> ApplyQuickFilter(
+            IEnumerable<HardDiskMedium> items,
+            HardDiskLedgerQuickFilter quickFilter)
+        {
+            return quickFilter switch
+            {
+                HardDiskLedgerQuickFilter.BorrowedTempOrLong => items.Where(item =>
+                    item.Ledger != null
+                    && (item.Ledger.MediaStatus == HardDiskMedium.StatusOutTemporary
+                        || item.Ledger.MediaStatus == HardDiskMedium.StatusOutLongTerm)),
+                HardDiskLedgerQuickFilter.NeedReturn => items.Where(item => item.Ledger?.NeedReturn == true),
+                HardDiskLedgerQuickFilter.MissingLocationInStock => items.Where(item =>
+                    item.Ledger != null
+                    && IsLocatableInStockStatus(item.Ledger.MediaStatus)
+                    && string.IsNullOrWhiteSpace(item.Ledger.StorageLocation)),
+                HardDiskLedgerQuickFilter.MissingLedger => items.Where(item => item.Ledger == null),
+                HardDiskLedgerQuickFilter.OutboundWithoutKeeper => items.Where(item =>
+                    item.Ledger != null
+                    && IsActiveOutboundStatus(item.Ledger.MediaStatus)
+                    && string.IsNullOrWhiteSpace(item.Ledger.HolderOrOrganization)),
+                _ => items
+            };
+        }
+
+        private static bool IsLocatableInStockStatus(string? status)
+        {
+            return status == HardDiskMedium.StatusInStockBlank
+                || status == HardDiskMedium.StatusInStockData
+                || status == HardDiskMedium.StatusInStockDamaged;
+        }
+
+        private static bool IsActiveOutboundStatus(string? status)
+        {
+            return status == HardDiskMedium.StatusOutTemporary
+                || status == HardDiskMedium.StatusOutLongTerm
+                || status == HardDiskMedium.StatusOutPermanent
+                || status == HardDiskMedium.StatusOutLost;
         }
 
         private async Task LoadTransactionCacheAsync()
@@ -242,6 +316,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private async Task RefreshAsync()
         {
             SearchKeyword = string.Empty;
+            _quickFilter = HardDiskLedgerQuickFilter.None;
             SelectedStatus = "全部";
             SelectedNature = "全部";
             SelectedRegisterLockFilter = HardDiskRegisterLockFilterSupport.All;

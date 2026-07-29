@@ -16,6 +16,12 @@ public interface IHardDiskMediaRepository
 
     Task<List<HardDiskMediaTransaction>> GetOverviewTransactionsAsync();
 
+    /// <summary>概览：离库处置单清单（轻量，不含明细）。</summary>
+    Task<List<HardDiskDisposalRecord>> GetOverviewDisposalRecordsAsync();
+
+    /// <summary>概览：盘库登记单清单（轻量，不含明细）。</summary>
+    Task<List<HardDiskInventoryRegisterRecord>> GetOverviewInventoryRegisterRecordsAsync();
+
     Task<List<HardDiskMedium>> GetSelectableMediaAsync();
 
     Task<List<HardDiskMediaApplication>> GetCompletedOutboundApplicationsForReturnCandidatesAsync();
@@ -48,7 +54,17 @@ public interface IHardDiskMediaRepository
 
     Task<List<OpticalDiscMedium>> GetOpticalDiscMediaForExportAsync();
 
-    Task<List<OpticalDiscMediumTransactionRecord>> SearchOpticalDiscTransactionsAsync(string? discCodeKeyword, string? businessNoKeyword);
+    /// <summary>获取光盘概览用的介质清单（含台账）。</summary>
+    Task<List<OpticalDiscMedium>> GetOpticalDiscOverviewMediaAsync();
+
+    /// <summary>获取光盘概览用的流转流水。</summary>
+    Task<List<OpticalDiscMediaTransaction>> GetOpticalDiscOverviewTransactionsAsync();
+
+    Task<List<OpticalDiscMediumTransactionRecord>> SearchOpticalDiscTransactionsAsync(
+        string? discCodeKeyword,
+        string? businessNoKeyword,
+        int? mediumId = null,
+        string? transactionType = null);
 
     Task<List<HardDiskMediaTransaction>> SearchTransactionsAsync(string? keyword, string? transactionType);
 
@@ -124,9 +140,29 @@ public interface IHardDiskMediaRepository
     Task<List<string>> GetInStockHardDiskStorageLocationsInSlotAsync(string slotCode);
 
     /// <summary>
-    /// 查询指定档口键下在库空白硬盘（不含登记锁占用）。
+    /// 查询指定档口键下在库空白硬盘。
     /// </summary>
-    Task<List<HardDiskMedium>> GetInStockBlankHardDisksInSlotAsync(string slotKey);
+    /// <param name="slotKey">档口键。</param>
+    /// <param name="unlockedOnly">
+    /// true：仅返回无征用锁的可用空白盘（选源/可征用）；
+    /// false：含征用锁占用盘（按物理占用校验目标档口容量与混放）。
+    /// </param>
+    Task<List<HardDiskMedium>> GetInStockBlankHardDisksInSlotAsync(string slotKey, bool unlockedOnly = true);
+
+    /// <summary>
+    /// 查询指定档口键下在库损坏硬盘。
+    /// </summary>
+    /// <param name="slotKey">档口键。</param>
+    /// <param name="unlockedOnly">
+    /// true：仅返回无征用锁的可用损坏盘（选源）；
+    /// false：含征用锁占用盘（按物理占用校验目标档口）。
+    /// </param>
+    Task<List<HardDiskMedium>> GetInStockDamagedHardDisksInSlotAsync(string slotKey, bool unlockedOnly = true);
+
+    /// <summary>
+    /// 查询指定档口键下在库损坏光盘。
+    /// </summary>
+    Task<List<OpticalDiscMedium>> GetInStockDamagedOpticalDiscsInSlotAsync(string slotKey);
 
     /// <summary>
     /// 统计指定档口内借出未还、原归属该档口的空白硬盘数量。

@@ -49,6 +49,53 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<int, string>> ResolveBeforeStorageLocationsAsync(IReadOnlyList<HardDiskMedium> media)
+    {
+        if (media == null || media.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        var needLookupIds = media
+            .Where(item => item != null
+                           && string.Equals(
+                               item.Ledger?.MediaStatus?.Trim(),
+                               HardDiskMedium.StatusInStockLost,
+                               StringComparison.Ordinal)
+                           && string.IsNullOrWhiteSpace(item.Ledger?.StorageLocation))
+            .Select(item => item.Id)
+            .Distinct()
+            .ToList();
+
+        IReadOnlyDictionary<int, string> lostBeforeLocations = needLookupIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await _repository.GetInventoryLostBeforeLocationsAsync(needLookupIds);
+
+        var result = new Dictionary<int, string>(media.Count);
+        foreach (var medium in media)
+        {
+            if (medium == null || result.ContainsKey(medium.Id))
+            {
+                continue;
+            }
+
+            lostBeforeLocations.TryGetValue(medium.Id, out string? lostBefore);
+            result[medium.Id] = HardDiskDisposalDomainValues.ResolveBeforeStorageLocation(
+                medium.Ledger?.MediaStatus,
+                medium.Ledger?.StorageLocation,
+                lostBefore);
+        }
+
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<int, string>> GetInventoryLostBeforeLocationsAsync(IReadOnlyCollection<int> mediumIds)
+    {
+        return await _repository.GetInventoryLostBeforeLocationsAsync(mediumIds);
+    }
+
+    /// <inheritdoc />
     public Task<string> GenerateNextDisposalNoAsync()
     {
         return _businessRuleService.GenerateBusinessNoAsync(BusinessNoCategory.DiskDisposalApply);
@@ -62,7 +109,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         EnsureArchiveAdmin(currentUser);
         ArgumentNullException.ThrowIfNull(draft);
 
-        ValidateHeader(draft.DisposalReason, draft.DispositionMethod, draft.OtherRemark, draft.Reason);
+        ValidateHeader(draft.OtherRemark, draft.Reason, draft.Items);
         var media = await LoadAndValidateMediaAsync(mediumIds, excludeRecordId: null);
 
         DateTime now = DateTime.Now;
@@ -70,12 +117,17 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             ? await _businessRuleService.GenerateBusinessNoAsync(BusinessNoCategory.DiskDisposalApply)
             : draft.DisposalNo.Trim();
 
+        var items = await BuildItemsAsync(media, now, draft.Items);
+        ValidateItemReasons(items);
+        ValidateItemDispositionMethods(items);
+
         var record = new HardDiskDisposalRecord
         {
             DisposalNo = disposalNo,
             Status = HardDiskDisposalRecord.StatusDraft,
-            DisposalReason = draft.DisposalReason.Trim(),
-            DispositionMethod = draft.DispositionMethod.Trim(),
+            DisposalReason = HardDiskDisposalDomainValues.BuildReasonSummary(items.Select(item => item.DisposalReason)),
+            DispositionMethod = HardDiskDisposalDomainValues.BuildDispositionMethodSummary(
+                items.Select(item => item.DispositionMethod)),
             OtherRemark = draft.OtherRemark?.Trim() ?? string.Empty,
             Reason = draft.Reason?.Trim() ?? string.Empty,
             Remark = draft.Remark?.Trim() ?? string.Empty,
@@ -85,7 +137,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             ApplyTime = now,
             CreatedAt = now,
             UpdatedAt = now,
-            Items = BuildItems(media, now)
+            Items = items
         };
 
         _repository.AddRecord(record);
@@ -114,12 +166,17 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             throw new InvalidOperationException("仅草稿状态的处置单可编辑。");
         }
 
-        ValidateHeader(draft.DisposalReason, draft.DispositionMethod, draft.OtherRemark, draft.Reason);
+        ValidateHeader(draft.OtherRemark, draft.Reason, draft.Items);
         var media = await LoadAndValidateMediaAsync(mediumIds, excludeRecordId: existing.Id);
 
         DateTime now = DateTime.Now;
-        existing.DisposalReason = draft.DisposalReason.Trim();
-        existing.DispositionMethod = draft.DispositionMethod.Trim();
+        var items = await BuildItemsAsync(media, now, draft.Items);
+        ValidateItemReasons(items);
+        ValidateItemDispositionMethods(items);
+
+        existing.DisposalReason = HardDiskDisposalDomainValues.BuildReasonSummary(items.Select(item => item.DisposalReason));
+        existing.DispositionMethod = HardDiskDisposalDomainValues.BuildDispositionMethodSummary(
+            items.Select(item => item.DispositionMethod));
         existing.OtherRemark = draft.OtherRemark?.Trim() ?? string.Empty;
         existing.Reason = draft.Reason?.Trim() ?? string.Empty;
         existing.Remark = draft.Remark?.Trim() ?? string.Empty;
@@ -131,7 +188,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             existing.Items.Clear();
         }
 
-        foreach (var item in BuildItems(media, now))
+        foreach (var item in items)
         {
             existing.Items.Add(item);
         }
@@ -151,11 +208,14 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             throw new InvalidOperationException("仅草稿状态可提交。");
         }
 
-        ValidateHeader(existing.DisposalReason, existing.DispositionMethod, existing.OtherRemark, existing.Reason);
+        ValidateHeader(existing.OtherRemark, existing.Reason, existing.Items);
         if (existing.Items.Count == 0)
         {
             throw new InvalidOperationException("请至少选择一块待处置硬盘。");
         }
+
+        ValidateItemReasons(existing.Items);
+        ValidateItemDispositionMethods(existing.Items);
 
         var media = await LoadAndValidateMediaAsync(
             existing.Items.Select(item => item.MediumId).ToList(),
@@ -244,21 +304,44 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
 
         DateTime now = DateTime.Now;
         string operatorName = ResolveUserDisplayName(currentUser);
-        string afterStatus = HardDiskDisposalDomainValues.ResolveTerminalMediaStatus(existing.DisposalReason);
-        string transactionType = HardDiskDisposalDomainValues.ResolveTransactionType(existing.DisposalReason);
-        string holder = ResolveHolderAfterComplete(existing.DispositionMethod);
+
+        var lostMediumIdsNeedingLocation = existing.Items
+            .Where(item =>
+            {
+                var medium = media.FirstOrDefault(m => m.Id == item.MediumId);
+                string status = medium?.Ledger?.MediaStatus?.Trim() ?? item.BeforeMediaStatus?.Trim() ?? string.Empty;
+                return string.Equals(status, HardDiskMedium.StatusInStockLost, StringComparison.Ordinal)
+                       && string.IsNullOrWhiteSpace(medium?.Ledger?.StorageLocation)
+                       && string.IsNullOrWhiteSpace(item.BeforeStorageLocation);
+            })
+            .Select(item => item.MediumId)
+            .Distinct()
+            .ToList();
+        IReadOnlyDictionary<int, string> lostBeforeLocations = lostMediumIdsNeedingLocation.Count == 0
+            ? new Dictionary<int, string>()
+            : await _repository.GetInventoryLostBeforeLocationsAsync(lostMediumIdsNeedingLocation);
 
         foreach (var item in existing.Items.OrderBy(detail => detail.SortOrder))
         {
             var medium = media.First(m => m.Id == item.MediumId);
             var ledger = EnsureLedger(medium, now);
             string beforeStatus = ledger.MediaStatus?.Trim() ?? string.Empty;
-            string beforeLocation = ledger.StorageLocation?.Trim() ?? string.Empty;
+            lostBeforeLocations.TryGetValue(item.MediumId, out string? lostBefore);
+            string beforeLocation = HardDiskDisposalDomainValues.ResolveBeforeStorageLocation(
+                beforeStatus,
+                ledger.StorageLocation,
+                string.IsNullOrWhiteSpace(item.BeforeStorageLocation) ? lostBefore : item.BeforeStorageLocation);
+            string itemReason = ResolveItemDisposalReason(item);
+            string itemMethod = ResolveItemDispositionMethod(item, existing.DispositionMethod);
+            string holder = ResolveHolderAfterComplete(itemMethod);
 
             if (!IsInStockStatus(beforeStatus))
             {
                 throw new InvalidOperationException($"硬盘【{medium.DiskCode}】当前状态为“{beforeStatus}”，无法办结离库处置。");
             }
+
+            string afterStatus = HardDiskDisposalDomainValues.ResolveTerminalMediaStatus(itemReason);
+            string transactionType = HardDiskDisposalDomainValues.ResolveTransactionType(itemReason);
 
             medium.UpdatedTime = now;
             ledger.UpdatedTime = now;
@@ -267,7 +350,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             ledger.NeedReturn = false;
             ledger.StorageLocation = string.Empty;
             ledger.HolderOrOrganization = holder;
-            ledger.Remark = AppendDisposalRemark(ledger.Remark, existing);
+            ledger.Remark = AppendDisposalRemark(ledger.Remark, existing, itemReason, itemMethod);
 
             _repository.AddTransaction(new HardDiskMediaTransaction
             {
@@ -284,7 +367,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
                 TargetOrganization = holder,
                 NeedReturn = false,
                 RelatedBatch = existing.DisposalNo,
-                Description = BuildTransactionDescription(existing),
+                Description = BuildTransactionDescription(itemReason, itemMethod),
                 Remark = existing.Remark
             });
 
@@ -355,8 +438,10 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         {
             DisposalNo = record.DisposalNo,
             ApplyDateText = record.ApplyTime.ToString("yyyy-MM-dd"),
-            DisposalReason = record.DisposalReason,
-            DispositionMethod = record.DispositionMethod,
+            DisposalReason = HardDiskDisposalDomainValues.BuildReasonSummary(
+                record.Items.Select(item => ResolveItemDisposalReason(item))),
+            DispositionMethod = HardDiskDisposalDomainValues.BuildDispositionMethodSummary(
+                record.Items.Select(item => ResolveItemDispositionMethod(item, record.DispositionMethod))),
             OtherRemark = record.OtherRemark,
             Reason = record.Reason,
             Remark = record.Remark,
@@ -378,7 +463,9 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
                     SerialNumber = item.SerialNumber,
                     BeforeMediaStatus = item.BeforeMediaStatus,
                     BeforeMediaNature = item.BeforeMediaNature,
-                    BeforeStorageLocation = item.BeforeStorageLocation
+                    BeforeStorageLocation = item.BeforeStorageLocation,
+                    DisposalReason = ResolveItemDisposalReason(item),
+                    DispositionMethod = ResolveItemDispositionMethod(item, record.DispositionMethod)
                 })
                 .ToList()
         };
@@ -581,21 +668,55 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         return media;
     }
 
-    private static List<HardDiskDisposalItem> BuildItems(IReadOnlyList<HardDiskMedium> media, DateTime now)
+    private async Task<List<HardDiskDisposalItem>> BuildItemsAsync(
+        IReadOnlyList<HardDiskMedium> media,
+        DateTime now,
+        IEnumerable<HardDiskDisposalItem>? draftItems)
     {
+        Dictionary<int, string> methodsByMediumId = (draftItems ?? Array.Empty<HardDiskDisposalItem>())
+            .Where(item => item.MediumId > 0)
+            .GroupBy(item => item.MediumId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Last().DispositionMethod?.Trim() ?? string.Empty);
+
+        IReadOnlyDictionary<int, string> beforeLocations = await ResolveBeforeStorageLocationsAsync(media);
+
         int sort = 1;
         return media
             .OrderBy(item => item.DiskCode, StringComparer.Ordinal)
-            .Select(medium => new HardDiskDisposalItem
+            .Select(medium =>
             {
-                SortOrder = sort++,
-                MediumId = medium.Id,
-                DiskCode = medium.DiskCode?.Trim() ?? string.Empty,
-                SerialNumber = medium.SerialNumber?.Trim() ?? string.Empty,
-                BeforeMediaStatus = medium.Ledger?.MediaStatus?.Trim() ?? string.Empty,
-                BeforeStorageLocation = medium.Ledger?.StorageLocation?.Trim() ?? string.Empty,
-                BeforeMediaNature = medium.Ledger?.MediaNature?.Trim() ?? string.Empty,
-                CreatedAt = now
+                string beforeStatus = medium.Ledger?.MediaStatus?.Trim() ?? string.Empty;
+                string reason = HardDiskDisposalDomainValues.ResolveReasonFromMediaStatus(beforeStatus);
+                if (string.IsNullOrWhiteSpace(reason))
+                {
+                    throw new InvalidOperationException(
+                        $"硬盘【{medium.DiskCode}】当前状态为“{beforeStatus}”，无法自动确定离库原因。");
+                }
+
+                methodsByMediumId.TryGetValue(medium.Id, out string? draftMethod);
+                string method = draftMethod?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(method))
+                {
+                    method = HardDiskDisposalDomainValues.ResolveDispositionMethodFromMediaStatus(beforeStatus);
+                }
+
+                beforeLocations.TryGetValue(medium.Id, out string? beforeLocation);
+
+                return new HardDiskDisposalItem
+                {
+                    SortOrder = sort++,
+                    MediumId = medium.Id,
+                    DiskCode = medium.DiskCode?.Trim() ?? string.Empty,
+                    SerialNumber = medium.SerialNumber?.Trim() ?? string.Empty,
+                    BeforeMediaStatus = beforeStatus,
+                    BeforeStorageLocation = beforeLocation ?? string.Empty,
+                    BeforeMediaNature = medium.Ledger?.MediaNature?.Trim() ?? string.Empty,
+                    DisposalReason = reason,
+                    DispositionMethod = method,
+                    CreatedAt = now
+                };
             })
             .ToList();
     }
@@ -661,28 +782,94 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         medium.UpdatedTime = DateTime.Now;
     }
 
-    private static void ValidateHeader(string? reason, string? method, string? otherRemark, string? applyReason)
+    private static void ValidateHeader(
+        string? otherRemark,
+        string? applyReason,
+        IEnumerable<HardDiskDisposalItem>? items)
     {
-        if (!HardDiskDisposalDomainValues.IsValidReason(reason))
-        {
-            throw new InvalidOperationException("请选择离库原因（淘汰/损毁/盘失/其他）。");
-        }
+        bool requiresOtherRemark = (items ?? Array.Empty<HardDiskDisposalItem>())
+            .Any(item => HardDiskDisposalDomainValues.RequiresOtherRemark(
+                ResolveItemDispositionMethod(item, headerFallback: null)));
 
-        if (!HardDiskDisposalDomainValues.IsValidDispositionMethod(method))
+        if (requiresOtherRemark && string.IsNullOrWhiteSpace(otherRemark))
         {
-            throw new InvalidOperationException("请选择离库后处置方式（直接销毁/退还办公室/其他）。");
-        }
-
-        if (HardDiskDisposalDomainValues.RequiresOtherRemark(reason, method)
-            && string.IsNullOrWhiteSpace(otherRemark))
-        {
-            throw new InvalidOperationException("离库原因或处置方式为「其他」时，须填写说明。");
+            throw new InvalidOperationException("存在处置方式为「其他」的硬盘时，须填写说明。");
         }
 
         if (string.IsNullOrWhiteSpace(applyReason))
         {
             throw new InvalidOperationException("请填写申请说明。");
         }
+    }
+
+    private static void ValidateItemReasons(IEnumerable<HardDiskDisposalItem> items)
+    {
+        foreach (var item in items)
+        {
+            string reason = ResolveItemDisposalReason(item);
+            if (!HardDiskDisposalDomainValues.IsValidReason(reason))
+            {
+                throw new InvalidOperationException(
+                    $"硬盘【{item.DiskCode}】离库原因无效，请按介质状态重新选取后保存。");
+            }
+        }
+    }
+
+    private static void ValidateItemDispositionMethods(IEnumerable<HardDiskDisposalItem> items)
+    {
+        foreach (var item in items)
+        {
+            string method = ResolveItemDispositionMethod(item, headerFallback: null);
+            if (!HardDiskDisposalDomainValues.IsValidDispositionMethod(method))
+            {
+                throw new InvalidOperationException(
+                    $"硬盘【{item.DiskCode}】未指定处置方式，请勾选后在上方选择处置方式。");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 解析明细离库原因：优先明细字段；空时按处置前状态回推（兼容迁移前数据）。
+    /// </summary>
+    private static string ResolveItemDisposalReason(HardDiskDisposalItem item)
+    {
+        string reason = item.DisposalReason?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            return string.Equals(reason, HardDiskDisposalDomainValues.LegacyReasonDamaged, StringComparison.Ordinal)
+                ? HardDiskDisposalDomainValues.ReasonDamaged
+                : reason;
+        }
+
+        return HardDiskDisposalDomainValues.ResolveReasonFromMediaStatus(item.BeforeMediaStatus);
+    }
+
+    /// <summary>
+    /// 解析明细处置方式：优先明细字段；空时按盘失自动回推，再回退主表汇总/旧整单值。
+    /// </summary>
+    private static string ResolveItemDispositionMethod(HardDiskDisposalItem item, string? headerFallback)
+    {
+        string method = item.DispositionMethod?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(method))
+        {
+            return method;
+        }
+
+        method = HardDiskDisposalDomainValues.ResolveDispositionMethodFromMediaStatus(item.BeforeMediaStatus);
+        if (!string.IsNullOrWhiteSpace(method))
+        {
+            return method;
+        }
+
+        // 兼容迁移前整单处置方式：主表仅有单一值时回填到明细。
+        string header = headerFallback?.Trim() ?? string.Empty;
+        if (HardDiskDisposalDomainValues.IsValidDispositionMethod(header)
+            && !header.Contains('、', StringComparison.Ordinal))
+        {
+            return header;
+        }
+
+        return string.Empty;
     }
 
     private static void EnsureArchiveAdmin(User? currentUser)
@@ -752,14 +939,18 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         return string.Empty;
     }
 
-    private static string BuildTransactionDescription(HardDiskDisposalRecord record)
+    private static string BuildTransactionDescription(string disposalReason, string dispositionMethod)
     {
-        return $"离库处置：{record.DisposalReason} / {record.DispositionMethod}";
+        return $"离库处置：{disposalReason} / {dispositionMethod}";
     }
 
-    private static string AppendDisposalRemark(string? existingRemark, HardDiskDisposalRecord record)
+    private static string AppendDisposalRemark(
+        string? existingRemark,
+        HardDiskDisposalRecord record,
+        string disposalReason,
+        string dispositionMethod)
     {
         string prefix = string.IsNullOrWhiteSpace(existingRemark) ? string.Empty : existingRemark.Trim() + "；";
-        return $"{prefix}离库处置单 {record.DisposalNo}（{record.DisposalReason}/{record.DispositionMethod}）";
+        return $"{prefix}离库处置单 {record.DisposalNo}（{disposalReason}/{dispositionMethod}）";
     }
 }

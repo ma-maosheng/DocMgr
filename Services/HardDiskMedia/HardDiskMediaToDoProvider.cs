@@ -141,7 +141,16 @@ namespace DocMgr.Services.HardDiskMedia
 
         private static string BuildDisposalSummary(HardDiskDisposalRecord record)
         {
-            string reason = record.DisposalReason?.Trim() ?? string.Empty;
+            string reason = HardDiskDisposalDomainValues.BuildReasonSummary(
+                (record.Items ?? Array.Empty<HardDiskDisposalItem>())
+                    .Select(item => string.IsNullOrWhiteSpace(item.DisposalReason)
+                        ? record.DisposalReason
+                        : item.DisposalReason));
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                reason = record.DisposalReason?.Trim() ?? string.Empty;
+            }
+
             string disks = record.DiskCodesSummary?.Trim() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(disks))
             {

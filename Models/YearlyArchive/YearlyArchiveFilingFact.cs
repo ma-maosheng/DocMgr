@@ -46,6 +46,9 @@ namespace DocMgr.Models.YearlyArchive
 
         public int ContentCount { get; set; }
 
+        /// <summary>盘库登记累计丢失份数（与归还灭失分流）。</summary>
+        public int InventoryLostCopyCount { get; set; }
+
         public ArchiveContainerKind ContainerKind { get; set; }
 
         public int ContainerId { get; set; }

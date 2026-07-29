@@ -20,9 +20,11 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<CabinetSearchViewModel>();
         services.AddTransient<HardDiskMediumLedgerViewModel>();
         services.AddTransient<OpticalDiscMediumLedgerViewModel>();
+        services.AddTransient<OpticalDiscMediaPageViewModel>();
         services.AddTransient<HardDiskMediaOutboundApplicationPageViewModel>();
         services.AddTransient<HardDiskDisposalPageViewModel>();
         services.AddTransient<HardDiskInventoryRegisterPageViewModel>();
+        services.AddTransient<ArchiveInventoryRegisterPageViewModel>();
         services.AddTransient<Func<HardDiskReturnWorkspaceMode, HardDiskMediaReturnRegistrationPageViewModel>>(sp =>
             mode => ActivatorUtilities.CreateInstance<HardDiskMediaReturnRegistrationPageViewModel>(sp, mode));
         services.AddTransient<HardDiskMediaApprovalPageViewModel>();

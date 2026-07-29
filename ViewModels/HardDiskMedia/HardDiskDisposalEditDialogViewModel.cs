@@ -24,9 +24,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private HardDiskDisposalRecord _record;
         private bool _hasCommittedChanges;
         private bool _isApplyingFilters;
+        private bool _suppressBatchMethodApply;
         private string _disposalNo = string.Empty;
-        private string _disposalReason = HardDiskDisposalDomainValues.ReasonRetire;
-        private string _dispositionMethod = HardDiskDisposalDomainValues.MethodDirectDestroy;
+        private string _batchDispositionMethod = HardDiskDisposalDomainValues.MethodDirectDestroy;
         private string _otherRemark = string.Empty;
         private string _reason = string.Empty;
         private string _remark = string.Empty;
@@ -54,6 +54,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             MoveToDisposalCommand = new RelayCommand(_ => MoveToDisposal(), _ => CanEditHeader && AvailableDisks.Any(item => item.IsSelected));
             MoveToAvailableCommand = new RelayCommand(_ => MoveToAvailable(), _ => CanEditHeader && Items.Any(item => item.IsSelected));
+            ApplyDispositionMethodCommand = new RelayCommand(
+                _ => ApplyDispositionMethodToSelected(BatchDispositionMethod),
+                _ => CanEditHeader
+                    && Items.Any(item => item.IsSelected)
+                    && HardDiskDisposalDomainValues.IsValidDispositionMethod(BatchDispositionMethod));
             ClearFiltersCommand = new RelayCommand(_ => ClearFilters(), _ => CanEditHeader);
             SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader);
             SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit);
@@ -80,9 +85,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string StatusDisplay => HardDiskDisposalDomainValues.ToStatusDisplay(_record.Status);
 
         public string BannerText =>
-            "仅「在库(空盘)」「在库(损坏)」「在库(盘失)」可离库处置；库内异常请先走「盘库登记」。提交时核验未被其他业务征用，提交后由本单征用锁定。流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批通过 → 确认可上传 → 上传签批单与硬盘照片 → 办结。";
-
-        public ObservableCollection<string> ReasonOptions { get; } = new(HardDiskDisposalDomainValues.ReasonOptions);
+            "仅「在库(空盘)」「在库(损坏)」「在库(盘失)」可离库处置；移入后按状态自动带出离库原因（空盘→淘汰、损坏→损坏、盘失→盘失），盘失自动带出处置方式「库内注销」。其余盘请勾选后在上方选择处置方式赋值。流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批通过 → 确认可上传 → 上传签批单与硬盘照片 → 办结。";
 
         public ObservableCollection<string> DispositionMethodOptions { get; } = new(HardDiskDisposalDomainValues.DispositionMethodOptions);
 
@@ -192,32 +195,27 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public string ApplicantDept => _record.ApplicantDept;
 
-        public string DisposalReason
+        /// <summary>批量赋值用的处置方式（勾选待处置硬盘后选择，点「赋值」或切换选项写入明细列）。</summary>
+        public string BatchDispositionMethod
         {
-            get => _disposalReason;
+            get => _batchDispositionMethod;
             set
             {
-                if (SetProperty(ref _disposalReason, value))
+                if (!SetProperty(ref _batchDispositionMethod, value))
                 {
-                    OnPropertyChanged(nameof(RequiresOtherRemark));
+                    return;
                 }
-            }
-        }
 
-        public string DispositionMethod
-        {
-            get => _dispositionMethod;
-            set
-            {
-                if (SetProperty(ref _dispositionMethod, value))
+                RaiseCommandStates();
+                if (!_suppressBatchMethodApply)
                 {
-                    OnPropertyChanged(nameof(RequiresOtherRemark));
+                    ApplyDispositionMethodToSelected(value);
                 }
             }
         }
 
         public bool RequiresOtherRemark =>
-            HardDiskDisposalDomainValues.RequiresOtherRemark(DisposalReason, DispositionMethod);
+            Items.Any(item => HardDiskDisposalDomainValues.RequiresOtherRemark(item.DispositionMethod));
 
         public string OtherRemark
         {
@@ -283,6 +281,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public RelayCommand MoveToDisposalCommand { get; }
         public RelayCommand MoveToAvailableCommand { get; }
+        public RelayCommand ApplyDispositionMethodCommand { get; }
         public RelayCommand ClearFiltersCommand { get; }
         public RelayCommand SaveDraftCommand { get; }
         public RelayCommand SubmitCommand { get; }
@@ -321,12 +320,16 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private void ApplyRecordToForm(HardDiskDisposalRecord record)
         {
             _record = record;
-            DisposalReason = string.IsNullOrWhiteSpace(record.DisposalReason)
-                ? HardDiskDisposalDomainValues.ReasonRetire
-                : record.DisposalReason;
-            DispositionMethod = string.IsNullOrWhiteSpace(record.DispositionMethod)
-                ? HardDiskDisposalDomainValues.MethodDirectDestroy
-                : record.DispositionMethod;
+            _suppressBatchMethodApply = true;
+            try
+            {
+                BatchDispositionMethod = HardDiskDisposalDomainValues.MethodDirectDestroy;
+            }
+            finally
+            {
+                _suppressBatchMethodApply = false;
+            }
+
             OtherRemark = record.OtherRemark ?? string.Empty;
             Reason = record.Reason ?? string.Empty;
             Remark = record.Remark ?? string.Empty;
@@ -352,32 +355,68 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(DisposalDisksTitle));
         }
 
-        private void RebuildItemsFromRecord(HardDiskDisposalRecord record)
+        private void RebuildItemsFromRecord(
+            HardDiskDisposalRecord record,
+            IReadOnlyDictionary<int, string>? lostBeforeLocations = null)
         {
             Items.Clear();
             int sort = 1;
             foreach (var item in record.Items.OrderBy(detail => detail.SortOrder))
             {
                 var candidate = _mediaPool.FirstOrDefault(pool => pool.MediumId == item.MediumId);
+                string? locationOverride = null;
+                if (string.IsNullOrWhiteSpace(item.BeforeStorageLocation)
+                    && string.Equals(item.BeforeMediaStatus?.Trim(), HardDiskMedium.StatusInStockLost, StringComparison.Ordinal)
+                    && lostBeforeLocations != null
+                    && lostBeforeLocations.TryGetValue(item.MediumId, out string? recovered)
+                    && !string.IsNullOrWhiteSpace(recovered))
+                {
+                    locationOverride = recovered;
+                }
+
                 Items.Add(candidate != null
-                    ? HardDiskDisposalItemViewModel.FromCandidate(candidate, sort++)
-                    : new HardDiskDisposalItemViewModel(item));
+                    ? HardDiskDisposalItemViewModel.FromCandidate(
+                        candidate,
+                        sort++,
+                        item.DisposalReason,
+                        item.DispositionMethod,
+                        record.DispositionMethod,
+                        locationOverride ?? item.BeforeStorageLocation)
+                    : new HardDiskDisposalItemViewModel(item, record.DispositionMethod, locationOverride));
             }
+
+            OnPropertyChanged(nameof(RequiresOtherRemark));
         }
 
         private async Task ReloadMediaPoolAsync()
         {
             var media = await _disposalService.GetSelectableMediaAsync(
                 _record.Id > 0 ? _record.Id : null);
+            IReadOnlyDictionary<int, string> locationMap =
+                await _disposalService.ResolveBeforeStorageLocationsAsync(media);
 
             _mediaPool.Clear();
             foreach (var medium in media.OrderBy(item => item.DiskCode, StringComparer.Ordinal))
             {
-                _mediaPool.Add(HardDiskDisposalCandidateViewModel.FromMedium(medium));
+                locationMap.TryGetValue(medium.Id, out string? resolvedLocation);
+                _mediaPool.Add(HardDiskDisposalCandidateViewModel.FromMedium(medium, resolvedLocation));
             }
 
+            var itemIdsNeedingLostLocation = _record.Items
+                .Where(item => string.IsNullOrWhiteSpace(item.BeforeStorageLocation)
+                               && string.Equals(
+                                   item.BeforeMediaStatus?.Trim(),
+                                   HardDiskMedium.StatusInStockLost,
+                                   StringComparison.Ordinal))
+                .Select(item => item.MediumId)
+                .Distinct()
+                .ToList();
+            IReadOnlyDictionary<int, string> lostBeforeLocations = itemIdsNeedingLostLocation.Count == 0
+                ? new Dictionary<int, string>()
+                : await _disposalService.GetInventoryLostBeforeLocationsAsync(itemIdsNeedingLostLocation);
+
             RebuildFilterOptions();
-            RebuildItemsFromRecord(_record);
+            RebuildItemsFromRecord(_record, lostBeforeLocations);
             RefreshAvailableDisks();
         }
 
@@ -551,6 +590,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             RenumberItems();
             RefreshAvailableDisks();
+            OnPropertyChanged(nameof(RequiresOtherRemark));
         }
 
         private void MoveToAvailable()
@@ -568,6 +608,46 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             RenumberItems();
             RefreshAvailableDisks();
+            OnPropertyChanged(nameof(RequiresOtherRemark));
+        }
+
+        private void ApplyDispositionMethodToSelected(string? method)
+        {
+            if (!CanEditHeader)
+            {
+                return;
+            }
+
+            string normalized = method?.Trim() ?? string.Empty;
+            if (!HardDiskDisposalDomainValues.IsValidDispositionMethod(normalized))
+            {
+                return;
+            }
+
+            var selected = Items.Where(item => item.IsSelected).ToList();
+            if (selected.Count == 0)
+            {
+                return;
+            }
+
+            var distinctStatuses = selected
+                .Select(item => item.BeforeMediaStatus?.Trim() ?? string.Empty)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            if (distinctStatuses.Count > 1)
+            {
+                _dialogService.ShowMessage(
+                    "所选硬盘的「原状态」不一致，请按同一原状态分批勾选后再赋值。",
+                    "无法赋值");
+                return;
+            }
+
+            foreach (var item in selected)
+            {
+                item.DispositionMethod = normalized;
+            }
+
+            OnPropertyChanged(nameof(RequiresOtherRemark));
         }
 
         private void RenumberItems()
@@ -869,23 +949,32 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 Id = _record.Id,
                 DisposalNo = DisposalNo,
-                DisposalReason = DisposalReason,
-                DispositionMethod = DispositionMethod,
                 OtherRemark = OtherRemark,
                 Reason = Reason,
-                Remark = Remark
+                Remark = Remark,
+                Items = Items.Select(item => new HardDiskDisposalItem
+                {
+                    MediumId = item.MediumId,
+                    SortOrder = item.SortOrder,
+                    DisposalReason = item.DisposalReason,
+                    DispositionMethod = item.DispositionMethod
+                }).ToList()
             };
         }
 
         private bool HasUnsavedHeaderChanges()
         {
-            return !string.Equals(_record.DisposalReason, DisposalReason, StringComparison.Ordinal)
-                || !string.Equals(_record.DispositionMethod, DispositionMethod, StringComparison.Ordinal)
-                || !string.Equals(_record.OtherRemark ?? string.Empty, OtherRemark ?? string.Empty, StringComparison.Ordinal)
+            return !string.Equals(_record.OtherRemark ?? string.Empty, OtherRemark ?? string.Empty, StringComparison.Ordinal)
                 || !string.Equals(_record.Reason ?? string.Empty, Reason ?? string.Empty, StringComparison.Ordinal)
                 || !string.Equals(_record.Remark ?? string.Empty, Remark ?? string.Empty, StringComparison.Ordinal)
                 || !_record.Items.Select(item => item.MediumId).OrderBy(id => id)
-                    .SequenceEqual(Items.Select(item => item.MediumId).OrderBy(id => id));
+                    .SequenceEqual(Items.Select(item => item.MediumId).OrderBy(id => id))
+                || !_record.Items
+                    .OrderBy(item => item.MediumId)
+                    .Select(item => $"{item.MediumId}|{item.DispositionMethod?.Trim()}")
+                    .SequenceEqual(Items
+                        .OrderBy(item => item.MediumId)
+                        .Select(item => $"{item.MediumId}|{item.DispositionMethod}"));
         }
 
         private User RequireCurrentUser()
@@ -907,9 +996,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
     {
         private bool _isSelected;
 
-        public static HardDiskDisposalCandidateViewModel FromMedium(HardDiskMedium medium)
+        public static HardDiskDisposalCandidateViewModel FromMedium(HardDiskMedium medium, string? resolvedStorageLocation = null)
         {
             ArgumentNullException.ThrowIfNull(medium);
+            string ledgerLocation = medium.Ledger?.StorageLocation?.Trim() ?? string.Empty;
+            string mediaStatus = medium.Ledger?.MediaStatus?.Trim() ?? string.Empty;
             return new HardDiskDisposalCandidateViewModel
             {
                 MediumId = medium.Id,
@@ -919,8 +1010,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 Capacity = medium.Capacity?.Trim() ?? string.Empty,
                 InterfaceType = medium.InterfaceType?.Trim() ?? string.Empty,
                 FactoryDate = medium.FactoryDate,
-                MediaStatus = medium.Ledger?.MediaStatus?.Trim() ?? string.Empty,
-                StorageLocation = medium.Ledger?.StorageLocation?.Trim() ?? string.Empty,
+                MediaStatus = mediaStatus,
+                StorageLocation = HardDiskDisposalDomainValues.ResolveBeforeStorageLocation(
+                    mediaStatus,
+                    ledgerLocation,
+                    resolvedStorageLocation),
                 MediaNature = medium.Ledger?.MediaNature?.Trim() ?? string.Empty
             };
         }
@@ -967,15 +1061,26 @@ namespace DocMgr.ViewModels.HardDiskMedia
     {
         private int _sortOrder;
         private bool _isSelected;
+        private string _dispositionMethod = string.Empty;
 
-        public HardDiskDisposalItemViewModel(HardDiskDisposalItem item)
+        public HardDiskDisposalItemViewModel(
+            HardDiskDisposalItem item,
+            string? headerDispositionMethod = null,
+            string? storageLocationOverride = null)
         {
             MediumId = item.MediumId;
             DiskCode = item.DiskCode;
             SerialNumber = item.SerialNumber;
             BeforeMediaStatus = item.BeforeMediaStatus;
-            BeforeStorageLocation = item.BeforeStorageLocation;
+            BeforeStorageLocation = !string.IsNullOrWhiteSpace(storageLocationOverride)
+                ? storageLocationOverride.Trim()
+                : (item.BeforeStorageLocation?.Trim() ?? string.Empty);
             BeforeMediaNature = item.BeforeMediaNature;
+            DisposalReason = ResolveDisposalReason(item.DisposalReason, item.BeforeMediaStatus);
+            _dispositionMethod = ResolveDispositionMethod(
+                item.DispositionMethod,
+                item.BeforeMediaStatus,
+                headerDispositionMethod);
             Capacity = string.Empty;
             InterfaceType = string.Empty;
             FactoryDate = null;
@@ -986,7 +1091,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
         }
 
-        public static HardDiskDisposalItemViewModel FromCandidate(HardDiskDisposalCandidateViewModel candidate, int sortOrder)
+        public static HardDiskDisposalItemViewModel FromCandidate(
+            HardDiskDisposalCandidateViewModel candidate,
+            int sortOrder,
+            string? savedDisposalReason = null,
+            string? savedDispositionMethod = null,
+            string? headerDispositionMethod = null,
+            string? storageLocationOverride = null)
         {
             ArgumentNullException.ThrowIfNull(candidate);
             return new HardDiskDisposalItemViewModel
@@ -995,13 +1106,63 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 DiskCode = candidate.DiskCode,
                 SerialNumber = candidate.SerialNumber,
                 BeforeMediaStatus = candidate.MediaStatus,
-                BeforeStorageLocation = candidate.StorageLocation,
+                BeforeStorageLocation = !string.IsNullOrWhiteSpace(storageLocationOverride)
+                    ? storageLocationOverride.Trim()
+                    : candidate.StorageLocation,
                 BeforeMediaNature = candidate.MediaNature,
+                DisposalReason = ResolveDisposalReason(savedDisposalReason, candidate.MediaStatus),
+                _dispositionMethod = ResolveDispositionMethod(
+                    savedDispositionMethod,
+                    candidate.MediaStatus,
+                    headerDispositionMethod),
                 Capacity = candidate.Capacity,
                 InterfaceType = candidate.InterfaceType,
                 FactoryDate = candidate.FactoryDate,
                 _sortOrder = sortOrder
             };
+        }
+
+        private static string ResolveDisposalReason(string? savedReason, string? mediaStatus)
+        {
+            string reason = savedReason?.Trim() ?? string.Empty;
+            if (string.Equals(reason, HardDiskDisposalDomainValues.LegacyReasonDamaged, StringComparison.Ordinal))
+            {
+                return HardDiskDisposalDomainValues.ReasonDamaged;
+            }
+
+            if (!string.IsNullOrWhiteSpace(reason))
+            {
+                return reason;
+            }
+
+            return HardDiskDisposalDomainValues.ResolveReasonFromMediaStatus(mediaStatus);
+        }
+
+        private static string ResolveDispositionMethod(
+            string? savedMethod,
+            string? mediaStatus,
+            string? headerFallback)
+        {
+            string method = savedMethod?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(method))
+            {
+                return method;
+            }
+
+            method = HardDiskDisposalDomainValues.ResolveDispositionMethodFromMediaStatus(mediaStatus);
+            if (!string.IsNullOrWhiteSpace(method))
+            {
+                return method;
+            }
+
+            string header = headerFallback?.Trim() ?? string.Empty;
+            if (HardDiskDisposalDomainValues.IsValidDispositionMethod(header)
+                && !header.Contains('、', StringComparison.Ordinal))
+            {
+                return header;
+            }
+
+            return string.Empty;
         }
 
         public int MediumId { get; private init; }
@@ -1015,6 +1176,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string BeforeStorageLocation { get; private init; } = string.Empty;
 
         public string BeforeMediaNature { get; private init; } = string.Empty;
+
+        public string DisposalReason { get; private init; } = string.Empty;
+
+        public string DispositionMethod
+        {
+            get => _dispositionMethod;
+            set => SetProperty(ref _dispositionMethod, value ?? string.Empty);
+        }
 
         public string Capacity { get; private init; } = string.Empty;
 

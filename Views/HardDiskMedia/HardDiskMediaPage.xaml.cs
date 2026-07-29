@@ -1,7 +1,9 @@
+using DocMgr.Models.HardDiskMedia;
 using DocMgr.ViewModels.HardDiskMedia;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace DocMgr.Views.HardDiskMedia
 {
@@ -40,6 +42,20 @@ namespace DocMgr.Views.HardDiskMedia
             Loaded -= HardDiskMediaPage_Loaded;
             Unloaded -= HardDiskMediaPage_Unloaded;
             _pageScope.Dispose();
+        }
+
+        private void KpiCard_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not FrameworkElement { Tag: HardDiskOverviewKpiKind kind })
+            {
+                return;
+            }
+
+            if (DataContext is HardDiskMediaPageViewModel viewModel
+                && viewModel.NavigateKpiCommand.CanExecute(kind))
+            {
+                viewModel.NavigateKpiCommand.Execute(kind);
+            }
         }
     }
 }

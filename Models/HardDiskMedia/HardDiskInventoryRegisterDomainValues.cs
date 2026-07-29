@@ -9,14 +9,14 @@ namespace DocMgr.Models.HardDiskMedia
     {
         public const string KindDamage = "损坏登记";
         public const string KindLost = "盘失登记";
+        /// <summary>历史类型：损坏档口调整（已改走开柜迁档，新建不可选；旧草稿办结仍兼容）。</summary>
         public const string KindRelocateDamaged = "损坏档口调整";
 
-        /// <summary>登记类型选项（整单唯一）。</summary>
+        /// <summary>登记类型选项（整单唯一；不含已退役的损坏档口调整）。</summary>
         public static IReadOnlyList<string> RegisterKindOptions { get; } =
         [
             KindDamage,
-            KindLost,
-            KindRelocateDamaged
+            KindLost
         ];
 
         /// <summary>可纳入盘库登记的介质状态。</summary>
@@ -27,6 +27,14 @@ namespace DocMgr.Models.HardDiskMedia
         ];
 
         public static bool IsValidRegisterKind(string? kind)
+        {
+            string normalized = kind?.Trim() ?? string.Empty;
+            return RegisterKindOptions.Any(item => string.Equals(item, normalized, StringComparison.Ordinal))
+                || string.Equals(normalized, KindRelocateDamaged, StringComparison.Ordinal);
+        }
+
+        /// <summary>新建草稿允许的登记类型（不含已退役入口）。</summary>
+        public static bool IsCreatableRegisterKind(string? kind)
         {
             string normalized = kind?.Trim() ?? string.Empty;
             return RegisterKindOptions.Any(item => string.Equals(item, normalized, StringComparison.Ordinal));

@@ -434,6 +434,12 @@
                                         <Button x:Name="BtnArchiveCirculationLedger" Content="流转台账" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveCirculationLedger_Click"/>
                                     </StackPanel>
                                 </Expander>
+                                <Expander Header="盘库登记" Style="{StaticResource SubNavExpander}">
+                                    <StackPanel>
+                                        <Button x:Name="BtnArchiveSimulatedInventoryRegister" Content="模拟资料盘库" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveSimulatedInventoryRegister_Click"/>
+                                        <Button x:Name="BtnArchiveElectronicInventoryRegister" Content="电子资料盘库" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveElectronicInventoryRegister_Click"/>
+                                    </StackPanel>
+                                </Expander>
                                 <Expander Header="资料处置" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
                                         <Button x:Name="BtnArchiveDispose" Content="资料销毁" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveDispose_Click"/>
@@ -493,7 +499,6 @@
                                 <Expander x:Name="ExpOpticalDiscSection" Header="光盘" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
                                         <Button x:Name="BtnOpticalDiscOverview" Content="概览" Style="{StaticResource SubSubNavButton}" Click="BtnOpticalDiscOverview_Click"/>
-                                        <Button x:Name="BtnOpticalDiscRegister" Content="初始登记" Style="{StaticResource SubSubNavButton}" Click="BtnOpticalDiscRegister_Click"/>
                                         <Button x:Name="BtnOpticalDiscLedger" Content="流转台账" Style="{StaticResource SubSubNavButton}" Click="BtnOpticalDiscLedger_Click"/>
                                     </StackPanel>
                                 </Expander>

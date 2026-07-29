@@ -3,6 +3,7 @@ using System.Windows;
 using DocMgr.Models.ArchiveContainers;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.Cabinets
@@ -100,6 +101,7 @@ namespace DocMgr.ViewModels.Cabinets
             OccupationLockBadgeText = string.IsNullOrWhiteSpace(descriptor.OccupationLockBadgeText)
                 ? (descriptor.HasOccupationLock ? "占用" : string.Empty)
                 : descriptor.OccupationLockBadgeText.Trim();
+            InventoryMarkBadgeText = descriptor.InventoryMarkBadgeText?.Trim() ?? string.Empty;
         }
 
         public bool IsSelected
@@ -195,7 +197,12 @@ namespace DocMgr.ViewModels.Cabinets
 
         public string OccupationLockBadgeText { get; } = string.Empty;
 
+        public string InventoryMarkBadgeText { get; } = string.Empty;
+
         public Visibility OccupationLockBadgeVisibility => HasOccupationLock ? Visibility.Visible : Visibility.Collapsed;
+
+        public Visibility InventoryMarkBadgeVisibility =>
+            !string.IsNullOrWhiteSpace(InventoryMarkBadgeText) ? Visibility.Visible : Visibility.Collapsed;
 
         public bool CanShowInfo => !IsEmpty;
 
@@ -205,20 +212,65 @@ namespace DocMgr.ViewModels.Cabinets
             !IsEmpty
             && !IsPendingReturn
             && !HasOccupationLock
-            && (IsElectronicMediaRelocationCandidate || IsBlankHardDiskRelocationCandidate);
+            && (IsElectronicMediaRelocationCandidate
+                || IsBlankHardDiskRelocationCandidate
+                || IsDamagedHardDiskRelocationCandidate
+                || IsDamagedOpticalDiscRelocationCandidate);
 
         public bool IsElectronicMediaRelocationCandidate =>
+            IsElectronicInStockOccupancy
+            && !HasOccupationLock;
+
+        /// <summary>电子介质袋在库占用（含征用/预订；用于目标容量与源档口类型判断）。</summary>
+        public bool IsElectronicInStockOccupancy =>
             !IsEmpty
             && !IsPendingReturn
             && !IsBlankInStock
-            && ElectronicArchiveUnitId > 0;
+            && ElectronicArchiveUnitId > 0
+            && !IsInventoryEmptyMark
+            && !IsInventoryLostMark;
 
         public bool IsBlankHardDiskRelocationCandidate =>
             !IsEmpty
             && !IsPendingReturn
             && !IsOpticalDiscMedia
             && !IsYearlyArchiveDisplay
-            && IsBlankInStock;
+            && IsBlankInStock
+            && !HasOccupationLock;
+
+        /// <summary>损坏硬盘在库占用（含征用锁；用于目标档口容量，不等于可迁档源）。</summary>
+        public bool IsDamagedInStockOccupancy =>
+            !IsEmpty
+            && !IsPendingReturn
+            && !IsOpticalDiscMedia
+            && !IsYearlyArchiveDisplay
+            && MediumId > 0
+            && string.Equals(StatusText, HardDiskMedium.StatusInStockDamaged, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>损坏硬盘专用档口内的裸损坏硬盘（非电子袋展示）。</summary>
+        public bool IsDamagedHardDiskRelocationCandidate =>
+            IsDamagedInStockOccupancy
+            && !HasOccupationLock;
+
+        /// <summary>损坏光盘在库占用（含占用角标；用于目标容量）。</summary>
+        public bool IsDamagedOpticalDiscInStockOccupancy =>
+            !IsEmpty
+            && !IsPendingReturn
+            && IsOpticalDiscMedia
+            && !IsYearlyArchiveDisplay
+            && MediumId > 0
+            && string.Equals(StatusText, OpticalDiscMedium.StatusDamaged, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>损坏光盘专用档口内的裸损坏数据光盘（非电子袋展示）。</summary>
+        public bool IsDamagedOpticalDiscRelocationCandidate =>
+            IsDamagedOpticalDiscInStockOccupancy
+            && !HasOccupationLock;
+
+        private bool IsInventoryEmptyMark =>
+            string.Equals(InventoryMarkBadgeText, "空", StringComparison.Ordinal);
+
+        private bool IsInventoryLostMark =>
+            string.Equals(InventoryMarkBadgeText, "失", StringComparison.Ordinal);
 
         public int MediumId { get; }
 
@@ -390,6 +442,12 @@ namespace DocMgr.ViewModels.Cabinets
                 return new StatusVisual("待归还", "#FFF7ED", "#FDBA74", "#F59E0B", "#B45309", "#FFEDD5", "#9A3412", "#9A3412", "#C2410C");
             }
 
+            string inventoryMark = descriptor.InventoryMarkBadgeText?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(inventoryMark))
+            {
+                return new StatusVisual(inventoryMark, "#FEF2F2", "#FCA5A5", "#EF4444", "#B91C1C", "#FEE2E2", "#991B1B", "#991B1B", "#B91C1C");
+            }
+
             if (descriptor.IsYearlyArchiveDisplay)
             {
                 return descriptor.IsOpticalDiscMedia
@@ -401,6 +459,7 @@ namespace DocMgr.ViewModels.Cabinets
             {
                 HardDiskMedium.StatusInStockData => new StatusVisual("资料", "#EFF6FF", "#93C5FD", "#3B82F6", "#1D4ED8", "#DBEAFE", "#1E3A8A", "#1E3A8A", "#1D4ED8"),
                 HardDiskMedium.StatusInStockDamaged => new StatusVisual("损坏", "#FEF2F2", "#FCA5A5", "#EF4444", "#B91C1C", "#FEE2E2", "#991B1B", "#991B1B", "#B91C1C"),
+                HardDiskMedium.StatusInStockLost => new StatusVisual("失", "#FEF2F2", "#FCA5A5", "#EF4444", "#B91C1C", "#FEE2E2", "#991B1B", "#991B1B", "#B91C1C"),
                 _ => new StatusVisual("空盘", "#F8FAFC", "#CBD5E1", "#64748B", "#334155", "#E2E8F0", "#334155", "#1F2937", "#475569")
             };
         }

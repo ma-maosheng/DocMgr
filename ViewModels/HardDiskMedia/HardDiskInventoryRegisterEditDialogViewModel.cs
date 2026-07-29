@@ -66,7 +66,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string StatusDisplay => HardDiskInventoryRegisterDomainValues.ToStatusDisplay(_record.Status);
 
         public string BannerText =>
-            "仅「在库(空盘)」「在库(损坏)」可盘库登记。损坏登记/档口调整须指定损坏硬盘专用档口；盘失登记清空档口并写「在库(盘失)」。确认办结即时写台账，无需审批签批。正式离库请走「离库处置」。";
+            "仅「在库(空盘)」「在库(损坏)」可盘库登记。损坏登记/档口调整须指定损坏硬盘专用档口；盘失登记清空档口并写「在库(盘失)」。确认登记办结即时写台账，无需审批签批。正式离库请走「离库处置」。";
 
         public ObservableCollection<string> RegisterKindOptions { get; } = new(HardDiskInventoryRegisterDomainValues.RegisterKindOptions);
 
@@ -418,7 +418,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             try
             {
                 var user = RequireCurrentUser();
-                if (!_dialogService.ShowConfirm("确认办结？办结后将即时更新硬盘台账状态/档口并写入流转流水。", "确认办结"))
+                if (!_dialogService.ShowConfirm("确认登记办结？办结后将即时更新硬盘台账状态/档口并写入流转流水。", "确认登记办结"))
                 {
                     return;
                 }
@@ -431,7 +431,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
                 await _registerService.CompleteAsync(_record.Id, user);
                 _hasCommittedChanges = true;
-                _dialogService.ShowMessage("盘库登记已办结。");
+                _dialogService.ShowMessage("盘库登记已确认办结。", "确认登记办结");
                 RequestClose?.Invoke(true);
             }
             catch (Exception ex)

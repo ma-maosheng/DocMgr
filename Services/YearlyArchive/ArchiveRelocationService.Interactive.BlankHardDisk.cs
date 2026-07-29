@@ -49,7 +49,9 @@ namespace DocMgr.Services.YearlyArchive
                 return Blocked(targetIssue);
             }
 
-            int occupiedCount = (await _hardDiskMediaRepository.GetInStockBlankHardDisksInSlotAsync(targetSlotKey)).Count;
+            int occupiedCount = (await _hardDiskMediaRepository.GetInStockBlankHardDisksInSlotAsync(
+                targetSlotKey,
+                unlockedOnly: false)).Count;
             int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
                 CabinetHardDiskSlotCategoryAssignment.CategoryBlank);
             string slotPurposeText = ResolveMagneticSlotCategoryDisplay(

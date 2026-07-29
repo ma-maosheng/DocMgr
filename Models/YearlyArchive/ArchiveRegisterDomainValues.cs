@@ -8,6 +8,10 @@ namespace DocMgr.Models.YearlyArchive
         public const string MediaKindElectronic = "电子";
         public const string MediaKindSimulated = "模拟";
         public const string MediaKindBlankHardDisk = "空白盘";
+        /// <summary>裸损坏硬盘（损坏硬盘专用档口）。</summary>
+        public const string MediaKindDamagedHardDisk = "损坏盘";
+        /// <summary>裸损坏数据光盘（损坏光盘专用档口）。</summary>
+        public const string MediaKindDamagedOpticalDisc = "损坏光盘";
 
         public const string ElectronicMediaTypeUsbDrive = "U盘";
         public const string ElectronicMediaTypeOpticalDisc = "光盘";

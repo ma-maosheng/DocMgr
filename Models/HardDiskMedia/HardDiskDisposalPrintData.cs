@@ -57,5 +57,11 @@ namespace DocMgr.Models.HardDiskMedia
         public string BeforeMediaNature { get; init; } = string.Empty;
 
         public string BeforeStorageLocation { get; init; } = string.Empty;
+
+        /// <summary>离库原因（按盘）。</summary>
+        public string DisposalReason { get; init; } = string.Empty;
+
+        /// <summary>处置方式（按盘）。</summary>
+        public string DispositionMethod { get; init; } = string.Empty;
     }
 }

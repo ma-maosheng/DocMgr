@@ -79,6 +79,8 @@ namespace DocMgr.Services.HardDiskMedia
                     "当前状态",
                     "存放位置",
                     "当前保管",
+                    "是否需归还",
+                    "登记方式",
                     "来源类型",
                     "来源记录",
                     "创建时间",
@@ -103,11 +105,13 @@ namespace DocMgr.Services.HardDiskMedia
                     row.CreateCell(3).SetCellValue(item.Ledger?.MediaStatus ?? OpticalDiscMedium.StatusInStock);
                     row.CreateCell(4).SetCellValue(item.Ledger?.StorageLocation ?? string.Empty);
                     row.CreateCell(5).SetCellValue(item.Ledger?.HolderOrOrganization ?? string.Empty);
-                    row.CreateCell(6).SetCellValue(item.SourceType);
-                    row.CreateCell(7).SetCellValue(item.SourceRecordKey);
-                    row.CreateCell(8).SetCellValue(item.CreatedTime == default ? string.Empty : item.CreatedTime.ToString("yyyy-MM-dd HH:mm:ss"));
-                    row.CreateCell(9).SetCellValue(item.UpdatedTime == default ? string.Empty : item.UpdatedTime.ToString("yyyy-MM-dd HH:mm:ss"));
-                    row.CreateCell(10).SetCellValue(item.Remarks);
+                    row.CreateCell(6).SetCellValue(item.Ledger?.NeedReturn == true ? "是" : "否");
+                    row.CreateCell(7).SetCellValue(item.RegistrationMethod);
+                    row.CreateCell(8).SetCellValue(item.SourceType);
+                    row.CreateCell(9).SetCellValue(item.SourceRecordKey);
+                    row.CreateCell(10).SetCellValue(item.CreatedTime == default ? string.Empty : item.CreatedTime.ToString("yyyy-MM-dd HH:mm:ss"));
+                    row.CreateCell(11).SetCellValue(item.UpdatedTime == default ? string.Empty : item.UpdatedTime.ToString("yyyy-MM-dd HH:mm:ss"));
+                    row.CreateCell(12).SetCellValue(item.Remarks);
                 }
 
                 var transactionSheet = workbook.CreateSheet("流转记录");
@@ -117,9 +121,12 @@ namespace DocMgr.Services.HardDiskMedia
                     "流转类型",
                     "光盘编号",
                     "业务单号",
+                    "流转前状态",
+                    "流转后状态",
                     "前位置",
                     "后位置",
                     "办理人",
+                    "业务说明",
                     "备注"
                 ];
 
@@ -138,10 +145,13 @@ namespace DocMgr.Services.HardDiskMedia
                     row.CreateCell(1).SetCellValue(item.TransactionType);
                     row.CreateCell(2).SetCellValue(item.DiscCode);
                     row.CreateCell(3).SetCellValue(item.BusinessNo);
-                    row.CreateCell(4).SetCellValue(item.BeforeLocation);
-                    row.CreateCell(5).SetCellValue(item.AfterLocation);
-                    row.CreateCell(6).SetCellValue(item.OperatorName);
-                    row.CreateCell(7).SetCellValue(item.Remark);
+                    row.CreateCell(4).SetCellValue(item.BeforeStatus);
+                    row.CreateCell(5).SetCellValue(item.AfterStatus);
+                    row.CreateCell(6).SetCellValue(item.BeforeLocation);
+                    row.CreateCell(7).SetCellValue(item.AfterLocation);
+                    row.CreateCell(8).SetCellValue(item.OperatorName);
+                    row.CreateCell(9).SetCellValue(item.Description);
+                    row.CreateCell(10).SetCellValue(item.Remark);
                 }
 
                 using var outputStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -156,9 +166,17 @@ namespace DocMgr.Services.HardDiskMedia
         }
 
         /// <inheritdoc/>
-        public async Task<IReadOnlyList<OpticalDiscMediumTransactionRecord>> SearchOpticalDiscTransactionsAsync(string? discCodeKeyword, string? businessNoKeyword)
+        public async Task<IReadOnlyList<OpticalDiscMediumTransactionRecord>> SearchOpticalDiscTransactionsAsync(
+            string? discCodeKeyword,
+            string? businessNoKeyword,
+            int? mediumId = null,
+            string? transactionType = null)
         {
-            return await _hardDiskMediaRepository.SearchOpticalDiscTransactionsAsync(discCodeKeyword, businessNoKeyword);
+            return await _hardDiskMediaRepository.SearchOpticalDiscTransactionsAsync(
+                discCodeKeyword,
+                businessNoKeyword,
+                mediumId,
+                transactionType);
         }
 
         /// <inheritdoc/>

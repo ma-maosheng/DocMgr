@@ -678,7 +678,8 @@ namespace DocMgr.Services.YearlyArchive
                 fact.ContentCount,
                 pendingAfter,
                 snapshotBeforeReturn.NoReturnCopyCount,
-                lostAfter);
+                lostAfter,
+                snapshotBeforeReturn.InventoryLostCopyCount);
 
             string copySummary = $"完好 {intactCopyCount} 份、灭失 {lossCopyCount} 份";
             string remark = lossCopyCount > 0

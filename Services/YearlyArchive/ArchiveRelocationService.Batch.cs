@@ -210,7 +210,17 @@ namespace DocMgr.Services.YearlyArchive
                 throw new InvalidOperationException("源档口存在无资料子项的档案盒，请先整理后再批量搬迁。");
             }
 
-            return boxes;
+            var withdrawalLocks = _cabinetOpenLayoutRepository.GetActiveWithdrawalLocksByArchiveBoxIds(
+                boxes.Select(box => box.Id).ToList());
+            var relocatable = boxes
+                .Where(box => !withdrawalLocks.TryGetValue(box.Id, out var occupation) || !occupation.HasLock)
+                .ToList();
+            if (relocatable.Count == 0)
+            {
+                throw new InvalidOperationException("源档口内档案盒均存在出库预订/征用占用，暂不可批量迁档。");
+            }
+
+            return relocatable;
         }
 
         private async Task<string?> ValidateTargetSlotForBatchMoveAsync(

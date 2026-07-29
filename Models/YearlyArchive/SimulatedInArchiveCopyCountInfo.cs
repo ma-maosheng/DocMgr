@@ -18,6 +18,9 @@ namespace DocMgr.Models.YearlyArchive
 
         public int LostCopyCount { get; init; }
 
+        /// <summary>盘库登记累计丢失份数。</summary>
+        public int InventoryLostCopyCount { get; init; }
+
         public int CurrentInArchiveCopyCount { get; init; }
 
         /// <summary>展示如「2/5」：当前库内/立档。</summary>

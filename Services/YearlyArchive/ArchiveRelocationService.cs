@@ -15,6 +15,7 @@ namespace DocMgr.Services.YearlyArchive
         private readonly IArchiveRelocationRepository _relocationRepository;
         private readonly IArchiveFilingRepository _filingRepository;
         private readonly IHardDiskMediaRepository _hardDiskMediaRepository;
+        private readonly ICabinetOpenLayoutRepository _cabinetOpenLayoutRepository;
         private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly IUserContextService _userContextService;
         private readonly IFilingFactWriter _filingFactWriter;
@@ -25,6 +26,7 @@ namespace DocMgr.Services.YearlyArchive
             IArchiveRelocationRepository relocationRepository,
             IArchiveFilingRepository filingRepository,
             IHardDiskMediaRepository hardDiskMediaRepository,
+            ICabinetOpenLayoutRepository cabinetOpenLayoutRepository,
             IArchiveRegisterService archiveRegisterService,
             IUserContextService userContextService,
             IFilingFactWriter filingFactWriter,
@@ -34,6 +36,7 @@ namespace DocMgr.Services.YearlyArchive
             _relocationRepository = relocationRepository;
             _filingRepository = filingRepository;
             _hardDiskMediaRepository = hardDiskMediaRepository;
+            _cabinetOpenLayoutRepository = cabinetOpenLayoutRepository;
             _archiveRegisterService = archiveRegisterService;
             _userContextService = userContextService;
             _filingFactWriter = filingFactWriter;
@@ -184,6 +187,7 @@ namespace DocMgr.Services.YearlyArchive
             {
                 var source = await _relocationRepository.GetArchiveBoxForRelocationAsync(request.SourceBoxId)
                     ?? throw new InvalidOperationException("未找到源档案盒。");
+                EnsureSimulatedBoxAvailableAsRelocationSource(source);
 
                 DateTime operatedAt = DateTime.Now;
                 string operatorName = ResolveOperatorName();
@@ -277,6 +281,7 @@ namespace DocMgr.Services.YearlyArchive
             {
                 var source = await _relocationRepository.GetElectronicUnitForRelocationAsync(request.SourceUnitId)
                     ?? throw new InvalidOperationException("未找到源电子介质袋。");
+                EnsureElectronicUnitAvailableAsRelocationSource(source);
 
                 DateTime operatedAt = DateTime.Now;
                 string operatorName = ResolveOperatorName();
@@ -1026,6 +1031,56 @@ namespace DocMgr.Services.YearlyArchive
                 Description = "资料迁档销毁原光盘",
                 Remark = remark
             });
+        }
+
+        /// <summary>
+        /// 模拟盒存在出库预订/征用占用时，禁止作为迁档源。
+        /// </summary>
+        private void EnsureSimulatedBoxAvailableAsRelocationSource(YearlyArchiveBox box)
+        {
+            ArgumentNullException.ThrowIfNull(box);
+            var locks = _cabinetOpenLayoutRepository.GetActiveWithdrawalLocksByArchiveBoxIds([box.Id]);
+            if (locks.TryGetValue(box.Id, out var occupation) && occupation.HasLock)
+            {
+                throw new InvalidOperationException(
+                    $"档案盒 [{box.ArchiveSequenceNo}] 存在出库预订/征用占用，暂不可迁档。");
+            }
+        }
+
+        /// <summary>
+        /// 电子袋存在出库预订或其关联硬盘存在征用锁时，禁止作为迁档源。
+        /// </summary>
+        private void EnsureElectronicUnitAvailableAsRelocationSource(YearlyElectronicArchiveUnit unit)
+        {
+            ArgumentNullException.ThrowIfNull(unit);
+            var withdrawalLocks = _cabinetOpenLayoutRepository.GetActiveWithdrawalLocksByElectronicUnitIds([unit.Id]);
+            if (!IsElectronicUnitAvailableAsRelocationSource(unit, withdrawalLocks))
+            {
+                if (withdrawalLocks.TryGetValue(unit.Id, out var occupation) && occupation.HasLock)
+                {
+                    throw new InvalidOperationException(
+                        $"电子介质袋 [{unit.ElectronicArchiveNo}] 存在出库预订/征用占用，暂不可迁档。");
+                }
+
+                var lockedMedium = unit.MediumLinks
+                    .Select(link => link.HardDiskMedium)
+                    .FirstOrDefault(medium => medium?.RegisterLock != null);
+                string diskCode = lockedMedium?.DiskCode?.Trim() ?? "—";
+                throw new InvalidOperationException(
+                    $"电子介质袋 [{unit.ElectronicArchiveNo}] 关联硬盘 [{diskCode}] 正被业务占用，暂不可迁档。");
+            }
+        }
+
+        private static bool IsElectronicUnitAvailableAsRelocationSource(
+            YearlyElectronicArchiveUnit unit,
+            IReadOnlyDictionary<int, CabinetOccupationLockDescriptor> withdrawalLocks)
+        {
+            if (withdrawalLocks.TryGetValue(unit.Id, out var occupation) && occupation.HasLock)
+            {
+                return false;
+            }
+
+            return unit.MediumLinks.All(link => link.HardDiskMedium?.RegisterLock == null);
         }
     }
 }

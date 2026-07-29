@@ -160,7 +160,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 
 
-        public bool ShowInteractiveStatusFilter => _workspaceMode == ArchiveOutboundWorkspaceMode.Approval
+        public bool ShowInteractiveStatusFilter => _workspaceMode == ArchiveOutboundWorkspaceMode.Application
+            || _workspaceMode == ArchiveOutboundWorkspaceMode.Approval
             || _workspaceMode == ArchiveOutboundWorkspaceMode.Handover;
 
 
@@ -410,7 +411,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             ArchiveOutboundWorkspaceMode.Handover => "可按状态筛选；选【全部】列出待出库与已办结记录",
 
-            ArchiveOutboundWorkspaceMode.Application => "申请状态已锁定为【全部】",
+            ArchiveOutboundWorkspaceMode.Application => "可按状态筛选；选【全部】列出各状态申请（含未提交）",
 
             _ => "办理状态已锁定为【待出库/已办结】"
 
@@ -556,16 +557,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 
 
-            if (workspaceMode != ArchiveOutboundWorkspaceMode.Approval)
-
-            {
-
-                return Array.Empty<OutboundStatusFilterOption>();
-
-            }
-
-
-
+            // Application / Approval：完整状态列表，默认【全部】
             return new List<OutboundStatusFilterOption>
 
             {

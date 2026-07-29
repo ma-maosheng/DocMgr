@@ -75,6 +75,8 @@ namespace DocMgr.Data
         public DbSet<YearlyArchiveReturnRecord> YearlyArchiveReturnRecords { get; set; }
         public DbSet<YearlyArchiveReturnItem> YearlyArchiveReturnItems { get; set; }
         public DbSet<YearlyArchiveMaterialTransaction> YearlyArchiveMaterialTransactions { get; set; }
+        public DbSet<YearlyArchiveInventoryRegisterRecord> YearlyArchiveInventoryRegisterRecords { get; set; }
+        public DbSet<YearlyArchiveInventoryRegisterItem> YearlyArchiveInventoryRegisterItems { get; set; }
 
         // === 通用附件表 ===
         public DbSet<SystemAttachment> SystemAttachments { get; set; }
@@ -304,6 +306,33 @@ namespace DocMgr.Data
                 entity.HasOne(item => item.Medium)
                     .WithMany()
                     .HasForeignKey(item => item.MediumId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<YearlyArchiveInventoryRegisterRecord>(entity =>
+            {
+                entity.HasIndex(item => item.RegisterNo).IsUnique();
+                entity.HasIndex(item => item.Status);
+                entity.HasIndex(item => item.MediaKind);
+                entity.HasIndex(item => item.ApplyTime);
+
+                entity.HasMany(item => item.Items)
+                    .WithOne(item => item.RegisterRecord)
+                    .HasForeignKey(item => item.RegisterRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<YearlyArchiveInventoryRegisterItem>(entity =>
+            {
+                entity.HasIndex(item => item.RegisterRecordId);
+                entity.HasIndex(item => item.FilingFactId);
+                entity.HasIndex(item => item.MediumId);
+                entity.HasIndex(item => new { item.RegisterRecordId, item.FilingFactId });
+                entity.HasIndex(item => new { item.RegisterRecordId, item.MediumKind, item.MediumId });
+
+                entity.HasOne(item => item.FilingFact)
+                    .WithMany()
+                    .HasForeignKey(item => item.FilingFactId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 

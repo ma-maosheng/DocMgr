@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
@@ -28,7 +29,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private bool _isInitialized;
         private bool _isUpdatingFilters;
         private bool _isApplicantPopupOpen;
+        private bool _matchAllYears;
+        private bool? _signedAttachmentUploadedFilter;
         private int _applicationYear = DateTime.Today.Year;
+        private string _selectedStatus = AllStatusesText;
         private int? _pendingSelectionApplicationId;
         private HardDiskMediaApplication? _selectedApplication;
         private string _applicationOverdueSettingCode = ApplicationOverdueDomainValues.Default;
@@ -51,7 +55,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         }
 
         public ObservableCollection<HardDiskMediaApplication> Applications { get; } = new();
-        public ObservableCollection<HardDiskMediaStatusOptionViewModel> StatusOptions { get; } = new();
+        public ObservableCollection<string> StatusOptions { get; } = new();
         public ObservableCollection<HardDiskMediaStatusOptionViewModel> ApplicantOptions { get; } = new();
         public ObservableCollection<int> ApplicationYears { get; } = new();
 
@@ -64,6 +68,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 {
                     if (_isInitialized && !_isUpdatingFilters)
                     {
+                        _matchAllYears = false;
                         ApplyApplicationFilters();
                     }
                 }
@@ -76,30 +81,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _isApplicantPopupOpen, value);
         }
 
-        public bool IsAllStatusesSelected
+        public string SelectedStatus
         {
-            get => StatusOptions.Count == 0 || StatusOptions.All(item => item.IsSelected);
+            get => _selectedStatus;
             set
             {
-                if (value)
+                if (SetProperty(ref _selectedStatus, value) && _isInitialized && !_isUpdatingFilters)
                 {
-                    SetAllStatusSelections(true);
+                    ApplyApplicationFilters();
                 }
-            }
-        }
-
-        public string SelectedStatusSummary
-        {
-            get
-            {
-                var selectedStatuses = StatusOptions
-                    .Where(item => item.IsSelected)
-                    .Select(item => item.Label)
-                    .ToList();
-
-                return selectedStatuses.Count == 0 || selectedStatuses.Count == StatusOptions.Count
-                    ? AllStatusesText
-                    : string.Join("、", selectedStatuses);
             }
         }
 
@@ -150,47 +140,70 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public RelayCommand ForceWithdrawCommand { get; }
 
-        public async Task InitializeAsync(int? initialApplicationId = null)
+        public async Task InitializeAsync(
+            int? initialApplicationId = null,
+            string? initialStatusLabel = null,
+            bool? signedAttachmentUploadedFilter = null,
+            bool matchAllYears = false)
         {
             if (initialApplicationId.HasValue)
             {
                 _pendingSelectionApplicationId = initialApplicationId.Value;
             }
 
+            _signedAttachmentUploadedFilter = signedAttachmentUploadedFilter;
+            _matchAllYears = matchAllYears;
+
             if (_isInitialized)
             {
-                if (initialApplicationId.HasValue)
-                {
-                    ApplyApplicationFilters(initialApplicationId);
-                }
-
+                ApplyInitialStatusFilter(initialStatusLabel);
+                ApplyApplicationFilters(initialApplicationId);
                 return;
             }
 
             await LoadStatusOptionsAsync();
+            ApplyInitialStatusFilter(initialStatusLabel);
             await LoadApplicationsAsync();
             _isInitialized = true;
         }
 
-        private async Task LoadStatusOptionsAsync()
+        private void ApplyInitialStatusFilter(string? initialStatusLabel)
+        {
+            if (string.IsNullOrWhiteSpace(initialStatusLabel) || StatusOptions.Count == 0)
+            {
+                return;
+            }
+
+            string target = initialStatusLabel.Trim();
+            if (!StatusOptions.Contains(target))
+            {
+                return;
+            }
+
+            _isUpdatingFilters = true;
+            try
+            {
+                _selectedStatus = target;
+            }
+            finally
+            {
+                _isUpdatingFilters = false;
+            }
+
+            OnPropertyChanged(nameof(SelectedStatus));
+        }
+
+        private Task LoadStatusOptionsAsync()
         {
             var statuses = ApplicationWorkflowStatus.AllOptions.Select(item => item.Label).ToList();
-
-            foreach (var option in StatusOptions)
+            HardDiskMediaApplicationViewModelHelper.ResetOptions(StatusOptions, statuses);
+            if (!StatusOptions.Contains(_selectedStatus))
             {
-                option.PropertyChanged -= OnStatusOptionPropertyChanged;
+                _selectedStatus = AllStatusesText;
             }
 
-            StatusOptions.Clear();
-            foreach (var status in statuses)
-            {
-                var option = new HardDiskMediaStatusOptionViewModel(status, true);
-                option.PropertyChanged += OnStatusOptionPropertyChanged;
-                StatusOptions.Add(option);
-            }
-
-            OnPropertyChanged(nameof(IsAllStatusesSelected));
-            OnPropertyChanged(nameof(SelectedStatusSummary));
+            OnPropertyChanged(nameof(SelectedStatus));
+            return Task.CompletedTask;
         }
 
         private async Task LoadApplicationsAsync()
@@ -384,22 +397,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 _applicationOverdueSettingCode);
         }
 
-        private void OnStatusOptionPropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName != nameof(HardDiskMediaStatusOptionViewModel.IsSelected))
-            {
-                return;
-            }
-
-            OnPropertyChanged(nameof(IsAllStatusesSelected));
-            OnPropertyChanged(nameof(SelectedStatusSummary));
-
-            if (_isInitialized && !_isUpdatingFilters)
-            {
-                ApplyApplicationFilters();
-            }
-        }
-
         private void OnApplicantOptionPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName != nameof(HardDiskMediaStatusOptionViewModel.IsSelected))
@@ -411,25 +408,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(SelectedApplicantSummary));
 
             if (_isInitialized && !_isUpdatingFilters)
-            {
-                ApplyApplicationFilters();
-            }
-        }
-
-        private void SetAllStatusSelections(bool isSelected)
-        {
-            _isUpdatingFilters = true;
-            foreach (var option in StatusOptions)
-            {
-                option.IsSelected = isSelected;
-            }
-
-            _isUpdatingFilters = false;
-
-            OnPropertyChanged(nameof(IsAllStatusesSelected));
-            OnPropertyChanged(nameof(SelectedStatusSummary));
-
-            if (_isInitialized)
             {
                 ApplyApplicationFilters();
             }
@@ -526,20 +504,20 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             selectedId ??= _pendingSelectionApplicationId ?? SelectedApplication?.Id;
 
-            var selectedStatuses = StatusOptions
-                .Where(item => item.IsSelected)
-                .Select(item => item.Label)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
             var selectedApplicants = ApplicantOptions
                 .Where(item => item.IsSelected)
                 .Select(item => item.Label)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             var filteredItems = _allApplications
-                .Where(item => (selectedStatuses.Count == 0 || selectedStatuses.Contains(item.StatusStr)) &&
+                .Where(item => (string.Equals(SelectedStatus, AllStatusesText, StringComparison.Ordinal)
+                                || string.IsNullOrWhiteSpace(SelectedStatus)
+                                || string.Equals(item.StatusStr, SelectedStatus, StringComparison.Ordinal)) &&
                                (selectedApplicants.Count == 0 || selectedApplicants.Contains(item.ApplicantName?.Trim() ?? string.Empty)) &&
-                               item.ApplyTime.Year == _applicationYear)
+                               (_matchAllYears || item.ApplyTime.Year == _applicationYear) &&
+                               (!_signedAttachmentUploadedFilter.HasValue
+                                || item.ApplicationStatus != HardDiskMediaApplication.StatusSignedUploaded
+                                || item.SignedAttachmentUploaded == _signedAttachmentUploadedFilter.Value))
                 .ToList();
 
             Applications.Clear();

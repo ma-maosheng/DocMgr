@@ -26,6 +26,7 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
         return _dbContext.HardDiskMedia
             .AsNoTracking()
             .Include(item => item.Ledger)
+            .Include(item => item.RegisterLock)
             .Where(item => !item.IsDeleted)
             .ToListAsync();
     }
@@ -40,6 +41,20 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
     public Task<List<HardDiskMediaTransaction>> GetOverviewTransactionsAsync()
     {
         return _dbContext.HardDiskMediaTransactions
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    public Task<List<HardDiskDisposalRecord>> GetOverviewDisposalRecordsAsync()
+    {
+        return _dbContext.HardDiskDisposalRecords
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    public Task<List<HardDiskInventoryRegisterRecord>> GetOverviewInventoryRegisterRecordsAsync()
+    {
+        return _dbContext.HardDiskInventoryRegisterRecords
             .AsNoTracking()
             .ToListAsync();
     }
@@ -401,12 +416,39 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
             .ToListAsync();
     }
 
-    public Task<List<OpticalDiscMediumTransactionRecord>> SearchOpticalDiscTransactionsAsync(string? discCodeKeyword, string? businessNoKeyword)
+    public Task<List<OpticalDiscMedium>> GetOpticalDiscOverviewMediaAsync()
+    {
+        return _dbContext.OpticalDiscMedia
+            .AsNoTracking()
+            .Include(item => item.Ledger)
+            .Where(item => !item.IsDeleted)
+            .ToListAsync();
+    }
+
+    public Task<List<OpticalDiscMediaTransaction>> GetOpticalDiscOverviewTransactionsAsync()
+    {
+        return _dbContext.OpticalDiscMediaTransactions
+            .AsNoTracking()
+            .Include(item => item.Medium)
+            .Where(item => item.Medium != null && !item.Medium.IsDeleted)
+            .ToListAsync();
+    }
+
+    public Task<List<OpticalDiscMediumTransactionRecord>> SearchOpticalDiscTransactionsAsync(
+        string? discCodeKeyword,
+        string? businessNoKeyword,
+        int? mediumId = null,
+        string? transactionType = null)
     {
         IQueryable<OpticalDiscMediaTransaction> query = _dbContext.OpticalDiscMediaTransactions
             .AsNoTracking()
             .Include(item => item.Medium)
             .Where(item => item.Medium != null && !item.Medium.IsDeleted);
+
+        if (mediumId.HasValue && mediumId.Value > 0)
+        {
+            query = query.Where(item => item.MediumId == mediumId.Value);
+        }
 
         if (!string.IsNullOrWhiteSpace(discCodeKeyword))
         {
@@ -423,18 +465,29 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
                 || item.RelatedArchiveTitle.Contains(trimmedBusinessNoKeyword));
         }
 
+        if (!string.IsNullOrWhiteSpace(transactionType))
+        {
+            string trimmedType = transactionType.Trim();
+            query = query.Where(item => item.TransactionType == trimmedType);
+        }
+
         return query
             .OrderByDescending(item => item.OperateTime)
             .ThenBy(item => item.Medium!.DiscCode)
             .Select(item => new OpticalDiscMediumTransactionRecord
             {
+                Id = item.Id,
+                MediumId = item.MediumId,
                 DiscCode = item.Medium!.DiscCode,
                 TransactionType = item.TransactionType,
                 BusinessNo = item.BusinessNo,
+                BeforeStatus = item.BeforeStatus,
+                AfterStatus = item.AfterStatus,
                 BeforeLocation = item.BeforeLocation,
                 AfterLocation = item.AfterLocation,
                 OperatorName = item.OperatorName,
                 OperateTime = item.OperateTime,
+                Description = item.Description,
                 Remark = item.Remark
             })
             .ToListAsync();
@@ -886,7 +939,7 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
             .ToList();
     }
 
-    public async Task<List<HardDiskMedium>> GetInStockBlankHardDisksInSlotAsync(string slotKey)
+    public async Task<List<HardDiskMedium>> GetInStockBlankHardDisksInSlotAsync(string slotKey, bool unlockedOnly = true)
     {
         if (string.IsNullOrWhiteSpace(slotKey))
         {
@@ -894,12 +947,18 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
         }
 
         string normalizedSlotKey = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(slotKey);
-        var media = await _dbContext.HardDiskMedia
+        var query = _dbContext.HardDiskMedia
             .Include(item => item.Ledger)
+            .Include(item => item.RegisterLock)
             .Where(item => !item.IsDeleted)
-            .Where(item => item.Ledger != null && item.Ledger.MediaStatus == HardDiskMedium.StatusInStockBlank)
-            .Where(item => item.RegisterLock == null)
-            .ToListAsync();
+            .Where(item => item.Ledger != null && item.Ledger.MediaStatus == HardDiskMedium.StatusInStockBlank);
+
+        if (unlockedOnly)
+        {
+            query = query.Where(item => item.RegisterLock == null);
+        }
+
+        var media = await query.ToListAsync();
 
         return media
             .Where(item => string.Equals(
@@ -907,6 +966,60 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
                 normalizedSlotKey,
                 StringComparison.OrdinalIgnoreCase))
             .OrderBy(item => item.DiskCode, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public async Task<List<HardDiskMedium>> GetInStockDamagedHardDisksInSlotAsync(string slotKey, bool unlockedOnly = true)
+    {
+        if (string.IsNullOrWhiteSpace(slotKey))
+        {
+            return [];
+        }
+
+        string normalizedSlotKey = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(slotKey);
+        var query = _dbContext.HardDiskMedia
+            .Include(item => item.Ledger)
+            .Include(item => item.RegisterLock)
+            .Where(item => !item.IsDeleted)
+            .Where(item => item.Ledger != null && item.Ledger.MediaStatus == HardDiskMedium.StatusInStockDamaged);
+
+        if (unlockedOnly)
+        {
+            query = query.Where(item => item.RegisterLock == null);
+        }
+
+        var media = await query.ToListAsync();
+
+        return media
+            .Where(item => string.Equals(
+                HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(item.Ledger!.StorageLocation),
+                normalizedSlotKey,
+                StringComparison.OrdinalIgnoreCase))
+            .OrderBy(item => item.DiskCode, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public async Task<List<OpticalDiscMedium>> GetInStockDamagedOpticalDiscsInSlotAsync(string slotKey)
+    {
+        if (string.IsNullOrWhiteSpace(slotKey))
+        {
+            return [];
+        }
+
+        string normalizedSlotKey = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(slotKey);
+        var media = await _dbContext.OpticalDiscMedia
+            .Include(item => item.Ledger)
+            .Include(item => item.Transactions)
+            .Where(item => !item.IsDeleted)
+            .Where(item => item.Ledger != null && item.Ledger.MediaStatus == OpticalDiscMedium.StatusDamaged)
+            .ToListAsync();
+
+        return media
+            .Where(item => string.Equals(
+                HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(item.Ledger!.StorageLocation),
+                normalizedSlotKey,
+                StringComparison.OrdinalIgnoreCase))
+            .OrderBy(item => item.DiscCode, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 

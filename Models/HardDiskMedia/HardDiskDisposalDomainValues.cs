@@ -14,31 +14,36 @@ namespace DocMgr.Models.HardDiskMedia
         public const string AttachmentCategoryOther = "其他附件";
 
         public const string ReasonRetire = "淘汰";
-        public const string ReasonDamaged = "损毁";
+        public const string ReasonDamaged = "损坏";
         public const string ReasonLost = "盘失";
+        /// <summary>历史单据兼容：旧版整单原因「损毁」。</summary>
+        public const string LegacyReasonDamaged = "损毁";
+        /// <summary>历史单据兼容：旧版整单原因「其他」。</summary>
         public const string ReasonOther = "其他";
 
         public const string MethodDirectDestroy = "直接销毁";
         public const string MethodReturnOffice = "退还办公室";
+        /// <summary>库内注销：专用于「在库(盘失)」硬盘的处置方式。</summary>
+        public const string MethodInventoryCancel = "库内注销";
         public const string MethodOther = "其他";
 
         public const string HolderOffice = "办公室";
         public const string HolderDestroyed = "已销毁";
 
-        /// <summary>离库原因选项（固定顺序）。</summary>
+        /// <summary>离库原因选项（按介质状态自动赋值：空盘→淘汰、损坏→损坏、盘失→盘失）。</summary>
         public static IReadOnlyList<string> ReasonOptions { get; } =
         [
             ReasonRetire,
             ReasonDamaged,
-            ReasonLost,
-            ReasonOther
+            ReasonLost
         ];
 
-        /// <summary>离库后处置方式选项（整单唯一）。</summary>
+        /// <summary>离库后处置方式选项（按盘；盘失自动「库内注销」）。</summary>
         public static IReadOnlyList<string> DispositionMethodOptions { get; } =
         [
             MethodDirectDestroy,
             MethodReturnOffice,
+            MethodInventoryCancel,
             MethodOther
         ];
 
@@ -58,11 +63,13 @@ namespace DocMgr.Models.HardDiskMedia
             HardDiskMedium.StatusInStockLost
         ];
 
-        /// <summary>是否为有效离库原因。</summary>
+        /// <summary>是否为有效离库原因（含历史「损毁」「其他」）。</summary>
         public static bool IsValidReason(string? reason)
         {
             string normalized = reason?.Trim() ?? string.Empty;
-            return ReasonOptions.Any(item => string.Equals(item, normalized, StringComparison.Ordinal));
+            return ReasonOptions.Any(item => string.Equals(item, normalized, StringComparison.Ordinal))
+                || string.Equals(normalized, LegacyReasonDamaged, StringComparison.Ordinal)
+                || string.Equals(normalized, ReasonOther, StringComparison.Ordinal);
         }
 
         /// <summary>是否为有效处置方式。</summary>
@@ -70,6 +77,107 @@ namespace DocMgr.Models.HardDiskMedia
         {
             string normalized = method?.Trim() ?? string.Empty;
             return DispositionMethodOptions.Any(item => string.Equals(item, normalized, StringComparison.Ordinal));
+        }
+
+        /// <summary>
+        /// 按处置前介质状态自动解析离库原因：
+        /// 在库(空盘)→淘汰；在库(损坏)→损坏；在库(盘失)→盘失。
+        /// </summary>
+        public static string ResolveReasonFromMediaStatus(string? mediaStatus)
+        {
+            string normalized = mediaStatus?.Trim() ?? string.Empty;
+            if (string.Equals(normalized, HardDiskMedium.StatusInStockBlank, StringComparison.Ordinal))
+            {
+                return ReasonRetire;
+            }
+
+            if (string.Equals(normalized, HardDiskMedium.StatusInStockDamaged, StringComparison.Ordinal))
+            {
+                return ReasonDamaged;
+            }
+
+            if (string.Equals(normalized, HardDiskMedium.StatusInStockLost, StringComparison.Ordinal))
+            {
+                return ReasonLost;
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// 按处置前介质状态自动解析处置方式：
+        /// 仅「在库(盘失)」→库内注销；其余须人工指定。
+        /// </summary>
+        public static string ResolveDispositionMethodFromMediaStatus(string? mediaStatus)
+        {
+            string normalized = mediaStatus?.Trim() ?? string.Empty;
+            return string.Equals(normalized, HardDiskMedium.StatusInStockLost, StringComparison.Ordinal)
+                ? MethodInventoryCancel
+                : string.Empty;
+        }
+
+        private static readonly string[] ReasonSummaryOrder =
+        [
+            ReasonRetire,
+            ReasonDamaged,
+            LegacyReasonDamaged,
+            ReasonLost,
+            ReasonOther
+        ];
+
+        private static readonly string[] MethodSummaryOrder =
+        [
+            MethodDirectDestroy,
+            MethodReturnOffice,
+            MethodInventoryCancel,
+            MethodOther
+        ];
+
+        /// <summary>汇总明细离库原因（去重、顿号连接），供主表列表展示。</summary>
+        public static string BuildReasonSummary(IEnumerable<string?> reasons)
+        {
+            return BuildDistinctSummary(reasons, ReasonSummaryOrder);
+        }
+
+        /// <summary>汇总明细处置方式（去重、顿号连接），供主表列表展示。</summary>
+        public static string BuildDispositionMethodSummary(IEnumerable<string?> methods)
+        {
+            return BuildDistinctSummary(methods, MethodSummaryOrder);
+        }
+
+        private static string BuildDistinctSummary(IEnumerable<string?> values, string[] order)
+        {
+            var distinct = values
+                .Select(item => item?.Trim() ?? string.Empty)
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(item =>
+                {
+                    int index = Array.IndexOf(order, item);
+                    return index >= 0 ? index : int.MaxValue;
+                })
+                .ThenBy(item => item, StringComparer.Ordinal)
+                .ToList();
+            return distinct.Count == 0 ? string.Empty : string.Join("、", distinct);
+        }
+
+        /// <summary>
+        /// 解析处置前存放位置：优先台账当前位置；
+        /// 台账已清空时回退备用位置（如明细已存值，或「在库(盘失)」盘库登记流转前档口）。
+        /// </summary>
+        public static string ResolveBeforeStorageLocation(
+            string? mediaStatus,
+            string? ledgerStorageLocation,
+            string? fallbackStorageLocation)
+        {
+            _ = mediaStatus;
+            string current = ledgerStorageLocation?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(current))
+            {
+                return current;
+            }
+
+            return fallbackStorageLocation?.Trim() ?? string.Empty;
         }
 
         /// <summary>办结后统一写入「离库(处置)」终态（含原因=盘失的正式清账）。</summary>
@@ -88,11 +196,17 @@ namespace DocMgr.Models.HardDiskMedia
                 : HardDiskMediaTransaction.TypeDisposal;
         }
 
-        /// <summary>是否需要填写「其他」说明（原因或其他处置方式为「其他」）。</summary>
+        /// <summary>是否需要填写「其他」说明（处置方式为「其他」）。</summary>
+        public static bool RequiresOtherRemark(string? dispositionMethod)
+        {
+            return string.Equals(dispositionMethod?.Trim(), MethodOther, StringComparison.Ordinal);
+        }
+
+        /// <summary>兼容旧调用：原因参数已忽略，仅按处置方式判断。</summary>
         public static bool RequiresOtherRemark(string? reason, string? dispositionMethod)
         {
-            return string.Equals(reason?.Trim(), ReasonOther, StringComparison.Ordinal)
-                || string.Equals(dispositionMethod?.Trim(), MethodOther, StringComparison.Ordinal);
+            _ = reason;
+            return RequiresOtherRemark(dispositionMethod);
         }
 
         /// <summary>工作流状态展示。</summary>

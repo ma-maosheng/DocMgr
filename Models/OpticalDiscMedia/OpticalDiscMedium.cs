@@ -23,6 +23,11 @@ namespace DocMgr.Models.OpticalDiscMedia
         public const string StatusDamaged = "在库(损坏)";
 
         /// <summary>
+        /// 盘失状态（在库但介质丢失，不可迁档）。
+        /// </summary>
+        public const string StatusLost = "在库(盘失)";
+
+        /// <summary>
         /// 销毁状态。
         /// </summary>
         public const string StatusDestroyed = "出库(销毁)";

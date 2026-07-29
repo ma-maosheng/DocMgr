@@ -111,7 +111,8 @@
                                   SelectionMode="Extended"
                                   HeadersVisibility="Column"
                                   GridLinesVisibility="Horizontal"
-                                  BorderThickness="0">
+                                  BorderThickness="0"
+                                  RowHeight="36">
                             <DataGrid.Columns>
                                 <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
                                 <DataGridTextColumn Header="硬盘编号" Binding="{Binding DiskCode}" Width="100" IsReadOnly="True"/>
@@ -146,7 +147,8 @@
                                   SelectionMode="Single"
                                   HeadersVisibility="Column"
                                   GridLinesVisibility="Horizontal"
-                                  BorderThickness="0">
+                                  BorderThickness="0"
+                                  RowHeight="36">
                             <DataGrid.Columns>
                                 <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
                                 <DataGridTextColumn Header="硬盘编号" Binding="{Binding DiskCode}" Width="100" IsReadOnly="True"/>
@@ -178,7 +180,7 @@
         <Border Grid.Row="2" Background="#FFFDF7" BorderBrush="#E2C98F" BorderThickness="0,1,0,0" Padding="12,10">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Style="{StaticResource InvFooterButtonStyle}"/>
-                <Button Content="确认办结" Command="{Binding CompleteCommand}" Style="{StaticResource InvFooterButtonStyle}"/>
+                <Button Content="确认登记办结" Command="{Binding CompleteCommand}" Style="{StaticResource InvFooterButtonStyle}"/>
                 <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Style="{StaticResource InvFooterDangerButtonStyle}"/>
                 <Button Content="关闭" Command="{Binding CloseCommand}" Style="{StaticResource InvFooterButtonStyle}" Margin="0"/>
             </StackPanel>

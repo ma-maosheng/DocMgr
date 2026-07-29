@@ -9,6 +9,9 @@ namespace DocMgr.Views.HardDiskMedia
     {
         private readonly IServiceScope _pageScope;
         private readonly int? _initialApplicationId;
+        private readonly string? _initialStatusLabel;
+        private readonly bool? _signedAttachmentUploadedFilter;
+        private readonly bool _matchAllYears;
 
         public HardDiskMediaApprovalPage()
             : this(null)
@@ -16,10 +19,22 @@ namespace DocMgr.Views.HardDiskMedia
         }
 
         public HardDiskMediaApprovalPage(int? initialApplicationId)
+            : this(initialApplicationId, null, null, false)
+        {
+        }
+
+        public HardDiskMediaApprovalPage(
+            int? initialApplicationId,
+            string? initialStatusLabel,
+            bool? signedAttachmentUploadedFilter = null,
+            bool matchAllYears = false)
         {
             InitializeComponent();
 
             _initialApplicationId = initialApplicationId;
+            _initialStatusLabel = initialStatusLabel;
+            _signedAttachmentUploadedFilter = signedAttachmentUploadedFilter;
+            _matchAllYears = matchAllYears;
             _pageScope = App.CurrentProvider.CreateScope();
             DataContext = _pageScope.ServiceProvider.GetRequiredService<HardDiskMediaApprovalPageViewModel>();
 
@@ -31,7 +46,11 @@ namespace DocMgr.Views.HardDiskMedia
         {
             if (DataContext is HardDiskMediaApprovalPageViewModel viewModel)
             {
-                await viewModel.InitializeAsync(_initialApplicationId);
+                await viewModel.InitializeAsync(
+                    _initialApplicationId,
+                    _initialStatusLabel,
+                    _signedAttachmentUploadedFilter,
+                    _matchAllYears);
             }
         }
 

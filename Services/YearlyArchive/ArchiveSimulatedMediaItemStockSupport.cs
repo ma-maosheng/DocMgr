@@ -25,7 +25,8 @@ namespace DocMgr.Services.YearlyArchive
                 fact.ContentCount,
                 snapshot.PendingReturnCopyCount,
                 snapshot.NoReturnCopyCount,
-                snapshot.LostCopyCount);
+                snapshot.LostCopyCount,
+                snapshot.InventoryLostCopyCount);
         }
 
         public static int ResolveAvailableCopyCount(

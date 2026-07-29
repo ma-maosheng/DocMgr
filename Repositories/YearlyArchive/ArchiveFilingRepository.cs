@@ -480,6 +480,14 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
             .FirstOrDefaultAsync(item => item.Id == mediumId && !item.IsDeleted);
     }
 
+    public Task<OpticalDiscMedium?> GetOpticalDiscMediumByIdWithLedgerAsync(int mediumId)
+    {
+        return _dbContext.OpticalDiscMedia
+            .Include(item => item.Ledger)
+            .Include(item => item.Transactions)
+            .FirstOrDefaultAsync(item => item.Id == mediumId && !item.IsDeleted);
+    }
+
     public Task<HardDiskMedium?> GetHardDiskMediumByDiskCodeWithLedgerAsync(string diskCode)
     {
         return _dbContext.HardDiskMedia

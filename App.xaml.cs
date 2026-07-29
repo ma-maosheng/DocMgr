@@ -389,9 +389,12 @@ namespace DocMgr
             }
 
             var disposalLostMediumIds = db.HardDiskDisposalRecords
-                .Where(record => record.Status == HardDiskDisposalRecord.StatusCompleted
-                    && record.DisposalReason == HardDiskDisposalDomainValues.ReasonLost)
-                .SelectMany(record => record.Items.Select(item => item.MediumId))
+                .Where(record => record.Status == HardDiskDisposalRecord.StatusCompleted)
+                .SelectMany(record => record.Items
+                    .Where(item => item.DisposalReason == HardDiskDisposalDomainValues.ReasonLost
+                        || (string.IsNullOrEmpty(item.DisposalReason)
+                            && record.DisposalReason == HardDiskDisposalDomainValues.ReasonLost))
+                    .Select(item => item.MediumId))
                 .Distinct()
                 .ToList();
 
@@ -414,7 +417,10 @@ namespace DocMgr
 
                 var disposalNos = db.HardDiskDisposalRecords
                     .Where(record => record.Status == HardDiskDisposalRecord.StatusCompleted
-                        && record.DisposalReason == HardDiskDisposalDomainValues.ReasonLost)
+                        && record.Items.Any(item =>
+                            item.DisposalReason == HardDiskDisposalDomainValues.ReasonLost
+                            || (string.IsNullOrEmpty(item.DisposalReason)
+                                && record.DisposalReason == HardDiskDisposalDomainValues.ReasonLost)))
                     .Select(record => record.DisposalNo)
                     .ToList();
 

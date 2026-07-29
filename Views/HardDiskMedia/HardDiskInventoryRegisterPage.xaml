@@ -75,7 +75,7 @@
                         BorderBrush="#E2C98F"
                         BorderThickness="1"
                         CornerRadius="4">
-                    <TextBlock Text="库内空白/损坏硬盘异常即时登记：损坏并改档口、盘失、损坏档口调整。确认办结即时写台账，无需审批签批。正式离库请使用「离库处置」。"
+                    <TextBlock Text="库内空白/损坏硬盘异常即时登记：损坏登记（可指定损坏专用档口）、盘失登记。确认登记办结即时写台账，无需审批签批。损坏盘档口调整请在开柜界面使用交互式迁档。正式离库请使用「离库处置」。"
                                Foreground="#6F4A00"
                                TextWrapping="Wrap"
                                HorizontalAlignment="Center"/>
@@ -83,30 +83,111 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="2" Background="White" Padding="10">
-            <DataGrid ItemsSource="{Binding Records}"
-                      SelectedItem="{Binding SelectedRecord}"
-                      AutoGenerateColumns="False"
-                      IsReadOnly="True"
-                      CanUserAddRows="False"
-                      SelectionMode="Single"
-                      RowHeight="36"
-                      ColumnHeaderHeight="40"
-                      GridLinesVisibility="Horizontal"
-                      BorderThickness="0"
-                      MouseDoubleClick="DgRecords_MouseDoubleClick">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="登记单编号" Binding="{Binding RegisterNo}" Width="150"/>
-                    <DataGridTextColumn Header="登记类型" Binding="{Binding RegisterKind}" Width="120"/>
-                    <DataGridTextColumn Header="硬盘数" Binding="{Binding ItemCount}" Width="70"/>
-                    <DataGridTextColumn Header="硬盘清单" Binding="{Binding DiskCodesSummary}" Width="240"/>
-                    <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="100"/>
-                    <DataGridTextColumn Header="登记人" Binding="{Binding ApplicantName}" Width="90"/>
-                    <DataGridTextColumn Header="登记日期" Binding="{Binding ApplyTime, StringFormat=yyyy-MM-dd}" Width="110"/>
-                    <DataGridTextColumn Header="办结人" Binding="{Binding CompletedBy}" Width="90"/>
-                    <DataGridTextColumn Header="登记说明" Binding="{Binding Reason}" Width="*"/>
-                </DataGrid.Columns>
-            </DataGrid>
-        </Border>
+        <!-- 左列表 / 右详情 -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.35*"/>
+                <ColumnDefinition Width="6"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="White" Padding="10">
+                <DataGrid ItemsSource="{Binding Records}"
+                          SelectedItem="{Binding SelectedRecord}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          SelectionMode="Single"
+                          RowHeight="36"
+                          ColumnHeaderHeight="40"
+                          GridLinesVisibility="Horizontal"
+                          BorderThickness="0"
+                          MouseDoubleClick="DgRecords_MouseDoubleClick">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="登记单编号" Binding="{Binding RegisterNo}" Width="130"/>
+                        <DataGridTextColumn Header="登记类型" Binding="{Binding RegisterKind}" Width="110"/>
+                        <DataGridTextColumn Header="硬盘数" Binding="{Binding ItemCount}" Width="60"/>
+                        <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="80"/>
+                        <DataGridTextColumn Header="登记人" Binding="{Binding ApplicantName}" Width="70"/>
+                        <DataGridTextColumn Header="登记日期" Binding="{Binding ApplyTime, StringFormat=yyyy-MM-dd}" Width="95"/>
+                        <DataGridTextColumn Header="办结人" Binding="{Binding CompletedBy}" Width="70"/>
+                        <DataGridTextColumn Header="登记说明" Binding="{Binding Reason}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+
+            <GridSplitter Grid.Column="1"
+                          Width="6"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Background="#D1D5DB"
+                          ShowsPreview="True"/>
+
+            <Border Grid.Column="2" Background="White" BorderBrush="#E5E7EB" BorderThickness="1,0,0,0" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="选中记录详情"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="#6F4A00"
+                               Margin="0,0,0,10"/>
+
+                    <TextBlock Grid.Row="1"
+                               Text="请在左侧列表中选择一条盘库登记记录，查看摘要与明细。"
+                               Foreground="#9CA3AF"
+                               FontSize="13"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding DetailEmptyVisibility, Mode=OneWay}"/>
+
+                    <Grid Grid.Row="1" Visibility="{Binding DetailContentVisibility, Mode=OneWay}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0"
+                                Margin="0,0,0,10"
+                                Padding="10,8"
+                                Background="#FFFBEB"
+                                BorderBrush="#E2C98F"
+                                BorderThickness="1"
+                                CornerRadius="4">
+                            <TextBlock Text="{Binding DetailSummaryText, Mode=OneWay}"
+                                       TextWrapping="Wrap"
+                                       Foreground="#6F4A00"
+                                       FontSize="12"
+                                       LineHeight="18"/>
+                        </Border>
+
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding DetailItems}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  CanUserAddRows="False"
+                                  SelectionMode="Single"
+                                  HeadersVisibility="Column"
+                                  RowHeight="34"
+                                  ColumnHeaderHeight="36"
+                                  GridLinesVisibility="Horizontal"
+                                  BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="硬盘编号" Binding="{Binding DiskCode}" Width="100"/>
+                                <DataGridTextColumn Header="序列号" Binding="{Binding SerialNumber}" Width="110"/>
+                                <DataGridTextColumn Header="原状态" Binding="{Binding BeforeMediaStatus}" Width="90"/>
+                                <DataGridTextColumn Header="原档口" Binding="{Binding BeforeStorageLocation}" Width="110"/>
+                                <DataGridTextColumn Header="目标档口" Binding="{Binding TargetStorageLocationDisplay}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Page>

@@ -2,6 +2,7 @@ using DocMgr.Models.Cabinets;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
+using DocMgr.Views.Shared;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -47,8 +48,12 @@ namespace DocMgr.ViewModels.Cabinets
         private const double SnapshotSlotBorderMargin = 16d;
         private const double SnapshotViewportChromePadding = 8d;
         private string? _selectionAnchorSlotCode;
-        private ArchiveBoxItemViewModel? _selectedArchiveBox;
-        private CabinetHardDiskMediumItemViewModel? _selectedHardDiskMedium;
+        private string? _contentSelectionAnchorKey;
+        private readonly List<CabinetOpenRelocationSessionEntry> _sessionRelocationEntries = [];
+        private bool _allowClose;
+        private bool _closeGateInProgress;
+        private readonly List<ArchiveBoxItemViewModel> _selectedArchiveBoxes = [];
+        private readonly List<CabinetHardDiskMediumItemViewModel> _selectedHardDiskMedia = [];
         private CabinetSlotViewModel? _slotContextMenuTarget;
 
         public CabinetOpenViewModel(CabinetOpenRequest request, IDialogService dialogService, ICabinetService cabinetService, ICabinetOpenLayoutService cabinetOpenLayoutService, ICabinetArchiveBoxPlacementService cabinetArchiveBoxPlacementService, IUserContextService userContextService, IArchiveRelocationService archiveRelocationService, IBatchSlotRelocationSession batchSlotRelocationSession, IInteractiveItemRelocationSession interactiveItemRelocationSession, ICabinetOpenLayoutRefreshNotifier cabinetOpenLayoutRefreshNotifier, IArchiveRegisterService archiveRegisterService)
@@ -196,7 +201,7 @@ namespace DocMgr.ViewModels.Cabinets
             SetInteractiveItemRelocationFromSelectionCommand = new RelayCommand(_ => SetInteractiveItemRelocationFromSelection(), _ => CanSetInteractiveItemRelocationFromSelection);
             RelocateInteractiveItemToSlotCommand = new RelayCommand<CabinetSlotViewModel>(slot => _ = RelocateInteractiveItemToSlotAsync(slot), CanRelocateInteractiveItemToSlotFromSession);
             ClearInteractiveItemRelocationSourceCommand = new RelayCommand(_ => ClearInteractiveItemRelocationSource(), _ => HasInteractiveItemRelocationSource);
-            CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
+            CloseCommand = new RelayCommand(_ => _ = TryCloseWithSessionGateAsync());
             UpdateMagneticDiskSlotDimensions(DefaultCompactViewportWidth, DefaultCompactViewportHeight);
             OnBatchSlotRelocationSourceChanged();
             OnInteractiveItemRelocationSourceChanged();
@@ -601,7 +606,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         public RelayCommand ClearContentSelectionCommand { get; }
 
-        public bool HasContentSelection => _selectedArchiveBox != null || _selectedHardDiskMedium != null;
+        public bool HasContentSelection => _selectedArchiveBoxes.Count > 0 || _selectedHardDiskMedia.Count > 0;
 
         public Visibility ContentSelectionToolbarVisibility =>
             !IsSingleSlotSnapshot && !IsCompactDisplayMode ? Visibility.Visible : Visibility.Collapsed;
@@ -610,26 +615,34 @@ namespace DocMgr.ViewModels.Cabinets
         {
             get
             {
-                if (_selectedArchiveBox != null)
+                if (_selectedArchiveBoxes.Count > 0)
                 {
-                    return $"已选档案盒：{_selectedArchiveBox.BoxCode}（{_selectedArchiveBox.BoxLabel}）";
+                    return _selectedArchiveBoxes.Count == 1
+                        ? $"已选档案盒：{_selectedArchiveBoxes[0].BoxCode}（{_selectedArchiveBoxes[0].BoxLabel}）"
+                        : $"已选 {_selectedArchiveBoxes.Count} 个档案盒（Ctrl 多选同档口）";
                 }
 
-                if (_selectedHardDiskMedium != null)
+                if (_selectedHardDiskMedia.Count > 0)
                 {
-                    if (_selectedHardDiskMedium.IsOpticalDiscMedia)
+                    if (_selectedHardDiskMedia.Count == 1)
                     {
-                        return string.IsNullOrWhiteSpace(_selectedHardDiskMedium.ElectronicArchiveNoText)
-                            ? $"已选光盘介质：{_selectedHardDiskMedium.DiskCodeText}"
-                            : $"已选电子介质袋：{_selectedHardDiskMedium.ElectronicArchiveNoText}（光盘 {_selectedHardDiskMedium.DiskCodeText}）";
+                        var medium = _selectedHardDiskMedia[0];
+                        if (medium.IsOpticalDiscMedia)
+                        {
+                            return string.IsNullOrWhiteSpace(medium.ElectronicArchiveNoText)
+                                ? $"已选光盘介质：{medium.DiskCodeText}"
+                                : $"已选电子介质袋：{medium.ElectronicArchiveNoText}（光盘 {medium.DiskCodeText}）";
+                        }
+
+                        return string.IsNullOrWhiteSpace(medium.ElectronicArchiveNoText)
+                            ? $"已选硬盘介质：{medium.DiskCodeText}"
+                            : $"已选电子介质袋：{medium.ElectronicArchiveNoText}（硬盘 {medium.DiskCodeText}）";
                     }
 
-                    return string.IsNullOrWhiteSpace(_selectedHardDiskMedium.ElectronicArchiveNoText)
-                        ? $"已选硬盘介质：{_selectedHardDiskMedium.DiskCodeText}"
-                        : $"已选电子介质袋：{_selectedHardDiskMedium.ElectronicArchiveNoText}（硬盘 {_selectedHardDiskMedium.DiskCodeText}）";
+                    return $"已选 {_selectedHardDiskMedia.Count} 个介质实体（Ctrl 多选同档口）";
                 }
 
-                return "提示：单击档口内的档案盒、硬盘或光盘可选中；选中后高亮显示";
+                return "提示：单击选中；Ctrl 多选同档口实体后可设为迁档对象";
             }
         }
 
@@ -674,23 +687,100 @@ namespace DocMgr.ViewModels.Cabinets
         private bool SupportsInteractiveItemRelocation =>
             IsArchiveAdmin() && !IsSingleSlotSnapshot && !IsCompactDisplayMode;
 
-        public bool HasInteractiveItemRelocationSource => _interactiveItemRelocationSession.Source != null;
+        public bool HasInteractiveItemRelocationSource => _interactiveItemRelocationSession.Sources.Count > 0;
 
-        public string InteractiveItemRelocationSourceText => _interactiveItemRelocationSession.Source == null
-            ? string.Empty
-            : $"迁档对象：{_interactiveItemRelocationSession.Source.DisplayText}";
+        public string InteractiveItemRelocationSourceText
+        {
+            get
+            {
+                var sources = _interactiveItemRelocationSession.Sources;
+                if (sources.Count == 0)
+                {
+                    return string.Empty;
+                }
+
+                if (sources.Count == 1)
+                {
+                    return $"迁档对象：{sources[0].DisplayText}";
+                }
+
+                return $"迁档对象：{sources.Count} 项（{sources[0].DisplayText} 等）";
+            }
+        }
 
         public Visibility InteractiveItemRelocationSourceHintVisibility =>
             HasInteractiveItemRelocationSource ? Visibility.Visible : Visibility.Collapsed;
 
         public bool CanSetInteractiveItemRelocationFromSelection =>
             SupportsInteractiveItemRelocation
-            && ((_selectedArchiveBox?.CanInteractiveRelocate ?? false)
-                || (_selectedHardDiskMedium?.CanInteractiveRelocate ?? false));
+            && ((_selectedArchiveBoxes.Count > 0 && _selectedArchiveBoxes.All(box => box.CanInteractiveRelocate))
+                || (_selectedHardDiskMedia.Count > 0 && _selectedHardDiskMedia.All(medium => medium.CanInteractiveRelocate)));
 
         public bool SupportsInteractiveItemRelocationDrag => SupportsInteractiveItemRelocation;
 
         public event Action<bool?>? RequestClose;
+
+        /// <summary>是否允许关闭开柜窗（已通过迁档汇总核对门禁，或本次无迁档）。</summary>
+        public bool AllowClose => _allowClose;
+
+        /// <summary>本次开柜会话是否已有成功迁档。</summary>
+        public bool HasSessionRelocations => _sessionRelocationEntries.Count > 0;
+
+        /// <summary>关窗门禁流程是否正在执行（避免 Closing 重复触发）。</summary>
+        public bool IsCloseGateInProgress => _closeGateInProgress;
+
+        /// <summary>
+        /// 关窗：若本次开柜有迁档，须先打印汇总清单并确认后再关闭。
+        /// </summary>
+        public Task TryCloseWithSessionGateAsync()
+        {
+            if (_closeGateInProgress)
+            {
+                return Task.CompletedTask;
+            }
+
+            if (_allowClose || _sessionRelocationEntries.Count == 0)
+            {
+                _allowClose = true;
+                RequestClose?.Invoke(false);
+                return Task.CompletedTask;
+            }
+
+            _closeGateInProgress = true;
+            try
+            {
+                if (!_dialogService.ShowConfirm(
+                        $"本次开柜期间已完成 {_sessionRelocationEntries.Count} 次迁档。\n" +
+                        "关闭前请打印「本次开柜迁档汇总清单」，以便按清单完成线下实物迁档与核对。\n\n" +
+                        "是否现在打印汇总清单？",
+                        "关闭开柜"))
+                {
+                    return Task.CompletedTask;
+                }
+
+                ShowSessionRelocationPrintPreview();
+
+                if (!_dialogService.ShowConfirm(
+                        "请确认已按汇总清单完成线下核对（或已打印清单）。\n确认关闭开柜窗口？",
+                        "确认关闭"))
+                {
+                    return Task.CompletedTask;
+                }
+
+                _allowClose = true;
+                RequestClose?.Invoke(false);
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message, "关闭开柜失败");
+            }
+            finally
+            {
+                _closeGateInProgress = false;
+            }
+
+            return Task.CompletedTask;
+        }
 
         /// <summary>
         /// 窗体关闭时解除跨窗体事件订阅。
@@ -700,6 +790,299 @@ namespace DocMgr.ViewModels.Cabinets
             _batchSlotRelocationSession.SourceChanged -= OnBatchSlotRelocationSourceChanged;
             _interactiveItemRelocationSession.SourceChanged -= OnInteractiveItemRelocationSourceChanged;
             _cabinetOpenLayoutRefreshNotifier.LayoutRefreshRequested -= OnLayoutRefreshRequested;
+        }
+
+        private void RecordSessionRelocation(
+            string mediaKind,
+            string modeLabel,
+            string? relocationNo,
+            string? summaryText,
+            string sourceSlotText,
+            CabinetSlotViewModel targetSlot,
+            string containerCodesText,
+            string hardDiskCodesText,
+            string opticalDiscCodesText)
+        {
+            ArgumentNullException.ThrowIfNull(targetSlot);
+
+            _sessionRelocationEntries.Add(new CabinetOpenRelocationSessionEntry
+            {
+                Sequence = _sessionRelocationEntries.Count + 1,
+                OperatedAt = DateTime.Now,
+                MediaKind = string.IsNullOrWhiteSpace(mediaKind) ? "—" : mediaKind.Trim(),
+                ModeLabel = string.IsNullOrWhiteSpace(modeLabel) ? "迁档" : modeLabel.Trim(),
+                RelocationNo = relocationNo?.Trim() ?? string.Empty,
+                SummaryText = summaryText?.Trim() ?? string.Empty,
+                SourceSlotText = string.IsNullOrWhiteSpace(sourceSlotText) ? "—" : sourceSlotText.Trim(),
+                TargetSlotText = FormatSlotDisplayText(Request.CabinetName, CurrentFaceDisplayName, targetSlot.SlotCode),
+                ContainerCodesText = containerCodesText?.Trim() ?? string.Empty,
+                HardDiskCodesText = hardDiskCodesText?.Trim() ?? string.Empty,
+                OpticalDiscCodesText = opticalDiscCodesText?.Trim() ?? string.Empty
+            });
+        }
+
+        private static string FormatSlotDisplayText(string cabinetName, string faceDisplayName, string slotCode)
+        {
+            string cabinet = string.IsNullOrWhiteSpace(cabinetName) ? "—" : cabinetName.Trim();
+            string face = string.IsNullOrWhiteSpace(faceDisplayName) ? "—" : faceDisplayName.Trim();
+            string slot = string.IsNullOrWhiteSpace(slotCode) ? "—" : slotCode.Trim();
+            return $"{cabinet} {face} {slot}";
+        }
+
+        private string FormatBatchSourceSlotText(BatchSlotRelocationEndpoint source)
+        {
+            string faceDisplay = GetSideDisplayName(Request.CabinetType, ParseFaceCode(source.FaceCode));
+            string slotCode = string.IsNullOrWhiteSpace(source.SlotCode)
+                ? $"{source.FaceCode}-{source.Row}-{source.Column}"
+                : source.SlotCode;
+            return FormatSlotDisplayText(source.CabinetName, faceDisplay, slotCode);
+        }
+
+        private CabinetFace ParseFaceCode(string? faceCode)
+        {
+            if (Enum.TryParse(faceCode?.Trim(), ignoreCase: true, out CabinetFace face))
+            {
+                return face;
+            }
+
+            return Request.Face;
+        }
+
+        private CabinetSlotViewModel? FindSlotByEndpoint(BatchSlotRelocationEndpoint source)
+        {
+            return FindSlotByLayerColumn(source.Row, source.Column)
+                ?? Slots.FirstOrDefault(slot =>
+                    string.Equals(slot.SlotCode, source.SlotCode, StringComparison.Ordinal));
+        }
+
+        private CabinetSlotViewModel? FindSlotByLayerColumn(int row, int column)
+            => Slots.FirstOrDefault(slot => slot.LayerIndex == row && slot.ColumnIndex == column);
+
+        private static string JoinCodes(IEnumerable<string?> codes)
+        {
+            var normalized = codes
+                .Select(code => code?.Trim() ?? string.Empty)
+                .Where(code => !string.IsNullOrWhiteSpace(code)
+                    && !string.Equals(code, "未编号", StringComparison.Ordinal)
+                    && !string.Equals(code, "—", StringComparison.Ordinal))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            return normalized.Count == 0 ? string.Empty : string.Join("、", normalized);
+        }
+
+        private (string ContainerCodes, string HardDiskCodes, string OpticalDiscCodes) CollectBatchItemCodes(
+            BatchSlotRelocationEndpoint source,
+            CabinetSlotViewModel? sourceSlot)
+        {
+            if (sourceSlot == null)
+            {
+                return (string.Empty, string.Empty, string.Empty);
+            }
+
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
+            {
+                return (JoinCodes(sourceSlot.ArchiveBoxes.Select(box => box.BoxCode)), string.Empty, string.Empty);
+            }
+
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
+            {
+                var media = sourceSlot.HardDiskMediaItems
+                    .Where(item => !item.IsEmpty && item.IsElectronicMediaRelocationCandidate)
+                    .ToList();
+                return (
+                    JoinCodes(media.Select(item => item.ElectronicArchiveNoText)),
+                    JoinCodes(media.Where(item => !item.IsOpticalDiscMedia).Select(item => item.DiskCodeText)),
+                    JoinCodes(media.Where(item => item.IsOpticalDiscMedia).Select(item => item.DiskCodeText)));
+            }
+
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal))
+            {
+                return (
+                    string.Empty,
+                    JoinCodes(sourceSlot.HardDiskMediaItems
+                        .Where(item => item.IsBlankHardDiskRelocationCandidate)
+                        .Select(item => item.DiskCodeText)),
+                    string.Empty);
+            }
+
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindDamagedHardDisk, StringComparison.Ordinal))
+            {
+                return (
+                    string.Empty,
+                    JoinCodes(sourceSlot.HardDiskMediaItems
+                        .Where(item => item.IsDamagedHardDiskRelocationCandidate)
+                        .Select(item => item.DiskCodeText)),
+                    string.Empty);
+            }
+
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc, StringComparison.Ordinal))
+            {
+                return (
+                    string.Empty,
+                    string.Empty,
+                    JoinCodes(sourceSlot.HardDiskMediaItems
+                        .Where(item => item.IsDamagedOpticalDiscRelocationCandidate)
+                        .Select(item => item.DiskCodeText)));
+            }
+
+            return (string.Empty, string.Empty, string.Empty);
+        }
+
+        private (string SourceSlotText, string ContainerCodes, string HardDiskCodes, string OpticalDiscCodes) CollectInteractiveItemCodes(
+            IReadOnlyList<InteractiveItemRelocationSource> sources)
+        {
+            if (sources.Count == 0)
+            {
+                return ("—", string.Empty, string.Empty, string.Empty);
+            }
+
+            string sourceSlotText = ResolveInteractiveSourceSlotText(sources[0]);
+            string mediaKind = sources[0].MediaKind;
+
+            if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
+            {
+                var boxCodes = new List<string>();
+                foreach (var source in sources)
+                {
+                    var box = Slots.SelectMany(slot => slot.ArchiveBoxes)
+                        .FirstOrDefault(item => item.YearlyArchiveBoxId == source.SourceBoxId && source.SourceBoxId > 0);
+                    boxCodes.Add(box?.BoxCode ?? source.SourceStorageLocation);
+                    if (string.IsNullOrWhiteSpace(boxCodes[^1]))
+                    {
+                        boxCodes[^1] = source.DisplayText;
+                    }
+                }
+
+                return (sourceSlotText, JoinCodes(boxCodes), string.Empty, string.Empty);
+            }
+
+            var containerCodes = new List<string>();
+            var hardDiskCodes = new List<string>();
+            var opticalDiscCodes = new List<string>();
+            foreach (var source in sources)
+            {
+                CabinetHardDiskMediumItemViewModel? medium = null;
+                if (source.SourceUnitId > 0)
+                {
+                    medium = FindMediumByElectronicUnitId(source.SourceUnitId);
+                }
+                else if (source.SourceMediumId > 0)
+                {
+                    medium = FindMediumById(source.SourceMediumId);
+                }
+
+                if (medium != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(medium.ElectronicArchiveNoText))
+                    {
+                        containerCodes.Add(medium.ElectronicArchiveNoText);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(medium.DiskCodeText))
+                    {
+                        if (medium.IsOpticalDiscMedia
+                            || string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc, StringComparison.Ordinal))
+                        {
+                            opticalDiscCodes.Add(medium.DiskCodeText);
+                        }
+                        else
+                        {
+                            hardDiskCodes.Add(medium.DiskCodeText);
+                        }
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(source.DisplayText))
+                {
+                    if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
+                    {
+                        containerCodes.Add(source.DisplayText);
+                    }
+                    else if (source.IsOpticalDiscMedia
+                        || string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc, StringComparison.Ordinal))
+                    {
+                        opticalDiscCodes.Add(source.DisplayText);
+                    }
+                    else
+                    {
+                        hardDiskCodes.Add(source.DisplayText);
+                    }
+                }
+            }
+
+            return (
+                sourceSlotText,
+                JoinCodes(containerCodes),
+                JoinCodes(hardDiskCodes),
+                JoinCodes(opticalDiscCodes));
+        }
+
+        private string ResolveInteractiveSourceSlotText(InteractiveItemRelocationSource source)
+        {
+            CabinetSlotViewModel? slot = null;
+            if (source.SourceBoxId > 0)
+            {
+                var box = Slots.SelectMany(item => item.ArchiveBoxes)
+                    .FirstOrDefault(item => item.YearlyArchiveBoxId == source.SourceBoxId);
+                if (box != null)
+                {
+                    slot = FindSlotForArchiveBox(box);
+                }
+            }
+            else if (source.SourceUnitId > 0)
+            {
+                var medium = FindMediumByElectronicUnitId(source.SourceUnitId);
+                if (medium != null)
+                {
+                    slot = FindSlotForMedium(medium);
+                }
+            }
+            else if (source.SourceMediumId > 0)
+            {
+                var medium = FindMediumById(source.SourceMediumId);
+                if (medium != null)
+                {
+                    slot = FindSlotForMedium(medium);
+                }
+            }
+
+            if (slot != null)
+            {
+                return FormatSlotDisplayText(Request.CabinetName, CurrentFaceDisplayName, slot.SlotCode);
+            }
+
+            if (!string.IsNullOrWhiteSpace(source.SourceSlotKey))
+            {
+                return source.SourceSlotKey.Trim();
+            }
+
+            return string.IsNullOrWhiteSpace(source.SourceStorageLocation)
+                ? "—"
+                : source.SourceStorageLocation.Trim();
+        }
+
+        private CabinetHardDiskMediumItemViewModel? FindMediumById(int mediumId)
+            => Slots.SelectMany(slot => slot.HardDiskMediaItems)
+                .FirstOrDefault(item => item.MediumId == mediumId && mediumId > 0);
+
+        private CabinetHardDiskMediumItemViewModel? FindMediumByElectronicUnitId(int unitId)
+            => Slots.SelectMany(slot => slot.HardDiskMediaItems)
+                .FirstOrDefault(item => item.ElectronicArchiveUnitId == unitId && unitId > 0);
+
+        private void ShowSessionRelocationPrintPreview()
+        {
+            var data = new CabinetOpenRelocationSessionPrintData
+            {
+                CabinetName = Request.CabinetName,
+                FaceDisplayName = CurrentFaceDisplayName,
+                CabinetTypeText = GetCabinetTypeDisplayName(Request.CabinetType),
+                OperatorName = _userContextService.CurrentUser?.RealName?.Trim() ?? string.Empty,
+                PrintedAt = DateTime.Now,
+                Entries = _sessionRelocationEntries.ToList()
+            };
+
+            var document = CabinetOpenRelocationSessionPrintDocumentFactory.Create(data);
+            var previewWindow = new PrintPreviewWindow(document);
+            previewWindow.ShowDialog();
         }
 
         public void UpdateMagneticDiskSlotDimensions(double availableWidth, double availableHeight)
@@ -842,28 +1225,13 @@ namespace DocMgr.ViewModels.Cabinets
             CommandManager.InvalidateRequerySuggested();
         }
 
-        public void SelectArchiveBox(ArchiveBoxItemViewModel archiveBox)
+        public void SelectArchiveBox(ArchiveBoxItemViewModel archiveBox, bool ctrlPressed = false, bool shiftPressed = false)
         {
             ArgumentNullException.ThrowIfNull(archiveBox);
-
-            if (_selectedArchiveBox == archiveBox)
-            {
-                return;
-            }
-
-            if (ClearSlotSelectionWithoutNotify())
-            {
-                _selectionAnchorSlotCode = null;
-                NotifySlotSelectionChanged();
-            }
-
-            ClearContentSelectionWithoutNotify();
-            _selectedArchiveBox = archiveBox;
-            archiveBox.IsSelected = true;
-            NotifyContentSelectionChanged();
+            HandleArchiveBoxSelection(archiveBox, ctrlPressed, shiftPressed);
         }
 
-        public void SelectHardDiskMedium(CabinetHardDiskMediumItemViewModel medium)
+        public void SelectHardDiskMedium(CabinetHardDiskMediumItemViewModel medium, bool ctrlPressed = false, bool shiftPressed = false)
         {
             ArgumentNullException.ThrowIfNull(medium);
             if (medium.IsEmpty)
@@ -871,21 +1239,248 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
-            if (_selectedHardDiskMedium == medium)
-            {
-                return;
-            }
+            HandleHardDiskMediumSelection(medium, ctrlPressed, shiftPressed);
+        }
 
+        private void HandleArchiveBoxSelection(ArchiveBoxItemViewModel archiveBox, bool ctrlPressed, bool shiftPressed)
+        {
             if (ClearSlotSelectionWithoutNotify())
             {
                 _selectionAnchorSlotCode = null;
                 NotifySlotSelectionChanged();
             }
 
-            ClearContentSelectionWithoutNotify();
-            _selectedHardDiskMedium = medium;
-            medium.IsSelected = true;
+            if (_selectedHardDiskMedia.Count > 0)
+            {
+                ClearHardDiskMediaSelectionWithoutNotify();
+            }
+
+            string key = BuildArchiveBoxSelectionKey(archiveBox);
+            if (shiftPressed && !string.IsNullOrWhiteSpace(_contentSelectionAnchorKey))
+            {
+                var slot = FindSlotForArchiveBox(archiveBox);
+                if (slot == null)
+                {
+                    return;
+                }
+
+                ApplyArchiveBoxRangeSelection(slot, _contentSelectionAnchorKey!, key);
+                NotifyContentSelectionChanged();
+                return;
+            }
+
+            if (ctrlPressed)
+            {
+                if (_selectedArchiveBoxes.Contains(archiveBox))
+                {
+                    archiveBox.IsSelected = false;
+                    _selectedArchiveBoxes.Remove(archiveBox);
+                }
+                else
+                {
+                    if (_selectedArchiveBoxes.Count > 0)
+                    {
+                        var existingSlot = FindSlotForArchiveBox(_selectedArchiveBoxes[0]);
+                        var newSlot = FindSlotForArchiveBox(archiveBox);
+                        if (existingSlot == null || newSlot == null || !ReferenceEquals(existingSlot, newSlot))
+                        {
+                            _dialogService.ShowMessage("多选迁档仅支持同一档口内的档案盒。", "交互式迁档");
+                            return;
+                        }
+                    }
+
+                    archiveBox.IsSelected = true;
+                    _selectedArchiveBoxes.Add(archiveBox);
+                }
+
+                _contentSelectionAnchorKey = key;
+                NotifyContentSelectionChanged();
+                return;
+            }
+
+            // 普通单击已选中项：保留多选，便于随后拖拽整批迁档。
+            if (_selectedArchiveBoxes.Contains(archiveBox) && _selectedArchiveBoxes.Count > 1)
+            {
+                _contentSelectionAnchorKey = key;
+                return;
+            }
+
+            ClearArchiveBoxSelectionWithoutNotify();
+            archiveBox.IsSelected = true;
+            _selectedArchiveBoxes.Add(archiveBox);
+            _contentSelectionAnchorKey = key;
             NotifyContentSelectionChanged();
+        }
+
+        private void HandleHardDiskMediumSelection(CabinetHardDiskMediumItemViewModel medium, bool ctrlPressed, bool shiftPressed)
+        {
+            if (ClearSlotSelectionWithoutNotify())
+            {
+                _selectionAnchorSlotCode = null;
+                NotifySlotSelectionChanged();
+            }
+
+            if (_selectedArchiveBoxes.Count > 0)
+            {
+                ClearArchiveBoxSelectionWithoutNotify();
+            }
+
+            string key = BuildMediumSelectionKey(medium);
+            if (shiftPressed && !string.IsNullOrWhiteSpace(_contentSelectionAnchorKey))
+            {
+                var slot = FindSlotForMedium(medium);
+                if (slot == null)
+                {
+                    return;
+                }
+
+                ApplyHardDiskMediumRangeSelection(slot, _contentSelectionAnchorKey!, key);
+                NotifyContentSelectionChanged();
+                return;
+            }
+
+            if (ctrlPressed)
+            {
+                if (_selectedHardDiskMedia.Contains(medium))
+                {
+                    medium.IsSelected = false;
+                    _selectedHardDiskMedia.Remove(medium);
+                }
+                else
+                {
+                    if (!TryValidateMediumMultiSelectAddition(medium))
+                    {
+                        return;
+                    }
+
+                    medium.IsSelected = true;
+                    _selectedHardDiskMedia.Add(medium);
+                }
+
+                _contentSelectionAnchorKey = key;
+                NotifyContentSelectionChanged();
+                return;
+            }
+
+            // 普通单击已选中项：保留多选，便于随后拖拽整批迁档。
+            if (_selectedHardDiskMedia.Contains(medium) && _selectedHardDiskMedia.Count > 1)
+            {
+                _contentSelectionAnchorKey = key;
+                return;
+            }
+
+            ClearHardDiskMediaSelectionWithoutNotify();
+            medium.IsSelected = true;
+            _selectedHardDiskMedia.Add(medium);
+            _contentSelectionAnchorKey = key;
+            NotifyContentSelectionChanged();
+        }
+
+        private bool TryValidateMediumMultiSelectAddition(CabinetHardDiskMediumItemViewModel medium)
+        {
+            if (_selectedHardDiskMedia.Count == 0)
+            {
+                return true;
+            }
+
+            var existingSlot = FindSlotForMedium(_selectedHardDiskMedia[0]);
+            var newSlot = FindSlotForMedium(medium);
+            if (existingSlot == null || newSlot == null || !ReferenceEquals(existingSlot, newSlot))
+            {
+                _dialogService.ShowMessage("多选迁档仅支持同一档口内的实体。", "交互式迁档");
+                return false;
+            }
+
+            string existingKind = ResolveMediumRelocationMediaKind(_selectedHardDiskMedia[0]);
+            string newKind = ResolveMediumRelocationMediaKind(medium);
+            if (!string.Equals(existingKind, newKind, StringComparison.Ordinal)
+                || string.IsNullOrWhiteSpace(existingKind)
+                || string.IsNullOrWhiteSpace(newKind))
+            {
+                _dialogService.ShowMessage("多选迁档仅支持同一类型实体。", "交互式迁档");
+                return false;
+            }
+
+            return true;
+        }
+
+        private void ApplyArchiveBoxRangeSelection(CabinetSlotViewModel slot, string anchorKey, string currentKey)
+        {
+            var candidates = slot.ArchiveBoxes.Where(box => box.CanInteractiveRelocate || box.YearlyArchiveBoxId > 0).ToList();
+            int anchorIndex = candidates.FindIndex(box => string.Equals(BuildArchiveBoxSelectionKey(box), anchorKey, StringComparison.Ordinal));
+            int currentIndex = candidates.FindIndex(box => string.Equals(BuildArchiveBoxSelectionKey(box), currentKey, StringComparison.Ordinal));
+            if (anchorIndex < 0 || currentIndex < 0)
+            {
+                return;
+            }
+
+            int start = Math.Min(anchorIndex, currentIndex);
+            int end = Math.Max(anchorIndex, currentIndex);
+            ClearArchiveBoxSelectionWithoutNotify();
+            for (int i = start; i <= end; i++)
+            {
+                var box = candidates[i];
+                box.IsSelected = true;
+                _selectedArchiveBoxes.Add(box);
+            }
+        }
+
+        private void ApplyHardDiskMediumRangeSelection(CabinetSlotViewModel slot, string anchorKey, string currentKey)
+        {
+            var candidates = slot.HardDiskMediaItems.Where(item => !item.IsEmpty).ToList();
+            int anchorIndex = candidates.FindIndex(item => string.Equals(BuildMediumSelectionKey(item), anchorKey, StringComparison.Ordinal));
+            int currentIndex = candidates.FindIndex(item => string.Equals(BuildMediumSelectionKey(item), currentKey, StringComparison.Ordinal));
+            if (anchorIndex < 0 || currentIndex < 0)
+            {
+                return;
+            }
+
+            int start = Math.Min(anchorIndex, currentIndex);
+            int end = Math.Max(anchorIndex, currentIndex);
+            ClearHardDiskMediaSelectionWithoutNotify();
+            for (int i = start; i <= end; i++)
+            {
+                var medium = candidates[i];
+                if (_selectedHardDiskMedia.Count > 0 && !TryValidateMediumMultiSelectAddition(medium))
+                {
+                    ClearHardDiskMediaSelectionWithoutNotify();
+                    return;
+                }
+
+                medium.IsSelected = true;
+                _selectedHardDiskMedia.Add(medium);
+            }
+        }
+
+        private static string BuildArchiveBoxSelectionKey(ArchiveBoxItemViewModel box)
+            => $"box:{box.YearlyArchiveBoxId}:{box.BoxCode}";
+
+        private static string BuildMediumSelectionKey(CabinetHardDiskMediumItemViewModel medium)
+            => $"medium:{medium.MediumId}:{medium.ElectronicArchiveUnitId}:{medium.DiskCodeText}";
+
+        private static string ResolveMediumRelocationMediaKind(CabinetHardDiskMediumItemViewModel medium)
+        {
+            if (medium.IsBlankHardDiskRelocationCandidate)
+            {
+                return ArchiveRegisterDomainValues.MediaKindBlankHardDisk;
+            }
+
+            if (medium.IsDamagedHardDiskRelocationCandidate)
+            {
+                return ArchiveRegisterDomainValues.MediaKindDamagedHardDisk;
+            }
+
+            if (medium.IsDamagedOpticalDiscRelocationCandidate)
+            {
+                return ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc;
+            }
+
+            if (medium.IsElectronicMediaRelocationCandidate)
+            {
+                return ArchiveRegisterDomainValues.MediaKindElectronic;
+            }
+
+            return string.Empty;
         }
 
         public void ClearContentSelection()
@@ -895,27 +1490,46 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
+            _contentSelectionAnchorKey = null;
             NotifyContentSelectionChanged();
         }
 
         private bool ClearContentSelectionWithoutNotify()
         {
-            bool changed = false;
-            if (_selectedArchiveBox != null)
-            {
-                _selectedArchiveBox.IsSelected = false;
-                _selectedArchiveBox = null;
-                changed = true;
-            }
-
-            if (_selectedHardDiskMedium != null)
-            {
-                _selectedHardDiskMedium.IsSelected = false;
-                _selectedHardDiskMedium = null;
-                changed = true;
-            }
-
+            bool changed = ClearArchiveBoxSelectionWithoutNotify() | ClearHardDiskMediaSelectionWithoutNotify();
             return changed;
+        }
+
+        private bool ClearArchiveBoxSelectionWithoutNotify()
+        {
+            if (_selectedArchiveBoxes.Count == 0)
+            {
+                return false;
+            }
+
+            foreach (var box in _selectedArchiveBoxes)
+            {
+                box.IsSelected = false;
+            }
+
+            _selectedArchiveBoxes.Clear();
+            return true;
+        }
+
+        private bool ClearHardDiskMediaSelectionWithoutNotify()
+        {
+            if (_selectedHardDiskMedia.Count == 0)
+            {
+                return false;
+            }
+
+            foreach (var medium in _selectedHardDiskMedia)
+            {
+                medium.IsSelected = false;
+            }
+
+            _selectedHardDiskMedia.Clear();
+            return true;
         }
 
         private void NotifyContentSelectionChanged()
@@ -925,6 +1539,9 @@ namespace DocMgr.ViewModels.Cabinets
             OnPropertyChanged(nameof(CanSetInteractiveItemRelocationFromSelection));
             CommandManager.InvalidateRequerySuggested();
         }
+
+        private CabinetSlotViewModel? FindSlotForArchiveBox(ArchiveBoxItemViewModel box)
+            => Slots.FirstOrDefault(slot => slot.ArchiveBoxes.Contains(box));
 
         /// <summary>
         /// 记录当前档口右键菜单目标。ContextMenu 脱离可视树时 CommandParameter 可能为空，CanExecute 需回退到此档口。
@@ -1521,10 +2138,12 @@ namespace DocMgr.ViewModels.Cabinets
             if (IsMagneticDiskRelocationCabinet)
             {
                 return slot.IsElectronicMediaMagneticDiskSourceSlot
-                    || slot.IsBlankHardDiskMagneticDiskSourceSlot;
+                    || slot.IsBlankHardDiskMagneticDiskSourceSlot
+                    || slot.IsDamagedHardDiskMagneticDiskSourceSlot
+                    || slot.IsDamagedOpticalDiscMagneticDiskSourceSlot;
             }
 
-            return IsArchiveRelocationCabinet && slot.IsYearlySimulatedOnlyArchiveSlot;
+            return IsArchiveRelocationCabinet && slot.IsYearlySimulatedBatchRelocationSourceSlot;
         }
 
         private void SetBatchRelocationSource(CabinetSlotViewModel? slot)
@@ -1558,9 +2177,58 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
+            if (slot.IsDamagedHardDiskMagneticDiskSourceSlot)
+            {
+                int damagedCount = slot.DamagedHardDiskRelocationCandidateCount;
+                _batchSlotRelocationSession.SetSource(new BatchSlotRelocationEndpoint
+                {
+                    CabinetName = Request.CabinetName,
+                    FaceCode = ResolveFaceCode(slot.Face),
+                    Row = slot.LayerIndex,
+                    Column = slot.ColumnIndex,
+                    SlotCode = slot.SlotCode,
+                    MediaKind = ArchiveRegisterDomainValues.MediaKindDamagedHardDisk,
+                    DedicatedSlotCategoryName = slot.DedicatedSlotCategoryName,
+                    ItemCount = damagedCount
+                });
+
+                _dialogService.ShowMessage(
+                    $"已将 [{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}] 设为批量搬迁源（{damagedCount} 块损坏硬盘）。请在损坏硬盘专用且有空余盘位的目标档口右键选择「搬迁到此档口」。",
+                    "批量搬迁");
+                return;
+            }
+
+            if (slot.IsDamagedOpticalDiscMagneticDiskSourceSlot)
+            {
+                int damagedCount = slot.DamagedOpticalDiscRelocationCandidateCount;
+                _batchSlotRelocationSession.SetSource(new BatchSlotRelocationEndpoint
+                {
+                    CabinetName = Request.CabinetName,
+                    FaceCode = ResolveFaceCode(slot.Face),
+                    Row = slot.LayerIndex,
+                    Column = slot.ColumnIndex,
+                    SlotCode = slot.SlotCode,
+                    MediaKind = ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc,
+                    DedicatedSlotCategoryName = slot.DedicatedSlotCategoryName,
+                    ItemCount = damagedCount
+                });
+
+                _dialogService.ShowMessage(
+                    $"已将 [{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}] 设为批量搬迁源（{damagedCount} 张损坏光盘）。请在损坏光盘专用且有空余盘位的目标档口右键选择「搬迁到此档口」。",
+                    "批量搬迁");
+                return;
+            }
+
             bool isElectronic = IsMagneticDiskRelocationCabinet;
-            int itemCount = isElectronic ? slot.HardDiskPresentCount : slot.ArchiveBoxes.Count;
+            int itemCount = isElectronic
+                ? slot.ElectronicMediaRelocationCandidateCount
+                : slot.RelocatableSimulatedArchiveBoxCount;
             string itemLabel = isElectronic ? "袋" : "盒";
+
+            if (itemCount <= 0)
+            {
+                return;
+            }
 
             _batchSlotRelocationSession.SetSource(new BatchSlotRelocationEndpoint
             {
@@ -1576,8 +2244,16 @@ namespace DocMgr.ViewModels.Cabinets
                 ItemCount = itemCount
             });
 
+            string occupiedHint = isElectronic
+                ? (slot.HardDiskPresentCount > itemCount
+                    ? $"（已排除 {slot.HardDiskPresentCount - itemCount} 个征用/预订袋）"
+                    : string.Empty)
+                : (slot.ArchiveBoxes.Count > itemCount
+                    ? $"（已排除 {slot.ArchiveBoxes.Count - itemCount} 个征用/预订盒）"
+                    : string.Empty);
+
             _dialogService.ShowMessage(
-                $"已将 [{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}] 设为批量搬迁源（{itemCount} {itemLabel}）。请在全空目标档口右键选择「搬迁到此档口」。",
+                $"已将 [{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}] 设为批量搬迁源（{itemCount} {itemLabel}{occupiedHint}）。请在全空目标档口右键选择「搬迁到此档口」。",
                 "批量搬迁");
         }
 
@@ -1599,6 +2275,18 @@ namespace DocMgr.ViewModels.Cabinets
             {
                 return IsMagneticDiskRelocationCabinet
                     && slot.CanAcceptBlankHardDiskBatchRelocationTarget(source.ItemCount);
+            }
+
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindDamagedHardDisk, StringComparison.Ordinal))
+            {
+                return IsMagneticDiskRelocationCabinet
+                    && slot.CanAcceptDamagedHardDiskBatchRelocationTarget(source.ItemCount);
+            }
+
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc, StringComparison.Ordinal))
+            {
+                return IsMagneticDiskRelocationCabinet
+                    && slot.CanAcceptDamagedOpticalDiscBatchRelocationTarget(source.ItemCount);
             }
 
             if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
@@ -1636,6 +2324,14 @@ namespace DocMgr.ViewModels.Cabinets
                 source.MediaKind,
                 ArchiveRegisterDomainValues.MediaKindBlankHardDisk,
                 StringComparison.Ordinal);
+            bool isDamagedHardDisk = string.Equals(
+                source.MediaKind,
+                ArchiveRegisterDomainValues.MediaKindDamagedHardDisk,
+                StringComparison.Ordinal);
+            bool isDamagedOpticalDisc = string.Equals(
+                source.MediaKind,
+                ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc,
+                StringComparison.Ordinal);
             bool isElectronic = string.Equals(
                 source.MediaKind,
                 ArchiveRegisterDomainValues.MediaKindElectronic,
@@ -1643,11 +2339,28 @@ namespace DocMgr.ViewModels.Cabinets
 
             try
             {
-                var preview = isBlankHardDisk
-                    ? await _archiveRelocationService.PreviewBatchBlankHardDiskSlotPhysicalMoveAsync(request)
-                    : isElectronic
-                        ? await _archiveRelocationService.PreviewBatchElectronicSlotPhysicalMoveAsync(request)
-                        : await _archiveRelocationService.PreviewBatchSimulatedSlotPhysicalMoveAsync(request);
+                ArchiveRelocationPreview preview;
+                if (isBlankHardDisk)
+                {
+                    preview = await _archiveRelocationService.PreviewBatchBlankHardDiskSlotPhysicalMoveAsync(request);
+                }
+                else if (isDamagedHardDisk)
+                {
+                    preview = await _archiveRelocationService.PreviewBatchDamagedHardDiskSlotPhysicalMoveAsync(request);
+                }
+                else if (isDamagedOpticalDisc)
+                {
+                    preview = await _archiveRelocationService.PreviewBatchDamagedOpticalDiscSlotPhysicalMoveAsync(request);
+                }
+                else if (isElectronic)
+                {
+                    preview = await _archiveRelocationService.PreviewBatchElectronicSlotPhysicalMoveAsync(request);
+                }
+                else
+                {
+                    preview = await _archiveRelocationService.PreviewBatchSimulatedSlotPhysicalMoveAsync(request);
+                }
+
                 if (!preview.CanExecute)
                 {
                     _dialogService.ShowMessage(preview.BlockReason, "无法批量搬迁");
@@ -1659,7 +2372,7 @@ namespace DocMgr.ViewModels.Cabinets
                     return;
                 }
 
-                if (!isElectronic && !isBlankHardDisk)
+                if (!isElectronic && !isBlankHardDisk && !isDamagedHardDisk && !isDamagedOpticalDisc)
                 {
                     string? pendingReturnWarning = await _archiveRelocationService.GetBatchSimulatedPendingReturnConfirmMessageAsync(
                         request,
@@ -1683,13 +2396,43 @@ namespace DocMgr.ViewModels.Cabinets
                 }
 
                 _dialogService.SetBusyState(true);
-                var result = isBlankHardDisk
-                    ? await _archiveRelocationService.ExecuteBatchBlankHardDiskSlotPhysicalMoveAsync(request)
-                    : isElectronic
-                        ? await _archiveRelocationService.ExecuteBatchElectronicSlotPhysicalMoveAsync(request)
-                        : await _archiveRelocationService.ExecuteBatchSimulatedSlotPhysicalMoveAsync(request);
+                ArchiveRelocationResult result;
+                if (isBlankHardDisk)
+                {
+                    result = await _archiveRelocationService.ExecuteBatchBlankHardDiskSlotPhysicalMoveAsync(request);
+                }
+                else if (isDamagedHardDisk)
+                {
+                    result = await _archiveRelocationService.ExecuteBatchDamagedHardDiskSlotPhysicalMoveAsync(request);
+                }
+                else if (isDamagedOpticalDisc)
+                {
+                    result = await _archiveRelocationService.ExecuteBatchDamagedOpticalDiscSlotPhysicalMoveAsync(request);
+                }
+                else if (isElectronic)
+                {
+                    result = await _archiveRelocationService.ExecuteBatchElectronicSlotPhysicalMoveAsync(request);
+                }
+                else
+                {
+                    result = await _archiveRelocationService.ExecuteBatchSimulatedSlotPhysicalMoveAsync(request);
+                }
+
                 if (result.Success)
                 {
+                    var sourceSlot = FindSlotByEndpoint(source);
+                    var (containerCodes, hardDiskCodes, opticalDiscCodes) = CollectBatchItemCodes(source, sourceSlot);
+                    string sourceSlotText = FormatBatchSourceSlotText(source);
+                    RecordSessionRelocation(
+                        mediaKind: source.MediaKind,
+                        modeLabel: "整档口批量",
+                        relocationNo: result.RelocationNo,
+                        summaryText: preview.SummaryText,
+                        sourceSlotText: sourceSlotText,
+                        targetSlot: slot,
+                        containerCodesText: containerCodes,
+                        hardDiskCodesText: hardDiskCodes,
+                        opticalDiscCodesText: opticalDiscCodes);
                     _batchSlotRelocationSession.ClearSource();
                     _dialogService.ShowMessage($"{result.Message}\n迁档单号：{result.RelocationNo}", "批量搬迁完成");
                     ReloadSlotsAndBroadcast();
@@ -1737,19 +2480,47 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
+            if (_selectedArchiveBoxes.Count > 1
+                && _selectedArchiveBoxes.Contains(box)
+                && _selectedArchiveBoxes.All(item => item.CanInteractiveRelocate))
+            {
+                SetInteractiveItemRelocationFromArchiveBoxes(_selectedArchiveBoxes.ToList());
+                return;
+            }
+
+            SetInteractiveItemRelocationFromArchiveBoxes([box]);
+        }
+
+        private void SetInteractiveItemRelocationFromArchiveBoxes(IReadOnlyList<ArchiveBoxItemViewModel> boxes)
+        {
+            if (boxes.Count == 0 || boxes.Any(box => !CanSetInteractiveItemRelocationFromArchiveBox(box)))
+            {
+                return;
+            }
+
+            var slot = FindSlotForArchiveBox(boxes[0]);
+            if (slot == null || boxes.Any(box => !ReferenceEquals(FindSlotForArchiveBox(box), slot)))
+            {
+                _dialogService.ShowMessage("多选迁档仅支持同一档口内的档案盒。", "交互式迁档");
+                return;
+            }
+
+            string slotKey = $"{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}";
             _batchSlotRelocationSession.ClearSource();
-            _interactiveItemRelocationSession.SetSource(new InteractiveItemRelocationSource
+            _interactiveItemRelocationSession.SetSources(boxes.Select(box => new InteractiveItemRelocationSource
             {
                 MediaKind = ArchiveRegisterDomainValues.MediaKindSimulated,
                 SourceBoxId = box.YearlyArchiveBoxId,
                 DisplayText = $"{box.BoxCode}（{box.BoxLabel}）",
                 BoxSpecification = box.BoxSpecification,
-                SourceStorageLocation = box.BoxCode
-            });
+                SourceStorageLocation = box.BoxCode,
+                SourceSlotKey = slotKey
+            }).ToList());
 
-            _dialogService.ShowMessage(
-                $"已将档案盒 [{box.BoxCode}] 设为迁档对象。请在目标档口右键选择「迁档到此档口」。",
-                "交互式迁档");
+            string message = boxes.Count == 1
+                ? $"已将档案盒 [{boxes[0].BoxCode}] 设为迁档对象。请在目标档口右键选择「迁档到此档口」。"
+                : $"已将同档口 {boxes.Count} 个档案盒设为迁档对象。请在目标档口右键选择「迁档到此档口」。";
+            _dialogService.ShowMessage(message, "交互式迁档");
         }
 
         private void SetInteractiveItemRelocationFromMedium(CabinetHardDiskMediumItemViewModel? medium)
@@ -1759,84 +2530,146 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
-            var slot = FindSlotForMedium(medium);
-            if (slot == null)
+            if (_selectedHardDiskMedia.Count > 1
+                && _selectedHardDiskMedia.Contains(medium)
+                && _selectedHardDiskMedia.All(item => item.CanInteractiveRelocate))
             {
-                _dialogService.ShowMessage("未找到该介质所在档口，无法设为迁档对象。", "交互式迁档");
+                SetInteractiveItemRelocationFromMedia(_selectedHardDiskMedia.ToList());
                 return;
             }
 
-            _batchSlotRelocationSession.ClearSource();
+            SetInteractiveItemRelocationFromMedia([medium]);
+        }
 
-            if (medium.IsBlankHardDiskRelocationCandidate)
+        private void SetInteractiveItemRelocationFromMedia(IReadOnlyList<CabinetHardDiskMediumItemViewModel> media)
+        {
+            if (media.Count == 0 || media.Any(item => !CanSetInteractiveItemRelocationFromMedium(item)))
             {
-                _interactiveItemRelocationSession.SetSource(new InteractiveItemRelocationSource
+                return;
+            }
+
+            var slot = FindSlotForMedium(media[0]);
+            if (slot == null || media.Any(item => !ReferenceEquals(FindSlotForMedium(item), slot)))
+            {
+                _dialogService.ShowMessage("多选迁档仅支持同一档口内的实体。", "交互式迁档");
+                return;
+            }
+
+            string mediaKind = ResolveMediumRelocationMediaKind(media[0]);
+            if (string.IsNullOrWhiteSpace(mediaKind)
+                || media.Any(item => !string.Equals(ResolveMediumRelocationMediaKind(item), mediaKind, StringComparison.Ordinal)))
+            {
+                _dialogService.ShowMessage("多选迁档仅支持同一类型实体。", "交互式迁档");
+                return;
+            }
+
+            string slotKey = $"{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}";
+            _batchSlotRelocationSession.ClearSource();
+            var sources = media.Select(item => BuildMediumRelocationSource(item, slot, slotKey, mediaKind)).ToList();
+            _interactiveItemRelocationSession.SetSources(sources);
+
+            string message = media.Count == 1
+                ? $"已将 [{sources[0].DisplayText}] 设为迁档对象。请在用途一致且有空余盘位的目标档口右键选择「迁档到此档口」。"
+                : $"已将同档口 {media.Count} 项设为迁档对象。请在用途一致且有空余盘位的目标档口右键选择「迁档到此档口」。";
+            _dialogService.ShowMessage(message, "交互式迁档");
+        }
+
+        private static InteractiveItemRelocationSource BuildMediumRelocationSource(
+            CabinetHardDiskMediumItemViewModel medium,
+            CabinetSlotViewModel slot,
+            string slotKey,
+            string mediaKind)
+        {
+            if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal)
+                || string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindDamagedHardDisk, StringComparison.Ordinal)
+                || string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc, StringComparison.Ordinal))
+            {
+                return new InteractiveItemRelocationSource
                 {
-                    MediaKind = ArchiveRegisterDomainValues.MediaKindBlankHardDisk,
+                    MediaKind = mediaKind,
                     SourceMediumId = medium.MediumId,
                     DisplayText = medium.DiskCodeText,
                     SourceDedicatedSlotCategoryName = slot.DedicatedSlotCategoryName,
-                    SourceStorageLocation = medium.CurrentLocationText
-                });
-
-                _dialogService.ShowMessage(
-                    $"已将空白硬盘 [{medium.DiskCodeText}] 设为迁档对象。请在空白专用且有空余盘位的目标档口右键选择「迁档到此档口」。",
-                    "交互式迁档");
-                return;
+                    SourceStorageLocation = medium.CurrentLocationText,
+                    SourceSlotKey = slotKey,
+                    IsOpticalDiscMedia = medium.IsOpticalDiscMedia
+                };
             }
 
             string displayText = string.IsNullOrWhiteSpace(medium.ElectronicArchiveNoText)
                 ? medium.DiskCodeText
                 : medium.ElectronicArchiveNoText;
-            _interactiveItemRelocationSession.SetSource(new InteractiveItemRelocationSource
+            return new InteractiveItemRelocationSource
             {
                 MediaKind = ArchiveRegisterDomainValues.MediaKindElectronic,
                 SourceUnitId = medium.ElectronicArchiveUnitId,
                 DisplayText = displayText,
                 SourceDedicatedSlotCategoryName = slot.DedicatedSlotCategoryName,
                 SourceStorageLocation = medium.CurrentLocationText,
+                SourceSlotKey = slotKey,
                 IsOpticalDiscMedia = medium.IsOpticalDiscMedia
-            });
-
-            string mediumLabel = medium.IsOpticalDiscMedia ? "光盘" : "硬盘";
-            _dialogService.ShowMessage(
-                $"已将{mediumLabel}介质袋 [{displayText}] 设为迁档对象。请在用途一致且有空余盘位的目标档口右键选择「迁档到此档口」。",
-                "交互式迁档");
+            };
         }
 
         private void SetInteractiveItemRelocationFromSelection()
         {
-            if (_selectedArchiveBox?.CanInteractiveRelocate == true && IsArchiveRelocationCabinet)
+            if (_selectedArchiveBoxes.Count > 0 && IsArchiveRelocationCabinet)
             {
-                SetInteractiveItemRelocationFromArchiveBox(_selectedArchiveBox);
+                SetInteractiveItemRelocationFromArchiveBoxes(_selectedArchiveBoxes.ToList());
                 return;
             }
 
-            if (_selectedHardDiskMedium?.CanInteractiveRelocate == true && IsMagneticDiskRelocationCabinet)
+            if (_selectedHardDiskMedia.Count > 0 && IsMagneticDiskRelocationCabinet)
             {
-                SetInteractiveItemRelocationFromMedium(_selectedHardDiskMedium);
+                SetInteractiveItemRelocationFromMedia(_selectedHardDiskMedia.ToList());
             }
         }
 
         private bool CanRelocateInteractiveItemToSlotFromSession(CabinetSlotViewModel? slot)
         {
             return HasInteractiveItemRelocationSource
-                && CanRelocateInteractiveItemToSlot(slot, _interactiveItemRelocationSession.Source);
+                && CanRelocateInteractiveItemToSlot(slot, _interactiveItemRelocationSession.Sources);
         }
 
         private bool CanRelocateInteractiveItemToSlot(CabinetSlotViewModel? slot, InteractiveItemRelocationSource? source = null)
         {
-            slot = ResolveSlotContextMenuTarget(slot);
             source ??= _interactiveItemRelocationSession.Source;
-            if (slot == null || !SupportsInteractiveItemRelocation || source == null)
+            return source != null && CanRelocateInteractiveItemToSlot(slot, [source]);
+        }
+
+        private bool CanRelocateInteractiveItemToSlot(
+            CabinetSlotViewModel? slot,
+            IReadOnlyList<InteractiveItemRelocationSource> sources)
+        {
+            slot = ResolveSlotContextMenuTarget(slot);
+            if (slot == null || !SupportsInteractiveItemRelocation || sources.Count == 0)
             {
                 return false;
             }
 
+            var source = sources[0];
             if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
             {
                 return IsArchiveRelocationCabinet
                     && slot.CanAcceptInteractiveItemRelocationTarget(source.MediaKind, source.SourceDedicatedSlotCategoryName);
+            }
+
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal))
+            {
+                return IsMagneticDiskRelocationCabinet
+                    && slot.CanAcceptBlankHardDiskBatchRelocationTarget(sources.Count);
+            }
+
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindDamagedHardDisk, StringComparison.Ordinal))
+            {
+                return IsMagneticDiskRelocationCabinet
+                    && slot.CanAcceptDamagedHardDiskBatchRelocationTarget(sources.Count);
+            }
+
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc, StringComparison.Ordinal))
+            {
+                return IsMagneticDiskRelocationCabinet
+                    && slot.CanAcceptDamagedOpticalDiscBatchRelocationTarget(sources.Count);
             }
 
             return IsMagneticDiskRelocationCabinet
@@ -1845,58 +2678,100 @@ namespace DocMgr.ViewModels.Cabinets
 
         public InteractiveItemRelocationDragPayload? TryCreateDragPayloadFromArchiveBox(ArchiveBoxItemViewModel archiveBox)
         {
+            if (_selectedArchiveBoxes.Count > 1 && _selectedArchiveBoxes.Contains(archiveBox)
+                && _selectedArchiveBoxes.All(box => box.CanInteractiveRelocate))
+            {
+                return BuildArchiveBoxesDragPayload(_selectedArchiveBoxes);
+            }
+
             if (!CanSetInteractiveItemRelocationFromArchiveBox(archiveBox))
             {
                 return null;
             }
 
+            return BuildArchiveBoxesDragPayload([archiveBox]);
+        }
+
+        private InteractiveItemRelocationDragPayload? BuildArchiveBoxesDragPayload(IReadOnlyList<ArchiveBoxItemViewModel> boxes)
+        {
+            if (boxes.Count == 0)
+            {
+                return null;
+            }
+
+            var slot = FindSlotForArchiveBox(boxes[0]);
+            string slotKey = slot == null
+                ? string.Empty
+                : $"{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}";
             return new InteractiveItemRelocationDragPayload
             {
                 MediaKind = ArchiveRegisterDomainValues.MediaKindSimulated,
-                SourceBoxId = archiveBox.YearlyArchiveBoxId,
-                DisplayText = $"{archiveBox.BoxCode}（{archiveBox.BoxLabel}）",
-                BoxSpecification = archiveBox.BoxSpecification,
-                SourceStorageLocation = archiveBox.BoxCode
+                SourceBoxId = boxes[0].YearlyArchiveBoxId,
+                SourceBoxIds = boxes.Select(box => box.YearlyArchiveBoxId).ToList(),
+                DisplayText = boxes.Count == 1
+                    ? $"{boxes[0].BoxCode}（{boxes[0].BoxLabel}）"
+                    : $"{boxes.Count} 个档案盒",
+                BoxSpecification = boxes[0].BoxSpecification,
+                SourceStorageLocation = boxes[0].BoxCode,
+                SourceSlotKey = slotKey
             };
         }
 
         public InteractiveItemRelocationDragPayload? TryCreateDragPayloadFromMedium(CabinetHardDiskMediumItemViewModel medium)
         {
+            if (_selectedHardDiskMedia.Count > 1 && _selectedHardDiskMedia.Contains(medium)
+                && _selectedHardDiskMedia.All(item => item.CanInteractiveRelocate))
+            {
+                return BuildMediaDragPayload(_selectedHardDiskMedia);
+            }
+
             if (!CanSetInteractiveItemRelocationFromMedium(medium))
             {
                 return null;
             }
 
-            var slot = FindSlotForMedium(medium);
+            return BuildMediaDragPayload([medium]);
+        }
+
+        private InteractiveItemRelocationDragPayload? BuildMediaDragPayload(IReadOnlyList<CabinetHardDiskMediumItemViewModel> media)
+        {
+            if (media.Count == 0)
+            {
+                return null;
+            }
+
+            var slot = FindSlotForMedium(media[0]);
             if (slot == null)
             {
                 return null;
             }
 
-            if (medium.IsBlankHardDiskRelocationCandidate)
+            string mediaKind = ResolveMediumRelocationMediaKind(media[0]);
+            if (string.IsNullOrWhiteSpace(mediaKind))
             {
-                return new InteractiveItemRelocationDragPayload
-                {
-                    MediaKind = ArchiveRegisterDomainValues.MediaKindBlankHardDisk,
-                    SourceMediumId = medium.MediumId,
-                    DisplayText = medium.DiskCodeText,
-                    SourceDedicatedSlotCategoryName = slot.DedicatedSlotCategoryName,
-                    SourceStorageLocation = medium.CurrentLocationText
-                };
+                return null;
             }
 
-            string displayText = string.IsNullOrWhiteSpace(medium.ElectronicArchiveNoText)
-                ? medium.DiskCodeText
-                : medium.ElectronicArchiveNoText;
-
+            string slotKey = $"{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}";
+            var first = BuildMediumRelocationSource(media[0], slot, slotKey, mediaKind);
             return new InteractiveItemRelocationDragPayload
             {
-                MediaKind = ArchiveRegisterDomainValues.MediaKindElectronic,
-                SourceUnitId = medium.ElectronicArchiveUnitId,
-                DisplayText = displayText,
+                MediaKind = mediaKind,
+                SourceUnitId = first.SourceUnitId,
+                SourceMediumId = first.SourceMediumId,
+                SourceUnitIds = media
+                    .Select(item => BuildMediumRelocationSource(item, slot, slotKey, mediaKind).SourceUnitId)
+                    .Where(id => id > 0)
+                    .ToList(),
+                SourceMediumIds = media
+                    .Select(item => BuildMediumRelocationSource(item, slot, slotKey, mediaKind).SourceMediumId)
+                    .Where(id => id > 0)
+                    .ToList(),
+                DisplayText = media.Count == 1 ? first.DisplayText : $"{media.Count} 项介质",
                 SourceDedicatedSlotCategoryName = slot.DedicatedSlotCategoryName,
-                SourceStorageLocation = medium.CurrentLocationText,
-                IsOpticalDiscMedia = medium.IsOpticalDiscMedia
+                SourceStorageLocation = first.SourceStorageLocation,
+                SourceSlotKey = slotKey,
+                IsOpticalDiscMedia = media[0].IsOpticalDiscMedia
             };
         }
 
@@ -1904,7 +2779,7 @@ namespace DocMgr.ViewModels.Cabinets
         {
             ArgumentNullException.ThrowIfNull(slot);
             ArgumentNullException.ThrowIfNull(payload);
-            return CanRelocateInteractiveItemToSlot(slot, payload.ToRelocationSource());
+            return CanRelocateInteractiveItemToSlot(slot, payload.ToRelocationSources());
         }
 
         public void SetInteractiveItemDragHover(CabinetSlotViewModel? slot, InteractiveItemRelocationDragPayload? payload)
@@ -1933,15 +2808,15 @@ namespace DocMgr.ViewModels.Cabinets
             ArgumentNullException.ThrowIfNull(slot);
             ArgumentNullException.ThrowIfNull(payload);
 
-            var source = payload.ToRelocationSource();
-            if (!CanRelocateInteractiveItemToSlot(slot, source))
+            var sources = payload.ToRelocationSources();
+            if (!CanRelocateInteractiveItemToSlot(slot, sources))
             {
                 return;
             }
 
             _batchSlotRelocationSession.ClearSource();
-            _interactiveItemRelocationSession.SetSource(source);
-            await ExecuteInteractiveItemRelocationAsync(slot, source);
+            _interactiveItemRelocationSession.SetSources(sources);
+            await ExecuteInteractiveItemsRelocationAsync(slot, sources);
         }
 
         private async Task RelocateInteractiveItemToSlotAsync(CabinetSlotViewModel? slot)
@@ -1952,23 +2827,33 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
-            var source = _interactiveItemRelocationSession.Source;
-            if (source == null)
+            var sources = _interactiveItemRelocationSession.Sources;
+            if (sources.Count == 0)
             {
                 return;
             }
 
-            await ExecuteInteractiveItemRelocationAsync(slot, source);
+            await ExecuteInteractiveItemsRelocationAsync(slot, sources);
         }
 
         private async Task ExecuteInteractiveItemRelocationAsync(CabinetSlotViewModel slot, InteractiveItemRelocationSource source)
+            => await ExecuteInteractiveItemsRelocationAsync(slot, [source]);
+
+        private async Task ExecuteInteractiveItemsRelocationAsync(
+            CabinetSlotViewModel slot,
+            IReadOnlyList<InteractiveItemRelocationSource> sources)
         {
-            var request = new InteractiveItemPhysicalMoveRequest
+            if (sources.Count == 0)
             {
-                MediaKind = source.MediaKind,
-                SourceBoxId = source.SourceBoxId,
-                SourceUnitId = source.SourceUnitId,
-                SourceMediumId = source.SourceMediumId,
+                return;
+            }
+
+            var request = new InteractiveItemsPhysicalMoveRequest
+            {
+                MediaKind = sources[0].MediaKind,
+                SourceBoxIds = sources.Select(item => item.SourceBoxId).Where(id => id > 0).Distinct().ToList(),
+                SourceUnitIds = sources.Select(item => item.SourceUnitId).Where(id => id > 0).Distinct().ToList(),
+                SourceMediumIds = sources.Select(item => item.SourceMediumId).Where(id => id > 0).Distinct().ToList(),
                 TargetCabinetName = Request.CabinetName,
                 TargetFace = ResolveFaceCode(slot.Face),
                 TargetRow = slot.LayerIndex,
@@ -1977,7 +2862,7 @@ namespace DocMgr.ViewModels.Cabinets
 
             try
             {
-                var preview = await _archiveRelocationService.PreviewInteractiveItemPhysicalMoveAsync(request);
+                var preview = await _archiveRelocationService.PreviewInteractiveItemsPhysicalMoveAsync(request);
                 if (!preview.CanExecute)
                 {
                     _dialogService.ShowMessage(preview.BlockReason, "无法迁档");
@@ -1989,25 +2874,44 @@ namespace DocMgr.ViewModels.Cabinets
                     return;
                 }
 
-                if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal)
-                    && source.SourceBoxId > 0)
+                if (string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
                 {
-                    string? pendingReturnWarning = await _archiveRelocationService.GetSimulatedPendingReturnConfirmMessageAsync(
-                        source.SourceBoxId,
-                        "实施迁档");
-                    if (!string.IsNullOrWhiteSpace(pendingReturnWarning)
-                        && !_dialogService.ShowConfirm(pendingReturnWarning, "待归还提醒"))
+                    foreach (int boxId in request.SourceBoxIds)
                     {
-                        return;
+                        string? pendingReturnWarning = await _archiveRelocationService.GetSimulatedPendingReturnConfirmMessageAsync(
+                            boxId,
+                            "实施迁档");
+                        if (!string.IsNullOrWhiteSpace(pendingReturnWarning)
+                            && !_dialogService.ShowConfirm(pendingReturnWarning, "待归还提醒"))
+                        {
+                            return;
+                        }
                     }
                 }
 
                 _dialogService.SetBusyState(true);
-                var result = await _archiveRelocationService.ExecuteInteractiveItemPhysicalMoveAsync(request);
+                var result = await _archiveRelocationService.ExecuteInteractiveItemsPhysicalMoveAsync(request);
                 if (result.Success)
                 {
+                    string modeLabel = sources.Count > 1
+                        ? $"多选迁档（{sources.Count}项）"
+                        : "单件迁档";
+                    var (sourceSlotText, containerCodes, hardDiskCodes, opticalDiscCodes) = CollectInteractiveItemCodes(sources);
+                    RecordSessionRelocation(
+                        mediaKind: request.MediaKind,
+                        modeLabel: modeLabel,
+                        relocationNo: result.RelocationNo,
+                        summaryText: preview.SummaryText,
+                        sourceSlotText: sourceSlotText,
+                        targetSlot: slot,
+                        containerCodesText: containerCodes,
+                        hardDiskCodesText: hardDiskCodes,
+                        opticalDiscCodesText: opticalDiscCodes);
                     _interactiveItemRelocationSession.ClearSource();
-                    _dialogService.ShowMessage($"{result.Message}\n迁档单号：{result.RelocationNo}", "迁档完成");
+                    string noText = string.IsNullOrWhiteSpace(result.RelocationNo)
+                        ? string.Empty
+                        : $"\n迁档单号：{result.RelocationNo}";
+                    _dialogService.ShowMessage($"{result.Message}{noText}", "迁档完成");
                     ReloadSlotsAndBroadcast();
                 }
                 else
@@ -2382,8 +3286,7 @@ namespace DocMgr.ViewModels.Cabinets
         {
             ClearSlotSelection();
             ClearContentSelectionWithoutNotify();
-            _selectedArchiveBox = null;
-            _selectedHardDiskMedium = null;
+            _contentSelectionAnchorKey = null;
             _interactiveItemRelocationSession.ClearSource();
             NotifyContentSelectionChanged();
             Slots.Clear();

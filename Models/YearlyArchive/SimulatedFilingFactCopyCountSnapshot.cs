@@ -10,5 +10,8 @@ namespace DocMgr.Models.YearlyArchive
         public int NoReturnCopyCount { get; init; }
 
         public int LostCopyCount { get; init; }
+
+        /// <summary>盘库登记累计丢失份数。</summary>
+        public int InventoryLostCopyCount { get; init; }
     }
 }

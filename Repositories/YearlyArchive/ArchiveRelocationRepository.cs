@@ -87,7 +87,10 @@ namespace DocMgr.Repositories.YearlyArchive
                 .Include(unit => unit.RegisterRecords)
                 .Include(unit => unit.MediumLinks)
                     .ThenInclude(link => link.HardDiskMedium)
-                        .ThenInclude(medium => medium.Ledger)
+                        .ThenInclude(medium => medium!.RegisterLock)
+                .Include(unit => unit.MediumLinks)
+                    .ThenInclude(link => link.HardDiskMedium)
+                        .ThenInclude(medium => medium!.Ledger)
                 .Include(unit => unit.DiscLinks)
                     .ThenInclude(link => link.OpticalDiscMedium)
                         .ThenInclude(disc => disc!.Ledger)
@@ -237,6 +240,9 @@ namespace DocMgr.Repositories.YearlyArchive
             string slotPrefix = slotKey + "-";
 
             return _dbContext.YearlyElectronicArchiveUnits
+                .Include(unit => unit.MediumLinks)
+                    .ThenInclude(link => link.HardDiskMedium)
+                        .ThenInclude(medium => medium!.RegisterLock)
                 .Include(unit => unit.MediumLinks)
                     .ThenInclude(link => link.HardDiskMedium)
                         .ThenInclude(medium => medium!.Ledger)

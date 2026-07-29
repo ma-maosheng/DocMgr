@@ -75,7 +75,7 @@
                         BorderBrush="#E2C98F"
                         BorderThickness="1"
                         CornerRadius="4">
-                    <TextBlock Text="适用于淘汰、损毁、盘失及其他原因的正式离库处置（含盘库登记后的在库盘失清账）；整单处置方式唯一。办结前须上传纸质签批单与硬盘照片。库内日常损坏/盘失请使用「盘库登记」。"
+                    <TextBlock Text="适用于淘汰、损坏、盘失等正式离库处置（按盘自动带出离库原因；整单处置方式唯一；含盘库登记后的在库盘失清账）。办结前须上传纸质签批单与硬盘照片。库内日常损坏/盘失请使用「盘库登记」。"
                                Foreground="#6F4A00"
                                TextWrapping="Wrap"
                                HorizontalAlignment="Center"/>
@@ -97,7 +97,7 @@
                       MouseDoubleClick="DgRecords_MouseDoubleClick">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="处置单编号" Binding="{Binding DisposalNo}" Width="150"/>
-                    <DataGridTextColumn Header="离库原因" Binding="{Binding DisposalReason}" Width="80"/>
+                    <DataGridTextColumn Header="离库原因" Binding="{Binding DisposalReason}" Width="110"/>
                     <DataGridTextColumn Header="处置方式" Binding="{Binding DispositionMethod}" Width="100"/>
                     <DataGridTextColumn Header="硬盘数" Binding="{Binding ItemCount}" Width="70"/>
                     <DataGridTextColumn Header="硬盘清单" Binding="{Binding DiskCodesSummary}" Width="220"/>

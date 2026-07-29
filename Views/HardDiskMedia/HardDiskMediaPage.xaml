@@ -3,8 +3,9 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:hdm="clr-namespace:DocMgr.Models.HardDiskMedia"
       mc:Ignorable="d"
-      d:DesignHeight="800"
+      d:DesignHeight="900"
       d:DesignWidth="1200"
       Title="HardDiskMediaPage"
       Background="#F0F2F5">
@@ -77,6 +78,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -85,92 +87,130 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Row="0" Grid.Column="0" Margin="0,0,12,12" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                        <!-- 行0：库存结构 -->
+                        <Border Grid.Row="0" Grid.Column="0" Margin="0,0,12,12" Padding="14" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.TotalMedia}">
                             <StackPanel>
                                 <TextBlock Text="介质总数" Foreground="#64748B"/>
                                 <TextBlock Margin="0,8,0,0" Text="{Binding TotalMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#0F172A"/>
                             </StackPanel>
                         </Border>
-                        <Border Grid.Row="0" Grid.Column="1" Margin="0,0,12,12" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                        <Border Grid.Row="0" Grid.Column="1" Margin="0,0,12,12" Padding="14" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.BlankInStock}">
                             <StackPanel>
                                 <TextBlock Text="在库空白" Foreground="#64748B"/>
                                 <TextBlock Margin="0,8,0,0" Text="{Binding BlankInStockCount}" FontSize="24" FontWeight="Bold" Foreground="#0F766E"/>
                             </StackPanel>
                         </Border>
-                        <Border Grid.Row="0" Grid.Column="2" Margin="0,0,12,12" Padding="14" Background="#F8FAFC" CornerRadius="4">
-                            <StackPanel>
-                                <TextBlock Text="出库中" Foreground="#64748B"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding BorrowedCount}" FontSize="24" FontWeight="Bold" Foreground="#B45309"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Row="0" Grid.Column="3" Margin="0,0,0,12" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                        <Border Grid.Row="0" Grid.Column="2" Margin="0,0,12,12" Padding="14" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.DataInStock}">
                             <StackPanel>
                                 <TextBlock Text="资料在库" Foreground="#64748B"/>
                                 <TextBlock Margin="0,8,0,0" Text="{Binding DataCarrierInStockCount}" FontSize="24" FontWeight="Bold" Foreground="#1D4ED8"/>
                             </StackPanel>
                         </Border>
-
-                        <Border Grid.Row="1" Grid.Column="0" Margin="0,0,12,0" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                        <Border Grid.Row="0" Grid.Column="3" Margin="0,0,0,12" Padding="14" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.Borrowed}">
                             <StackPanel>
-                                <TextBlock Text="对外移交" Foreground="#64748B"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding TransferOutCount}" FontSize="24" FontWeight="Bold" Foreground="#7C3AED"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Row="1" Grid.Column="1" Margin="0,0,12,0" Padding="14" Background="#F8FAFC" CornerRadius="4">
-                            <StackPanel>
-                                <TextBlock Text="已提交待审" Foreground="#64748B"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding SubmittedApplicationCount}" FontSize="24" FontWeight="Bold" Foreground="#DC2626"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Row="1" Grid.Column="2" Margin="0,0,12,0" Padding="14" Background="#F8FAFC" CornerRadius="4">
-                            <StackPanel>
-                                <TextBlock Text="待上传签字件" Foreground="#64748B"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding PendingSignedFileCount}" FontSize="24" FontWeight="Bold" Foreground="#9333EA"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Row="1" Grid.Column="3" Padding="14" Background="#F8FAFC" CornerRadius="4">
-                            <StackPanel>
-                                <TextBlock Text="待办理" Foreground="#64748B"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding PendingProcessApplicationCount}" FontSize="24" FontWeight="Bold" Foreground="#2563EB"/>
+                                <TextBlock Text="出库中（临/长）" Foreground="#64748B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding BorrowedCount}" FontSize="24" FontWeight="Bold" Foreground="#B45309"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Row="2" Grid.Column="0" Margin="0,12,12,0" Padding="14" Background="#FFF7ED" CornerRadius="4">
+                        <!-- 行1：异常/终态 -->
+                        <Border Grid.Row="1" Grid.Column="0" Margin="0,0,12,12" Padding="14" Background="#FFF7ED" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.DamagedInStock}">
                             <StackPanel>
                                 <TextBlock Text="损坏在库" Foreground="#9A3412"/>
                                 <TextBlock Margin="0,8,0,0" Text="{Binding DamagedInStockCount}" FontSize="24" FontWeight="Bold" Foreground="#C2410C"/>
                             </StackPanel>
                         </Border>
+                        <Border Grid.Row="1" Grid.Column="1" Margin="0,0,12,12" Padding="14" Background="#FEF2F2" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.InStockLost}">
+                            <StackPanel>
+                                <TextBlock Text="在库盘失" Foreground="#991B1B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding InStockLostCount}" FontSize="24" FontWeight="Bold" Foreground="#DC2626"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="2" Margin="0,0,12,12" Padding="14" Background="#F5F3FF" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.PermanentTransfer}">
+                            <StackPanel>
+                                <TextBlock Text="永久移交" Foreground="#5B21B6"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding PermanentTransferCount}" FontSize="24" FontWeight="Bold" Foreground="#7C3AED"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="3" Margin="0,0,0,12" Padding="14" Background="#F1F5F9" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.DisposedMedia}">
+                            <StackPanel>
+                                <TextBlock Text="离库处置" Foreground="#334155"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding DisposedCount}" FontSize="24" FontWeight="Bold" Foreground="#475569"/>
+                            </StackPanel>
+                        </Border>
 
-                        <Border Grid.Row="2" Grid.Column="1" Margin="0,12,12,0" Padding="14" Background="#EFF6FF" CornerRadius="4">
+                        <!-- 行2：申请积压 -->
+                        <Border Grid.Row="2" Grid.Column="0" Margin="0,0,12,12" Padding="14" Background="#FEF2F2" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.SubmittedApproval}">
+                            <StackPanel>
+                                <TextBlock Text="待审批" Foreground="#991B1B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding SubmittedApplicationCount}" FontSize="24" FontWeight="Bold" Foreground="#DC2626"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="2" Grid.Column="1" Margin="0,0,12,12" Padding="14" Background="#FFF7ED" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.PendingHandover}">
+                            <StackPanel>
+                                <TextBlock Text="待实物交接" Foreground="#9A3412"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding PendingHandoverApplicationCount}" FontSize="24" FontWeight="Bold" Foreground="#EA580C"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="2" Grid.Column="2" Margin="0,0,12,12" Padding="14" Background="#FAF5FF" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.PendingSignedUpload}">
+                            <StackPanel>
+                                <TextBlock Text="待上传签批" Foreground="#6B21A8"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding PendingSignedFileCount}" FontSize="24" FontWeight="Bold" Foreground="#9333EA"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="2" Grid.Column="3" Margin="0,0,0,12" Padding="14" Background="#EFF6FF" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.PendingComplete}">
+                            <StackPanel>
+                                <TextBlock Text="待办结" Foreground="#1E40AF"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding PendingCompleteApplicationCount}" FontSize="24" FontWeight="Bold" Foreground="#2563EB"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 行3：占用与专项流程 -->
+                        <Border Grid.Row="3" Grid.Column="0" Margin="0,0,12,12" Padding="14" Background="#FEF2F2" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.OverdueNeedReturn}">
+                            <StackPanel>
+                                <TextBlock Text="逾期需归还" Foreground="#991B1B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding OverdueNeedReturnCount}" FontSize="24" FontWeight="Bold" Foreground="#B91C1C"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="3" Grid.Column="1" Margin="0,0,12,12" Padding="14" Background="#ECFEFF" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.Locked}">
+                            <StackPanel>
+                                <TextBlock Text="征用锁占用" Foreground="#0F766E"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding LockedMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#0D9488"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="3" Grid.Column="2" Margin="0,0,12,12" Padding="14" Background="#FDF2F8" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.PendingDisposal}">
+                            <StackPanel>
+                                <TextBlock Text="处置进行中" Foreground="#9D174D"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding PendingDisposalCount}" FontSize="24" FontWeight="Bold" Foreground="#DB2777"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="3" Grid.Column="3" Margin="0,0,0,12" Padding="14" Background="#FEFCE8" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.DraftInventory}">
+                            <StackPanel>
+                                <TextBlock Text="盘库草稿" Foreground="#A16207"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding DraftInventoryRegisterCount}" FontSize="24" FontWeight="Bold" Foreground="#CA8A04"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 行4：台账质量 -->
+                        <Border Grid.Row="4" Grid.Column="0" Margin="0,0,12,0" Padding="14" Background="#EFF6FF" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.NeedReturn}">
                             <StackPanel>
                                 <TextBlock Text="需归还介质" Foreground="#1D4ED8"/>
                                 <TextBlock Margin="0,8,0,0" Text="{Binding NeedReturnMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#2563EB"/>
                             </StackPanel>
                         </Border>
-
-                        <Border Grid.Row="2" Grid.Column="2" Margin="0,12,12,0" Padding="14" Background="#FDF2F8" CornerRadius="4">
+                        <Border Grid.Row="4" Grid.Column="1" Margin="0,0,12,0" Padding="14" Background="#FEFCE8" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.MissingLocation}">
                             <StackPanel>
-                                <TextBlock Text="长期出库且需归还" Foreground="#BE185D"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding LongTermNeedReturnMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#DB2777"/>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Grid.Row="2" Grid.Column="3" Margin="0,12,0,0" Padding="14" Background="#ECFEFF" CornerRadius="4">
-                            <StackPanel>
-                                <TextBlock Text="临时出库且需归还" Foreground="#0F766E"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding TemporaryNeedReturnMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#0D9488"/>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Grid.Row="3" Grid.Column="0" Margin="0,12,12,0" Padding="14" Background="#FEFCE8" CornerRadius="4">
-                            <StackPanel>
-                                <TextBlock Text="未登记位置" Foreground="#A16207"/>
+                                <TextBlock Text="在库未登记位置" Foreground="#A16207"/>
                                 <TextBlock Margin="0,8,0,0" Text="{Binding MissingLocationMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#CA8A04"/>
                             </StackPanel>
                         </Border>
-
-                        <Border Grid.Row="3" Grid.Column="1" Margin="0,12,12,0" Padding="14" Background="#F8FAFC" CornerRadius="4">
+                        <Border Grid.Row="4" Grid.Column="2" Margin="0,0,12,0" Padding="14" Background="#FEF2F2" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.MissingLedger}">
+                            <StackPanel>
+                                <TextBlock Text="缺台账" Foreground="#991B1B"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding MissingLedgerMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#DC2626"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="4" Grid.Column="3" Padding="14" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应业务列表" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.OutboundWithoutKeeper}">
                             <StackPanel>
                                 <TextBlock Text="出库未明确保管" Foreground="#475569"/>
                                 <TextBlock Margin="0,8,0,0" Text="{Binding OutboundWithoutKeeperMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#334155"/>
@@ -192,12 +232,12 @@
                         Background="White"
                         CornerRadius="6">
                     <StackPanel>
-                        <TextBlock Text="办理摘要"
+                        <TextBlock Text="业务办理主线"
                                    FontSize="16"
                                    FontWeight="SemiBold"
                                    Foreground="#1F2937"/>
                         <TextBlock Margin="0,6,0,0"
-                                   Text="当前模块的核心办理链路摘要"
+                                   Text="与左侧菜单一致的现行硬盘业务入口"
                                    Foreground="#6B7280"/>
                         <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding SectionHighlights}">
                             <ItemsControl.ItemTemplate>
@@ -255,7 +295,7 @@
                     <Border Padding="16" Margin="0,0,0,16" Background="White" CornerRadius="6">
                         <StackPanel>
                             <TextBlock Text="统计分析" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
-                            <TextBlock Margin="0,6,0,0" Text="从位置、容量、交接、生命周期和风险五个维度看整体运行情况" Foreground="#6B7280"/>
+                            <TextBlock Margin="0,6,0,0" Text="位置、容量、交接、生命周期与风险" Foreground="#6B7280"/>
 
                             <Border Margin="0,12,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
                                 <StackPanel>
@@ -285,7 +325,7 @@
 
                             <Border Margin="0,10,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
                                 <StackPanel>
-                                    <TextBlock Text="交接环节分析" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                    <TextBlock Text="交接与业务环节" FontWeight="SemiBold" Foreground="#0F172A"/>
                                     <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding HandoverInsights}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -327,7 +367,7 @@
                     <Border Padding="16" Margin="0,0,0,16" Background="White" CornerRadius="6">
                         <StackPanel>
                             <TextBlock Text="关键域值" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
-                            <TextBlock Margin="0,6,0,0" Text="当前模块的核心枚举摘要" Foreground="#6B7280"/>
+                            <TextBlock Margin="0,6,0,0" Text="申请类型 / 状态 / 流转类型" Foreground="#6B7280"/>
 
                             <Border Margin="0,12,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
                                 <StackPanel>
@@ -356,9 +396,10 @@
                         <StackPanel>
                             <TextBlock Text="设计要点" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
                             <TextBlock Margin="0,12,0,0" Text="{Binding BusinessReference}" TextWrapping="Wrap" Foreground="#374151"/>
-                            <TextBlock Margin="0,10,0,0" Text="• 主表看当前状态，流转表看历史过程。" TextWrapping="Wrap" Foreground="#4B5563"/>
-                            <TextBlock Margin="0,6,0,0" Text="• 申请办理采用“线上填报 + 线下签字 + 回传照片”闭环。" TextWrapping="Wrap" Foreground="#4B5563"/>
-                            <TextBlock Margin="0,6,0,0" Text="• 对外移交、归还、销毁等流程需明确区分。" TextWrapping="Wrap" Foreground="#4B5563"/>
+                            <TextBlock Margin="0,10,0,0" Text="• 台账看当前状态，流转流水看历史过程。" TextWrapping="Wrap" Foreground="#4B5563"/>
+                            <TextBlock Margin="0,6,0,0" Text="• 申请办理：线上填报 → 线下签字 → 回传签批 → 办结回写。" TextWrapping="Wrap" Foreground="#4B5563"/>
+                            <TextBlock Margin="0,6,0,0" Text="• 永久移交、离库处置、挂失、盘失分列，不与临时/长期借出混计。" TextWrapping="Wrap" Foreground="#4B5563"/>
+                            <TextBlock Margin="0,6,0,0" Text="• 盘库登记与离库处置为独立业务，征用锁期间禁止并行占用。" TextWrapping="Wrap" Foreground="#4B5563"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>

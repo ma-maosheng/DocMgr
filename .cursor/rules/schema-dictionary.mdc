@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-07-22T08:25:26Z
+> 生成时间（UTC）：2026-07-29T06:31:10Z
 
 ## 表索引
 
@@ -35,6 +35,8 @@ alwaysApply: true
 | 字段域选项 | `FieldDomainOption` | `FieldDomainOptions` | 表 |
 | 硬盘离库处置明细 | `HardDiskDisposalItem` | `HardDiskDisposalItems` | 表 |
 | 硬盘离库处置单 | `HardDiskDisposalRecord` | `HardDiskDisposalRecords` | 表 |
+| HardDiskInventoryRegisterItem | `HardDiskInventoryRegisterItem` | `HardDiskInventoryRegisterItems` | 表 |
+| HardDiskInventoryRegisterRecord | `HardDiskInventoryRegisterRecord` | `HardDiskInventoryRegisterRecords` | 表 |
 | 硬盘台账 | `HardDiskLedger` | `HardDiskLedgers` | 表 |
 | 硬盘出库申请 | `HardDiskMediaApplication` | `HardDiskMediaApplications` | 表 |
 | 硬盘出入库流水 | `HardDiskMediaTransaction` | `HardDiskMediaTransactions` | 表 |
@@ -56,6 +58,8 @@ alwaysApply: true
 | 档案盒-介质明细关联 | `YearlyArchiveBoxMediaItemLink` | `YearlyArchiveBoxMediaItemLinks` | 表 |
 | 档案盒-登记申请关联 | `YearlyArchiveBoxYearlyArchiveRegisterRecord` | `YearlyArchiveBoxYearlyArchiveRegisterRecord` | 表 |
 | 立档事实 | `YearlyArchiveFilingFact` | `YearlyArchiveFilingFacts` | 表 |
+| 资料盘库登记明细 | `YearlyArchiveInventoryRegisterItem` | `YearlyArchiveInventoryRegisterItems` | 表 |
+| 资料盘库登记单 | `YearlyArchiveInventoryRegisterRecord` | `YearlyArchiveInventoryRegisterRecords` | 表 |
 | 资料流转履历 | `YearlyArchiveMaterialTransaction` | `YearlyArchiveMaterialTransactions` | 表 |
 | 资料出库明细 | `YearlyArchiveOutboundItem` | `YearlyArchiveOutboundItems` | 表 |
 | 资料出库单 | `YearlyArchiveOutboundRecord` | `YearlyArchiveOutboundRecords` | 表 |
@@ -279,6 +283,8 @@ alwaysApply: true
 | 处置前介质状态 | `BeforeMediaStatus` | `String` | 否 |
 | 处置前存放位置 | `BeforeStorageLocation` | `String` | 否 |
 | 处置前介质属性 | `BeforeMediaNature` | `String` | 否 |
+| 离库原因 | `DisposalReason` | `String` | 否 |
+| 离库后处置方式 | `DispositionMethod` | `String` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 
 ### HardDiskDisposalRecord（硬盘离库处置单）
@@ -315,6 +321,43 @@ alwaysApply: true
 | 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 更新时间 | `UpdatedAt` | `DateTime` | 否 |
+
+### HardDiskInventoryRegisterItem（HardDiskInventoryRegisterItem）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 未映射字段 | `RegisterRecordId` | `Int32` | 是 |
+| 未映射字段 | `SortOrder` | `Int32` | 是 |
+| 未映射字段 | `MediumId` | `Int32` | 是 |
+| 未映射字段 | `DiskCode` | `String` | 是 |
+| 序列编号 | `SerialNumber` | `String` | 否 |
+| 未映射字段 | `BeforeMediaStatus` | `String` | 是 |
+| 未映射字段 | `BeforeStorageLocation` | `String` | 是 |
+| 未映射字段 | `BeforeMediaNature` | `String` | 是 |
+| 未映射字段 | `TargetStorageLocation` | `String` | 是 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### HardDiskInventoryRegisterRecord（HardDiskInventoryRegisterRecord）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 未映射字段 | `RegisterNo` | `String` | 是 |
+| 状态 | `Status` | `Int32` | 否 |
+| 未映射字段 | `RegisterKind` | `String` | 是 |
+| 未映射字段 | `Reason` | `String` | 是 |
+| 备注 | `Remark` | `String` | 否 |
+| 未映射字段 | `ApplicantUserId` | `Int32` | 是 |
+| 申请人 | `ApplicantName` | `String` | 否 |
+| 申请部门 | `ApplicantDept` | `String` | 否 |
+| 申请时间 | `ApplyTime` | `DateTime` | 否 |
+| 未映射字段 | `CompletedAt` | `DateTime?` | 是 |
+| 未映射字段 | `CompletedBy` | `String` | 是 |
+| 未映射字段 | `WithdrawnAt` | `DateTime?` | 是 |
+| 未映射字段 | `WithdrawReason` | `String` | 是 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 未映射字段 | `UpdatedAt` | `DateTime` | 是 |
 
 ### HardDiskLedger（硬盘台账）
 
@@ -671,6 +714,7 @@ alwaysApply: true
 | 明细名称 | `ItemName` | `String` | 否 |
 | 密级 | `ConfidentialLevel` | `String` | 否 |
 | 内容份数 | `ContentCount` | `Int32` | 否 |
+| 盘库丢失份数 | `InventoryLostCopyCount` | `Int32` | 否 |
 | 容器类别 | `ContainerKind` | `ArchiveContainerKind` | 否 |
 | 容器ID | `ContainerId` | `Int32` | 否 |
 | 容器编号 | `ContainerCode` | `String` | 否 |
@@ -698,6 +742,52 @@ alwaysApply: true
 | 原件立档事实ID | `PrimaryFilingFactId` | `Int32?` | 否 |
 | 归档副本角色 | `ArchiveCopyRole` | `String` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### YearlyArchiveInventoryRegisterItem（资料盘库登记明细）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 盘库登记单ID | `RegisterRecordId` | `Int32` | 否 |
+| 排序序号 | `SortOrder` | `Int32` | 否 |
+| 立档事实ID | `FilingFactId` | `Int32` | 否 |
+| 登记介质明细ID | `MediaItemId` | `Int32` | 否 |
+| 容器ID | `ContainerId` | `Int32` | 否 |
+| 容器编号 | `ContainerCode` | `String` | 否 |
+| 本次丢失份数 | `LostCopyCount` | `Int32` | 否 |
+| 登记前可用份数 | `BeforeAvailableCopyCount` | `Int32` | 否 |
+| 介质类别 | `MediumKind` | `String` | 否 |
+| 介质ID | `MediumId` | `Int32` | 否 |
+| 介质编号 | `MediumCode` | `String` | 否 |
+| 电子立档单元ID | `ElectronicArchiveUnitId` | `Int32` | 否 |
+| 电子立档编号 | `ElectronicArchiveNo` | `String` | 否 |
+| 登记前介质状态 | `BeforeMediaStatus` | `String` | 否 |
+| 登记前存放位置 | `BeforeStorageLocation` | `String` | 否 |
+| 资料名称 | `MaterialName` | `String` | 否 |
+| 明细名称 | `ItemName` | `String` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### YearlyArchiveInventoryRegisterRecord（资料盘库登记单）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 登记单编号 | `RegisterNo` | `String` | 否 |
+| 状态 | `Status` | `Int32` | 否 |
+| 介质类别 | `MediaKind` | `String` | 否 |
+| 登记类型 | `RegisterKind` | `String` | 否 |
+| 登记说明 | `Reason` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+| 申请人用户ID | `ApplicantUserId` | `Int32` | 否 |
+| 申请人 | `ApplicantName` | `String` | 否 |
+| 申请部门 | `ApplicantDept` | `String` | 否 |
+| 申请时间 | `ApplyTime` | `DateTime` | 否 |
+| 办结时间 | `CompletedAt` | `DateTime?` | 否 |
+| 办结人 | `CompletedBy` | `String` | 否 |
+| 撤回时间 | `WithdrawnAt` | `DateTime?` | 否 |
+| 撤回原因 | `WithdrawReason` | `String` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 更新时间 | `UpdatedAt` | `DateTime` | 否 |
 
 ### YearlyArchiveMaterialTransaction（资料流转履历）
 

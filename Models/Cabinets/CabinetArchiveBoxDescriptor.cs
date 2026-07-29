@@ -64,5 +64,8 @@ namespace DocMgr.Models.Cabinets
         public string OccupationLockToolTipText { get; init; } = string.Empty;
 
         public string OccupationLockBadgeText { get; init; } = string.Empty;
+
+        /// <summary>盘库标识：空 / 失（红色角标）。</summary>
+        public string InventoryMarkBadgeText { get; init; } = string.Empty;
     }
 }
