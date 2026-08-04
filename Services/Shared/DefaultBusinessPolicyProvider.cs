@@ -96,7 +96,14 @@ namespace DocMgr.Services.Shared
                     WorkflowMode: BusinessWorkflowMode.Register,
                     SequenceLength: 3,
                     ApprovalPolicy: RegisterApprovalPolicy,
-                    AttachmentPolicy: RegisterAttachmentPolicy)
+                    AttachmentPolicy: RegisterAttachmentPolicy),
+                [BusinessNoCategory.ArchiveDisposalApply] = new(
+                    BusinessNoCategory.ArchiveDisposalApply,
+                    Prefix: "资离-处",
+                    WorkflowMode: BusinessWorkflowMode.Apply,
+                    SequenceLength: 3,
+                    ApprovalPolicy: ApplyApprovalPolicy,
+                    AttachmentPolicy: ApplyAttachmentPolicy)
             };
 
         /// <summary>

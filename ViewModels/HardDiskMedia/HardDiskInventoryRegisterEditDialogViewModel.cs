@@ -46,8 +46,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             MoveToRegisterCommand = new RelayCommand(_ => MoveToRegister(), _ => CanEditHeader && AvailableDisks.Any(item => item.IsSelected));
             MoveToAvailableCommand = new RelayCommand(_ => MoveToAvailable(), _ => CanEditHeader && Items.Any(item => item.IsSelected));
-            RecommendTargetLocationCommand = new RelayCommand(async _ => await RecommendTargetLocationAsync(), _ => CanEditHeader && RequiresTargetLocation && SelectedItem != null);
-            ShowTargetLocationPreviewCommand = new RelayCommand(async _ => await ShowTargetLocationPreviewAsync(), _ => CanShowTargetLocationPreview);
+            RecommendTargetLocationCommand = new RelayCommand<HardDiskInventoryRegisterItemViewModel>(
+                async item => await RecommendTargetLocationAsync(item),
+                item => CanEditHeader && RequiresTargetLocation && item != null);
+            ShowTargetLocationPreviewCommand = new RelayCommand<HardDiskInventoryRegisterItemViewModel>(
+                async item => await ShowTargetLocationPreviewAsync(item),
+                item => CanEditHeader
+                    && RequiresTargetLocation
+                    && item != null
+                    && !string.IsNullOrWhiteSpace(item.TargetStorageLocation));
             SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader);
             CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
             WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => CanWithdraw);
@@ -106,7 +113,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 if (SetProperty(ref _registerKind, value))
                 {
                     OnPropertyChanged(nameof(RequiresTargetLocation));
+                    OnPropertyChanged(nameof(IsTargetLocationColumnReadOnly));
                     OnPropertyChanged(nameof(TargetLocationHint));
+                    SyncTargetStorageLocationsForRegisterKind();
                     RefreshAvailableDisks();
                     RaiseCommandStates();
                 }
@@ -132,7 +141,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 if (SetProperty(ref _selectedItem, value))
                 {
-                    OnPropertyChanged(nameof(CanShowTargetLocationPreview));
                     RaiseCommandStates();
                 }
             }
@@ -141,8 +149,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public bool RequiresTargetLocation =>
             HardDiskInventoryRegisterDomainValues.RequiresDamagedTargetLocation(RegisterKind);
 
+        /// <summary>盘失登记或只读态下，目标档口列不可编辑。</summary>
+        public bool IsTargetLocationColumnReadOnly => !RequiresTargetLocation || !CanEditHeader;
+
         public string TargetLocationHint => RequiresTargetLocation
-            ? "请为每块盘指定损坏硬盘专用档口（可用推荐档口、档口预览）。办结时将核验档口容量（10盘/档口）。"
+            ? "请为每块盘指定损坏硬盘专用档口（可用行内「推荐」「预览」）。办结时将核验档口容量（10盘/档口）。"
             : "盘失登记无需归位档口，办结后清空存放位置。";
 
         public bool CanEditHeader =>
@@ -153,15 +164,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public bool CanWithdraw => CanEditHeader && _record.Id > 0;
 
-        public bool CanShowTargetLocationPreview =>
-            RequiresTargetLocation
-            && SelectedItem != null
-            && !string.IsNullOrWhiteSpace(SelectedItem.TargetStorageLocation);
-
         public RelayCommand MoveToRegisterCommand { get; }
         public RelayCommand MoveToAvailableCommand { get; }
-        public RelayCommand RecommendTargetLocationCommand { get; }
-        public RelayCommand ShowTargetLocationPreviewCommand { get; }
+        public RelayCommand<HardDiskInventoryRegisterItemViewModel> RecommendTargetLocationCommand { get; }
+        public RelayCommand<HardDiskInventoryRegisterItemViewModel> ShowTargetLocationPreviewCommand { get; }
         public RelayCommand SaveDraftCommand { get; }
         public RelayCommand CompleteCommand { get; }
         public RelayCommand WithdrawCommand { get; }
@@ -197,9 +203,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     Items.Add(HardDiskInventoryRegisterItemViewModel.FromItem(item));
                 }
 
+                SyncTargetStorageLocationsForRegisterKind();
                 RefreshAvailableDisks();
                 OnPropertyChanged(nameof(WindowTitle));
                 OnPropertyChanged(nameof(StatusDisplay));
+                OnPropertyChanged(nameof(IsTargetLocationColumnReadOnly));
                 RaiseCommandStates();
             }
             catch (Exception ex)
@@ -284,13 +292,33 @@ namespace DocMgr.ViewModels.HardDiskMedia
             RefreshAvailableDisks();
         }
 
-        private async Task RecommendTargetLocationAsync()
+        /// <summary>
+        /// 切换登记类型时同步目标档口：盘失登记清空；损坏类登记保留已填档口。
+        /// </summary>
+        private void SyncTargetStorageLocationsForRegisterKind()
         {
-            if (SelectedItem == null)
+            if (RequiresTargetLocation)
             {
                 return;
             }
 
+            foreach (var item in Items)
+            {
+                if (!string.IsNullOrWhiteSpace(item.TargetStorageLocation))
+                {
+                    item.TargetStorageLocation = string.Empty;
+                }
+            }
+        }
+
+        private async Task RecommendTargetLocationAsync(HardDiskInventoryRegisterItemViewModel? item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            SelectedItem = item;
             await EnsureDamagedLocationOptionsAsync();
             if (DamagedLocationOptions.Count == 0)
             {
@@ -312,29 +340,30 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
-            SelectedItem.TargetStorageLocation = preferred.Location;
+            item.TargetStorageLocation = preferred.Location;
             RaiseCommandStates();
-            _dialogService.ShowMessage($"已推荐档口：{SelectedItem.TargetStorageLocation}（现有 {preferred.ExistingMediumCount} 盘）", "推荐档口");
+            _dialogService.ShowMessage($"已推荐档口：{item.TargetStorageLocation}（现有 {preferred.ExistingMediumCount} 盘）", "推荐档口");
         }
 
-        private async Task ShowTargetLocationPreviewAsync()
+        private async Task ShowTargetLocationPreviewAsync(HardDiskInventoryRegisterItemViewModel? item)
         {
-            if (SelectedItem == null || string.IsNullOrWhiteSpace(SelectedItem.TargetStorageLocation))
+            if (item == null || string.IsNullOrWhiteSpace(item.TargetStorageLocation))
             {
                 _dialogService.ShowMessage("请先填写目标档口后再预览。", "档口预览");
                 return;
             }
 
-            if (!TryParseCabinetLocation(SelectedItem.TargetStorageLocation, out string cabinetName, out CabinetFace face, out string slotCode))
+            SelectedItem = item;
+            if (!TryParseCabinetLocation(item.TargetStorageLocation, out string cabinetName, out CabinetFace face, out string slotCode))
             {
                 _dialogService.ShowMessage("目标档口无法解析，请核对格式（如：柜名A-1-2）后再预览。", "档口预览");
                 return;
             }
 
             var cabinet = (await _cabinetService.GetAllCabinetsAsync())
-                .FirstOrDefault(item =>
-                    item.Type == CabinetType.MagneticDisk
-                    && string.Equals(item.Name, cabinetName, StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(c =>
+                    c.Type == CabinetType.MagneticDisk
+                    && string.Equals(c.Name, cabinetName, StringComparison.OrdinalIgnoreCase));
             if (cabinet == null)
             {
                 _dialogService.ShowMessage($"未找到柜号 [{cabinetName}] 对应的防磁磁盘柜。", "档口预览");
@@ -392,6 +421,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             try
             {
+                EnsureReasonFilled();
                 var user = RequireCurrentUser();
                 var payload = BuildDraftPayload();
                 var itemDrafts = BuildItemDrafts();
@@ -417,6 +447,17 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             try
             {
+                EnsureReasonFilled();
+                _ = BuildItemDrafts();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+                return;
+            }
+
+            try
+            {
                 var user = RequireCurrentUser();
                 if (!_dialogService.ShowConfirm("确认登记办结？办结后将即时更新硬盘台账状态/档口并写入流转流水。", "确认登记办结"))
                 {
@@ -438,6 +479,25 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 _dialogService.ShowError(ex.Message);
             }
+        }
+
+        /// <summary>
+        /// 登记说明未填时，默认用当前登记类型，避免办结被硬拦。
+        /// </summary>
+        private void EnsureReasonFilled()
+        {
+            if (!string.IsNullOrWhiteSpace(Reason))
+            {
+                return;
+            }
+
+            string kind = RegisterKind?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(kind))
+            {
+                throw new InvalidOperationException("请选择登记类型，或填写登记说明。");
+            }
+
+            Reason = kind;
         }
 
         private async Task WithdrawAsync()
@@ -575,7 +635,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string TargetStorageLocation
         {
             get => _targetStorageLocation;
-            set => SetProperty(ref _targetStorageLocation, value);
+            set
+            {
+                if (SetProperty(ref _targetStorageLocation, value))
+                {
+                    CommandManager.InvalidateRequerySuggested();
+                }
+            }
         }
 
         public bool IsSelected

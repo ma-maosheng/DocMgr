@@ -404,20 +404,27 @@ namespace DocMgr.Repositories.YearlyArchive
                             ? Math.Max(1, row.ReturnCopyCount)
                             : 0));
 
-            var inventoryLostByFactId = await _dbContext.YearlyArchiveFilingFacts
+            var inventoryCountsByFactId = await _dbContext.YearlyArchiveFilingFacts
                 .AsNoTracking()
                 .Where(fact => factIdList.Contains(fact.Id))
-                .Select(fact => new { fact.Id, fact.InventoryLostCopyCount })
-                .ToDictionaryAsync(item => item.Id, item => Math.Max(0, item.InventoryLostCopyCount));
+                .Select(fact => new { fact.Id, fact.InventoryLostCopyCount, fact.InventoryScrapCopyCount })
+                .ToDictionaryAsync(
+                    item => item.Id,
+                    item => (Lost: Math.Max(0, item.InventoryLostCopyCount), Scrap: Math.Max(0, item.InventoryScrapCopyCount)));
 
             return factIdList.ToDictionary(
                 factId => factId,
-                factId => new SimulatedFilingFactCopyCountSnapshot
+                factId =>
                 {
-                    PendingReturnCopyCount = pendingReturnByFactId.GetValueOrDefault(factId),
-                    NoReturnCopyCount = noReturnByFactId.GetValueOrDefault(factId),
-                    LostCopyCount = lostByFactId.GetValueOrDefault(factId),
-                    InventoryLostCopyCount = inventoryLostByFactId.GetValueOrDefault(factId),
+                    var counts = inventoryCountsByFactId.GetValueOrDefault(factId);
+                    return new SimulatedFilingFactCopyCountSnapshot
+                    {
+                        PendingReturnCopyCount = pendingReturnByFactId.GetValueOrDefault(factId),
+                        NoReturnCopyCount = noReturnByFactId.GetValueOrDefault(factId),
+                        LostCopyCount = lostByFactId.GetValueOrDefault(factId),
+                        InventoryLostCopyCount = counts.Lost,
+                        InventoryScrapCopyCount = counts.Scrap,
+                    };
                 });
         }
 
@@ -849,6 +856,7 @@ namespace DocMgr.Repositories.YearlyArchive
                 NoReturnCopyCount = fact.Id > 0 ? noReturnByFactId.GetValueOrDefault(fact.Id) : 0,
                 LostCopyCount = fact.Id > 0 ? lostByFactId.GetValueOrDefault(fact.Id) : 0,
                 InventoryLostCopyCount = Math.Max(0, fact.InventoryLostCopyCount),
+                InventoryScrapCopyCount = Math.Max(0, fact.InventoryScrapCopyCount),
             }).ToList();
         }
 

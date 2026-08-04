@@ -122,7 +122,7 @@ namespace DocMgr.ViewModels.Cabinets
             }
 
             var builder = new StringBuilder();
-            builder.Append($"共 {data.Entries.Count} 次。按「原→目标」与编号线下核对后勾选。");
+            builder.Append($"共 {data.Entries.Count} 次。按物理位置路线与编号线下核对后勾选。");
             foreach (var entry in data.Entries)
             {
                 builder.AppendLine();
@@ -136,6 +136,12 @@ namespace DocMgr.ViewModels.Cabinets
                 builder.AppendLine();
                 builder.Append(
                     $"　{EmptyAsPlaceholder(entry.SourceSlotText)} → {EmptyAsPlaceholder(entry.TargetSlotText)}");
+
+                if (!string.IsNullOrWhiteSpace(entry.LocationRoutesText))
+                {
+                    builder.AppendLine();
+                    builder.Append($"　路线：{entry.LocationRoutesText.Trim()}");
+                }
 
                 var codeParts = new List<string>();
                 string containerLabel = ResolveContainerCodesLabel(entry.MediaKind);

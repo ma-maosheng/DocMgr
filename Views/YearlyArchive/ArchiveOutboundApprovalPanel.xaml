@@ -5,6 +5,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="ArchiveRegisterResources.xaml"/>
+                <ResourceDictionary Source="ArchiveOutboundDetailCardResources.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
             <Style x:Key="OutboundApprovalCompactStepTitleStyle" TargetType="TextBlock"
@@ -90,31 +91,10 @@
                                        VerticalAlignment="Center" Margin="12,0,0,0" TextTrimming="CharacterEllipsis"/>
                         </DockPanel>
                     </Expander.Header>
-                    <DataGrid ItemsSource="{Binding Items}"
-                              AutoGenerateColumns="False"
-                              CanUserAddRows="False"
-                              CanUserResizeRows="False"
-                              IsReadOnly="True"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal"
-                              MaxHeight="180"
-                              Margin="0,6,0,0"
-                              Background="#FAFBFC"
-                              BorderBrush="#E2E8F0"
-                              BorderThickness="1"
-                              HorizontalGridLinesBrush="#EEF2F6"
-                              RowHeight="28"
-                              ColumnHeaderHeight="28">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" MinWidth="140" Width="*"/>
-                            <DataGridTextColumn Header="明细名称" Binding="{Binding ItemName}" Width="120"/>
-                            <DataGridTextColumn Header="容器编号" Binding="{Binding ContainerCode}" Width="100"/>
-                            <DataGridTextColumn Header="存储位置" Binding="{Binding StorageLocation}" Width="120"/>
-                            <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevel}" Width="60"/>
-                            <DataGridTextColumn Header="领用方式" Binding="{Binding UsageModeDisplay}" Width="80"/>
-                            <DataGridTextColumn Header="份数" Binding="{Binding CopyCount}" Width="50"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
+                        <ItemsControl ItemsSource="{Binding ContainerUnits}"
+                                      ItemTemplate="{StaticResource OutboundReadOnlyDetailCardTemplate}"/>
+                    </ScrollViewer>
                 </Expander>
 
                 <!-- 审批签字（双列紧凑） -->

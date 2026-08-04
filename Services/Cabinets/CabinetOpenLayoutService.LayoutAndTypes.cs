@@ -293,6 +293,14 @@ namespace DocMgr.Services.Cabinets
         {
             const double gap = 0.6d;
 
+            // 档内序号齐全时按序号占位（含空序号留白），优先于面向外紧凑排布。
+            bool allHaveSequence = boxGroups.Count > 0
+                && boxGroups.All(group => group.First().Parsed.SequenceIndex > 0);
+            if (allHaveSequence)
+            {
+                return CalculateSequentialLayouts(boxGroups, placementLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, gap);
+            }
+
             var frontOutBoxGroups = boxGroups
                 .Where(group => string.Equals(ResolvePlacementMode(group.Key, placementLookup), "FrontOut", StringComparison.OrdinalIgnoreCase))
                 .ToList();
@@ -363,24 +371,87 @@ namespace DocMgr.Services.Cabinets
         private static Dictionary<string, BoxRenderLayout> CalculateSequentialLayouts(IReadOnlyList<IGrouping<string, ExpandedArchiveBoxAssignment>> boxGroups, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight, double gap)
         {
             var layouts = new Dictionary<string, BoxRenderLayout>(StringComparer.OrdinalIgnoreCase);
-            double currentX = 0d;
-            double currentBaseline = slotCanvasHeight;
-            double currentRowHeight = 0d;
+            var indexedGroups = boxGroups
+                .Select(group => (Group: group, SequenceIndex: group.First().Parsed.SequenceIndex))
+                .ToList();
+            bool reserveSequenceGaps = indexedGroups.Count > 0
+                && indexedGroups.All(item => item.SequenceIndex > 0);
 
-            foreach (var measurement in CalculateBoxMeasurements(boxGroups, placementLookup, boxSpecificationLookup, slotCanvasHeight))
+            var measurements = CalculateBoxMeasurements(boxGroups, placementLookup, boxSpecificationLookup, slotCanvasHeight);
+            if (!reserveSequenceGaps)
             {
-                bool shouldWrap = currentX > 0d && currentX + measurement.Width > slotCanvasWidth;
-                if (shouldWrap)
+                double currentX = 0d;
+                double currentBaseline = slotCanvasHeight;
+                double currentRowHeight = 0d;
+
+                foreach (var measurement in measurements)
                 {
-                    currentBaseline -= currentRowHeight + gap;
-                    currentX = 0d;
-                    currentRowHeight = 0d;
+                    bool shouldWrap = currentX > 0d && currentX + measurement.Width > slotCanvasWidth;
+                    if (shouldWrap)
+                    {
+                        currentBaseline -= currentRowHeight + gap;
+                        currentX = 0d;
+                        currentRowHeight = 0d;
+                    }
+
+                    double top = Math.Max(0d, currentBaseline - measurement.Height);
+                    layouts[measurement.BoxCode] = new BoxRenderLayout(currentX, top, measurement.Width, measurement.Height);
+                    currentX += measurement.Width + gap;
+                    currentRowHeight = Math.Max(currentRowHeight, measurement.Height);
                 }
 
-                double top = Math.Max(0d, currentBaseline - measurement.Height);
-                layouts[measurement.BoxCode] = new BoxRenderLayout(currentX, top, measurement.Width, measurement.Height);
-                currentX += measurement.Width + gap;
-                currentRowHeight = Math.Max(currentRowHeight, measurement.Height);
+                return layouts;
+            }
+
+            // 有档内序号时按 1..max 占位：迁出留下的空序号保留横向空间，显示顺序与空间编号一致。
+            var measurementByCode = measurements.ToDictionary(
+                item => item.BoxCode,
+                item => item,
+                StringComparer.OrdinalIgnoreCase);
+            double spacerWidth = measurementByCode.Values
+                .Select(item => item.Width)
+                .DefaultIfEmpty(10d)
+                .Average();
+            var groupBySequence = indexedGroups
+                .GroupBy(item => item.SequenceIndex)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.First().Group);
+            int maxSequence = indexedGroups.Max(item => item.SequenceIndex);
+
+            double cursorX = 0d;
+            double baseline = slotCanvasHeight;
+            double rowHeight = 0d;
+            for (int sequence = 1; sequence <= maxSequence; sequence++)
+            {
+                if (groupBySequence.TryGetValue(sequence, out var boxGroup)
+                    && measurementByCode.TryGetValue(boxGroup.Key, out var measurement))
+                {
+                    bool shouldWrap = cursorX > 0d && cursorX + measurement.Width > slotCanvasWidth;
+                    if (shouldWrap)
+                    {
+                        baseline -= rowHeight + gap;
+                        cursorX = 0d;
+                        rowHeight = 0d;
+                    }
+
+                    double top = Math.Max(0d, baseline - measurement.Height);
+                    layouts[boxGroup.Key] = new BoxRenderLayout(cursorX, top, measurement.Width, measurement.Height);
+                    cursorX += measurement.Width + gap;
+                    rowHeight = Math.Max(rowHeight, measurement.Height);
+                }
+                else
+                {
+                    bool shouldWrap = cursorX > 0d && cursorX + spacerWidth > slotCanvasWidth;
+                    if (shouldWrap)
+                    {
+                        baseline -= rowHeight + gap;
+                        cursorX = 0d;
+                        rowHeight = 0d;
+                    }
+
+                    cursorX += spacerWidth + gap;
+                }
             }
 
             return layouts;

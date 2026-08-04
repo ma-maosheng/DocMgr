@@ -440,9 +440,10 @@
                                         <Button x:Name="BtnArchiveElectronicInventoryRegister" Content="电子资料盘库" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveElectronicInventoryRegister_Click"/>
                                     </StackPanel>
                                 </Expander>
-                                <Expander Header="资料处置" Style="{StaticResource SubNavExpander}">
+                                <Expander Header="离库处置" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
-                                        <Button x:Name="BtnArchiveDispose" Content="资料销毁" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveDispose_Click"/>
+                                        <Button x:Name="BtnArchiveSimulatedDisposal" Content="模拟资料离库处置" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveSimulatedDisposal_Click"/>
+                                        <Button x:Name="BtnArchiveElectronicDisposal" Content="电子资料离库处置" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveElectronicDisposal_Click"/>
                                     </StackPanel>
                                 </Expander>
                             </StackPanel>

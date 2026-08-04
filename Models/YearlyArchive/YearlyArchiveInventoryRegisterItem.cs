@@ -16,7 +16,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public int SortOrder { get; set; }
 
-        /// <summary>立档事实 ID（模拟轨）。</summary>
+        /// <summary>立档事实 ID（模拟轨必填；电子轨为 0，不建外键）。</summary>
         public int FilingFactId { get; set; }
 
         /// <summary>登记介质明细 ID（模拟轨）。</summary>
@@ -55,6 +55,12 @@ namespace DocMgr.Models.YearlyArchive
         /// <summary>登记前存放位置快照（模拟档口 / 电子介质档口）。</summary>
         public string BeforeStorageLocation { get; set; } = string.Empty;
 
+        /// <summary>所属项目快照。</summary>
+        public string ProjectName { get; set; } = string.Empty;
+
+        /// <summary>项目年度快照。</summary>
+        public string Year { get; set; } = string.Empty;
+
         /// <summary>资料名称快照。</summary>
         public string MaterialName { get; set; } = string.Empty;
 
@@ -65,6 +71,8 @@ namespace DocMgr.Models.YearlyArchive
 
         public YearlyArchiveInventoryRegisterRecord? RegisterRecord { get; set; }
 
+        /// <summary>立档事实导航（仅模拟轨有值；电子轨不映射外键，FilingFactId 可为 0）。</summary>
+        [NotMapped]
         public YearlyArchiveFilingFact? FilingFact { get; set; }
     }
 }

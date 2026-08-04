@@ -425,6 +425,7 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
                     NoReturnCopyCount = fact.Id > 0 ? noReturnByFactId.GetValueOrDefault(fact.Id) : 0,
                     LostCopyCount = fact.Id > 0 ? lostByFactId.GetValueOrDefault(fact.Id) : 0,
                     InventoryLostCopyCount = Math.Max(0, fact.InventoryLostCopyCount),
+                    InventoryScrapCopyCount = Math.Max(0, fact.InventoryScrapCopyCount),
                     ProjectYear = context.ProjectYear,
                     ArchivePurpose = context.ArchivePurpose,
                     Supplement = fact.MediaItemId > 0
@@ -754,6 +755,87 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
                 BusinessType = lockItem.BusinessType,
                 BusinessNo = lockItem.BusinessNo ?? string.Empty,
             }).ToList();
+    }
+
+    public IReadOnlyDictionary<string, string> GetLinkedMediumInventoryStatusesByElectronicUnitId(int electronicArchiveUnitId)
+    {
+        if (electronicArchiveUnitId <= 0)
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        var hardDiskIds = _dbContext.YearlyElectronicArchiveUnitMediumLinks
+            .AsNoTracking()
+            .Where(link => link.YearlyElectronicArchiveUnitId == electronicArchiveUnitId)
+            .Select(link => link.HardDiskMediumId)
+            .Distinct()
+            .ToList();
+
+        if (hardDiskIds.Count > 0)
+        {
+            var hardDiskRows = (
+                from medium in _dbContext.HardDiskMedia.AsNoTracking()
+                join ledger in _dbContext.HardDiskLedgers.AsNoTracking()
+                    on medium.Id equals ledger.MediumId into ledgerJoin
+                from ledger in ledgerJoin.DefaultIfEmpty()
+                where hardDiskIds.Contains(medium.Id) && !medium.IsDeleted
+                select new
+                {
+                    DiskCode = medium.DiskCode,
+                    MediaStatus = ledger != null ? ledger.MediaStatus : null,
+                }).ToList();
+
+            foreach (var row in hardDiskRows)
+            {
+                string code = row.DiskCode?.Trim() ?? string.Empty;
+                if (string.IsNullOrEmpty(code))
+                {
+                    continue;
+                }
+
+                result[code] = row.MediaStatus?.Trim() ?? string.Empty;
+            }
+        }
+
+        var opticalDiscIds = _dbContext.YearlyElectronicArchiveUnitDiscLinks
+            .AsNoTracking()
+            .Where(link => link.YearlyElectronicArchiveUnitId == electronicArchiveUnitId)
+            .Select(link => link.OpticalDiscMediumId)
+            .Distinct()
+            .ToList();
+
+        if (opticalDiscIds.Count > 0)
+        {
+            var opticalRows = (
+                from medium in _dbContext.OpticalDiscMedia.AsNoTracking()
+                join ledger in _dbContext.OpticalDiscLedgers.AsNoTracking()
+                    on medium.Id equals ledger.MediumId into ledgerJoin
+                from ledger in ledgerJoin.DefaultIfEmpty()
+                where opticalDiscIds.Contains(medium.Id) && !medium.IsDeleted
+                select new
+                {
+                    DiscCode = medium.DiscCode,
+                    LedgerDiscCode = ledger != null ? ledger.DiscCode : null,
+                    MediaStatus = ledger != null ? ledger.MediaStatus : null,
+                }).ToList();
+
+            foreach (var row in opticalRows)
+            {
+                string code = !string.IsNullOrWhiteSpace(row.DiscCode)
+                    ? row.DiscCode.Trim()
+                    : row.LedgerDiscCode?.Trim() ?? string.Empty;
+                if (string.IsNullOrEmpty(code))
+                {
+                    continue;
+                }
+
+                result[code] = row.MediaStatus?.Trim() ?? string.Empty;
+            }
+        }
+
+        return result;
     }
 
     public Dictionary<int, CabinetOccupationLockDescriptor> GetActiveOutboundApplicationLocksByMediumIds(IReadOnlyCollection<int> mediumIds)

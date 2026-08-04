@@ -599,25 +599,71 @@ namespace DocMgr.ViewModels.Cabinets
 
         private IEnumerable<CabinetHardDiskMediumItemViewModel> BuildHardDiskMediaItems(CabinetSlotDescriptor descriptor)
         {
-            var items = descriptor.HardDiskMedia
+            var presentItems = descriptor.HardDiskMedia
                 .Select(item => new CabinetHardDiskMediumItemViewModel(item))
+                .Where(item => !item.IsEmpty)
                 .ToList();
 
             if (!descriptor.IsMagneticDiskSlot)
             {
-                return items;
+                return presentItems;
             }
 
             int slotCapacity = ResolveSlotCapacity(descriptor);
-            int cellCount = System.Math.Max(slotCapacity, items.Count);
-            while (items.Count < cellCount)
-            {
-                items.Add(CabinetHardDiskMediumItemViewModel.CreateEmpty());
-            }
-
             int columns = 5;
             int rows = DescriptorUsesOpticalDiscDedicatedLayout(descriptor) ? 4 : 2;
-            return ReorderForBottomLeftToTopRight(items, columns, rows);
+            bool placeBySequence = presentItems.Any(item => item.ArchiveSequenceNumber > 0);
+            List<CabinetHardDiskMediumItemViewModel> cells;
+            if (placeBySequence)
+            {
+                int maxSequence = presentItems
+                    .Select(item => item.ArchiveSequenceNumber)
+                    .DefaultIfEmpty(0)
+                    .Max();
+                int cellCount = System.Math.Max(slotCapacity, maxSequence);
+                cells = Enumerable.Range(0, cellCount)
+                    .Select(_ => CabinetHardDiskMediumItemViewModel.CreateEmpty())
+                    .ToList();
+                var overflow = new List<CabinetHardDiskMediumItemViewModel>();
+                foreach (var item in presentItems
+                    .OrderBy(item => item.ArchiveSequenceNumber <= 0 ? int.MaxValue : item.ArchiveSequenceNumber)
+                    .ThenBy(item => item.DiskCodeText, StringComparer.OrdinalIgnoreCase))
+                {
+                    int sequence = item.ArchiveSequenceNumber;
+                    if (sequence > 0 && sequence <= cells.Count && cells[sequence - 1].IsEmpty)
+                    {
+                        cells[sequence - 1] = item;
+                    }
+                    else
+                    {
+                        overflow.Add(item);
+                    }
+                }
+
+                foreach (var item in overflow)
+                {
+                    int hole = cells.FindIndex(cell => cell.IsEmpty);
+                    if (hole >= 0)
+                    {
+                        cells[hole] = item;
+                    }
+                    else
+                    {
+                        cells.Add(item);
+                    }
+                }
+            }
+            else
+            {
+                cells = presentItems.ToList();
+                int cellCount = System.Math.Max(slotCapacity, cells.Count);
+                while (cells.Count < cellCount)
+                {
+                    cells.Add(CabinetHardDiskMediumItemViewModel.CreateEmpty());
+                }
+            }
+
+            return ReorderForBottomLeftToTopRight(cells, columns, rows);
         }
 
         private static bool DescriptorUsesOpticalDiscDedicatedLayout(CabinetSlotDescriptor descriptor) =>

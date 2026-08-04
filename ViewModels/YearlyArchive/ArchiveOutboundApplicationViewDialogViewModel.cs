@@ -7,6 +7,7 @@ using System.Windows.Input;
 using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
 using DocMgr.Views.Shared;
@@ -99,6 +100,15 @@ namespace DocMgr.ViewModels.YearlyArchive
         // 3. 出库明细
         public ObservableCollection<YearlyArchiveOutboundItem> Items { get; } = new();
 
+        public ObservableCollection<ArchiveOutboundContainerUnitViewModel> ContainerUnits { get; } = new();
+
+        public bool HasContainerUnits => ContainerUnits.Count > 0;
+
+        public string ContainerUnitsSummary =>
+            ContainerUnits.Count == 0
+                ? "暂无出库明细"
+                : $"共 {ContainerUnits.Count} 个盒/袋，{Items.Count} 条资料";
+
         public ObservableCollection<SystemAttachment> Attachments { get; } = new();
 
         public bool CanPrint => _record.Id > 0;
@@ -159,10 +169,40 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void SyncItems()
         {
             Items.Clear();
-            foreach (var item in _record.Items)
+            foreach (var item in _record.Items.OrderBy(item => item.SortOrder).ThenBy(item => item.Id))
             {
                 Items.Add(item);
             }
+
+            RebuildContainerUnits();
+        }
+
+        private void RebuildContainerUnits()
+        {
+            ContainerUnits.Clear();
+            int unitIndex = 1;
+            foreach (var group in ArchiveOutboundContainerUnitSupport.GroupItems(Items))
+            {
+                var unitItems = group.ToList();
+                var sample = unitItems[0];
+                var rows = unitItems
+                    .Select(item => new ArchiveOutboundItemRowViewModel(item, canEdit: false, _dialogService))
+                    .ToList();
+
+                ContainerUnits.Add(new ArchiveOutboundContainerUnitViewModel(
+                    group.Key,
+                    sample.MediaKind,
+                    sample.ContainerCode,
+                    sample.CurrentStorageLocation,
+                    rows,
+                    canEdit: false,
+                    _dialogService,
+                    unitIndex++));
+            }
+
+            OnPropertyChanged(nameof(HasContainerUnits));
+            OnPropertyChanged(nameof(ContainerUnitsSummary));
+            OnPropertyChanged(nameof(ContainerUnits));
         }
 
         private async Task LoadAttachmentsAsync()

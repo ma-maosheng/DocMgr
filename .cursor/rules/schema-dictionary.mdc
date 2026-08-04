@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-07-29T06:31:10Z
+> 生成时间（UTC）：2026-07-31T09:33:54Z
 
 ## 表索引
 
@@ -715,6 +715,7 @@ alwaysApply: true
 | 密级 | `ConfidentialLevel` | `String` | 否 |
 | 内容份数 | `ContentCount` | `Int32` | 否 |
 | 盘库丢失份数 | `InventoryLostCopyCount` | `Int32` | 否 |
+| 盘库拟销份数 | `InventoryScrapCopyCount` | `Int32` | 否 |
 | 容器类别 | `ContainerKind` | `ArchiveContainerKind` | 否 |
 | 容器ID | `ContainerId` | `Int32` | 否 |
 | 容器编号 | `ContainerCode` | `String` | 否 |
@@ -763,6 +764,8 @@ alwaysApply: true
 | 电子立档编号 | `ElectronicArchiveNo` | `String` | 否 |
 | 登记前介质状态 | `BeforeMediaStatus` | `String` | 否 |
 | 登记前存放位置 | `BeforeStorageLocation` | `String` | 否 |
+| 所属项目 | `ProjectName` | `String` | 否 |
+| 项目年度 | `Year` | `String` | 否 |
 | 资料名称 | `MaterialName` | `String` | 否 |
 | 明细名称 | `ItemName` | `String` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |

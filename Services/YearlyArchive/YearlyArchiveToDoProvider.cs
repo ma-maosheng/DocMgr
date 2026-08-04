@@ -15,17 +15,20 @@ namespace DocMgr.Services.YearlyArchive
         private readonly IArchiveOutboundRepository _archiveOutboundRepository;
         private readonly IArchiveReturnRepository _archiveReturnRepository;
         private readonly IArchiveFilingRepository _archiveFilingRepository;
+        private readonly IArchiveDisposalRepository _archiveDisposalRepository;
 
         public YearlyArchiveToDoProvider(
             IArchiveRegisterRepository archiveRegisterRepository,
             IArchiveOutboundRepository archiveOutboundRepository,
             IArchiveReturnRepository archiveReturnRepository,
-            IArchiveFilingRepository archiveFilingRepository)
+            IArchiveFilingRepository archiveFilingRepository,
+            IArchiveDisposalRepository archiveDisposalRepository)
         {
             _archiveRegisterRepository = archiveRegisterRepository;
             _archiveOutboundRepository = archiveOutboundRepository;
             _archiveReturnRepository = archiveReturnRepository;
             _archiveFilingRepository = archiveFilingRepository;
+            _archiveDisposalRepository = archiveDisposalRepository;
         }
 
         public async Task<List<ToDoItem>> GetToDosAsync(User currentUser)
@@ -86,6 +89,19 @@ namespace DocMgr.Services.YearlyArchive
                     BizNo = r.ReturnNo,
                     Stage = ResolveReturnToDoStage(r),
                     CreatedTime = r.SubmittedAt ?? r.RegisteredAt ?? r.ReturnDate,
+                    Priority = "高"
+                }));
+
+                var pendingDisposals = await _archiveDisposalRepository.GetPendingRecordsForToDoAsync(200);
+                result.AddRange(pendingDisposals.Select(r => new ToDoItem
+                {
+                    Id = $"YAD-{r.Id}-DISPOSAL-PENDING",
+                    Title = $"【{(string.Equals(r.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal) ? "电子" : "模拟")}资料离库处置】{ResolveDisposalToDoTitle(r)}：{BuildDisposalSummary(r)}",
+                    BizType = "ArchiveDisposal",
+                    BizId = r.Id,
+                    BizNo = r.DisposalNo,
+                    Stage = ResolveDisposalToDoStage(r),
+                    CreatedTime = r.SubmittedAt ?? r.ApplyTime,
                     Priority = "高"
                 }));
             }
@@ -187,6 +203,29 @@ namespace DocMgr.Services.YearlyArchive
                 YearlyArchiveReturnRecord.SignedUploaded => "待办结",
                 _ => "待办理"
             };
+
+        private static string ResolveDisposalToDoTitle(YearlyArchiveDisposalRecord record) =>
+            record.Status switch
+            {
+                YearlyArchiveDisposalRecord.StatusSubmitted => "待审批",
+                YearlyArchiveDisposalRecord.StatusApproved => "待确认可上传",
+                YearlyArchiveDisposalRecord.StatusSignedUploaded when !record.SignedAttachmentUploaded => "待上传签批单",
+                YearlyArchiveDisposalRecord.StatusSignedUploaded => "待办结",
+                _ => "待办理"
+            };
+
+        private static string ResolveDisposalToDoStage(YearlyArchiveDisposalRecord record) =>
+            ArchiveDisposalDomainValues.ToStatusDisplay(record.Status);
+
+        private static string BuildDisposalSummary(YearlyArchiveDisposalRecord record)
+        {
+            if (!string.IsNullOrWhiteSpace(record.ItemsSummary))
+            {
+                return record.ItemsSummary;
+            }
+
+            return $"{record.DisposalReason} / {record.DispositionMethod}".Trim(' ', '/');
+        }
 
         private static string ResolveReturnToDoStage(YearlyArchiveReturnRecord record) =>
             YearlyArchiveReturnRecord.ResolveWorkflowStatusDisplay(

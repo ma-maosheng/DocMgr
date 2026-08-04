@@ -12,6 +12,7 @@ namespace DocMgr.Models.OpticalDiscMedia
         public const string TypeDamagedRegistration = "损坏登记";
         public const string TypeInventoryRegisterDamage = "盘库登记(损坏)";
         public const string TypeInventoryRegisterLost = "盘库登记(盘失)";
+        public const string TypeInventoryRegisterScrap = "盘库登记(拟销)";
         public const string TypeDestroy = "出库(销毁)";
         public const string TypeRelocate = "位置调整";
 

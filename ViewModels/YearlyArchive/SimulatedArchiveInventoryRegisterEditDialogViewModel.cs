@@ -331,6 +331,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
+                EnsureReasonFilled();
                 var drafts = BuildDrafts();
                 var header = BuildHeader();
                 if (_record.Id <= 0)
@@ -364,6 +365,17 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            try
+            {
+                EnsureReasonFilled();
+                _ = BuildDrafts();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+                return;
+            }
+
             if (!_dialogService.ShowConfirm("确认登记办结？办结后即时写入台账，不可再改。", "确认登记办结"))
             {
                 return;
@@ -392,6 +404,25 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 _dialogService.ShowError(ex.Message);
             }
+        }
+
+        /// <summary>
+        /// 登记说明未填时，默认用当前登记类型，避免办结被硬拦。
+        /// </summary>
+        private void EnsureReasonFilled()
+        {
+            if (!string.IsNullOrWhiteSpace(Reason))
+            {
+                return;
+            }
+
+            string kind = RegisterKind?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(kind))
+            {
+                throw new InvalidOperationException("请选择登记类型，或填写登记说明。");
+            }
+
+            Reason = kind;
         }
 
         private async Task WithdrawAsync()
@@ -652,8 +683,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             return new SimulatedInventoryItemRow
             {
                 FilingFactId = item.FilingFactId,
-                ProjectName = string.Empty,
-                Year = string.Empty,
+                ProjectName = item.ProjectName?.Trim() ?? string.Empty,
+                Year = item.Year?.Trim() ?? string.Empty,
                 MaterialName = item.MaterialName?.Trim() ?? string.Empty,
                 ItemName = item.ItemName?.Trim() ?? string.Empty,
                 ContainerCode = item.ContainerCode?.Trim() ?? string.Empty,

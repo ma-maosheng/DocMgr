@@ -14,6 +14,9 @@ namespace DocMgr.Services.YearlyArchive
             string.Equals(item.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal)
             && string.Equals(item.UsageMode, ArchiveOutboundDomainValues.UsageModeWithdrawal, StringComparison.Ordinal);
 
+        /// <summary>
+        /// 可出库提档的库内可用份数（当前库内已扣盘库拟销；再由调用方扣在途预订）。
+        /// </summary>
         public static int ResolveCurrentInArchiveCopyCount(
             YearlyArchiveFilingFact fact,
             SimulatedFilingFactCopyCountSnapshot snapshot)
@@ -21,12 +24,9 @@ namespace DocMgr.Services.YearlyArchive
             ArgumentNullException.ThrowIfNull(fact);
             ArgumentNullException.ThrowIfNull(snapshot);
 
-            return SimulatedInArchiveCopyCountSupport.ResolveCurrentInArchiveCopyCount(
+            return SimulatedInArchiveCopyCountSupport.ResolveAvailableCopyCount(
                 fact.ContentCount,
-                snapshot.PendingReturnCopyCount,
-                snapshot.NoReturnCopyCount,
-                snapshot.LostCopyCount,
-                snapshot.InventoryLostCopyCount);
+                snapshot);
         }
 
         public static int ResolveAvailableCopyCount(

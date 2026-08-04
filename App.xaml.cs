@@ -75,6 +75,10 @@ namespace DocMgr
 
             DocMgrWindowBranding.Register();
 
+#if DEBUG
+            DocMgr.Infrastructure.DebugUi.UiDebugIdBadgeSupport.Register();
+#endif
+
             ScrollViewerWheelRoutingSupport.Register();
 
             DocMgrDatabaseOptions databaseOptions;
@@ -388,13 +392,16 @@ namespace DocMgr
                 }
             }
 
-            var disposalLostMediumIds = db.HardDiskDisposalRecords
-                .Where(record => record.Status == HardDiskDisposalRecord.StatusCompleted)
-                .SelectMany(record => record.Items
-                    .Where(item => item.DisposalReason == HardDiskDisposalDomainValues.ReasonLost
-                        || (string.IsNullOrEmpty(item.DisposalReason)
-                            && record.DisposalReason == HardDiskDisposalDomainValues.ReasonLost))
-                    .Select(item => item.MediumId))
+            // SQLite 不支持对导航集合 SelectMany/过滤 产生的 APPLY；改为显式 join 明细表。
+            string reasonLost = HardDiskDisposalDomainValues.ReasonLost;
+            int completedStatus = HardDiskDisposalRecord.StatusCompleted;
+            var disposalLostMediumIds = (
+                    from item in db.HardDiskDisposalItems
+                    join record in db.HardDiskDisposalRecords on item.DisposalRecordId equals record.Id
+                    where record.Status == completedStatus
+                        && (item.DisposalReason == reasonLost
+                            || (string.IsNullOrEmpty(item.DisposalReason) && record.DisposalReason == reasonLost))
+                    select item.MediumId)
                 .Distinct()
                 .ToList();
 
@@ -415,13 +422,14 @@ namespace DocMgr
                     }
                 }
 
-                var disposalNos = db.HardDiskDisposalRecords
-                    .Where(record => record.Status == HardDiskDisposalRecord.StatusCompleted
-                        && record.Items.Any(item =>
-                            item.DisposalReason == HardDiskDisposalDomainValues.ReasonLost
-                            || (string.IsNullOrEmpty(item.DisposalReason)
-                                && record.DisposalReason == HardDiskDisposalDomainValues.ReasonLost)))
-                    .Select(record => record.DisposalNo)
+                var disposalNos = (
+                        from item in db.HardDiskDisposalItems
+                        join record in db.HardDiskDisposalRecords on item.DisposalRecordId equals record.Id
+                        where record.Status == completedStatus
+                            && (item.DisposalReason == reasonLost
+                                || (string.IsNullOrEmpty(item.DisposalReason) && record.DisposalReason == reasonLost))
+                        select record.DisposalNo)
+                    .Distinct()
                     .ToList();
 
                 var relatedTransactions = db.HardDiskMediaTransactions

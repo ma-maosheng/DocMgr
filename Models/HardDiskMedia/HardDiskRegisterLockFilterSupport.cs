@@ -16,6 +16,8 @@ namespace DocMgr.Models.HardDiskMedia
             (HardDiskRegisterLock.BusinessTypeArchiveOutboundRequisition, "资料出库征用（库内空盘）"),
             (HardDiskRegisterLock.BusinessTypeInventoryRegister, "硬盘盘库登记"),
             (HardDiskRegisterLock.BusinessTypeDisposal, "硬盘离库处置"),
+            (HardDiskRegisterLock.BusinessTypeArchiveInventoryRegister, "资料盘库登记"),
+            (HardDiskRegisterLock.BusinessTypeArchiveDisposal, "资料离库处置"),
         ];
 
         private static readonly Dictionary<string, string> DisplayToBusinessType =

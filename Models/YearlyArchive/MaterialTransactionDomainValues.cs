@@ -10,12 +10,17 @@ namespace DocMgr.Models.YearlyArchive
         public const string TypeOutbound = "Outbound";
         public const string TypeReturn = "Return";
         public const string TypeInventoryRegister = "InventoryRegister";
+        public const string TypeInventoryRegisterLost = "InventoryRegisterLost";
+        public const string TypeInventoryRegisterDamage = "InventoryRegisterDamage";
+        public const string TypeInventoryRegisterScrap = "InventoryRegisterScrap";
+        public const string TypeDisposal = "Disposal";
 
         public const string SourceFilingFact = "FilingFact";
         public const string SourceRelocationItem = "RelocationItem";
         public const string SourceOutboundSyncEntry = "OutboundSyncEntry";
         public const string SourceReturnItem = "ReturnItem";
         public const string SourceInventoryItem = "InventoryRegisterItem";
+        public const string SourceDisposalItem = "DisposalItem";
 
         public const string ProcessNodeCategoryReservation = "Reservation";
         public const string ProcessNodeCategoryCancelled = "Cancelled";
@@ -28,6 +33,10 @@ namespace DocMgr.Models.YearlyArchive
             TypeOutbound => "资料出库",
             TypeReturn => "资料归还",
             TypeInventoryRegister => "盘库登记",
+            TypeInventoryRegisterLost => "盘库登记(盘失)",
+            TypeInventoryRegisterDamage => "盘库登记(损坏)",
+            TypeInventoryRegisterScrap => "盘库登记(拟销)",
+            TypeDisposal => "资料离库处置",
             _ => transactionType
         };
 

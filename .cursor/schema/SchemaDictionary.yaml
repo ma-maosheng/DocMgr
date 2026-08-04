@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-07-29T06:31:10Z
+generatedAt: 2026-07-31T09:33:54Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -2753,7 +2753,13 @@ tables:
         aliases: []
       InventoryLostCopyCount:
         chineseName: 盘库丢失份数
-        description: 盘库登记累计丢失份数（与归还灭失分流）
+        description: 盘库登记累计丢失份数（与归还灭失、盘库拟销分流）
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      InventoryScrapCopyCount:
+        chineseName: 盘库拟销份数
+        description: 盘库登记累计拟销份数（与归还灭失、盘库丢失分流）
         clrType: Int32
         needsReview: false
         aliases: []
@@ -3020,6 +3026,18 @@ tables:
       BeforeStorageLocation:
         chineseName: 登记前存放位置
         description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ProjectName:
+        chineseName: 所属项目
+        description: 登记前快照
+        clrType: String
+        needsReview: false
+        aliases: []
+      Year:
+        chineseName: 项目年度
+        description: 登记前快照
         clrType: String
         needsReview: false
         aliases: []

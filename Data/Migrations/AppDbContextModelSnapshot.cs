@@ -1943,6 +1943,253 @@ namespace DocMgr.Data.Migrations
                     b.ToTable("YearlyArchiveBoxMediaItemLinks");
                 });
 
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveDisposalItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BeforeLifecycleStatus")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BeforeMediaStatus")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BeforeStorageLocation")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ContainerCode")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ContainerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DisposalReason")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DisposalRecordId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DispositionMethod")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ElectronicArchiveNo")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ElectronicArchiveUnitId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FilingFactId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FormNo")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("InventoryLostCopyCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("InventoryScrapCopyCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MaterialName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MediumCode")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MediumId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MediumKind")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SourceRegisterKind")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TargetBlankSlotLocation")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContainerId");
+
+                    b.HasIndex("DisposalRecordId");
+
+                    b.HasIndex("FilingFactId");
+
+                    b.HasIndex("MediumId");
+
+                    b.HasIndex("DisposalRecordId", "FilingFactId");
+
+                    b.HasIndex("DisposalRecordId", "MediumKind", "MediumId");
+
+                    b.ToTable("YearlyArchiveDisposalItems");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveDisposalRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ApplicantDept")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ApplicantName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ApplicantUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("ApplyTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ApprovalOpinion")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ApprovedBy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ApprovedTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CompletedBy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConfirmedBy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ConfirmedTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DisposalNo")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DisposalReason")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DispositionMethod")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("FormatRetainedConfirmed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("FormatRetainedConfirmedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FormatRetainedConfirmedBy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastPrintedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MediaKind")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("PhysicalRemovalConfirmed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("PhysicalRemovalConfirmedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PhysicalRemovalConfirmedBy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PrintCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Remark")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("ScenePhotoUploaded")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("SignedAttachmentUploaded")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("SignedAttachmentUploadedTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SignedAttachmentUploader")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WithdrawReason")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("WithdrawnAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplyTime");
+
+                    b.HasIndex("DisposalNo")
+                        .IsUnique();
+
+                    b.HasIndex("MediaKind");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("YearlyArchiveDisposalRecords");
+                });
+
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveFilingFact", b =>
                 {
                     b.Property<int>("Id")
@@ -2050,6 +2297,9 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("InventoryLostCopyCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("InventoryScrapCopyCount")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("ItemName")
@@ -2223,11 +2473,19 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ProjectName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("RegisterRecordId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Year")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -4102,21 +4360,24 @@ namespace DocMgr.Data.Migrations
                     b.Navigation("MediaItem");
                 });
 
-            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveInventoryRegisterItem", b =>
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveDisposalItem", b =>
                 {
-                    b.HasOne("DocMgr.Models.YearlyArchive.YearlyArchiveFilingFact", "FilingFact")
-                        .WithMany()
-                        .HasForeignKey("FilingFactId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                    b.HasOne("DocMgr.Models.YearlyArchive.YearlyArchiveDisposalRecord", "DisposalRecord")
+                        .WithMany("Items")
+                        .HasForeignKey("DisposalRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("DisposalRecord");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveInventoryRegisterItem", b =>
+                {
                     b.HasOne("DocMgr.Models.YearlyArchive.YearlyArchiveInventoryRegisterRecord", "RegisterRecord")
                         .WithMany("Items")
                         .HasForeignKey("RegisterRecordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("FilingFact");
 
                     b.Navigation("RegisterRecord");
                 });
@@ -4366,6 +4627,11 @@ namespace DocMgr.Data.Migrations
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveBox", b =>
                 {
                     b.Navigation("MediaItemLinks");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveDisposalRecord", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveInventoryRegisterRecord", b =>

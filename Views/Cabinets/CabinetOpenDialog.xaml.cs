@@ -13,6 +13,9 @@ namespace DocMgr.Views.Cabinets
         private Point? _interactiveDragStartPoint;
         private bool _interactiveDragInProgress;
         private InteractiveItemRelocationDragPayload? _pendingInteractiveDragPayload;
+        private bool _slotsHostSizeChangeInProgress;
+        private Size _lastHandledSlotsHostSize;
+        private bool _slotsHostViewportSizingEnabled;
 
         public CabinetOpenDialog()
         {
@@ -31,10 +34,13 @@ namespace DocMgr.Views.Cabinets
                 SlotsTranslateTransform.Y = 0;
                 SlotsHost.Margin = new Thickness(8);
                 SlotsHost.Padding = new Thickness(8);
+                _slotsHostViewportSizingEnabled = true;
                 Dispatcher.BeginInvoke(ApplySnapshotViewportSize, System.Windows.Threading.DispatcherPriority.Loaded);
                 return;
             }
 
+            // 开柜动画期间先不要跟视口尺寸，避免布局与尺寸刷新互相触发。
+            _slotsHostViewportSizingEnabled = false;
             PlayCabinetOpenAnimation(GetCabinetType());
         }
 
@@ -123,21 +129,68 @@ namespace DocMgr.Views.Cabinets
                 return;
             }
 
-            if (!viewModel.IsSingleSlotSnapshot)
+            if (_slotsHostSizeChangeInProgress || !_slotsHostViewportSizingEnabled)
             {
-                if (!viewModel.SupportsSlotViewportSizing)
-                {
-                    return;
-                }
-
-                const double chromePadding = 36d;
-                viewModel.UpdateMagneticDiskSlotDimensions(
-                    Math.Max(e.NewSize.Width - chromePadding, 240d),
-                    Math.Max(e.NewSize.Height - chromePadding, 180d));
                 return;
             }
 
-            ApplySnapshotViewportSize();
+            // 忽略亚像素抖动，避免视口刷新与布局互相触发。
+            if (Math.Abs(e.NewSize.Width - _lastHandledSlotsHostSize.Width) < 1d
+                && Math.Abs(e.NewSize.Height - _lastHandledSlotsHostSize.Height) < 1d)
+            {
+                return;
+            }
+
+            _lastHandledSlotsHostSize = e.NewSize;
+            ApplySlotsHostViewportSize(e.NewSize.Width, e.NewSize.Height);
+        }
+
+        private void ApplySlotsHostViewportSize(double hostWidth, double hostHeight)
+        {
+            if (DataContext is not CabinetOpenViewModel viewModel)
+            {
+                return;
+            }
+
+            if (_slotsHostSizeChangeInProgress || !_slotsHostViewportSizingEnabled)
+            {
+                return;
+            }
+
+            _slotsHostSizeChangeInProgress = true;
+            try
+            {
+                if (!viewModel.IsSingleSlotSnapshot)
+                {
+                    if (!viewModel.SupportsSlotViewportSizing)
+                    {
+                        return;
+                    }
+
+                    // 预留纵向滚动条及右侧间隙，避免三列铺满宽度时最右档口被滚动条压盖。
+                    const double chromePadding = 36d;
+                    const double scrollbarSideGap = 4d;
+                    double verticalScrollReserve =
+                        viewModel.SlotsVerticalScrollBarVisibility == ScrollBarVisibility.Disabled
+                            ? 0d
+                            : SystemParameters.VerticalScrollBarWidth + scrollbarSideGap;
+                    double horizontalScrollReserve =
+                        viewModel.SlotsHorizontalScrollBarVisibility == ScrollBarVisibility.Disabled
+                            ? 0d
+                            : SystemParameters.HorizontalScrollBarHeight + scrollbarSideGap;
+
+                    viewModel.UpdateMagneticDiskSlotDimensions(
+                        Math.Max(hostWidth - chromePadding - verticalScrollReserve, 240d),
+                        Math.Max(hostHeight - chromePadding - horizontalScrollReserve, 180d));
+                    return;
+                }
+
+                ApplySnapshotViewportSize();
+            }
+            finally
+            {
+                _slotsHostSizeChangeInProgress = false;
+            }
         }
 
         private void Slot_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

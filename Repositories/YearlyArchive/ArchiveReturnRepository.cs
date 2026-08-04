@@ -1,6 +1,5 @@
 using DocMgr.Data;
 using DocMgr.Models.Shared;
-using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
@@ -158,7 +157,8 @@ namespace DocMgr.Repositories.YearlyArchive
                 .Where(record => record.Status == YearlyArchiveOutboundRecord.Completed
                     && record.ApplyDate.Year == year)
                 .Where(record => record.Items.Any(item =>
-                    item.UsageMode == ArchiveOutboundDomainValues.UsageModeWithdrawal
+                    item.MediaKind == ArchiveRegisterDomainValues.MediaKindSimulated
+                    && item.UsageMode == ArchiveOutboundDomainValues.UsageModeWithdrawal
                     && item.NeedReturn
                     && item.ReservationStatus != ArchiveOutboundDomainValues.SyncEntryPhaseReturned))
                 .Where(record => !activeReturnOutboundIds.Contains(record.Id))
@@ -175,16 +175,6 @@ namespace DocMgr.Repositories.YearlyArchive
                 .Distinct()
                 .ToListAsync();
 
-            var borrowedMediumIds = await _dbContext.HardDiskLedgers
-                .AsNoTracking()
-                .Where(ledger => ledger.NeedReturn)
-                .Where(ledger => ledger.MediaStatus == HardDiskMedium.StatusOutTemporary
-                                 || ledger.MediaStatus == HardDiskMedium.StatusOutLongTerm)
-                .Select(ledger => ledger.MediumId)
-                .ToListAsync();
-
-            var borrowedMediumIdSet = borrowedMediumIds.ToHashSet();
-
             var candidates = await _dbContext.YearlyArchiveOutboundRecords
                 .AsNoTracking()
                 .Include(record => record.Items)
@@ -192,13 +182,9 @@ namespace DocMgr.Repositories.YearlyArchive
                 .Where(record => !activeReturnOutboundIds.Contains(record.Id))
                 .ToListAsync();
 
+            // 资料归还逾期仅含模拟提档需归还；硬盘归还逾期走 HD-RTN。
             return candidates
-                .Where(record =>
-                    ArchiveOutboundReturnSupport.HasOverdueWithdrawalItems(record, asOf)
-                    || ArchiveOutboundReturnSupport.HasOverdueDiskRequisitionItems(
-                        record,
-                        asOf,
-                        borrowedMediumIdSet))
+                .Where(record => ArchiveOutboundReturnSupport.HasOverdueWithdrawalItems(record, asOf))
                 .OrderBy(record => record.ExpectedReturnDate)
                 .Take(take)
                 .ToList();

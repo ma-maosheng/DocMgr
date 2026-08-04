@@ -91,15 +91,15 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- 左侧：模拟列表 -->
-            <Border Grid.Column="0" Background="White" Padding="10"
-                    Visibility="{Binding SimulatedColumnVisibility}">
+            <!-- 左侧列表：模拟/电子共用一张表，避免双 DataGrid 争用 SelectedRecord 导致无法选中 -->
+            <Border Grid.Column="0" Background="White" Padding="10">
                 <DataGrid ItemsSource="{Binding Records}"
                           SelectedItem="{Binding SelectedRecord}"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           CanUserAddRows="False"
                           SelectionMode="Single"
+                          SelectionUnit="FullRow"
                           RowHeight="36"
                           ColumnHeaderHeight="40"
                           GridLinesVisibility="Horizontal"
@@ -108,34 +108,7 @@
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="登记单编号" Binding="{Binding RegisterNo}" Width="130"/>
                         <DataGridTextColumn Header="登记类型" Binding="{Binding RegisterKind}" Width="90"/>
-                        <DataGridTextColumn Header="明细数" Binding="{Binding ItemCount}" Width="60"/>
-                        <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="80"/>
-                        <DataGridTextColumn Header="登记人" Binding="{Binding ApplicantName}" Width="70"/>
-                        <DataGridTextColumn Header="登记日期" Binding="{Binding ApplyTime, StringFormat=yyyy-MM-dd}" Width="95"/>
-                        <DataGridTextColumn Header="办结人" Binding="{Binding CompletedBy}" Width="70"/>
-                        <DataGridTextColumn Header="登记说明" Binding="{Binding Reason}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </Border>
-
-            <!-- 左侧：电子列表 -->
-            <Border Grid.Column="0" Background="White" Padding="10"
-                    Visibility="{Binding ElectronicColumnVisibility}">
-                <DataGrid ItemsSource="{Binding Records}"
-                          SelectedItem="{Binding SelectedRecord}"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True"
-                          CanUserAddRows="False"
-                          SelectionMode="Single"
-                          RowHeight="36"
-                          ColumnHeaderHeight="40"
-                          GridLinesVisibility="Horizontal"
-                          BorderThickness="0"
-                          MouseDoubleClick="DgRecords_MouseDoubleClick">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="登记单编号" Binding="{Binding RegisterNo}" Width="130"/>
-                        <DataGridTextColumn Header="登记类型" Binding="{Binding RegisterKind}" Width="90"/>
-                        <DataGridTextColumn Header="介质数" Binding="{Binding ItemCount}" Width="60"/>
+                        <DataGridTextColumn Header="数量" Binding="{Binding ItemCount}" Width="60"/>
                         <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="80"/>
                         <DataGridTextColumn Header="登记人" Binding="{Binding ApplicantName}" Width="70"/>
                         <DataGridTextColumn Header="登记日期" Binding="{Binding ApplyTime, StringFormat=yyyy-MM-dd}" Width="95"/>
@@ -210,6 +183,8 @@
                                   BorderThickness="0"
                                   Visibility="{Binding SimulatedColumnVisibility}">
                             <DataGrid.Columns>
+                                <DataGridTextColumn Header="所属项目" Binding="{Binding ProjectName}" Width="100"/>
+                                <DataGridTextColumn Header="项目年度" Binding="{Binding Year}" Width="70"/>
                                 <DataGridTextColumn Header="盒号" Binding="{Binding ContainerCode}" Width="90"/>
                                 <DataGridTextColumn Header="档口" Binding="{Binding StorageLocation}" Width="110"/>
                                 <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="110"/>
@@ -233,6 +208,8 @@
                                   BorderThickness="0"
                                   Visibility="{Binding ElectronicColumnVisibility}">
                             <DataGrid.Columns>
+                                <DataGridTextColumn Header="所属项目" Binding="{Binding ProjectName}" Width="100"/>
+                                <DataGridTextColumn Header="项目年度" Binding="{Binding Year}" Width="70"/>
                                 <DataGridTextColumn Header="介质" Binding="{Binding MediumKind}" Width="60"/>
                                 <DataGridTextColumn Header="介质编号" Binding="{Binding MediumCodeDisplay}" Width="100"/>
                                 <DataGridTextColumn Header="电子袋" Binding="{Binding ElectronicArchiveNo}" Width="110"/>

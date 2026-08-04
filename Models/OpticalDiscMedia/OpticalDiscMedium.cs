@@ -28,6 +28,11 @@ namespace DocMgr.Models.OpticalDiscMedia
         public const string StatusLost = "在库(盘失)";
 
         /// <summary>
+        /// 拟销状态（在库但无存档价值，不可迁档）。
+        /// </summary>
+        public const string StatusScrap = "在库(拟销)";
+
+        /// <summary>
         /// 销毁状态。
         /// </summary>
         public const string StatusDestroyed = "出库(销毁)";

@@ -1,5 +1,5 @@
 ---
-description: 年度资料盘库登记：模拟丢失份数与电子袋内介质损坏/盘失；盘库空占格；与业务空盒释档分流
+description: 年度资料盘库登记：模拟丢失/拟销份数与电子袋内介质损坏/盘失/拟销；盘库空占格；与业务空盒释档分流
 globs: Services/YearlyArchive/ArchiveInventoryRegister*.cs,Repositories/YearlyArchive/ArchiveInventoryRegister*.cs,ViewModels/YearlyArchive/ArchiveInventoryRegister*.cs,Views/YearlyArchive/ArchiveInventoryRegister*.cs,Services/Cabinets/CabinetOpenLayoutService.cs,Services/YearlyArchive/ArchiveSimulatedBoxSlotOccupancySupport.cs,Services/YearlyArchive/SimulatedInArchiveCopyCountSupport.cs
 alwaysApply: false
 ---
@@ -13,11 +13,15 @@ alwaysApply: false
 ## 口径
 
 1. **盘库空 vs 业务空**
-   - 盘库导致空盒/空袋：仍占档口，开柜标红色「空」；后期「离库处置」再清账移走。
+   - 盘库导致空盒/空袋：仍占档口，开柜按失/销（电子另可标 X）标识；后期「离库处置」再清账移走。
    - 业务空（出库不还 / 归还灭失，已经过审批）：仍按 `archive-emptied-container-alignment.mdc` **自动释档**。
-2. **电子盘库对象**：袋内关联的**硬盘或光盘**损坏/丢失，不是电子袋本身；介质袋物理位置不变。
-3. **模拟盘库对象**：资料子项（立档事实）；支持**盘失登记**与**拟销登记**（无存档价值资料），均登记扣减份数。
-4. **拟销登记**：仅模拟轨；办结效应与盘失相同（扣减 `InventoryLostCopyCount`、写履历），语义标记为拟销而非丢失。
+2. **电子盘库对象**：袋内关联的**硬盘或光盘**损坏/盘失/拟销，不是电子袋本身；介质袋物理位置不变。
+3. **模拟盘库对象**：资料子项（立档事实）；支持**盘失登记**与**拟销登记**（无存档价值资料），分别累计扣减份数。
+4. **拟销登记**：模拟轨与电子轨均支持；台账状态与流转类型**独立于盘失**：
+   - 模拟：写入 `InventoryScrapCopyCount`（不并入 `InventoryLostCopyCount`），履历类型 `盘库登记(拟销)`。
+     - **出库待还份数 > 0** 时禁止拟销登记。
+     - **拟销份数必须等于当时的当前库内份数**（只允许整批拟销，禁止部分拟销）；办结后库内变为 0。
+   - 电子：台账 → `在库(拟销)`，流转 → `盘库登记(拟销)`。
 
 ## 流程
 
@@ -27,25 +31,64 @@ alwaysApply: false
 ## 份数公式（模拟）
 
 ```text
-库内 = 立档份数 - 待还 - 不还 - 归还灭失 - 盘库丢失(InventoryLostCopyCount)
+当前库内 = 立档份数 - 待还 - 不还 - 出库灭失(归还灭失) - 盘库丢失(InventoryLostCopyCount)
+可借/可盘库登记 = 当前库内 - 盘库拟销(InventoryScrapCopyCount)
 ```
 
-- `InventoryLostCopyCount` 挂在 `YearlyArchiveFilingFact`，与归还灭失分流。
-- `ShouldReleaseSlot`：**仅**「库内=0 且待还=0 且（不还>0 或 归还灭失>0）」；盘库丢失单独致空**不释档**。
+- **盘库拟销不扣减「当前库内」**：拟销份仍在盒内，仅标记无存档价值；整批拟销后「盘库拟销份数 = 当前库内份数」。
+- 出库提档、盘失可登记量使用「可借/可盘库登记」。
+
+CB-BOX-CNT（档案盒内容）页脚展示公式：
+
+```text
+立档份数 = 当前库内 + 出库待还 + 出库不还 + 出库灭失 + 盘库丢失
+```
+
+- `InventoryLostCopyCount` / `InventoryScrapCopyCount` 挂在 `YearlyArchiveFilingFact`，与归还灭失（出库灭失）分流，二者互不替代。
+- 盘失登记：份数须 `>0` 且 `≤` 可盘库登记份数；拟销登记见上「整批等于当前库内」。
+- 办结后再核验盘失+拟销合计不超过「立档−待还−不还−出库灭失」。
+- `ShouldReleaseSlot`：**仅**「库内=0 且待还=0 且（不还>0 或 出库灭失>0）」；盘库丢失/拟销单独致空**不释档**（开柜按失/销标识，不标「空」）。
+
+## CB-BOX-CNT 列口径
+
+- 「灭失份数」展示为「出库灭失份数」（归还灭失累计）。
+- 「盘库丢失份数」后展示「盘库拟销份数」。
+- 电子列「介质盘库状态」取值：`-` / `盘损` / `盘失` / `盘销`（由介质台账 `在库(损坏|盘失|拟销)` 映射；模拟行固定 `-`）。
+- 电子介质拷贝型出库、无需归还：出库待还/出库灭失等份数列显示 `—`。
 
 ## 电子办结效应
 
-- 介质台账 → `在库(损坏)` / `在库(盘失)`，**保留** `StorageLocation`（不迁损坏专用档口、盘失不清空位置）。
+| 登记类型 | 台账状态 | 流转类型 |
+|---|---|---|
+| 损坏登记 | `在库(损坏)` | `盘库登记(损坏)` |
+| 盘失登记 | `在库(盘失)` | `盘库登记(盘失)` |
+| 拟销登记 | `在库(拟销)` | `盘库登记(拟销)` |
+
+- **保留** `StorageLocation`（不迁损坏专用档口、盘失/拟销不清空位置）。
 - 关联立档事实 → `Destroyed`；检索「在库」不再命中。
 - 电子袋保持 `InUse` 占位。
 
-## 开柜标识（优先级：空 > 失/X > 待还/预订）
+## 开柜标识（四角分区）
+
+实体卡片按角位表达状态；右上盘库角允许失/销（及电子 X）并排，不再使用「空」。
+
+| 角位 | 语义 | 模拟档案盒 | 电子袋介质卡 |
+|------|------|------------|--------------|
+| 左上 | 异常布局 / 身份 | 混（优先）/ 非 | 袋内序号 |
+| 右上 | 盘库异常 | 失、销（可并存；不标空） | 失 / 销 / X（可并排；不标空） |
+| 右下 | 流转待还 | 待还 / 待还N份 | 待还 |
+| 左下 | 业务占用 | 预订 | 预订 |
 
 | 标记 | 模拟档案盒 | 电子袋介质卡 |
 |------|------------|--------------|
-| 空 | 盘库致空仍占格 | 袋内介质全部损坏/盘失 |
-| 失 | 部分盘库丢失 | 资料载体 `在库(盘失)` |
+| 空 | （不使用） | （不使用；按介质状态标失/销/X） |
+| 失 | 存在盘库丢失份数 | 资料载体 `在库(盘失)` |
+| 销 | 存在盘库拟销份数（可与失同时亮） | 资料载体 `在库(拟销)` |
 | X | （无） | 资料载体 `在库(损坏)` |
+| 混 | 左上；混放待梳理多源盒 | （无） |
+| 非 | 左上；无混放且规格含「非标」 | （无） |
+
+开柜图例按卡片四角真实布局示意；摆放方式（脊外/面外）仅悬停提示，不占角标。空位文案为「空位」（矩阵空盘位），与盘库角标无关。解析入口：`CabinetOpenStatusBadgeSupport`。
 
 ## 与硬盘盘库互斥
 
@@ -54,16 +97,20 @@ alwaysApply: false
 
 ## 借出影响
 
-- 模拟：出库提档可用份数含盘库丢失，不足则阻断。
-- 电子：损坏/盘失介质上事实已销毁，不可再入检索借出；草稿期征用锁互斥。
-- 不可把待还份数登记为盘库丢失。
+- 模拟：出库提档可用份数含盘库丢失与拟销，不足则阻断。
+- 电子：损坏/盘失/拟销介质上事实已销毁，不可再入检索借出；草稿期征用锁互斥。
+- 不可把待还份数登记为盘库丢失/拟销。
 
-## 后期离库处置（本期不做）
+## 后期离库处置
 
-中间态：盒/袋 `InUse` + 空/失/X；介质 `在库(损坏|盘失)`；事实 `Destroyed`。正式清账预留容器/事实 `Disposed`。
+菜单：「离库处置」→「模拟资料离库处置」/「电子资料离库处置」（`ArchiveDisposalService`）。
+
+- 中间态：盒/袋 `InUse` + 失/X/销；介质 `在库(损坏|盘失|拟销)`；事实可已为 `Destroyed`。
+- 正式清账：审批签批后事实/容器 → `Disposed`；释档移走空盒/空袋；拟销硬盘可选低格留存（空白硬盘专用档口）或介质销毁。
+- 细则见 `archive-disposal.mdc`。资料袋内介质不进入「硬盘离库处置」候选。
 
 ## 实现入口
 
 - Service：`ArchiveInventoryRegisterService`（Simulated / Electronic partial）
 - 占格：`ArchiveSimulatedBoxSlotOccupancySupport`
-- 开柜：`CabinetOpenLayoutService` + `ArchiveBoxItemViewModel` / `CabinetHardDiskMediumItemViewModel`
+- 开柜：`CabinetOpenLayoutService` + `CabinetOpenStatusBadgeSupport` + `ArchiveBoxItemViewModel` / `CabinetHardDiskMediumItemViewModel`

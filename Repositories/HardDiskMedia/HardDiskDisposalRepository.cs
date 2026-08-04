@@ -1,6 +1,7 @@
 using DocMgr.Data;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.SystemSettings;
+using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -116,11 +117,17 @@ public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
             .Where(item => item.Ledger != null
                            && (item.Ledger.MediaStatus == HardDiskMedium.StatusInStockBlank
                                || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockDamaged
-                               || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockLost))
+                               || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockLost
+                               || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockScrap))
             .Where(item => !busyMediumIds.Contains(item.Id))
             .Where(item => item.RegisterLock == null
                            || (excluded.Contains(item.Id)
                                && item.RegisterLock.BusinessType == HardDiskRegisterLock.BusinessTypeDisposal))
+            // 已挂 InUse 资料袋的介质走「资料离库处置」，不进入硬盘离库候选
+            .Where(item => !_dbContext.YearlyElectronicArchiveUnitMediumLinks.Any(link =>
+                link.HardDiskMediumId == item.Id
+                && link.ElectronicArchiveUnit != null
+                && link.ElectronicArchiveUnit.UnitLifecycleStatus == ArchiveContainerLifecycleStatus.InUse))
             .OrderBy(item => item.DiskCode)
             .ToListAsync();
     }
@@ -162,7 +169,8 @@ public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
         var rows = await _dbContext.HardDiskMediaTransactions
             .AsNoTracking()
             .Where(item => ids.Contains(item.MediumId)
-                           && item.TransactionType == HardDiskMediaTransaction.TypeInventoryRegisterLost
+                           && (item.TransactionType == HardDiskMediaTransaction.TypeInventoryRegisterLost
+                               || item.TransactionType == HardDiskMediaTransaction.TypeInventoryRegisterScrap)
                            && item.BeforeLocation != null
                            && item.BeforeLocation != string.Empty)
             .OrderByDescending(item => item.OperateTime)

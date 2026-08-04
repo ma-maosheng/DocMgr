@@ -15,19 +15,24 @@ namespace DocMgr.Models.Cabinets
 
         public string RelocationNo { get; init; } = string.Empty;
 
-        /// <summary>原档口（柜体+面别+档口）。</summary>
+        /// <summary>原档口（柜体+面别+档口，便于阅读）。</summary>
         public string SourceSlotText { get; init; } = string.Empty;
 
-        /// <summary>目标档口（柜体+面别+档口）。</summary>
+        /// <summary>目标档口（柜体+面别+档口，便于阅读）。</summary>
         public string TargetSlotText { get; init; } = string.Empty;
 
-        /// <summary>盒编号或电子介质袋编号（逗号分隔）。</summary>
+        /// <summary>
+        /// 物理位置迁移路线（完整位置编码，顿号分隔），如「辛甲-1-1-01->辛甲-1-2-01」。
+        /// </summary>
+        public string LocationRoutesText { get; init; } = string.Empty;
+
+        /// <summary>盒编号或电子介质袋编号（顿号分隔）。</summary>
         public string ContainerCodesText { get; init; } = string.Empty;
 
-        /// <summary>硬盘编号（逗号分隔）。</summary>
+        /// <summary>硬盘编号（顿号分隔）。</summary>
         public string HardDiskCodesText { get; init; } = string.Empty;
 
-        /// <summary>光盘编号（逗号分隔；年度数据光盘或损坏光盘）。</summary>
+        /// <summary>光盘编号（顿号分隔；年度数据光盘或损坏光盘）。</summary>
         public string OpticalDiscCodesText { get; init; } = string.Empty;
 
         public string SummaryText { get; init; } = string.Empty;

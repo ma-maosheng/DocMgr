@@ -266,6 +266,21 @@ namespace DocMgr.Services.YearlyArchive
                 }
             }
 
+            // 电子硬盘提档：资料本身不还；NeedReturn 仅约束载体硬盘台账与 HD-RTN。
+            if (ArchiveOutboundReturnSupport.IsElectronicHardDiskWithdrawalDiskReturnOnly(
+                    item,
+                    fact.StorageCarrierType))
+            {
+                return new FilingFactLifecycleUpdate(
+                    fact.Id,
+                    FilingFactLifecycleStatus.Transferred,
+                    FilingFactBorrowHintLevel.None,
+                    string.Empty,
+                    item.NeedReturn
+                        ? $"出库单 {record.OutboundNo} 提档（资料不还，载体硬盘待归还）"
+                        : $"出库单 {record.OutboundNo} 提档不还");
+            }
+
             if (!item.NeedReturn)
             {
                 return new FilingFactLifecycleUpdate(

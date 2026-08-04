@@ -23,9 +23,46 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public int Id { get; init; }
 
-        public string DisplayText { get; init; } = string.Empty;
+        public string DiskCode { get; init; } = string.Empty;
 
+        public string SerialNumber { get; init; } = string.Empty;
+
+        public string DiskType { get; init; } = string.Empty;
+
+        public string Brand { get; init; } = string.Empty;
+
+        public string Capacity { get; init; } = string.Empty;
+
+        public string InterfaceType { get; init; } = string.Empty;
+
+        public string RegisterPerson { get; init; } = string.Empty;
+
+        public DateTime RegisterDate { get; init; }
+
+        public DateTime? FactoryDate { get; init; }
+
+        public string RegistrationMethod { get; init; } = string.Empty;
+
+        public string Remark { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 台账存放位置原文（空白盘通常即为档口键）。
+        /// </summary>
         public string CurrentLocation { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 所在档口编号（柜面-层-列，不含档内序号）。
+        /// </summary>
+        public string SlotCode { get; init; } = string.Empty;
+
+        public string RegisterDateDisplay => RegisterDate == default
+            ? string.Empty
+            : RegisterDate.ToString("yyyy-MM-dd");
+
+        public string FactoryDateDisplay => FactoryDate?.ToString("yyyy-MM-dd") ?? string.Empty;
+
+        public string DisplayText =>
+            $"{DiskCode} / {SerialNumber} / {Capacity} / {InterfaceType}";
 
         public bool IsSelected
         {

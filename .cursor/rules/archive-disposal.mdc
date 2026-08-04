@@ -1,0 +1,55 @@
+---
+description: 年度资料离库处置：盘库中间态正式清账；模拟/电子分流；拟销硬盘低格留存或销毁；空盒空袋物理移除确认
+globs: Services/YearlyArchive/ArchiveDisposal*.cs,Repositories/YearlyArchive/ArchiveDisposal*.cs,ViewModels/YearlyArchive/ArchiveDisposal*.cs,Views/YearlyArchive/ArchiveDisposal*.cs,Models/YearlyArchive/ArchiveDisposal*.cs,Models/YearlyArchive/YearlyArchiveDisposal*.cs
+alwaysApply: false
+---
+
+# 年度资料离库处置
+
+## 菜单位置
+
+「年度资料档案化管理」→「离库处置」→「模拟资料离库处置」/「电子资料离库处置」。
+
+## 口径
+
+1. **前置**：仅清账「资料盘库登记」产生的中间态（失/销/X 仍占档）。业务空盒释档仍走 `archive-emptied-container-alignment.mdc`，与本流程分流。
+2. **流程**：对齐硬盘离库处置七态（草稿→提交→审批→确认可上传→上传签批→办结 / 撤回）。权限：资料室资料管理员。
+3. **编号前缀**：`资离-处`（`BusinessNoCategory.ArchiveDisposalApply`）。
+4. **选取粒度**：按容器汇总展示，明细为立档事实（模拟）或袋内硬盘/光盘（电子）。
+
+## 原因 / 方式矩阵
+
+| 轨 | 来源盘库类型 | 原因 | 允许方式 |
+|---|---|---|---|
+| 模拟 | 盘失登记 | 盘失 | 库内注销、介质销毁 |
+| 模拟 | 拟销登记 | 拟销 | 介质销毁 |
+| 电子 | 损坏登记 | 损坏 | 介质销毁 |
+| 电子 | 盘失登记 | 盘失 | 库内注销、介质销毁 |
+| 电子·硬盘 | 拟销登记 | 拟销 | 硬盘低格留存、介质销毁 |
+| 电子·光盘 | 拟销登记 | 拟销 | 介质销毁、库内注销 |
+
+- **硬盘低格留存**：台账 → `在库(空盘)`，位置写入空白硬盘专用档口（`HardDiskBlankSlotLocationSupport`）；解除袋内关联。
+- **介质销毁 / 库内注销（硬盘）**：台账 → `离库(处置)`，清空位置。
+- **光盘终态**：`出库(销毁)`。
+
+## 办结效应
+
+- 立档事实 → `Disposed`；写 `YearlyArchiveMaterialTransaction`（`Disposal`）。
+- 模拟盒：盒内事实均已处置/销毁/转移且无在库/借出残留 → 盒 `Disposed`，删 `CabinetArchiveBoxPlacement`。
+- 电子袋：袋内介质关联清空 → 袋 `Disposed`，清空 `StorageLocation`。
+- **物理移除确认**：本单将释档至少一个空盒/空袋时必填。
+- **低格确认**：含「硬盘低格留存」时必填。
+- 附件：签批单必填；含「介质销毁」时须「处置现场照片」。
+
+## 与硬盘离库互斥
+
+- 已挂 `InUse` 资料袋的硬盘**不**进入「硬盘离库处置」候选。
+- 资料离库提交时对硬盘写 `HardDiskRegisterLock`（`BusinessTypeArchiveDisposal`）。
+- 同介质不可并行未办结的资料盘库 / 硬盘盘库 / 硬盘离库 / 资料离库。
+
+## 实现入口
+
+- Service：`ArchiveDisposalService`（Helpers / Complete partial）
+- 仓储：`ArchiveDisposalRepository`
+- 域值：`ArchiveDisposalDomainValues`
+---

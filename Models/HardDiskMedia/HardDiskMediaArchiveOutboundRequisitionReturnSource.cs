@@ -1,7 +1,7 @@
 namespace DocMgr.Models.HardDiskMedia
 {
     /// <summary>
-    /// 资料出库库内空盘征用后，待归还登记的来源快照。
+    /// 资料出库办结后待归还硬盘来源快照（库内空盘征用或提档数据硬盘）。
     /// </summary>
     public sealed record HardDiskMediaArchiveOutboundRequisitionReturnSource
     {

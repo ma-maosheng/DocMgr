@@ -103,7 +103,8 @@ namespace DocMgr.Services.YearlyArchive
                 pendingReturnCopyCount,
                 noReturnCopyCount,
                 lostCopyCount,
-                fact.InventoryLostCopyCount);
+                fact.InventoryLostCopyCount,
+                fact.InventoryScrapCopyCount);
 
             if (breakdown.CurrentInArchiveCopyCount > 0 || breakdown.PendingReturnCopyCount > 0)
             {

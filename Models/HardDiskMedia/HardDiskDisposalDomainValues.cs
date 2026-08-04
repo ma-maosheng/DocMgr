@@ -16,6 +16,7 @@ namespace DocMgr.Models.HardDiskMedia
         public const string ReasonRetire = "淘汰";
         public const string ReasonDamaged = "损坏";
         public const string ReasonLost = "盘失";
+        public const string ReasonScrap = "拟销";
         /// <summary>历史单据兼容：旧版整单原因「损毁」。</summary>
         public const string LegacyReasonDamaged = "损毁";
         /// <summary>历史单据兼容：旧版整单原因「其他」。</summary>
@@ -23,22 +24,23 @@ namespace DocMgr.Models.HardDiskMedia
 
         public const string MethodDirectDestroy = "直接销毁";
         public const string MethodReturnOffice = "退还办公室";
-        /// <summary>库内注销：专用于「在库(盘失)」硬盘的处置方式。</summary>
+        /// <summary>库内注销：专用于「在库(盘失)」「在库(拟销)」硬盘的处置方式。</summary>
         public const string MethodInventoryCancel = "库内注销";
         public const string MethodOther = "其他";
 
         public const string HolderOffice = "办公室";
         public const string HolderDestroyed = "已销毁";
 
-        /// <summary>离库原因选项（按介质状态自动赋值：空盘→淘汰、损坏→损坏、盘失→盘失）。</summary>
+        /// <summary>离库原因选项（按介质状态自动赋值：空盘→淘汰、损坏→损坏、盘失→盘失、拟销→拟销）。</summary>
         public static IReadOnlyList<string> ReasonOptions { get; } =
         [
             ReasonRetire,
             ReasonDamaged,
-            ReasonLost
+            ReasonLost,
+            ReasonScrap
         ];
 
-        /// <summary>离库后处置方式选项（按盘；盘失自动「库内注销」）。</summary>
+        /// <summary>离库后处置方式选项（按盘；盘失/拟销自动「库内注销」）。</summary>
         public static IReadOnlyList<string> DispositionMethodOptions { get; } =
         [
             MethodDirectDestroy,
@@ -55,12 +57,13 @@ namespace DocMgr.Models.HardDiskMedia
             AttachmentCategoryOther
         ];
 
-        /// <summary>可纳入离库处置的介质状态（含盘库登记后的在库盘失）。</summary>
+        /// <summary>可纳入离库处置的介质状态（含盘库登记后的在库盘失/拟销）。</summary>
         public static IReadOnlyList<string> SelectableMediaStatusOptions { get; } =
         [
             HardDiskMedium.StatusInStockBlank,
             HardDiskMedium.StatusInStockDamaged,
-            HardDiskMedium.StatusInStockLost
+            HardDiskMedium.StatusInStockLost,
+            HardDiskMedium.StatusInStockScrap
         ];
 
         /// <summary>是否为有效离库原因（含历史「损毁」「其他」）。</summary>
@@ -81,7 +84,7 @@ namespace DocMgr.Models.HardDiskMedia
 
         /// <summary>
         /// 按处置前介质状态自动解析离库原因：
-        /// 在库(空盘)→淘汰；在库(损坏)→损坏；在库(盘失)→盘失。
+        /// 在库(空盘)→淘汰；在库(损坏)→损坏；在库(盘失)→盘失；在库(拟销)→拟销。
         /// </summary>
         public static string ResolveReasonFromMediaStatus(string? mediaStatus)
         {
@@ -101,17 +104,23 @@ namespace DocMgr.Models.HardDiskMedia
                 return ReasonLost;
             }
 
+            if (string.Equals(normalized, HardDiskMedium.StatusInStockScrap, StringComparison.Ordinal))
+            {
+                return ReasonScrap;
+            }
+
             return string.Empty;
         }
 
         /// <summary>
         /// 按处置前介质状态自动解析处置方式：
-        /// 仅「在库(盘失)」→库内注销；其余须人工指定。
+        /// 「在库(盘失)」「在库(拟销)」→库内注销；其余须人工指定。
         /// </summary>
         public static string ResolveDispositionMethodFromMediaStatus(string? mediaStatus)
         {
             string normalized = mediaStatus?.Trim() ?? string.Empty;
             return string.Equals(normalized, HardDiskMedium.StatusInStockLost, StringComparison.Ordinal)
+                || string.Equals(normalized, HardDiskMedium.StatusInStockScrap, StringComparison.Ordinal)
                 ? MethodInventoryCancel
                 : string.Empty;
         }
@@ -122,6 +131,7 @@ namespace DocMgr.Models.HardDiskMedia
             ReasonDamaged,
             LegacyReasonDamaged,
             ReasonLost,
+            ReasonScrap,
             ReasonOther
         ];
 
@@ -207,6 +217,50 @@ namespace DocMgr.Models.HardDiskMedia
         {
             _ = reason;
             return RequiresOtherRemark(dispositionMethod);
+        }
+
+        /// <summary>
+        /// 离库原因与处置方式是否匹配：
+        /// 盘失 → 必须「库内注销」；淘汰/损坏 → 不得「库内注销」。
+        /// </summary>
+        public static bool IsReasonAndDispositionMethodCompatible(string? reason, string? dispositionMethod)
+        {
+            return TryGetReasonAndDispositionMethodMismatchMessage(reason, dispositionMethod) == null;
+        }
+
+        /// <summary>
+        /// 若不匹配返回提示文案；匹配返回 null。
+        /// </summary>
+        public static string? TryGetReasonAndDispositionMethodMismatchMessage(
+            string? reason,
+            string? dispositionMethod)
+        {
+            string normalizedReason = reason?.Trim() ?? string.Empty;
+            if (string.Equals(normalizedReason, LegacyReasonDamaged, StringComparison.Ordinal))
+            {
+                normalizedReason = ReasonDamaged;
+            }
+
+            string normalizedMethod = dispositionMethod?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedReason) || string.IsNullOrWhiteSpace(normalizedMethod))
+            {
+                return null;
+            }
+
+            bool isLostReason = string.Equals(normalizedReason, ReasonLost, StringComparison.Ordinal);
+            bool isInventoryCancel = string.Equals(normalizedMethod, MethodInventoryCancel, StringComparison.Ordinal);
+
+            if (isLostReason && !isInventoryCancel)
+            {
+                return $"离库原因为「{ReasonLost}」时，处置方式必须为「{MethodInventoryCancel}」。";
+            }
+
+            if (!isLostReason && isInventoryCancel)
+            {
+                return $"处置方式「{MethodInventoryCancel}」仅适用于离库原因「{ReasonLost}」。";
+            }
+
+            return null;
         }
 
         /// <summary>工作流状态展示。</summary>

@@ -305,14 +305,20 @@ namespace DocMgr.Services.YearlyArchive
 
             if (string.Equals(entry.EntryKind, ArchiveOutboundDomainValues.SyncEntryKindWithdrawalLedger, StringComparison.Ordinal))
             {
-                afterLifecycle = item.NeedReturn
-                    ? FilingFactLifecycleStatus.Borrowed
-                    : FilingFactLifecycleStatus.Transferred;
+                bool electronicHardDiskDiskReturnOnly =
+                    ArchiveOutboundReturnSupport.IsElectronicHardDiskWithdrawalDiskReturnOnly(item);
+
+                afterLifecycle = electronicHardDiskDiskReturnOnly || !item.NeedReturn
+                    ? FilingFactLifecycleStatus.Transferred
+                    : FilingFactLifecycleStatus.Borrowed;
                 summary = item.UsageMode switch
                 {
-                    ArchiveOutboundDomainValues.UsageModeWithdrawal => item.NeedReturn
-                        ? "资料出库办结 · 提档借出"
-                        : "资料出库办结 · 提档（不需归还）",
+                    ArchiveOutboundDomainValues.UsageModeWithdrawal when electronicHardDiskDiskReturnOnly && item.NeedReturn
+                        => "资料出库办结 · 提档（资料不还，载体硬盘待归还）",
+                    ArchiveOutboundDomainValues.UsageModeWithdrawal when item.NeedReturn
+                        => "资料出库办结 · 提档借出",
+                    ArchiveOutboundDomainValues.UsageModeWithdrawal
+                        => "资料出库办结 · 提档（不需归还）",
                     _ => "资料出库办结"
                 };
                 return;

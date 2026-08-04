@@ -110,6 +110,12 @@ namespace DocMgr.Models.YearlyArchive
 
         public YearlyArchiveOutboundRecord OutboundRecord { get; set; } = null!;
 
+        /// <summary>
+        /// 提档数据硬盘编号展示快照（非持久化，由加载出库单时按立档事实回填）。
+        /// </summary>
+        [NotMapped]
+        public string FiledHardDiskCodes { get; set; } = string.Empty;
+
         [NotMapped]
         public string NeedReturnDisplay =>
             UsageMode == ArchiveOutboundDomainValues.UsageModeWithdrawal

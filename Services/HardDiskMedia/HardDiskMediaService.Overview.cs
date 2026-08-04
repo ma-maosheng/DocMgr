@@ -222,6 +222,7 @@ namespace DocMgr.Services.HardDiskMedia
             int inStockData = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockData);
             int inStockDamaged = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockDamaged);
             int inStockLost = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockLost);
+            int inStockScrap = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockScrap);
             int outTemporary = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusOutTemporary);
             int outLongTerm = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusOutLongTerm);
             int outPermanent = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusOutPermanent);
@@ -232,7 +233,7 @@ namespace DocMgr.Services.HardDiskMedia
             return
             [
                 $"介质属性结构：空白介质 {blankCount} 块，资料载体 {carrierCount} 块，纳入需归还控制 {needReturnCount} 块，征用锁占用 {locked} 块。",
-                $"在库结构：空盘 {inStockBlank} 块、资料载体 {inStockData} 块、损坏待处置 {inStockDamaged} 块、盘失 {inStockLost} 块。",
+                $"在库结构：空盘 {inStockBlank} 块、资料载体 {inStockData} 块、损坏待处置 {inStockDamaged} 块、盘失 {inStockLost} 块、拟销 {inStockScrap} 块。",
                 $"在外/终态结构：临时借出 {outTemporary} 块、长期借出 {outLongTerm} 块、永久移交 {outPermanent} 块、离库处置 {disposed} 块、出库挂失 {outLost} 块。",
                 $"归还控制结构：临时借出且需归还 {temporaryNeedReturnCount} 块，长期借出且需归还 {longTermNeedReturnCount} 块。"
             ];
@@ -260,7 +261,8 @@ namespace DocMgr.Services.HardDiskMedia
             int damagedInStockCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockDamaged);
             int lostCount = mediaItems.Count(item =>
                 item.CurrentStatus == HardDiskMedium.StatusOutLost
-                || item.CurrentStatus == HardDiskMedium.StatusInStockLost);
+                || item.CurrentStatus == HardDiskMedium.StatusInStockLost
+                || item.CurrentStatus == HardDiskMedium.StatusInStockScrap);
             int lockedCount = mediaItems.Count(item => item.IsLocked);
 
             int submittedCount = applicationItems.Count(item => item.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted);
@@ -275,7 +277,7 @@ namespace DocMgr.Services.HardDiskMedia
                 $"归还控制风险：需归还 {needReturnCount} 块（临时 {temporaryNeedReturnCount}、长期 {longTermNeedReturnCount}），逾期未归还 {overdueCount} 单。",
                 $"基础台账风险：缺台账 {missingLedgerCount} 块，在库未登记位置 {missingLocationCount} 块，出库未明确保管 {outboundWithoutKeeperCount} 块，征用锁占用 {lockedCount} 块。",
                 $"流程积压风险：申请待审批 {submittedCount} / 待实物交接 {pendingHandoverCount} / 待上传签批 {pendingUploadCount} / 待办结 {pendingCompleteCount}；离库处置进行中 {pendingDisposalCount} 单；盘库草稿 {draftInventoryCount} 单。",
-                $"介质状态风险：长期借出 {longTermBorrowedCount} 块，在库损坏 {damagedInStockCount} 块，挂失/盘失 {lostCount} 块。"
+                $"介质状态风险：长期借出 {longTermBorrowedCount} 块，在库损坏 {damagedInStockCount} 块，挂失/盘失/拟销 {lostCount} 块。"
             ];
         }
 
@@ -459,7 +461,7 @@ namespace DocMgr.Services.HardDiskMedia
                 || item.CurrentStatus == HardDiskMedium.StatusOutLost;
         }
 
-        /// <summary>资料室在库且通常需要档口定位的状态（不含盘失）。</summary>
+        /// <summary>资料室在库且通常需要档口定位的状态（不含盘失/拟销）。</summary>
         private static bool IsLocatableInStockStatus(OverviewMediumSnapshot item)
         {
             return item.CurrentStatus == HardDiskMedium.StatusInStockBlank

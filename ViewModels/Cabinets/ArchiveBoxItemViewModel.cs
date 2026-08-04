@@ -1,4 +1,5 @@
 using System.Windows;
+using DocMgr.Models.Cabinets;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.Cabinets
@@ -8,6 +9,8 @@ namespace DocMgr.ViewModels.Cabinets
         private const double RenderHeightScale = 0.9d;
         private bool _isContextMenuOpen;
         private bool _isSelected;
+        private readonly CabinetOpenStatusBadgeSupport.ArchiveBoxCornerLayout _corners;
+        private readonly bool _hasInventoryMarkWash;
 
         public bool IsSelected
         {
@@ -37,9 +40,12 @@ namespace DocMgr.ViewModels.Cabinets
             OnPropertyChanged(nameof(CountBackground));
             OnPropertyChanged(nameof(CountBorderBrush));
             OnPropertyChanged(nameof(CountForeground));
-            OnPropertyChanged(nameof(SpecificationBadgeBackground));
-            OnPropertyChanged(nameof(SpecificationBadgeBorderBrush));
-            OnPropertyChanged(nameof(SpecificationBadgeForeground));
+            OnPropertyChanged(nameof(NwBadgeBackground));
+            OnPropertyChanged(nameof(NwBadgeBorderBrush));
+            OnPropertyChanged(nameof(NwBadgeForeground));
+            OnPropertyChanged(nameof(SwBadgeBackground));
+            OnPropertyChanged(nameof(SwBadgeBorderBrush));
+            OnPropertyChanged(nameof(SwBadgeForeground));
             OnPropertyChanged(nameof(RenderZIndex));
         }
 
@@ -77,14 +83,26 @@ namespace DocMgr.ViewModels.Cabinets
             HasPendingReturn = PendingReturnCopyCount > 0;
             HasOccupationLock = hasOccupationLock;
             OccupationLockToolTipText = occupationLockToolTipText?.Trim() ?? string.Empty;
-            OccupationLockBadgeText = string.IsNullOrWhiteSpace(occupationLockBadgeText)
-                ? (hasOccupationLock ? "预订" : string.Empty)
-                : occupationLockBadgeText.Trim();
+            OccupationLockBadgeText = CabinetOpenStatusBadgeSupport.NormalizeReservationDisplayText(
+                hasOccupationLock,
+                occupationLockBadgeText);
             InventoryMarkBadgeText = inventoryMarkBadgeText?.Trim() ?? string.Empty;
             IsYearlyArchiveDisplay = isYearlyArchiveDisplay;
             ArchiveSequenceNoShortText = archiveSequenceNoShortText?.Trim() ?? string.Empty;
             YearDisplayText = FormatLabelValue("年度", yearText);
             ProjectDisplayText = FormatLabelValue("项目", projectText);
+
+            bool isNonStandard = !string.IsNullOrWhiteSpace(BoxSpecification)
+                && BoxSpecification.Contains("非标", System.StringComparison.OrdinalIgnoreCase);
+            IsNonStandardSpecification = isNonStandard;
+            _corners = CabinetOpenStatusBadgeSupport.ResolveArchiveBox(
+                IsMixedPlacement,
+                InventoryMarkBadgeText,
+                PendingReturnCopyCount,
+                HasOccupationLock,
+                OccupationLockToolTipText,
+                isNonStandard);
+            _hasInventoryMarkWash = _corners.HasInventoryMarkWash;
         }
 
         public int YearlyArchiveBoxId { get; init; }
@@ -101,10 +119,46 @@ namespace DocMgr.ViewModels.Cabinets
 
         public string InventoryMarkBadgeText { get; init; } = string.Empty;
 
-        public Visibility OccupationLockBadgeVisibility => HasOccupationLock && !IsMixedPlacement ? Visibility.Visible : Visibility.Collapsed;
+        public string NwBadgeText => _corners.Nw.Text;
+        public string NwBadgeBackground => IsHighlighted ? "#DBEAFE" : _corners.Nw.Background;
+        public string NwBadgeBorderBrush => IsHighlighted ? "#93C5FD" : _corners.Nw.BorderBrush;
+        public string NwBadgeForeground => IsHighlighted ? "#1D4ED8" : _corners.Nw.Foreground;
+        public string NwBadgeToolTip => string.IsNullOrWhiteSpace(_corners.Nw.ToolTip) ? NwBadgeText : _corners.Nw.ToolTip;
+        public Visibility NwBadgeVisibility => _corners.Nw.Visibility;
 
+        public string NeBadgeText => _corners.Ne.Text;
+        public string NeBadgeBackground => _corners.Ne.Background;
+        public string NeBadgeBorderBrush => _corners.Ne.BorderBrush;
+        public string NeBadgeForeground => _corners.Ne.Foreground;
+        public Visibility NeBadgeVisibility => _corners.Ne.Visibility;
+
+        public string NeSecondaryBadgeText => _corners.NeSecondary.Text;
+        public string NeSecondaryBadgeBackground => _corners.NeSecondary.Background;
+        public string NeSecondaryBadgeBorderBrush => _corners.NeSecondary.BorderBrush;
+        public string NeSecondaryBadgeForeground => _corners.NeSecondary.Foreground;
+        public Visibility NeSecondaryBadgeVisibility => _corners.NeSecondary.Visibility;
+
+        public string SeBadgeText => _corners.Se.Text;
+        public string SeBadgeBackground => _corners.Se.Background;
+        public string SeBadgeBorderBrush => _corners.Se.BorderBrush;
+        public string SeBadgeForeground => _corners.Se.Foreground;
+        public Visibility SeBadgeVisibility => _corners.Se.Visibility;
+
+        public string SwBadgeText => _corners.Sw.Text;
+        public string SwBadgeBackground => _corners.Sw.Background;
+        public string SwBadgeBorderBrush => _corners.Sw.BorderBrush;
+        public string SwBadgeForeground => _corners.Sw.Foreground;
+        public string SwBadgeToolTip => string.IsNullOrWhiteSpace(_corners.Sw.ToolTip) ? SwBadgeText : _corners.Sw.ToolTip;
+        public Visibility SwBadgeVisibility => _corners.Sw.Visibility;
+
+        /// <summary>兼容旧绑定：占用角标可见性（左下预订）。</summary>
+        public Visibility OccupationLockBadgeVisibility => HasOccupationLock && !IsMixedPlacement
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        /// <summary>兼容旧绑定：盘库角标可见性（右上，含失/销并排）。</summary>
         public Visibility InventoryMarkBadgeVisibility =>
-            !IsMixedPlacement && !string.IsNullOrWhiteSpace(InventoryMarkBadgeText)
+            NeBadgeVisibility == Visibility.Visible || NeSecondaryBadgeVisibility == Visibility.Visible
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
@@ -228,43 +282,30 @@ namespace DocMgr.ViewModels.Cabinets
             ? "盒面向外"
             : "盒脊向外";
 
-        public string PlacementModeBadgeText => string.Equals(PlacementMode, "FrontOut", System.StringComparison.OrdinalIgnoreCase)
-            ? "面外"
-            : "脊外";
+        public Visibility MixedBadgeVisibility =>
+            string.Equals(NwBadgeText, CabinetOpenStatusBadgeSupport.MixedBadgeText, System.StringComparison.Ordinal)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
-        public string PlacementModeBadgeBackground => string.Equals(PlacementMode, "FrontOut", System.StringComparison.OrdinalIgnoreCase)
-            ? "#DBEAFE"
-            : "#DCFCE7";
-
-        public string PlacementModeBadgeBorderBrush => string.Equals(PlacementMode, "FrontOut", System.StringComparison.OrdinalIgnoreCase)
-            ? "#93C5FD"
-            : "#86EFAC";
-
-        public string PlacementModeBadgeForeground => string.Equals(PlacementMode, "FrontOut", System.StringComparison.OrdinalIgnoreCase)
-            ? "#1D4ED8"
-            : "#166534";
-
-        public Visibility MixedBadgeVisibility => IsMixedPlacement ? Visibility.Visible : Visibility.Collapsed;
-
-        public Visibility PendingReturnBadgeVisibility => HasPendingReturn && !IsMixedPlacement ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility PendingReturnBadgeVisibility => SeBadgeVisibility;
 
         public Visibility PendingReturnDetailMenuVisibility =>
             HasPendingReturn && YearlyArchiveBoxId > 0 && !IsMixedPlacement
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
-        public string PendingReturnBadgeText => PendingReturnCopyCount > 1
-            ? $"待还{PendingReturnCopyCount}份"
-            : "待还";
+        public string PendingReturnBadgeText => SeBadgeText;
 
         public string PendingReturnStatusText => PendingReturnCopyCount > 1
             ? $"部分提档待还 {PendingReturnCopyCount} 份"
             : "部分提档待还";
 
-        public bool IsNonStandardSpecification => !string.IsNullOrWhiteSpace(BoxSpecification)
-            && BoxSpecification.Contains("非标", System.StringComparison.OrdinalIgnoreCase);
+        public bool IsNonStandardSpecification { get; }
 
-        public Visibility NonStandardBadgeVisibility => IsNonStandardSpecification ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility NonStandardBadgeVisibility =>
+            string.Equals(NwBadgeText, CabinetOpenStatusBadgeSupport.NonStandardBadgeText, System.StringComparison.Ordinal)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
         public bool IsContextMenuOpen
         {
@@ -280,39 +321,131 @@ namespace DocMgr.ViewModels.Cabinets
             }
         }
 
-        public string BoxBackground => IsHighlighted ? "#DBEAFE" : IsMixedPlacement ? "#FEF2F2" : HasPendingReturn ? "#FFF7ED" : "#FFF8E1";
+        public string BoxBackground => IsHighlighted
+            ? "#DBEAFE"
+            : IsMixedPlacement
+                ? "#FEF2F2"
+                : _hasInventoryMarkWash
+                    ? "#FEF2F2"
+                    : HasPendingReturn
+                        ? "#FFF7ED"
+                        : "#FFF8E1";
 
-        public string BoxBorderBrush => IsHighlighted ? "#2563EB" : IsMixedPlacement ? "#FCA5A5" : HasPendingReturn ? "#FDBA74" : "#D97706";
+        public string BoxBorderBrush => IsHighlighted
+            ? "#2563EB"
+            : IsMixedPlacement
+                ? "#FCA5A5"
+                : _hasInventoryMarkWash
+                    ? "#FCA5A5"
+                    : HasPendingReturn
+                        ? "#FDBA74"
+                        : "#D97706";
 
         public double BoxBorderThickness => IsHighlighted ? 2d : 0.6d;
 
-        public string AccentBrush => IsHighlighted ? "#2563EB" : IsMixedPlacement ? "#DC2626" : HasPendingReturn ? "#F59E0B" : "#C2410C";
+        public string AccentBrush => IsHighlighted
+            ? "#2563EB"
+            : IsMixedPlacement
+                ? "#DC2626"
+                : _hasInventoryMarkWash
+                    ? "#EF4444"
+                    : HasPendingReturn
+                        ? "#F59E0B"
+                        : "#C2410C";
 
-        public string TitleForeground => IsHighlighted ? "#1E3A8A" : IsMixedPlacement ? "#991B1B" : HasPendingReturn ? "#9A3412" : "#7C2D12";
+        public string TitleForeground => IsHighlighted
+            ? "#1E3A8A"
+            : IsMixedPlacement
+                ? "#991B1B"
+                : _hasInventoryMarkWash
+                    ? "#991B1B"
+                    : HasPendingReturn
+                        ? "#9A3412"
+                        : "#7C2D12";
 
-        public string CategoryForeground => IsHighlighted ? "#1D4ED8" : IsMixedPlacement ? "#B91C1C" : HasPendingReturn ? "#C2410C" : "#92400E";
+        public string CategoryForeground => IsHighlighted
+            ? "#1D4ED8"
+            : IsMixedPlacement
+                ? "#B91C1C"
+                : _hasInventoryMarkWash
+                    ? "#B91C1C"
+                    : HasPendingReturn
+                        ? "#C2410C"
+                        : "#92400E";
 
-        public string ArchiveTypeForeground => IsHighlighted ? "#2563EB" : IsMixedPlacement ? "#DC2626" : HasPendingReturn ? "#EA580C" : "#B45309";
+        public string ArchiveTypeForeground => IsHighlighted
+            ? "#2563EB"
+            : IsMixedPlacement
+                ? "#DC2626"
+                : _hasInventoryMarkWash
+                    ? "#DC2626"
+                    : HasPendingReturn
+                        ? "#EA580C"
+                        : "#B45309";
 
-        public string CountBackground => IsHighlighted ? "#EFF6FF" : IsMixedPlacement ? "#FFF1F2" : HasPendingReturn ? "#FFEDD5" : "#FFFBEB";
+        public string CountBackground => IsHighlighted
+            ? "#EFF6FF"
+            : IsMixedPlacement
+                ? "#FFF1F2"
+                : _hasInventoryMarkWash
+                    ? "#FEE2E2"
+                    : HasPendingReturn
+                        ? "#FFEDD5"
+                        : "#FFFBEB";
 
-        public string CountBorderBrush => IsHighlighted ? "#60A5FA" : IsMixedPlacement ? "#FCA5A5" : HasPendingReturn ? "#FDBA74" : "#FCD34D";
+        public string CountBorderBrush => IsHighlighted
+            ? "#60A5FA"
+            : IsMixedPlacement
+                ? "#FCA5A5"
+                : _hasInventoryMarkWash
+                    ? "#FCA5A5"
+                    : HasPendingReturn
+                        ? "#FDBA74"
+                        : "#FCD34D";
 
-        public string CountForeground => IsHighlighted ? "#1D4ED8" : IsMixedPlacement ? "#B91C1C" : HasPendingReturn ? "#C2410C" : "#92400E";
+        public string CountForeground => IsHighlighted
+            ? "#1D4ED8"
+            : IsMixedPlacement
+                ? "#B91C1C"
+                : _hasInventoryMarkWash
+                    ? "#B91C1C"
+                    : HasPendingReturn
+                        ? "#C2410C"
+                        : "#92400E";
 
-        public string SpecificationBadgeBackground => IsHighlighted ? "#DBEAFE" : "#EDE9FE";
+        public string SpecificationBadgeBackground => NwBadgeBackground;
 
-        public string SpecificationBadgeBorderBrush => IsHighlighted ? "#93C5FD" : "#C4B5FD";
+        public string SpecificationBadgeBorderBrush => NwBadgeBorderBrush;
 
-        public string SpecificationBadgeForeground => IsHighlighted ? "#1D4ED8" : "#6D28D9";
+        public string SpecificationBadgeForeground => NwBadgeForeground;
 
         public int RenderZIndex => IsHighlighted ? 1000 : SequenceIndex;
 
-        public string ToolTipText => IsMixedPlacement
-            ? $"档案盒：{BoxCode}\n盒签：{BoxLabel}\n状态：混放待梳理\n来源：{SourceSummaryText}\n标识信息：\n{ArchiveIdentifierDetailText}\n条目数：{ItemCount}条\n统计：{CountText}\n规格：{(string.IsNullOrWhiteSpace(BoxSpecification) ? "未登记" : BoxSpecification)}\n摆放：{PlacementModeText}\n涉及档案盒：{(string.IsNullOrWhiteSpace(RelatedBoxCodesText) ? "未登记" : RelatedBoxCodesText)}\n原始登记：{(string.IsNullOrWhiteSpace(OriginalBoxNumberText) ? "未登记" : OriginalBoxNumberText)}\n待梳理关联记录：{PendingSortingRecordCount}条\n提示：{MixedPlacementHint}"
-            : HasPendingReturn
-                ? $"档案盒：{BoxCode}\n盒签：{BoxLabel}\n状态：{PendingReturnStatusText}\n来源：{SourceSummaryText}\n标识信息：\n{ArchiveIdentifierDetailText}\n条目数：{ItemCount}条\n统计：{(string.IsNullOrWhiteSpace(CountText) ? "未登记" : CountText)}\n规格：{(string.IsNullOrWhiteSpace(BoxSpecification) ? "未登记" : BoxSpecification)}\n摆放：{PlacementModeText}\n档口：{SlotCode}\n序位：{SequenceIndex}{BuildOccupationLockToolTipSuffix()}"
-                : $"档案盒：{BoxCode}\n盒签：{BoxLabel}\n来源：{SourceSummaryText}\n标识信息：\n{ArchiveIdentifierDetailText}\n条目数：{ItemCount}条\n统计：{(string.IsNullOrWhiteSpace(CountText) ? "未登记" : CountText)}\n规格：{(string.IsNullOrWhiteSpace(BoxSpecification) ? "未登记" : BoxSpecification)}\n摆放：{PlacementModeText}\n档口：{SlotCode}\n序位：{SequenceIndex}{BuildOccupationLockToolTipSuffix()}";
+        public string ToolTipText
+        {
+            get
+            {
+                string baseText = IsMixedPlacement
+                    ? $"档案盒：{BoxCode}\n盒签：{BoxLabel}\n状态：混放待梳理\n来源：{SourceSummaryText}\n标识信息：\n{ArchiveIdentifierDetailText}\n条目数：{ItemCount}条\n统计：{CountText}\n规格：{(string.IsNullOrWhiteSpace(BoxSpecification) ? "未登记" : BoxSpecification)}\n摆放：{PlacementModeText}\n涉及档案盒：{(string.IsNullOrWhiteSpace(RelatedBoxCodesText) ? "未登记" : RelatedBoxCodesText)}\n原始登记：{(string.IsNullOrWhiteSpace(OriginalBoxNumberText) ? "未登记" : OriginalBoxNumberText)}\n待梳理关联记录：{PendingSortingRecordCount}条\n提示：{MixedPlacementHint}"
+                    : HasPendingReturn
+                        ? $"档案盒：{BoxCode}\n盒签：{BoxLabel}\n状态：{PendingReturnStatusText}\n来源：{SourceSummaryText}\n标识信息：\n{ArchiveIdentifierDetailText}\n条目数：{ItemCount}条\n统计：{(string.IsNullOrWhiteSpace(CountText) ? "未登记" : CountText)}\n规格：{(string.IsNullOrWhiteSpace(BoxSpecification) ? "未登记" : BoxSpecification)}\n摆放：{PlacementModeText}\n档口：{SlotCode}\n序位：{SequenceIndex}{BuildOccupationLockToolTipSuffix()}"
+                        : $"档案盒：{BoxCode}\n盒签：{BoxLabel}\n来源：{SourceSummaryText}\n标识信息：\n{ArchiveIdentifierDetailText}\n条目数：{ItemCount}条\n统计：{(string.IsNullOrWhiteSpace(CountText) ? "未登记" : CountText)}\n规格：{(string.IsNullOrWhiteSpace(BoxSpecification) ? "未登记" : BoxSpecification)}\n摆放：{PlacementModeText}\n档口：{SlotCode}\n序位：{SequenceIndex}{BuildOccupationLockToolTipSuffix()}";
+
+                if (!string.IsNullOrWhiteSpace(_corners.NonStandardToolTipSuffix)
+                    && !baseText.Contains("非标", System.StringComparison.Ordinal))
+                {
+                    baseText += $"\n{_corners.NonStandardToolTipSuffix}";
+                }
+
+                string inventoryDisplay = CabinetOpenStatusBadgeSupport.FormatInventoryMarkDisplayText(InventoryMarkBadgeText);
+                if (!string.IsNullOrWhiteSpace(inventoryDisplay))
+                {
+                    baseText += $"\n盘库标识：{inventoryDisplay}";
+                }
+
+                return baseText;
+            }
+        }
 
         private string BuildOccupationLockToolTipSuffix()
             => HasOccupationLock && !string.IsNullOrWhiteSpace(OccupationLockToolTipText)

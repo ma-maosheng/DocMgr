@@ -9,7 +9,6 @@
         WindowStartupLocation="CenterOwner"
         Background="#F5F0E8">
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <Style x:Key="InvFooterButtonStyle" TargetType="Button" BasedOn="{StaticResource DialogPrimaryActionButtonStyle}">
             <Setter Property="Width" Value="Auto"/>
             <Setter Property="MinWidth" Value="96"/>
@@ -45,37 +44,132 @@
         </Border>
 
         <Grid Grid.Row="1" Margin="12">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="96"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-            <Border Grid.Row="0" Background="#FFFDF7" BorderBrush="#E2C98F" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,10">
+            <Border Grid.Column="0" Background="White" BorderBrush="#E2C98F" BorderThickness="1" CornerRadius="6" Padding="8">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="160"/>
-                        <ColumnDefinition Width="160"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="220"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                        <TextBlock Text="登记单编号" Foreground="#9A7B3F" FontSize="12" Margin="0,0,0,4"/>
-                        <TextBox Text="{Binding RegisterNo, Mode=OneWay}" IsReadOnly="True" Height="{StaticResource DialogFormControlHeight}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Margin="0,0,12,0">
-                        <TextBlock Text="登记类型" Foreground="#9A7B3F" FontSize="12" Margin="0,0,0,4"/>
-                        <ComboBox ItemsSource="{Binding RegisterKindOptions}"
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="{Binding AvailableDisksTitle}" FontWeight="SemiBold" Foreground="#6F4A00" Margin="0,0,0,8"/>
+                    <DockPanel Grid.Row="1" Margin="0,0,0,8">
+                        <TextBlock Text="筛选" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#9A7B3F"/>
+                        <TextBox Text="{Binding FilterKeyword, UpdateSourceTrigger=PropertyChanged}" Height="{StaticResource DialogFormControlHeight}"/>
+                    </DockPanel>
+                    <DataGrid Grid.Row="2"
+                              ItemsSource="{Binding AvailableDisks}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              IsReadOnly="False"
+                              SelectionMode="Extended"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              BorderThickness="0"
+                              RowHeight="36">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
+                            <DataGridTextColumn Header="硬盘编号" Binding="{Binding DiskCode}" Width="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="状态" Binding="{Binding MediaStatus}" Width="90" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="档口" Binding="{Binding StorageLocation}" Width="*" IsReadOnly="True"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Button Content="加入 →" Command="{Binding MoveToRegisterCommand}" Style="{StaticResource InvTransferButtonStyle}"/>
+                <Button Content="← 移除" Command="{Binding MoveToAvailableCommand}" Style="{StaticResource InvTransferButtonStyle}"/>
+            </StackPanel>
+
+            <Border Grid.Column="2" Background="White" BorderBrush="#E2C98F" BorderThickness="1" CornerRadius="6" Padding="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="{Binding RegisterDisksTitle}" FontWeight="SemiBold" Foreground="#6F4A00" Margin="0,0,0,8"/>
+                    <DockPanel Grid.Row="1" Margin="0,0,0,8" LastChildFill="False">
+                        <TextBlock Text="登记类型" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#9A7B3F" DockPanel.Dock="Left"/>
+                        <ComboBox Width="140"
+                                  DockPanel.Dock="Left"
+                                  Height="{StaticResource DialogFormControlHeight}"
+                                  ItemsSource="{Binding RegisterKindOptions}"
                                   SelectedItem="{Binding RegisterKind}"
-                                  IsEnabled="{Binding CanEditHeader}"
-                                  Height="{StaticResource DialogFormControlHeight}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Margin="0,0,12,0">
+                                  IsEnabled="{Binding CanEditHeader}"/>
+                    </DockPanel>
+                    <DataGrid Grid.Row="2"
+                              ItemsSource="{Binding Items}"
+                              SelectedItem="{Binding SelectedItem}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              IsReadOnly="False"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              BorderThickness="0"
+                              RowHeight="36">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
+                            <DataGridTextColumn Header="硬盘编号" Binding="{Binding DiskCode}" Width="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="登记类型" Binding="{Binding DataContext.RegisterKind, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Width="90" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="原状态" Binding="{Binding BeforeMediaStatus}" Width="90" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="原档口" Binding="{Binding BeforeStorageLocation}" Width="110" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="目标档口"
+                                                Binding="{Binding TargetStorageLocation, UpdateSourceTrigger=PropertyChanged}"
+                                                Width="*"
+                                                IsReadOnly="{Binding DataContext.IsTargetLocationColumnReadOnly, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"/>
+                            <DataGridTemplateColumn Header="推荐档口" Width="82">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="推荐"
+                                                Command="{Binding DataContext.RecommendTargetLocationCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource ToolbarActionButtonStyle}"
+                                                Height="{StaticResource DialogFormControlHeight}"
+                                                MinWidth="56"
+                                                Padding="6,0"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="档口预览" Width="82">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="预览"
+                                                Command="{Binding DataContext.ShowTargetLocationPreviewCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource ToolbarActionButtonStyle}"
+                                                Height="{StaticResource DialogFormControlHeight}"
+                                                MinWidth="56"
+                                                Padding="6,0"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Grid.Row="3"
+                               Margin="0,8,0,0"
+                               Text="{Binding TargetLocationHint, Mode=OneWay}"
+                               Foreground="#9A7B3F"
+                               TextWrapping="Wrap"/>
+                    <StackPanel Grid.Row="4" Margin="0,8,0,0">
                         <TextBlock Text="登记说明" Foreground="#9A7B3F" FontSize="12" Margin="0,0,0,4"/>
                         <TextBox Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
                                  IsEnabled="{Binding CanEditHeader}"
-                                 Height="{StaticResource DialogFormControlHeight}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="3">
+                                 Height="{StaticResource DialogFormControlHeight}"
+                                 Margin="0,0,0,8"/>
                         <TextBlock Text="备注" Foreground="#9A7B3F" FontSize="12" Margin="0,0,0,4"/>
                         <TextBox Text="{Binding Remark, UpdateSourceTrigger=PropertyChanged}"
                                  IsEnabled="{Binding CanEditHeader}"
@@ -83,98 +177,6 @@
                     </StackPanel>
                 </Grid>
             </Border>
-
-            <Grid Grid.Row="1">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="96"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <Border Grid.Column="0" Background="White" BorderBrush="#E2C98F" BorderThickness="1" CornerRadius="6" Padding="8">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Text="{Binding AvailableDisksTitle}" FontWeight="SemiBold" Foreground="#6F4A00" Margin="0,0,0,8"/>
-                        <DockPanel Grid.Row="1" Margin="0,0,0,8">
-                            <TextBlock Text="筛选" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#9A7B3F"/>
-                            <TextBox Text="{Binding FilterKeyword, UpdateSourceTrigger=PropertyChanged}" Height="{StaticResource DialogFormControlHeight}"/>
-                        </DockPanel>
-                        <DataGrid Grid.Row="2"
-                                  ItemsSource="{Binding AvailableDisks}"
-                                  AutoGenerateColumns="False"
-                                  CanUserAddRows="False"
-                                  IsReadOnly="False"
-                                  SelectionMode="Extended"
-                                  HeadersVisibility="Column"
-                                  GridLinesVisibility="Horizontal"
-                                  BorderThickness="0"
-                                  RowHeight="36">
-                            <DataGrid.Columns>
-                                <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
-                                <DataGridTextColumn Header="硬盘编号" Binding="{Binding DiskCode}" Width="100" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="状态" Binding="{Binding MediaStatus}" Width="90" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="档口" Binding="{Binding StorageLocation}" Width="*" IsReadOnly="True"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </Grid>
-                </Border>
-
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <Button Content="加入 →" Command="{Binding MoveToRegisterCommand}" Style="{StaticResource InvTransferButtonStyle}"/>
-                    <Button Content="← 移除" Command="{Binding MoveToAvailableCommand}" Style="{StaticResource InvTransferButtonStyle}"/>
-                </StackPanel>
-
-                <Border Grid.Column="2" Background="White" BorderBrush="#E2C98F" BorderThickness="1" CornerRadius="6" Padding="8">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Text="{Binding RegisterDisksTitle}" FontWeight="SemiBold" Foreground="#6F4A00" Margin="0,0,0,8"/>
-                        <TextBlock Grid.Row="1" Text="{Binding TargetLocationHint}" Foreground="#9A7B3F" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                        <DataGrid Grid.Row="2"
-                                  ItemsSource="{Binding Items}"
-                                  SelectedItem="{Binding SelectedItem}"
-                                  AutoGenerateColumns="False"
-                                  CanUserAddRows="False"
-                                  IsReadOnly="False"
-                                  SelectionMode="Single"
-                                  HeadersVisibility="Column"
-                                  GridLinesVisibility="Horizontal"
-                                  BorderThickness="0"
-                                  RowHeight="36">
-                            <DataGrid.Columns>
-                                <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
-                                <DataGridTextColumn Header="硬盘编号" Binding="{Binding DiskCode}" Width="100" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="原状态" Binding="{Binding BeforeMediaStatus}" Width="90" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="原档口" Binding="{Binding BeforeStorageLocation}" Width="110" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="目标档口" Binding="{Binding TargetStorageLocation, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                        <StackPanel Grid.Row="3"
-                                    Orientation="Horizontal"
-                                    Margin="0,8,0,0"
-                                    HorizontalAlignment="Left"
-                                    Visibility="{Binding RequiresTargetLocation, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <Button Content="推荐档口"
-                                    Command="{Binding RecommendTargetLocationCommand}"
-                                    Style="{StaticResource ToolbarActionButtonStyle}"
-                                    Width="96"/>
-                            <Button Content="档口预览"
-                                    Command="{Binding ShowTargetLocationPreviewCommand}"
-                                    Style="{StaticResource ToolbarActionButtonStyle}"
-                                    Width="96"
-                                    Margin="8,0,0,0"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-            </Grid>
         </Grid>
 
         <Border Grid.Row="2" Background="#FFFDF7" BorderBrush="#E2C98F" BorderThickness="0,1,0,0" Padding="12,10">

@@ -76,6 +76,11 @@ public interface ICabinetOpenLayoutRepository
     /// <summary>读取电子介质袋关联硬盘的占用锁记录。</summary>
     IReadOnlyList<CabinetHardDiskOccupationLockInfo> GetHardDiskOccupationLocksByElectronicUnitId(int electronicArchiveUnitId);
 
+    /// <summary>
+    /// 读取电子介质袋关联硬盘/光盘的台账状态，键为介质编号（DiskCode / DiscCode）。
+    /// </summary>
+    IReadOnlyDictionary<string, string> GetLinkedMediumInventoryStatusesByElectronicUnitId(int electronicArchiveUnitId);
+
     /// <summary>按硬盘介质 Id 汇总在途出库申请占用（含永久出库，弥补历史未写入征用锁的记录）。</summary>
     Dictionary<int, CabinetOccupationLockDescriptor> GetActiveOutboundApplicationLocksByMediumIds(IReadOnlyCollection<int> mediumIds);
 

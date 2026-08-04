@@ -3,7 +3,8 @@ using DocMgr.Models.YearlyArchive;
 namespace DocMgr.Services.YearlyArchive
 {
     /// <summary>
-    /// 档案盒内资料子项份数分解：立档份数 = 库内 + 待还 + 不还 + 归还灭失 + 盘库丢失。
+    /// 档案盒内资料子项份数分解：立档份数 = 库内 + 待还 + 不还 + 出库灭失 + 盘库丢失（拟销不进恒等式，仍展示）。
+    /// 电子「介质盘库状态」由台账映射，不使用本类文案。
     /// </summary>
     public static class ArchiveBoxMediaItemCopyCountSupport
     {
@@ -12,7 +13,8 @@ namespace DocMgr.Services.YearlyArchive
             int pendingReturnCopyCount,
             int noReturnCopyCount,
             int lostCopyCount,
-            int inventoryLostCopyCount = 0)
+            int inventoryLostCopyCount = 0,
+            int inventoryScrapCopyCount = 0)
         {
             ArgumentNullException.ThrowIfNull(fact);
 
@@ -24,11 +26,11 @@ namespace DocMgr.Services.YearlyArchive
             if (isElectronic)
             {
                 return ResolveElectronic(
-                    fact,
                     pendingReturnCopyCount,
                     noReturnCopyCount,
                     lostCopyCount,
-                    inventoryLostCopyCount);
+                    inventoryLostCopyCount,
+                    inventoryScrapCopyCount);
             }
 
             int filedCopyCount = SimulatedInArchiveCopyCountSupport.ResolveFiledCopyCount(fact.ContentCount);
@@ -36,6 +38,7 @@ namespace DocMgr.Services.YearlyArchive
             int noReturn = Math.Max(0, noReturnCopyCount);
             int lost = Math.Max(0, lostCopyCount);
             int inventoryLost = Math.Max(0, inventoryLostCopyCount);
+            int inventoryScrap = Math.Max(0, inventoryScrapCopyCount);
             int currentInArchive = SimulatedInArchiveCopyCountSupport.ResolveCurrentInArchiveCopyCount(
                 filedCopyCount,
                 pending,
@@ -51,21 +54,23 @@ namespace DocMgr.Services.YearlyArchive
                 NoReturnCopyCount = noReturn,
                 LostCopyCount = lost,
                 InventoryLostCopyCount = inventoryLost,
+                InventoryScrapCopyCount = inventoryScrap,
             };
         }
 
         private static MediaItemCopyCountBreakdown ResolveElectronic(
-            YearlyArchiveFilingFact fact,
             int pendingReturnCopyCount,
             int noReturnCopyCount,
             int lostCopyCount,
-            int inventoryLostCopyCount)
+            int inventoryLostCopyCount,
+            int inventoryScrapCopyCount)
         {
-            // 电子介质不存在部分提档，待还按整件（0 或 1）表达。
+            // 电子介质拷贝型出库、无需归还：份数列在 UI 显示为 —；此处仍按整件快照计算内部值。
             int pending = Math.Max(0, pendingReturnCopyCount) > 0 ? 1 : 0;
             int noReturn = Math.Max(0, noReturnCopyCount);
             int lost = Math.Max(0, lostCopyCount);
             int inventoryLost = Math.Max(0, inventoryLostCopyCount);
+            int inventoryScrap = Math.Max(0, inventoryScrapCopyCount);
             int current = SimulatedInArchiveCopyCountSupport.ResolveCurrentInArchiveCopyCount(
                 filedCopyCount: 1,
                 pendingReturnCopyCount: pending,
@@ -81,49 +86,9 @@ namespace DocMgr.Services.YearlyArchive
                 NoReturnCopyCount = noReturn > 0 ? 1 : 0,
                 LostCopyCount = lost > 0 ? 1 : 0,
                 InventoryLostCopyCount = inventoryLost > 0 ? 1 : 0,
-                ElectronicStockStatusText = BuildElectronicStockStatusText(current, pending, noReturn, lost, inventoryLost, fact.LifecycleStatus),
+                InventoryScrapCopyCount = inventoryScrap > 0 ? 1 : 0,
+                ElectronicStockStatusText = ArchiveMediumInventoryStatusSupport.DisplayNormal,
             };
-        }
-
-        private static string BuildElectronicStockStatusText(
-            int currentInArchive,
-            int pendingReturn,
-            int noReturn,
-            int lost,
-            int inventoryLost,
-            string lifecycleStatus)
-        {
-            if (lost > 0 || inventoryLost > 0)
-            {
-                return "灭失";
-            }
-
-            if (noReturn > 0)
-            {
-                return "出库不还";
-            }
-
-            if (pendingReturn > 0)
-            {
-                return "出库待还";
-            }
-
-            if (currentInArchive > 0)
-            {
-                return "在库";
-            }
-
-            if (string.Equals(lifecycleStatus, FilingFactLifecycleStatus.Borrowed, StringComparison.Ordinal))
-            {
-                return "借出中";
-            }
-
-            if (string.Equals(lifecycleStatus, FilingFactLifecycleStatus.Disposed, StringComparison.Ordinal))
-            {
-                return "已处置";
-            }
-
-            return "不在库";
         }
     }
 }

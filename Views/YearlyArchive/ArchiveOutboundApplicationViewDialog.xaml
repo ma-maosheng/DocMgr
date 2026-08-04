@@ -10,6 +10,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="ArchiveRegisterResources.xaml"/>
+                <ResourceDictionary Source="ArchiveOutboundDetailCardResources.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         </ResourceDictionary>
@@ -157,20 +158,23 @@
                     </GroupBox>
 
                     <GroupBox Header="3. 出库明细" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
-                        <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" CanUserAddRows="False"
-                                  CanUserResizeRows="False" IsReadOnly="True" HeadersVisibility="Column"
-                                  GridLinesVisibility="Horizontal" MaxHeight="260" Background="#FAFBFC"
-                                  BorderBrush="#E2E8F0" BorderThickness="1" HorizontalGridLinesBrush="#EEF2F6">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" MinWidth="180" Width="*"/>
-                                <DataGridTextColumn Header="明细名称" Binding="{Binding ItemName}" Width="160"/>
-                                <DataGridTextColumn Header="容器编号" Binding="{Binding ContainerCode}" Width="120"/>
-                                <DataGridTextColumn Header="存储位置" Binding="{Binding StorageLocation}" Width="140"/>
-                                <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevel}" Width="70"/>
-                                <DataGridTextColumn Header="领用方式" Binding="{Binding UsageModeDisplay}" Width="80"/>
-                                <DataGridTextColumn Header="份数" Binding="{Binding CopyCount}" Width="60"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                        <StackPanel>
+                            <TextBlock Text="{Binding ContainerUnitsSummary}" Margin="0,0,0,8"
+                                       Foreground="#64748B" FontSize="12"/>
+                            <ItemsControl ItemsSource="{Binding ContainerUnits}"
+                                          ItemTemplate="{StaticResource OutboundReadOnlyDetailCardTemplate}">
+                                <ItemsControl.Style>
+                                    <Style TargetType="ItemsControl">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasContainerUnits}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ItemsControl.Style>
+                            </ItemsControl>
+                        </StackPanel>
                     </GroupBox>
 
                     <GroupBox Header="附件材料" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">

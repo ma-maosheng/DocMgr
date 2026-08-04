@@ -93,7 +93,13 @@ namespace DocMgr.Models.Cabinets
 
         public int LostCopyCount { get; init; }
 
-        /// <summary>电子介质库存状态简化文案。</summary>
+        /// <summary>盘库登记丢失份数。</summary>
+        public int InventoryLostCopyCount { get; init; }
+
+        /// <summary>盘库登记拟销份数。</summary>
+        public int InventoryScrapCopyCount { get; init; }
+
+        /// <summary>介质盘库状态（电子：-/盘损/盘失/盘销；模拟：-）。</summary>
         public string ElectronicStockStatusText { get; init; } = string.Empty;
 
         public bool HasOccupationLock { get; init; }
@@ -104,7 +110,7 @@ namespace DocMgr.Models.Cabinets
         public string CopyCountDisplayText =>
             IsElectronicMedia
                 ? ElectronicStockStatusText
-                : $"{FiledCopyCount}/{CurrentInArchiveCopyCount}/{PendingReturnCopyCount}/{NoReturnCopyCount}/{LostCopyCount}";
+                : $"{FiledCopyCount}/{CurrentInArchiveCopyCount}/{PendingReturnCopyCount}/{NoReturnCopyCount}/{LostCopyCount}/{InventoryLostCopyCount}/{InventoryScrapCopyCount}";
 
         public CabinetArchiveContainerViewMode ViewMode { get; init; } = CabinetArchiveContainerViewMode.HistoryArchiveBox;
     }

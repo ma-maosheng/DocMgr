@@ -14,7 +14,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public const string KindLost = "盘失登记";
         public const string KindDamage = "损坏登记";
-        /// <summary>拟销登记：登记无存档价值的资料（仅模拟轨）。</summary>
+        /// <summary>拟销登记：登记无存档价值的资料；台账状态与流转类型独立于盘失/损坏。</summary>
         public const string KindScrap = "拟销登记";
 
         public const string MediumKindHardDisk = "硬盘";
@@ -22,11 +22,12 @@ namespace DocMgr.Models.YearlyArchive
 
         public const string TransactionTypeInventoryRegister = MaterialTransactionDomainValues.TypeInventoryRegister;
 
-        /// <summary>电子轨登记类型选项（盘失/损坏）。</summary>
+        /// <summary>电子轨登记类型选项（盘失/损坏/拟销）。</summary>
         public static IReadOnlyList<string> RegisterKindOptions { get; } =
         [
             KindLost,
-            KindDamage
+            KindDamage,
+            KindScrap
         ];
 
         /// <summary>模拟轨登记类型选项（盘失/拟销）。</summary>
@@ -53,7 +54,7 @@ namespace DocMgr.Models.YearlyArchive
         {
             string normalized = kind?.Trim() ?? string.Empty;
             return RegisterKindOptions.Any(item => string.Equals(item, normalized, StringComparison.Ordinal))
-                || string.Equals(normalized, KindScrap, StringComparison.Ordinal);
+                || SimulatedRegisterKindOptions.Any(item => string.Equals(item, normalized, StringComparison.Ordinal));
         }
 
         public static bool IsValidMediumKind(string? mediumKind)
@@ -63,7 +64,7 @@ namespace DocMgr.Models.YearlyArchive
                 || string.Equals(normalized, MediumKindOpticalDisc, StringComparison.Ordinal);
         }
 
-        /// <summary>模拟轨支持盘失/拟销；电子轨支持盘失/损坏。</summary>
+        /// <summary>模拟轨支持盘失/拟销；电子轨支持盘失/损坏/拟销。</summary>
         public static bool IsRegisterKindAllowedForMediaKind(string? mediaKind, string? registerKind)
         {
             string normalizedMediaKind = mediaKind?.Trim() ?? string.Empty;
@@ -79,6 +80,9 @@ namespace DocMgr.Models.YearlyArchive
                 string.Equals(item, normalizedRegisterKind, StringComparison.Ordinal));
         }
 
+        public static bool IsScrapRegisterKind(string? registerKind) =>
+            string.Equals(registerKind?.Trim(), KindScrap, StringComparison.Ordinal);
+
         public static string ResolveMediumCodeDisplay(string? mediumKind, string? mediumCode)
         {
             if (string.Equals(mediumKind?.Trim(), MediumKindOpticalDisc, StringComparison.Ordinal))
@@ -89,21 +93,31 @@ namespace DocMgr.Models.YearlyArchive
             return mediumCode?.Trim() ?? string.Empty;
         }
 
-        public static string ResolveHardDiskTransactionType(string? registerKind)
-        {
-            string normalized = registerKind?.Trim() ?? string.Empty;
-            return string.Equals(normalized, KindLost, StringComparison.Ordinal)
-                ? HardDiskMediaTransaction.TypeInventoryRegisterLost
-                : HardDiskMediaTransaction.TypeInventoryRegisterDamage;
-        }
+        /// <summary>资料流转履历：盘失/损坏/拟销各自独立类型。</summary>
+        public static string ResolveMaterialTransactionType(string? registerKind) =>
+            (registerKind?.Trim() ?? string.Empty) switch
+            {
+                KindLost => MaterialTransactionDomainValues.TypeInventoryRegisterLost,
+                KindDamage => MaterialTransactionDomainValues.TypeInventoryRegisterDamage,
+                KindScrap => MaterialTransactionDomainValues.TypeInventoryRegisterScrap,
+                _ => MaterialTransactionDomainValues.TypeInventoryRegister
+            };
 
-        public static string ResolveOpticalDiscTransactionType(string? registerKind)
-        {
-            string normalized = registerKind?.Trim() ?? string.Empty;
-            return string.Equals(normalized, KindLost, StringComparison.Ordinal)
-                ? OpticalDiscMediaTransaction.TypeInventoryRegisterLost
-                : OpticalDiscMediaTransaction.TypeInventoryRegisterDamage;
-        }
+        public static string ResolveHardDiskTransactionType(string? registerKind) =>
+            (registerKind?.Trim() ?? string.Empty) switch
+            {
+                KindLost => HardDiskMediaTransaction.TypeInventoryRegisterLost,
+                KindScrap => HardDiskMediaTransaction.TypeInventoryRegisterScrap,
+                _ => HardDiskMediaTransaction.TypeInventoryRegisterDamage
+            };
+
+        public static string ResolveOpticalDiscTransactionType(string? registerKind) =>
+            (registerKind?.Trim() ?? string.Empty) switch
+            {
+                KindLost => OpticalDiscMediaTransaction.TypeInventoryRegisterLost,
+                KindScrap => OpticalDiscMediaTransaction.TypeInventoryRegisterScrap,
+                _ => OpticalDiscMediaTransaction.TypeInventoryRegisterDamage
+            };
 
         public static string ResolveHardDiskAfterMediaStatus(string? registerKind, string? beforeStatus)
         {
@@ -114,6 +128,7 @@ namespace DocMgr.Models.YearlyArchive
             {
                 KindDamage => HardDiskMedium.StatusInStockDamaged,
                 KindLost => HardDiskMedium.StatusInStockLost,
+                KindScrap => HardDiskMedium.StatusInStockScrap,
                 _ => normalizedBefore
             };
         }
@@ -127,6 +142,7 @@ namespace DocMgr.Models.YearlyArchive
             {
                 KindDamage => OpticalDiscMedium.StatusDamaged,
                 KindLost => OpticalDiscMedium.StatusLost,
+                KindScrap => OpticalDiscMedium.StatusScrap,
                 _ => normalizedBefore
             };
         }

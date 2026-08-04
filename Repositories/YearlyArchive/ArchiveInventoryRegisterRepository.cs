@@ -161,24 +161,23 @@ public sealed class ArchiveInventoryRegisterRepository : IArchiveInventoryRegist
             .Distinct()
             .ToList();
 
-        Dictionary<int, string> projectYearById = projectIds.Count == 0
-            ? new Dictionary<int, string>()
-            : await _dbContext.ProjectInfos
-                .AsNoTracking()
-                .Where(project => projectIds.Contains(project.Id))
-                .ToDictionaryAsync(project => project.Id, project => project.ImplementYear ?? string.Empty);
+        Dictionary<int, string> projectYearById = await GetProjectImplementYearsByIdsAsync(projectIds);
 
         return facts
             .Select(fact =>
             {
                 var snapshot = snapshots.GetValueOrDefault(fact.Id) ?? new SimulatedFilingFactCopyCountSnapshot
                 {
-                    InventoryLostCopyCount = Math.Max(0, fact.InventoryLostCopyCount)
+                    InventoryLostCopyCount = Math.Max(0, fact.InventoryLostCopyCount),
+                    InventoryScrapCopyCount = Math.Max(0, fact.InventoryScrapCopyCount)
                 };
                 int current = SimulatedInArchiveCopyCountSupport.ResolveCurrentInArchiveCopyCount(
                     fact.ContentCount,
                     snapshot);
-                return new { Fact = fact, Available = current };
+                int available = SimulatedInArchiveCopyCountSupport.ResolveAvailableCopyCount(
+                    current,
+                    snapshot.InventoryScrapCopyCount);
+                return new { Fact = fact, Available = available };
             })
             .Where(row => row.Available > 0)
             .Select(row => new ArchiveInventorySelectableSimulatedFact
@@ -416,6 +415,27 @@ public sealed class ArchiveInventoryRegisterRepository : IArchiveInventoryRegist
             .ToListAsync();
     }
 
+    public async Task<Dictionary<int, string>> GetProjectImplementYearsByIdsAsync(IReadOnlyCollection<int> projectIds)
+    {
+        if (projectIds == null || projectIds.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        List<int> ids = projectIds.Where(id => id > 0).Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        return await _dbContext.ProjectInfos
+            .AsNoTracking()
+            .Where(project => ids.Contains(project.Id))
+            .ToDictionaryAsync(
+                project => project.Id,
+                project => project.ImplementYear?.Trim() ?? string.Empty);
+    }
+
     public async Task<List<YearlyArchiveFilingFact>> GetElectronicFilingFactsByMediumAsync(
         string mediumKind,
         int mediumId,
@@ -578,20 +598,27 @@ public sealed class ArchiveInventoryRegisterRepository : IArchiveInventoryRegist
                         ? Math.Max(1, row.ReturnCopyCount)
                         : 0));
 
-        var inventoryLostByFactId = await _dbContext.YearlyArchiveFilingFacts
+        var inventoryCountsByFactId = await _dbContext.YearlyArchiveFilingFacts
             .AsNoTracking()
             .Where(fact => factIdList.Contains(fact.Id))
-            .Select(fact => new { fact.Id, fact.InventoryLostCopyCount })
-            .ToDictionaryAsync(item => item.Id, item => Math.Max(0, item.InventoryLostCopyCount));
+            .Select(fact => new { fact.Id, fact.InventoryLostCopyCount, fact.InventoryScrapCopyCount })
+            .ToDictionaryAsync(
+                item => item.Id,
+                item => (Lost: Math.Max(0, item.InventoryLostCopyCount), Scrap: Math.Max(0, item.InventoryScrapCopyCount)));
 
         return factIdList.ToDictionary(
             factId => factId,
-            factId => new SimulatedFilingFactCopyCountSnapshot
+            factId =>
             {
-                PendingReturnCopyCount = pendingReturnByFactId.GetValueOrDefault(factId),
-                NoReturnCopyCount = noReturnByFactId.GetValueOrDefault(factId),
-                LostCopyCount = lostByFactId.GetValueOrDefault(factId),
-                InventoryLostCopyCount = inventoryLostByFactId.GetValueOrDefault(factId),
+                var counts = inventoryCountsByFactId.GetValueOrDefault(factId);
+                return new SimulatedFilingFactCopyCountSnapshot
+                {
+                    PendingReturnCopyCount = pendingReturnByFactId.GetValueOrDefault(factId),
+                    NoReturnCopyCount = noReturnByFactId.GetValueOrDefault(factId),
+                    LostCopyCount = lostByFactId.GetValueOrDefault(factId),
+                    InventoryLostCopyCount = counts.Lost,
+                    InventoryScrapCopyCount = counts.Scrap,
+                };
             });
     }
 }

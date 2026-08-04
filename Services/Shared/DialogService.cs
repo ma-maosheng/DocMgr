@@ -804,6 +804,46 @@ namespace DocMgr.Services.Shared
             }
         }
 
+        public bool ShowArchiveDisposalEditDialog(YearlyArchiveDisposalRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+
+            var dialog = new ArchiveDisposalEditDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+
+            IServiceScope? scope = null;
+            ArchiveDisposalEditDialogViewModel? viewModel = null;
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+
+            try
+            {
+                (scope, viewModel) = CreateScopedViewModel<ArchiveDisposalEditDialogViewModel>(
+                    new[] { typeof(YearlyArchiveDisposalRecord) },
+                    record);
+
+                dialog.DataContext = viewModel;
+                viewModel.RequestClose += HandleRequestClose;
+                dialog.ShowDialog();
+                return viewModel.HasCommittedChanges;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"打开资料离库处置窗口失败：{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (viewModel != null)
+                {
+                    viewModel.RequestClose -= HandleRequestClose;
+                }
+
+                scope?.Dispose();
+            }
+        }
+
         public bool ShowHardDiskInventoryRegisterEditDialog(HardDiskInventoryRegisterRecord record)
         {
             ArgumentNullException.ThrowIfNull(record);
@@ -1122,7 +1162,7 @@ namespace DocMgr.Services.Shared
                 currentUser);
             dialog.DataContext = viewModel;
 
-            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            void HandleRequestClose(bool? result) => SetModalDialogResult(dialog, result);
             viewModel.RequestClose += HandleRequestClose;
 
             try
@@ -1296,6 +1336,38 @@ namespace DocMgr.Services.Shared
             }
 
             return visibleWindows.LastOrDefault() ?? app.MainWindow;
+        }
+
+        /// <summary>
+        /// 安全设置模态窗 DialogResult。最大化时先还原再关闭，避免仅还原不关闭；
+        /// 若 DialogResult 已是目标值但仍可见，则强制 Close。
+        /// </summary>
+        private static void SetModalDialogResult(Window dialog, bool? result)
+        {
+            ArgumentNullException.ThrowIfNull(dialog);
+
+            if (dialog.WindowState == WindowState.Maximized)
+            {
+                dialog.WindowState = WindowState.Normal;
+            }
+
+            try
+            {
+                if (dialog.DialogResult != result)
+                {
+                    dialog.DialogResult = result;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                dialog.Close();
+                return;
+            }
+
+            if (dialog.IsVisible)
+            {
+                dialog.Close();
+            }
         }
     }
 }

@@ -47,15 +47,19 @@ namespace DocMgr.Services.YearlyArchive
                     SourceMediumDisposition = ArchiveRelocationSourceDisposition.None
                 };
 
-                int sequence = 1;
+                var occupiedTargetSequences = new List<int>();
+                string? firstTargetLocation = null;
                 foreach (var unit in sourceUnits)
                 {
+                    int sequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupiedTargetSequences);
+                    occupiedTargetSequences.Add(sequence);
                     string newLocation = ArchiveSlotLocationSupport.BuildFullElectronicLocation(
                         request.TargetCabinetName,
                         request.TargetFace,
                         request.TargetRow,
                         request.TargetColumn,
                         sequence);
+                    firstTargetLocation ??= newLocation;
 
                     unit.StorageLocation = newLocation;
                     unit.UnitLifecycleStatus = ArchiveContainerLifecycleStatus.InUse;
@@ -70,18 +74,17 @@ namespace DocMgr.Services.YearlyArchive
 
                     SyncLinkedHardDiskLedgerStorageLocation(unit, newLocation, operatedAt, remark, operatorName);
                     SyncLinkedOpticalDiscLedgerStorageLocation(unit, newLocation, operatedAt, remark, operatorName);
-
-                    sequence++;
                 }
 
                 var firstUnit = sourceUnits[0];
                 string targetContainerCode = string.Join("、", sourceUnits.Select(item => item.ElectronicArchiveNo));
-                string targetStorageLocation = ArchiveSlotLocationSupport.BuildFullElectronicLocation(
-                    request.TargetCabinetName,
-                    request.TargetFace,
-                    request.TargetRow,
-                    request.TargetColumn,
-                    1);
+                string targetStorageLocation = firstTargetLocation
+                    ?? ArchiveSlotLocationSupport.BuildFullElectronicLocation(
+                        request.TargetCabinetName,
+                        request.TargetFace,
+                        request.TargetRow,
+                        request.TargetColumn,
+                        1);
 
                 var record = BuildBatchElectronicSlotRelocationRecord(
                     relocationNo,
@@ -162,7 +165,7 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return Ready(
-                $"【档口批量物理搬迁】将源档口 [{sourceSlotKey}] 内 {sourceUnits.Count} 个年度电子介质袋整体迁至空档口 [{targetSlotKey}]，按原顺序重排为 -01 至 -{sourceUnits.Count:D2}；关联硬盘/光盘台账存放位置将同步更新。",
+                $"【档口批量物理搬迁】将源档口 [{sourceSlotKey}] 内 {sourceUnits.Count} 个年度电子介质袋整体迁至空档口 [{targetSlotKey}]，按源顺序优先占用目标档口空闲序号；源档口余下实体序号不重排；关联硬盘/光盘台账存放位置将同步更新。",
                 sourceUnits.Sum(unit => unit.MediaItemLinks.Count));
         }
 

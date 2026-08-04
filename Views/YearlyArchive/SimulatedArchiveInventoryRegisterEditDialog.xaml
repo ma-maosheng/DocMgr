@@ -54,7 +54,6 @@
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="160"/>
-                        <ColumnDefinition Width="160"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="220"/>
                     </Grid.ColumnDefinitions>
@@ -63,19 +62,12 @@
                         <TextBox Text="{Binding RegisterNo, Mode=OneWay}" IsReadOnly="True" Height="{StaticResource DialogFormControlHeight}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,12,0">
-                        <TextBlock Text="登记类型" Foreground="#9A7B3F" FontSize="12" Margin="0,0,0,4"/>
-                        <ComboBox ItemsSource="{Binding RegisterKindOptions}"
-                                  SelectedItem="{Binding RegisterKind}"
-                                  IsEnabled="{Binding CanEditRegisterKind}"
-                                  Height="{StaticResource DialogFormControlHeight}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Margin="0,0,12,0">
                         <TextBlock Text="登记说明" Foreground="#9A7B3F" FontSize="12" Margin="0,0,0,4"/>
                         <TextBox Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
                                  IsEnabled="{Binding CanEditHeader}"
                                  Height="{StaticResource DialogFormControlHeight}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="3">
+                    <StackPanel Grid.Column="2">
                         <TextBlock Text="备注" Foreground="#9A7B3F" FontSize="12" Margin="0,0,0,4"/>
                         <TextBox Text="{Binding Remark, UpdateSourceTrigger=PropertyChanged}"
                                  IsEnabled="{Binding CanEditHeader}"
@@ -143,10 +135,20 @@
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         <TextBlock Text="{Binding RegisterTitle, Mode=OneWay}" FontWeight="SemiBold" Foreground="#6F4A00" Margin="0,0,0,8"/>
-                        <DataGrid Grid.Row="1"
+                        <DockPanel Grid.Row="1" Margin="0,0,0,8" LastChildFill="False">
+                            <TextBlock Text="登记类型" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#9A7B3F" DockPanel.Dock="Left"/>
+                            <ComboBox Width="140"
+                                      DockPanel.Dock="Left"
+                                      Height="{StaticResource DialogFormControlHeight}"
+                                      ItemsSource="{Binding RegisterKindOptions}"
+                                      SelectedItem="{Binding RegisterKind}"
+                                      IsEnabled="{Binding CanEditRegisterKind}"/>
+                        </DockPanel>
+                        <DataGrid Grid.Row="2"
                                   ItemsSource="{Binding Items}"
                                   SelectedItem="{Binding SelectedItem}"
                                   AutoGenerateColumns="False"

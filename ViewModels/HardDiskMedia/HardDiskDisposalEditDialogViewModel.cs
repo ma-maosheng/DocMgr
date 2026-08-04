@@ -85,7 +85,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string StatusDisplay => HardDiskDisposalDomainValues.ToStatusDisplay(_record.Status);
 
         public string BannerText =>
-            "仅「在库(空盘)」「在库(损坏)」「在库(盘失)」可离库处置；移入后按状态自动带出离库原因（空盘→淘汰、损坏→损坏、盘失→盘失），盘失自动带出处置方式「库内注销」。其余盘请勾选后在上方选择处置方式赋值。流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批通过 → 确认可上传 → 上传签批单与硬盘照片 → 办结。";
+            "仅「在库(空盘)」「在库(损坏)」「在库(盘失)」「在库(拟销)」可离库处置；移入后按状态自动带出离库原因（空盘→淘汰、损坏→损坏、盘失→盘失、拟销→拟销），盘失/拟销自动带出处置方式「库内注销」。其余盘请勾选后在上方选择处置方式赋值。流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批通过 → 确认可上传 → 上传签批单与硬盘照片 → 办结。";
 
         public ObservableCollection<string> DispositionMethodOptions { get; } = new(HardDiskDisposalDomainValues.DispositionMethodOptions);
 
@@ -366,7 +366,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 var candidate = _mediaPool.FirstOrDefault(pool => pool.MediumId == item.MediumId);
                 string? locationOverride = null;
                 if (string.IsNullOrWhiteSpace(item.BeforeStorageLocation)
-                    && string.Equals(item.BeforeMediaStatus?.Trim(), HardDiskMedium.StatusInStockLost, StringComparison.Ordinal)
+                    && (string.Equals(item.BeforeMediaStatus?.Trim(), HardDiskMedium.StatusInStockLost, StringComparison.Ordinal)
+                        || string.Equals(item.BeforeMediaStatus?.Trim(), HardDiskMedium.StatusInStockScrap, StringComparison.Ordinal))
                     && lostBeforeLocations != null
                     && lostBeforeLocations.TryGetValue(item.MediumId, out string? recovered)
                     && !string.IsNullOrWhiteSpace(recovered))
@@ -404,10 +405,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             var itemIdsNeedingLostLocation = _record.Items
                 .Where(item => string.IsNullOrWhiteSpace(item.BeforeStorageLocation)
-                               && string.Equals(
-                                   item.BeforeMediaStatus?.Trim(),
-                                   HardDiskMedium.StatusInStockLost,
-                                   StringComparison.Ordinal))
+                               && (string.Equals(
+                                       item.BeforeMediaStatus?.Trim(),
+                                       HardDiskMedium.StatusInStockLost,
+                                       StringComparison.Ordinal)
+                                   || string.Equals(
+                                       item.BeforeMediaStatus?.Trim(),
+                                       HardDiskMedium.StatusInStockScrap,
+                                       StringComparison.Ordinal)))
                 .Select(item => item.MediumId)
                 .Distinct()
                 .ToList();
@@ -639,6 +644,16 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 _dialogService.ShowMessage(
                     "所选硬盘的「原状态」不一致，请按同一原状态分批勾选后再赋值。",
                     "无法赋值");
+                return;
+            }
+
+            string sampleReason = selected[0].DisposalReason?.Trim() ?? string.Empty;
+            string? mismatch = HardDiskDisposalDomainValues.TryGetReasonAndDispositionMethodMismatchMessage(
+                sampleReason,
+                normalized);
+            if (!string.IsNullOrWhiteSpace(mismatch))
+            {
+                _dialogService.ShowMessage(mismatch, "无法赋值");
                 return;
             }
 

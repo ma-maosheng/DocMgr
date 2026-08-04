@@ -16,6 +16,7 @@ namespace DocMgr.Models.HardDiskMedia
         public const string StatusInStockData = "在库(资料)";
         public const string StatusInStockDamaged = "在库(损坏)";
         public const string StatusInStockLost = "在库(盘失)";
+        public const string StatusInStockScrap = "在库(拟销)";
         public const string StatusOutTemporary = "出库(临时)";
         public const string StatusOutLongTerm = "出库(长期)";
         public const string StatusOutPermanent = "出库(永久)";
@@ -55,7 +56,8 @@ namespace DocMgr.Models.HardDiskMedia
             string normalized = status.Trim();
             return string.Equals(normalized, StatusDisposed, StringComparison.Ordinal)
                 || string.Equals(normalized, StatusOutLost, StringComparison.Ordinal)
-                || string.Equals(normalized, StatusInStockLost, StringComparison.Ordinal);
+                || string.Equals(normalized, StatusInStockLost, StringComparison.Ordinal)
+                || string.Equals(normalized, StatusInStockScrap, StringComparison.Ordinal);
         }
 
         public const string RegistrationMethodImported = "文件导入登记";

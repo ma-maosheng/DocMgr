@@ -15,6 +15,7 @@ namespace DocMgr.Models.HardDiskMedia
         public const string TypeInventoryLost = "在库(盘失)";
         public const string TypeInventoryRegisterDamage = "盘库登记(损坏)";
         public const string TypeInventoryRegisterLost = "盘库登记(盘失)";
+        public const string TypeInventoryRegisterScrap = "盘库登记(拟销)";
         public const string TypeInventoryRegisterRelocate = "盘库登记(调档)";
         public const string TypeRelocate = "位置调整";
 

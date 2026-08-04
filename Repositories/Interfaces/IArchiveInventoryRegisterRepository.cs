@@ -41,6 +41,9 @@ public interface IArchiveInventoryRegisterRepository
 
     Task<List<YearlyArchiveFilingFact>> GetFactsWithDetailsAsync(IReadOnlyCollection<int> filingFactIds);
 
+    /// <summary>按项目 ID 批量取实施年度（ImplementYear）。</summary>
+    Task<Dictionary<int, string>> GetProjectImplementYearsByIdsAsync(IReadOnlyCollection<int> projectIds);
+
     Task<List<YearlyArchiveFilingFact>> GetElectronicFilingFactsByMediumAsync(
         string mediumKind,
         int mediumId,

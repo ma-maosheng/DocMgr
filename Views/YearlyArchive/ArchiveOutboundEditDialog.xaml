@@ -52,6 +52,17 @@
                 <Setter Property="Margin" Value="0,0,16,0"/>
                 <Setter Property="VerticalAlignment" Value="Center"/>
             </Style>
+            <!-- 领用设置横排：标签行、控件行等高，保证水平方向上下对齐 -->
+            <Style x:Key="OutboundUnitSettingLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource OutboundFieldLabelStyle}">
+                <Setter Property="Height" Value="18"/>
+                <Setter Property="Margin" Value="0,0,0,4"/>
+                <Setter Property="VerticalAlignment" Value="Bottom"/>
+                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            </Style>
+            <Style x:Key="OutboundUnitSettingSlotStyle" TargetType="StackPanel">
+                <Setter Property="Margin" Value="0,0,16,0"/>
+                <Setter Property="VerticalAlignment" Value="Top"/>
+            </Style>
             <!-- 审批弹窗：申请信息只读字段横排 -->
             <Style x:Key="OutboundApprovalInfoInlineLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}">
                 <Setter Property="Width" Value="72"/>
@@ -96,68 +107,43 @@
                         <TextBlock Text="资料摘要" Style="{StaticResource OutboundFieldLabelStyle}"/>
                         <TextBox Text="{Binding Record.MaterialSummary, UpdateSourceTrigger=PropertyChanged}" Height="30" Margin="0,0,0,12"/>
 
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="220"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                <TextBlock Text="资料去向" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                            <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="160" MaxWidth="200">
+                                <TextBlock Text="资料去向" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
                                 <ComboBox SelectedValue="{Binding DestinationKind}" SelectedValuePath="Tag" Height="30">
                                     <ComboBoxItem Tag="Internal" Content="本部门（内部）"/>
                                     <ComboBoxItem Tag="External" Content="外部（单位）"/>
                                 </ComboBox>
                             </StackPanel>
-                            <StackPanel Grid.Column="1"
+                            <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="180" MaxWidth="280"
                                         Visibility="{Binding ShowExternalUnit, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                <TextBlock Text="外部单位" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                <TextBlock Text="外部单位" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
                                 <TextBox Text="{Binding Record.ExternalUnit, UpdateSourceTrigger=PropertyChanged}" Height="30"
                                          ToolTip="资料去向为外部（单位）时必填"/>
                             </StackPanel>
-                        </Grid>
-
-                        <DockPanel Margin="0,12,0,0" LastChildFill="True">
-                            <TextBlock DockPanel.Dock="Left"
-                                       Text="附有证明材料"
-                                       Style="{StaticResource OutboundFieldLabelStyle}"
-                                       Width="96"
-                                       Margin="0,0,8,0"
-                                       VerticalAlignment="Center"/>
-                            <StackPanel DockPanel.Dock="Left"
-                                        Orientation="Horizontal"
-                                        Margin="0,0,12,0"
-                                        VerticalAlignment="Center">
-                                <RadioButton Content="是"
-                                             GroupName="OutboundProofMaterialHas"
-                                             Style="{StaticResource OutboundRadioInlineStyle}"
-                                             IsChecked="{Binding HasProofMaterial, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                <RadioButton Content="否"
-                                             GroupName="OutboundProofMaterialHas"
-                                             Style="{StaticResource OutboundRadioInlineStyle}"
-                                             IsChecked="{Binding HasProofMaterial, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="140">
+                                <TextBlock Text="附有证明材料" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                <Grid Height="30">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <RadioButton Content="是"
+                                                     GroupName="OutboundProofMaterialHas"
+                                                     Style="{StaticResource OutboundRadioInlineStyle}"
+                                                     IsChecked="{Binding HasProofMaterial, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <RadioButton Content="否"
+                                                     GroupName="OutboundProofMaterialHas"
+                                                     Style="{StaticResource OutboundRadioInlineStyle}"
+                                                     IsChecked="{Binding HasProofMaterial, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
-                            <DockPanel LastChildFill="True">
-                                <DockPanel.Style>
-                                    <Style TargetType="DockPanel">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasProofMaterial}" Value="True">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </DockPanel.Style>
-                                <TextBlock DockPanel.Dock="Left"
-                                           Text="名称"
-                                           Style="{StaticResource OutboundFieldLabelStyle}"
-                                           Width="36"
-                                           Margin="0,0,8,0"
-                                           VerticalAlignment="Center"/>
+                            <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="200" Margin="0"
+                                        Visibility="{Binding HasProofMaterial, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="证明材料名称" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
                                 <TextBox Height="30"
                                          Text="{Binding ProofMaterialName, UpdateSourceTrigger=PropertyChanged}"
                                          ToolTip="填写证明材料名称；审批环节由资料管理员上传扫描件"/>
-                            </DockPanel>
-                        </DockPanel>
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -601,72 +587,54 @@
                                             </Border.Style>
                                             <StackPanel IsEnabled="{Binding CanEdit}">
                                                 <TextBlock Text="领用设置（本盒/袋统一）" Style="{StaticResource OutboundSectionTitleStyle}" Margin="0,0,0,10"/>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="200"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                                                        <TextBlock Text="领用方式" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="140" MaxWidth="180">
+                                                        <TextBlock Text="领用方式" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
                                                         <ComboBox ItemsSource="{Binding UsageModeOptions}"
                                                                   SelectedValue="{Binding UsageMode, UpdateSourceTrigger=PropertyChanged}"
-                                                                  SelectedValuePath="Value" DisplayMemberPath="Display" Height="30"/>
+                                                                  SelectedValuePath="Value" DisplayMemberPath="Display" Height="30"
+                                                                  VerticalAlignment="Top"/>
                                                     </StackPanel>
-                                                    <StackPanel Grid.Column="1" Margin="0,0,16,0" MinWidth="160"
-                                                                Visibility="{Binding ShowMaterialNeedReturn, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                        <TextBlock Text="提档资料是否归还" Style="{StaticResource OutboundFieldLabelStyle}"/>
-                                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                                            <RadioButton Content="是" Style="{StaticResource OutboundRadioInlineStyle}"
-                                                                         GroupName="{Binding NeedReturnRadioGroup}"
-                                                                         IsChecked="{Binding NeedReturn, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                                            <RadioButton Content="否" Style="{StaticResource OutboundRadioInlineStyle}"
-                                                                         GroupName="{Binding NeedReturnRadioGroup}"
-                                                                         IsChecked="{Binding NeedReturn, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                                        </StackPanel>
+                                                    <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="140"
+                                                                Visibility="{Binding ShowNeedReturnFields, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Text="{Binding NeedReturnFieldLabel, Mode=OneWay}" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                                        <Grid Height="30">
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <RadioButton Content="是" Style="{StaticResource OutboundRadioInlineStyle}"
+                                                                             GroupName="{Binding NeedReturnRadioGroup}"
+                                                                             IsChecked="{Binding NeedReturn, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                <RadioButton Content="否" Style="{StaticResource OutboundRadioInlineStyle}"
+                                                                             GroupName="{Binding NeedReturnRadioGroup}"
+                                                                             IsChecked="{Binding NeedReturn, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                            </StackPanel>
+                                                        </Grid>
                                                     </StackPanel>
-                                                    <StackPanel Grid.Column="2" Margin="0,0,16,0" MinWidth="160"
+                                                    <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="140"
                                                                 Visibility="{Binding ShowDuplicateSettings, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                        <TextBlock Text="是否使用库内空盘" Style="{StaticResource OutboundFieldLabelStyle}"/>
-                                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                                            <RadioButton Content="是" Style="{StaticResource OutboundRadioInlineStyle}"
-                                                                         GroupName="{Binding UseInStockBlankRadioGroup}"
-                                                                         IsChecked="{Binding UseInStockBlankDisk, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                                            <RadioButton Content="否" Style="{StaticResource OutboundRadioInlineStyle}"
-                                                                         GroupName="{Binding UseInStockBlankRadioGroup}"
-                                                                         IsChecked="{Binding UseInStockBlankDisk, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                                        </StackPanel>
+                                                        <TextBlock Text="是否使用库内空盘" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                                        <Grid Height="30">
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <RadioButton Content="是" Style="{StaticResource OutboundRadioInlineStyle}"
+                                                                             GroupName="{Binding UseInStockBlankRadioGroup}"
+                                                                             IsChecked="{Binding UseInStockBlankDisk, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                <RadioButton Content="否" Style="{StaticResource OutboundRadioInlineStyle}"
+                                                                             GroupName="{Binding UseInStockBlankRadioGroup}"
+                                                                             IsChecked="{Binding UseInStockBlankDisk, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                            </StackPanel>
+                                                        </Grid>
                                                     </StackPanel>
-                                                    <StackPanel Grid.Column="3"
-                                                                Visibility="{Binding RequiresExpectedReturnDate, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                        <TextBlock Text="预计归还日期" Style="{StaticResource OutboundFieldLabelStyle}"/>
-                                                        <DatePicker SelectedDate="{Binding ExpectedReturnDate, UpdateSourceTrigger=PropertyChanged}"
-                                                                    Height="30" Width="200" HorizontalAlignment="Left"
-                                                                    IsEnabled="{Binding CanEditExpectedReturnDate}"/>
-                                                    </StackPanel>
-                                                </Grid>
-                                                <TextBlock Text="{Binding SharedDiskSettingsHint}"
-                                                           Margin="0,8,0,0" Foreground="#64748B" TextWrapping="Wrap" FontSize="12"
-                                                           Visibility="{Binding ShowSharedDiskSettingsHint, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                                <Grid Margin="0,12,0,0"
-                                                      Visibility="{Binding ShowDuplicateSettings, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="200"/>
-                                                        <ColumnDefinition Width="220"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <StackPanel Grid.Column="0" Margin="0,0,16,0"
+                                                    <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="140" MaxWidth="180"
                                                                 Visibility="{Binding ShowSelfProvidedDuplicateMedium, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                        <TextBlock Text="拷贝目标介质" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                        <TextBlock Text="拷贝目标介质" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
                                                         <ComboBox ItemsSource="{Binding DuplicateMediumOptions}"
                                                                   SelectedValue="{Binding DuplicateMediumKind, UpdateSourceTrigger=PropertyChanged}"
-                                                                  SelectedValuePath="Value" DisplayMemberPath="Display" Height="30"/>
+                                                                  SelectedValuePath="Value" DisplayMemberPath="Display" Height="30"
+                                                                  VerticalAlignment="Top"/>
                                                     </StackPanel>
-                                                    <StackPanel Grid.Column="0" Margin="0,0,16,0"
+                                                    <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="200" MaxWidth="240"
                                                                 Visibility="{Binding ShowBlankDiskFields, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                        <TextBlock Text="库内空盘选择" Style="{StaticResource OutboundFieldLabelStyle}"/>
-                                                        <Grid>
+                                                        <TextBlock Text="库内空盘选择" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                                        <Grid Height="30">
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*"/>
                                                                 <ColumnDefinition Width="Auto"/>
@@ -674,22 +642,39 @@
                                                             <TextBox Grid.Column="0" Text="{Binding RequisitionedDiskCode, Mode=OneWay}"
                                                                      IsReadOnly="True" Height="30" VerticalContentAlignment="Center" Background="#F8FAFC"/>
                                                             <Button Grid.Column="1" Content="选择" Command="{Binding PickBlankDiskCommand}"
-                                                                    Margin="8,0,0,0" Padding="12,4" MinWidth="64"/>
+                                                                    Margin="8,0,0,0" Padding="12,0" MinWidth="64" Height="30"
+                                                                    VerticalAlignment="Center"
+                                                                    IsEnabled="{Binding CanPickBlankDisk}"/>
                                                         </Grid>
                                                     </StackPanel>
-                                                    <StackPanel Grid.Column="1"
+                                                    <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="140"
                                                                 Visibility="{Binding ShowRequisitionedDiskNeedReturn, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                        <TextBlock Text="硬盘是否归还" Style="{StaticResource OutboundFieldLabelStyle}"/>
-                                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                                            <RadioButton Content="是" Style="{StaticResource OutboundRadioInlineStyle}"
-                                                                         GroupName="{Binding RequisitionedDiskNeedReturnRadioGroup}"
-                                                                         IsChecked="{Binding RequisitionedDiskNeedReturn, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                                            <RadioButton Content="否" Style="{StaticResource OutboundRadioInlineStyle}"
-                                                                         GroupName="{Binding RequisitionedDiskNeedReturnRadioGroup}"
-                                                                         IsChecked="{Binding RequisitionedDiskNeedReturn, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                                        </StackPanel>
+                                                        <TextBlock Text="硬盘是否归还" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                                        <Grid Height="30">
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <RadioButton Content="是" Style="{StaticResource OutboundRadioInlineStyle}"
+                                                                             GroupName="{Binding RequisitionedDiskNeedReturnRadioGroup}"
+                                                                             IsChecked="{Binding RequisitionedDiskNeedReturn, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                             IsEnabled="{Binding CanEditRequisitionedDiskNeedReturn}"/>
+                                                                <RadioButton Content="否" Style="{StaticResource OutboundRadioInlineStyle}"
+                                                                             GroupName="{Binding RequisitionedDiskNeedReturnRadioGroup}"
+                                                                             IsChecked="{Binding RequisitionedDiskNeedReturn, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                             IsEnabled="{Binding CanEditRequisitionedDiskNeedReturn}"/>
+                                                            </StackPanel>
+                                                        </Grid>
                                                     </StackPanel>
-                                                </Grid>
+                                                    <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="160" Margin="0"
+                                                                Visibility="{Binding RequiresExpectedReturnDate, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Text="{Binding ExpectedReturnDateFieldLabel, Mode=OneWay}" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                                        <DatePicker SelectedDate="{Binding ExpectedReturnDate, UpdateSourceTrigger=PropertyChanged}"
+                                                                    Height="30" Width="160" HorizontalAlignment="Left"
+                                                                    VerticalAlignment="Top"
+                                                                    IsEnabled="{Binding CanEditExpectedReturnDate}"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding SharedDiskSettingsHint}"
+                                                           Margin="0,8,0,0" Foreground="#64748B" TextWrapping="Wrap" FontSize="12"
+                                                           Visibility="{Binding ShowSharedDiskSettingsHint, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                             </StackPanel>
                                         </Border>
 
@@ -705,35 +690,54 @@
                                                     </Style.Triggers>
                                                 </Style>
                                             </Border.Style>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                                    <TextBlock Text="领用方式" Style="{StaticResource OutboundFieldLabelStyle}"/>
-                                                    <TextBlock Text="{Binding UsageModeDisplay}" Foreground="#1E293B" FontWeight="SemiBold"/>
+                                            <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="100">
+                                                    <TextBlock Text="领用方式" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                                    <TextBlock Text="{Binding UsageModeDisplay}" Height="22" VerticalAlignment="Center"
+                                                               Foreground="#1E293B" FontWeight="SemiBold"/>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="1" Margin="8,0">
-                                                    <TextBlock Text="提档资料是否归还" Style="{StaticResource OutboundFieldLabelStyle}"/>
-                                                    <TextBlock Text="{Binding NeedReturnDisplay}" Foreground="#1E293B"/>
+                                                <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="120"
+                                                            Visibility="{Binding ShowNeedReturnFields, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="{Binding NeedReturnFieldLabel, Mode=OneWay}" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                                    <TextBlock Text="{Binding NeedReturnDisplay}" Height="22" VerticalAlignment="Center" Foreground="#1E293B"/>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="2" Margin="8,0">
-                                                    <TextBlock Text="库内空盘" Style="{StaticResource OutboundFieldLabelStyle}"/>
-                                                    <TextBlock Text="{Binding RequisitionedDiskCode}" Foreground="#1E293B"/>
+                                                <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="100"
+                                                            Visibility="{Binding ShowDuplicateSettings, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="是否库内空盘" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                                    <TextBlock Text="{Binding UseInStockBlankDiskDisplay}" Height="22" VerticalAlignment="Center" Foreground="#1E293B"/>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="3" Margin="8,0">
-                                                    <TextBlock Text="硬盘是否归还" Style="{StaticResource OutboundFieldLabelStyle}"/>
-                                                    <TextBlock Text="{Binding RequisitionedDiskNeedReturnDisplay}" Foreground="#1E293B"/>
+                                                <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="120"
+                                                            Visibility="{Binding ShowSelfProvidedDuplicateMedium, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="拷贝目标介质" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                                    <TextBlock Text="{Binding DuplicateMediumKindDisplay}" Height="22" VerticalAlignment="Center" Foreground="#1E293B"/>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="4" Margin="8,0,0,0">
-                                                    <TextBlock Text="预计归还日期" Style="{StaticResource OutboundFieldLabelStyle}"/>
-                                                    <TextBlock Text="{Binding ExpectedReturnDateDisplay}" Foreground="#1E293B"/>
+                                                <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="120"
+                                                            Visibility="{Binding ShowBlankDiskFields, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="库内空盘" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                                    <TextBlock Text="{Binding RequisitionedDiskCode}" Height="22" VerticalAlignment="Center" Foreground="#1E293B"/>
                                                 </StackPanel>
-                                            </Grid>
+                                                <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="120"
+                                                            Visibility="{Binding ShowRequisitionedDiskNeedReturn, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="硬盘是否归还" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                                    <TextBlock Text="{Binding RequisitionedDiskNeedReturnDisplay}" Height="22" VerticalAlignment="Center" Foreground="#1E293B"/>
+                                                </StackPanel>
+                                                <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="120" Margin="0"
+                                                            Visibility="{Binding RequiresExpectedReturnDate, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="{Binding ExpectedReturnDateFieldLabel, Mode=OneWay}" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
+                                                    <TextBlock Text="{Binding ExpectedReturnDateDisplay}" Height="22" VerticalAlignment="Center" Foreground="#1E293B"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <Border Background="#FFF7ED" BorderBrush="#FDBA74" BorderThickness="1"
+                                                    CornerRadius="4" Padding="10,8" Margin="0,10,0,0"
+                                                    Visibility="{Binding HasHardDiskTransfer, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <StackPanel>
+                                                    <TextBlock Text="硬盘流转" FontSize="11" FontWeight="SemiBold" Foreground="#C2410C" Margin="0,0,0,4"/>
+                                                    <TextBlock Text="{Binding HardDiskTransferDisplay, Mode=OneWay}"
+                                                               FontSize="12" Foreground="#9A3412" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </Border>
+                                            </StackPanel>
                                         </Border>
 
                                         <DockPanel LastChildFill="True">

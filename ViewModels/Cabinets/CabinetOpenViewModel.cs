@@ -1,6 +1,7 @@
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
 using System;
@@ -21,9 +22,19 @@ namespace DocMgr.ViewModels.Cabinets
         private const double StandardSlotGap = 16d;
         private const double StandardSlotHorizontalChrome = 20d;
         private const double StandardMagneticSlotVerticalChrome = 108d * 1.1d;
+        private const double StandardSlidingSlotVerticalChrome = 108d;
         private const double StandardMagneticSlotMinWidth = 140d;
-        private const double StandardMagneticSlotMinHeight = 48d;
-        private const double StandardMagneticSlotHeightScale = 4d;
+        private const double StandardMagneticSlotMinHeight = 180d;
+        private const double StandardSlidingSlotMinWidth = 200d;
+        private const double StandardSlidingSlotMinHeight = 120d;
+        /// <summary>防磁柜标准模式：按两行档口占满视口高度推算单格高度。</summary>
+        private const int StandardDisplayReferenceRowCount = 2;
+        /// <summary>标准滑道柜标准模式：按三列档口占满视口宽度推算单格宽度。</summary>
+        private const int StandardDisplayReferenceColumnCount = 3;
+        /// <summary>防磁柜档口画布宽高比（种子 23.33×16.67）。</summary>
+        private const double MagneticSlotCanvasAspect = 23.33d / 16.67d;
+        /// <summary>标准滑道柜档口画布宽高比（种子 78×33）。</summary>
+        private const double StandardSlidingSlotCanvasAspect = 78d / 33d;
 
         private readonly IDialogService _dialogService;
         private readonly ICabinetService _cabinetService;
@@ -40,7 +51,9 @@ namespace DocMgr.ViewModels.Cabinets
         private double _compactSlotDisplayWidth = 96d;
         private double _compactSlotDisplayHeight = 56d;
         private double _standardMagneticSlotDisplayWidth = 180d;
-        private double _standardMagneticSlotDisplayHeight = 360d;
+        private double _standardMagneticSlotDisplayHeight = 240d;
+        private double _standardSlidingSlotDisplayWidth = 280d;
+        private double _standardSlidingSlotDisplayHeight = 160d;
         private double _lastSlotViewportWidth = DefaultCompactViewportWidth;
         private double _lastSlotViewportHeight = DefaultCompactViewportHeight;
         private double _snapshotSlotDisplayWidth;
@@ -227,6 +240,10 @@ namespace DocMgr.ViewModels.Cabinets
             ? Visibility.Visible
             : Visibility.Collapsed;
 
+        public Visibility ArchiveBoxLegendVisibility => Request.CabinetType != CabinetType.MagneticDisk && !IsSingleSlotSnapshot
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
         public Visibility MagneticDiskFooterVisibility => Request.CabinetType == CabinetType.MagneticDisk
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -297,11 +314,17 @@ namespace DocMgr.ViewModels.Cabinets
             IsSingleSlotSnapshot
             || IsMagneticDiskCabinet
             || (IsStandardSlidingCabinet && IsCompactDisplayMode)
+            || (IsStandardSlidingCabinet && !IsCompactDisplayMode && DisplayColumnCount <= StandardDisplayReferenceColumnCount)
                 ? ScrollBarVisibility.Disabled
                 : ScrollBarVisibility.Auto;
 
+        /// <summary>
+        /// 纵向滚动：单格快照禁用；其余柜型按内容超高自动出现滚动条。
+        /// </summary>
         public ScrollBarVisibility SlotsVerticalScrollBarVisibility =>
-            IsSingleSlotSnapshot ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
+            IsSingleSlotSnapshot
+                ? ScrollBarVisibility.Disabled
+                : ScrollBarVisibility.Auto;
 
         public Visibility SnapshotFooterVisibility => IsSingleSlotSnapshot ? Visibility.Collapsed : Visibility.Visible;
 
@@ -377,23 +400,23 @@ namespace DocMgr.ViewModels.Cabinets
             ? _snapshotSlotDisplayWidth
             : IsMagneticDiskCabinet
                 ? IsCompactDisplayMode ? _compactSlotDisplayWidth : _standardMagneticSlotDisplayWidth
-                : IsStandardSlidingCabinet && IsCompactDisplayMode
-                    ? _compactSlotDisplayWidth
+                : IsStandardSlidingCabinet
+                    ? IsCompactDisplayMode ? _compactSlotDisplayWidth : _standardSlidingSlotDisplayWidth
                     : SlotDisplayWidth;
 
         public double EffectiveSlotDisplayHeight => IsSingleSlotSnapshot && _snapshotSlotDisplayHeight > 0d
             ? _snapshotSlotDisplayHeight
             : IsMagneticDiskCabinet
                 ? IsCompactDisplayMode ? _compactSlotDisplayHeight : _standardMagneticSlotDisplayHeight
-                : IsStandardSlidingCabinet && IsCompactDisplayMode
-                    ? _compactSlotDisplayHeight
+                : IsStandardSlidingCabinet
+                    ? IsCompactDisplayMode ? _compactSlotDisplayHeight : _standardSlidingSlotDisplayHeight
                     : SlotDisplayHeight;
 
-        public double EffectiveRenderSlotCanvasWidth => IsSingleSlotSnapshot || IsMagneticDiskCabinet
+        public double EffectiveRenderSlotCanvasWidth => IsSingleSlotSnapshot || IsMagneticDiskCabinet || IsStandardSlidingCabinet
             ? Math.Max(0d, EffectiveSlotDisplayWidth - StandardSlotHorizontalChrome)
             : Slots.FirstOrDefault()?.RenderSlotCanvasWidth ?? 580d;
 
-        public double EffectiveRenderSlotCanvasHeight => IsSingleSlotSnapshot || IsMagneticDiskCabinet
+        public double EffectiveRenderSlotCanvasHeight => IsSingleSlotSnapshot || IsMagneticDiskCabinet || IsStandardSlidingCabinet
             ? Math.Max(0d, EffectiveSlotDisplayHeight - ResolveEffectiveSlotVerticalChrome())
             : Slots.FirstOrDefault()?.RenderSlotCanvasHeight ?? 272d;
 
@@ -510,15 +533,19 @@ namespace DocMgr.ViewModels.Cabinets
 
         public double SlotsSurfaceWidth => IsSingleSlotSnapshot
             ? EffectiveSlotsSurfaceWidth
-            : IsMagneticDiskCabinet && !IsCompactDisplayMode
+            : (IsMagneticDiskCabinet || IsStandardSlidingCabinet) && !IsCompactDisplayMode
                 ? DisplayColumnCount * (EffectiveSlotDisplayWidth + StandardSlotGap)
-                : DisplayColumnCount * (SlotDisplayWidth + StandardSlotGap);
+                : IsStandardSlidingCabinet && IsCompactDisplayMode
+                    ? DisplayColumnCount * (EffectiveSlotDisplayWidth + CompactSlotGap)
+                    : DisplayColumnCount * (SlotDisplayWidth + StandardSlotGap);
 
         public double SlotsSurfaceHeight => IsSingleSlotSnapshot
             ? EffectiveSlotsSurfaceHeight
-            : IsMagneticDiskCabinet && !IsCompactDisplayMode
+            : (IsMagneticDiskCabinet || IsStandardSlidingCabinet) && !IsCompactDisplayMode
                 ? DisplayRowCount * (EffectiveSlotDisplayHeight + StandardSlotGap)
-                : DisplayRowCount * (SlotDisplayHeight + StandardSlotGap);
+                : IsStandardSlidingCabinet && IsCompactDisplayMode
+                    ? DisplayRowCount * (EffectiveSlotDisplayHeight + CompactSlotGap)
+                    : DisplayRowCount * (SlotDisplayHeight + StandardSlotGap);
 
         public ObservableCollection<CabinetSlotViewModel> Slots { get; }
 
@@ -799,6 +826,7 @@ namespace DocMgr.ViewModels.Cabinets
             string? summaryText,
             string sourceSlotText,
             CabinetSlotViewModel targetSlot,
+            string locationRoutesText,
             string containerCodesText,
             string hardDiskCodesText,
             string opticalDiscCodesText)
@@ -815,6 +843,7 @@ namespace DocMgr.ViewModels.Cabinets
                 SummaryText = summaryText?.Trim() ?? string.Empty,
                 SourceSlotText = string.IsNullOrWhiteSpace(sourceSlotText) ? "—" : sourceSlotText.Trim(),
                 TargetSlotText = FormatSlotDisplayText(Request.CabinetName, CurrentFaceDisplayName, targetSlot.SlotCode),
+                LocationRoutesText = locationRoutesText?.Trim() ?? string.Empty,
                 ContainerCodesText = containerCodesText?.Trim() ?? string.Empty,
                 HardDiskCodesText = hardDiskCodesText?.Trim() ?? string.Empty,
                 OpticalDiscCodesText = opticalDiscCodesText?.Trim() ?? string.Empty
@@ -870,95 +899,317 @@ namespace DocMgr.ViewModels.Cabinets
             return normalized.Count == 0 ? string.Empty : string.Join("、", normalized);
         }
 
-        private (string ContainerCodes, string HardDiskCodes, string OpticalDiscCodes) CollectBatchItemCodes(
-            BatchSlotRelocationEndpoint source,
-            CabinetSlotViewModel? sourceSlot)
+        /// <summary>
+        /// 物理位置迁移路线：完整位置编码，如「辛甲-1-1-01->辛甲-1-2-01」。
+        /// </summary>
+        private static string FormatLocationRoute(string? sourceLocation, string? targetLocation)
         {
+            string from = string.IsNullOrWhiteSpace(sourceLocation) ? "—" : sourceLocation.Trim();
+            string to = string.IsNullOrWhiteSpace(targetLocation) ? "—" : targetLocation.Trim();
+            return $"{from}->{to}";
+        }
+
+        private static string BuildFullLocation(
+            string cabinetName,
+            string faceCode,
+            int row,
+            int column,
+            int sequenceIndex)
+        {
+            if (sequenceIndex > 0)
+            {
+                return ArchiveSlotLocationSupport.BuildFullElectronicLocation(
+                    cabinetName,
+                    faceCode,
+                    row,
+                    column,
+                    sequenceIndex);
+            }
+
+            return ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, faceCode, row, column);
+        }
+
+        private static int ResolveMediumSlotSequence(CabinetHardDiskMediumItemViewModel medium)
+        {
+            if (medium.ArchiveSequenceNumber > 0)
+            {
+                return medium.ArchiveSequenceNumber;
+            }
+
+            if (ArchiveSlotLocationSupport.TryParseSequenceIndex(medium.CurrentLocationText, out int fromCurrent))
+            {
+                return fromCurrent;
+            }
+
+            if (ArchiveSlotLocationSupport.TryParseSequenceIndex(medium.ElectronicArchiveLocationText, out int fromBag))
+            {
+                return fromBag;
+            }
+
+            return 0;
+        }
+
+        private static string ResolveMediumSourceLocation(
+            CabinetHardDiskMediumItemViewModel medium,
+            string cabinetName,
+            string faceCode,
+            int row,
+            int column)
+        {
+            if (!string.IsNullOrWhiteSpace(medium.CurrentLocationText)
+                && !string.Equals(medium.CurrentLocationText, "位置未登记", StringComparison.Ordinal)
+                && ArchiveSlotLocationSupport.TryParseSlotLocation(medium.CurrentLocationText, out _, out _, out _, out _))
+            {
+                return medium.CurrentLocationText.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(medium.ElectronicArchiveLocationText)
+                && ArchiveSlotLocationSupport.TryParseSlotLocation(medium.ElectronicArchiveLocationText, out _, out _, out _, out _))
+            {
+                return medium.ElectronicArchiveLocationText.Trim();
+            }
+
+            return BuildFullLocation(cabinetName, faceCode, row, column, ResolveMediumSlotSequence(medium));
+        }
+
+        private (string LocationRoutes, string ContainerCodes, string HardDiskCodes, string OpticalDiscCodes) CollectBatchItemCodes(
+            BatchSlotRelocationEndpoint source,
+            CabinetSlotViewModel? sourceSlot,
+            CabinetSlotViewModel targetSlot)
+        {
+            ArgumentNullException.ThrowIfNull(targetSlot);
+
             if (sourceSlot == null)
             {
-                return (string.Empty, string.Empty, string.Empty);
+                string sourceSlotKey = ArchiveSlotLocationSupport.BuildSlotKey(
+                    source.CabinetName,
+                    source.FaceCode,
+                    source.Row,
+                    source.Column);
+                string targetSlotKey = ArchiveSlotLocationSupport.BuildSlotKey(
+                    Request.CabinetName,
+                    ResolveFaceCode(targetSlot.Face),
+                    targetSlot.LayerIndex,
+                    targetSlot.ColumnIndex);
+                return (FormatLocationRoute(sourceSlotKey, targetSlotKey), string.Empty, string.Empty, string.Empty);
             }
+
+            string targetFace = ResolveFaceCode(targetSlot.Face);
+            int targetRow = targetSlot.LayerIndex;
+            int targetColumn = targetSlot.ColumnIndex;
 
             if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
             {
-                return (JoinCodes(sourceSlot.ArchiveBoxes.Select(box => box.BoxCode)), string.Empty, string.Empty);
+                var boxes = sourceSlot.ArchiveBoxes
+                    .OrderBy(box => box.SequenceIndex <= 0 ? int.MaxValue : box.SequenceIndex)
+                    .ThenBy(box => box.BoxCode, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                var occupied = new List<int>();
+                var routes = new List<string>();
+                var containerCodes = new List<string>();
+                foreach (var box in boxes)
+                {
+                    int targetSequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupied);
+                    occupied.Add(targetSequence);
+                    string sourceLocation = BuildFullLocation(
+                        source.CabinetName,
+                        source.FaceCode,
+                        source.Row,
+                        source.Column,
+                        box.SequenceIndex);
+                    string targetLocation = BuildFullLocation(
+                        Request.CabinetName,
+                        targetFace,
+                        targetRow,
+                        targetColumn,
+                        targetSequence);
+                    routes.Add(FormatLocationRoute(sourceLocation, targetLocation));
+                    containerCodes.Add(box.BoxCode);
+                }
+
+                return (JoinCodes(routes), JoinCodes(containerCodes), string.Empty, string.Empty);
             }
 
             if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
             {
                 var media = sourceSlot.HardDiskMediaItems
                     .Where(item => !item.IsEmpty && item.IsElectronicMediaRelocationCandidate)
+                    .OrderBy(item =>
+                    {
+                        int seq = ResolveMediumSlotSequence(item);
+                        return seq <= 0 ? int.MaxValue : seq;
+                    })
+                    .ThenBy(item => item.ElectronicArchiveNoText, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(item => item.DiskCodeText, StringComparer.OrdinalIgnoreCase)
                     .ToList();
-                return (
-                    JoinCodes(media.Select(item => item.ElectronicArchiveNoText)),
-                    JoinCodes(media.Where(item => !item.IsOpticalDiscMedia).Select(item => item.DiskCodeText)),
-                    JoinCodes(media.Where(item => item.IsOpticalDiscMedia).Select(item => item.DiskCodeText)));
+
+                var occupied = new List<int>();
+                var routes = new List<string>();
+                var containerCodes = new List<string>();
+                var hardDiskCodes = new List<string>();
+                var opticalDiscCodes = new List<string>();
+                foreach (var item in media)
+                {
+                    int targetSequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupied);
+                    occupied.Add(targetSequence);
+                    string sourceLocation = ResolveMediumSourceLocation(
+                        item,
+                        source.CabinetName,
+                        source.FaceCode,
+                        source.Row,
+                        source.Column);
+                    string targetLocation = BuildFullLocation(
+                        Request.CabinetName,
+                        targetFace,
+                        targetRow,
+                        targetColumn,
+                        targetSequence);
+                    routes.Add(FormatLocationRoute(sourceLocation, targetLocation));
+                    containerCodes.Add(item.ElectronicArchiveNoText);
+                    if (item.IsOpticalDiscMedia)
+                    {
+                        opticalDiscCodes.Add(item.DiskCodeText);
+                    }
+                    else
+                    {
+                        hardDiskCodes.Add(item.DiskCodeText);
+                    }
+                }
+
+                return (JoinCodes(routes), JoinCodes(containerCodes), JoinCodes(hardDiskCodes), JoinCodes(opticalDiscCodes));
             }
+
+            string sourceKey = ArchiveSlotLocationSupport.BuildSlotKey(
+                source.CabinetName,
+                source.FaceCode,
+                source.Row,
+                source.Column);
+            string targetKey = ArchiveSlotLocationSupport.BuildSlotKey(
+                Request.CabinetName,
+                targetFace,
+                targetRow,
+                targetColumn);
+            string sharedRoute = FormatLocationRoute(sourceKey, targetKey);
 
             if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal))
             {
+                var codes = sourceSlot.HardDiskMediaItems
+                    .Where(item => item.IsBlankHardDiskRelocationCandidate)
+                    .Select(item => item.DiskCodeText)
+                    .ToList();
                 return (
+                    codes.Count == 0 ? string.Empty : sharedRoute,
                     string.Empty,
-                    JoinCodes(sourceSlot.HardDiskMediaItems
-                        .Where(item => item.IsBlankHardDiskRelocationCandidate)
-                        .Select(item => item.DiskCodeText)),
+                    JoinCodes(codes),
                     string.Empty);
             }
 
             if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindDamagedHardDisk, StringComparison.Ordinal))
             {
+                var codes = sourceSlot.HardDiskMediaItems
+                    .Where(item => item.IsDamagedHardDiskRelocationCandidate)
+                    .Select(item => item.DiskCodeText)
+                    .ToList();
                 return (
+                    codes.Count == 0 ? string.Empty : sharedRoute,
                     string.Empty,
-                    JoinCodes(sourceSlot.HardDiskMediaItems
-                        .Where(item => item.IsDamagedHardDiskRelocationCandidate)
-                        .Select(item => item.DiskCodeText)),
+                    JoinCodes(codes),
                     string.Empty);
             }
 
             if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc, StringComparison.Ordinal))
             {
+                var codes = sourceSlot.HardDiskMediaItems
+                    .Where(item => item.IsDamagedOpticalDiscRelocationCandidate)
+                    .Select(item => item.DiskCodeText)
+                    .ToList();
                 return (
+                    codes.Count == 0 ? string.Empty : sharedRoute,
                     string.Empty,
                     string.Empty,
-                    JoinCodes(sourceSlot.HardDiskMediaItems
-                        .Where(item => item.IsDamagedOpticalDiscRelocationCandidate)
-                        .Select(item => item.DiskCodeText)));
+                    JoinCodes(codes));
             }
 
-            return (string.Empty, string.Empty, string.Empty);
+            return (sharedRoute, string.Empty, string.Empty, string.Empty);
         }
 
-        private (string SourceSlotText, string ContainerCodes, string HardDiskCodes, string OpticalDiscCodes) CollectInteractiveItemCodes(
-            IReadOnlyList<InteractiveItemRelocationSource> sources)
+        private (string SourceSlotText, string LocationRoutes, string ContainerCodes, string HardDiskCodes, string OpticalDiscCodes) CollectInteractiveItemCodes(
+            IReadOnlyList<InteractiveItemRelocationSource> sources,
+            CabinetSlotViewModel targetSlot)
         {
+            ArgumentNullException.ThrowIfNull(targetSlot);
+
             if (sources.Count == 0)
             {
-                return ("—", string.Empty, string.Empty, string.Empty);
+                return ("—", string.Empty, string.Empty, string.Empty, string.Empty);
             }
 
             string sourceSlotText = ResolveInteractiveSourceSlotText(sources[0]);
             string mediaKind = sources[0].MediaKind;
+            string targetFace = ResolveFaceCode(targetSlot.Face);
+            int targetRow = targetSlot.LayerIndex;
+            int targetColumn = targetSlot.ColumnIndex;
+            string targetSlotKey = ArchiveSlotLocationSupport.BuildSlotKey(
+                Request.CabinetName,
+                targetFace,
+                targetRow,
+                targetColumn);
 
             if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
             {
+                var sourceBoxIds = sources.Select(item => item.SourceBoxId).Where(id => id > 0).ToHashSet();
+                var occupied = targetSlot.ArchiveBoxes
+                    .Where(box => !sourceBoxIds.Contains(box.YearlyArchiveBoxId))
+                    .Select(box => box.SequenceIndex)
+                    .Where(index => index > 0)
+                    .ToList();
+
+                var routes = new List<string>();
                 var boxCodes = new List<string>();
                 foreach (var source in sources)
                 {
                     var box = Slots.SelectMany(slot => slot.ArchiveBoxes)
                         .FirstOrDefault(item => item.YearlyArchiveBoxId == source.SourceBoxId && source.SourceBoxId > 0);
-                    boxCodes.Add(box?.BoxCode ?? source.SourceStorageLocation);
-                    if (string.IsNullOrWhiteSpace(boxCodes[^1]))
-                    {
-                        boxCodes[^1] = source.DisplayText;
-                    }
+                    string code = box?.BoxCode
+                        ?? (string.IsNullOrWhiteSpace(source.SourceStorageLocation) ? source.DisplayText : source.SourceStorageLocation);
+                    int sourceSequence = box?.SequenceIndex ?? 0;
+                    string sourceLocation = !string.IsNullOrWhiteSpace(source.SourceStorageLocation)
+                        && ArchiveSlotLocationSupport.TryParseSlotLocation(source.SourceStorageLocation, out _, out _, out _, out _)
+                        ? source.SourceStorageLocation.Trim()
+                        : (!string.IsNullOrWhiteSpace(source.SourceSlotKey)
+                            ? BuildFullLocationFromSlotKey(source.SourceSlotKey, sourceSequence)
+                            : "—");
+                    int targetSequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupied);
+                    occupied.Add(targetSequence);
+                    string targetLocation = BuildFullLocation(
+                        Request.CabinetName,
+                        targetFace,
+                        targetRow,
+                        targetColumn,
+                        targetSequence);
+                    routes.Add(FormatLocationRoute(sourceLocation, targetLocation));
+                    boxCodes.Add(code);
                 }
 
-                return (sourceSlotText, JoinCodes(boxCodes), string.Empty, string.Empty);
+                return (sourceSlotText, JoinCodes(routes), JoinCodes(boxCodes), string.Empty, string.Empty);
             }
 
             var containerCodes = new List<string>();
             var hardDiskCodes = new List<string>();
             var opticalDiscCodes = new List<string>();
+            var locationRoutes = new List<string>();
+
+            bool hasSlotSequence = string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal);
+            var sourceUnitIds = sources.Select(item => item.SourceUnitId).Where(id => id > 0).ToHashSet();
+            var occupiedTargetSequences = hasSlotSequence
+                ? targetSlot.HardDiskMediaItems
+                    .Where(item => item.IsElectronicInStockOccupancy
+                        && !sourceUnitIds.Contains(item.ElectronicArchiveUnitId))
+                    .Select(ResolveMediumSlotSequence)
+                    .Where(seq => seq > 0)
+                    .ToList()
+                : [];
+
             foreach (var source in sources)
             {
                 CabinetHardDiskMediumItemViewModel? medium = null;
@@ -970,6 +1221,61 @@ namespace DocMgr.ViewModels.Cabinets
                 {
                     medium = FindMediumById(source.SourceMediumId);
                 }
+
+                string sourceLocation;
+                string targetLocation;
+                if (hasSlotSequence)
+                {
+                    int sourceSequence = medium != null
+                        ? ResolveMediumSlotSequence(medium)
+                        : (ArchiveSlotLocationSupport.TryParseSequenceIndex(source.SourceStorageLocation, out int parsed)
+                            ? parsed
+                            : 0);
+                    int targetSequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupiedTargetSequences);
+                    occupiedTargetSequences.Add(targetSequence);
+                    if (medium != null)
+                    {
+                        var mediumSlot = FindSlotForMedium(medium);
+                        sourceLocation = ResolveMediumSourceLocation(
+                            medium,
+                            Request.CabinetName,
+                            ResolveFaceCode((mediumSlot ?? targetSlot).Face),
+                            (mediumSlot ?? targetSlot).LayerIndex,
+                            (mediumSlot ?? targetSlot).ColumnIndex);
+                    }
+                    else
+                    {
+                        sourceLocation = string.IsNullOrWhiteSpace(source.SourceStorageLocation)
+                            ? "—"
+                            : source.SourceStorageLocation.Trim();
+                    }
+
+                    if (string.IsNullOrWhiteSpace(sourceLocation) || sourceLocation == "—")
+                    {
+                        sourceLocation = BuildFullLocationFromSlotKey(source.SourceSlotKey, sourceSequence);
+                    }
+
+                    targetLocation = BuildFullLocation(
+                        Request.CabinetName,
+                        targetFace,
+                        targetRow,
+                        targetColumn,
+                        targetSequence);
+                }
+                else
+                {
+                    sourceLocation = string.IsNullOrWhiteSpace(source.SourceStorageLocation)
+                        ? (string.IsNullOrWhiteSpace(source.SourceSlotKey) ? "—" : source.SourceSlotKey.Trim())
+                        : source.SourceStorageLocation.Trim();
+                    if (ArchiveSlotLocationSupport.TryParseSequenceIndex(sourceLocation, out _))
+                    {
+                        sourceLocation = ArchiveSlotLocationSupport.BuildSlotKey(sourceLocation);
+                    }
+
+                    targetLocation = targetSlotKey;
+                }
+
+                locationRoutes.Add(FormatLocationRoute(sourceLocation, targetLocation));
 
                 if (medium != null)
                 {
@@ -1011,9 +1317,31 @@ namespace DocMgr.ViewModels.Cabinets
 
             return (
                 sourceSlotText,
+                JoinCodes(locationRoutes),
                 JoinCodes(containerCodes),
                 JoinCodes(hardDiskCodes),
                 JoinCodes(opticalDiscCodes));
+        }
+
+        private static string BuildFullLocationFromSlotKey(string? slotKey, int sequenceIndex)
+        {
+            if (string.IsNullOrWhiteSpace(slotKey))
+            {
+                return sequenceIndex > 0 ? $"—-{sequenceIndex:D2}" : "—";
+            }
+
+            string key = slotKey.Trim();
+            if (sequenceIndex <= 0)
+            {
+                return key;
+            }
+
+            if (!ArchiveSlotLocationSupport.TryParseSlotLocation(key, out string cabinet, out string side, out int row, out int column))
+            {
+                return $"{key}-{sequenceIndex:D2}";
+            }
+
+            return ArchiveSlotLocationSupport.BuildFullElectronicLocation(cabinet, side, row, column, sequenceIndex);
         }
 
         private string ResolveInteractiveSourceSlotText(InteractiveItemRelocationSource source)
@@ -1098,8 +1426,20 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
-            _lastSlotViewportWidth = Math.Max(availableWidth, 240d);
-            _lastSlotViewportHeight = Math.Max(availableHeight, 180d);
+            double nextWidth = Math.Max(availableWidth, 240d);
+            double nextHeight = Math.Max(availableHeight, 180d);
+            bool viewportUnchanged = Math.Abs(_lastSlotViewportWidth - nextWidth) < 0.5d
+                && Math.Abs(_lastSlotViewportHeight - nextHeight) < 0.5d;
+
+            double previousCompactWidth = _compactSlotDisplayWidth;
+            double previousCompactHeight = _compactSlotDisplayHeight;
+            double previousMagneticWidth = _standardMagneticSlotDisplayWidth;
+            double previousMagneticHeight = _standardMagneticSlotDisplayHeight;
+            double previousSlidingWidth = _standardSlidingSlotDisplayWidth;
+            double previousSlidingHeight = _standardSlidingSlotDisplayHeight;
+
+            _lastSlotViewportWidth = nextWidth;
+            _lastSlotViewportHeight = nextHeight;
 
             if (IsCompactDisplayMode)
             {
@@ -1110,13 +1450,140 @@ namespace DocMgr.ViewModels.Cabinets
             }
             else if (IsMagneticDiskCabinet)
             {
-                double cellWidth = (_lastSlotViewportWidth - StandardSlotGap * DisplayColumnCount) / DisplayColumnCount;
-                double cellHeight = (_lastSlotViewportHeight - StandardSlotGap * DisplayRowCount) / DisplayRowCount;
-                _standardMagneticSlotDisplayWidth = Math.Max(StandardMagneticSlotMinWidth, Math.Floor(cellWidth));
-                _standardMagneticSlotDisplayHeight = Math.Max(StandardMagneticSlotMinHeight, Math.Floor(cellHeight)) * StandardMagneticSlotHeightScale;
+                (double slotWidth, double slotHeight) = ResolveMagneticStandardSlotDisplaySize(
+                    _lastSlotViewportWidth,
+                    _lastSlotViewportHeight);
+                _standardMagneticSlotDisplayWidth = slotWidth;
+                _standardMagneticSlotDisplayHeight = slotHeight;
+            }
+            else if (IsStandardSlidingCabinet)
+            {
+                (double slotWidth, double slotHeight) = ResolveStandardSlidingStandardSlotDisplaySize(
+                    _lastSlotViewportWidth,
+                    _lastSlotViewportHeight);
+                _standardSlidingSlotDisplayWidth = slotWidth;
+                _standardSlidingSlotDisplayHeight = slotHeight;
+                ApplyStandardSlidingViewportCanvasLayout(slotWidth, slotHeight);
+            }
+
+            bool slotSizeUnchanged = IsCompactDisplayMode
+                ? Math.Abs(previousCompactWidth - _compactSlotDisplayWidth) < 0.5d
+                    && Math.Abs(previousCompactHeight - _compactSlotDisplayHeight) < 0.5d
+                : IsMagneticDiskCabinet
+                    ? Math.Abs(previousMagneticWidth - _standardMagneticSlotDisplayWidth) < 0.5d
+                        && Math.Abs(previousMagneticHeight - _standardMagneticSlotDisplayHeight) < 0.5d
+                    : Math.Abs(previousSlidingWidth - _standardSlidingSlotDisplayWidth) < 0.5d
+                        && Math.Abs(previousSlidingHeight - _standardSlidingSlotDisplayHeight) < 0.5d;
+
+            if (viewportUnchanged && slotSizeUnchanged)
+            {
+                return;
             }
 
             NotifyMagneticDiskSlotDimensionProperties();
+        }
+
+        /// <summary>
+        /// 防磁柜标准模式：以两行占满视口高度为主轴，再按画布宽高比推导宽度并做视口适配。
+        /// </summary>
+        private (double Width, double Height) ResolveMagneticStandardSlotDisplaySize(
+            double viewportWidth,
+            double viewportHeight)
+        {
+            double primaryHeight = Math.Max(
+                StandardMagneticSlotMinHeight,
+                Math.Floor((viewportHeight - StandardSlotGap * StandardDisplayReferenceRowCount) / StandardDisplayReferenceRowCount));
+
+            double canvasHeight = Math.Max(1d, primaryHeight - StandardMagneticSlotVerticalChrome);
+            double canvasWidth = canvasHeight * MagneticSlotCanvasAspect;
+            double primaryWidth = Math.Max(StandardMagneticSlotMinWidth, Math.Floor(canvasWidth + StandardSlotHorizontalChrome));
+
+            return FitSlotDisplaySizeToViewport(
+                primaryWidth,
+                primaryHeight,
+                viewportWidth,
+                viewportHeight,
+                DisplayColumnCount,
+                StandardDisplayReferenceRowCount,
+                StandardSlotGap,
+                StandardMagneticSlotMinWidth,
+                StandardMagneticSlotMinHeight);
+        }
+
+        /// <summary>
+        /// 标准滑道柜标准模式：以三列占满视口宽度为主轴，再按画布宽高比推导高度并做视口适配。
+        /// </summary>
+        private (double Width, double Height) ResolveStandardSlidingStandardSlotDisplaySize(
+            double viewportWidth,
+            double viewportHeight)
+        {
+            double primaryWidth = Math.Max(
+                StandardSlidingSlotMinWidth,
+                Math.Floor((viewportWidth - StandardSlotGap * StandardDisplayReferenceColumnCount) / StandardDisplayReferenceColumnCount));
+
+            double canvasWidth = Math.Max(1d, primaryWidth - StandardSlotHorizontalChrome);
+            double canvasHeight = canvasWidth / StandardSlidingSlotCanvasAspect;
+            double primaryHeight = Math.Max(StandardSlidingSlotMinHeight, Math.Floor(canvasHeight + StandardSlidingSlotVerticalChrome));
+
+            // 高度按宽高比推导；真实行数超过参考行时允许纵向滚动，仅在单格超出视口高度时缩小。
+            return FitSlotDisplaySizeToViewport(
+                primaryWidth,
+                primaryHeight,
+                viewportWidth,
+                viewportHeight,
+                StandardDisplayReferenceColumnCount,
+                1,
+                StandardSlotGap,
+                StandardSlidingSlotMinWidth,
+                StandardSlidingSlotMinHeight);
+        }
+
+        /// <summary>
+        /// 按主轴尺寸保持宽高比，若参考行列超出视口则等比缩小。
+        /// </summary>
+        private static (double Width, double Height) FitSlotDisplaySizeToViewport(
+            double slotWidth,
+            double slotHeight,
+            double viewportWidth,
+            double viewportHeight,
+            int fitColumnCount,
+            int fitRowCount,
+            double gap,
+            double minWidth,
+            double minHeight)
+        {
+            if (slotWidth <= 0d || slotHeight <= 0d || viewportWidth <= 0d || viewportHeight <= 0d)
+            {
+                return (Math.Max(minWidth, slotWidth), Math.Max(minHeight, slotHeight));
+            }
+
+            double totalWidth = fitColumnCount * (slotWidth + gap);
+            double totalHeight = fitRowCount * (slotHeight + gap);
+            double widthScale = totalWidth > viewportWidth ? viewportWidth / totalWidth : 1d;
+            double heightScale = totalHeight > viewportHeight ? viewportHeight / totalHeight : 1d;
+            double fitScale = Math.Min(widthScale, heightScale);
+            if (fitScale < 1d)
+            {
+                slotWidth = Math.Floor(slotWidth * fitScale);
+                slotHeight = Math.Floor(slotHeight * fitScale);
+            }
+
+            return (
+                Math.Max(minWidth, slotWidth),
+                Math.Max(minHeight, slotHeight));
+        }
+
+        /// <summary>
+        /// 标准滑道柜视口尺寸变化后，按有效画布尺寸重算档案盒布局坐标。
+        /// </summary>
+        private void ApplyStandardSlidingViewportCanvasLayout(double slotDisplayWidth, double slotDisplayHeight)
+        {
+            double renderCanvasWidth = Math.Max(0d, slotDisplayWidth - StandardSlotHorizontalChrome);
+            double renderCanvasHeight = Math.Max(0d, slotDisplayHeight - StandardSlidingSlotVerticalChrome);
+            foreach (CabinetSlotViewModel slot in Slots)
+            {
+                slot.UpdateSnapshotCanvasLayout(renderCanvasWidth, renderCanvasHeight);
+            }
         }
 
         /// <summary>
@@ -1174,10 +1641,20 @@ namespace DocMgr.ViewModels.Cabinets
 
         private double ResolveEffectiveSlotVerticalChrome()
         {
+            if (IsMagneticDiskCabinet)
+            {
+                return StandardMagneticSlotVerticalChrome;
+            }
+
+            if (IsStandardSlidingCabinet)
+            {
+                return StandardSlidingSlotVerticalChrome;
+            }
+
             CabinetSlotViewModel? slot = Slots.FirstOrDefault();
             if (slot == null)
             {
-                return StandardMagneticSlotVerticalChrome;
+                return StandardSlidingSlotVerticalChrome;
             }
 
             return slot.SlotDisplayHeight - slot.RenderSlotCanvasHeight;
@@ -2082,7 +2559,7 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
-            _dialogService.ShowMessage(hardDiskMedium.InfoText, "硬盘介质信息");
+            _dialogService.ShowMessage(hardDiskMedium.InfoText, hardDiskMedium.MediumInfoMenuHeader);
         }
 
         private void ShowHardDiskMediumArchiveInfo(CabinetHardDiskMediumItemViewModel? hardDiskMedium)
@@ -2421,7 +2898,7 @@ namespace DocMgr.ViewModels.Cabinets
                 if (result.Success)
                 {
                     var sourceSlot = FindSlotByEndpoint(source);
-                    var (containerCodes, hardDiskCodes, opticalDiscCodes) = CollectBatchItemCodes(source, sourceSlot);
+                    var (locationRoutes, containerCodes, hardDiskCodes, opticalDiscCodes) = CollectBatchItemCodes(source, sourceSlot, slot);
                     string sourceSlotText = FormatBatchSourceSlotText(source);
                     RecordSessionRelocation(
                         mediaKind: source.MediaKind,
@@ -2430,6 +2907,7 @@ namespace DocMgr.ViewModels.Cabinets
                         summaryText: preview.SummaryText,
                         sourceSlotText: sourceSlotText,
                         targetSlot: slot,
+                        locationRoutesText: locationRoutes,
                         containerCodesText: containerCodes,
                         hardDiskCodesText: hardDiskCodes,
                         opticalDiscCodesText: opticalDiscCodes);
@@ -2513,7 +2991,7 @@ namespace DocMgr.ViewModels.Cabinets
                 SourceBoxId = box.YearlyArchiveBoxId,
                 DisplayText = $"{box.BoxCode}（{box.BoxLabel}）",
                 BoxSpecification = box.BoxSpecification,
-                SourceStorageLocation = box.BoxCode,
+                SourceStorageLocation = BuildFullLocationFromSlotKey(slotKey, box.SequenceIndex),
                 SourceSlotKey = slotKey
             }).ToList());
 
@@ -2896,7 +3374,8 @@ namespace DocMgr.ViewModels.Cabinets
                     string modeLabel = sources.Count > 1
                         ? $"多选迁档（{sources.Count}项）"
                         : "单件迁档";
-                    var (sourceSlotText, containerCodes, hardDiskCodes, opticalDiscCodes) = CollectInteractiveItemCodes(sources);
+                    var (sourceSlotText, locationRoutes, containerCodes, hardDiskCodes, opticalDiscCodes) =
+                        CollectInteractiveItemCodes(sources, slot);
                     RecordSessionRelocation(
                         mediaKind: request.MediaKind,
                         modeLabel: modeLabel,
@@ -2904,6 +3383,7 @@ namespace DocMgr.ViewModels.Cabinets
                         summaryText: preview.SummaryText,
                         sourceSlotText: sourceSlotText,
                         targetSlot: slot,
+                        locationRoutesText: locationRoutes,
                         containerCodesText: containerCodes,
                         hardDiskCodesText: hardDiskCodes,
                         opticalDiscCodesText: opticalDiscCodes);

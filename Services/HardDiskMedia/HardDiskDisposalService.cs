@@ -58,10 +58,14 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
 
         var needLookupIds = media
             .Where(item => item != null
-                           && string.Equals(
-                               item.Ledger?.MediaStatus?.Trim(),
-                               HardDiskMedium.StatusInStockLost,
-                               StringComparison.Ordinal)
+                           && (string.Equals(
+                                   item.Ledger?.MediaStatus?.Trim(),
+                                   HardDiskMedium.StatusInStockLost,
+                                   StringComparison.Ordinal)
+                               || string.Equals(
+                                   item.Ledger?.MediaStatus?.Trim(),
+                                   HardDiskMedium.StatusInStockScrap,
+                                   StringComparison.Ordinal))
                            && string.IsNullOrWhiteSpace(item.Ledger?.StorageLocation))
             .Select(item => item.Id)
             .Distinct()
@@ -310,7 +314,8 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             {
                 var medium = media.FirstOrDefault(m => m.Id == item.MediumId);
                 string status = medium?.Ledger?.MediaStatus?.Trim() ?? item.BeforeMediaStatus?.Trim() ?? string.Empty;
-                return string.Equals(status, HardDiskMedium.StatusInStockLost, StringComparison.Ordinal)
+                return (string.Equals(status, HardDiskMedium.StatusInStockLost, StringComparison.Ordinal)
+                        || string.Equals(status, HardDiskMedium.StatusInStockScrap, StringComparison.Ordinal))
                        && string.IsNullOrWhiteSpace(medium?.Ledger?.StorageLocation)
                        && string.IsNullOrWhiteSpace(item.BeforeStorageLocation);
             })
@@ -640,7 +645,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             string status = medium.Ledger?.MediaStatus?.Trim() ?? string.Empty;
             if (!IsInStockStatus(status))
             {
-                throw new InvalidOperationException($"硬盘【{medium.DiskCode}】当前状态为“{status}”，仅「在库(空盘)」「在库(损坏)」「在库(盘失)」可离库处置。");
+                throw new InvalidOperationException($"硬盘【{medium.DiskCode}】当前状态为“{status}”，仅「在库(空盘)」「在库(损坏)」「在库(盘失)」「在库(拟销)」可离库处置。");
             }
 
             if (await _repository.ExistsActiveDisposalForMediumAsync(medium.Id, excludeRecordId))
@@ -819,11 +824,20 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
     {
         foreach (var item in items)
         {
+            string reason = ResolveItemDisposalReason(item);
             string method = ResolveItemDispositionMethod(item, headerFallback: null);
             if (!HardDiskDisposalDomainValues.IsValidDispositionMethod(method))
             {
                 throw new InvalidOperationException(
                     $"硬盘【{item.DiskCode}】未指定处置方式，请勾选后在上方选择处置方式。");
+            }
+
+            string? mismatch = HardDiskDisposalDomainValues.TryGetReasonAndDispositionMethodMismatchMessage(
+                reason,
+                method);
+            if (!string.IsNullOrWhiteSpace(mismatch))
+            {
+                throw new InvalidOperationException($"硬盘【{item.DiskCode}】{mismatch}");
             }
         }
     }
@@ -895,7 +909,8 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         string normalized = status?.Trim() ?? string.Empty;
         return string.Equals(normalized, HardDiskMedium.StatusInStockBlank, StringComparison.Ordinal)
             || string.Equals(normalized, HardDiskMedium.StatusInStockDamaged, StringComparison.Ordinal)
-            || string.Equals(normalized, HardDiskMedium.StatusInStockLost, StringComparison.Ordinal);
+            || string.Equals(normalized, HardDiskMedium.StatusInStockLost, StringComparison.Ordinal)
+            || string.Equals(normalized, HardDiskMedium.StatusInStockScrap, StringComparison.Ordinal);
     }
 
     private static HardDiskLedger EnsureLedger(HardDiskMedium medium, DateTime now)

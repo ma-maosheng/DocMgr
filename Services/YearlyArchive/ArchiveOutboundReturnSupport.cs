@@ -48,6 +48,72 @@ namespace DocMgr.Services.YearlyArchive
         }
 
         /// <summary>
+        /// 电子介质提档且载体为硬盘、需归还硬盘（资料本身不还，硬盘走 HD-RTN）。
+        /// </summary>
+        public static bool IsArchiveOutboundFiledHardDiskReturnItem(YearlyArchiveOutboundItem item)
+        {
+            ArgumentNullException.ThrowIfNull(item);
+
+            if (!string.Equals(item.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
+                || !string.Equals(item.UsageMode, ArchiveOutboundDomainValues.UsageModeWithdrawal, StringComparison.Ordinal)
+                || !item.NeedReturn)
+            {
+                return false;
+            }
+
+            // 库内空盘征用走另一路径。
+            if (IsArchiveOutboundRequisitionReturnItem(item))
+            {
+                return false;
+            }
+
+            return IsHardDiskCarrier(item);
+        }
+
+        /// <summary>
+        /// 资料出库办结后需进入 HD-RTN 的硬盘明细（库内空盘征用或提档数据硬盘需归还）。
+        /// </summary>
+        public static bool IsArchiveOutboundHardDiskReturnItem(YearlyArchiveOutboundItem item) =>
+            IsArchiveOutboundRequisitionReturnItem(item) || IsArchiveOutboundFiledHardDiskReturnItem(item);
+
+        /// <summary>
+        /// 电子硬盘提档：资料本身不还，「NeedReturn」仅表示载体硬盘是否归还。
+        /// </summary>
+        public static bool IsElectronicHardDiskWithdrawalDiskReturnOnly(
+            YearlyArchiveOutboundItem item,
+            string? storageCarrierTypeFallback = null)
+        {
+            ArgumentNullException.ThrowIfNull(item);
+
+            if (!string.Equals(item.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
+                || !string.Equals(item.UsageMode, ArchiveOutboundDomainValues.UsageModeWithdrawal, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (string.Equals(
+                    item.ElectronicMediaSource,
+                    ArchiveOutboundDomainValues.ElectronicMediaSourceInStockBlank,
+                    StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return IsHardDiskCarrier(item, storageCarrierTypeFallback);
+        }
+
+        private static bool IsHardDiskCarrier(YearlyArchiveOutboundItem item, string? storageCarrierTypeFallback = null)
+        {
+            if (ArchiveFilingBusinessRules.IsHardDiskArchiveCarrierType(item.StorageCarrierType)
+                || ArchiveFilingBusinessRules.IsHardDiskArchiveCarrierType(item.MediaType))
+            {
+                return true;
+            }
+
+            return ArchiveFilingBusinessRules.IsHardDiskArchiveCarrierType(storageCarrierTypeFallback);
+        }
+
+        /// <summary>
         /// 解析明细有效应还日期（优先明细，其次申请单头）。
         /// </summary>
         public static DateTime? ResolveItemExpectedReturnDate(
@@ -103,6 +169,7 @@ namespace DocMgr.Services.YearlyArchive
 
             return record.Items.Any(item =>
                 string.Equals(item.UsageMode, ArchiveOutboundDomainValues.UsageModeWithdrawal, StringComparison.Ordinal)
+                && string.Equals(item.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal)
                 && item.NeedReturn
                 && !string.Equals(item.ReservationStatus, ArchiveOutboundDomainValues.SyncEntryPhaseReturned, StringComparison.Ordinal)
                 && IsDueDateOverdue(ResolveItemExpectedReturnDate(item, record), asOf));
@@ -116,7 +183,7 @@ namespace DocMgr.Services.YearlyArchive
             || HasOverdueDiskRequisitionItems(record, asOf, borrowedMediumIds: null);
 
         /// <summary>
-        /// 已完成出库单是否存在逾期未归还的库内征用硬盘。
+        /// 已完成出库单是否存在逾期未归还的资料出库硬盘（库内空盘征用或提档数据硬盘）。
         /// </summary>
         public static bool HasOverdueDiskRequisitionItems(
             YearlyArchiveOutboundRecord record,
@@ -126,11 +193,26 @@ namespace DocMgr.Services.YearlyArchive
             ArgumentNullException.ThrowIfNull(record);
 
             return record.Items.Any(item =>
-                item.RequisitionedDiskNeedReturn
-                && item.RequisitionedMediumId is > 0
-                && IsDueDateOverdue(ResolveItemExpectedReturnDate(item, record), asOf)
-                && (borrowedMediumIds == null
-                    || borrowedMediumIds.Contains(item.RequisitionedMediumId.Value)));
+            {
+                if (!IsArchiveOutboundHardDiskReturnItem(item)
+                    || !IsDueDateOverdue(ResolveItemExpectedReturnDate(item, record), asOf))
+                {
+                    return false;
+                }
+
+                if (borrowedMediumIds == null)
+                {
+                    return true;
+                }
+
+                if (item.RequisitionedMediumId is int mediumId)
+                {
+                    return borrowedMediumIds.Contains(mediumId);
+                }
+
+                // 提档数据硬盘明细无 MediumId：只要仍有待还硬盘台账，即按逾期明细计。
+                return IsArchiveOutboundFiledHardDiskReturnItem(item) && borrowedMediumIds.Count > 0;
+            });
         }
 
         public static bool IsDueDateOverdue(DateTime? dueDate, DateTime asOf) =>

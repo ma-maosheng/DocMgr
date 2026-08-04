@@ -403,6 +403,18 @@ namespace DocMgr.Views.Cabinets
             SlotsScaleTransform.ScaleX = 1;
             SlotsScaleTransform.ScaleY = 1;
             SlotsTranslateTransform.Y = 0;
+
+            EnableSlotsHostViewportSizingAndRefresh();
+        }
+
+        private void EnableSlotsHostViewportSizingAndRefresh()
+        {
+            _slotsHostViewportSizingEnabled = true;
+            _lastHandledSlotsHostSize = default;
+            if (SlotsHost.ActualWidth > 0d && SlotsHost.ActualHeight > 0d)
+            {
+                ApplySlotsHostViewportSize(SlotsHost.ActualWidth, SlotsHost.ActualHeight);
+            }
         }
 
         private static void ResetInteriorScale(FrameworkElement interiorPanel)

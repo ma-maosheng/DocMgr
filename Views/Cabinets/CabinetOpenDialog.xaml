@@ -258,27 +258,88 @@
     <Grid Margin="{Binding SnapshotRootMargin}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Padding="20" Background="White" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="8">
+        <!-- 顶部：标题 / 选档与迁档工具 / 展示方式+关闭，合并为左中右三列 -->
+        <Border Grid.Row="0"
+                Padding="12,10"
+                Background="White"
+                BorderBrush="#E5E7EB"
+                BorderThickness="1"
+                CornerRadius="8">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*" MinWidth="160"/>
+                    <ColumnDefinition Width="Auto" MinWidth="280"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel>
-                    <TextBlock Text="{Binding CabinetTitle}" FontSize="24" FontWeight="Bold" Foreground="#1F2937"/>
-                    <TextBlock Text="{Binding CabinetSubtitle}" Margin="0,8,0,0" FontSize="15" Foreground="#4B5563"/>
-                    <TextBlock Text="{Binding LayoutSummary}" Margin="0,6,0,0" FontSize="13" Foreground="#6B7280"/>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="{Binding CabinetTitle}" FontSize="20" FontWeight="Bold" Foreground="#1F2937"/>
+                    <TextBlock Text="{Binding CabinetSubtitle}" Margin="0,4,0,0" FontSize="13" Foreground="#4B5563"/>
+                    <TextBlock Text="{Binding LayoutSummary}" Margin="0,2,0,0" FontSize="12" Foreground="#6B7280"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Margin="8,0,16,0">
+                    <DockPanel LastChildFill="False"
+                               Visibility="{Binding CompactModeToolbarVisibility}">
+                        <TextBlock Text="{Binding SelectedSlotSummaryText}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,12,0"
+                                   Foreground="#4B5563"/>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Content="全选"
+                                    Command="{Binding SelectAllSlotsCommand}"
+                                    Style="{StaticResource DialogSecondaryActionButtonStyle}"
+                                    Padding="12,5"/>
+                            <Button Content="反选"
+                                    Margin="8,0,0,0"
+                                    Command="{Binding InvertSlotSelectionCommand}"
+                                    Style="{StaticResource DialogSecondaryActionButtonStyle}"
+                                    Padding="12,5"/>
+                            <Button Content="设置用途"
+                                    Margin="8,0,0,0"
+                                    Command="{Binding ApplySelectedSlotsPurposeCommand}"
+                                    Style="{StaticResource DialogPrimaryActionButtonStyle}"
+                                    Padding="12,5"/>
+                            <Button Content="清空选择"
+                                    Margin="8,0,0,0"
+                                    Command="{Binding ClearSlotSelectionCommand}"
+                                    Style="{StaticResource DialogSecondaryActionButtonStyle}"
+                                    Padding="12,5"/>
+                        </StackPanel>
+                    </DockPanel>
+
+                    <DockPanel LastChildFill="False"
+                               Margin="0,8,0,0"
+                               Visibility="{Binding ContentSelectionToolbarVisibility}">
+                        <TextBlock Text="{Binding SelectedContentSummaryText}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,12,0"
+                                   Foreground="#4B5563"
+                                   TextWrapping="Wrap"
+                                   MaxWidth="360"/>
+                        <Button DockPanel.Dock="Right"
+                                Content="清空选择"
+                                Margin="8,0,0,0"
+                                Command="{Binding ClearContentSelectionCommand}"
+                                Style="{StaticResource DialogSecondaryActionButtonStyle}"
+                                Padding="12,5"/>
+                        <Button DockPanel.Dock="Right"
+                                Content="设为迁档对象"
+                                Margin="8,0,0,0"
+                                Command="{Binding SetInteractiveItemRelocationFromSelectionCommand}"
+                                Style="{StaticResource DialogPrimaryActionButtonStyle}"
+                                Padding="12,5"/>
+                    </DockPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2"
                             Orientation="Horizontal"
-                            Margin="20,0,0,0"
                             VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding SlotDisplayModeSwitcherVisibility}">
@@ -299,7 +360,7 @@
                                      VerticalAlignment="Center"
                                      FontSize="13"/>
                     </StackPanel>
-                    <Button Margin="20,0,0,0"
+                    <Button Margin="16,0,0,0"
                             Content="关闭"
                             Command="{Binding CloseCommand}"
                             Style="{StaticResource DialogSecondaryActionButtonStyle}"
@@ -308,71 +369,7 @@
             </Grid>
         </Border>
 
-        <StackPanel Grid.Row="1">
-        <Border Margin="0,12,0,0"
-                Padding="12,10"
-                Background="White"
-                BorderBrush="#E5E7EB"
-                BorderThickness="1"
-                CornerRadius="8"
-                Visibility="{Binding CompactModeToolbarVisibility}">
-            <DockPanel LastChildFill="False">
-                <TextBlock Text="{Binding SelectedSlotSummaryText}"
-                           VerticalAlignment="Center"
-                           Foreground="#4B5563"/>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="全选"
-                            Command="{Binding SelectAllSlotsCommand}"
-                            Style="{StaticResource DialogSecondaryActionButtonStyle}"
-                            Padding="14,6"/>
-                    <Button Content="反选"
-                            Margin="10,0,0,0"
-                            Command="{Binding InvertSlotSelectionCommand}"
-                            Style="{StaticResource DialogSecondaryActionButtonStyle}"
-                            Padding="14,6"/>
-                    <Button Content="设置用途"
-                            Margin="10,0,0,0"
-                            Command="{Binding ApplySelectedSlotsPurposeCommand}"
-                            Style="{StaticResource DialogPrimaryActionButtonStyle}"
-                            Padding="14,6"/>
-                    <Button Content="清空选择"
-                            Margin="10,0,0,0"
-                            Command="{Binding ClearSlotSelectionCommand}"
-                            Style="{StaticResource DialogSecondaryActionButtonStyle}"
-                            Padding="14,6"/>
-                </StackPanel>
-            </DockPanel>
-        </Border>
-
-        <Border Margin="0,12,0,0"
-                Padding="12,10"
-                Background="White"
-                BorderBrush="#E5E7EB"
-                BorderThickness="1"
-                CornerRadius="8"
-                Visibility="{Binding ContentSelectionToolbarVisibility}">
-            <DockPanel LastChildFill="False">
-                <TextBlock Text="{Binding SelectedContentSummaryText}"
-                           VerticalAlignment="Center"
-                           Foreground="#4B5563"
-                           TextWrapping="Wrap"/>
-                <Button DockPanel.Dock="Right"
-                        Content="清空选择"
-                        Margin="12,0,0,0"
-                        Command="{Binding ClearContentSelectionCommand}"
-                        Style="{StaticResource DialogSecondaryActionButtonStyle}"
-                        Padding="14,6"/>
-                <Button DockPanel.Dock="Right"
-                        Content="设为迁档对象"
-                        Margin="12,0,0,0"
-                        Command="{Binding SetInteractiveItemRelocationFromSelectionCommand}"
-                        Style="{StaticResource DialogPrimaryActionButtonStyle}"
-                        Padding="14,6"/>
-            </DockPanel>
-        </Border>
-        </StackPanel>
-
-        <Grid Grid.Row="2" Margin="0,16,0,16">
+        <Grid Grid.Row="1" Margin="0,12,0,12">
             <Border Background="#EEF2F7" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="10" Opacity="0.55"/>
 
             <Border x:Name="SlotsHost"
@@ -731,7 +728,7 @@
                                                                         BorderThickness="{Binding BoxBorderThickness}"
                                                                         CornerRadius="0.8"
                                                                         Cursor="Hand"
-                                                                        ToolTip="{Binding ToolTipText}"
+                                                                        ToolTip="{Binding ToolTipText, Mode=OneWay}"
                                                                         MouseLeftButtonDown="ArchiveBox_MouseLeftButtonDown"
                                                                         PreviewMouseLeftButtonDown="InteractiveItemDrag_PreviewMouseLeftButtonDown"
                                                                         PreviewMouseMove="InteractiveItemDrag_PreviewMouseMove"
@@ -776,108 +773,8 @@
 
                                                                                 <Border Background="{Binding AccentBrush}" CornerRadius="0.8,0,0,0.8"/>
 
-                                                                                <Border Grid.ColumnSpan="2"
-                                                                                        HorizontalAlignment="Left"
-                                                                                        VerticalAlignment="Top"
-                                                                                        Margin="0.8,0.8,0,0"
-                                                                                        Padding="2.2,0.8"
-                                                                                        Background="{Binding PlacementModeBadgeBackground}"
-                                                                                        BorderBrush="{Binding PlacementModeBadgeBorderBrush}"
-                                                                                        BorderThickness="0.4"
-                                                                                        CornerRadius="2.8"
-                                                                                        SnapsToDevicePixels="True"
-                                                                                        UseLayoutRounding="True"
-                                                                                        ToolTip="{Binding PlacementModeBadgeText}">
-                                                                                    <TextBlock Text="{Binding PlacementModeBadgeText, Mode=OneWay}"
-                                                                                               FontSize="13"
-                                                                                               FontWeight="Bold"
-                                                                                               Foreground="{Binding PlacementModeBadgeForeground}"
-                                                                                               TextTrimming="CharacterEllipsis"
-                                                                                               TextWrapping="NoWrap"
-                                                                                               MaxWidth="120"
-                                                                                               Focusable="False"
-                                                                                               TextOptions.TextFormattingMode="Display"
-                                                                                               TextOptions.TextRenderingMode="ClearType"
-                                                                                               AutomationProperties.Name="{Binding PlacementModeBadgeText, Mode=OneWay}"/>
-                                                                                </Border>
-
-                                                                                <StackPanel Grid.ColumnSpan="2"
-                                                                                            HorizontalAlignment="Right"
-                                                                                            VerticalAlignment="Top"
-                                                                                            Margin="0,0.8,0.8,0">
-                                                                                    <Border HorizontalAlignment="Right"
-                                                                                            Padding="1.4,0.2"
-                                                                                            Background="{Binding SpecificationBadgeBackground}"
-                                                                                            BorderBrush="{Binding SpecificationBadgeBorderBrush}"
-                                                                                            BorderThickness="0.4"
-                                                                                            CornerRadius="1.6"
-                                                                                            Visibility="{Binding NonStandardBadgeVisibility}">
-                                                                                        <TextBlock Text="非标"
-                                                                                                   FontSize="8"
-                                                                                                   FontWeight="Bold"
-                                                                                                   Foreground="{Binding SpecificationBadgeForeground}"/>
-                                                                                    </Border>
-
-                                                                                    <Border HorizontalAlignment="Right"
-                                                                                            Margin="0,1.2,0,0"
-                                                                                            Padding="0.8,0.2"
-                                                                                            Background="#FEE2E2"
-                                                                                            BorderBrush="#FCA5A5"
-                                                                                            BorderThickness="0.4"
-                                                                                            CornerRadius="1.6"
-                                                                                            Visibility="{Binding MixedBadgeVisibility}">
-                                                                                        <TextBlock Text="混放"
-                                                                                                   FontSize="10"
-                                                                                                   FontWeight="Bold"
-                                                                                                   Foreground="#B91C1C"/>
-                                                                                    </Border>
-
-                                                                                    <Border HorizontalAlignment="Right"
-                                                                                            Margin="0,1.2,0,0"
-                                                                                            Padding="0.8,0.2"
-                                                                                            Background="#FFEDD5"
-                                                                                            BorderBrush="#FDBA74"
-                                                                                            BorderThickness="0.4"
-                                                                                            CornerRadius="1.6"
-                                                                                            Visibility="{Binding PendingReturnBadgeVisibility}">
-                                                                                        <TextBlock Text="{Binding PendingReturnBadgeText}"
-                                                                                                   FontSize="10"
-                                                                                                   FontWeight="Bold"
-                                                                                                   Foreground="#C2410C"/>
-                                                                                    </Border>
-
-                                                                                    <Border HorizontalAlignment="Right"
-                                                                                            Margin="0,1.2,0,0"
-                                                                                            Padding="0.8,0.2"
-                                                                                            Background="#FEF3C7"
-                                                                                            BorderBrush="#D97706"
-                                                                                            BorderThickness="0.4"
-                                                                                            CornerRadius="1.6"
-                                                                                            ToolTip="{Binding OccupationLockToolTipText}"
-                                                                                            Visibility="{Binding OccupationLockBadgeVisibility}">
-                                                                                        <TextBlock Text="{Binding OccupationLockBadgeText}"
-                                                                                                   FontSize="10"
-                                                                                                   FontWeight="Bold"
-                                                                                                   Foreground="#DC2626"/>
-                                                                                    </Border>
-
-                                                                                    <Border HorizontalAlignment="Right"
-                                                                                            Margin="0,1.2,0,0"
-                                                                                            Padding="0.8,0.2"
-                                                                                            Background="#FEE2E2"
-                                                                                            BorderBrush="#FCA5A5"
-                                                                                            BorderThickness="0.4"
-                                                                                            CornerRadius="1.6"
-                                                                                            Visibility="{Binding InventoryMarkBadgeVisibility}">
-                                                                                        <TextBlock Text="{Binding InventoryMarkBadgeText}"
-                                                                                                   FontSize="10"
-                                                                                                   FontWeight="Bold"
-                                                                                                   Foreground="#B91C1C"/>
-                                                                                    </Border>
-                                                                                </StackPanel>
-
                                                                                 <Viewbox Grid.Column="1"
-                                                                                         Margin="0.6,12.0,0.6,0.6"
+                                                                                         Margin="0.6,8.0,0.6,0.6"
                                                                                          Stretch="Fill"
                                                                                          StretchDirection="Both">
                                                                                     <Grid Width="18" Height="36">
@@ -892,7 +789,7 @@
                                                                                                    HorizontalAlignment="Center"
                                                                                                    TextAlignment="Center"
                                                                                                    TextWrapping="Wrap"
-                                                                                                   FontSize="2.0"
+                                                                                                   FontSize="2.2"
                                                                                                    FontWeight="Bold"
                                                                                                    Foreground="{Binding TitleForeground}"/>
 
@@ -902,7 +799,7 @@
                                                                                                    HorizontalAlignment="Center"
                                                                                                    TextAlignment="Center"
                                                                                                    TextWrapping="Wrap"
-                                                                                                   FontSize="3.2"
+                                                                                                   FontSize="1.7"
                                                                                                    Foreground="{Binding ArchiveTypeForeground}">
                                                                                             <TextBlock.LayoutTransform>
                                                                                                 <ScaleTransform ScaleX="{Binding SpineIdentifierHorizontalScale}" ScaleY="1"/>
@@ -920,7 +817,7 @@
                                                                                                        HorizontalAlignment="Center"
                                                                                                        TextAlignment="Center"
                                                                                                        TextWrapping="Wrap"
-                                                                                                       FontSize="3.0"
+                                                                                                       FontSize="1.5"
                                                                                                        Foreground="{Binding CountForeground}"/>
                                                                                         </Border>
                                                                                     </Grid>
@@ -944,79 +841,6 @@
                                                                                 </Grid.ColumnDefinitions>
 
                                                                                 <Border Background="{Binding AccentBrush}" CornerRadius="1,0,0,1"/>
-
-                                                                                <Border Grid.ColumnSpan="2"
-                                                                                        HorizontalAlignment="Left"
-                                                                                        VerticalAlignment="Top"
-                                                                                        Margin="2,2,0,0"
-                                                                                        Padding="3,1"
-                                                                                        Background="{Binding PlacementModeBadgeBackground}"
-                                                                                        BorderBrush="{Binding PlacementModeBadgeBorderBrush}"
-                                                                                        BorderThickness="0.4"
-                                                                                        CornerRadius="2"
-                                                                                        ToolTip="{Binding PlacementModeBadgeText}">
-                                                                                    <TextBlock Text="{Binding PlacementModeBadgeText, Mode=OneWay}"
-                                                                                               Style="{StaticResource SnapFs10}"
-                                                                                               FontWeight="Bold"
-                                                                                               Foreground="{Binding PlacementModeBadgeForeground}"
-                                                                                               TextTrimming="CharacterEllipsis"/>
-                                                                                </Border>
-
-                                                                                <StackPanel Grid.ColumnSpan="2"
-                                                                                            HorizontalAlignment="Right"
-                                                                                            VerticalAlignment="Top"
-                                                                                            Margin="0,2,2,0">
-                                                                                    <Border HorizontalAlignment="Right"
-                                                                                            Padding="2,1"
-                                                                                            Background="{Binding SpecificationBadgeBackground}"
-                                                                                            BorderBrush="{Binding SpecificationBadgeBorderBrush}"
-                                                                                            BorderThickness="0.4"
-                                                                                            CornerRadius="2"
-                                                                                            Visibility="{Binding NonStandardBadgeVisibility}">
-                                                                                        <TextBlock Text="非标" Style="{StaticResource SnapFs9}" FontWeight="Bold" Foreground="{Binding SpecificationBadgeForeground}"/>
-                                                                                    </Border>
-                                                                                    <Border HorizontalAlignment="Right"
-                                                                                            Margin="0,2,0,0"
-                                                                                            Padding="2,1"
-                                                                                            Background="#FEE2E2"
-                                                                                            BorderBrush="#FCA5A5"
-                                                                                            BorderThickness="0.4"
-                                                                                            CornerRadius="2"
-                                                                                            Visibility="{Binding MixedBadgeVisibility}">
-                                                                                        <TextBlock Text="混放" Style="{StaticResource SnapFs9}" FontWeight="Bold" Foreground="#B91C1C"/>
-                                                                                    </Border>
-                                                                                    <Border HorizontalAlignment="Right"
-                                                                                            Margin="0,2,0,0"
-                                                                                            Padding="2,1"
-                                                                                            Background="#FFEDD5"
-                                                                                            BorderBrush="#FDBA74"
-                                                                                            BorderThickness="0.4"
-                                                                                            CornerRadius="2"
-                                                                                            Visibility="{Binding PendingReturnBadgeVisibility}">
-                                                                                        <TextBlock Text="{Binding PendingReturnBadgeText}" Style="{StaticResource SnapFs9}" FontWeight="Bold" Foreground="#C2410C"/>
-                                                                                    </Border>
-                                                                                    <Border HorizontalAlignment="Right"
-                                                                                            Margin="0,2,0,0"
-                                                                                            Padding="2,1"
-                                                                                            Background="#FEF3C7"
-                                                                                            BorderBrush="#D97706"
-                                                                                            BorderThickness="0.4"
-                                                                                            CornerRadius="2"
-                                                                                            ToolTip="{Binding OccupationLockToolTipText}"
-                                                                                            Visibility="{Binding OccupationLockBadgeVisibility}">
-                                                                                        <TextBlock Text="{Binding OccupationLockBadgeText}" Style="{StaticResource SnapFs9}" FontWeight="Bold" Foreground="#DC2626"/>
-                                                                                    </Border>
-                                                                                    <Border HorizontalAlignment="Right"
-                                                                                            Margin="0,2,0,0"
-                                                                                            Padding="2,1"
-                                                                                            Background="#FEE2E2"
-                                                                                            BorderBrush="#FCA5A5"
-                                                                                            BorderThickness="0.4"
-                                                                                            CornerRadius="2"
-                                                                                            Visibility="{Binding InventoryMarkBadgeVisibility}">
-                                                                                        <TextBlock Text="{Binding InventoryMarkBadgeText}" Style="{StaticResource SnapFs9}" FontWeight="Bold" Foreground="#B91C1C"/>
-                                                                                    </Border>
-                                                                                </StackPanel>
 
                                                                                 <StackPanel Grid.Column="1"
                                                                                             Margin="4,14,4,4"
@@ -1058,99 +882,12 @@
                                                                                 <RowDefinition Height="*"/>
                                                                                 <RowDefinition Height="Auto"/>
                                                                             </Grid.RowDefinitions>
+                                                                            <!-- 中间行保持 * 以便内容垂直居中；角标已移出本 Grid，避免 RowSpan+Bottom 布局死循环 -->
 
                                                                             <Border Height="3.2"
                                                                                     Margin="0.6,0.6,0.6,0"
                                                                                     Background="{Binding AccentBrush}"
                                                                                     CornerRadius="0.8,0.8,0,0"/>
-
-                                                                            <Border HorizontalAlignment="Left"
-                                                                                    VerticalAlignment="Top"
-                                                                                    Margin="1.2,1.2,0,0"
-                                                                                    Padding="2.0,0.6"
-                                                                                    Background="{Binding PlacementModeBadgeBackground}"
-                                                                                    BorderBrush="{Binding PlacementModeBadgeBorderBrush}"
-                                                                                    BorderThickness="0.4"
-                                                                                    CornerRadius="2.8">
-                                                                                <TextBlock Text="{Binding PlacementModeBadgeText}"
-                                                                                           Style="{StaticResource SnapFs10}"
-                                                                                           FontWeight="Bold"
-                                                                                           Foreground="{Binding PlacementModeBadgeForeground}"/>
-                                                                            </Border>
-
-                                                                            <StackPanel HorizontalAlignment="Right"
-                                                                                        VerticalAlignment="Top"
-                                                                                        Margin="0,1.2,1.2,0">
-                                                                                <Border HorizontalAlignment="Right"
-                                                                                        Padding="1.6,0.4"
-                                                                                        Background="{Binding SpecificationBadgeBackground}"
-                                                                                        BorderBrush="{Binding SpecificationBadgeBorderBrush}"
-                                                                                        BorderThickness="0.4"
-                                                                                        CornerRadius="2.2"
-                                                                                        Visibility="{Binding NonStandardBadgeVisibility}">
-                                                                                    <TextBlock Text="非标"
-                                                                                               Style="{StaticResource SnapFs7}"
-                                                                                               FontWeight="Bold"
-                                                                                               Foreground="{Binding SpecificationBadgeForeground}"/>
-                                                                                </Border>
-
-                                                                                <Border HorizontalAlignment="Right"
-                                                                                        Margin="0,1.2,0,0"
-                                                                                        Padding="1.2,0.4"
-                                                                                        Background="#FEE2E2"
-                                                                                        BorderBrush="#FCA5A5"
-                                                                                        BorderThickness="0.4"
-                                                                                        CornerRadius="2.2"
-                                                                                        Visibility="{Binding MixedBadgeVisibility}">
-                                                                                    <TextBlock Text="混放"
-                                                                                               Style="{StaticResource SnapFs8}"
-                                                                                               FontWeight="Bold"
-                                                                                               Foreground="#B91C1C"/>
-                                                                                </Border>
-
-                                                                                <Border HorizontalAlignment="Right"
-                                                                                        Margin="0,1.2,0,0"
-                                                                                        Padding="1.2,0.4"
-                                                                                        Background="#FFEDD5"
-                                                                                        BorderBrush="#FDBA74"
-                                                                                        BorderThickness="0.4"
-                                                                                        CornerRadius="2.2"
-                                                                                        Visibility="{Binding PendingReturnBadgeVisibility}">
-                                                                                    <TextBlock Text="{Binding PendingReturnBadgeText}"
-                                                                                               Style="{StaticResource SnapFs8}"
-                                                                                               FontWeight="Bold"
-                                                                                               Foreground="#C2410C"/>
-                                                                                </Border>
-
-                                                                                <Border HorizontalAlignment="Right"
-                                                                                        Margin="0,1.2,0,0"
-                                                                                        Padding="1.2,0.4"
-                                                                                        Background="#FEF3C7"
-                                                                                        BorderBrush="#D97706"
-                                                                                        BorderThickness="0.4"
-                                                                                        CornerRadius="2.2"
-                                                                                        ToolTip="{Binding OccupationLockToolTipText}"
-                                                                                        Visibility="{Binding OccupationLockBadgeVisibility}">
-                                                                                    <TextBlock Text="{Binding OccupationLockBadgeText}"
-                                                                                               Style="{StaticResource SnapFs8}"
-                                                                                               FontWeight="Bold"
-                                                                                               Foreground="#DC2626"/>
-                                                                                </Border>
-
-                                                                                <Border HorizontalAlignment="Right"
-                                                                                        Margin="0,1.2,0,0"
-                                                                                        Padding="1.2,0.4"
-                                                                                        Background="#FEE2E2"
-                                                                                        BorderBrush="#FCA5A5"
-                                                                                        BorderThickness="0.4"
-                                                                                        CornerRadius="2.2"
-                                                                                        Visibility="{Binding InventoryMarkBadgeVisibility}">
-                                                                                    <TextBlock Text="{Binding InventoryMarkBadgeText}"
-                                                                                               Style="{StaticResource SnapFs8}"
-                                                                                               FontWeight="Bold"
-                                                                                               Foreground="#B91C1C"/>
-                                                                                </Border>
-                                                                            </StackPanel>
 
                                                                             <StackPanel Grid.Row="1"
                                                                                         Margin="6,18,6,6"
@@ -1159,7 +896,7 @@
                                                                                            HorizontalAlignment="Center"
                                                                                            TextAlignment="Center"
                                                                                            TextWrapping="Wrap"
-                                                                                           Style="{StaticResource SnapFs15}"
+                                                                                           Style="{StaticResource SnapFs11}"
                                                                                            FontWeight="Bold"
                                                                                            Foreground="{Binding TitleForeground}"/>
                                                                                 <TextBlock Margin="0,4,0,0"
@@ -1167,7 +904,7 @@
                                                                                            HorizontalAlignment="Center"
                                                                                            TextAlignment="Center"
                                                                                            TextWrapping="Wrap"
-                                                                                           Style="{StaticResource SnapFs9}"
+                                                                                           Style="{StaticResource SnapFs8}"
                                                                                            Foreground="{Binding ArchiveTypeForeground}"/>
                                                                             </StackPanel>
 
@@ -1186,6 +923,84 @@
                                                                                            Foreground="{Binding CountForeground}"/>
                                                                             </Border>
                                                                         </Grid>
+
+                                                                        <!-- 角标纯叠层：不参与内容测量，避免与 Viewbox/星行抢高度导致布局死循环 -->
+                                                                        <DockPanel LastChildFill="False"
+                                                                                   IsHitTestVisible="False"
+                                                                                   Panel.ZIndex="2">
+                                                                            <Grid DockPanel.Dock="Top" Margin="1,1,1,0">
+                                                                                <Border HorizontalAlignment="Left"
+                                                                                        VerticalAlignment="Top"
+                                                                                        Padding="2,0.4"
+                                                                                        Background="{Binding NwBadgeBackground}"
+                                                                                        BorderBrush="{Binding NwBadgeBorderBrush}"
+                                                                                        BorderThickness="0.4"
+                                                                                        CornerRadius="2"
+                                                                                        Visibility="{Binding NwBadgeVisibility}"
+                                                                                        ToolTip="{Binding NwBadgeToolTip, Mode=OneWay}">
+                                                                                    <TextBlock Text="{Binding NwBadgeText, Mode=OneWay}"
+                                                                                               Style="{StaticResource SnapFs8}"
+                                                                                               FontWeight="Bold"
+                                                                                               Foreground="{Binding NwBadgeForeground}"/>
+                                                                                </Border>
+                                                                                <StackPanel HorizontalAlignment="Right"
+                                                                                            VerticalAlignment="Top"
+                                                                                            Orientation="Horizontal">
+                                                                                    <Border Padding="2,0.4"
+                                                                                            Background="{Binding NeBadgeBackground}"
+                                                                                            BorderBrush="{Binding NeBadgeBorderBrush}"
+                                                                                            BorderThickness="0.4"
+                                                                                            CornerRadius="2"
+                                                                                            Visibility="{Binding NeBadgeVisibility}">
+                                                                                        <TextBlock Text="{Binding NeBadgeText, Mode=OneWay}"
+                                                                                                   Style="{StaticResource SnapFs8}"
+                                                                                                   FontWeight="Bold"
+                                                                                                   Foreground="{Binding NeBadgeForeground}"/>
+                                                                                    </Border>
+                                                                                    <Border Margin="2,0,0,0"
+                                                                                            Padding="2,0.4"
+                                                                                            Background="{Binding NeSecondaryBadgeBackground}"
+                                                                                            BorderBrush="{Binding NeSecondaryBadgeBorderBrush}"
+                                                                                            BorderThickness="0.4"
+                                                                                            CornerRadius="2"
+                                                                                            Visibility="{Binding NeSecondaryBadgeVisibility}">
+                                                                                        <TextBlock Text="{Binding NeSecondaryBadgeText, Mode=OneWay}"
+                                                                                                   Style="{StaticResource SnapFs8}"
+                                                                                                   FontWeight="Bold"
+                                                                                                   Foreground="{Binding NeSecondaryBadgeForeground}"/>
+                                                                                    </Border>
+                                                                                </StackPanel>
+                                                                            </Grid>
+                                                                            <Grid DockPanel.Dock="Bottom" Margin="1,0,1,1">
+                                                                                <Border HorizontalAlignment="Left"
+                                                                                        VerticalAlignment="Bottom"
+                                                                                        Padding="2,0.4"
+                                                                                        Background="{Binding SwBadgeBackground}"
+                                                                                        BorderBrush="{Binding SwBadgeBorderBrush}"
+                                                                                        BorderThickness="0.4"
+                                                                                        CornerRadius="2"
+                                                                                        ToolTip="{Binding SwBadgeToolTip, Mode=OneWay}"
+                                                                                        Visibility="{Binding SwBadgeVisibility}">
+                                                                                    <TextBlock Text="{Binding SwBadgeText, Mode=OneWay}"
+                                                                                               Style="{StaticResource SnapFs8}"
+                                                                                               FontWeight="Bold"
+                                                                                               Foreground="{Binding SwBadgeForeground}"/>
+                                                                                </Border>
+                                                                                <Border HorizontalAlignment="Right"
+                                                                                        VerticalAlignment="Bottom"
+                                                                                        Padding="2,0.4"
+                                                                                        Background="{Binding SeBadgeBackground}"
+                                                                                        BorderBrush="{Binding SeBadgeBorderBrush}"
+                                                                                        BorderThickness="0.4"
+                                                                                        CornerRadius="2"
+                                                                                        Visibility="{Binding SeBadgeVisibility}">
+                                                                                    <TextBlock Text="{Binding SeBadgeText, Mode=OneWay}"
+                                                                                               Style="{StaticResource SnapFs8}"
+                                                                                               FontWeight="Bold"
+                                                                                               Foreground="{Binding SeBadgeForeground}"/>
+                                                                                </Border>
+                                                                            </Grid>
+                                                                        </DockPanel>
                                                                     </Grid>
                                                                 </Border>
                                                             </DataTemplate>
@@ -1219,7 +1034,10 @@
                                                                                 BorderThickness="{Binding CardBorderThickness}"
                                                                                 CornerRadius="6"
                                                                                 Cursor="Hand"
-                                                                                ToolTip="{Binding ToolTipText}"
+                                                                                ClipToBounds="True"
+                                                                                HorizontalAlignment="Stretch"
+                                                                                VerticalAlignment="Stretch"
+                                                                                ToolTip="{Binding ToolTipText, Mode=OneWay}"
                                                                                 MouseLeftButtonDown="HardDiskMedium_MouseLeftButtonDown"
                                                                                 PreviewMouseLeftButtonDown="InteractiveItemDrag_PreviewMouseLeftButtonDown"
                                                                                 PreviewMouseMove="InteractiveItemDrag_PreviewMouseMove"
@@ -1228,7 +1046,7 @@
                                                                                 ContextMenuService.IsEnabled="{Binding CanShowInfo}">
                                                                             <Border.ContextMenu>
                                                                                 <ContextMenu>
-                                                                                    <MenuItem Header="硬盘介质信息"
+                                                                                    <MenuItem Header="{Binding PlacementTarget.DataContext.MediumInfoMenuHeader, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
                                                                                               Command="{Binding PlacementTarget.Tag.ShowHardDiskMediumInfoCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                                                                     <MenuItem Header="资料信息"
@@ -1249,7 +1067,7 @@
                                                                                         <RowDefinition Height="Auto"/>
                                                                                         <RowDefinition Height="Auto"/>
                                                                                         <RowDefinition Height="Auto"/>
-                                                                                        <RowDefinition Height="*"/>
+                                                                                        <RowDefinition Height="Auto"/>
                                                                                     </Grid.RowDefinitions>
 
                                                                                     <Grid HorizontalAlignment="Center" Width="34" Height="22">
@@ -1287,21 +1105,6 @@
                                                                                             <Ellipse Margin="3"
                                                                                                      Fill="{Binding IconAccentBrush}"/>
                                                                                         </Border>
-
-                                                                                        <Border HorizontalAlignment="Right"
-                                                                                                VerticalAlignment="Top"
-                                                                                                Margin="0,-2,-2,0"
-                                                                                                Padding="2,0"
-                                                                                                Background="#FEF3C7"
-                                                                                                BorderBrush="#F59E0B"
-                                                                                                BorderThickness="0.8"
-                                                                                                CornerRadius="3"
-                                                                                                Visibility="{Binding ArchiveSequenceVisibility}">
-                                                                                            <TextBlock Text="{Binding ArchiveSequenceText}"
-                                                                                                       Style="{StaticResource SnapFs8}"
-                                                                                                       FontWeight="Bold"
-                                                                                                       Foreground="#92400E"/>
-                                                                                        </Border>
                                                                                     </Grid>
 
                                                                                     <TextBlock Grid.Row="1"
@@ -1328,7 +1131,8 @@
                                                                                             Padding="3,1"
                                                                                             HorizontalAlignment="Center"
                                                                                             Background="{Binding StatusBadgeBackground}"
-                                                                                            CornerRadius="8">
+                                                                                            CornerRadius="8"
+                                                                                            Visibility="{Binding CenterTypeBadgeVisibility}">
                                                                                         <TextBlock Text="{Binding BadgeText}"
                                                                                                    Style="{StaticResource SnapFs10}"
                                                                                                    FontWeight="SemiBold"
@@ -1371,21 +1175,6 @@
                                                                                                 Visibility="{Binding OpticalDiscIconVisibility}">
                                                                                             <Ellipse Margin="3"
                                                                                                      Fill="{Binding IconAccentBrush}"/>
-                                                                                        </Border>
-
-                                                                                        <Border HorizontalAlignment="Right"
-                                                                                                VerticalAlignment="Top"
-                                                                                                Margin="0,-2,-2,0"
-                                                                                                Padding="2,0"
-                                                                                                Background="#FEF3C7"
-                                                                                                BorderBrush="#F59E0B"
-                                                                                                BorderThickness="0.8"
-                                                                                                CornerRadius="3"
-                                                                                                Visibility="{Binding ArchiveSequenceVisibility}">
-                                                                                            <TextBlock Text="{Binding ArchiveSequenceText}"
-                                                                                                       Style="{StaticResource SnapFs8}"
-                                                                                                       FontWeight="Bold"
-                                                                                                       Foreground="#92400E"/>
                                                                                         </Border>
                                                                                     </Grid>
 
@@ -1436,7 +1225,8 @@
                                                                                             Padding="3,1"
                                                                                             HorizontalAlignment="Center"
                                                                                             Background="{Binding StatusBadgeBackground}"
-                                                                                            CornerRadius="8">
+                                                                                            CornerRadius="8"
+                                                                                            Visibility="{Binding CenterTypeBadgeVisibility}">
                                                                                         <TextBlock Text="{Binding BadgeText}"
                                                                                                    Style="{StaticResource SnapFs10}"
                                                                                                    FontWeight="SemiBold"
@@ -1445,21 +1235,95 @@
                                                                                 </StackPanel>
                                                                                 </Grid>
 
-                                                                                <Border HorizontalAlignment="Left"
-                                                                                        VerticalAlignment="Top"
-                                                                                        Margin="-1,-1,0,0"
-                                                                                        Padding="2,0"
-                                                                                        Background="#FEF3C7"
-                                                                                        BorderBrush="#D97706"
-                                                                                        BorderThickness="0.8"
-                                                                                        CornerRadius="3"
-                                                                                        ToolTip="{Binding OccupationLockToolTipText}"
-                                                                                        Visibility="{Binding OccupationLockBadgeVisibility}">
-                                                                                    <TextBlock Text="{Binding OccupationLockBadgeText}"
-                                                                                               Style="{StaticResource SnapFs8}"
-                                                                                               FontWeight="Bold"
-                                                                                               Foreground="#DC2626"/>
-                                                                                </Border>
+                                                                                <!-- 四角叠层：LastChildFill=False，不进内容测量，避免 UniformGrid 布局环 -->
+                                                                                <DockPanel LastChildFill="False"
+                                                                                           IsHitTestVisible="False"
+                                                                                           Panel.ZIndex="2">
+                                                                                    <Grid DockPanel.Dock="Top" Margin="0,0,0,0">
+                                                                                        <Border HorizontalAlignment="Left"
+                                                                                                VerticalAlignment="Top"
+                                                                                                Padding="2,0"
+                                                                                                Background="{Binding NwBadgeBackground}"
+                                                                                                BorderBrush="{Binding NwBadgeBorderBrush}"
+                                                                                                BorderThickness="0.8"
+                                                                                                CornerRadius="3"
+                                                                                                Visibility="{Binding NwBadgeVisibility}"
+                                                                                                ToolTip="{Binding NwBadgeText, Mode=OneWay}">
+                                                                                            <TextBlock Text="{Binding NwBadgeText, Mode=OneWay}"
+                                                                                                       Style="{StaticResource SnapFs8}"
+                                                                                                       FontWeight="Bold"
+                                                                                                       Foreground="{Binding NwBadgeForeground}"/>
+                                                                                        </Border>
+                                                                                        <StackPanel HorizontalAlignment="Right"
+                                                                                                    VerticalAlignment="Top"
+                                                                                                    Orientation="Horizontal">
+                                                                                            <Border Padding="2,0"
+                                                                                                    Background="{Binding NeBadgeBackground}"
+                                                                                                    BorderBrush="{Binding NeBadgeBorderBrush}"
+                                                                                                    BorderThickness="0.8"
+                                                                                                    CornerRadius="3"
+                                                                                                    Visibility="{Binding NeBadgeVisibility}">
+                                                                                                <TextBlock Text="{Binding NeBadgeText, Mode=OneWay}"
+                                                                                                           Style="{StaticResource SnapFs8}"
+                                                                                                           FontWeight="Bold"
+                                                                                                           Foreground="{Binding NeBadgeForeground}"/>
+                                                                                            </Border>
+                                                                                            <Border Margin="2,0,0,0"
+                                                                                                    Padding="2,0"
+                                                                                                    Background="{Binding NeSecondaryBadgeBackground}"
+                                                                                                    BorderBrush="{Binding NeSecondaryBadgeBorderBrush}"
+                                                                                                    BorderThickness="0.8"
+                                                                                                    CornerRadius="3"
+                                                                                                    Visibility="{Binding NeSecondaryBadgeVisibility}">
+                                                                                                <TextBlock Text="{Binding NeSecondaryBadgeText, Mode=OneWay}"
+                                                                                                           Style="{StaticResource SnapFs8}"
+                                                                                                           FontWeight="Bold"
+                                                                                                           Foreground="{Binding NeSecondaryBadgeForeground}"/>
+                                                                                            </Border>
+                                                                                            <Border Margin="2,0,0,0"
+                                                                                                    Padding="2,0"
+                                                                                                    Background="{Binding NeTertiaryBadgeBackground}"
+                                                                                                    BorderBrush="{Binding NeTertiaryBadgeBorderBrush}"
+                                                                                                    BorderThickness="0.8"
+                                                                                                    CornerRadius="3"
+                                                                                                    Visibility="{Binding NeTertiaryBadgeVisibility}">
+                                                                                                <TextBlock Text="{Binding NeTertiaryBadgeText, Mode=OneWay}"
+                                                                                                           Style="{StaticResource SnapFs8}"
+                                                                                                           FontWeight="Bold"
+                                                                                                           Foreground="{Binding NeTertiaryBadgeForeground}"/>
+                                                                                            </Border>
+                                                                                        </StackPanel>
+                                                                                    </Grid>
+                                                                                    <Grid DockPanel.Dock="Bottom" Margin="0,0,0,0">
+                                                                                        <Border HorizontalAlignment="Left"
+                                                                                                VerticalAlignment="Bottom"
+                                                                                                Padding="2,0"
+                                                                                                Background="{Binding SwBadgeBackground}"
+                                                                                                BorderBrush="{Binding SwBadgeBorderBrush}"
+                                                                                                BorderThickness="0.8"
+                                                                                                CornerRadius="3"
+                                                                                                ToolTip="{Binding SwBadgeToolTip, Mode=OneWay}"
+                                                                                                Visibility="{Binding SwBadgeVisibility}">
+                                                                                            <TextBlock Text="{Binding SwBadgeText, Mode=OneWay}"
+                                                                                                       Style="{StaticResource SnapFs8}"
+                                                                                                       FontWeight="Bold"
+                                                                                                       Foreground="{Binding SwBadgeForeground}"/>
+                                                                                        </Border>
+                                                                                        <Border HorizontalAlignment="Right"
+                                                                                                VerticalAlignment="Bottom"
+                                                                                                Padding="2,0"
+                                                                                                Background="{Binding SeBadgeBackground}"
+                                                                                                BorderBrush="{Binding SeBadgeBorderBrush}"
+                                                                                                BorderThickness="0.8"
+                                                                                                CornerRadius="3"
+                                                                                                Visibility="{Binding SeBadgeVisibility}">
+                                                                                            <TextBlock Text="{Binding SeBadgeText, Mode=OneWay}"
+                                                                                                       Style="{StaticResource SnapFs8}"
+                                                                                                       FontWeight="Bold"
+                                                                                                       Foreground="{Binding SeBadgeForeground}"/>
+                                                                                        </Border>
+                                                                                    </Grid>
+                                                                                </DockPanel>
                                                                             </Grid>
                                                                         </Border>
                                                                     </DataTemplate>
@@ -1499,7 +1363,7 @@
                                                                                     ContextMenuService.IsEnabled="{Binding CanShowInfo}">
                                                                                 <Border.ContextMenu>
                                                                                     <ContextMenu>
-                                                                                        <MenuItem Header="硬盘介质信息"
+                                                                                        <MenuItem Header="{Binding PlacementTarget.DataContext.MediumInfoMenuHeader, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
                                                                                                   Command="{Binding PlacementTarget.Tag.ShowHardDiskMediumInfoCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                                                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                                                                         <MenuItem Header="资料信息"
@@ -1823,11 +1687,13 @@
                 </Grid>
             </Border>
 
-            <Border Panel.ZIndex="20"
-                    Width="242"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    Margin="0,28,28,0"
+            <!-- Canvas 叠层：图例不参与父 Grid 期望尺寸，避免展开时触发布局抖动 -->
+            <Canvas Panel.ZIndex="20"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch">
+            <Border Canvas.Right="28"
+                    Canvas.Top="28"
+                    Width="268"
                     Background="#D9FFFFFF"
                     BorderBrush="#A593C5FD"
                     BorderThickness="1"
@@ -1839,7 +1705,7 @@
                                       Opacity="0.18"
                                       Color="#0F172A"/>
                 </Border.Effect>
-                <Expander IsExpanded="True"
+                <Expander IsExpanded="False"
                           Background="Transparent"
                           BorderThickness="0"
                           ExpandDirection="Down">
@@ -1862,7 +1728,7 @@
                                                FontWeight="Bold"
                                                Foreground="White"/>
                                 </Border>
-                                <TextBlock Text="硬盘状态图例"
+                                <TextBlock Text="开柜标识图例"
                                            VerticalAlignment="Center"
                                            FontSize="12"
                                            FontWeight="Bold"
@@ -1871,41 +1737,238 @@
                         </Border>
                     </Expander.Header>
 
-                    <WrapPanel Margin="12,10,12,10">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,14,6">
-                            <Grid Width="20" Height="13" Margin="0,0,5,0">
-                                <Border Margin="0,2,0,0" Background="#64748B" BorderBrush="#334155" BorderThickness="1" CornerRadius="2.5"/>
-                                <Border HorizontalAlignment="Left" Width="6" Height="3" Margin="2,0,0,0" Background="#334155" CornerRadius="1,1,0,0"/>
+                    <StackPanel Margin="12,8,12,10">
+                        <TextBlock Text="角位示意（与电子袋卡片一致）"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,6"/>
+                        <Border Padding="8"
+                                Background="#EFF6FF"
+                                BorderBrush="#93C5FD"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Margin="0,0,0,8">
+                            <Grid MinHeight="72">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0">
+                                    <Border HorizontalAlignment="Left" Padding="4,1" Background="#FEF3C7" BorderBrush="#F59E0B" BorderThickness="0.8" CornerRadius="3">
+                                        <TextBlock Text="01" FontSize="10" FontWeight="Bold" Foreground="#92400E"/>
+                                    </Border>
+                                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                                        <Border Padding="4,1" Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="0.8" CornerRadius="3" Margin="0,0,4,0">
+                                            <TextBlock Text="失" FontSize="10" FontWeight="Bold" Foreground="#B91C1C"/>
+                                        </Border>
+                                        <Border Padding="4,1" Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="0.8" CornerRadius="3" Margin="0,0,4,0">
+                                            <TextBlock Text="销" FontSize="10" FontWeight="Bold" Foreground="#B91C1C"/>
+                                        </Border>
+                                        <Border Padding="4,1" Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="0.8" CornerRadius="3">
+                                            <TextBlock Text="X" FontSize="10" FontWeight="Bold" Foreground="#B91C1C"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Grid.Row="1"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontSize="10"
+                                           Foreground="#94A3B8"
+                                           Text="电子袋"/>
+                                <Grid Grid.Row="2">
+                                    <Border HorizontalAlignment="Left" Padding="4,1" Background="#FEF3C7" BorderBrush="#D97706" BorderThickness="0.8" CornerRadius="3">
+                                        <TextBlock Text="预订" FontSize="10" FontWeight="Bold" Foreground="#B45309"/>
+                                    </Border>
+                                    <Border HorizontalAlignment="Right" Padding="4,1" Background="#FFEDD5" BorderBrush="#FDBA74" BorderThickness="0.8" CornerRadius="3">
+                                        <TextBlock Text="待还" FontSize="10" FontWeight="Bold" Foreground="#C2410C"/>
+                                    </Border>
+                                </Grid>
                             </Grid>
-                            <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="空盘"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,14,6">
-                            <Grid Width="20" Height="13" Margin="0,0,5,0">
-                                <Border Margin="0,2,0,0" Background="#3B82F6" BorderBrush="#1D4ED8" BorderThickness="1" CornerRadius="2.5"/>
-                                <Border HorizontalAlignment="Left" Width="6" Height="3" Margin="2,0,0,0" Background="#1D4ED8" CornerRadius="1,1,0,0"/>
-                            </Grid>
-                            <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="资料"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,14,6">
-                            <Grid Width="20" Height="13" Margin="0,0,5,0">
-                                <Border Margin="0,2,0,0" Background="#EF4444" BorderBrush="#B91C1C" BorderThickness="1" CornerRadius="2.5"/>
-                                <Border HorizontalAlignment="Left" Width="6" Height="3" Margin="2,0,0,0" Background="#B91C1C" CornerRadius="1,1,0,0"/>
-                            </Grid>
-                            <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="损坏"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                            <Grid Width="20" Height="13" Margin="0,0,5,0">
-                                <Border Margin="0,2,0,0" Background="#F59E0B" BorderBrush="#B45309" BorderThickness="1" CornerRadius="2.5"/>
-                                <Border HorizontalAlignment="Left" Width="6" Height="3" Margin="2,0,0,0" Background="#B45309" CornerRadius="1,1,0,0"/>
-                            </Grid>
-                            <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="待归还"/>
-                        </StackPanel>
-                    </WrapPanel>
+                        </Border>
+
+                        <TextBlock Text="左上 · 袋内序号"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,2"/>
+                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,6"
+                                   Text="电子袋内介质序号（如 01）。"/>
+
+                        <TextBlock Text="右上 · 盘库（失/销/X 可并排）"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,2"/>
+                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,6"
+                                   Text="按介质台账状态标「失」「销」「X」；袋内全异常时也不再标「空」。"/>
+
+                        <TextBlock Text="右下 · 待还　左下 · 预订"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,2"/>
+                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,6"
+                                   Text="待还表示需归还；预订表示占用/征用锁。"/>
+
+                        <TextBlock Text="底色 · 类型" FontSize="10" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+                        <WrapPanel Margin="0,0,0,4">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,14,6">
+                                <Grid Width="20" Height="13" Margin="0,0,5,0">
+                                    <Border Margin="0,2,0,0" Background="#64748B" BorderBrush="#334155" BorderThickness="1" CornerRadius="2.5"/>
+                                    <Border HorizontalAlignment="Left" Width="6" Height="3" Margin="2,0,0,0" Background="#334155" CornerRadius="1,1,0,0"/>
+                                </Grid>
+                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="空盘"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,14,6">
+                                <Grid Width="20" Height="13" Margin="0,0,5,0">
+                                    <Border Margin="0,2,0,0" Background="#3B82F6" BorderBrush="#1D4ED8" BorderThickness="1" CornerRadius="2.5"/>
+                                    <Border HorizontalAlignment="Left" Width="6" Height="3" Margin="2,0,0,0" Background="#1D4ED8" CornerRadius="1,1,0,0"/>
+                                </Grid>
+                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="资料"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <Grid Width="20" Height="13" Margin="0,0,5,0">
+                                    <Border Margin="0,2,0,0" Background="#F59E0B" BorderBrush="#B45309" BorderThickness="1" CornerRadius="2.5"/>
+                                    <Border HorizontalAlignment="Left" Width="6" Height="3" Margin="2,0,0,0" Background="#B45309" CornerRadius="1,1,0,0"/>
+                                </Grid>
+                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="待还"/>
+                            </StackPanel>
+                        </WrapPanel>
+                    </StackPanel>
                 </Expander>
             </Border>
+
+            <Border Canvas.Right="28"
+                    Canvas.Top="28"
+                    Width="268"
+                    Background="#D9FFFFFF"
+                    BorderBrush="#A5FDBA74"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Visibility="{Binding ArchiveBoxLegendVisibility}">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="14"
+                                      ShadowDepth="2"
+                                      Opacity="0.18"
+                                      Color="#0F172A"/>
+                </Border.Effect>
+                <Expander IsExpanded="False"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          ExpandDirection="Down">
+                    <Expander.Header>
+                        <Border Padding="12,8"
+                                Background="#D9FFEDD5"
+                                BorderBrush="#A5FDBA74"
+                                BorderThickness="0,0,0,1"
+                                CornerRadius="10,10,0,0">
+                            <DockPanel>
+                                <Border Width="18"
+                                        Height="18"
+                                        Margin="0,0,6,0"
+                                        Background="#C2410C"
+                                        CornerRadius="9">
+                                    <TextBlock Text="i"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               Foreground="White"/>
+                                </Border>
+                                <TextBlock Text="开柜标识图例"
+                                           VerticalAlignment="Center"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="#9A3412"/>
+                            </DockPanel>
+                        </Border>
+                    </Expander.Header>
+
+                    <StackPanel Margin="12,8,12,10">
+                        <TextBlock Text="角位示意（与档案盒卡片一致）"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,6"/>
+                        <Border Padding="8"
+                                Background="#FFFBEB"
+                                BorderBrush="#FDBA74"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Margin="0,0,0,8">
+                            <Grid MinHeight="72">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0">
+                                    <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                                        <Border Padding="4,1" Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="0.8" CornerRadius="3" Margin="0,0,4,0">
+                                            <TextBlock Text="混" FontSize="10" FontWeight="Bold" Foreground="#B91C1C"/>
+                                        </Border>
+                                        <Border Padding="4,1" Background="#EDE9FE" BorderBrush="#C4B5FD" BorderThickness="0.8" CornerRadius="3">
+                                            <TextBlock Text="非" FontSize="10" FontWeight="Bold" Foreground="#6D28D9"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                                        <Border Padding="4,1" Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="0.8" CornerRadius="3" Margin="0,0,4,0">
+                                            <TextBlock Text="失" FontSize="10" FontWeight="Bold" Foreground="#B91C1C"/>
+                                        </Border>
+                                        <Border Padding="4,1" Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="0.8" CornerRadius="3">
+                                            <TextBlock Text="销" FontSize="10" FontWeight="Bold" Foreground="#B91C1C"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Grid.Row="1"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontSize="10"
+                                           Foreground="#94A3B8"
+                                           Text="档案盒"/>
+                                <Grid Grid.Row="2">
+                                    <Border HorizontalAlignment="Left" Padding="4,1" Background="#FEF3C7" BorderBrush="#D97706" BorderThickness="0.8" CornerRadius="3">
+                                        <TextBlock Text="预订" FontSize="10" FontWeight="Bold" Foreground="#B45309"/>
+                                    </Border>
+                                    <Border HorizontalAlignment="Right" Padding="4,1" Background="#FFEDD5" BorderBrush="#FDBA74" BorderThickness="0.8" CornerRadius="3">
+                                        <TextBlock Text="待还" FontSize="10" FontWeight="Bold" Foreground="#C2410C"/>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="左上 · 异常布局（「混」优先于「非」）"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,2"/>
+                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,6"
+                                   Text="混＝混放（待梳理多源盒）；非＝非标（规格含「非标」）。摆放方式见悬停提示，不占角标。"/>
+
+                        <TextBlock Text="右上 · 盘库（失与销可并排）"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,2"/>
+                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,6"
+                                   Text="有丢失份数标「失」，有拟销份数标「销」；盘库致空不再标「空」。"/>
+
+                        <TextBlock Text="右下 · 待还　左下 · 预订"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,2"/>
+                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap"
+                                   Text="待还可带份数；预订表示占用/征用锁。"/>
+                    </StackPanel>
+                </Expander>
+            </Border>
+            </Canvas>
         </Grid>
 
-        <Border Grid.Row="3" Padding="14,10" Background="White" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="8" Visibility="{Binding SnapshotFooterVisibility}">
+        <Border Grid.Row="2" Padding="14,10" Background="White" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="8" Visibility="{Binding SnapshotFooterVisibility}">
             <DockPanel LastChildFill="False">
                 <Label Margin="0,0,18,0" Padding="0" VerticalContentAlignment="Center">
                     <StackPanel Orientation="Horizontal">

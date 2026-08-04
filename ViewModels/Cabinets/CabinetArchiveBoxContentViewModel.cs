@@ -404,7 +404,7 @@ namespace DocMgr.ViewModels.Cabinets
 
             return hasYearlyArchiveMediaItems
 
-                ? $"共 {contents.Count} 条资料子项（立档份数 = 库内 + 待还 + 不还 + 灭失）"
+                ? $"共 {contents.Count} 条资料子项（立档份数 = 库内 + 待还 + 不还 + 出库灭失 + 盘库丢失）"
 
                 : $"共 {contents.Count} 条历史存档记录";
 
@@ -424,7 +424,7 @@ namespace DocMgr.ViewModels.Cabinets
 
                 CabinetArchiveContainerViewMode.ElectronicArchiveBag =>
 
-                    "电子介质袋：表格列展示登记审批确定的子项属性、存储目录、目录/文件明细及电子库存状态。",
+                    "电子介质袋：表格列展示登记审批确定的子项属性、存储目录、目录/文件明细及介质盘库状态。",
 
                 _ => string.Empty,
 

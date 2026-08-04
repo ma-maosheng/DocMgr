@@ -4,6 +4,7 @@ using DocMgr.Models.ArchiveContainers;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.OpticalDiscMedia;
+using DocMgr.Models.Shared;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.Cabinets
@@ -18,6 +19,7 @@ namespace DocMgr.ViewModels.Cabinets
         private readonly string _baseStatusBadgeForeground;
         private readonly string _baseTitleForeground;
         private readonly string _baseDetailForeground;
+        private readonly CabinetOpenStatusBadgeSupport.MediaCornerLayout _corners;
         private bool _isSelected;
 
         private CabinetHardDiskMediumItemViewModel(string diskCodeText, string capacityText, string statusText, string secondaryText, string badgeText, string toolTipText, bool isEmpty, bool isPendingReturn, string cardBackground, string cardBorderBrush, string iconBodyBrush, string iconAccentBrush, string statusBadgeBackground, string statusBadgeForeground, string titleForeground, string detailForeground)
@@ -41,13 +43,40 @@ namespace DocMgr.ViewModels.Cabinets
             ElectronicArchiveUnitId = 0;
             MediumId = 0;
             IsBlankInStock = false;
+            _corners = CabinetOpenStatusBadgeSupport.ResolveMedia(
+                archiveSequenceText: null,
+                archiveSequenceNumber: 0,
+                inventoryMarkBadgeText: null,
+                isPendingReturn: false,
+                hasOccupationLock: false,
+                occupationLockToolTipText: null);
         }
 
         public CabinetHardDiskMediumItemViewModel(CabinetHardDiskMediumDescriptor descriptor)
         {
             ArgumentNullException.ThrowIfNull(descriptor);
 
-            var visual = ResolveVisual(descriptor);
+            InventoryMarkBadgeText = descriptor.InventoryMarkBadgeText?.Trim() ?? string.Empty;
+            IsPendingReturn = descriptor.IsPendingReturn;
+            HasOccupationLock = descriptor.HasOccupationLock;
+            OccupationLockToolTipText = descriptor.OccupationLockToolTipText ?? string.Empty;
+            OccupationLockBadgeText = CabinetOpenStatusBadgeSupport.NormalizeReservationDisplayText(
+                descriptor.HasOccupationLock,
+                descriptor.OccupationLockBadgeText);
+            ArchiveSequenceNumber = descriptor.ArchiveSequenceNumber;
+            ArchiveSequenceText = string.IsNullOrWhiteSpace(descriptor.ArchiveSequenceText)
+                ? (ArchiveSequenceNumber > 0 ? ArchiveSequenceNumber.ToString("D2") : string.Empty)
+                : descriptor.ArchiveSequenceText.Trim();
+
+            _corners = CabinetOpenStatusBadgeSupport.ResolveMedia(
+                ArchiveSequenceText,
+                ArchiveSequenceNumber,
+                InventoryMarkBadgeText,
+                IsPendingReturn,
+                HasOccupationLock,
+                OccupationLockToolTipText);
+
+            var visual = ResolveVisual(descriptor, hideDuplicateCornerText: _corners.HideCenterTypePill);
             _baseCardBackground = visual.CardBackground;
             _baseCardBorderBrush = visual.CardBorderBrush;
             _baseIconBodyBrush = visual.IconBodyBrush;
@@ -72,10 +101,6 @@ namespace DocMgr.ViewModels.Cabinets
                 ? descriptor.ToolTipText
                 : descriptor.MediumInfoText;
             HasArchiveInfo = descriptor.HasArchiveInfo;
-            ArchiveSequenceNumber = descriptor.ArchiveSequenceNumber;
-            ArchiveSequenceText = string.IsNullOrWhiteSpace(descriptor.ArchiveSequenceText)
-                ? (ArchiveSequenceNumber > 0 ? ArchiveSequenceNumber.ToString("D2") : string.Empty)
-                : descriptor.ArchiveSequenceText.Trim();
             YearDisplayText = FormatLabelValue("年度", descriptor.YearText);
             ProjectDisplayText = FormatLabelValue("项目", descriptor.ProjectText);
             UsedCapacityDisplayText = FormatLabelValue("已用", descriptor.UsedCapacityDisplayText);
@@ -92,16 +117,9 @@ namespace DocMgr.ViewModels.Cabinets
                 : BuildCompactDetailText(StatusText, CurrentLocationText, ElectronicArchiveNoText, ElectronicArchiveLocationText);
             BadgeText = visual.BadgeText;
             ToolTipText = descriptor.ToolTipText;
-            IsPendingReturn = descriptor.IsPendingReturn;
             ElectronicArchiveUnitId = descriptor.ElectronicArchiveUnitId;
             MediumId = descriptor.MediumId;
             IsBlankInStock = descriptor.IsBlankInStock;
-            HasOccupationLock = descriptor.HasOccupationLock;
-            OccupationLockToolTipText = descriptor.OccupationLockToolTipText ?? string.Empty;
-            OccupationLockBadgeText = string.IsNullOrWhiteSpace(descriptor.OccupationLockBadgeText)
-                ? (descriptor.HasOccupationLock ? "占用" : string.Empty)
-                : descriptor.OccupationLockBadgeText.Trim();
-            InventoryMarkBadgeText = descriptor.InventoryMarkBadgeText?.Trim() ?? string.Empty;
         }
 
         public bool IsSelected
@@ -163,7 +181,45 @@ namespace DocMgr.ViewModels.Cabinets
 
         public string ArchiveSequenceText { get; } = string.Empty;
 
+        /// <summary>序号改回图标右上角展示（介质卡不再用 Dock 叠层角标，避免防磁柜 UniformGrid 布局死循环）。</summary>
         public Visibility ArchiveSequenceVisibility => ArchiveSequenceNumber > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        public string NwBadgeText => _corners.Nw.Text;
+        public string NwBadgeBackground => _corners.Nw.Background;
+        public string NwBadgeBorderBrush => _corners.Nw.BorderBrush;
+        public string NwBadgeForeground => _corners.Nw.Foreground;
+        public Visibility NwBadgeVisibility => _corners.Nw.Visibility;
+
+        public string NeBadgeText => _corners.Ne.Text;
+        public string NeBadgeBackground => _corners.Ne.Background;
+        public string NeBadgeBorderBrush => _corners.Ne.BorderBrush;
+        public string NeBadgeForeground => _corners.Ne.Foreground;
+        public Visibility NeBadgeVisibility => _corners.Ne.Visibility;
+
+        public string NeSecondaryBadgeText => _corners.NeSecondary.Text;
+        public string NeSecondaryBadgeBackground => _corners.NeSecondary.Background;
+        public string NeSecondaryBadgeBorderBrush => _corners.NeSecondary.BorderBrush;
+        public string NeSecondaryBadgeForeground => _corners.NeSecondary.Foreground;
+        public Visibility NeSecondaryBadgeVisibility => _corners.NeSecondary.Visibility;
+
+        public string NeTertiaryBadgeText => _corners.NeTertiary.Text;
+        public string NeTertiaryBadgeBackground => _corners.NeTertiary.Background;
+        public string NeTertiaryBadgeBorderBrush => _corners.NeTertiary.BorderBrush;
+        public string NeTertiaryBadgeForeground => _corners.NeTertiary.Foreground;
+        public Visibility NeTertiaryBadgeVisibility => _corners.NeTertiary.Visibility;
+
+        public string SeBadgeText => _corners.Se.Text;
+        public string SeBadgeBackground => _corners.Se.Background;
+        public string SeBadgeBorderBrush => _corners.Se.BorderBrush;
+        public string SeBadgeForeground => _corners.Se.Foreground;
+        public Visibility SeBadgeVisibility => _corners.Se.Visibility;
+
+        public string SwBadgeText => _corners.Sw.Text;
+        public string SwBadgeBackground => _corners.Sw.Background;
+        public string SwBadgeBorderBrush => _corners.Sw.BorderBrush;
+        public string SwBadgeForeground => _corners.Sw.Foreground;
+        public string SwBadgeToolTip => string.IsNullOrWhiteSpace(_corners.Sw.ToolTip) ? SwBadgeText : _corners.Sw.ToolTip;
+        public Visibility SwBadgeVisibility => _corners.Sw.Visibility;
 
         public string YearDisplayText { get; } = string.Empty;
 
@@ -180,6 +236,11 @@ namespace DocMgr.ViewModels.Cabinets
         public string CompactDetailText { get; } = string.Empty;
 
         public string BadgeText { get; } = string.Empty;
+
+        public Visibility CenterTypeBadgeVisibility =>
+            _corners.HideCenterTypePill || string.IsNullOrWhiteSpace(BadgeText)
+                ? Visibility.Collapsed
+                : Visibility.Visible;
 
         public string ToolTipText { get; } = string.Empty;
 
@@ -199,10 +260,14 @@ namespace DocMgr.ViewModels.Cabinets
 
         public string InventoryMarkBadgeText { get; } = string.Empty;
 
-        public Visibility OccupationLockBadgeVisibility => HasOccupationLock ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility OccupationLockBadgeVisibility => SwBadgeVisibility;
 
         public Visibility InventoryMarkBadgeVisibility =>
-            !string.IsNullOrWhiteSpace(InventoryMarkBadgeText) ? Visibility.Visible : Visibility.Collapsed;
+            NeBadgeVisibility == Visibility.Visible
+            || NeSecondaryBadgeVisibility == Visibility.Visible
+            || NeTertiaryBadgeVisibility == Visibility.Visible
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
         public bool CanShowInfo => !IsEmpty;
 
@@ -221,14 +286,20 @@ namespace DocMgr.ViewModels.Cabinets
             IsElectronicInStockOccupancy
             && !HasOccupationLock;
 
-        /// <summary>电子介质袋在库占用（含征用/预订；用于目标容量与源档口类型判断）。</summary>
+        private bool IsInventoryLostMark =>
+            InventoryMarkBadgeText.Contains(CabinetOpenStatusBadgeSupport.InventoryLostMarkText, StringComparison.Ordinal);
+
+        private bool IsInventoryScrapMark =>
+            InventoryMarkBadgeText.Contains(CabinetOpenStatusBadgeSupport.InventoryScrapMarkText, StringComparison.Ordinal);
+
+        /// <summary>电子介质袋在库占用（含征用/预订；用于目标容量与源档口类型判断）。失/销不可作迁档源；X（损坏）仍可迁袋。</summary>
         public bool IsElectronicInStockOccupancy =>
             !IsEmpty
             && !IsPendingReturn
             && !IsBlankInStock
             && ElectronicArchiveUnitId > 0
-            && !IsInventoryEmptyMark
-            && !IsInventoryLostMark;
+            && !IsInventoryLostMark
+            && !IsInventoryScrapMark;
 
         public bool IsBlankHardDiskRelocationCandidate =>
             !IsEmpty
@@ -266,12 +337,6 @@ namespace DocMgr.ViewModels.Cabinets
             IsDamagedOpticalDiscInStockOccupancy
             && !HasOccupationLock;
 
-        private bool IsInventoryEmptyMark =>
-            string.Equals(InventoryMarkBadgeText, "空", StringComparison.Ordinal);
-
-        private bool IsInventoryLostMark =>
-            string.Equals(InventoryMarkBadgeText, "失", StringComparison.Ordinal);
-
         public int MediumId { get; }
 
         public Visibility YearlyArchiveLayoutVisibility => IsYearlyArchiveDisplay ? Visibility.Visible : Visibility.Collapsed;
@@ -293,6 +358,9 @@ namespace DocMgr.ViewModels.Cabinets
         public Visibility OpticalDiscIconVisibility => IsOpticalDiscMedia ? Visibility.Visible : Visibility.Collapsed;
 
         public Visibility HardDiskIconVisibility => IsOpticalDiscMedia ? Visibility.Collapsed : Visibility.Visible;
+
+        /// <summary>右键「介质信息」及弹窗标题：光盘 / 硬盘。</summary>
+        public string MediumInfoMenuHeader => IsOpticalDiscMedia ? "光盘介质信息" : "硬盘介质信息";
 
         public string CardBackground => IsSelected ? "#DBEAFE" : _baseCardBackground;
 
@@ -321,17 +389,17 @@ namespace DocMgr.ViewModels.Cabinets
                 string.Empty,
                 "可放置",
                 string.Empty,
-                "空",
+                CabinetOpenStatusBadgeSupport.EmptySlotBadgeText,
                 "当前档口空闲，可继续放置硬盘介质。",
                 true,
                 false,
                 "#F8FAFC",
                 "#CBD5E1",
-                "#E2E8F0",
-                "#94A3B8",
+                "#64748B",
+                "#334155",
                 "#E2E8F0",
                 "#475569",
-                "#475569",
+                "#334155",
                 "#64748B");
         }
 
@@ -435,34 +503,116 @@ namespace DocMgr.ViewModels.Cabinets
             return $"袋号：{archiveNo} · 袋位：{archiveLocation}";
         }
 
-        private static StatusVisual ResolveVisual(CabinetHardDiskMediumDescriptor descriptor)
+        private static StatusVisual ResolveVisual(CabinetHardDiskMediumDescriptor descriptor, bool hideDuplicateCornerText)
         {
             if (descriptor.IsPendingReturn)
             {
-                return new StatusVisual("待归还", "#FFF7ED", "#FDBA74", "#F59E0B", "#B45309", "#FFEDD5", "#9A3412", "#9A3412", "#C2410C");
+                // 待还：橙底；角标在右下，中部不再重复文案。
+                return CreateTypeVisual(
+                    hideDuplicateCornerText ? string.Empty : "待还",
+                    cardBackground: "#FFF7ED",
+                    cardBorder: "#FDBA74",
+                    iconBody: "#F59E0B",
+                    iconAccent: "#B45309",
+                    statusBadgeBackground: "#FFEDD5",
+                    statusBadgeForeground: "#C2410C",
+                    titleForeground: "#9A3412",
+                    detailForeground: "#C2410C");
             }
 
-            string inventoryMark = descriptor.InventoryMarkBadgeText?.Trim() ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(inventoryMark))
+            if (IsBlankType(descriptor))
             {
-                return new StatusVisual(inventoryMark, "#FEF2F2", "#FCA5A5", "#EF4444", "#B91C1C", "#FEE2E2", "#991B1B", "#991B1B", "#B91C1C");
+                return CreateTypeVisual(
+                    hideDuplicateCornerText ? string.Empty : "空盘",
+                    cardBackground: "#F8FAFC",
+                    cardBorder: "#CBD5E1",
+                    iconBody: "#64748B",
+                    iconAccent: "#334155",
+                    statusBadgeBackground: "#E2E8F0",
+                    statusBadgeForeground: "#475569",
+                    titleForeground: "#334155",
+                    detailForeground: "#64748B");
+            }
+
+            // 资料：含年度袋、在库资料、盘库失/销/X、损坏专用档口等；异常靠右上角标，底色统一资料蓝。
+            string dataBadge = hideDuplicateCornerText
+                ? string.Empty
+                : ResolveDataTypeBadge(descriptor);
+            return CreateTypeVisual(
+                dataBadge,
+                cardBackground: "#EFF6FF",
+                cardBorder: "#93C5FD",
+                iconBody: "#3B82F6",
+                iconAccent: "#1D4ED8",
+                statusBadgeBackground: "#DBEAFE",
+                statusBadgeForeground: "#1D4ED8",
+                titleForeground: "#1E3A8A",
+                detailForeground: "#1D4ED8");
+        }
+
+        private static bool IsBlankType(CabinetHardDiskMediumDescriptor descriptor)
+        {
+            if (descriptor.IsBlankInStock)
+            {
+                return true;
+            }
+
+            string normalizedStatus = MediumStatusTextNormalizer.Normalize(descriptor.StatusText);
+            return string.Equals(normalizedStatus, HardDiskMedium.StatusInStockBlank, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ResolveDataTypeBadge(CabinetHardDiskMediumDescriptor descriptor)
+        {
+            if (!string.IsNullOrWhiteSpace(descriptor.InventoryMarkBadgeText))
+            {
+                return ResolveTypeBadgeWithoutInventory(descriptor);
             }
 
             if (descriptor.IsYearlyArchiveDisplay)
             {
-                return descriptor.IsOpticalDiscMedia
-                    ? new StatusVisual("年度光盘", "#FDF2F8", "#F9A8D4", "#DB2777", "#9D174D", "#FCE7F3", "#9D174D", "#831843", "#BE185D")
-                    : new StatusVisual("年度资料", "#EFF6FF", "#93C5FD", "#3B82F6", "#1D4ED8", "#DBEAFE", "#1E3A8A", "#1E3A8A", "#1D4ED8");
+                return descriptor.IsOpticalDiscMedia ? "年度光盘" : "年度资料";
             }
 
-            return descriptor.StatusText switch
+            string normalizedStatus = MediumStatusTextNormalizer.Normalize(descriptor.StatusText);
+            if (string.Equals(normalizedStatus, HardDiskMedium.StatusInStockDamaged, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizedStatus, OpticalDiscMedium.StatusDamaged, StringComparison.OrdinalIgnoreCase))
             {
-                HardDiskMedium.StatusInStockData => new StatusVisual("资料", "#EFF6FF", "#93C5FD", "#3B82F6", "#1D4ED8", "#DBEAFE", "#1E3A8A", "#1E3A8A", "#1D4ED8"),
-                HardDiskMedium.StatusInStockDamaged => new StatusVisual("损坏", "#FEF2F2", "#FCA5A5", "#EF4444", "#B91C1C", "#FEE2E2", "#991B1B", "#991B1B", "#B91C1C"),
-                HardDiskMedium.StatusInStockLost => new StatusVisual("失", "#FEF2F2", "#FCA5A5", "#EF4444", "#B91C1C", "#FEE2E2", "#991B1B", "#991B1B", "#B91C1C"),
-                _ => new StatusVisual("空盘", "#F8FAFC", "#CBD5E1", "#64748B", "#334155", "#E2E8F0", "#334155", "#1F2937", "#475569")
-            };
+                return "损坏";
+            }
+
+            return "资料";
         }
+
+        private static string ResolveTypeBadgeWithoutInventory(CabinetHardDiskMediumDescriptor descriptor)
+        {
+            if (descriptor.IsYearlyArchiveDisplay)
+            {
+                return descriptor.IsOpticalDiscMedia ? "年度光盘" : "年度资料";
+            }
+
+            return "资料";
+        }
+
+        private static StatusVisual CreateTypeVisual(
+            string badgeText,
+            string cardBackground,
+            string cardBorder,
+            string iconBody,
+            string iconAccent,
+            string statusBadgeBackground,
+            string statusBadgeForeground,
+            string titleForeground,
+            string detailForeground)
+            => new(
+                badgeText,
+                cardBackground,
+                cardBorder,
+                iconBody,
+                iconAccent,
+                statusBadgeBackground,
+                statusBadgeForeground,
+                titleForeground,
+                detailForeground);
 
         private sealed record StatusVisual(string BadgeText, string CardBackground, string CardBorderBrush, string IconBodyBrush, string IconAccentBrush, string StatusBadgeBackground, string StatusBadgeForeground, string TitleForeground, string DetailForeground);
     }

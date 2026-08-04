@@ -77,6 +77,8 @@ namespace DocMgr.Data
         public DbSet<YearlyArchiveMaterialTransaction> YearlyArchiveMaterialTransactions { get; set; }
         public DbSet<YearlyArchiveInventoryRegisterRecord> YearlyArchiveInventoryRegisterRecords { get; set; }
         public DbSet<YearlyArchiveInventoryRegisterItem> YearlyArchiveInventoryRegisterItems { get; set; }
+        public DbSet<YearlyArchiveDisposalRecord> YearlyArchiveDisposalRecords { get; set; }
+        public DbSet<YearlyArchiveDisposalItem> YearlyArchiveDisposalItems { get; set; }
 
         // === 通用附件表 ===
         public DbSet<SystemAttachment> SystemAttachments { get; set; }
@@ -330,10 +332,31 @@ namespace DocMgr.Data
                 entity.HasIndex(item => new { item.RegisterRecordId, item.FilingFactId });
                 entity.HasIndex(item => new { item.RegisterRecordId, item.MediumKind, item.MediumId });
 
-                entity.HasOne(item => item.FilingFact)
-                    .WithMany()
-                    .HasForeignKey(item => item.FilingFactId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                // 电子轨 FilingFactId=0；模拟轨才有真实立档事实。不可建必填外键。
+                entity.Ignore(item => item.FilingFact);
+            });
+
+            modelBuilder.Entity<YearlyArchiveDisposalRecord>(entity =>
+            {
+                entity.HasIndex(item => item.DisposalNo).IsUnique();
+                entity.HasIndex(item => item.Status);
+                entity.HasIndex(item => item.MediaKind);
+                entity.HasIndex(item => item.ApplyTime);
+
+                entity.HasMany(item => item.Items)
+                    .WithOne(item => item.DisposalRecord)
+                    .HasForeignKey(item => item.DisposalRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<YearlyArchiveDisposalItem>(entity =>
+            {
+                entity.HasIndex(item => item.DisposalRecordId);
+                entity.HasIndex(item => item.FilingFactId);
+                entity.HasIndex(item => item.MediumId);
+                entity.HasIndex(item => item.ContainerId);
+                entity.HasIndex(item => new { item.DisposalRecordId, item.FilingFactId });
+                entity.HasIndex(item => new { item.DisposalRecordId, item.MediumKind, item.MediumId });
             });
 
             modelBuilder.Entity<YearlyElectronicArchiveUnit>(entity =>

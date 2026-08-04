@@ -221,38 +221,22 @@ namespace DocMgr.Services.YearlyArchive
             return record.ExpectedReturnDate?.ToString("yyyy-MM-dd") ?? "无";
         }
 
-        private const string ConfidentialSelfRetainDispositionText =
-            "申请人负责按保密要求对自用涉密资料进行自行销毁或按相关规定进行处置";
+        private const string ConfidentialDispositionInstructionText =
+            "申请人负有所借涉密资料的保管、使用、移交和销毁责任，日常工作中应消除一切失泄密隐患，杜绝失泄密事件发生。";
 
+        /// <summary>
+        /// 与申请单明细「涉密情况」对齐：任一明细涉密则输出处置说明，否则「不适用」。
+        /// </summary>
         private static string FormatConfidentialMaterialDisposition(YearlyArchiveOutboundRecord record) =>
-            HasConfidentialSelfRetainWithoutReturn(record)
-                ? ConfidentialSelfRetainDispositionText
+            record.Items.Any(IsConfidentialOutboundItem)
+                ? ConfidentialDispositionInstructionText
                 : "不适用";
-
-        private static bool HasConfidentialSelfRetainWithoutReturn(YearlyArchiveOutboundRecord record)
-        {
-            if (!ArchiveOutboundDomainValues.IsExternalDestination(record.DestinationKind))
-            {
-                return record.Items.Any(IsConfidentialSelfRetainWithoutReturnItem);
-            }
-
-            return false;
-        }
-
-        private static bool IsConfidentialSelfRetainWithoutReturnItem(YearlyArchiveOutboundItem item)
-        {
-            if (!IsConfidentialOutboundItem(item))
-            {
-                return false;
-            }
-
-            return item.UsageMode == ArchiveOutboundDomainValues.UsageModeWithdrawal && !item.NeedReturn;
-        }
 
         private static bool IsConfidentialOutboundItem(YearlyArchiveOutboundItem item)
         {
             string level = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(item.ConfidentialLevel);
-            return !string.Equals(level, ArchiveRegisterDomainValues.ConfidentialLevelNone, StringComparison.Ordinal);
+            return !string.IsNullOrWhiteSpace(level)
+                && !string.Equals(level, ArchiveRegisterDomainValues.ConfidentialLevelNone, StringComparison.Ordinal);
         }
 
         private static string BuildApprovalBlock(string opinion, string signer, string dateText)

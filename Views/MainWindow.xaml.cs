@@ -462,6 +462,7 @@ namespace DocMgr.Views
                 ArchiveReturnWorkbenchPage page => ResolveArchiveReturnNavButton(page),
                 ArchiveCirculationLedgerPage => BtnArchiveCirculationLedger,
                 ArchiveInventoryRegisterPage page => ResolveArchiveInventoryRegisterNavButton(page),
+                ArchiveDisposalPage page => ResolveArchiveDisposalNavButton(page),
                 TopoMapPage => BtnHistMap,
                 AerialPhotoPage => BtnHistAerial,
                 OtherMapPage => BtnOtherData,
@@ -586,6 +587,12 @@ namespace DocMgr.Views
                         StringComparison.Ordinal)
                     ? "年度资料档案化管理（盘库登记·电子资料盘库）"
                     : "年度资料档案化管理（盘库登记·模拟资料盘库）",
+                ArchiveDisposalPage page => string.Equals(
+                        page.MediaKind,
+                        ArchiveRegisterDomainValues.MediaKindElectronic,
+                        StringComparison.Ordinal)
+                    ? "年度资料档案化管理（离库处置·电子资料离库处置）"
+                    : "年度资料档案化管理（离库处置·模拟资料离库处置）",
                 ArchiveSimulatedRelocationPage => "年度资料档案化管理（资料迁档·模拟介质资料迁档）",
                 ArchiveElectronicRelocationPage => "年度资料档案化管理（资料迁档·电子介质资料迁档）",
                 ArchiveOutboundApplyPage => "年度资料档案化管理（资料流转·借出申请）",
@@ -662,6 +669,19 @@ namespace DocMgr.Views
             {
                 TxtPageTitle.Text = "介质管理（硬盘·离库处置）";
                 MainContentFrame.Navigate(new HardDiskDisposalPage());
+                return Task.CompletedTask;
+            }
+
+            if (item.BizType == "ArchiveDisposal")
+            {
+                string mediaKind = ArchiveRegisterDomainValues.MediaKindSimulated;
+                if (!string.IsNullOrWhiteSpace(item.Title)
+                    && item.Title.Contains("电子资料离库处置", StringComparison.Ordinal))
+                {
+                    mediaKind = ArchiveRegisterDomainValues.MediaKindElectronic;
+                }
+
+                NavigateToArchiveDisposalPage(mediaKind);
                 return Task.CompletedTask;
             }
 
@@ -760,7 +780,8 @@ namespace DocMgr.Views
             SetNavButton(BtnArchiveElectronicRelocation, isArchiveAdmin);
             SetNavButton(BtnArchiveSimulatedInventoryRegister, isArchiveAdmin);
             SetNavButton(BtnArchiveElectronicInventoryRegister, isArchiveAdmin);
-            SetNavButton(BtnArchiveDispose, true);
+            SetNavButton(BtnArchiveSimulatedDisposal, true);
+            SetNavButton(BtnArchiveElectronicDisposal, true);
 
             SetNavButton(BtnNetRegister, true);
             SetNavButton(BtnNetImport, true);
@@ -1224,9 +1245,36 @@ namespace DocMgr.Views
             MainContentFrame.Navigate(new ArchiveElectronicRelocationPage());
         }
 
-        private void BtnArchiveDispose_Click(object sender, RoutedEventArgs e)
+        private void BtnArchiveSimulatedDisposal_Click(object sender, RoutedEventArgs e)
         {
-            ShowMenuNotReady("年度资料档案化管理（资料处置·资料销毁）");
+            NavigateToArchiveDisposalPage(ArchiveRegisterDomainValues.MediaKindSimulated);
+        }
+
+        private void BtnArchiveElectronicDisposal_Click(object sender, RoutedEventArgs e)
+        {
+            NavigateToArchiveDisposalPage(ArchiveRegisterDomainValues.MediaKindElectronic);
+        }
+
+        private void NavigateToArchiveDisposalPage(string mediaKind)
+        {
+            bool isElectronic = string.Equals(
+                mediaKind,
+                ArchiveRegisterDomainValues.MediaKindElectronic,
+                StringComparison.Ordinal);
+            TxtPageTitle.Text = isElectronic
+                ? "年度资料档案化管理（离库处置·电子资料离库处置）"
+                : "年度资料档案化管理（离库处置·模拟资料离库处置）";
+            MainContentFrame.Navigate(new ArchiveDisposalPage(mediaKind));
+        }
+
+        private Button? ResolveArchiveDisposalNavButton(ArchiveDisposalPage page)
+        {
+            return string.Equals(
+                page.MediaKind,
+                ArchiveRegisterDomainValues.MediaKindElectronic,
+                StringComparison.Ordinal)
+                ? BtnArchiveElectronicDisposal
+                : BtnArchiveSimulatedDisposal;
         }
 
         private void BtnNetRegister_Click(object sender, RoutedEventArgs e)

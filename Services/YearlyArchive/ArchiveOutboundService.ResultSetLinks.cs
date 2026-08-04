@@ -338,5 +338,115 @@ namespace DocMgr.Services.YearlyArchive
                 CreatedAt = DateTime.Now
             };
         }
+
+        /// <summary>
+        /// 为提档数据硬盘等明细回填硬盘编号展示快照，供查看/审批卡片展示。
+        /// </summary>
+        private async Task EnrichOutboundItemFiledHardDiskCodesAsync(
+            IReadOnlyCollection<YearlyArchiveOutboundItem> items)
+        {
+            var candidates = items.Where(NeedsFiledHardDiskCodeLookup).ToList();
+            if (candidates.Count == 0)
+            {
+                return;
+            }
+
+            var factIds = candidates.Select(item => item.FilingFactId).Where(id => id > 0).Distinct().ToList();
+            if (factIds.Count == 0)
+            {
+                return;
+            }
+
+            var facts = await _outboundRepository.GetFilingFactsByIdsForUpdateAsync(factIds);
+            var codesByFactId = new Dictionary<int, string>();
+
+            foreach (var pair in facts)
+            {
+                var fact = pair.Value;
+                var codes = new List<string>();
+                AppendDistinctCode(codes, fact.MediumCode);
+
+                if (fact.ContainerId > 0)
+                {
+                    var media = await _outboundRepository.GetHardDiskMediaByElectronicUnitIdForUpdateAsync(fact.ContainerId);
+                    foreach (var medium in media)
+                    {
+                        AppendDistinctCode(codes, medium.DiskCode);
+                    }
+
+                    if (codes.Count == 0)
+                    {
+                        var unit = await _outboundRepository.GetElectronicArchiveUnitByIdForUpdateAsync(fact.ContainerId);
+                        if (unit != null)
+                        {
+                            foreach (string code in SplitLinkedMediumCodes(unit.LinkedMediumCodes))
+                            {
+                                AppendDistinctCode(codes, code);
+                            }
+                        }
+                    }
+                }
+
+                if (codes.Count > 0)
+                {
+                    codesByFactId[pair.Key] = string.Join("、", codes);
+                }
+            }
+
+            foreach (var item in candidates)
+            {
+                if (codesByFactId.TryGetValue(item.FilingFactId, out string? codesText))
+                {
+                    item.FiledHardDiskCodes = codesText;
+                }
+            }
+        }
+
+        private static bool NeedsFiledHardDiskCodeLookup(YearlyArchiveOutboundItem item)
+        {
+            if (item.FilingFactId <= 0 || !string.IsNullOrWhiteSpace(item.RequisitionedDiskCode))
+            {
+                return false;
+            }
+
+            if (!string.Equals(item.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return ArchiveOutboundDomainValues.IsHardDiskStorageCarrier(item.StorageCarrierType)
+                || item.MediaType?.Contains("硬盘", StringComparison.OrdinalIgnoreCase) == true;
+        }
+
+        private static IEnumerable<string> SplitLinkedMediumCodes(string? linkedMediumCodes)
+        {
+            if (string.IsNullOrWhiteSpace(linkedMediumCodes))
+            {
+                yield break;
+            }
+
+            foreach (string part in linkedMediumCodes.Split(
+                         ['、', ',', ';', '；', '|', '/', ' '],
+                         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                yield return part;
+            }
+        }
+
+        private static void AppendDistinctCode(List<string> target, string? value)
+        {
+            string normalized = value?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(normalized))
+            {
+                return;
+            }
+
+            if (target.Any(existing => string.Equals(existing, normalized, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            target.Add(normalized);
+        }
     }
 }

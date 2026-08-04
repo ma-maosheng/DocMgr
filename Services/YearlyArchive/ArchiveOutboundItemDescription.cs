@@ -175,9 +175,63 @@ namespace DocMgr.Services.YearlyArchive
                 segments.Add(diskClause);
             }
 
+            if (forApplicationPrint)
+            {
+                AppendSegment(segments, FormatReturnExpectationClause(item));
+            }
+
             return segments.Count == 0
                 ? string.Empty
                 : $"({index}) {string.Join("，", segments)}";
+        }
+
+        /// <summary>
+        /// 申请单明细中的归还预期：资料归还或硬盘归还时补充应还日期。
+        /// </summary>
+        private static string? FormatReturnExpectationClause(YearlyArchiveOutboundItem item)
+        {
+            if (!ArchiveOutboundReturnSupport.ItemRequiresExpectedReturnDate(item))
+            {
+                return null;
+            }
+
+            DateTime? dueDate = item.ExpectedReturnDate?.Date;
+            if (!dueDate.HasValue)
+            {
+                return null;
+            }
+
+            string dateText = dueDate.Value.ToString("yyyy-MM-dd");
+
+            if (IsHardDiskReturnExpectation(item))
+            {
+                return $"硬盘归还预期{dateText}";
+            }
+
+            if (IsMaterialReturnExpectation(item))
+            {
+                return $"资料归还预期{dateText}";
+            }
+
+            return $"归还预期{dateText}";
+        }
+
+        private static bool IsMaterialReturnExpectation(YearlyArchiveOutboundItem item) =>
+            string.Equals(item.UsageMode, ArchiveOutboundDomainValues.UsageModeWithdrawal, StringComparison.Ordinal)
+            && item.NeedReturn
+            && string.Equals(item.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal);
+
+        private static bool IsHardDiskReturnExpectation(YearlyArchiveOutboundItem item)
+        {
+            if (item.ShowRequisitionedDiskNeedReturn && item.RequisitionedDiskNeedReturn)
+            {
+                return true;
+            }
+
+            return string.Equals(item.UsageMode, ArchiveOutboundDomainValues.UsageModeWithdrawal, StringComparison.Ordinal)
+                && item.NeedReturn
+                && string.Equals(item.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
+                && ArchiveOutboundDomainValues.IsHardDiskStorageCarrier(item.StorageCarrierType);
         }
 
         private static string FormatUsageClause(YearlyArchiveOutboundItem item, bool depletesStock = false)
@@ -270,26 +324,8 @@ namespace DocMgr.Services.YearlyArchive
             segments.Add(value.Trim());
         }
 
-        private static bool InvolvesHardDisk(YearlyArchiveOutboundItem item)
-        {
-            if (!string.IsNullOrWhiteSpace(item.RequisitionedDiskCode))
-            {
-                return true;
-            }
-
-            if (string.Equals(item.ElectronicMediumType, ArchiveOutboundDomainValues.DuplicateMediumSelfHardDisk, StringComparison.Ordinal)
-                || string.Equals(item.ElectronicMediumType, ArchiveOutboundDomainValues.DuplicateMediumInStockBlank, StringComparison.Ordinal))
-            {
-                return true;
-            }
-
-            if (ArchiveFilingBusinessRules.IsHardDiskArchiveCarrierType(item.StorageCarrierType))
-            {
-                return true;
-            }
-
-            return item.MediaType?.Contains("硬盘", StringComparison.OrdinalIgnoreCase) == true;
-        }
+        private static bool InvolvesHardDisk(YearlyArchiveOutboundItem item) =>
+            ArchiveOutboundHardDiskTransferDisplaySupport.InvolvesHardDisk(item);
 
         private static string? FormatHandoverDiskClause(YearlyArchiveOutboundItem item, YearlyArchiveFilingFact? fact)
         {

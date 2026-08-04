@@ -1,0 +1,153 @@
+<Window x:Class="DocMgr.Views.YearlyArchive.ArchiveDisposalEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding WindowTitle, Mode=OneWay}"
+        Width="1100"
+        Height="720"
+        MinWidth="960"
+        MinHeight="640"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F7FA">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </Window.Resources>
+    <DockPanel Margin="12">
+        <Border DockPanel.Dock="Top" Background="#FFFBEB" BorderBrush="#E2C98F" BorderThickness="1" Padding="10,8" Margin="0,0,0,10">
+            <TextBlock Text="{Binding BannerText, Mode=OneWay}" TextWrapping="Wrap" Foreground="#6F4A00"/>
+        </Border>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Width="88" Height="32" Margin="0,0,8,0"/>
+            <Button Content="提交" Command="{Binding SubmitCommand}" Width="72" Height="32" Margin="0,0,8,0"/>
+            <Button Content="打印签批单" Command="{Binding PrintCommand}" Width="96" Height="32" Margin="0,0,8,0"/>
+            <Button Content="审批通过" Command="{Binding ApproveCommand}" Width="88" Height="32" Margin="0,0,8,0"/>
+            <Button Content="确认可上传" Command="{Binding ConfirmUploadCommand}" Width="96" Height="32" Margin="0,0,8,0"/>
+            <Button Content="办结" Command="{Binding CompleteCommand}" Width="72" Height="32" Margin="0,0,8,0"/>
+            <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Width="88" Height="32" Margin="0,0,8,0"/>
+            <Button Content="关闭" Command="{Binding CloseCommand}" Width="72" Height="32"/>
+        </StackPanel>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="160"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="90"/>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="90"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="60"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="处置单号" VerticalAlignment="Center"/>
+                <TextBox Grid.Column="1" Text="{Binding DisposalNo, Mode=OneWay}" IsReadOnly="True" Height="28"/>
+                <TextBlock Grid.Column="2" Text="申请说明" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                <TextBox Grid.Column="3" Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}" Height="28"
+                         IsEnabled="{Binding CanEditHeader, Mode=OneWay}"/>
+                <TextBlock Grid.Column="4" Text="备注" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                <TextBox Grid.Column="5" Text="{Binding Remark, UpdateSourceTrigger=PropertyChanged}" Height="28"
+                         IsEnabled="{Binding CanEditHeader, Mode=OneWay}"/>
+            </Grid>
+
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="90"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <DockPanel Grid.Column="0" Margin="0,0,8,0">
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding AvailableTitle, Mode=OneWay}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <DataGrid ItemsSource="{Binding AvailableItems}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              HeadersVisibility="Column"
+                              RowHeight="28">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
+                            <DataGridTextColumn Header="名称" Binding="{Binding DisplayTitle, Mode=OneWay}" Width="*"/>
+                            <DataGridTextColumn Header="原因" Binding="{Binding DisposalReason, Mode=OneWay}" Width="60"/>
+                            <DataGridTextColumn Header="位置" Binding="{Binding BeforeStorageLocation, Mode=OneWay}" Width="110"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <Button Content="加入 →" Command="{Binding MoveToDisposalCommand}" Width="72" Height="28" Margin="0,0,0,8"/>
+                    <Button Content="← 移出" Command="{Binding MoveToAvailableCommand}" Width="72" Height="28" Margin="0,0,0,16"/>
+                    <TextBlock Text="赋值方式" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding DispositionMethodOptions}"
+                              SelectedItem="{Binding BatchDispositionMethod, Mode=TwoWay}"
+                              Width="72" Margin="0,0,0,6"
+                              IsEnabled="{Binding CanEditHeader, Mode=OneWay}"/>
+                    <Button Content="赋值" Command="{Binding ApplyDispositionMethodCommand}" Width="72" Height="28"
+                            IsEnabled="{Binding CanEditHeader, Mode=OneWay}"/>
+                </StackPanel>
+
+                <DockPanel Grid.Column="2" Margin="8,0,0,0">
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding DisposalTitle, Mode=OneWay}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <DataGrid ItemsSource="{Binding Items}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              HeadersVisibility="Column"
+                              RowHeight="28">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
+                            <DataGridTextColumn Header="名称" Binding="{Binding DisplayTitle, Mode=OneWay}" Width="*"/>
+                            <DataGridTextColumn Header="原因" Binding="{Binding DisposalReason, Mode=OneWay}" Width="60"/>
+                            <DataGridTextColumn Header="方式" Binding="{Binding DispositionMethod, Mode=OneWay}" Width="100"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Grid>
+
+            <StackPanel Grid.Row="2" Margin="0,10,0,8">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                    <TextBlock Text="审批意见" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox Width="360" Height="28" Text="{Binding ApprovalOpinion, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding CanApprove, Mode=OneWay}"/>
+                    <CheckBox Content="已确认空盒/空袋物理移除"
+                              Margin="16,0,0,0"
+                              IsChecked="{Binding PhysicalRemovalConfirmed, Mode=TwoWay}"
+                              Visibility="{Binding ShowPhysicalRemovalConfirm, Converter={StaticResource BooleanToVisibilityConverter}}"
+                              VerticalAlignment="Center"/>
+                    <CheckBox Content="已确认硬盘低级格式化"
+                              Margin="12,0,0,0"
+                              IsChecked="{Binding FormatRetainedConfirmed, Mode=TwoWay}"
+                              Visibility="{Binding ShowFormatRetainConfirm, Converter={StaticResource BooleanToVisibilityConverter}}"
+                              VerticalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Border Grid.Row="3" BorderBrush="#D0D7DE" BorderThickness="1" Padding="8" Background="White">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Text="附件" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        <ComboBox Width="140" ItemsSource="{Binding UploadCategoryOptions}" SelectedItem="{Binding UploadCategory, Mode=TwoWay}"/>
+                        <Button Content="上传" Command="{Binding UploadAttachmentCommand}" Width="64" Height="28" Margin="8,0,0,0"/>
+                        <Button Content="查看" Command="{Binding ViewAttachmentCommand}" CommandParameter="{Binding SelectedAttachment}" Width="64" Height="28" Margin="8,0,0,0"/>
+                        <Button Content="删除" Command="{Binding DeleteAttachmentCommand}" CommandParameter="{Binding SelectedAttachment}" Width="64" Height="28" Margin="8,0,0,0"/>
+                    </StackPanel>
+                    <ListBox ItemsSource="{Binding Attachments}" SelectedItem="{Binding SelectedAttachment}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock>
+                                    <Run Text="{Binding FileCategory, Mode=OneWay}"/>
+                                    <Run Text=" · "/>
+                                    <Run Text="{Binding FileName, Mode=OneWay}"/>
+                                    <Run Text=" · "/>
+                                    <Run Text="{Binding UploaderName, Mode=OneWay}"/>
+                                </TextBlock>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

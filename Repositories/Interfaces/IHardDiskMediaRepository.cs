@@ -38,7 +38,7 @@ public interface IHardDiskMediaRepository
     /// <summary>获取存在硬盘占用锁的介质 ID 集合。</summary>
     Task<HashSet<int>> GetMediumIdsWithRegisterLockAsync(IReadOnlyCollection<int> mediumIds);
 
-    /// <summary>查询资料出库办结后库内空盘征用、仍处于借出且需归还的硬盘来源。</summary>
+    /// <summary>查询资料出库办结后需归还硬盘来源（库内空盘征用或提档数据硬盘）。</summary>
     Task<List<HardDiskMediaArchiveOutboundRequisitionReturnSource>> GetArchiveOutboundRequisitionReturnSourcesAsync();
 
     Task<HardDiskMediaApplication?> GetLatestCompletedOutboundApplicationByDiskCodeAsync(string diskCode);

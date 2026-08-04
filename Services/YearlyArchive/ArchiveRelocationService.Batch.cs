@@ -43,9 +43,11 @@ namespace DocMgr.Services.YearlyArchive
                 };
 
                 var movedBoxLocations = new List<(int BoxId, string ContainerCode, string NewLocation)>();
-                int sequence = 1;
+                var occupiedTargetSequences = new List<int>();
                 foreach (var box in sourceBoxes)
                 {
+                    int sequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupiedTargetSequences);
+                    occupiedTargetSequences.Add(sequence);
                     string newLocation = ArchiveSlotLocationSupport.BuildFullElectronicLocation(
                         request.TargetCabinetName,
                         request.TargetFace,
@@ -73,7 +75,6 @@ namespace DocMgr.Services.YearlyArchive
                         context.RelocationItems);
 
                     movedBoxLocations.Add((box.Id, box.ArchiveSequenceNo, newLocation));
-                    sequence++;
                 }
 
                 var firstBox = sourceBoxes[0];
@@ -178,7 +179,7 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return Ready(
-                $"【档口批量物理搬迁】将源档口 [{sourceSlotKey}] 内 {sourceBoxes.Count} 个年度模拟档案盒整体迁至空档口 [{targetSlotKey}]，按原顺序重排为 -01 至 -{sourceBoxes.Count:D2}。",
+                $"【档口批量物理搬迁】将源档口 [{sourceSlotKey}] 内 {sourceBoxes.Count} 个年度模拟档案盒整体迁至空档口 [{targetSlotKey}]，按源顺序优先占用目标档口空闲序号；源档口余下实体序号不重排。",
                 sourceBoxes.Sum(box => box.MediaItemLinks.Count));
         }
 

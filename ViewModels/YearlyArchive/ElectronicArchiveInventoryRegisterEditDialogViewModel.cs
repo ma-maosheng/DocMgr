@@ -43,7 +43,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _record = record;
 
             MoveToRegisterCommand = new RelayCommand(_ => MoveToRegister(), _ => CanEditHeader && AvailableCandidates.Any(item => item.IsSelected));
-            MoveToAvailableCommand = new RelayCommand(_ => MoveToAvailable(), _ => CanEditHeader && Items.Any(item => item.IsSelected));
+            MoveToAvailableCommand = new RelayCommand(_ => MoveToAvailable(), _ => CanEditHeader && HasRemovableItems);
             SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader);
             CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
             WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => CanWithdraw);
@@ -62,7 +62,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string StatusDisplay => ArchiveInventoryRegisterDomainValues.ToStatusDisplay(_record.Status);
 
         public string BannerText =>
-            "按电子袋内硬盘/光盘登记损坏或盘失。办结改介质台账但保留档口与介质袋；关联资料不可再借出。正式离库请后期走「离库处置」。";
+            "按电子袋内硬盘/光盘登记损坏、盘失或拟销。拟销用于无存档价值资料，办结效应与盘失相同。办结改介质台账但保留档口与介质袋；关联资料不可再借出。正式离库请后期走「离库处置」。";
 
         public ObservableCollection<string> RegisterKindOptions { get; } = new();
 
@@ -136,7 +136,21 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ElectronicInventoryItemRow? SelectedItem
         {
             get => _selectedItem;
-            set => SetProperty(ref _selectedItem, value);
+            set
+            {
+                if (!SetProperty(ref _selectedItem, value))
+                {
+                    return;
+                }
+
+                // 行选中时同步勾选，保证「← 移除」可用。
+                if (value != null && !value.IsSelected)
+                {
+                    value.IsSelected = true;
+                }
+
+                RaiseCommandStates();
+            }
         }
 
         public bool CanEditHeader =>
@@ -146,6 +160,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool CanComplete => CanEditHeader && Items.Count > 0;
 
         public bool CanWithdraw => CanEditHeader && _record.Id > 0;
+
+        private bool HasRemovableItems =>
+            SelectedItem != null || Items.Any(item => item.IsSelected);
 
         public RelayCommand MoveToRegisterCommand { get; }
         public RelayCommand MoveToAvailableCommand { get; }
@@ -302,11 +319,18 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void MoveToAvailable()
         {
-            foreach (var item in Items.Where(row => row.IsSelected).ToList())
+            var toRemove = Items.Where(row => row.IsSelected).ToList();
+            if (toRemove.Count == 0 && SelectedItem != null)
+            {
+                toRemove.Add(SelectedItem);
+            }
+
+            foreach (var item in toRemove)
             {
                 Items.Remove(item);
             }
 
+            SelectedItem = null;
             RefreshAvailableCandidates();
         }
 
@@ -319,6 +343,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
+                EnsureReasonFilled();
                 var drafts = BuildDrafts();
                 var header = BuildHeader();
                 if (_record.Id <= 0)
@@ -341,7 +366,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError(ex.Message);
+                _dialogService.ShowError(FormatExceptionMessage(ex));
             }
         }
 
@@ -349,6 +374,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             if (!CanComplete)
             {
+                return;
+            }
+
+            try
+            {
+                EnsureReasonFilled();
+                _ = BuildDrafts();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(FormatExceptionMessage(ex));
                 return;
             }
 
@@ -378,8 +414,27 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError(ex.Message);
+                _dialogService.ShowError(FormatExceptionMessage(ex));
             }
+        }
+
+        /// <summary>
+        /// 登记说明未填时，默认用当前登记类型，避免办结被硬拦。
+        /// </summary>
+        private void EnsureReasonFilled()
+        {
+            if (!string.IsNullOrWhiteSpace(Reason))
+            {
+                return;
+            }
+
+            string kind = RegisterKind?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(kind))
+            {
+                throw new InvalidOperationException("请选择登记类型，或填写登记说明。");
+            }
+
+            Reason = kind;
         }
 
         private async Task WithdrawAsync()
@@ -446,6 +501,23 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanWithdraw));
             OnPropertyChanged(nameof(CanEditRegisterKind));
         }
+
+        private static string FormatExceptionMessage(Exception ex)
+        {
+            Exception current = ex;
+            while (current.InnerException != null)
+            {
+                current = current.InnerException;
+            }
+
+            string root = current.Message?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(root) || string.Equals(root, ex.Message, StringComparison.Ordinal))
+            {
+                return ex.Message;
+            }
+
+            return $"{ex.Message}\n\n详情：{root}";
+        }
     }
 
     /// <summary>电子盘库可选袋内介质行。</summary>
@@ -456,7 +528,13 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool IsSelected
         {
             get => _isSelected;
-            set => SetProperty(ref _isSelected, value);
+            set
+            {
+                if (SetProperty(ref _isSelected, value))
+                {
+                    CommandManager.InvalidateRequerySuggested();
+                }
+            }
         }
 
         public string ProjectName { get; init; } = string.Empty;
@@ -520,7 +598,13 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool IsSelected
         {
             get => _isSelected;
-            set => SetProperty(ref _isSelected, value);
+            set
+            {
+                if (SetProperty(ref _isSelected, value))
+                {
+                    CommandManager.InvalidateRequerySuggested();
+                }
+            }
         }
 
         public string ProjectName { get; init; } = string.Empty;
@@ -566,8 +650,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             return new ElectronicInventoryItemRow
             {
-                ProjectName = string.Empty,
-                Year = string.Empty,
+                ProjectName = item.ProjectName?.Trim() ?? string.Empty,
+                Year = item.Year?.Trim() ?? string.Empty,
                 MediumKind = item.MediumKind?.Trim() ?? string.Empty,
                 MediumId = item.MediumId,
                 MediumCode = item.MediumCode?.Trim() ?? string.Empty,

@@ -25,6 +25,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<HardDiskDisposalPageViewModel>();
         services.AddTransient<HardDiskInventoryRegisterPageViewModel>();
         services.AddTransient<ArchiveInventoryRegisterPageViewModel>();
+        services.AddTransient<ArchiveDisposalPageViewModel>();
         services.AddTransient<Func<HardDiskReturnWorkspaceMode, HardDiskMediaReturnRegistrationPageViewModel>>(sp =>
             mode => ActivatorUtilities.CreateInstance<HardDiskMediaReturnRegistrationPageViewModel>(sp, mode));
         services.AddTransient<HardDiskMediaApprovalPageViewModel>();

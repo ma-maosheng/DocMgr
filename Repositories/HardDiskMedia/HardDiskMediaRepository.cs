@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace DocMgr.Repositories.HardDiskMedia;
 
-public class HardDiskMediaRepository : IHardDiskMediaRepository
+public partial class HardDiskMediaRepository : IHardDiskMediaRepository
 {
     private readonly AppDbContext _dbContext;
 
@@ -70,18 +70,33 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
             .ToListAsync();
     }
 
-    public Task<List<HardDiskMediaApplication>> GetCompletedOutboundApplicationsForReturnCandidatesAsync()
+    public async Task<List<HardDiskMediaApplication>> GetCompletedOutboundApplicationsForReturnCandidatesAsync()
     {
-        return _dbContext.HardDiskMediaApplications
+        // 已有办结归还/挂失且 SourceApplicationId 指向本出库单的，视为该借出周期已关闭。
+        var closedOutboundApplicationIds = await _dbContext.HardDiskMediaApplications
+            .AsNoTracking()
+            .Where(item => item.SourceApplicationId != null)
+            .Where(item => item.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)
+            .Where(item => item.ApplicationType == HardDiskMediaApplication.TypeReturnBlankRegistration
+                           || item.ApplicationType == HardDiskMediaApplication.TypeReturnDataRegistration
+                           || item.ApplicationType == HardDiskMediaApplication.TypeReturnDamagedRegistration
+                           || item.ApplicationType == HardDiskMediaApplication.TypeLossRegistration)
+            .Select(item => item.SourceApplicationId!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        return await _dbContext.HardDiskMediaApplications
             .AsNoTracking()
             .Include(item => item.Medium)
                 .ThenInclude(medium => medium!.Ledger)
             .Where(item => item.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)
             .Where(item => item.ApplicationType == HardDiskMediaApplication.TypeOutboundTemporary ||
                            item.ApplicationType == HardDiskMediaApplication.TypeOutboundLongTerm)
+            .Where(item => !closedOutboundApplicationIds.Contains(item.Id))
             .Where(item => item.Medium != null &&
                            !item.Medium.IsDeleted &&
                            item.Medium.Ledger != null &&
+                           item.Medium.Ledger.NeedReturn &&
                            (item.Medium.Ledger.MediaStatus == HardDiskMedium.StatusOutTemporary ||
                             item.Medium.Ledger.MediaStatus == HardDiskMedium.StatusOutLongTerm))
             .OrderByDescending(item => item.ExecutedTime ?? item.UpdatedTime)
@@ -154,138 +169,6 @@ public class HardDiskMediaRepository : IHardDiskMediaRepository
 
         return lockedIds.ToHashSet();
     }
-
-    public async Task<List<HardDiskMediaArchiveOutboundRequisitionReturnSource>> GetArchiveOutboundRequisitionReturnSourcesAsync()
-    {
-        var completedReturnPairs = await _dbContext.HardDiskMediaApplications
-            .AsNoTracking()
-            .Where(item => item.SourceOutboundRecordId != null)
-            .Where(item => item.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)
-            .Where(item => item.ApplicationType == HardDiskMediaApplication.TypeReturnBlankRegistration
-                           || item.ApplicationType == HardDiskMediaApplication.TypeReturnDataRegistration
-                           || item.ApplicationType == HardDiskMediaApplication.TypeReturnDamagedRegistration)
-            .Select(item => new { item.MediumId, OutboundRecordId = item.SourceOutboundRecordId!.Value })
-            .ToListAsync();
-
-        var completedReturnKeys = completedReturnPairs
-            .Select(item => BuildArchiveOutboundRequisitionReturnKey(item.MediumId, item.OutboundRecordId))
-            .ToHashSet(StringComparer.Ordinal);
-
-        var outboundRecords = await _dbContext.YearlyArchiveOutboundRecords
-            .AsNoTracking()
-            .Include(record => record.Items)
-            .Where(record => record.Status == YearlyArchiveOutboundRecord.Completed)
-            .OrderByDescending(record => record.CompletedAt ?? record.UpdatedAt)
-            .ThenByDescending(record => record.Id)
-            .ToListAsync();
-
-        var candidateItems = outboundRecords
-            .SelectMany(record => record.Items
-                .Where(ArchiveOutboundReturnSupport.IsArchiveOutboundRequisitionReturnItem)
-                .Select(item => new
-                {
-                    record.Id,
-                    record.OutboundNo,
-                    record.ApplicantName,
-                    record.ApplicantDept,
-                    record.ExpectedReturnDate,
-                    Item = item
-                }))
-            .ToList();
-
-        if (candidateItems.Count == 0)
-        {
-            return [];
-        }
-
-        var mediumIds = candidateItems
-            .Select(item => item.Item.RequisitionedMediumId!.Value)
-            .Distinct()
-            .ToList();
-
-        var mediaById = await _dbContext.HardDiskMedia
-            .AsNoTracking()
-            .Include(medium => medium.Ledger)
-            .Where(medium => mediumIds.Contains(medium.Id) && !medium.IsDeleted)
-            .ToDictionaryAsync(medium => medium.Id);
-
-        var outboundNos = candidateItems
-            .Select(item => item.OutboundNo)
-            .Where(no => !string.IsNullOrWhiteSpace(no))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var archiveOutboundTransactions = await _dbContext.HardDiskMediaTransactions
-            .AsNoTracking()
-            .Where(transaction => mediumIds.Contains(transaction.MediumId))
-            .Where(transaction => transaction.ApplicationId == null)
-            .Where(transaction => outboundNos.Contains(transaction.RelatedBatch))
-            .OrderByDescending(transaction => transaction.OperateTime)
-            .ThenByDescending(transaction => transaction.Id)
-            .ToListAsync();
-
-        var transactionLookup = archiveOutboundTransactions
-            .GroupBy(transaction => BuildArchiveOutboundRequisitionReturnKey(transaction.MediumId, transaction.RelatedBatch))
-            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
-
-        var results = new List<HardDiskMediaArchiveOutboundRequisitionReturnSource>();
-        var seenMediumIds = new HashSet<int>();
-
-        foreach (var candidate in candidateItems)
-        {
-            int mediumId = candidate.Item.RequisitionedMediumId!.Value;
-            if (!seenMediumIds.Add(mediumId))
-            {
-                continue;
-            }
-
-            if (completedReturnKeys.Contains(BuildArchiveOutboundRequisitionReturnKey(mediumId, candidate.Id)))
-            {
-                continue;
-            }
-
-            if (!mediaById.TryGetValue(mediumId, out var medium) || medium.Ledger == null)
-            {
-                continue;
-            }
-
-            string currentStatus = medium.Ledger.MediaStatus?.Trim() ?? string.Empty;
-            if (!medium.Ledger.NeedReturn
-                || (currentStatus != HardDiskMedium.StatusOutTemporary
-                    && currentStatus != HardDiskMedium.StatusOutLongTerm))
-            {
-                continue;
-            }
-
-            string transactionKey = BuildArchiveOutboundRequisitionReturnKey(mediumId, candidate.OutboundNo);
-            transactionLookup.TryGetValue(transactionKey, out var outboundTransaction);
-
-            results.Add(new HardDiskMediaArchiveOutboundRequisitionReturnSource
-            {
-                OutboundRecordId = candidate.Id,
-                OutboundNo = candidate.OutboundNo,
-                ApplicantName = candidate.ApplicantName?.Trim() ?? string.Empty,
-                ApplicantDept = candidate.ApplicantDept?.Trim() ?? string.Empty,
-                MediumId = mediumId,
-                DiskCode = medium.DiskCode,
-                SerialNumber = medium.SerialNumber,
-                Capacity = medium.Capacity,
-                InterfaceType = medium.InterfaceType,
-                BorrowedLocation = medium.Ledger.StorageLocation?.Trim() ?? string.Empty,
-                OriginalLocation = outboundTransaction?.BeforeLocation?.Trim() ?? string.Empty,
-                CurrentStatus = currentStatus,
-                ExpectedReturnDate = candidate.Item.ExpectedReturnDate ?? candidate.ExpectedReturnDate
-            });
-        }
-
-        return results;
-    }
-
-    private static string BuildArchiveOutboundRequisitionReturnKey(int mediumId, int outboundRecordId) =>
-        $"{mediumId}:{outboundRecordId}";
-
-    private static string BuildArchiveOutboundRequisitionReturnKey(int mediumId, string outboundNo) =>
-        $"{mediumId}:{outboundNo.Trim()}";
 
     public Task<HardDiskMediaApplication?> GetLatestCompletedOutboundApplicationByDiskCodeAsync(string diskCode)
     {

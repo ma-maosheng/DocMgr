@@ -298,6 +298,10 @@ namespace DocMgr.Services.Cabinets
 
             var reservationsByFactId = LoadActiveReservationsByFactIds(rows);
 
+            var mediaStatusByMediumCode = _cabinetOpenLayoutRepository
+
+                .GetLinkedMediumInventoryStatusesByElectronicUnitId(unit.Id);
+
             return rows
 
                 .Select(row => BuildYearlyArchiveDescriptor(
@@ -308,7 +312,9 @@ namespace DocMgr.Services.Cabinets
 
                     unit.Year,
 
-                    reservationsByFactId))
+                    reservationsByFactId,
+
+                    mediaStatusByMediumCode))
 
                 .ToList();
 
@@ -362,7 +368,9 @@ namespace DocMgr.Services.Cabinets
 
             string? containerYear,
 
-            IReadOnlyDictionary<int, IReadOnlyList<ActiveWithdrawalReservationSnapshot>> reservationsByFactId)
+            IReadOnlyDictionary<int, IReadOnlyList<ActiveWithdrawalReservationSnapshot>> reservationsByFactId,
+
+            IReadOnlyDictionary<string, string>? mediaStatusByMediumCode = null)
 
         {
 
@@ -380,13 +388,25 @@ namespace DocMgr.Services.Cabinets
 
                 row.LostCopyCount,
 
-                row.InventoryLostCopyCount > 0 ? row.InventoryLostCopyCount : fact.InventoryLostCopyCount);
+                row.InventoryLostCopyCount > 0 ? row.InventoryLostCopyCount : fact.InventoryLostCopyCount,
+
+                row.InventoryScrapCopyCount > 0 ? row.InventoryScrapCopyCount : fact.InventoryScrapCopyCount);
 
 
 
             bool isElectronic = viewMode == CabinetArchiveContainerViewMode.ElectronicArchiveBag
 
                 || string.Equals(fact.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal);
+
+            string mediumInventoryStatusText = isElectronic
+
+                ? ArchiveMediumInventoryStatusSupport.ResolveDisplay(
+
+                    fact.MediumCode,
+
+                    mediaStatusByMediumCode ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase))
+
+                : ArchiveMediumInventoryStatusSupport.DisplayNormal;
 
 
 
@@ -478,7 +498,7 @@ namespace DocMgr.Services.Cabinets
 
                 QuantityText = isElectronic
 
-                    ? breakdown.ElectronicStockStatusText
+                    ? mediumInventoryStatusText
 
                     : FormatSimulatedQuantityText(breakdown),
 
@@ -500,7 +520,11 @@ namespace DocMgr.Services.Cabinets
 
                 LostCopyCount = breakdown.LostCopyCount,
 
-                ElectronicStockStatusText = breakdown.ElectronicStockStatusText,
+                InventoryLostCopyCount = breakdown.InventoryLostCopyCount,
+
+                InventoryScrapCopyCount = breakdown.InventoryScrapCopyCount,
+
+                ElectronicStockStatusText = mediumInventoryStatusText,
 
                 ViewMode = viewMode,
 

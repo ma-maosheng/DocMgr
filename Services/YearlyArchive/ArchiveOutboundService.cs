@@ -95,6 +95,7 @@ namespace DocMgr.Services.YearlyArchive
             if (record != null)
             {
                 await FillMissingOutboundItemArchivePurposesAsync(record.Items);
+                await EnrichOutboundItemFiledHardDiskCodesAsync(record.Items);
             }
 
             return record;
@@ -1041,7 +1042,12 @@ namespace DocMgr.Services.YearlyArchive
                     && unitItems.Any(item =>
                         item.ExpectedReturnDate != sample.ExpectedReturnDate))
                 {
-                    errors.Add($"• {unitTitle}：同一盒/袋内预计归还日期须一致。");
+                    bool isElectronic = string.Equals(
+                        sample.MediaKind,
+                        ArchiveRegisterDomainValues.MediaKindElectronic,
+                        StringComparison.Ordinal);
+                    string dateFieldLabel = isElectronic ? "硬盘归还日期" : "预计归还日期";
+                    errors.Add($"• {unitTitle}：同一盒/袋内{dateFieldLabel}须一致。");
                 }
             }
 
@@ -1089,7 +1095,12 @@ namespace DocMgr.Services.YearlyArchive
                 string unitTitle = ArchiveOutboundContainerUnitSupport.FormatUnitTitle(sample.MediaKind, sample.ContainerCode);
                 if (!sample.ExpectedReturnDate.HasValue && requireSubmittedFields)
                 {
-                    errors.Add($"• {unitTitle}：请填写预计归还日期。");
+                    bool isElectronic = string.Equals(
+                        sample.MediaKind,
+                        ArchiveRegisterDomainValues.MediaKindElectronic,
+                        StringComparison.Ordinal);
+                    string dateFieldLabel = isElectronic ? "硬盘归还日期" : "预计归还日期";
+                    errors.Add($"• {unitTitle}：请填写{dateFieldLabel}。");
                 }
             }
 

@@ -92,6 +92,10 @@ namespace DocMgr.ViewModels.Cabinets
 
             LostCopyCount = descriptor.LostCopyCount;
 
+            InventoryLostCopyCount = descriptor.InventoryLostCopyCount;
+
+            InventoryScrapCopyCount = descriptor.InventoryScrapCopyCount;
+
             ElectronicStockStatusText = descriptor.ElectronicStockStatusText;
 
             HasOccupationLock = descriptor.HasOccupationLock;
@@ -254,6 +258,14 @@ namespace DocMgr.ViewModels.Cabinets
 
 
 
+        public int InventoryLostCopyCount { get; }
+
+
+
+        public int InventoryScrapCopyCount { get; }
+
+
+
         public string ElectronicStockStatusText { get; }
 
 
@@ -286,7 +298,16 @@ namespace DocMgr.ViewModels.Cabinets
 
 
 
-        public string ElectronicStatusDisplay => IsElectronicMedia ? ElectronicStockStatusText : "—";
+        public string InventoryLostCopyCountDisplay => IsElectronicMedia ? "—" : InventoryLostCopyCount.ToString();
+
+
+
+        public string InventoryScrapCopyCountDisplay => IsElectronicMedia ? "—" : InventoryScrapCopyCount.ToString();
+
+
+
+        public string ElectronicStatusDisplay =>
+            string.IsNullOrWhiteSpace(ElectronicStockStatusText) ? "-" : ElectronicStockStatusText;
 
 
 

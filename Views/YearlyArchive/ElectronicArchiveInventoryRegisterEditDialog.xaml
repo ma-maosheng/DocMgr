@@ -53,7 +53,6 @@
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="160"/>
-                        <ColumnDefinition Width="160"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="220"/>
                     </Grid.ColumnDefinitions>
@@ -62,19 +61,12 @@
                         <TextBox Text="{Binding RegisterNo, Mode=OneWay}" IsReadOnly="True" Height="{StaticResource DialogFormControlHeight}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,12,0">
-                        <TextBlock Text="登记类型" Foreground="#9A7B3F" FontSize="12" Margin="0,0,0,4"/>
-                        <ComboBox ItemsSource="{Binding RegisterKindOptions}"
-                                  SelectedItem="{Binding RegisterKind}"
-                                  IsEnabled="{Binding CanEditRegisterKind}"
-                                  Height="{StaticResource DialogFormControlHeight}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Margin="0,0,12,0">
                         <TextBlock Text="登记说明" Foreground="#9A7B3F" FontSize="12" Margin="0,0,0,4"/>
                         <TextBox Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
                                  IsEnabled="{Binding CanEditHeader}"
                                  Height="{StaticResource DialogFormControlHeight}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="3">
+                    <StackPanel Grid.Column="2">
                         <TextBlock Text="备注" Foreground="#9A7B3F" FontSize="12" Margin="0,0,0,4"/>
                         <TextBox Text="{Binding Remark, UpdateSourceTrigger=PropertyChanged}"
                                  IsEnabled="{Binding CanEditHeader}"
@@ -115,12 +107,21 @@
                                   CanUserAddRows="False"
                                   IsReadOnly="False"
                                   SelectionMode="Extended"
+                                  SelectionUnit="FullRow"
                                   HeadersVisibility="Column"
                                   GridLinesVisibility="Horizontal"
                                   BorderThickness="0"
                                   RowHeight="36">
                             <DataGrid.Columns>
-                                <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
+                                <DataGridTemplateColumn Header="选" Width="40">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="所属项目" Binding="{Binding ProjectName}" Width="110" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="项目年度" Binding="{Binding Year}" Width="70" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="介质" Binding="{Binding MediumKind}" Width="60" IsReadOnly="True"/>
@@ -142,30 +143,50 @@
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         <TextBlock Text="{Binding RegisterTitle, Mode=OneWay}" FontWeight="SemiBold" Foreground="#6F4A00" Margin="0,0,0,8"/>
-                        <DataGrid Grid.Row="1"
+                        <DockPanel Grid.Row="1" Margin="0,0,0,8" LastChildFill="False">
+                            <TextBlock Text="登记类型" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#9A7B3F" DockPanel.Dock="Left"/>
+                            <ComboBox Width="150"
+                                      DockPanel.Dock="Left"
+                                      Height="{StaticResource DialogFormControlHeight}"
+                                      ItemsSource="{Binding RegisterKindOptions}"
+                                      SelectedItem="{Binding RegisterKind}"
+                                      IsEnabled="{Binding CanEditRegisterKind}"/>
+                        </DockPanel>
+                        <DataGrid Grid.Row="2"
+                                  x:Name="RegisterItemsGrid"
                                   ItemsSource="{Binding Items}"
-                                  SelectedItem="{Binding SelectedItem}"
+                                  SelectedItem="{Binding SelectedItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                   AutoGenerateColumns="False"
                                   CanUserAddRows="False"
-                                  IsReadOnly="True"
-                                  SelectionMode="Single"
+                                  IsReadOnly="False"
+                                  SelectionMode="Extended"
+                                  SelectionUnit="FullRow"
                                   HeadersVisibility="Column"
                                   GridLinesVisibility="Horizontal"
                                   BorderThickness="0"
                                   RowHeight="36">
                             <DataGrid.Columns>
-                                <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40" IsReadOnly="False"/>
-                                <DataGridTextColumn Header="所属项目" Binding="{Binding ProjectName}" Width="110"/>
-                                <DataGridTextColumn Header="项目年度" Binding="{Binding Year}" Width="70"/>
-                                <DataGridTextColumn Header="介质" Binding="{Binding MediumKind}" Width="60"/>
-                                <DataGridTextColumn Header="介质编号" Binding="{Binding MediumCodeDisplay, Mode=OneWay}" Width="100"/>
-                                <DataGridTextColumn Header="电子袋" Binding="{Binding ElectronicArchiveNo}" Width="120"/>
-                                <DataGridTextColumn Header="状态" Binding="{Binding BeforeMediaStatus}" Width="80"/>
-                                <DataGridTextColumn Header="档口" Binding="{Binding BeforeStorageLocation}" Width="90"/>
-                                <DataGridTextColumn Header="登记类型" Binding="{Binding DataContext.RegisterKind, RelativeSource={RelativeSource AncestorType=Window}}" Width="*"/>
+                                <DataGridTemplateColumn Header="选" Width="40">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="所属项目" Binding="{Binding ProjectName}" Width="110" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="项目年度" Binding="{Binding Year}" Width="70" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="介质" Binding="{Binding MediumKind}" Width="60" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="介质编号" Binding="{Binding MediumCodeDisplay, Mode=OneWay}" Width="100" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="电子袋" Binding="{Binding ElectronicArchiveNo}" Width="120" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="状态" Binding="{Binding BeforeMediaStatus}" Width="80" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="档口" Binding="{Binding BeforeStorageLocation}" Width="90" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="登记类型" Binding="{Binding DataContext.RegisterKind, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Width="*" IsReadOnly="True"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>

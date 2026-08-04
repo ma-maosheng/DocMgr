@@ -121,14 +121,14 @@
 
         <Style x:Key="ElectronicContentEntryDataGridRowStyle" TargetType="DataGridRow" BasedOn="{StaticResource StandardDataGridRowStyle}">
             <Style.Triggers>
-                <MultiTrigger>
-                    <MultiTrigger.Conditions>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
                         <Condition Binding="{Binding IsSearchHighlighted}" Value="True"/>
-                        <Condition Property="IsSelected" Value="False"/>
-                    </MultiTrigger.Conditions>
+                        <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="False"/>
+                    </MultiDataTrigger.Conditions>
                     <Setter Property="Background" Value="#E0F2F1"/>
                     <Setter Property="BorderBrush" Value="#00897B"/>
-                </MultiTrigger>
+                </MultiDataTrigger>
             </Style.Triggers>
         </Style>
 

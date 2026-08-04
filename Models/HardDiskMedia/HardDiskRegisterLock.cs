@@ -11,6 +11,7 @@ namespace DocMgr.Models.HardDiskMedia
         public const string BusinessTypeDisposal = "硬盘离库处置";
         public const string BusinessTypeInventoryRegister = "硬盘盘库登记";
         public const string BusinessTypeArchiveInventoryRegister = "资料盘库登记";
+        public const string BusinessTypeArchiveDisposal = "资料离库处置";
 
         /// <summary>
         /// 主键。

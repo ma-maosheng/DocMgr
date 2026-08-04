@@ -118,6 +118,15 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string ContainerKindLabel => ArchiveOutboundContainerUnitSupport.GetContainerKindLabel(MediaKind);
 
+        /// <summary>本盒/袋是否涉及硬盘流转。</summary>
+        public bool HasHardDiskTransfer =>
+            ItemRows.Any(row => ArchiveOutboundHardDiskTransferDisplaySupport.InvolvesHardDisk(row.Source));
+
+        /// <summary>本盒/袋硬盘编号、借用与归还说明。</summary>
+        public string HardDiskTransferDisplay =>
+            ArchiveOutboundHardDiskTransferDisplaySupport.BuildUnitDetailText(
+                ItemRows.Select(row => row.Source).ToList());
+
         public System.Collections.ObjectModel.ObservableCollection<ArchiveOutboundItemRowViewModel> ItemRows { get; }
 
         public RelayCommand PickBlankDiskCommand { get; }
@@ -183,13 +192,26 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool ShowSimulatedOutboundUsageHint =>
             !string.IsNullOrWhiteSpace(SimulatedOutboundUsageHint);
 
-        public string WithdrawalNeedReturnLabel => "提档资料是否归还";
+        public string WithdrawalNeedReturnLabel => ShowWithdrawalHardDiskReturn
+            ? "硬盘是否归还"
+            : "提档资料是否归还";
+
+        /// <summary>提档归还字段标签（模拟资料 / 电子硬盘）。</summary>
+        public string NeedReturnFieldLabel => WithdrawalNeedReturnLabel;
+
+        /// <summary>预计/硬盘归还日期字段标签。</summary>
+        public string ExpectedReturnDateFieldLabel =>
+            IsElectronicMedia ? "硬盘归还日期" : "预计归还日期";
 
         public bool ShowWithdrawalMaterialNeedReturn =>
             UsageMode == ArchiveOutboundDomainValues.UsageModeWithdrawal && IsSimulatedMedia;
 
         public bool ShowWithdrawalHardDiskReturn =>
             UsageMode == ArchiveOutboundDomainValues.UsageModeWithdrawal && IsHardDiskElectronicCarrier;
+
+        /// <summary>是否显示提档归还单选（模拟资料或电子硬盘）。</summary>
+        public bool ShowNeedReturnFields =>
+            ShowWithdrawalMaterialNeedReturn || ShowWithdrawalHardDiskReturn;
 
         public bool ShowDuplicateDiskNeedReturn => ShowBlankDiskFields;
 
@@ -268,8 +290,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        public bool ShowMaterialNeedReturn =>
-            ShowWithdrawalMaterialNeedReturn;
+        public bool ShowMaterialNeedReturn => ShowNeedReturnFields;
 
         public string NeedReturnRadioGroup => _needReturnRadioGroup;
 
@@ -432,6 +453,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ApplyToItems();
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(ExpectedReturnDateDisplay));
+                OnPropertyChanged(nameof(HardDiskTransferDisplay));
                 RaiseSharedDiskStateChanged();
             }
         }
@@ -441,7 +463,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string UsageModeDisplay => ItemRows.FirstOrDefault()?.UsageModeDisplay ?? string.Empty;
 
-        public string NeedReturnDisplay => ShowWithdrawalMaterialNeedReturn || ShowWithdrawalHardDiskReturn
+        public string NeedReturnDisplay => ShowNeedReturnFields
             ? NeedReturn ? "是" : "否"
             : "—";
 
@@ -468,6 +490,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ApplySettingsToItem(row.Source);
                 row.RefreshDisplayProperties();
             }
+
+            OnPropertyChanged(nameof(HasHardDiskTransfer));
+            OnPropertyChanged(nameof(HardDiskTransferDisplay));
         }
 
         private void LoadFromItems()
@@ -658,6 +683,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(RequiresExpectedReturnDate));
             OnPropertyChanged(nameof(ExpectedReturnDate));
             OnPropertyChanged(nameof(ExpectedReturnDateDisplay));
+            OnPropertyChanged(nameof(ExpectedReturnDateFieldLabel));
             OnPropertyChanged(nameof(CanEditExpectedReturnDate));
         }
 
@@ -779,6 +805,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             OnPropertyChanged(nameof(UsageModeDisplay));
             OnPropertyChanged(nameof(ShowMaterialNeedReturn));
+            OnPropertyChanged(nameof(ShowNeedReturnFields));
             OnPropertyChanged(nameof(ShowWithdrawalMaterialNeedReturn));
             OnPropertyChanged(nameof(ShowWithdrawalHardDiskReturn));
             OnPropertyChanged(nameof(ShowDuplicateDiskNeedReturn));
@@ -793,8 +820,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(IsHardDiskElectronicCarrier));
             OnPropertyChanged(nameof(ElectronicOutboundUsageHint));
             OnPropertyChanged(nameof(WithdrawalNeedReturnLabel));
+            OnPropertyChanged(nameof(NeedReturnFieldLabel));
+            OnPropertyChanged(nameof(ExpectedReturnDateFieldLabel));
             OnPropertyChanged(nameof(UseInStockBlankDiskDisplay));
             OnPropertyChanged(nameof(DuplicateMediumKindDisplay));
+            OnPropertyChanged(nameof(HasHardDiskTransfer));
+            OnPropertyChanged(nameof(HardDiskTransferDisplay));
             UpdateExpectedReturnDateApplicability();
             NotifyDuplicateRelatedPropertiesChanged();
         }
@@ -811,9 +842,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(DuplicateMediumKind));
             OnPropertyChanged(nameof(DuplicateMediumKindDisplay));
             OnPropertyChanged(nameof(ShowSelfProvidedDuplicateMedium));
+            OnPropertyChanged(nameof(HasHardDiskTransfer));
+            OnPropertyChanged(nameof(HardDiskTransferDisplay));
             OnPropertyChanged(nameof(UseInStockBlankDiskDisplay));
             OnPropertyChanged(nameof(RequiresExpectedReturnDate));
             OnPropertyChanged(nameof(ExpectedReturnDateDisplay));
+            OnPropertyChanged(nameof(ExpectedReturnDateFieldLabel));
             OnPropertyChanged(nameof(CanEditRequisitionedDiskNeedReturn));
             OnPropertyChanged(nameof(CanEditExpectedReturnDate));
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();

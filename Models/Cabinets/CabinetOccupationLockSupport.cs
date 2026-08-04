@@ -5,11 +5,11 @@ namespace DocMgr.Models.Cabinets
     /// </summary>
     public static class CabinetOccupationLockSupport
     {
-        /// <summary>占用/征用角标统一符号（WPF 多为单色字形，界面以红色区分）。</summary>
+        /// <summary>占用/征用数据层符号；开柜界面左下角统一显示「预订」（见 <see cref="CabinetOpenStatusBadgeSupport"/>）。</summary>
         public const string LockBadgeMark = "🔒";
 
         /// <summary>
-        /// 解析档口卡片角标短文案：有占用时统一显示锁标记。
+        /// 解析档口卡片占用数据标记（锁符号）；展示文案由 <see cref="CabinetOpenStatusBadgeSupport.NormalizeReservationDisplayText"/> 统一为「预订」。
         /// </summary>
         public static string ResolveBadgeText(CabinetOccupationLockDescriptor descriptor)
         {

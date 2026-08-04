@@ -31,6 +31,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IHardDiskDisposalService, HardDiskDisposalService>();
         services.AddScoped<IHardDiskInventoryRegisterService, HardDiskInventoryRegisterService>();
         services.AddScoped<IArchiveInventoryRegisterService, ArchiveInventoryRegisterService>();
+        services.AddScoped<IArchiveDisposalService, ArchiveDisposalService>();
         services.AddScoped<IAerialPhotoService, AerialPhotoService>();
         services.AddScoped<IOtherMapService, OtherMapService>();
         services.AddScoped<ITopoMapService, TopoMapService>();

@@ -266,11 +266,29 @@ namespace DocMgr.ViewModels.HardDiskMedia
                          .Where(m => !lockedMediumIds.Contains(m.Id) || m.Id == _sourceApplication.MediumId)
                          .OrderBy(m => m.DiskCode))
             {
+                string storageLocation = item.Ledger?.StorageLocation?.Trim() ?? string.Empty;
+                string slotCode = ArchiveSlotLocationSupport.BuildSlotKey(storageLocation);
+                if (string.IsNullOrWhiteSpace(slotCode))
+                {
+                    slotCode = storageLocation;
+                }
+
                 var option = new HardDiskMediaOutboundMediumOption
                 {
                     Id = item.Id,
-                    DisplayText = $"{item.DiskCode} / {item.SerialNumber} / {item.Capacity} / {item.InterfaceType}",
-                    CurrentLocation = item.Ledger?.StorageLocation ?? string.Empty
+                    DiskCode = item.DiskCode?.Trim() ?? string.Empty,
+                    SerialNumber = item.SerialNumber?.Trim() ?? string.Empty,
+                    DiskType = item.DiskType?.Trim() ?? string.Empty,
+                    Brand = item.Brand?.Trim() ?? string.Empty,
+                    Capacity = item.Capacity?.Trim() ?? string.Empty,
+                    InterfaceType = item.InterfaceType?.Trim() ?? string.Empty,
+                    RegisterPerson = item.RegisterPerson?.Trim() ?? string.Empty,
+                    RegisterDate = item.RegisterDate,
+                    FactoryDate = item.FactoryDate,
+                    RegistrationMethod = item.RegistrationMethod?.Trim() ?? string.Empty,
+                    Remark = item.Remark?.Trim() ?? string.Empty,
+                    CurrentLocation = storageLocation,
+                    SlotCode = slotCode
                 };
                 option.PropertyChanged += OnMediumOptionPropertyChanged;
                 MediumOptions.Add(option);

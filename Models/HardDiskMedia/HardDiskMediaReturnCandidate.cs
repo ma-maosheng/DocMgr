@@ -18,7 +18,7 @@ namespace DocMgr.Models.HardDiskMedia
         public int? SourceApplicationId { get; init; }
 
         /// <summary>
-        /// 来源资料出库单主键（库内空盘征用时填写）。
+        /// 来源资料出库单主键（库内空盘征用或提档数据硬盘需归还时填写）。
         /// </summary>
         public int? SourceOutboundRecordId { get; init; }
 

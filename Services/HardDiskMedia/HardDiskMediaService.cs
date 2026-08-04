@@ -199,15 +199,22 @@ namespace DocMgr.Services.HardDiskMedia
 
             // 归还登记办结前介质仍处于借出状态，应继续出现在待归还列表；
             // 重复登记由 GetActiveReturnRegistrationByMediumIdAsync 在发起归还时拦截。
+            var archiveOutboundCandidates = archiveOutboundSources
+                .Select(CreateReturnRegistrationCandidateFromArchiveOutbound)
+                .ToList();
+
+            var archiveOutboundMediumIds = archiveOutboundCandidates
+                .Select(item => item.MediumId)
+                .ToHashSet();
+
             var applicationCandidates = sourceApplications
                 .Where(item => item.Medium != null)
+                .Where(item => !archiveOutboundMediumIds.Contains(item.MediumId))
                 .Select(CreateReturnRegistrationCandidateFromOutboundApplication);
 
-            var archiveOutboundCandidates = archiveOutboundSources
-                .Select(CreateReturnRegistrationCandidateFromArchiveOutbound);
-
-            return applicationCandidates
-                .Concat(archiveOutboundCandidates)
+            // 资料出库来源优先：避免历史「盘-出-申」盖住当前「资-出-申」。
+            return archiveOutboundCandidates
+                .Concat(applicationCandidates)
                 .GroupBy(item => item.MediumId)
                 .Select(group => group.First())
                 .OrderBy(item => item.ApplicantName)

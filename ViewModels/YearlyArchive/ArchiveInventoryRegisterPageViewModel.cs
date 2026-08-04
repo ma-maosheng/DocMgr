@@ -70,8 +70,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string PageTitle => IsSimulated ? "模拟资料盘库登记办理表" : "电子资料盘库登记办理表";
 
         public string BannerText => IsSimulated
-            ? "按资料子项登记库内丢失或拟销份数。拟销用于无存档价值资料。确认登记办结即时扣减可借份数并写履历，无需审批签批。盘库导致空盒仍占档口并标「空」，正式清账请后期走「离库处置」。"
-            : "按电子袋内硬盘/光盘登记损坏或盘失。确认登记办结即时改介质台账（保留档口）并禁用关联资料借出，无需审批签批。袋不移走；正式清账请后期走「离库处置」。";
+            ? "按资料子项登记库内丢失或拟销份数。拟销用于无存档价值资料。确认登记办结即时扣减可借份数并写履历，无需审批签批。盘库导致空盒仍占档口并标「失」「销」，正式清账请后期走「离库处置」。"
+            : "按电子袋内硬盘/光盘登记损坏、盘失或拟销。拟销用于无存档价值资料，办结效应与盘失相同。确认登记办结即时改介质台账（保留档口）并禁用关联资料借出，无需审批签批。袋不移走；正式清账请后期走「离库处置」。";
 
         /// <summary>仅模拟轨可见的列表/详情区域。</summary>
         public Visibility SimulatedColumnVisibility => IsSimulated ? Visibility.Visible : Visibility.Collapsed;
@@ -457,6 +457,10 @@ namespace DocMgr.ViewModels.YearlyArchive
     /// <summary>盘库登记办理表右侧明细行（模拟/电子分列绑定）。</summary>
     public sealed class ArchiveInventoryRegisterDetailRow
     {
+        public string ProjectName { get; init; } = string.Empty;
+
+        public string Year { get; init; } = string.Empty;
+
         public string ContainerCode { get; init; } = string.Empty;
 
         public string StorageLocation { get; init; } = string.Empty;
@@ -485,6 +489,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             return new ArchiveInventoryRegisterDetailRow
             {
+                ProjectName = item.ProjectName?.Trim() ?? string.Empty,
+                Year = item.Year?.Trim() ?? string.Empty,
                 ContainerCode = item.ContainerCode?.Trim() ?? string.Empty,
                 StorageLocation = item.BeforeStorageLocation?.Trim() ?? string.Empty,
                 MaterialName = item.MaterialName?.Trim() ?? string.Empty,

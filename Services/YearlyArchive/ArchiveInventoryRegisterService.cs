@@ -117,7 +117,7 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
 
         if (IsSimulatedMediaKind(record.MediaKind))
         {
-            record.Items = await BuildSimulatedItemsAsync(record.MediaKind, items, excludeRecordId: null, now);
+            record.Items = await BuildSimulatedItemsAsync(record.MediaKind, record.RegisterKind, items, excludeRecordId: null, now);
         }
         else
         {
@@ -175,7 +175,7 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
 
         if (IsSimulatedMediaKind(existing.MediaKind))
         {
-            foreach (var item in await BuildSimulatedItemsAsync(existing.MediaKind, items, existing.Id, now))
+            foreach (var item in await BuildSimulatedItemsAsync(existing.MediaKind, existing.RegisterKind, items, existing.Id, now))
             {
                 existing.Items.Add(item);
             }
@@ -267,7 +267,7 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
 
         if (!ArchiveInventoryRegisterDomainValues.IsRegisterKindAllowedForMediaKind(mediaKind, registerKind))
         {
-            throw new InvalidOperationException("登记类型无效：模拟轨仅支持盘失/拟销登记，电子轨仅支持盘失/损坏登记。");
+            throw new InvalidOperationException("登记类型无效：模拟轨仅支持盘失/拟销登记，电子轨仅支持盘失/损坏/拟销登记。");
         }
 
         if (string.IsNullOrWhiteSpace(reason))

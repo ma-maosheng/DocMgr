@@ -60,8 +60,10 @@
                         <DataGridTextColumn Header="当前库内份数" Binding="{Binding CurrentInArchiveCopyCountDisplay}" Width="96"/>
                         <DataGridTextColumn Header="出库待还份数" Binding="{Binding PendingReturnCopyCountDisplay}" Width="96"/>
                         <DataGridTextColumn Header="出库不还份数" Binding="{Binding NoReturnCopyCountDisplay}" Width="96"/>
-                        <DataGridTextColumn Header="灭失份数" Binding="{Binding LostCopyCountDisplay}" Width="80"/>
-                        <DataGridTextColumn Header="电子库存状态" Binding="{Binding ElectronicStatusDisplay}" Width="96"/>
+                        <DataGridTextColumn Header="出库灭失份数" Binding="{Binding LostCopyCountDisplay}" Width="96"/>
+                        <DataGridTextColumn Header="盘库丢失份数" Binding="{Binding InventoryLostCopyCountDisplay, Mode=OneWay}" Width="96"/>
+                        <DataGridTextColumn Header="盘库拟销份数" Binding="{Binding InventoryScrapCopyCountDisplay, Mode=OneWay}" Width="96"/>
+                        <DataGridTextColumn Header="介质盘库状态" Binding="{Binding ElectronicStatusDisplay, Mode=OneWay}" Width="96"/>
                         <DataGridTextColumn Header="详细信息" Binding="{Binding DetailText}" Width="*"/>
                         <DataGridTextColumn Header="立档日期" Binding="{Binding DateText}" Width="100"/>
                     </DataGrid.Columns>
