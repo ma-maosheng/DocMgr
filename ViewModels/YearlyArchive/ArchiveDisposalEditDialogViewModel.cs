@@ -3,8 +3,10 @@ using System.IO;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
+using DocMgr.Models.Cabinets;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Services.HardDiskMedia;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
@@ -22,6 +24,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveDisposalService _disposalService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IHardDiskMediaService _hardDiskMediaService;
+        private readonly ICabinetService _cabinetService;
+        private readonly IUserService _userService;
         private readonly List<ArchiveDisposalCandidateRow> _candidatePool = new();
         private YearlyArchiveDisposalRecord _record;
         private bool _hasCommittedChanges;
@@ -41,17 +46,27 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _filterKeyword = string.Empty;
         private string _filterSourceRegisterKind = AllFilterText;
         private string _filterMediumKind = AllFilterText;
+        private string _defaultArchiveRoomHead = string.Empty;
+        private string _defaultProductionHead = string.Empty;
+        private string _defaultArchiveDeputyPresident = string.Empty;
+        private string _defaultProductionVicePresident = string.Empty;
 
         public ArchiveDisposalEditDialogViewModel(
             IArchiveDisposalService disposalService,
             IDialogService dialogService,
             IUserContextService userContextService,
+            IHardDiskMediaService hardDiskMediaService,
+            ICabinetService cabinetService,
+            IUserService userService,
             YearlyArchiveDisposalRecord record)
         {
             ArgumentNullException.ThrowIfNull(record);
             _disposalService = disposalService;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _hardDiskMediaService = hardDiskMediaService;
+            _cabinetService = cabinetService;
+            _userService = userService;
             _record = record;
 
             MoveToDisposalCommand = new RelayCommand(_ => MoveToDisposal(), _ => CanEditHeader && AvailableItems.Any(i => i.IsSelected));
@@ -62,6 +77,14 @@ namespace DocMgr.ViewModels.YearlyArchive
                     && Items.Any(i => i.IsSelected)
                     && !string.IsNullOrWhiteSpace(BatchDispositionMethod));
             ClearFiltersCommand = new RelayCommand(_ => ClearFilters(), _ => CanEditHeader);
+            RecommendBlankSlotCommand = new RelayCommand<ArchiveDisposalItemRow>(
+                async item => await RecommendBlankSlotAsync(item),
+                item => CanEditBlankSlots
+                        && item is { IsFormatRetain: true });
+            ShowBlankSlotSnapshotCommand = new RelayCommand<ArchiveDisposalItemRow>(
+                async item => await ShowBlankSlotSnapshotAsync(item),
+                item => item is { IsFormatRetain: true }
+                        && !string.IsNullOrWhiteSpace(item.TargetBlankSlotLocation));
             SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader);
             SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit);
             ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
@@ -167,6 +190,18 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ApplicantName => _record.ApplicantName;
 
         public string ApplicantDept => _record.ApplicantDept;
+
+        /// <summary>默认资料室负责人（只读展示）。</summary>
+        public string DefaultArchiveRoomHeadDisplay => EmptyAsDash(_defaultArchiveRoomHead);
+
+        /// <summary>默认生产科负责人（只读展示）。</summary>
+        public string DefaultProductionHeadDisplay => EmptyAsDash(_defaultProductionHead);
+
+        /// <summary>默认分管资料室副院长（只读展示）。</summary>
+        public string DefaultArchiveDeputyPresidentDisplay => EmptyAsDash(_defaultArchiveDeputyPresident);
+
+        /// <summary>默认分管生产副院长（只读展示）。</summary>
+        public string DefaultProductionVicePresidentDisplay => EmptyAsDash(_defaultProductionVicePresident);
 
         public string Reason
         {
@@ -292,6 +327,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand MoveToAvailableCommand { get; }
         public RelayCommand ApplyDispositionMethodCommand { get; }
         public RelayCommand ClearFiltersCommand { get; }
+        public RelayCommand<ArchiveDisposalItemRow> RecommendBlankSlotCommand { get; }
+        public RelayCommand<ArchiveDisposalItemRow> ShowBlankSlotSnapshotCommand { get; }
         public RelayCommand SaveDraftCommand { get; }
         public RelayCommand SubmitCommand { get; }
         public RelayCommand ApproveCommand { get; }
@@ -309,6 +346,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 BindFromRecord(_record);
+                ReloadDefaultApprovers();
                 if (_record.Id <= 0 && string.IsNullOrWhiteSpace(_record.DisposalNo))
                 {
                     DisposalNo = await _disposalService.GenerateNextDisposalNoAsync();
@@ -333,6 +371,22 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _dialogService.ShowError(ex.Message);
             }
         }
+
+        private void ReloadDefaultApprovers()
+        {
+            var approvers = ArchiveDisposalDefaultApproverSupport.Resolve(_userService.GetAllUsers());
+            _defaultArchiveRoomHead = approvers.ArchiveRoomHead;
+            _defaultProductionHead = approvers.ProductionHead;
+            _defaultArchiveDeputyPresident = approvers.ArchiveDeputyPresident;
+            _defaultProductionVicePresident = approvers.ProductionVicePresident;
+            OnPropertyChanged(nameof(DefaultArchiveRoomHeadDisplay));
+            OnPropertyChanged(nameof(DefaultProductionHeadDisplay));
+            OnPropertyChanged(nameof(DefaultArchiveDeputyPresidentDisplay));
+            OnPropertyChanged(nameof(DefaultProductionVicePresidentDisplay));
+        }
+
+        private static string EmptyAsDash(string? value)
+            => string.IsNullOrWhiteSpace(value) ? "—" : value.Trim();
 
         private void BindFromRecord(YearlyArchiveDisposalRecord record)
         {
@@ -502,6 +556,128 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             RefreshAvailableItems();
+        }
+
+        /// <summary>为低格留盘明细推荐空白硬盘专用档口（不做预占用）。</summary>
+        private async Task RecommendBlankSlotAsync(ArchiveDisposalItemRow? item)
+        {
+            if (item == null || !CanEditBlankSlots || !item.IsFormatRetain)
+            {
+                return;
+            }
+
+            try
+            {
+                var options = await _hardDiskMediaService.GetOrderedBlankDedicatedSlotLocationOptionsAsync();
+                if (options.Count == 0)
+                {
+                    _dialogService.ShowMessage("未找到空白硬盘专用档口，请先在磁盘柜开柜界面完成设置。", "推荐档口");
+                    return;
+                }
+
+                string? recommended = await _hardDiskMediaService.RecommendBlankDedicatedSlotLocationAsync();
+                string slot = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(recommended);
+                if (string.IsNullOrWhiteSpace(slot))
+                {
+                    _dialogService.ShowMessage("当前未找到可用的空白硬盘专用档口。", "推荐档口");
+                    return;
+                }
+
+                var matched = options.FirstOrDefault(option =>
+                    string.Equals(
+                        HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(option.Location),
+                        slot,
+                        StringComparison.OrdinalIgnoreCase));
+                item.TargetBlankSlotLocation = slot;
+                RefreshCommandStates();
+                string hint = matched == null
+                    ? slot
+                    : $"{matched.DisplayText}";
+                _dialogService.ShowMessage($"已推荐档口：{hint}", "推荐档口");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        /// <summary>打开低格留盘目标空盘档口的占用快照。</summary>
+        private async Task ShowBlankSlotSnapshotAsync(ArchiveDisposalItemRow? item)
+        {
+            if (item == null || !item.IsFormatRetain)
+            {
+                return;
+            }
+
+            try
+            {
+                string location = item.TargetBlankSlotLocation?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(location))
+                {
+                    _dialogService.ShowMessage("请先填写或推荐空盘档口后再查看快照。", "档口快照");
+                    return;
+                }
+
+                if (!TryParseCabinetLocation(location, out string cabinetName, out CabinetFace face, out string slotCode))
+                {
+                    _dialogService.ShowMessage("空盘档口无法解析，请核对格式（如：柜名A-1-2）后再查看快照。", "档口快照");
+                    return;
+                }
+
+                var cabinet = (await _cabinetService.GetAllCabinetsAsync())
+                    .FirstOrDefault(c =>
+                        c.Type == CabinetType.MagneticDisk
+                        && string.Equals(c.Name, cabinetName, StringComparison.OrdinalIgnoreCase));
+                if (cabinet == null)
+                {
+                    _dialogService.ShowMessage($"未找到柜号 [{cabinetName}] 对应的防磁磁盘柜。", "档口快照");
+                    return;
+                }
+
+                _dialogService.ShowCabinetOpenDialog(new CabinetOpenRequest
+                {
+                    CabinetId = cabinet.Id,
+                    CabinetName = cabinet.Name,
+                    CabinetType = cabinet.Type,
+                    Face = face,
+                    LayerCount = cabinet.LayerCount,
+                    ColumnCount = cabinet.ColumnCount,
+                    TargetSlotCode = slotCode,
+                    WidthCm = cabinet.Width,
+                    HeightCm = cabinet.Height,
+                    DepthCm = cabinet.Depth
+                });
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private static bool TryParseCabinetLocation(
+            string? location,
+            out string cabinetName,
+            out CabinetFace face,
+            out string slotCode)
+        {
+            cabinetName = string.Empty;
+            face = CabinetFace.A;
+            slotCode = string.Empty;
+
+            if (!HardDiskBlankSlotLocationSupport.TryParseLocationCode(
+                    location,
+                    out string parsedCabinet,
+                    out string faceCode,
+                    out int row,
+                    out int column))
+            {
+                return false;
+            }
+
+            cabinetName = parsedCabinet;
+            face = string.Equals(faceCode, "B", StringComparison.OrdinalIgnoreCase) ? CabinetFace.B : CabinetFace.A;
+            slotCode = $"{row}-{column}";
+            return !string.IsNullOrWhiteSpace(cabinetName);
         }
 
         private void RefreshDispositionMethodOptions()

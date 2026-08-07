@@ -22,36 +22,6 @@ namespace DocMgr.ViewModels.Cabinets
         private readonly CabinetOpenStatusBadgeSupport.MediaCornerLayout _corners;
         private bool _isSelected;
 
-        private CabinetHardDiskMediumItemViewModel(string diskCodeText, string capacityText, string statusText, string secondaryText, string badgeText, string toolTipText, bool isEmpty, bool isPendingReturn, string cardBackground, string cardBorderBrush, string iconBodyBrush, string iconAccentBrush, string statusBadgeBackground, string statusBadgeForeground, string titleForeground, string detailForeground)
-        {
-            _baseCardBackground = cardBackground;
-            _baseCardBorderBrush = cardBorderBrush;
-            _baseIconBodyBrush = iconBodyBrush;
-            _baseIconAccentBrush = iconAccentBrush;
-            _baseStatusBadgeBackground = statusBadgeBackground;
-            _baseStatusBadgeForeground = statusBadgeForeground;
-            _baseTitleForeground = titleForeground;
-            _baseDetailForeground = detailForeground;
-            DiskCodeText = diskCodeText;
-            CapacityText = capacityText;
-            StatusText = statusText;
-            SecondaryText = secondaryText;
-            BadgeText = badgeText;
-            ToolTipText = toolTipText;
-            IsEmpty = isEmpty;
-            IsPendingReturn = isPendingReturn;
-            ElectronicArchiveUnitId = 0;
-            MediumId = 0;
-            IsBlankInStock = false;
-            _corners = CabinetOpenStatusBadgeSupport.ResolveMedia(
-                archiveSequenceText: null,
-                archiveSequenceNumber: 0,
-                inventoryMarkBadgeText: null,
-                isPendingReturn: false,
-                hasOccupationLock: false,
-                occupationLockToolTipText: null);
-        }
-
         public CabinetHardDiskMediumItemViewModel(CabinetHardDiskMediumDescriptor descriptor)
         {
             ArgumentNullException.ThrowIfNull(descriptor);
@@ -381,27 +351,6 @@ namespace DocMgr.ViewModels.Cabinets
         public string DetailForeground => IsSelected ? "#1D4ED8" : _baseDetailForeground;
 
         public Visibility SecondaryTextVisibility => string.IsNullOrWhiteSpace(SecondaryText) ? Visibility.Collapsed : Visibility.Visible;
-
-        public static CabinetHardDiskMediumItemViewModel CreateEmpty()
-        {
-            return new CabinetHardDiskMediumItemViewModel(
-                "空位",
-                string.Empty,
-                "可放置",
-                string.Empty,
-                CabinetOpenStatusBadgeSupport.EmptySlotBadgeText,
-                "当前档口空闲，可继续放置硬盘介质。",
-                true,
-                false,
-                "#F8FAFC",
-                "#CBD5E1",
-                "#64748B",
-                "#334155",
-                "#E2E8F0",
-                "#475569",
-                "#334155",
-                "#64748B");
-        }
 
         private static string BuildCompactHeaderText(string diskCodeText, string capacityText)
         {

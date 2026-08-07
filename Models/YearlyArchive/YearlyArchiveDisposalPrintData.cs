@@ -41,6 +41,18 @@ namespace DocMgr.Models.YearlyArchive
 
         public bool IsCompleted { get; set; }
 
+        /// <summary>资料室负责人（办结后重打预填）。</summary>
+        public string ArchiveRoomHead { get; set; } = string.Empty;
+
+        /// <summary>生产科负责人（办结后重打预填）。</summary>
+        public string ProductionHead { get; set; } = string.Empty;
+
+        /// <summary>分管资料室副院长（办结后重打预填）。</summary>
+        public string ArchiveDeputyPresident { get; set; } = string.Empty;
+
+        /// <summary>分管生产副院长（办结后重打预填）。</summary>
+        public string ProductionVicePresident { get; set; } = string.Empty;
+
         /// <summary>已累计打印次数（不含本次）。</summary>
         public int PrintCount { get; set; }
 
@@ -55,9 +67,24 @@ namespace DocMgr.Models.YearlyArchive
     {
         public int SortOrder { get; set; }
 
+        /// <summary>项目年度。</summary>
+        public string ProjectYear { get; set; } = string.Empty;
+
+        /// <summary>项目名称。</summary>
+        public string ProjectName { get; set; } = string.Empty;
+
+        /// <summary>档案盒编号（模拟）。</summary>
+        public string BoxCode { get; set; } = string.Empty;
+
+        /// <summary>介质袋编号（电子）。</summary>
+        public string BagCode { get; set; } = string.Empty;
+
         public string ContainerCode { get; set; } = string.Empty;
 
         public string DisplayName { get; set; } = string.Empty;
+
+        /// <summary>资料明细（名称/介质编号等）。</summary>
+        public string MaterialDetail { get; set; } = string.Empty;
 
         public string SourceRegisterKind { get; set; } = string.Empty;
 
@@ -72,6 +99,8 @@ namespace DocMgr.Models.YearlyArchive
         public string MediumCode { get; set; } = string.Empty;
 
         public string TargetBlankSlotLocation { get; set; } = string.Empty;
+
+        public string FormNo { get; set; } = string.Empty;
     }
 
     /// <summary>

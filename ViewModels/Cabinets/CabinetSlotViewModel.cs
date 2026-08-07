@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.YearlyArchive;
@@ -21,7 +22,6 @@ namespace DocMgr.ViewModels.Cabinets
         private const double MagneticDiskDisplayHeightScale = 1.1d;
         private const double SlotHorizontalChrome = 20d;
         private const double SlotVerticalChrome = 108d;
-        private const int DataOpticalDiscSlotCapacity = 20;
         private bool _isContextMenuOpen;
         private bool _isSelected;
         private InteractiveRelocationDropHighlightKind _interactiveRelocationDropHighlight;
@@ -609,103 +609,19 @@ namespace DocMgr.ViewModels.Cabinets
                 return presentItems;
             }
 
-            int slotCapacity = ResolveSlotCapacity(descriptor);
-            int columns = 5;
-            int rows = DescriptorUsesOpticalDiscDedicatedLayout(descriptor) ? 4 : 2;
+            // 仅展示已占用盘位；不再用「空位」占位卡填满矩阵（序号仍由卡片左上角标示）。
             bool placeBySequence = presentItems.Any(item => item.ArchiveSequenceNumber > 0);
-            List<CabinetHardDiskMediumItemViewModel> cells;
             if (placeBySequence)
             {
-                int maxSequence = presentItems
-                    .Select(item => item.ArchiveSequenceNumber)
-                    .DefaultIfEmpty(0)
-                    .Max();
-                int cellCount = System.Math.Max(slotCapacity, maxSequence);
-                cells = Enumerable.Range(0, cellCount)
-                    .Select(_ => CabinetHardDiskMediumItemViewModel.CreateEmpty())
-                    .ToList();
-                var overflow = new List<CabinetHardDiskMediumItemViewModel>();
-                foreach (var item in presentItems
+                return presentItems
                     .OrderBy(item => item.ArchiveSequenceNumber <= 0 ? int.MaxValue : item.ArchiveSequenceNumber)
-                    .ThenBy(item => item.DiskCodeText, StringComparer.OrdinalIgnoreCase))
-                {
-                    int sequence = item.ArchiveSequenceNumber;
-                    if (sequence > 0 && sequence <= cells.Count && cells[sequence - 1].IsEmpty)
-                    {
-                        cells[sequence - 1] = item;
-                    }
-                    else
-                    {
-                        overflow.Add(item);
-                    }
-                }
-
-                foreach (var item in overflow)
-                {
-                    int hole = cells.FindIndex(cell => cell.IsEmpty);
-                    if (hole >= 0)
-                    {
-                        cells[hole] = item;
-                    }
-                    else
-                    {
-                        cells.Add(item);
-                    }
-                }
-            }
-            else
-            {
-                cells = presentItems.ToList();
-                int cellCount = System.Math.Max(slotCapacity, cells.Count);
-                while (cells.Count < cellCount)
-                {
-                    cells.Add(CabinetHardDiskMediumItemViewModel.CreateEmpty());
-                }
+                    .ThenBy(item => item.DiskCodeText, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
             }
 
-            return ReorderForBottomLeftToTopRight(cells, columns, rows);
-        }
-
-        private static bool DescriptorUsesOpticalDiscDedicatedLayout(CabinetSlotDescriptor descriptor) =>
-            descriptor.IsDataOpticalDiscDedicatedSlot
-            || descriptor.IsHistoricalDataOpticalDiscDedicatedSlot
-            || descriptor.IsDamagedOpticalDiscDedicatedSlot;
-
-        private static List<CabinetHardDiskMediumItemViewModel> ReorderForBottomLeftToTopRight(
-            IReadOnlyList<CabinetHardDiskMediumItemViewModel> items,
-            int columns,
-            int rows)
-        {
-            if (items.Count == 0 || columns <= 0 || rows <= 0)
-            {
-                return items.ToList();
-            }
-
-            var ordered = new List<CabinetHardDiskMediumItemViewModel>(items.Count);
-            for (int visualRow = 0; visualRow < rows; visualRow++)
-            {
-                int sourceRow = rows - 1 - visualRow;
-                for (int column = 0; column < columns; column++)
-                {
-                    int sourceIndex = sourceRow * columns + column;
-                    if (sourceIndex >= 0 && sourceIndex < items.Count)
-                    {
-                        ordered.Add(items[sourceIndex]);
-                    }
-                }
-            }
-
-            return ordered;
-        }
-
-        private static int ResolveSlotCapacity(CabinetSlotDescriptor descriptor)
-        {
-            if (DescriptorUsesOpticalDiscDedicatedLayout(descriptor))
-            {
-                return DataOpticalDiscSlotCapacity;
-            }
-
-            return descriptor.HardDiskCapacity <= 0 ? 10 : descriptor.HardDiskCapacity;
+            return presentItems
+                .OrderBy(item => item.DiskCodeText, StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         private static double ResolveCanvasDisplayScale(double slotCanvasWidth, double slotCanvasHeight, bool isMagneticDiskSlot)

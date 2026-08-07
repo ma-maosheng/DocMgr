@@ -12,7 +12,6 @@ namespace DocMgr.Models.Cabinets
         public const string ReservationBadgeText = "预订";
         public const string MixedBadgeText = "混";
         public const string NonStandardBadgeText = "非";
-        public const string EmptySlotBadgeText = "空位";
         public const string InventoryLostMarkText = "失";
         public const string InventoryScrapMarkText = "销";
         public const string InventoryDamagedMarkText = "X";

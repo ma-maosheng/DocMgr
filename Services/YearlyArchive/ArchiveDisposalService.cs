@@ -16,15 +16,18 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
     private readonly IArchiveDisposalRepository _repository;
     private readonly IBusinessRuleService _businessRuleService;
     private readonly IHardDiskMediaService _hardDiskMediaService;
+    private readonly IUserService _userService;
 
     public ArchiveDisposalService(
         IArchiveDisposalRepository repository,
         IBusinessRuleService businessRuleService,
-        IHardDiskMediaService hardDiskMediaService)
+        IHardDiskMediaService hardDiskMediaService,
+        IUserService userService)
     {
         _repository = repository;
         _businessRuleService = businessRuleService;
         _hardDiskMediaService = hardDiskMediaService;
+        _userService = userService;
     }
 
     /// <inheritdoc />
@@ -278,6 +281,29 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
         var record = await _repository.GetRecordByIdAsync(recordId)
             ?? throw new InvalidOperationException("未找到资料离库处置单。");
 
+        var orderedItems = record.Items.OrderBy(item => item.SortOrder).ToList();
+        Dictionary<int, YearlyArchiveFilingFact> factsById = new();
+        Dictionary<int, YearlyArchiveBox> boxesById = new();
+        Dictionary<int, YearlyElectronicArchiveUnit> unitsById = new();
+
+        if (record.IsSimulated)
+        {
+            var factIds = orderedItems.Select(item => item.FilingFactId).Where(id => id > 0).Distinct().ToList();
+            factsById = (await _repository.GetFilingFactsByIdsAsync(factIds))
+                .ToDictionary(item => item.Id);
+            var boxIds = orderedItems.Select(item => item.ContainerId).Where(id => id > 0).Distinct().ToList();
+            boxesById = (await _repository.GetBoxesByIdsAsync(boxIds))
+                .ToDictionary(item => item.Id);
+        }
+        else
+        {
+            var unitIds = orderedItems.Select(item => item.ElectronicArchiveUnitId).Where(id => id > 0).Distinct().ToList();
+            unitsById = (await _repository.GetElectronicUnitsByIdsAsync(unitIds))
+                .ToDictionary(item => item.Id);
+        }
+
+        var defaultApprovers = ArchiveDisposalDefaultApproverSupport.Resolve(_userService.GetAllUsers());
+
         return new YearlyArchiveDisposalPrintData
         {
             DisposalNo = record.DisposalNo,
@@ -285,9 +311,9 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
             StatusDisplay = record.StatusDisplay,
             ApplyDateText = record.ApplyTime == default ? string.Empty : record.ApplyTime.ToString("yyyy-MM-dd"),
             DisposalReason = ArchiveDisposalDomainValues.BuildReasonSummary(
-                record.Items.Select(item => item.DisposalReason)),
+                orderedItems.Select(item => item.DisposalReason)),
             DispositionMethod = ArchiveDisposalDomainValues.BuildDispositionMethodSummary(
-                record.Items.Select(item => item.DispositionMethod)),
+                orderedItems.Select(item => item.DispositionMethod)),
             Reason = record.Reason,
             Remark = record.Remark,
             ApplicantName = record.ApplicantName,
@@ -300,25 +326,97 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
             CompletedBy = record.CompletedBy,
             CompletedDateText = record.CompletedAt?.ToString("yyyy-MM-dd") ?? string.Empty,
             IsCompleted = record.IsCompleted,
+            ArchiveRoomHead = defaultApprovers.ArchiveRoomHead,
+            ProductionHead = defaultApprovers.ProductionHead,
+            ArchiveDeputyPresident = defaultApprovers.ArchiveDeputyPresident,
+            ProductionVicePresident = defaultApprovers.ProductionVicePresident,
             PrintCount = record.PrintCount,
-            Items = record.Items
-                .OrderBy(item => item.SortOrder)
-                .Select(item => new YearlyArchiveDisposalPrintItemRow
-                {
-                    SortOrder = item.SortOrder,
-                    ContainerCode = item.ContainerCode,
-                    DisplayName = string.IsNullOrWhiteSpace(item.MediumCode)
-                        ? (string.IsNullOrWhiteSpace(item.ItemName) ? item.MaterialName : item.ItemName)
-                        : $"{item.MediumKind} {item.MediumCode}",
-                    SourceRegisterKind = item.SourceRegisterKind,
-                    DisposalReason = item.DisposalReason,
-                    DispositionMethod = ArchiveDisposalDomainValues.NormalizeDispositionMethod(item.DispositionMethod),
-                    BeforeStorageLocation = item.BeforeStorageLocation,
-                    MediumKind = item.MediumKind,
-                    MediumCode = item.MediumCode,
-                    TargetBlankSlotLocation = item.TargetBlankSlotLocation
-                })
+            Items = orderedItems
+                .Select(item => BuildPrintItemRow(record, item, factsById, boxesById, unitsById))
                 .ToList()
+        };
+    }
+
+    private static YearlyArchiveDisposalPrintItemRow BuildPrintItemRow(
+        YearlyArchiveDisposalRecord record,
+        YearlyArchiveDisposalItem item,
+        IReadOnlyDictionary<int, YearlyArchiveFilingFact> factsById,
+        IReadOnlyDictionary<int, YearlyArchiveBox> boxesById,
+        IReadOnlyDictionary<int, YearlyElectronicArchiveUnit> unitsById)
+    {
+        string projectYear = string.Empty;
+        string projectName = string.Empty;
+        string boxCode = string.Empty;
+        string bagCode = string.Empty;
+        string materialDetail;
+
+        if (record.IsSimulated)
+        {
+            boxCode = item.ContainerCode?.Trim() ?? string.Empty;
+            if (factsById.TryGetValue(item.FilingFactId, out var fact))
+            {
+                projectName = fact.ProjectName?.Trim() ?? string.Empty;
+            }
+
+            if (boxesById.TryGetValue(item.ContainerId, out var box))
+            {
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    projectName = box.ProjectName?.Trim() ?? string.Empty;
+                }
+
+                projectYear = box.Year?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(boxCode))
+                {
+                    boxCode = box.ArchiveSequenceNo?.Trim() ?? string.Empty;
+                }
+            }
+
+            string itemName = string.IsNullOrWhiteSpace(item.ItemName) ? item.MaterialName : item.ItemName;
+            materialDetail = string.IsNullOrWhiteSpace(item.FormNo)
+                ? itemName
+                : $"{itemName}（表单：{item.FormNo.Trim()}）";
+        }
+        else
+        {
+            bagCode = item.ElectronicArchiveNo?.Trim() ?? string.Empty;
+            if (unitsById.TryGetValue(item.ElectronicArchiveUnitId, out var unit))
+            {
+                projectYear = unit.Year?.Trim() ?? string.Empty;
+                projectName = unit.ProjectName?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(bagCode))
+                {
+                    bagCode = unit.ElectronicArchiveNo?.Trim() ?? string.Empty;
+                }
+            }
+
+            materialDetail = string.IsNullOrWhiteSpace(item.MediumCode)
+                ? (string.IsNullOrWhiteSpace(item.ItemName) ? item.MaterialName : item.ItemName)
+                : $"{item.MediumKind} {item.MediumCode}".Trim();
+        }
+
+        string displayName = string.IsNullOrWhiteSpace(item.MediumCode)
+            ? (string.IsNullOrWhiteSpace(item.ItemName) ? item.MaterialName : item.ItemName)
+            : $"{item.MediumKind} {item.MediumCode}";
+
+        return new YearlyArchiveDisposalPrintItemRow
+        {
+            SortOrder = item.SortOrder,
+            ProjectYear = projectYear,
+            ProjectName = projectName,
+            BoxCode = boxCode,
+            BagCode = bagCode,
+            ContainerCode = item.ContainerCode,
+            DisplayName = displayName,
+            MaterialDetail = materialDetail,
+            SourceRegisterKind = item.SourceRegisterKind,
+            DisposalReason = item.DisposalReason,
+            DispositionMethod = ArchiveDisposalDomainValues.NormalizeDispositionMethod(item.DispositionMethod),
+            BeforeStorageLocation = item.BeforeStorageLocation,
+            MediumKind = item.MediumKind,
+            MediumCode = item.MediumCode,
+            TargetBlankSlotLocation = item.TargetBlankSlotLocation,
+            FormNo = item.FormNo
         };
     }
 

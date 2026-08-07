@@ -20,10 +20,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         private const double TitleChromeHeight = 90;
         private const double HeaderHeight = 28;
         private const double StandardRowHeight = 36;
-        /// <summary>资料室系统审批（意见+签字，约 2 行）。</summary>
-        private const double ApprovalRowHeight = 72;
-        /// <summary>责任人签批：申请人 + 审核2人 + 审批2人（约 5 行）。</summary>
-        private const double SignatureRowHeight = 150;
+        /// <summary>审核：资料室负责人、生产科负责人（签字+日期，2 行）。</summary>
+        private const double ReviewRowHeight = 52;
+        /// <summary>审批：分管资料室副院长、分管生产副院长（签字+日期，2 行）。</summary>
+        private const double ApproveRowHeight = 52;
         private const double RowChromeDip = 6;
         private const string BlankDateSuffix = "日期:______年___月___日";
 
@@ -73,8 +73,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 "申请人", EmptyAsPlaceholder(data.ApplicantName),
                 "申请部门", EmptyAsPlaceholder(data.ApplicantDept),
                 StandardRowHeight));
-            rowGroup.Rows.Add(CreateSingleRow("资料室审批", BuildApprovalSection(data), ApprovalRowHeight, verticalAlignTop: true));
-            rowGroup.Rows.Add(CreateSingleRow("责任人签批", BuildSignatureSection(data), SignatureRowHeight, verticalAlignTop: true));
+            rowGroup.Rows.Add(CreateSingleRow("审核", BuildReviewSection(data), ReviewRowHeight, verticalAlignTop: true));
+            rowGroup.Rows.Add(CreateSingleRow("审批", BuildApproveSection(data), ApproveRowHeight, verticalAlignTop: true));
             rowGroup.Rows.Add(CreateSingleRow("备注", EmptyAsPlaceholder(data.Remark), StandardRowHeight));
 
             document.Blocks.Add(CreateMainTable(rowGroup));
@@ -85,11 +85,11 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private static double CalculateItemRowHeight()
         {
-            // 固定行：原因方式、申请说明、申请人、审批、签批、备注。
+            // 固定行：原因方式、申请说明、申请人、审核、审批、备注。
             double fixedContentHeight =
                 StandardRowHeight * 4
-                + ApprovalRowHeight
-                + SignatureRowHeight;
+                + ReviewRowHeight
+                + ApproveRowHeight;
             const int fixedRowCount = 6;
             double fixedTableHeight = fixedContentHeight
                 + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, RowChromeDip) * fixedRowCount;
@@ -124,97 +124,95 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return "（无）";
             }
 
+            bool isSimulated = string.Equals(
+                data.MediaKind?.Trim(),
+                ArchiveRegisterDomainValues.MediaKindSimulated,
+                StringComparison.Ordinal);
+
             var builder = new StringBuilder();
-            builder.Append($"共{data.Items.Count}条（名称 / 盘库类型 / 原因 / 方式 / 位置）");
+            builder.Append(isSimulated
+                ? $"共{data.Items.Count}条（年度｜项目｜盒号｜位置｜资料明细｜盘库类型｜处置方式）"
+                : $"共{data.Items.Count}条（年度｜项目｜袋号｜介质｜位置｜资料明细｜盘库类型｜处置方式）");
+
             foreach (var item in data.Items.OrderBy(row => row.SortOrder))
             {
                 builder.AppendLine();
-                string line =
-                    $"{item.SortOrder}. {EmptyAsPlaceholder(item.DisplayName)}" +
-                    $" / {EmptyAsPlaceholder(item.SourceRegisterKind)}" +
-                    $" / {EmptyAsPlaceholder(item.DisposalReason)}" +
-                    $" / {EmptyAsPlaceholder(item.DispositionMethod)}" +
-                    $" / {EmptyAsPlaceholder(item.BeforeStorageLocation)}";
-                if (!string.IsNullOrWhiteSpace(item.TargetBlankSlotLocation))
+                if (isSimulated)
                 {
-                    line += $" / 低格档口：{item.TargetBlankSlotLocation.Trim()}";
+                    builder.Append(
+                        $"{item.SortOrder}. 年度：{EmptyAsPlaceholder(item.ProjectYear)}" +
+                        $"｜项目：{EmptyAsPlaceholder(item.ProjectName)}" +
+                        $"｜盒号：{EmptyAsPlaceholder(FirstNonEmpty(item.BoxCode, item.ContainerCode))}" +
+                        $"｜位置：{EmptyAsPlaceholder(item.BeforeStorageLocation)}" +
+                        $"｜资料：{EmptyAsPlaceholder(item.MaterialDetail)}" +
+                        $"｜盘库：{EmptyAsPlaceholder(item.SourceRegisterKind)}" +
+                        $"｜方式：{EmptyAsPlaceholder(item.DispositionMethod)}");
                 }
+                else
+                {
+                    string mediumText = string.IsNullOrWhiteSpace(item.MediumCode)
+                        ? EmptyAsPlaceholder(item.MediumKind)
+                        : $"{EmptyAsPlaceholder(item.MediumKind)} {item.MediumCode.Trim()}";
+                    string line =
+                        $"{item.SortOrder}. 年度：{EmptyAsPlaceholder(item.ProjectYear)}" +
+                        $"｜项目：{EmptyAsPlaceholder(item.ProjectName)}" +
+                        $"｜袋号：{EmptyAsPlaceholder(FirstNonEmpty(item.BagCode, item.ContainerCode))}" +
+                        $"｜介质：{mediumText}" +
+                        $"｜位置：{EmptyAsPlaceholder(item.BeforeStorageLocation)}" +
+                        $"｜资料：{EmptyAsPlaceholder(item.MaterialDetail)}" +
+                        $"｜盘库：{EmptyAsPlaceholder(item.SourceRegisterKind)}" +
+                        $"｜方式：{EmptyAsPlaceholder(item.DispositionMethod)}";
+                    if (!string.IsNullOrWhiteSpace(item.TargetBlankSlotLocation))
+                    {
+                        line += $"｜低格档口：{item.TargetBlankSlotLocation.Trim()}";
+                    }
 
-                builder.Append(line);
+                    builder.Append(line);
+                }
             }
 
             return builder.ToString();
         }
 
-        private static string BuildApprovalSection(YearlyArchiveDisposalPrintData data)
+        /// <summary>审核栏：资料室负责人、生产科负责人（仅签字与日期）。</summary>
+        private static string BuildReviewSection(YearlyArchiveDisposalPrintData data)
         {
-            // 系统内审批意见：已审批及之后阶段可预填（非交接双方签字）。
-            bool hasApproval = !string.IsNullOrWhiteSpace(data.ApprovedBy)
-                || !string.IsNullOrWhiteSpace(data.ApprovalOpinion)
-                || !string.IsNullOrWhiteSpace(data.ApprovedDateText);
-
-            if (!hasApproval)
-            {
-                return "审批意见：\n                    签字：                              " + BlankDateSuffix;
-            }
-
-            string opinion = string.IsNullOrWhiteSpace(data.ApprovalOpinion)
-                ? string.Empty
-                : data.ApprovalOpinion.Trim();
-            string signature = BuildFilledSignatureLine(data.ApprovedBy, data.ApprovedDateText);
-            return string.IsNullOrWhiteSpace(opinion)
-                ? $"审批意见：\n{signature}"
-                : $"审批意见：{opinion}\n{signature}";
-        }
-
-        private static string BuildSignatureSection(YearlyArchiveDisposalPrintData data)
-        {
-            // 办结前供线下亲笔签名：签字栏与日期栏留白。
             if (!data.IsCompleted)
             {
-                return "申请人签字：                                              " + BlankDateSuffix + "\n"
-                     + "审核人（资料室负责人）签字：                              " + BlankDateSuffix + "\n"
-                     + "审核人（生产科负责人）签字：                              " + BlankDateSuffix + "\n"
-                     + "审批人（分管生产副院长）签字：                            " + BlankDateSuffix + "\n"
-                     + "审批人（分管资料室副院长）签字：                          " + BlankDateSuffix;
+                return "资料室负责人签字：                              " + BlankDateSuffix + "\n"
+                     + "生产科负责人签字：                              " + BlankDateSuffix;
             }
 
-            // 已办结重打：预填申请人；审核/审批为线下签批，系统无独立字段，日期与办结日一致。
-            string dateText = string.IsNullOrWhiteSpace(data.CompletedDateText)
-                ? "______年___月___日"
-                : data.CompletedDateText.Trim();
-            string applicant = string.IsNullOrWhiteSpace(data.ApplicantName)
-                ? "________________"
-                : data.ApplicantName.Trim();
-
-            return $"申请人签字：{applicant}    日期：{dateText}\n"
-                 + $"审核人（资料室负责人）签字：____________________    日期：{dateText}\n"
-                 + $"审核人（生产科负责人）签字：____________________    日期：{dateText}\n"
-                 + $"审批人（分管生产副院长）签字：____________________    日期：{dateText}\n"
-                 + $"审批人（分管资料室副院长）签字：____________________    日期：{dateText}";
+            string dateText = ResolveCompletedDateText(data);
+            return BuildSignerLine("资料室负责人签字", data.ArchiveRoomHead, dateText) + "\n"
+                 + BuildSignerLine("生产科负责人签字", data.ProductionHead, dateText);
         }
 
-        private static string BuildFilledSignatureLine(string? name, string? dateText)
+        /// <summary>审批栏：分管资料室副院长、分管生产副院长（仅签字与日期）。</summary>
+        private static string BuildApproveSection(YearlyArchiveDisposalPrintData data)
         {
-            string normalizedName = name?.Trim() ?? string.Empty;
-            string normalizedDate = dateText?.Trim() ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(normalizedName) && string.IsNullOrWhiteSpace(normalizedDate))
+            if (!data.IsCompleted)
             {
-                return "签字：                              " + BlankDateSuffix;
+                return "分管资料室副院长签字：                          " + BlankDateSuffix + "\n"
+                     + "分管生产副院长签字：                            " + BlankDateSuffix;
             }
 
-            if (string.IsNullOrWhiteSpace(normalizedName))
-            {
-                return $"签字：    日期：{normalizedDate}";
-            }
+            string dateText = ResolveCompletedDateText(data);
+            return BuildSignerLine("分管资料室副院长签字", data.ArchiveDeputyPresident, dateText) + "\n"
+                 + BuildSignerLine("分管生产副院长签字", data.ProductionVicePresident, dateText);
+        }
 
-            if (string.IsNullOrWhiteSpace(normalizedDate))
-            {
-                return $"签字：{normalizedName}";
-            }
+        private static string BuildSignerLine(string label, string? name, string dateText)
+        {
+            string signer = string.IsNullOrWhiteSpace(name) ? "____________________" : name.Trim();
+            return $"{label}：{signer}    日期：{dateText}";
+        }
 
-            return $"签字：{normalizedName}    日期：{normalizedDate}";
+        private static string ResolveCompletedDateText(YearlyArchiveDisposalPrintData data)
+        {
+            return string.IsNullOrWhiteSpace(data.CompletedDateText)
+                ? "______年___月___日"
+                : data.CompletedDateText.Trim();
         }
 
         private static Paragraph CreateFooterParagraph(YearlyArchiveDisposalPrintData data)
@@ -228,9 +226,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
             footer.Inlines.Add(new Run(
-                "1、本单由资料室资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批、上传签批单、办结”流程办理。\n"));
+                "1、本单由资料室资料管理员发起，按“保存草稿、提交、打印签批单、线下审核审批、系统审批、上传签批单、办结”流程办理。\n"));
             footer.Inlines.Add(new Run(
-                "      2、请线下完成申请人、审核人（资料室负责人、生产科负责人）、审批人（分管生产副院长、分管资料室副院长）签字后回传系统；含离库销毁时须同步上传处置现场照片。\n"));
+                "      2、请线下完成审核（资料室负责人、生产科负责人）与审批（分管资料室副院长、分管生产副院长）签字后回传系统；含离库销毁时须同步上传处置现场照片。\n"));
             footer.Inlines.Add(new Run(
                 $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
 
@@ -364,6 +362,19 @@ namespace DocMgr.ViewModels.YearlyArchive
                 BorderThickness = new Thickness(0),
                 Padding = new Thickness(0)
             };
+        }
+
+        private static string FirstNonEmpty(params string?[] values)
+        {
+            foreach (var value in values)
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value.Trim();
+                }
+            }
+
+            return string.Empty;
         }
 
         private static string EmptyAsPlaceholder(string? value)
