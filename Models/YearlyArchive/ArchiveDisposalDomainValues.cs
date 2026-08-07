@@ -20,8 +20,14 @@ namespace DocMgr.Models.YearlyArchive
         public const string ReasonScrap = "拟销";
 
         public const string MethodInventoryCancel = "库内注销";
-        public const string MethodMediaDestroy = "介质销毁";
-        public const string MethodHardDiskFormatRetain = "硬盘低格留存";
+        public const string MethodMediaDestroy = "离库销毁";
+        public const string MethodHardDiskFormatRetain = "低格留盘";
+
+        /// <summary>历史单据兼容：旧版「介质销毁」。</summary>
+        public const string LegacyMethodMediaDestroy = "介质销毁";
+
+        /// <summary>历史单据兼容：旧版「硬盘低格留存」。</summary>
+        public const string LegacyMethodHardDiskFormatRetain = "硬盘低格留存";
 
         public const string HolderDestroyed = "已销毁";
         public const string HolderCancelled = "已注销";
@@ -35,7 +41,7 @@ namespace DocMgr.Models.YearlyArchive
             ReasonScrap
         ];
 
-        /// <summary>全部处置方式选项。</summary>
+        /// <summary>全部处置方式选项（新文案）。</summary>
         public static IReadOnlyList<string> DispositionMethodOptions { get; } =
         [
             MethodInventoryCancel,
@@ -66,6 +72,41 @@ namespace DocMgr.Models.YearlyArchive
             OpticalDiscMedium.StatusLost,
             OpticalDiscMedium.StatusScrap
         ];
+
+        /// <summary>将历史处置方式文案归一为现行文案。</summary>
+        public static string NormalizeDispositionMethod(string? method)
+        {
+            string normalized = method?.Trim() ?? string.Empty;
+            if (string.Equals(normalized, LegacyMethodMediaDestroy, StringComparison.Ordinal))
+            {
+                return MethodMediaDestroy;
+            }
+
+            if (string.Equals(normalized, LegacyMethodHardDiskFormatRetain, StringComparison.Ordinal))
+            {
+                return MethodHardDiskFormatRetain;
+            }
+
+            return normalized;
+        }
+
+        /// <summary>是否为离库销毁（含历史「介质销毁」）。</summary>
+        public static bool IsMediaDestroyMethod(string? method)
+        {
+            return string.Equals(
+                NormalizeDispositionMethod(method),
+                MethodMediaDestroy,
+                StringComparison.Ordinal);
+        }
+
+        /// <summary>是否为低格留盘（含历史「硬盘低格留存」）。</summary>
+        public static bool IsFormatRetainMethod(string? method)
+        {
+            return string.Equals(
+                NormalizeDispositionMethod(method),
+                MethodHardDiskFormatRetain,
+                StringComparison.Ordinal);
+        }
 
         /// <summary>按盘库登记类型解析处置原因。</summary>
         public static string ResolveReasonFromRegisterKind(string? registerKind)
@@ -115,7 +156,8 @@ namespace DocMgr.Models.YearlyArchive
         }
 
         /// <summary>
-        /// 按原因/介质类别解析默认可选处置方式。
+        /// 按原因/介质类别解析允许处置方式。
+        /// 盘失→库内注销；损坏→离库销毁；拟销·模拟/光盘→离库销毁；拟销·硬盘→低格留盘、离库销毁。
         /// </summary>
         public static IReadOnlyList<string> ResolveAllowedMethods(
             string? mediaKind,
@@ -128,7 +170,7 @@ namespace DocMgr.Models.YearlyArchive
 
             if (string.Equals(normalizedReason, ReasonLost, StringComparison.Ordinal))
             {
-                return [MethodInventoryCancel, MethodMediaDestroy];
+                return [MethodInventoryCancel];
             }
 
             if (string.Equals(normalizedReason, ReasonDamaged, StringComparison.Ordinal))
@@ -144,13 +186,7 @@ namespace DocMgr.Models.YearlyArchive
                     return [MethodHardDiskFormatRetain, MethodMediaDestroy];
                 }
 
-                if (string.Equals(normalizedMediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
-                    && string.Equals(normalizedMediumKind, ArchiveInventoryRegisterDomainValues.MediumKindOpticalDisc, StringComparison.Ordinal))
-                {
-                    return [MethodMediaDestroy, MethodInventoryCancel];
-                }
-
-                // 模拟拟销：仅介质销毁
+                // 模拟拟销、电子光盘拟销：仅离库销毁
                 return [MethodMediaDestroy];
             }
 
@@ -171,10 +207,10 @@ namespace DocMgr.Models.YearlyArchive
             return ReasonOptions.Any(item => string.Equals(item, normalized, StringComparison.Ordinal));
         }
 
-        /// <summary>是否为有效处置方式。</summary>
+        /// <summary>是否为有效处置方式（含历史文案）。</summary>
         public static bool IsValidDispositionMethod(string? method)
         {
-            string normalized = method?.Trim() ?? string.Empty;
+            string normalized = NormalizeDispositionMethod(method);
             return DispositionMethodOptions.Any(item => string.Equals(item, normalized, StringComparison.Ordinal));
         }
 
@@ -186,7 +222,7 @@ namespace DocMgr.Models.YearlyArchive
             string? dispositionMethod)
         {
             string normalizedReason = reason?.Trim() ?? string.Empty;
-            string normalizedMethod = dispositionMethod?.Trim() ?? string.Empty;
+            string normalizedMethod = NormalizeDispositionMethod(dispositionMethod);
             if (string.IsNullOrWhiteSpace(normalizedReason) || string.IsNullOrWhiteSpace(normalizedMethod))
             {
                 return null;
@@ -206,24 +242,22 @@ namespace DocMgr.Models.YearlyArchive
             return null;
         }
 
-        /// <summary>是否需要处置现场照片（介质销毁必填）。</summary>
+        /// <summary>是否需要处置现场照片（离库销毁必填）。</summary>
         public static bool RequiresScenePhoto(IEnumerable<string?> methods)
         {
-            return methods.Any(item =>
-                string.Equals(item?.Trim(), MethodMediaDestroy, StringComparison.Ordinal));
+            return methods.Any(IsMediaDestroyMethod);
         }
 
-        /// <summary>是否含硬盘低格留存方式。</summary>
+        /// <summary>是否含低格留盘方式。</summary>
         public static bool HasFormatRetainMethod(IEnumerable<string?> methods)
         {
-            return methods.Any(item =>
-                string.Equals(item?.Trim(), MethodHardDiskFormatRetain, StringComparison.Ordinal));
+            return methods.Any(IsFormatRetainMethod);
         }
 
         /// <summary>办结后持有人/保管单位。</summary>
         public static string ResolveHolderAfterComplete(string? dispositionMethod)
         {
-            string normalized = dispositionMethod?.Trim() ?? string.Empty;
+            string normalized = NormalizeDispositionMethod(dispositionMethod);
             if (string.Equals(normalized, MethodMediaDestroy, StringComparison.Ordinal))
             {
                 return HolderDestroyed;
@@ -252,8 +286,10 @@ namespace DocMgr.Models.YearlyArchive
         private static readonly string[] MethodSummaryOrder =
         [
             MethodInventoryCancel,
+            MethodHardDiskFormatRetain,
             MethodMediaDestroy,
-            MethodHardDiskFormatRetain
+            LegacyMethodHardDiskFormatRetain,
+            LegacyMethodMediaDestroy
         ];
 
         /// <summary>汇总明细离库原因。</summary>
@@ -262,10 +298,12 @@ namespace DocMgr.Models.YearlyArchive
             return BuildDistinctSummary(reasons, ReasonSummaryOrder);
         }
 
-        /// <summary>汇总明细处置方式。</summary>
+        /// <summary>汇总明细处置方式（展示时归一为现行文案）。</summary>
         public static string BuildDispositionMethodSummary(IEnumerable<string?> methods)
         {
-            return BuildDistinctSummary(methods, MethodSummaryOrder);
+            return BuildDistinctSummary(
+                methods.Select(NormalizeDispositionMethod),
+                MethodSummaryOrder);
         }
 
         private static string BuildDistinctSummary(IEnumerable<string?> values, string[] order)

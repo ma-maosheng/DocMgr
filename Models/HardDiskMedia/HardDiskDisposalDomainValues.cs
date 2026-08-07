@@ -22,7 +22,9 @@ namespace DocMgr.Models.HardDiskMedia
         /// <summary>历史单据兼容：旧版整单原因「其他」。</summary>
         public const string ReasonOther = "其他";
 
-        public const string MethodDirectDestroy = "直接销毁";
+        public const string MethodDirectDestroy = "离库销毁";
+        /// <summary>历史单据兼容：旧版「直接销毁」。</summary>
+        public const string LegacyMethodDirectDestroy = "直接销毁";
         public const string MethodReturnOffice = "退还办公室";
         /// <summary>库内注销：专用于「在库(盘失)」「在库(拟销)」硬盘的处置方式。</summary>
         public const string MethodInventoryCancel = "库内注销";
@@ -75,10 +77,31 @@ namespace DocMgr.Models.HardDiskMedia
                 || string.Equals(normalized, ReasonOther, StringComparison.Ordinal);
         }
 
-        /// <summary>是否为有效处置方式。</summary>
-        public static bool IsValidDispositionMethod(string? method)
+        /// <summary>将历史处置方式文案归一为现行文案。</summary>
+        public static string NormalizeDispositionMethod(string? method)
         {
             string normalized = method?.Trim() ?? string.Empty;
+            if (string.Equals(normalized, LegacyMethodDirectDestroy, StringComparison.Ordinal))
+            {
+                return MethodDirectDestroy;
+            }
+
+            return normalized;
+        }
+
+        /// <summary>是否为离库销毁（含历史「直接销毁」）。</summary>
+        public static bool IsDirectDestroyMethod(string? method)
+        {
+            return string.Equals(
+                NormalizeDispositionMethod(method),
+                MethodDirectDestroy,
+                StringComparison.Ordinal);
+        }
+
+        /// <summary>是否为有效处置方式（含历史文案）。</summary>
+        public static bool IsValidDispositionMethod(string? method)
+        {
+            string normalized = NormalizeDispositionMethod(method);
             return DispositionMethodOptions.Any(item => string.Equals(item, normalized, StringComparison.Ordinal));
         }
 
@@ -138,6 +161,7 @@ namespace DocMgr.Models.HardDiskMedia
         private static readonly string[] MethodSummaryOrder =
         [
             MethodDirectDestroy,
+            LegacyMethodDirectDestroy,
             MethodReturnOffice,
             MethodInventoryCancel,
             MethodOther
@@ -149,10 +173,12 @@ namespace DocMgr.Models.HardDiskMedia
             return BuildDistinctSummary(reasons, ReasonSummaryOrder);
         }
 
-        /// <summary>汇总明细处置方式（去重、顿号连接），供主表列表展示。</summary>
+        /// <summary>汇总明细处置方式（去重、顿号连接；展示时归一为现行文案）。</summary>
         public static string BuildDispositionMethodSummary(IEnumerable<string?> methods)
         {
-            return BuildDistinctSummary(methods, MethodSummaryOrder);
+            return BuildDistinctSummary(
+                methods.Select(NormalizeDispositionMethod),
+                MethodSummaryOrder);
         }
 
         private static string BuildDistinctSummary(IEnumerable<string?> values, string[] order)
@@ -241,7 +267,7 @@ namespace DocMgr.Models.HardDiskMedia
                 normalizedReason = ReasonDamaged;
             }
 
-            string normalizedMethod = dispositionMethod?.Trim() ?? string.Empty;
+            string normalizedMethod = NormalizeDispositionMethod(dispositionMethod);
             if (string.IsNullOrWhiteSpace(normalizedReason) || string.IsNullOrWhiteSpace(normalizedMethod))
             {
                 return null;

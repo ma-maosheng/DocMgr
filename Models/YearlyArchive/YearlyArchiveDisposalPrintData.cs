@@ -11,6 +11,8 @@ namespace DocMgr.Models.YearlyArchive
 
         public string StatusDisplay { get; set; } = string.Empty;
 
+        public string ApplyDateText { get; set; } = string.Empty;
+
         public string DisposalReason { get; set; } = string.Empty;
 
         public string DispositionMethod { get; set; } = string.Empty;
@@ -27,11 +29,20 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ApprovedBy { get; set; } = string.Empty;
 
+        public string ApprovedDateText { get; set; } = string.Empty;
+
         public DateTime? ApprovedTime { get; set; }
 
         public string ApprovalOpinion { get; set; } = string.Empty;
 
+        public string CompletedBy { get; set; } = string.Empty;
+
+        public string CompletedDateText { get; set; } = string.Empty;
+
         public bool IsCompleted { get; set; }
+
+        /// <summary>已累计打印次数（不含本次）。</summary>
+        public int PrintCount { get; set; }
 
         public IReadOnlyList<YearlyArchiveDisposalPrintItemRow> Items { get; set; } =
             Array.Empty<YearlyArchiveDisposalPrintItemRow>();

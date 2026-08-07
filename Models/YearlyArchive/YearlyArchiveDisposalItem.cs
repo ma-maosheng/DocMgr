@@ -73,7 +73,7 @@ namespace DocMgr.Models.YearlyArchive
         /// <summary>处置前介质台账状态快照（电子）。</summary>
         public string BeforeMediaStatus { get; set; } = string.Empty;
 
-        /// <summary>硬盘低格留存目标空白档口。</summary>
+        /// <summary>硬盘低格留盘目标空白档口（办结前录入，不做预占用）。</summary>
         public string TargetBlankSlotLocation { get; set; } = string.Empty;
 
         public DateTime CreatedAt { get; set; }

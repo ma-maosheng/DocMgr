@@ -177,7 +177,6 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
 
         ValidateItemMethods(existing.MediaKind, existing.Items);
         await EnsureItemsStillSelectableAsync(existing);
-        await EnsureBlankSlotsForFormatRetainAsync(existing);
 
         DateTime now = DateTime.Now;
         await LockHardDiskMediaAsync(existing, now);
@@ -284,8 +283,11 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
             DisposalNo = record.DisposalNo,
             MediaKind = record.MediaKind,
             StatusDisplay = record.StatusDisplay,
-            DisposalReason = record.DisposalReason,
-            DispositionMethod = record.DispositionMethod,
+            ApplyDateText = record.ApplyTime == default ? string.Empty : record.ApplyTime.ToString("yyyy-MM-dd"),
+            DisposalReason = ArchiveDisposalDomainValues.BuildReasonSummary(
+                record.Items.Select(item => item.DisposalReason)),
+            DispositionMethod = ArchiveDisposalDomainValues.BuildDispositionMethodSummary(
+                record.Items.Select(item => item.DispositionMethod)),
             Reason = record.Reason,
             Remark = record.Remark,
             ApplicantName = record.ApplicantName,
@@ -293,8 +295,12 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
             ApplyTime = record.ApplyTime,
             ApprovedBy = record.ApprovedBy,
             ApprovedTime = record.ApprovedTime,
+            ApprovedDateText = record.ApprovedTime?.ToString("yyyy-MM-dd") ?? string.Empty,
             ApprovalOpinion = record.ApprovalOpinion,
+            CompletedBy = record.CompletedBy,
+            CompletedDateText = record.CompletedAt?.ToString("yyyy-MM-dd") ?? string.Empty,
             IsCompleted = record.IsCompleted,
+            PrintCount = record.PrintCount,
             Items = record.Items
                 .OrderBy(item => item.SortOrder)
                 .Select(item => new YearlyArchiveDisposalPrintItemRow
@@ -306,7 +312,7 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
                         : $"{item.MediumKind} {item.MediumCode}",
                     SourceRegisterKind = item.SourceRegisterKind,
                     DisposalReason = item.DisposalReason,
-                    DispositionMethod = item.DispositionMethod,
+                    DispositionMethod = ArchiveDisposalDomainValues.NormalizeDispositionMethod(item.DispositionMethod),
                     BeforeStorageLocation = item.BeforeStorageLocation,
                     MediumKind = item.MediumKind,
                     MediumCode = item.MediumCode,

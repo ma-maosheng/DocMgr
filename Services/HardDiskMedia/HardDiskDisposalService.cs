@@ -946,7 +946,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             return HardDiskDisposalDomainValues.HolderOffice;
         }
 
-        if (string.Equals(method, HardDiskDisposalDomainValues.MethodDirectDestroy, StringComparison.Ordinal))
+        if (HardDiskDisposalDomainValues.IsDirectDestroyMethod(method))
         {
             return HardDiskDisposalDomainValues.HolderDestroyed;
         }

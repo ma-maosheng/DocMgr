@@ -36,7 +36,7 @@ namespace DocMgr.Models.HardDiskMedia
         /// <summary>离库原因（按盘）：淘汰/损坏/盘失（由处置前介质状态自动赋值）。</summary>
         public string DisposalReason { get; set; } = string.Empty;
 
-        /// <summary>离库后处置方式（按盘）：直接销毁/退还办公室/库内注销/其他。</summary>
+        /// <summary>离库后处置方式（按盘）：离库销毁/退还办公室/库内注销/其他。</summary>
         public string DispositionMethod { get; set; } = string.Empty;
 
         public DateTime CreatedAt { get; set; }

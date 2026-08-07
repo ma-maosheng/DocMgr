@@ -13,15 +13,20 @@ using DocMgr.Views.Shared;
 namespace DocMgr.ViewModels.YearlyArchive
 {
     /// <summary>
-    /// 资料离库处置办理弹窗 ViewModel。
+    /// 资料离库处置办理弹窗 ViewModel（草稿编辑 + 审批办结工作台，布局对齐硬盘离库处置）。
     /// </summary>
     public sealed class ArchiveDisposalEditDialogViewModel : ViewModelBase
     {
+        private const string AllFilterText = "全部";
+
         private readonly IArchiveDisposalService _disposalService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly List<ArchiveDisposalCandidateRow> _candidatePool = new();
         private YearlyArchiveDisposalRecord _record;
         private bool _hasCommittedChanges;
+        private bool _isApplyingFilters;
+        private bool _suppressBatchMethodApply;
         private string _disposalNo = string.Empty;
         private string _reason = string.Empty;
         private string _remark = string.Empty;
@@ -33,6 +38,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _formatRetainedConfirmed;
         private bool _showPhysicalRemovalConfirm;
         private bool _showFormatRetainConfirm;
+        private string _filterKeyword = string.Empty;
+        private string _filterSourceRegisterKind = AllFilterText;
+        private string _filterMediumKind = AllFilterText;
 
         public ArchiveDisposalEditDialogViewModel(
             IArchiveDisposalService disposalService,
@@ -49,8 +57,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             MoveToDisposalCommand = new RelayCommand(_ => MoveToDisposal(), _ => CanEditHeader && AvailableItems.Any(i => i.IsSelected));
             MoveToAvailableCommand = new RelayCommand(_ => MoveToAvailable(), _ => CanEditHeader && Items.Any(i => i.IsSelected));
             ApplyDispositionMethodCommand = new RelayCommand(
-                _ => ApplyDispositionMethod(),
-                _ => CanEditHeader && Items.Any(i => i.IsSelected) && !string.IsNullOrWhiteSpace(BatchDispositionMethod));
+                _ => ApplyDispositionMethodToSelected(BatchDispositionMethod),
+                _ => CanEditHeader
+                    && Items.Any(i => i.IsSelected)
+                    && !string.IsNullOrWhiteSpace(BatchDispositionMethod));
+            ClearFiltersCommand = new RelayCommand(_ => ClearFilters(), _ => CanEditHeader);
             SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader);
             SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit);
             ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
@@ -82,8 +93,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool IsSimulated =>
             string.Equals(_record.MediaKind?.Trim(), ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal);
 
+        public bool ShowMediumKindFilter => !IsSimulated;
+
         public string BannerText =>
-            "流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批 → 确认可上传 → 上传签批单（销毁须现场照片）→ 办结。办结释档空盒/空袋前须确认物理移除；拟销硬盘低格留存须确认已低格。";
+            "流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批 → 确认可上传 → 上传签批单（销毁须现场照片）→ 办结。办结释档空盒/空袋前须确认物理移除；拟销硬盘低格留盘须确认已低格并填写目标空盘档口。";
 
         public ObservableCollection<ArchiveDisposalCandidateRow> AvailableItems { get; } = new();
 
@@ -95,15 +108,65 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public ObservableCollection<string> UploadCategoryOptions { get; } = new(ArchiveDisposalDomainValues.AttachmentCategoryOptions);
 
-        public string AvailableTitle => $"可选盘库资料（{AvailableItems.Count}）";
+        public ObservableCollection<string> SourceRegisterKindFilterOptions { get; } = new();
 
-        public string DisposalTitle => $"待处置明细（{Items.Count}）";
+        public ObservableCollection<string> MediumKindFilterOptions { get; } = new();
+
+        public string AvailableItemsTitle => $"可选盘库资料（{AvailableItems.Count}）";
+
+        public string DisposalItemsTitle => $"待处置明细（{Items.Count}）";
+
+        public string FilterKeyword
+        {
+            get => _filterKeyword;
+            set
+            {
+                if (SetProperty(ref _filterKeyword, value))
+                {
+                    RefreshAvailableItems();
+                }
+            }
+        }
+
+        public string FilterSourceRegisterKind
+        {
+            get => _filterSourceRegisterKind;
+            set
+            {
+                if (SetProperty(ref _filterSourceRegisterKind, value))
+                {
+                    RefreshAvailableItems();
+                }
+            }
+        }
+
+        public string FilterMediumKind
+        {
+            get => _filterMediumKind;
+            set
+            {
+                if (SetProperty(ref _filterMediumKind, value))
+                {
+                    RefreshAvailableItems();
+                }
+            }
+        }
 
         public string DisposalNo
         {
             get => _disposalNo;
-            set => SetProperty(ref _disposalNo, value);
+            private set
+            {
+                if (SetProperty(ref _disposalNo, value))
+                {
+                    OnPropertyChanged(nameof(WindowTitle));
+                }
+            }
         }
+
+        public string ApplicantName => _record.ApplicantName;
+
+        public string ApplicantDept => _record.ApplicantDept;
 
         public string Reason
         {
@@ -126,7 +189,19 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string BatchDispositionMethod
         {
             get => _batchDispositionMethod;
-            set => SetProperty(ref _batchDispositionMethod, value);
+            set
+            {
+                if (!SetProperty(ref _batchDispositionMethod, value))
+                {
+                    return;
+                }
+
+                RefreshCommandStates();
+                if (!_suppressBatchMethodApply)
+                {
+                    ApplyDispositionMethodToSelected(value);
+                }
+            }
         }
 
         public string UploadCategory
@@ -171,6 +246,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool CanEditHeader =>
             CanOperate && _record.Status == YearlyArchiveDisposalRecord.StatusDraft;
 
+        /// <summary>办结前可编辑低格留盘目标空盘档口（不做预占用）。</summary>
+        public bool CanEditBlankSlots =>
+            CanOperate
+            && _record.Status == YearlyArchiveDisposalRecord.StatusSignedUploaded
+            && Items.Any(item => ArchiveDisposalDomainValues.IsFormatRetainMethod(item.DispositionMethod));
+
+        public bool CanInteractItemsGrid => CanEditHeader || CanEditBlankSlots;
+
+        public bool ShowBlankSlotColumn =>
+            Items.Any(item => ArchiveDisposalDomainValues.IsFormatRetainMethod(item.DispositionMethod));
+
         public bool CanSubmit =>
             CanOperate && _record.Status == YearlyArchiveDisposalRecord.StatusDraft && _record.Id > 0 && Items.Count > 0;
 
@@ -205,6 +291,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand MoveToDisposalCommand { get; }
         public RelayCommand MoveToAvailableCommand { get; }
         public RelayCommand ApplyDispositionMethodCommand { get; }
+        public RelayCommand ClearFiltersCommand { get; }
         public RelayCommand SaveDraftCommand { get; }
         public RelayCommand SubmitCommand { get; }
         public RelayCommand ApproveCommand { get; }
@@ -222,7 +309,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 BindFromRecord(_record);
-                await ReloadSelectableAsync();
+                if (_record.Id <= 0 && string.IsNullOrWhiteSpace(_record.DisposalNo))
+                {
+                    DisposalNo = await _disposalService.GenerateNextDisposalNoAsync();
+                    _record.DisposalNo = DisposalNo;
+                }
+                else
+                {
+                    DisposalNo = _record.DisposalNo?.Trim() ?? string.Empty;
+                }
+
+                await ReloadCandidatePoolAsync();
                 if (_record.Id > 0)
                 {
                     await ReloadAttachmentsAsync();
@@ -240,7 +337,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void BindFromRecord(YearlyArchiveDisposalRecord record)
         {
             _record = record;
-            DisposalNo = record.DisposalNo;
+            DisposalNo = record.DisposalNo?.Trim() ?? DisposalNo;
             Reason = record.Reason;
             Remark = record.Remark;
             ApprovalOpinion = string.IsNullOrWhiteSpace(record.ApprovalOpinion) ? "同意" : record.ApprovalOpinion;
@@ -256,9 +353,15 @@ namespace DocMgr.ViewModels.YearlyArchive
             RefreshDispositionMethodOptions();
             OnPropertyChanged(nameof(WindowTitle));
             OnPropertyChanged(nameof(StatusDisplay));
-            OnPropertyChanged(nameof(AvailableTitle));
-            OnPropertyChanged(nameof(DisposalTitle));
+            OnPropertyChanged(nameof(ApplicantName));
+            OnPropertyChanged(nameof(ApplicantDept));
+            OnPropertyChanged(nameof(ShowMediumKindFilter));
+            OnPropertyChanged(nameof(AvailableItemsTitle));
+            OnPropertyChanged(nameof(DisposalItemsTitle));
             OnPropertyChanged(nameof(CanEditHeader));
+            OnPropertyChanged(nameof(CanEditBlankSlots));
+            OnPropertyChanged(nameof(CanInteractItemsGrid));
+            OnPropertyChanged(nameof(ShowBlankSlotColumn));
             OnPropertyChanged(nameof(CanSubmit));
             OnPropertyChanged(nameof(CanApprove));
             OnPropertyChanged(nameof(CanConfirmUpload));
@@ -268,92 +371,258 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanWithdraw));
         }
 
-        private async Task ReloadSelectableAsync()
+        private async Task ReloadCandidatePoolAsync()
         {
             var selectable = await _disposalService.GetSelectableItemsAsync(
                 _record.MediaKind,
                 _record.Id > 0 ? _record.Id : null);
 
-            HashSet<string> selectedKeys = Items.Select(i => i.SelectionKey).ToHashSet(StringComparer.Ordinal);
-            AvailableItems.Clear();
-            foreach (var item in selectable.Where(i => !selectedKeys.Contains(i.SelectionKey)))
+            _candidatePool.Clear();
+            foreach (var item in selectable.OrderBy(i => i.DisplayTitle, StringComparer.Ordinal))
             {
-                AvailableItems.Add(new ArchiveDisposalCandidateRow(item));
+                _candidatePool.Add(new ArchiveDisposalCandidateRow(item));
             }
 
-            OnPropertyChanged(nameof(AvailableTitle));
+            RebuildFilterOptions();
+            RefreshAvailableItems();
+        }
+
+        private void RebuildFilterOptions()
+        {
+            _isApplyingFilters = true;
+            try
+            {
+                string previousKind = FilterSourceRegisterKind;
+                string previousMedium = FilterMediumKind;
+
+                SourceRegisterKindFilterOptions.Clear();
+                SourceRegisterKindFilterOptions.Add(AllFilterText);
+                foreach (var value in _candidatePool
+                    .Select(item => item.SourceRegisterKind)
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(value => value, StringComparer.Ordinal))
+                {
+                    SourceRegisterKindFilterOptions.Add(value);
+                }
+
+                MediumKindFilterOptions.Clear();
+                MediumKindFilterOptions.Add(AllFilterText);
+                foreach (var value in _candidatePool
+                    .Select(item => item.MediumKind)
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(value => value, StringComparer.Ordinal))
+                {
+                    MediumKindFilterOptions.Add(value);
+                }
+
+                _filterSourceRegisterKind = SourceRegisterKindFilterOptions.Contains(previousKind)
+                    ? previousKind
+                    : AllFilterText;
+                _filterMediumKind = MediumKindFilterOptions.Contains(previousMedium)
+                    ? previousMedium
+                    : AllFilterText;
+                OnPropertyChanged(nameof(FilterSourceRegisterKind));
+                OnPropertyChanged(nameof(FilterMediumKind));
+            }
+            finally
+            {
+                _isApplyingFilters = false;
+            }
+        }
+
+        private void RefreshAvailableItems()
+        {
+            if (_isApplyingFilters)
+            {
+                return;
+            }
+
+            HashSet<string> selectedKeys = Items.Select(i => i.SelectionKey).ToHashSet(StringComparer.Ordinal);
+            IEnumerable<ArchiveDisposalCandidateRow> query = _candidatePool
+                .Where(item => !selectedKeys.Contains(item.SelectionKey));
+
+            if (!string.IsNullOrWhiteSpace(FilterKeyword))
+            {
+                string keyword = FilterKeyword.Trim();
+                query = query.Where(item =>
+                    item.DisplayTitle.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+                    || item.BeforeStorageLocation.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+                    || item.ContainerCode.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+                    || item.ElectronicArchiveNo.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+                    || item.MediumCode.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+                    || item.MaterialName.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+                    || item.ItemName.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+                    || item.FormNo.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.Equals(FilterSourceRegisterKind, AllFilterText, StringComparison.Ordinal)
+                && !string.IsNullOrWhiteSpace(FilterSourceRegisterKind))
+            {
+                query = query.Where(item =>
+                    string.Equals(item.SourceRegisterKind, FilterSourceRegisterKind, StringComparison.Ordinal));
+            }
+
+            if (ShowMediumKindFilter
+                && !string.Equals(FilterMediumKind, AllFilterText, StringComparison.Ordinal)
+                && !string.IsNullOrWhiteSpace(FilterMediumKind))
+            {
+                query = query.Where(item =>
+                    string.Equals(item.MediumKind, FilterMediumKind, StringComparison.Ordinal));
+            }
+
+            AvailableItems.Clear();
+            foreach (var item in query.OrderBy(row => row.DisplayTitle, StringComparer.Ordinal))
+            {
+                item.IsSelected = false;
+                AvailableItems.Add(item);
+            }
+
+            OnPropertyChanged(nameof(AvailableItemsTitle));
+            OnPropertyChanged(nameof(DisposalItemsTitle));
+            RefreshCommandStates();
+        }
+
+        private void ClearFilters()
+        {
+            _isApplyingFilters = true;
+            try
+            {
+                _filterKeyword = string.Empty;
+                _filterSourceRegisterKind = AllFilterText;
+                _filterMediumKind = AllFilterText;
+                OnPropertyChanged(nameof(FilterKeyword));
+                OnPropertyChanged(nameof(FilterSourceRegisterKind));
+                OnPropertyChanged(nameof(FilterMediumKind));
+            }
+            finally
+            {
+                _isApplyingFilters = false;
+            }
+
+            RefreshAvailableItems();
         }
 
         private void RefreshDispositionMethodOptions()
         {
-            DispositionMethodOptions.Clear();
-            var methods = Items
-                .SelectMany(item => ArchiveDisposalDomainValues.ResolveAllowedMethods(
-                    _record.MediaKind,
-                    item.DisposalReason,
-                    item.MediumKind))
-                .Distinct(StringComparer.Ordinal)
-                .ToList();
-            foreach (var method in methods)
+            _suppressBatchMethodApply = true;
+            try
             {
-                DispositionMethodOptions.Add(method);
-            }
+                DispositionMethodOptions.Clear();
+                var methods = Items
+                    .SelectMany(item => ArchiveDisposalDomainValues.ResolveAllowedMethods(
+                        _record.MediaKind,
+                        item.DisposalReason,
+                        item.MediumKind))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
+                foreach (var method in methods)
+                {
+                    DispositionMethodOptions.Add(method);
+                }
 
-            if (DispositionMethodOptions.Count > 0
-                && !DispositionMethodOptions.Contains(BatchDispositionMethod, StringComparer.Ordinal))
+                if (DispositionMethodOptions.Count > 0
+                    && !DispositionMethodOptions.Contains(BatchDispositionMethod, StringComparer.Ordinal))
+                {
+                    _batchDispositionMethod = DispositionMethodOptions[0];
+                    OnPropertyChanged(nameof(BatchDispositionMethod));
+                }
+            }
+            finally
             {
-                BatchDispositionMethod = DispositionMethodOptions[0];
+                _suppressBatchMethodApply = false;
             }
         }
 
         private void MoveToDisposal()
         {
             var selected = AvailableItems.Where(i => i.IsSelected).ToList();
+            if (selected.Count == 0)
+            {
+                return;
+            }
+
             foreach (var row in selected)
             {
-                AvailableItems.Remove(row);
+                if (Items.Any(item => string.Equals(item.SelectionKey, row.SelectionKey, StringComparison.Ordinal)))
+                {
+                    continue;
+                }
+
                 Items.Add(ArchiveDisposalItemRow.FromSelectable(row.Source));
             }
 
             RenumberItems();
             RefreshDispositionMethodOptions();
-            OnPropertyChanged(nameof(AvailableTitle));
-            OnPropertyChanged(nameof(DisposalTitle));
-            CommandManager.InvalidateRequerySuggested();
+            RefreshAvailableItems();
         }
 
         private void MoveToAvailable()
         {
             var selected = Items.Where(i => i.IsSelected).ToList();
+            if (selected.Count == 0)
+            {
+                return;
+            }
+
             foreach (var row in selected)
             {
                 Items.Remove(row);
-                AvailableItems.Add(new ArchiveDisposalCandidateRow(row.ToSelectable(_record.MediaKind)));
             }
 
             RenumberItems();
             RefreshDispositionMethodOptions();
-            OnPropertyChanged(nameof(AvailableTitle));
-            OnPropertyChanged(nameof(DisposalTitle));
-            CommandManager.InvalidateRequerySuggested();
+            RefreshAvailableItems();
         }
 
-        private void ApplyDispositionMethod()
+        private void ApplyDispositionMethodToSelected(string? method)
         {
-            string method = BatchDispositionMethod?.Trim() ?? string.Empty;
-            foreach (var item in Items.Where(i => i.IsSelected))
+            if (!CanEditHeader)
+            {
+                return;
+            }
+
+            string normalized = ArchiveDisposalDomainValues.NormalizeDispositionMethod(method);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return;
+            }
+
+            var selected = Items.Where(i => i.IsSelected).ToList();
+            if (selected.Count == 0)
+            {
+                return;
+            }
+
+            var distinctReasons = selected
+                .Select(item => item.DisposalReason?.Trim() ?? string.Empty)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            if (distinctReasons.Count > 1)
+            {
+                _dialogService.ShowMessage(
+                    "所选明细的「离库原因」不一致，请按同一原因分批勾选后再赋值。",
+                    "无法赋值");
+                return;
+            }
+
+            foreach (var item in selected)
             {
                 var allowed = ArchiveDisposalDomainValues.ResolveAllowedMethods(
                     _record.MediaKind,
                     item.DisposalReason,
                     item.MediumKind);
-                if (!allowed.Contains(method, StringComparer.Ordinal))
+                if (!allowed.Contains(normalized, StringComparer.Ordinal))
                 {
-                    _dialogService.ShowError($"「{item.DisplayTitle}」不允许处置方式「{method}」。");
+                    _dialogService.ShowError($"「{item.DisplayTitle}」不允许处置方式「{normalized}」。");
                     return;
                 }
+            }
 
-                item.DispositionMethod = method;
+            foreach (var item in selected)
+            {
+                item.DispositionMethod = normalized;
             }
         }
 
@@ -363,7 +632,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             foreach (var item in Items)
             {
                 item.SortOrder = sort++;
+                item.IsSelected = false;
             }
+
+            OnPropertyChanged(nameof(DisposalItemsTitle));
         }
 
         private List<YearlyArchiveDisposalItem> BuildEntityItems()
@@ -391,7 +663,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 _hasCommittedChanges = true;
                 BindFromRecord(saved);
-                await ReloadSelectableAsync();
+                await ReloadCandidatePoolAsync();
                 _dialogService.ShowMessage("草稿已保存。");
                 RefreshCommandStates();
             }
@@ -405,7 +677,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
-                if (_record.Id <= 0)
+                if (_record.Id <= 0 || HasUnsavedHeaderChanges())
                 {
                     await SaveDraftAsync();
                     if (_record.Id <= 0)
@@ -413,9 +685,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                         return;
                     }
                 }
-                else if (CanEditHeader)
+
+                if (!_dialogService.ShowConfirm("确认提交该离库处置单？提交后将锁定关联介质。"))
                 {
-                    await SaveDraftAsync();
+                    return;
                 }
 
                 await _disposalService.SubmitAsync(_record.Id, RequireUser());
@@ -433,6 +706,11 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
+                if (!_dialogService.ShowConfirm("确认审批通过该离库处置单？"))
+                {
+                    return;
+                }
+
                 await _disposalService.ApproveAsync(_record.Id, ApprovalOpinion, RequireUser());
                 _hasCommittedChanges = true;
                 await ReloadRecordAsync();
@@ -448,6 +726,11 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
+                if (!_dialogService.ShowConfirm("确认进入上传签批单阶段？请先打印签批单并完成线下签字。"))
+                {
+                    return;
+                }
+
                 await _disposalService.ConfirmReadyForUploadAsync(_record.Id, RequireUser());
                 _hasCommittedChanges = true;
                 await ReloadRecordAsync();
@@ -476,16 +759,35 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                if (!_dialogService.ShowConfirm("确认办结本处置单？办结后将写入正式清账结果。"))
+                if (ShowFormatRetainConfirm)
+                {
+                    var missingSlot = Items
+                        .Where(item => ArchiveDisposalDomainValues.IsFormatRetainMethod(item.DispositionMethod))
+                        .FirstOrDefault(item => string.IsNullOrWhiteSpace(item.TargetBlankSlotLocation));
+                    if (missingSlot != null)
+                    {
+                        _dialogService.ShowError($"「{missingSlot.DisplayTitle}」为低格留盘，请先填写目标空盘档口。");
+                        return;
+                    }
+                }
+
+                if (!_dialogService.ShowConfirm("确认办结？办结后将写入正式清账结果并释档空盒/空袋。"))
                 {
                     return;
                 }
+
+                var blankSlots = Items
+                    .Where(item => ArchiveDisposalDomainValues.IsFormatRetainMethod(item.DispositionMethod) && item.Id > 0)
+                    .ToDictionary(
+                        item => item.Id,
+                        item => item.TargetBlankSlotLocation?.Trim() ?? string.Empty);
 
                 await _disposalService.CompleteAsync(
                     _record.Id,
                     RequireUser(),
                     PhysicalRemovalConfirmed,
-                    FormatRetainedConfirmed);
+                    FormatRetainedConfirmed,
+                    blankSlots);
                 _hasCommittedChanges = true;
                 await ReloadRecordAsync();
                 _dialogService.ShowMessage("已办结。");
@@ -500,7 +802,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
-                if (!_dialogService.ShowConfirm($"确认撤回作废【{DisposalNo}】？"))
+                if (!_dialogService.ShowConfirm("确认撤回作废该离库处置单？"))
                 {
                     return;
                 }
@@ -642,7 +944,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             if (latest != null)
             {
                 BindFromRecord(latest);
-                await ReloadSelectableAsync();
+                await ReloadCandidatePoolAsync();
                 await RefreshCompleteHintsAsync();
             }
 
@@ -676,12 +978,39 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             ShowPhysicalRemovalConfirm = await _disposalService.RequiresPhysicalRemovalConfirmationAsync(_record.Id);
             ShowFormatRetainConfirm = await _disposalService.RequiresFormatRetainConfirmationAsync(_record.Id);
+            OnPropertyChanged(nameof(CanEditBlankSlots));
+            OnPropertyChanged(nameof(CanInteractItemsGrid));
+            OnPropertyChanged(nameof(ShowBlankSlotColumn));
+        }
+
+        private bool HasUnsavedHeaderChanges()
+        {
+            static string BuildKey(int mediumId, string? mediumKind, int filingFactId) =>
+                mediumId > 0
+                    ? $"M:{mediumKind?.Trim()}:{mediumId}"
+                    : $"F:{filingFactId}";
+
+            return !string.Equals(_record.Reason ?? string.Empty, Reason ?? string.Empty, StringComparison.Ordinal)
+                || !string.Equals(_record.Remark ?? string.Empty, Remark ?? string.Empty, StringComparison.Ordinal)
+                || !_record.Items
+                    .Select(item => BuildKey(item.MediumId, item.MediumKind, item.FilingFactId))
+                    .OrderBy(key => key, StringComparer.Ordinal)
+                    .SequenceEqual(Items.Select(item => item.SelectionKey).OrderBy(key => key, StringComparer.Ordinal))
+                || !_record.Items
+                    .OrderBy(item => BuildKey(item.MediumId, item.MediumKind, item.FilingFactId), StringComparer.Ordinal)
+                    .Select(item => $"{BuildKey(item.MediumId, item.MediumKind, item.FilingFactId)}|{item.DispositionMethod?.Trim()}")
+                    .SequenceEqual(Items
+                        .OrderBy(item => item.SelectionKey, StringComparer.Ordinal)
+                        .Select(item => $"{item.SelectionKey}|{item.DispositionMethod}"));
         }
 
         private void RefreshCommandStates()
         {
             CommandManager.InvalidateRequerySuggested();
             OnPropertyChanged(nameof(CanEditHeader));
+            OnPropertyChanged(nameof(CanEditBlankSlots));
+            OnPropertyChanged(nameof(CanInteractItemsGrid));
+            OnPropertyChanged(nameof(ShowBlankSlotColumn));
             OnPropertyChanged(nameof(CanSubmit));
             OnPropertyChanged(nameof(CanApprove));
             OnPropertyChanged(nameof(CanConfirmUpload));
@@ -700,6 +1029,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
     }
 
+    /// <summary>
+    /// 可选盘库资料行。
+    /// </summary>
     public sealed class ArchiveDisposalCandidateRow : ViewModelBase
     {
         private bool _isSelected;
@@ -711,6 +1043,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public ArchiveDisposalSelectableItem Source { get; }
 
+        public string SelectionKey => Source.SelectionKey;
+
         public string DisplayTitle => Source.DisplayTitle;
 
         public string DisposalReason => Source.DisposalReason;
@@ -719,6 +1053,20 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string BeforeStorageLocation => Source.BeforeStorageLocation;
 
+        public string ContainerCode => Source.ContainerCode;
+
+        public string ElectronicArchiveNo => Source.ElectronicArchiveNo;
+
+        public string MediumKind => Source.MediumKind;
+
+        public string MediumCode => Source.MediumCode;
+
+        public string MaterialName => Source.MaterialName;
+
+        public string ItemName => Source.ItemName;
+
+        public string FormNo => Source.FormNo;
+
         public bool IsSelected
         {
             get => _isSelected;
@@ -726,10 +1074,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
     }
 
+    /// <summary>
+    /// 待处置明细行。
+    /// </summary>
     public sealed class ArchiveDisposalItemRow : ViewModelBase
     {
         private bool _isSelected;
         private string _dispositionMethod = string.Empty;
+        private string _targetBlankSlotLocation = string.Empty;
+
+        /// <summary>已持久化明细主键；新建未保存行为 0。</summary>
+        public int Id { get; set; }
 
         public int SortOrder { get; set; }
 
@@ -748,7 +1103,13 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string DispositionMethod
         {
             get => _dispositionMethod;
-            set => SetProperty(ref _dispositionMethod, value);
+            set
+            {
+                if (SetProperty(ref _dispositionMethod, value))
+                {
+                    OnPropertyChanged(nameof(IsFormatRetain));
+                }
+            }
         }
 
         public string MaterialName { get; set; } = string.Empty;
@@ -775,7 +1136,14 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string BeforeMediaStatus { get; set; } = string.Empty;
 
-        public string TargetBlankSlotLocation { get; set; } = string.Empty;
+        public string TargetBlankSlotLocation
+        {
+            get => _targetBlankSlotLocation;
+            set => SetProperty(ref _targetBlankSlotLocation, value);
+        }
+
+        public bool IsFormatRetain =>
+            ArchiveDisposalDomainValues.IsFormatRetainMethod(DispositionMethod);
 
         public string DisplayTitle =>
             MediumId > 0
@@ -825,6 +1193,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             return new ArchiveDisposalItemRow
             {
+                Id = item.Id,
                 SortOrder = item.SortOrder,
                 FilingFactId = item.FilingFactId,
                 ContainerId = item.ContainerId,
@@ -832,7 +1201,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 BeforeStorageLocation = item.BeforeStorageLocation,
                 SourceRegisterKind = item.SourceRegisterKind,
                 DisposalReason = item.DisposalReason,
-                DispositionMethod = item.DispositionMethod,
+                DispositionMethod = ArchiveDisposalDomainValues.NormalizeDispositionMethod(item.DispositionMethod),
                 MaterialName = item.MaterialName,
                 ItemName = item.ItemName,
                 FormNo = item.FormNo,
@@ -853,6 +1222,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             return new YearlyArchiveDisposalItem
             {
+                Id = Id,
                 SortOrder = SortOrder,
                 FilingFactId = FilingFactId,
                 ContainerId = ContainerId,
@@ -860,7 +1230,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 BeforeStorageLocation = BeforeStorageLocation,
                 SourceRegisterKind = SourceRegisterKind,
                 DisposalReason = DisposalReason,
-                DispositionMethod = DispositionMethod,
+                DispositionMethod = ArchiveDisposalDomainValues.NormalizeDispositionMethod(DispositionMethod),
                 MaterialName = MaterialName,
                 ItemName = ItemName,
                 FormNo = FormNo,
@@ -874,32 +1244,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ElectronicArchiveNo = ElectronicArchiveNo,
                 BeforeMediaStatus = BeforeMediaStatus,
                 TargetBlankSlotLocation = TargetBlankSlotLocation
-            };
-        }
-
-        public ArchiveDisposalSelectableItem ToSelectable(string mediaKind)
-        {
-            return new ArchiveDisposalSelectableItem
-            {
-                MediaKind = mediaKind,
-                FilingFactId = FilingFactId,
-                ContainerId = ContainerId,
-                ContainerCode = ContainerCode,
-                BeforeStorageLocation = BeforeStorageLocation,
-                SourceRegisterKind = SourceRegisterKind,
-                DisposalReason = DisposalReason,
-                MaterialName = MaterialName,
-                ItemName = ItemName,
-                FormNo = FormNo,
-                InventoryLostCopyCount = InventoryLostCopyCount,
-                InventoryScrapCopyCount = InventoryScrapCopyCount,
-                BeforeLifecycleStatus = BeforeLifecycleStatus,
-                MediumKind = MediumKind,
-                MediumId = MediumId,
-                MediumCode = MediumCode,
-                ElectronicArchiveUnitId = ElectronicArchiveUnitId,
-                ElectronicArchiveNo = ElectronicArchiveNo,
-                BeforeMediaStatus = BeforeMediaStatus
             };
         }
     }

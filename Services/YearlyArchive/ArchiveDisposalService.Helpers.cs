@@ -75,13 +75,10 @@ public sealed partial class ArchiveDisposalService
                 throw new InvalidOperationException($"明细「{ResolveItemDisplay(item)}」：{mismatch}");
             }
 
-            if (string.Equals(
-                    item.DispositionMethod?.Trim(),
-                    ArchiveDisposalDomainValues.MethodHardDiskFormatRetain,
-                    StringComparison.Ordinal)
+            if (ArchiveDisposalDomainValues.IsFormatRetainMethod(item.DispositionMethod)
                 && string.IsNullOrWhiteSpace(item.TargetBlankSlotLocation))
             {
-                // 提交/办结前会自动推荐；草稿允许暂时为空
+                // 低格留盘目标档口在办结前录入，草稿/提交阶段允许暂时为空
             }
         }
     }
@@ -165,7 +162,7 @@ public sealed partial class ArchiveDisposalService
                     ArchiveRegisterDomainValues.MediaKindSimulated,
                     reason,
                     null)
-                : req.DispositionMethod.Trim();
+                : ArchiveDisposalDomainValues.NormalizeDispositionMethod(req.DispositionMethod);
 
             result.Add(new YearlyArchiveDisposalItem
             {
@@ -226,16 +223,10 @@ public sealed partial class ArchiveDisposalService
                     ArchiveRegisterDomainValues.MediaKindElectronic,
                     candidate.DisposalReason,
                     candidate.MediumKind)
-                : req.DispositionMethod.Trim();
+                : ArchiveDisposalDomainValues.NormalizeDispositionMethod(req.DispositionMethod);
 
             string targetBlank = req.TargetBlankSlotLocation?.Trim() ?? string.Empty;
-            if (string.Equals(method, ArchiveDisposalDomainValues.MethodHardDiskFormatRetain, StringComparison.Ordinal)
-                && string.IsNullOrWhiteSpace(targetBlank))
-            {
-                targetBlank = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(
-                    await _hardDiskMediaService.RecommendBlankDedicatedSlotLocationAsync() ?? string.Empty);
-            }
-            else if (!string.IsNullOrWhiteSpace(targetBlank))
+            if (!string.IsNullOrWhiteSpace(targetBlank))
             {
                 targetBlank = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(targetBlank);
             }
@@ -303,29 +294,23 @@ public sealed partial class ArchiveDisposalService
         }
     }
 
-    private async Task EnsureBlankSlotsForFormatRetainAsync(YearlyArchiveDisposalRecord existing)
+    /// <summary>
+    /// 办结前校验低格留盘目标档口：必须已由用户录入，不做自动推荐与预占用。
+    /// </summary>
+    private static void ValidateBlankSlotsForFormatRetain(YearlyArchiveDisposalRecord existing)
     {
         foreach (var item in existing.Items.Where(i =>
-                     string.Equals(
-                         i.DispositionMethod?.Trim(),
-                         ArchiveDisposalDomainValues.MethodHardDiskFormatRetain,
-                         StringComparison.Ordinal)))
+                     ArchiveDisposalDomainValues.IsFormatRetainMethod(i.DispositionMethod)))
         {
-            if (!string.IsNullOrWhiteSpace(item.TargetBlankSlotLocation))
-            {
-                item.TargetBlankSlotLocation =
-                    HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(item.TargetBlankSlotLocation);
-                continue;
-            }
-
-            string? recommended = await _hardDiskMediaService.RecommendBlankDedicatedSlotLocationAsync();
-            if (string.IsNullOrWhiteSpace(recommended))
+            string target = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(item.TargetBlankSlotLocation);
+            if (string.IsNullOrWhiteSpace(target))
             {
                 throw new InvalidOperationException(
-                    $"硬盘「{item.MediumCode}」低格留存失败：无可用空白硬盘专用档口。");
+                    $"硬盘「{item.MediumCode}」为低格留盘，办结前须填写目标空盘档口。");
             }
 
-            item.TargetBlankSlotLocation = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(recommended);
+            item.TargetBlankSlotLocation = target;
+            item.DispositionMethod = ArchiveDisposalDomainValues.NormalizeDispositionMethod(item.DispositionMethod);
         }
     }
 

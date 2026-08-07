@@ -16,7 +16,8 @@ public sealed partial class ArchiveDisposalService
         int recordId,
         User currentUser,
         bool physicalRemovalConfirmed,
-        bool formatRetainedConfirmed)
+        bool formatRetainedConfirmed,
+        IReadOnlyDictionary<int, string>? formatRetainBlankSlotsByItemId = null)
     {
         EnsureArchiveAdmin(currentUser);
         var existing = await _repository.GetRecordByIdForUpdateAsync(recordId)
@@ -43,7 +44,7 @@ public sealed partial class ArchiveDisposalService
                 string.Equals(item.FileCategory, ArchiveDisposalDomainValues.AttachmentCategoryScenePhoto, StringComparison.Ordinal));
             if (!hasScenePhoto)
             {
-                throw new InvalidOperationException("处置方式含「介质销毁」时，办结前须上传处置现场照片。");
+                throw new InvalidOperationException("处置方式含「离库销毁」时，办结前须上传处置现场照片。");
             }
         }
 
@@ -51,7 +52,7 @@ public sealed partial class ArchiveDisposalService
             existing.Items.Select(item => item.DispositionMethod));
         if (needsFormatConfirm && !formatRetainedConfirmed)
         {
-            throw new InvalidOperationException("本单含硬盘低格留存，办结前须确认已完成低级格式化。");
+            throw new InvalidOperationException("本单含低格留盘，办结前须确认已完成低级格式化。");
         }
 
         bool needsPhysicalRemoval = await WillDisposeAnyContainerAsync(existing);
@@ -60,7 +61,20 @@ public sealed partial class ArchiveDisposalService
             throw new InvalidOperationException("本单办结将释档空档案盒/介质袋，须确认已完成物理移除。");
         }
 
-        await EnsureBlankSlotsForFormatRetainAsync(existing);
+        if (formatRetainBlankSlotsByItemId != null)
+        {
+            foreach (var item in existing.Items.Where(i =>
+                         ArchiveDisposalDomainValues.IsFormatRetainMethod(i.DispositionMethod)))
+            {
+                if (formatRetainBlankSlotsByItemId.TryGetValue(item.Id, out string? slot)
+                    && !string.IsNullOrWhiteSpace(slot))
+                {
+                    item.TargetBlankSlotLocation = slot.Trim();
+                }
+            }
+        }
+
+        ValidateBlankSlotsForFormatRetain(existing);
 
         DateTime now = DateTime.Now;
         string operatorName = ResolveUserDisplayName(currentUser);
@@ -260,12 +274,12 @@ public sealed partial class ArchiveDisposalService
             string method = item.DispositionMethod?.Trim() ?? string.Empty;
             string holder = ArchiveDisposalDomainValues.ResolveHolderAfterComplete(method);
 
-            if (string.Equals(method, ArchiveDisposalDomainValues.MethodHardDiskFormatRetain, StringComparison.Ordinal))
+            if (ArchiveDisposalDomainValues.IsFormatRetainMethod(method))
             {
                 string target = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(item.TargetBlankSlotLocation);
                 if (string.IsNullOrWhiteSpace(target))
                 {
-                    throw new InvalidOperationException($"硬盘「{medium.DiskCode}」低格留存缺少目标空白档口。");
+                    throw new InvalidOperationException($"硬盘「{medium.DiskCode}」低格留盘缺少目标空盘档口。");
                 }
 
                 medium.UpdatedTime = now;
@@ -277,7 +291,7 @@ public sealed partial class ArchiveDisposalService
                 ledger.HolderOrOrganization = holder;
                 ledger.Remark = AppendRemark(
                     ledger.Remark,
-                    $"资料离库处置 [{existing.DisposalNo}] 低格留存→{target}");
+                    $"资料离库处置 [{existing.DisposalNo}] 低格留盘→{target}");
 
                 _repository.AddHardDiskTransaction(new HardDiskMediaTransaction
                 {
@@ -293,13 +307,13 @@ public sealed partial class ArchiveDisposalService
                     TargetOrganization = holder,
                     NeedReturn = false,
                     RelatedBatch = existing.DisposalNo,
-                    Description = "资料离库处置：硬盘低格留存至空白硬盘专用档口",
+                    Description = "资料离库处置：低格留盘至空白硬盘专用档口",
                     Remark = existing.Remark
                 });
             }
             else
             {
-                // 介质销毁 / 库内注销 → 离库(处置)
+                // 离库销毁 / 库内注销 → 离库(处置)
                 medium.UpdatedTime = now;
                 ledger.UpdatedTime = now;
                 ledger.MediaStatus = HardDiskMedium.StatusDisposed;

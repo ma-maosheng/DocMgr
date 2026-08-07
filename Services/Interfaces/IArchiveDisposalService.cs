@@ -51,12 +51,14 @@ public interface IArchiveDisposalService
     /// 办结清账。
     /// </summary>
     /// <param name="physicalRemovalConfirmed">本单将释档空盒/空袋时须为 true。</param>
-    /// <param name="formatRetainedConfirmed">含硬盘低格留存时须为 true。</param>
+    /// <param name="formatRetainedConfirmed">含低格留盘时须为 true。</param>
+    /// <param name="formatRetainBlankSlotsByItemId">低格留盘明细的目标空盘档口（按明细 Id）；办结前录入，不做预占用。</param>
     Task CompleteAsync(
         int recordId,
         User currentUser,
         bool physicalRemovalConfirmed,
-        bool formatRetainedConfirmed);
+        bool formatRetainedConfirmed,
+        IReadOnlyDictionary<int, string>? formatRetainBlankSlotsByItemId = null);
 
     /// <summary>撤回作废。</summary>
     Task WithdrawAsync(int recordId, string? reason, User currentUser);

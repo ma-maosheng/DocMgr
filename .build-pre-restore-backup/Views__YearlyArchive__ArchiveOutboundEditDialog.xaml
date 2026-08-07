@@ -1,0 +1,826 @@
+﻿<Window x:Class="DocMgr.Views.YearlyArchive.ArchiveOutboundEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:DocMgr.Views.YearlyArchive"
+        Width="1200"
+        Height="820"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F7FA">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ArchiveRegisterResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            <local:InverseBoolRadioConverter x:Key="InverseBoolRadioConverter"/>
+            <Style x:Key="OutboundItemCellTextStyle" TargetType="TextBlock">
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            </Style>
+            <Style x:Key="OutboundFieldLabelStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="#64748B"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Margin" Value="0,0,0,4"/>
+            </Style>
+            <Style x:Key="OutboundSectionTitleStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="#1E293B"/>
+            </Style>
+            <Style x:Key="OutboundUnitMetaBadgeStyle" TargetType="Border">
+                <Setter Property="Background" Value="#E2E8F0"/>
+                <Setter Property="CornerRadius" Value="3"/>
+                <Setter Property="Padding" Value="8,3"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+            </Style>
+            <Style x:Key="OutboundUnitDataGridStyle" TargetType="DataGrid">
+                <Setter Property="AutoGenerateColumns" Value="False"/>
+                <Setter Property="CanUserAddRows" Value="False"/>
+                <Setter Property="CanUserResizeRows" Value="False"/>
+                <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+                <Setter Property="HeadersVisibility" Value="Column"/>
+                <Setter Property="RowHeight" Value="32"/>
+                <Setter Property="MaxHeight" Value="240"/>
+                <Setter Property="Background" Value="#FAFBFC"/>
+                <Setter Property="BorderBrush" Value="#E2E8F0"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="HorizontalGridLinesBrush" Value="#EEF2F6"/>
+                <Setter Property="RowStyle" Value="{StaticResource StandardDataGridRowStyle}"/>
+                <Setter Property="CellStyle" Value="{StaticResource StandardDataGridCellStyle}"/>
+            </Style>
+            <Style x:Key="OutboundRadioInlineStyle" TargetType="RadioButton">
+                <Setter Property="Margin" Value="0,0,16,0"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
+            <!-- 审批弹窗：申请信息只读字段横排 -->
+            <Style x:Key="OutboundApprovalInfoInlineLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}">
+                <Setter Property="Width" Value="72"/>
+                <Setter Property="Margin" Value="0,0,6,0"/>
+            </Style>
+            <Style x:Key="OutboundApprovalInfoInlineValueStyle" TargetType="TextBlock">
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+                <Setter Property="Foreground" Value="#1E293B"/>
+                <Setter Property="FontSize" Value="12"/>
+            </Style>
+            <Style x:Key="OutboundApprovalCompactStepTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}">
+                <Setter Property="Width" Value="90"/>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="{Binding WindowTitle}" FontSize="18" FontWeight="Bold"/>
+            <TextBlock Text="请填写申请原由、资料去向；通过检索集登记拟领用的资料。领用方式、归还与库内空盘等选项按档案盒/介质袋分别设置。"
+                       Margin="0,6,0,0" Foreground="#666" TextWrapping="Wrap"
+                       Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            <TextBlock Text="请先打印交接单，使用业务助手逐项核对，完成实物交接并上传附件后，再执行资料出库办结。"
+                       Margin="0,6,0,0" Foreground="#666" TextWrapping="Wrap"
+                       Visibility="{Binding ShowHandoverWorkspaceContent, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+            <StackPanel Margin="0,10,0,0" IsEnabled="{Binding CanEditApplicationHeader}"
+                        Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Border Background="White" BorderBrush="#D8E2EC" BorderThickness="1" Padding="14" CornerRadius="4">
+                    <StackPanel>
+                        <TextBlock Text="申请信息" Style="{StaticResource OutboundSectionTitleStyle}" Margin="0,0,0,12"/>
+                        <TextBlock Text="申请原由" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                        <TextBox Text="{Binding Record.Reason, UpdateSourceTrigger=PropertyChanged}" Height="30" Margin="0,0,0,12"
+                                 ToolTip="必填，提交申请前请说明借出目的"/>
+
+                        <TextBlock Text="资料摘要" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                        <TextBox Text="{Binding Record.MaterialSummary, UpdateSourceTrigger=PropertyChanged}" Height="30" Margin="0,0,0,12"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="220"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                <TextBlock Text="资料去向" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                <ComboBox SelectedValue="{Binding DestinationKind}" SelectedValuePath="Tag" Height="30">
+                                    <ComboBoxItem Tag="Internal" Content="本部门（内部）"/>
+                                    <ComboBoxItem Tag="External" Content="外部（单位）"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1"
+                                        Visibility="{Binding ShowExternalUnit, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="外部单位" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                <TextBox Text="{Binding Record.ExternalUnit, UpdateSourceTrigger=PropertyChanged}" Height="30"
+                                         ToolTip="资料去向为外部（单位）时必填"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <DockPanel Margin="0,12,0,0" LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Left"
+                                       Text="附有证明材料"
+                                       Style="{StaticResource OutboundFieldLabelStyle}"
+                                       Width="96"
+                                       Margin="0,0,8,0"
+                                       VerticalAlignment="Center"/>
+                            <StackPanel DockPanel.Dock="Left"
+                                        Orientation="Horizontal"
+                                        Margin="0,0,12,0"
+                                        VerticalAlignment="Center">
+                                <RadioButton Content="是"
+                                             GroupName="OutboundProofMaterialHas"
+                                             Style="{StaticResource OutboundRadioInlineStyle}"
+                                             IsChecked="{Binding HasProofMaterial, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                <RadioButton Content="否"
+                                             GroupName="OutboundProofMaterialHas"
+                                             Style="{StaticResource OutboundRadioInlineStyle}"
+                                             IsChecked="{Binding HasProofMaterial, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                            <DockPanel LastChildFill="True">
+                                <DockPanel.Style>
+                                    <Style TargetType="DockPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasProofMaterial}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DockPanel.Style>
+                                <TextBlock DockPanel.Dock="Left"
+                                           Text="名称"
+                                           Style="{StaticResource OutboundFieldLabelStyle}"
+                                           Width="36"
+                                           Margin="0,0,8,0"
+                                           VerticalAlignment="Center"/>
+                                <TextBox Height="30"
+                                         Text="{Binding ProofMaterialName, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="填写证明材料名称；审批环节由资料管理员上传扫描件"/>
+                            </DockPanel>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+
+        <DockPanel Grid.Row="1">
+            <Border DockPanel.Dock="Top" Margin="0,0,0,10" Padding="12,10" Background="White"
+                    BorderBrush="#D8E2EC" BorderThickness="1"
+                    Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="拟领用资料" Style="{StaticResource OutboundSectionTitleStyle}"/>
+                        <TextBlock Text="{Binding ContainerUnitsSummary}" Margin="0,4,0,0" Foreground="#64748B" FontSize="12"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="通过检索集登记拟领用的资料"
+                            Command="{Binding RegisterItemsFromResultSetCommand}"
+                            Padding="12,6" VerticalAlignment="Center"
+                            IsEnabled="{Binding CanEditApplicationHeader}"/>
+                </Grid>
+            </Border>
+
+            <Border DockPanel.Dock="Top" Margin="0,0,0,10" Padding="24" Background="#FAFBFC"
+                    BorderBrush="#E2E8F0" BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding ShowApplicationActions}" Value="True"/>
+                                    <Condition Binding="{Binding HasContainerUnits}" Value="False"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="暂无拟领用资料" FontSize="15" FontWeight="SemiBold" Foreground="#64748B"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="请点击上方「通过检索集登记拟领用的资料」添加盒/袋与资料明细。"
+                               Margin="0,8,0,0" Foreground="#94A3B8" TextWrapping="Wrap" TextAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <Border DockPanel.Dock="Top" Margin="0,0,0,8" Padding="10,8" Background="#EEF3F8" BorderBrush="#C5D3E0" BorderThickness="1"
+                    Visibility="{Binding ShowApprovalApplicationInfo, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="申请信息" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
+                    <!-- 短字段三列横排：标签与值同一行，压缩纵向占用 -->
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,4" LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Left" Text="申请人" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                            <TextBlock Text="{Binding Record.ApplicantName}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
+                        </DockPanel>
+                        <DockPanel Grid.Row="0" Grid.Column="1" Margin="0,0,10,4" LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Left" Text="申请部门" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                            <TextBlock Text="{Binding Record.ApplicantDept}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
+                        </DockPanel>
+                        <DockPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,4" LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Left" Text="申请日期" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                            <TextBlock Text="{Binding ApplyDateDisplay}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
+                        </DockPanel>
+                        <DockPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,0" LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Left" Text="资料去向" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                            <TextBlock Text="{Binding DestinationDisplayText}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
+                        </DockPanel>
+                        <DockPanel Grid.Row="1" Grid.Column="1" Margin="0,0,10,0" LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Left" Text="预计归还" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                            <TextBlock Text="{Binding ExpectedReturnDateDisplay}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
+                        </DockPanel>
+                        <DockPanel Grid.Row="1" Grid.Column="2" LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Left" Text="证明材料" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                            <TextBlock Text="{Binding ProofMaterialDisplay}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
+                        </DockPanel>
+                    </Grid>
+                    <DockPanel Margin="0,2,0,2" LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Left" Text="申请原由" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                        <TextBlock Text="{Binding Record.Reason}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,2,0,0" LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Left" Text="资料摘要" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                        <TextBlock Text="{Binding Record.MaterialSummary}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+
+            <Border DockPanel.Dock="Top" Margin="0,0,0,8" Padding="10,8" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1"
+                    Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="审批信息" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4"/>
+                    <TextBlock Text="各节点仅需签字人与日期，无需签署具体意见。"
+                               Foreground="#64748B" FontSize="11" Margin="0,0,0,6"/>
+                    <!-- 双列紧凑签字行：每节点单行，约占原纵向一半 -->
+                    <Grid IsEnabled="{Binding CanEditApprovalFields}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}">
+                            <DockPanel LastChildFill="True">
+                                <TextBlock DockPanel.Dock="Left" Text="部门审核" Style="{StaticResource OutboundApprovalCompactStepTitleStyle}"/>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                    <TextBox Width="90"
+                                             Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                             Text="{Binding Record.DeptAuditor, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
+                                    <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                SelectedDate="{Binding Record.DeptAuditDate}"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}">
+                            <DockPanel LastChildFill="True">
+                                <TextBlock DockPanel.Dock="Left" Text="资料室负责人" Style="{StaticResource OutboundApprovalCompactStepTitleStyle}"/>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                    <TextBox Width="90"
+                                             Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                             Text="{Binding Record.ArchiveRoomHead, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
+                                    <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                SelectedDate="{Binding Record.ArchiveRoomHeadDate}"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}">
+                            <DockPanel LastChildFill="True">
+                                <TextBlock DockPanel.Dock="Left" Text="生产科负责人" Style="{StaticResource OutboundApprovalCompactStepTitleStyle}"/>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                    <TextBox Width="90"
+                                             Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                             Text="{Binding Record.ProductionHead, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
+                                    <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                SelectedDate="{Binding Record.ProductionHeadDate}"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}">
+                            <DockPanel LastChildFill="True">
+                                <TextBlock DockPanel.Dock="Left" Text="生产副院长" Style="{StaticResource OutboundApprovalCompactStepTitleStyle}"/>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                    <TextBox Width="90"
+                                             Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                             Text="{Binding Record.VicePresident, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
+                                    <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                SelectedDate="{Binding Record.VicePresidentDate}"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                        </Grid>
+
+                    <!-- 附件改在确认实物交接后的交接办理区统一上传 -->
+                </StackPanel>
+            </Border>
+
+            <Border DockPanel.Dock="Top" Margin="0,0,0,8" Padding="10" Background="#E8F5E9" BorderBrush="#A5D6A7" BorderThickness="1"
+                    Visibility="{Binding ShowHandoverWorkspaceContent, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="资料出库交接" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                            <TextBlock Text="申请单号" Foreground="#666"/>
+                            <TextBlock Text="{Binding Record.OutboundNo}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="8,0,8,0">
+                            <TextBlock Text="领用人" Foreground="#666"/>
+                            <TextBlock Text="{Binding Record.ApplicantName}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                            <TextBlock Text="当前状态" Foreground="#666"/>
+                            <TextBlock Text="{Binding StatusDisplay}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="资料摘要" Foreground="#666"/>
+                    <TextBlock Text="{Binding Record.MaterialSummary}" Margin="0,4,0,12" TextWrapping="Wrap"/>
+
+                    <TextBlock Text="交接备注" Margin="0,0,0,4"/>
+                    <TextBox Text="{Binding HandoverRemark, UpdateSourceTrigger=PropertyChanged}"
+                             MinHeight="56"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             VerticalScrollBarVisibility="Auto"
+                             IsEnabled="{Binding CanEditHandoverRemark}"/>
+                    <TextBlock Text="{Binding HandoverRemarkHint}" Margin="0,6,0,12" Foreground="#2E7D32" TextWrapping="Wrap" FontSize="11"/>
+
+                    <TextBlock Text="附件材料" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="格式限 PDF / 常见图像；签批交接单、资料照片必传，证明材料按申请声明，其他附件可选。"
+                               Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Grid.Column="0" Margin="0,0,0,8" Padding="8,6"
+                                Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
+                            <DockPanel LastChildFill="True">
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
+                                    <Button DockPanel.Dock="Right" Content="上传"
+                                            Command="{Binding UploadSignedApprovalCommand}"
+                                            Padding="8,2" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                    <TextBlock Text="签批交接单" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <ListView ItemsSource="{Binding SignedApprovalAttachments}" Height="72"
+                                          BorderBrush="#EEE" BorderThickness="1">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="文件名" Width="160" DisplayMemberBinding="{Binding FileName}"/>
+                                            <GridViewColumn Header="附件分类" Width="90" DisplayMemberBinding="{Binding FileCategoryDisplay}"/>
+                                            <GridViewColumn Header="时间" Width="110" DisplayMemberBinding="{Binding UploadTime, StringFormat=yyyy-MM-dd HH:mm}"/>
+                                            <GridViewColumn Header="操作" Width="100">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Button Content="查看" Padding="6,1" Margin="0,0,4,0"
+                                                                    Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                            <Button Content="删除" Padding="6,1"
+                                                                    Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="0" Grid.Column="2" Margin="0,0,0,8" Padding="8,6"
+                                Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
+                            <DockPanel LastChildFill="True">
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
+                                    <Button DockPanel.Dock="Right" Content="上传"
+                                            Command="{Binding UploadMaterialPhotoCommand}"
+                                            Padding="8,2" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                    <TextBlock Text="资料照片" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <ListView ItemsSource="{Binding MaterialPhotoAttachments}" Height="72"
+                                          BorderBrush="#EEE" BorderThickness="1">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="文件名" Width="160" DisplayMemberBinding="{Binding FileName}"/>
+                                            <GridViewColumn Header="附件分类" Width="90" DisplayMemberBinding="{Binding FileCategoryDisplay}"/>
+                                            <GridViewColumn Header="时间" Width="110" DisplayMemberBinding="{Binding UploadTime, StringFormat=yyyy-MM-dd HH:mm}"/>
+                                            <GridViewColumn Header="操作" Width="100">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Button Content="查看" Padding="6,1" Margin="0,0,4,0"
+                                                                    Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                            <Button Content="删除" Padding="6,1"
+                                                                    Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Grid.Column="0" Padding="8,6"
+                                Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
+                            <DockPanel LastChildFill="True">
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
+                                    <Button DockPanel.Dock="Right" Content="上传"
+                                            Command="{Binding UploadProofMaterialScanCommand}"
+                                            Padding="8,2" IsEnabled="{Binding CanUploadProofMaterialAttachment}"/>
+                                    <TextBlock Text="证明材料" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <TextBlock DockPanel.Dock="Bottom" Text="{Binding ProofMaterialAttachmentHint, Mode=OneWay}"
+                                           Margin="0,4,0,0" Foreground="#B45309" TextWrapping="Wrap" FontSize="11"/>
+                                <ListView ItemsSource="{Binding ProofMaterialAttachments}" Height="72"
+                                          BorderBrush="#EEE" BorderThickness="1">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="文件名" Width="160" DisplayMemberBinding="{Binding FileName}"/>
+                                            <GridViewColumn Header="附件分类" Width="90" DisplayMemberBinding="{Binding FileCategoryDisplay}"/>
+                                            <GridViewColumn Header="时间" Width="110" DisplayMemberBinding="{Binding UploadTime, StringFormat=yyyy-MM-dd HH:mm}"/>
+                                            <GridViewColumn Header="操作" Width="100">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Button Content="查看" Padding="6,1" Margin="0,0,4,0"
+                                                                    Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                            <Button Content="删除" Padding="6,1"
+                                                                    Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Grid.Column="2" Padding="8,6"
+                                Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
+                            <DockPanel LastChildFill="True">
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
+                                    <Button DockPanel.Dock="Right" Content="上传"
+                                            Command="{Binding UploadOtherAttachmentCommand}"
+                                            Padding="8,2" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                    <TextBlock Text="其他附件（可选）" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <TextBlock DockPanel.Dock="Bottom" Text="非办结必备，按需上传即可。"
+                                           Margin="0,4,0,0" Foreground="#64748B" TextWrapping="Wrap" FontSize="11"/>
+                                <ListView ItemsSource="{Binding OtherAttachments}" Height="72"
+                                          BorderBrush="#EEE" BorderThickness="1">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="文件名" Width="160" DisplayMemberBinding="{Binding FileName}"/>
+                                            <GridViewColumn Header="附件分类" Width="90" DisplayMemberBinding="{Binding FileCategoryDisplay}"/>
+                                            <GridViewColumn Header="时间" Width="110" DisplayMemberBinding="{Binding UploadTime, StringFormat=yyyy-MM-dd HH:mm}"/>
+                                            <GridViewColumn Header="操作" Width="100">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Button Content="查看" Padding="6,1" Margin="0,0,4,0"
+                                                                    Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                            <Button Content="删除" Padding="6,1"
+                                                                    Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,2">
+                <ItemsControl ItemsSource="{Binding ContainerUnits}">
+                    <ItemsControl.Style>
+                        <Style TargetType="ItemsControl">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasContainerUnits}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ItemsControl.Style>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,14" Background="White"
+                                    BorderBrush="#D0DAE4" BorderThickness="1" CornerRadius="4">
+                                <StackPanel>
+                                    <Border Background="#F8FAFC" Padding="14,10" BorderBrush="#E8EDF3" BorderThickness="0,0,0,1">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding DisplayTitle}" FontSize="15" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                    <Border Style="{StaticResource OutboundUnitMetaBadgeStyle}">
+                                                        <TextBlock Foreground="#475569" FontSize="12">
+                                                            <Run Text="介质类型："/>
+                                                            <Run Text="{Binding MediaTypeSummary, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                        </TextBlock>
+                                                    </Border>
+                                                    <Border Style="{StaticResource OutboundUnitMetaBadgeStyle}">
+                                                        <TextBlock Text="{Binding ItemCountDisplay}" Foreground="#475569" FontSize="12"/>
+                                                    </Border>
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" HorizontalAlignment="Right" MaxWidth="360">
+                                                <TextBlock Text="当前位置" Style="{StaticResource OutboundFieldLabelStyle}" TextAlignment="Right"/>
+                                                <TextBlock Text="{Binding LocationDisplay}" Foreground="#334155" FontWeight="SemiBold"
+                                                           TextWrapping="Wrap" TextAlignment="Right"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <StackPanel Margin="14,12,14,14">
+                                        <Border Background="#EEF3F8" BorderBrush="#D4E0EC" BorderThickness="1"
+                                                CornerRadius="4" Padding="14,12" Margin="0,0,0,12">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding CanEdit}" Value="False">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <StackPanel IsEnabled="{Binding CanEdit}">
+                                                <TextBlock Text="领用设置（本盒/袋统一）" Style="{StaticResource OutboundSectionTitleStyle}" Margin="0,0,0,10"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="200"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                                        <TextBlock Text="领用方式" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                        <ComboBox ItemsSource="{Binding UsageModeOptions}"
+                                                                  SelectedValue="{Binding UsageMode, UpdateSourceTrigger=PropertyChanged}"
+                                                                  SelectedValuePath="Value" DisplayMemberPath="Display" Height="30"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" Margin="0,0,16,0" MinWidth="160"
+                                                                Visibility="{Binding ShowMaterialNeedReturn, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Text="提档资料是否归还" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                            <RadioButton Content="是" Style="{StaticResource OutboundRadioInlineStyle}"
+                                                                         GroupName="{Binding NeedReturnRadioGroup}"
+                                                                         IsChecked="{Binding NeedReturn, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                            <RadioButton Content="否" Style="{StaticResource OutboundRadioInlineStyle}"
+                                                                         GroupName="{Binding NeedReturnRadioGroup}"
+                                                                         IsChecked="{Binding NeedReturn, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" Margin="0,0,16,0" MinWidth="160"
+                                                                Visibility="{Binding ShowDuplicateSettings, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Text="是否使用库内空盘" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                            <RadioButton Content="是" Style="{StaticResource OutboundRadioInlineStyle}"
+                                                                         GroupName="{Binding UseInStockBlankRadioGroup}"
+                                                                         IsChecked="{Binding UseInStockBlankDisk, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                            <RadioButton Content="否" Style="{StaticResource OutboundRadioInlineStyle}"
+                                                                         GroupName="{Binding UseInStockBlankRadioGroup}"
+                                                                         IsChecked="{Binding UseInStockBlankDisk, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="3"
+                                                                Visibility="{Binding RequiresExpectedReturnDate, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Text="预计归还日期" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                        <DatePicker SelectedDate="{Binding ExpectedReturnDate, UpdateSourceTrigger=PropertyChanged}"
+                                                                    Height="30" Width="200" HorizontalAlignment="Left"
+                                                                    IsEnabled="{Binding CanEditExpectedReturnDate}"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                                <TextBlock Text="{Binding SharedDiskSettingsHint}"
+                                                           Margin="0,8,0,0" Foreground="#64748B" TextWrapping="Wrap" FontSize="12"
+                                                           Visibility="{Binding ShowSharedDiskSettingsHint, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                <Grid Margin="0,12,0,0"
+                                                      Visibility="{Binding ShowDuplicateSettings, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="200"/>
+                                                        <ColumnDefinition Width="220"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0" Margin="0,0,16,0"
+                                                                Visibility="{Binding ShowSelfProvidedDuplicateMedium, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Text="拷贝目标介质" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                        <ComboBox ItemsSource="{Binding DuplicateMediumOptions}"
+                                                                  SelectedValue="{Binding DuplicateMediumKind, UpdateSourceTrigger=PropertyChanged}"
+                                                                  SelectedValuePath="Value" DisplayMemberPath="Display" Height="30"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="0" Margin="0,0,16,0"
+                                                                Visibility="{Binding ShowBlankDiskFields, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Text="库内空盘选择" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBox Grid.Column="0" Text="{Binding RequisitionedDiskCode, Mode=OneWay}"
+                                                                     IsReadOnly="True" Height="30" VerticalContentAlignment="Center" Background="#F8FAFC"/>
+                                                            <Button Grid.Column="1" Content="选择" Command="{Binding PickBlankDiskCommand}"
+                                                                    Margin="8,0,0,0" Padding="12,4" MinWidth="64"/>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1"
+                                                                Visibility="{Binding ShowRequisitionedDiskNeedReturn, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Text="硬盘是否归还" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                            <RadioButton Content="是" Style="{StaticResource OutboundRadioInlineStyle}"
+                                                                         GroupName="{Binding RequisitionedDiskNeedReturnRadioGroup}"
+                                                                         IsChecked="{Binding RequisitionedDiskNeedReturn, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                            <RadioButton Content="否" Style="{StaticResource OutboundRadioInlineStyle}"
+                                                                         GroupName="{Binding RequisitionedDiskNeedReturnRadioGroup}"
+                                                                         IsChecked="{Binding RequisitionedDiskNeedReturn, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1"
+                                                CornerRadius="4" Padding="14,10" Margin="0,0,0,12">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding CanEdit}" Value="False">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                                    <TextBlock Text="领用方式" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                    <TextBlock Text="{Binding UsageModeDisplay}" Foreground="#1E293B" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Margin="8,0">
+                                                    <TextBlock Text="提档资料是否归还" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                    <TextBlock Text="{Binding NeedReturnDisplay}" Foreground="#1E293B"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" Margin="8,0">
+                                                    <TextBlock Text="库内空盘" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                    <TextBlock Text="{Binding RequisitionedDiskCode}" Foreground="#1E293B"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="3" Margin="8,0">
+                                                    <TextBlock Text="硬盘是否归还" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                    <TextBlock Text="{Binding RequisitionedDiskNeedReturnDisplay}" Foreground="#1E293B"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="4" Margin="8,0,0,0">
+                                                    <TextBlock Text="预计归还日期" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                                    <TextBlock Text="{Binding ExpectedReturnDateDisplay}" Foreground="#1E293B"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock DockPanel.Dock="Top" Text="盒/袋内资料明细" Style="{StaticResource OutboundSectionTitleStyle}" Margin="0,0,0,8"/>
+                                            <DataGrid ItemsSource="{Binding ItemRows}"
+                                                      Style="{StaticResource OutboundUnitDataGridStyle}"
+                                                      IsReadOnly="{Binding DataContext.IsItemsReadOnly, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                <DataGrid.CellStyle>
+                                                    <Style TargetType="DataGridCell" BasedOn="{StaticResource StandardDataGridCellStyle}">
+                                                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                                        <Setter Property="Padding" Value="6,2"/>
+                                                    </Style>
+                                                </DataGrid.CellStyle>
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="年度" Binding="{Binding ItemArchiveYearDisplay}" Width="52" IsReadOnly="True"
+                                                                        ElementStyle="{StaticResource OutboundItemCellTextStyle}"/>
+                                                    <DataGridTextColumn Header="项目" Binding="{Binding ItemProjectName}" Width="110" IsReadOnly="True"
+                                                                        ElementStyle="{StaticResource OutboundItemCellTextStyle}"/>
+                                                    <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" MinWidth="200" Width="*"
+                                                                        IsReadOnly="True" ElementStyle="{StaticResource OutboundItemCellTextStyle}"/>
+                                                    <DataGridTextColumn Header="子项" Binding="{Binding ItemName}" Width="140" IsReadOnly="True"
+                                                                        ElementStyle="{StaticResource OutboundItemCellTextStyle}"/>
+                                                    <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevel}" Width="52" IsReadOnly="True"
+                                                                        ElementStyle="{StaticResource OutboundItemCellTextStyle}"/>
+                                                    <DataGridTemplateColumn Header="份数" Width="52">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <TextBox Text="{Binding CopyCount, UpdateSourceTrigger=PropertyChanged}"
+                                                                         IsEnabled="{Binding IsCopyCountEditable}"
+                                                                         Height="24" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTextColumn Header="范围" Binding="{Binding SelectionScopeDisplay}" Width="100" IsReadOnly="True"
+                                                                        ElementStyle="{StaticResource OutboundItemCellTextStyle}"/>
+                                                    <DataGridTemplateColumn Header="操作" Width="110">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                                    <Button Content="详情" Command="{Binding ViewDetailCommand}" Padding="6,2" Margin="0,0,6,0" FontSize="11"/>
+                                                                    <Button Content="删除" Command="{Binding RemoveCommand}" Padding="6,2" FontSize="11"
+                                                                            Visibility="{Binding CanEdit, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </DockPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+        </DockPanel>
+
+        <Border Grid.Row="2" Margin="0,12,0,0" Padding="12,10,0,0" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Background="#FAFBFC">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal">
+                <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" ToolTip="保存为草稿，暂不提交审批" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="提交申请" Command="{Binding SubmitCommand}" ToolTip="提交申请，进入审批流程" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="撤回" Command="{Binding WithdrawCommand}" ToolTip="撤回申请并作废" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="打印" Command="{Binding PrintCommand}" ToolTip="打印借出申请单" Margin="0,0,8,0" Padding="12,6"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Button Content="审批通过" Command="{Binding SaveApprovalCommand}" ToolTip="{Binding ApproveHintText}" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="确认实物交接" Command="{Binding ConfirmPhysicalHandoverCommand}" ToolTip="{Binding ConfirmHandoverHintText}" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="打印审批单" Command="{Binding PrintApprovalCommand}" ToolTip="{Binding PrintApprovalHintText}" Margin="0,0,8,0" Padding="12,6"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Visibility="{Binding ShowHandoverWorkspaceContent, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Button Content="打印交接单" Command="{Binding PrintHandoverCommand}" ToolTip="打印资料出库交接单" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="业务助手" Command="{Binding OpenBusinessAssistantCommand}" ToolTip="打开资料出库业务助手，辅助办理交接" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="资料出库办结" Command="{Binding CompleteHandoverCommand}" ToolTip="确认实物交接完成，办结出库（业务闭环）" Margin="0,0,8,0" Padding="12,6"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Button Grid.Column="1" Content="关闭" Command="{Binding CloseCommand}" Padding="16,6"/>
+        </Grid>
+        </Border>
+    </Grid>
+</Window>

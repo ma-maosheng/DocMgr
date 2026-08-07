@@ -75,6 +75,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<ArchiveSimulatedRelocationPage>("YA-REL-SIM", "模拟介质迁档");
             Add<ArchiveElectronicRelocationPage>("YA-REL-ELC", "电子介质迁档");
             Add<ArchiveRelocationLedgerPage>("YA-REL-LDG", "迁档台账");
+            Add<ArchiveDisposalPage>("YA-DSP", "资料离库处置");
 
             // YA Dialogs / Windows
             Add<ArchiveRegisterEditDialog>("YA-REG-ED", "建档编辑");
@@ -89,6 +90,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<SimulatedArchiveInventoryRegisterEditDialog>("YA-INV-SIM-ED", "模拟盘库登记编辑");
             Add<ElectronicArchiveInventoryRegisterEditDialog>("YA-INV-ELC-ED", "电子盘库登记编辑");
             Add<ElectronicMediaItemEntriesDialog>("YA-ELC-ENT", "电子目录/文件明细");
+            Add<ArchiveDisposalEditDialog>("YA-DSP-ED", "资料离库处置编辑");
 
             // HD / OD Pages
             Add<HardDiskMediaPage>("HD-MED", "硬盘概览");

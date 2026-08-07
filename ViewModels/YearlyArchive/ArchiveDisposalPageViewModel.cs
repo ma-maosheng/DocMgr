@@ -69,7 +69,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string BannerText => IsSimulated
             ? "仅清账盘库登记产生的丢失/拟销资料。流程对齐硬盘离库处置：草稿→提交→审批→确认可上传→上传签批→办结。办结将事实置为已处置；空盒释档前须确认物理移除。"
-            : "仅清账电子袋内已盘库登记为损坏/盘失/拟销的硬盘或光盘。拟销硬盘可选低格留存（空白硬盘专用档口）或介质销毁。空袋释档前须确认物理移除。";
+            : "仅清账电子袋内已盘库登记为损坏/盘失/拟销的硬盘或光盘。拟销硬盘默认低格留盘（办结前填写空盘档口）或离库销毁。空袋释档前须确认物理移除。";
 
         public ObservableCollection<YearlyArchiveDisposalRecord> Records { get; } = new();
 
