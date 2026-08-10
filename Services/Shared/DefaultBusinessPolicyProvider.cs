@@ -103,6 +103,27 @@ namespace DocMgr.Services.Shared
                     WorkflowMode: BusinessWorkflowMode.Apply,
                     SequenceLength: 3,
                     ApprovalPolicy: ApplyApprovalPolicy,
+                    AttachmentPolicy: ApplyAttachmentPolicy),
+                [BusinessNoCategory.NetworkInboundApply] = new(
+                    BusinessNoCategory.NetworkInboundApply,
+                    Prefix: "网-入-申",
+                    WorkflowMode: BusinessWorkflowMode.Apply,
+                    SequenceLength: 4,
+                    ApprovalPolicy: ApplyApprovalPolicy,
+                    AttachmentPolicy: ApplyAttachmentPolicy),
+                [BusinessNoCategory.NetworkOutboundApply] = new(
+                    BusinessNoCategory.NetworkOutboundApply,
+                    Prefix: "网-出-申",
+                    WorkflowMode: BusinessWorkflowMode.Apply,
+                    SequenceLength: 4,
+                    ApprovalPolicy: ApplyApprovalPolicy,
+                    AttachmentPolicy: ApplyAttachmentPolicy),
+                [BusinessNoCategory.NetworkDisposalApply] = new(
+                    BusinessNoCategory.NetworkDisposalApply,
+                    Prefix: "网-处-申",
+                    WorkflowMode: BusinessWorkflowMode.Apply,
+                    SequenceLength: 4,
+                    ApprovalPolicy: ApplyApprovalPolicy,
                     AttachmentPolicy: ApplyAttachmentPolicy)
             };
 

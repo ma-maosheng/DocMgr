@@ -2,10 +2,12 @@ using DocMgr.ViewModels;
 using DocMgr.ViewModels.Cabinets;
 using DocMgr.ViewModels.HardDiskMedia;
 using DocMgr.ViewModels.HistoryArchive;
+using DocMgr.ViewModels.NetworkTransfer;
 using DocMgr.ViewModels.Projects;
 using DocMgr.ViewModels.SystemSettings;
 using DocMgr.ViewModels.YearlyArchive;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.YearlyArchive;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,6 +28,13 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<HardDiskInventoryRegisterPageViewModel>();
         services.AddTransient<ArchiveInventoryRegisterPageViewModel>();
         services.AddTransient<ArchiveDisposalPageViewModel>();
+        services.AddTransient<Func<NetworkTransferWorkspaceMode, int, NetworkInboundWorkbenchPageViewModel>>(sp =>
+            (mode, initialRecordId) => ActivatorUtilities.CreateInstance<NetworkInboundWorkbenchPageViewModel>(
+                sp, mode, initialRecordId));
+        services.AddTransient<Func<NetworkTransferWorkspaceMode, int, NetworkOutboundWorkbenchPageViewModel>>(sp =>
+            (mode, initialRecordId) => ActivatorUtilities.CreateInstance<NetworkOutboundWorkbenchPageViewModel>(
+                sp, mode, initialRecordId));
+        services.AddTransient<NetworkOnNetDisposalPageViewModel>();
         services.AddTransient<Func<HardDiskReturnWorkspaceMode, HardDiskMediaReturnRegistrationPageViewModel>>(sp =>
             mode => ActivatorUtilities.CreateInstance<HardDiskMediaReturnRegistrationPageViewModel>(sp, mode));
         services.AddTransient<HardDiskMediaApprovalPageViewModel>();

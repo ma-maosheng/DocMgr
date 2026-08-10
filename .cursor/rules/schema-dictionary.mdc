@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-07-31T09:33:54Z
+> 生成时间（UTC）：2026-08-10T03:52:24Z
 
 ## 表索引
 
@@ -42,6 +42,13 @@ alwaysApply: true
 | 硬盘出入库流水 | `HardDiskMediaTransaction` | `HardDiskMediaTransactions` | 表 |
 | 硬盘介质 | `HardDiskMedium` | `HardDiskMedia` | 表 |
 | 硬盘登记锁 | `HardDiskRegisterLock` | `HardDiskRegisterLocks` | 表 |
+| 入网申请明细 | `NetworkInboundItem` | `NetworkInboundItems` | 表 |
+| 入网申请单 | `NetworkInboundRecord` | `NetworkInboundRecords` | 表 |
+| 在网台账 | `NetworkOnNetAsset` | `NetworkOnNetAssets` | 表 |
+| 在网数据处置明细 | `NetworkOnNetDisposalItem` | `NetworkOnNetDisposalItems` | 表 |
+| 在网数据处置单 | `NetworkOnNetDisposalRecord` | `NetworkOnNetDisposalRecords` | 表 |
+| 出网申请明细 | `NetworkOutboundItem` | `NetworkOutboundItems` | 表 |
+| 出网申请单 | `NetworkOutboundRecord` | `NetworkOutboundRecords` | 表 |
 | 光盘台账 | `OpticalDiscLedger` | `OpticalDiscLedgers` | 表 |
 | 光盘流转流水 | `OpticalDiscMediaTransaction` | `OpticalDiscMediaTransactions` | 表 |
 | 光盘介质 | `OpticalDiscMedium` | `OpticalDiscMedia` | 表 |
@@ -57,6 +64,8 @@ alwaysApply: true
 | 年度档案盒 | `YearlyArchiveBox` | `YearlyArchiveBoxes` | 表 |
 | 档案盒-介质明细关联 | `YearlyArchiveBoxMediaItemLink` | `YearlyArchiveBoxMediaItemLinks` | 表 |
 | 档案盒-登记申请关联 | `YearlyArchiveBoxYearlyArchiveRegisterRecord` | `YearlyArchiveBoxYearlyArchiveRegisterRecord` | 表 |
+| YearlyArchiveDisposalItem | `YearlyArchiveDisposalItem` | `YearlyArchiveDisposalItems` | 表 |
+| YearlyArchiveDisposalRecord | `YearlyArchiveDisposalRecord` | `YearlyArchiveDisposalRecords` | 表 |
 | 立档事实 | `YearlyArchiveFilingFact` | `YearlyArchiveFilingFacts` | 表 |
 | 资料盘库登记明细 | `YearlyArchiveInventoryRegisterItem` | `YearlyArchiveInventoryRegisterItems` | 表 |
 | 资料盘库登记单 | `YearlyArchiveInventoryRegisterRecord` | `YearlyArchiveInventoryRegisterRecords` | 表 |
@@ -112,7 +121,7 @@ alwaysApply: true
 | 宽度(cm) | `WidthCm` | `Decimal` | 否 |
 | 高度(cm) | `HeightCm` | `Decimal` | 否 |
 | 厚度(cm) | `ThicknessCm` | `Decimal` | 否 |
-| 排序 | `SortOrder` | `Int32` | 否 |
+| 排序序号 | `SortOrder` | `Int32` | 否 |
 
 ### ArchiveContainerProjection（档案容器汇总视图）
 
@@ -283,8 +292,8 @@ alwaysApply: true
 | 处置前介质状态 | `BeforeMediaStatus` | `String` | 否 |
 | 处置前存放位置 | `BeforeStorageLocation` | `String` | 否 |
 | 处置前介质属性 | `BeforeMediaNature` | `String` | 否 |
-| 离库原因 | `DisposalReason` | `String` | 否 |
-| 离库后处置方式 | `DispositionMethod` | `String` | 否 |
+| 处置原因 | `DisposalReason` | `String` | 否 |
+| 处置方式 | `DispositionMethod` | `String` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 
 ### HardDiskDisposalRecord（硬盘离库处置单）
@@ -368,7 +377,7 @@ alwaysApply: true
 | 硬盘编号 | `DiskCode` | `String` | 否 |
 | 介质状态 | `MediaStatus` | `String` | 否 |
 | 介质属性 | `MediaNature` | `String` | 否 |
-| 存放位置 | `StorageLocation` | `String` | 否 |
+| 存储位置 | `StorageLocation` | `String` | 否 |
 | 责任部门 | `HolderOrOrganization` | `String` | 否 |
 | 是否需归还 | `NeedReturn` | `Boolean` | 否 |
 | 登记人 | `RegisterPerson` | `String` | 否 |
@@ -471,6 +480,212 @@ alwaysApply: true
 | 占用业务单号 | `BusinessNo` | `String` | 否 |
 | 占用前状态 | `PreviousStatus` | `String` | 否 |
 | 锁定时间 | `LockedTime` | `DateTime` | 否 |
+
+### NetworkInboundItem（入网申请明细）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 入网单ID | `InboundRecordId` | `Int32` | 否 |
+| 未映射字段 | `SortOrder` | `Int32` | 是 |
+| 资料类别 | `AssetKind` | `String` | 否 |
+| 资料名称 | `AssetName` | `String` | 否 |
+| 密级 | `ConfidentialLevel` | `String` | 否 |
+| 数据量 | `DataSizeText` | `String` | 否 |
+| 目标服务器路径 | `TargetServerPath` | `String` | 否 |
+| 来源类别 | `SourceKind` | `String` | 否 |
+| 未映射字段 | `SourceResultSetItemId` | `Int32?` | 是 |
+| 来源立档事实ID | `SourceFilingFactId` | `Int32?` | 否 |
+| 表单编号 | `FormNo` | `String` | 否 |
+| 资料名称 | `MaterialName` | `String` | 否 |
+| 明细名称 | `ItemName` | `String` | 否 |
+| 未映射字段 | `ContainerCode` | `String` | 是 |
+| 未映射字段 | `StorageLocation` | `String` | 是 |
+| 在网台账ID | `OnNetAssetId` | `Int32?` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### NetworkInboundRecord（入网申请单）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 入网单编号 | `InboundNo` | `String` | 否 |
+| 状态 | `Status` | `Int32` | 否 |
+| 来源类别 | `SourceKind` | `String` | 否 |
+| 项目名称 | `ProjectName` | `String` | 否 |
+| 未映射字段 | `Year` | `String` | 是 |
+| 未映射字段 | `Reason` | `String` | 是 |
+| 备注 | `Remark` | `String` | 否 |
+| 未映射字段 | `SourceResultSetId` | `Int32?` | 是 |
+| 未映射字段 | `SourceResultSetNo` | `String` | 是 |
+| 未映射字段 | `ApplicantUserId` | `Int32` | 是 |
+| 申请人 | `ApplicantName` | `String` | 否 |
+| 申请部门 | `ApplicantDept` | `String` | 否 |
+| 申请时间 | `ApplyTime` | `DateTime` | 否 |
+| 生产负责人 | `ProdLeader` | `String` | 否 |
+| 生产日期 | `ProdDate` | `DateTime?` | 否 |
+| 科研负责人 | `RndLeader` | `String` | 否 |
+| 科研日期 | `RndDate` | `DateTime?` | 否 |
+| 分管负责人 | `DeputyLeader` | `String` | 否 |
+| 分管日期 | `DeputyDate` | `DateTime?` | 否 |
+| 移交人 | `Deliverer` | `String` | 否 |
+| 移交日期 | `DeliverDate` | `DateTime?` | 否 |
+| 管理员 | `Administrator` | `String` | 否 |
+| 管理员日期 | `AdminDate` | `DateTime?` | 否 |
+| 部门负责人 | `DeptLeader` | `String` | 否 |
+| 部门日期 | `DeptDate` | `DateTime?` | 否 |
+| 未映射字段 | `SignedAttachmentUploaded` | `Boolean` | 是 |
+| 未映射字段 | `SignedAttachmentUploadedTime` | `DateTime?` | 是 |
+| 未映射字段 | `SignedAttachmentUploader` | `String` | 是 |
+| 未映射字段 | `SubmittedAt` | `DateTime?` | 是 |
+| 未映射字段 | `ApprovedAt` | `DateTime?` | 是 |
+| 交接确认时间 | `HandoverConfirmedAt` | `DateTime?` | 否 |
+| 未映射字段 | `CompletedAt` | `DateTime?` | 是 |
+| 未映射字段 | `CompletedBy` | `String` | 是 |
+| 未映射字段 | `WithdrawnAt` | `DateTime?` | 是 |
+| 未映射字段 | `WithdrawReason` | `String` | 是 |
+| 打印数量 | `PrintCount` | `Int32` | 否 |
+| 未映射字段 | `LastPrintedAt` | `DateTime?` | 是 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 未映射字段 | `UpdatedAt` | `DateTime` | 是 |
+
+### NetworkOnNetAsset（在网台账）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 在网资产编号 | `AssetNo` | `String` | 否 |
+| 未映射字段 | `AssetKind` | `String` | 是 |
+| 未映射字段 | `AssetName` | `String` | 是 |
+| 项目名称 | `ProjectName` | `String` | 否 |
+| 未映射字段 | `Year` | `String` | 是 |
+| 服务器路径 | `ServerPath` | `String` | 否 |
+| 密级 | `ConfidentialLevel` | `String` | 否 |
+| 未映射字段 | `DataSizeText` | `String` | 是 |
+| 版本 | `VersionText` | `String` | 否 |
+| 来源类别 | `OriginKind` | `String` | 否 |
+| 来源入网明细ID | `OriginInboundItemId` | `Int32?` | 否 |
+| 父级在网资产ID | `ParentAssetId` | `Int32?` | 否 |
+| 未映射字段 | `SourceFilingFactId` | `Int32?` | 是 |
+| 未映射字段 | `LifecycleStatus` | `String` | 是 |
+| 备注 | `Remark` | `String` | 否 |
+| 登记人 | `RegisteredBy` | `String` | 否 |
+| 未映射字段 | `RegisteredAt` | `DateTime` | 是 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 未映射字段 | `UpdatedAt` | `DateTime` | 是 |
+
+### NetworkOnNetDisposalItem（在网数据处置明细）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 未映射字段 | `DisposalRecordId` | `Int32` | 是 |
+| 未映射字段 | `SortOrder` | `Int32` | 是 |
+| 未映射字段 | `OnNetAssetId` | `Int32` | 是 |
+| 未映射字段 | `AssetNo` | `String` | 是 |
+| 未映射字段 | `AssetKind` | `String` | 是 |
+| 未映射字段 | `AssetName` | `String` | 是 |
+| 未映射字段 | `ServerPath` | `String` | 是 |
+| 未映射字段 | `BeforeLifecycleStatus` | `String` | 是 |
+| 未映射字段 | `DisposalReason` | `String` | 是 |
+| 未映射字段 | `DispositionMethod` | `String` | 是 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### NetworkOnNetDisposalRecord（在网数据处置单）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 未映射字段 | `DisposalNo` | `String` | 是 |
+| 状态 | `Status` | `Int32` | 否 |
+| 未映射字段 | `DisposalReason` | `String` | 是 |
+| 未映射字段 | `DispositionMethod` | `String` | 是 |
+| 未映射字段 | `Reason` | `String` | 是 |
+| 备注 | `Remark` | `String` | 否 |
+| 未映射字段 | `ApplicantUserId` | `Int32` | 是 |
+| 申请人 | `ApplicantName` | `String` | 否 |
+| 申请部门 | `ApplicantDept` | `String` | 否 |
+| 申请时间 | `ApplyTime` | `DateTime` | 否 |
+| 未映射字段 | `ApprovedBy` | `String` | 是 |
+| 未映射字段 | `ApprovedTime` | `DateTime?` | 是 |
+| 未映射字段 | `ApprovalOpinion` | `String` | 是 |
+| 未映射字段 | `ConfirmedBy` | `String` | 是 |
+| 未映射字段 | `ConfirmedTime` | `DateTime?` | 是 |
+| 未映射字段 | `SignedAttachmentUploaded` | `Boolean` | 是 |
+| 未映射字段 | `SignedAttachmentUploadedTime` | `DateTime?` | 是 |
+| 未映射字段 | `SignedAttachmentUploader` | `String` | 是 |
+| 未映射字段 | `CompletedAt` | `DateTime?` | 是 |
+| 未映射字段 | `CompletedBy` | `String` | 是 |
+| 未映射字段 | `SubmittedAt` | `DateTime?` | 是 |
+| 未映射字段 | `WithdrawnAt` | `DateTime?` | 是 |
+| 未映射字段 | `WithdrawReason` | `String` | 是 |
+| 打印数量 | `PrintCount` | `Int32` | 否 |
+| 未映射字段 | `LastPrintedAt` | `DateTime?` | 是 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 未映射字段 | `UpdatedAt` | `DateTime` | 是 |
+
+### NetworkOutboundItem（出网申请明细）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 未映射字段 | `OutboundRecordId` | `Int32` | 是 |
+| 未映射字段 | `SortOrder` | `Int32` | 是 |
+| 未映射字段 | `OnNetAssetId` | `Int32` | 是 |
+| 未映射字段 | `AssetNo` | `String` | 是 |
+| 未映射字段 | `AssetKind` | `String` | 是 |
+| 未映射字段 | `AssetName` | `String` | 是 |
+| 未映射字段 | `ServerPath` | `String` | 是 |
+| 密级 | `ConfidentialLevel` | `String` | 否 |
+| 未映射字段 | `DataSizeText` | `String` | 是 |
+| 项目名称 | `ProjectName` | `String` | 否 |
+| 未映射字段 | `Year` | `String` | 是 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### NetworkOutboundRecord（出网申请单）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 未映射字段 | `OutboundNo` | `String` | 是 |
+| 状态 | `Status` | `Int32` | 否 |
+| 未映射字段 | `DestinationKind` | `String` | 是 |
+| 项目名称 | `ProjectName` | `String` | 否 |
+| 未映射字段 | `Year` | `String` | 是 |
+| 未映射字段 | `Reason` | `String` | 是 |
+| 备注 | `Remark` | `String` | 否 |
+| 目标建档申请ID | `TargetRegisterRecordId` | `Int32?` | 否 |
+| 目标建档表单编号 | `TargetRegisterFormNo` | `String` | 否 |
+| 未映射字段 | `ApplicantUserId` | `Int32` | 是 |
+| 申请人 | `ApplicantName` | `String` | 否 |
+| 申请部门 | `ApplicantDept` | `String` | 否 |
+| 申请时间 | `ApplyTime` | `DateTime` | 否 |
+| 生产负责人 | `ProdLeader` | `String` | 否 |
+| 生产日期 | `ProdDate` | `DateTime?` | 否 |
+| 科研负责人 | `RndLeader` | `String` | 否 |
+| 科研日期 | `RndDate` | `DateTime?` | 否 |
+| 分管负责人 | `DeputyLeader` | `String` | 否 |
+| 分管日期 | `DeputyDate` | `DateTime?` | 否 |
+| 移交人 | `Deliverer` | `String` | 否 |
+| 移交日期 | `DeliverDate` | `DateTime?` | 否 |
+| 管理员 | `Administrator` | `String` | 否 |
+| 管理员日期 | `AdminDate` | `DateTime?` | 否 |
+| 部门负责人 | `DeptLeader` | `String` | 否 |
+| 部门日期 | `DeptDate` | `DateTime?` | 否 |
+| 未映射字段 | `SignedAttachmentUploaded` | `Boolean` | 是 |
+| 未映射字段 | `SignedAttachmentUploadedTime` | `DateTime?` | 是 |
+| 未映射字段 | `SignedAttachmentUploader` | `String` | 是 |
+| 未映射字段 | `SubmittedAt` | `DateTime?` | 是 |
+| 未映射字段 | `ApprovedAt` | `DateTime?` | 是 |
+| 未映射字段 | `HandoverConfirmedAt` | `DateTime?` | 是 |
+| 未映射字段 | `CompletedAt` | `DateTime?` | 是 |
+| 未映射字段 | `CompletedBy` | `String` | 是 |
+| 未映射字段 | `WithdrawnAt` | `DateTime?` | 是 |
+| 未映射字段 | `WithdrawReason` | `String` | 是 |
+| 打印数量 | `PrintCount` | `Int32` | 否 |
+| 未映射字段 | `LastPrintedAt` | `DateTime?` | 是 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 未映射字段 | `UpdatedAt` | `DateTime` | 是 |
 
 ### OpticalDiscLedger（光盘台账）
 
@@ -694,6 +909,76 @@ alwaysApply: true
 | 年度档案盒ID | `ArchiveBoxesId` | `Int32` | 否 |
 | 登记申请ID | `RegisterRecordsId` | `Int32` | 否 |
 
+### YearlyArchiveDisposalItem（YearlyArchiveDisposalItem）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 未映射字段 | `DisposalRecordId` | `Int32` | 是 |
+| 未映射字段 | `SortOrder` | `Int32` | 是 |
+| 未映射字段 | `FilingFactId` | `Int32` | 是 |
+| 未映射字段 | `ContainerId` | `Int32` | 是 |
+| 未映射字段 | `ContainerCode` | `String` | 是 |
+| 未映射字段 | `BeforeStorageLocation` | `String` | 是 |
+| 未映射字段 | `SourceRegisterKind` | `String` | 是 |
+| 未映射字段 | `DisposalReason` | `String` | 是 |
+| 未映射字段 | `DispositionMethod` | `String` | 是 |
+| 资料名称 | `MaterialName` | `String` | 否 |
+| 明细名称 | `ItemName` | `String` | 否 |
+| 表单编号 | `FormNo` | `String` | 否 |
+| 未映射字段 | `InventoryLostCopyCount` | `Int32` | 是 |
+| 未映射字段 | `InventoryScrapCopyCount` | `Int32` | 是 |
+| 未映射字段 | `BeforeLifecycleStatus` | `String` | 是 |
+| 未映射字段 | `MediumKind` | `String` | 是 |
+| 未映射字段 | `MediumId` | `Int32` | 是 |
+| 未映射字段 | `MediumCode` | `String` | 是 |
+| 未映射字段 | `ElectronicArchiveUnitId` | `Int32` | 是 |
+| 未映射字段 | `ElectronicArchiveNo` | `String` | 是 |
+| 未映射字段 | `BeforeMediaStatus` | `String` | 是 |
+| 未映射字段 | `TargetBlankSlotLocation` | `String` | 是 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### YearlyArchiveDisposalRecord（YearlyArchiveDisposalRecord）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 未映射字段 | `DisposalNo` | `String` | 是 |
+| 介质类别 | `MediaKind` | `String` | 否 |
+| 状态 | `Status` | `Int32` | 否 |
+| 未映射字段 | `DisposalReason` | `String` | 是 |
+| 未映射字段 | `DispositionMethod` | `String` | 是 |
+| 未映射字段 | `Reason` | `String` | 是 |
+| 备注 | `Remark` | `String` | 否 |
+| 未映射字段 | `ApplicantUserId` | `Int32` | 是 |
+| 申请人 | `ApplicantName` | `String` | 否 |
+| 申请部门 | `ApplicantDept` | `String` | 否 |
+| 申请时间 | `ApplyTime` | `DateTime` | 否 |
+| 未映射字段 | `ApprovedBy` | `String` | 是 |
+| 未映射字段 | `ApprovedTime` | `DateTime?` | 是 |
+| 未映射字段 | `ApprovalOpinion` | `String` | 是 |
+| 未映射字段 | `ConfirmedBy` | `String` | 是 |
+| 未映射字段 | `ConfirmedTime` | `DateTime?` | 是 |
+| 未映射字段 | `SignedAttachmentUploaded` | `Boolean` | 是 |
+| 未映射字段 | `SignedAttachmentUploadedTime` | `DateTime?` | 是 |
+| 未映射字段 | `SignedAttachmentUploader` | `String` | 是 |
+| 未映射字段 | `ScenePhotoUploaded` | `Boolean` | 是 |
+| 未映射字段 | `PhysicalRemovalConfirmed` | `Boolean` | 是 |
+| 未映射字段 | `PhysicalRemovalConfirmedAt` | `DateTime?` | 是 |
+| 未映射字段 | `PhysicalRemovalConfirmedBy` | `String` | 是 |
+| 未映射字段 | `FormatRetainedConfirmed` | `Boolean` | 是 |
+| 未映射字段 | `FormatRetainedConfirmedAt` | `DateTime?` | 是 |
+| 未映射字段 | `FormatRetainedConfirmedBy` | `String` | 是 |
+| 未映射字段 | `CompletedAt` | `DateTime?` | 是 |
+| 未映射字段 | `CompletedBy` | `String` | 是 |
+| 未映射字段 | `SubmittedAt` | `DateTime?` | 是 |
+| 未映射字段 | `WithdrawnAt` | `DateTime?` | 是 |
+| 未映射字段 | `WithdrawReason` | `String` | 是 |
+| 打印数量 | `PrintCount` | `Int32` | 否 |
+| 未映射字段 | `LastPrintedAt` | `DateTime?` | 是 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 未映射字段 | `UpdatedAt` | `DateTime` | 是 |
+
 ### YearlyArchiveFilingFact（立档事实）
 
 | 中文字段 | Property | CLR 类型 | 待补全 |
@@ -705,7 +990,7 @@ alwaysApply: true
 | 登记介质ID | `RegisterMediaId` | `Int32` | 否 |
 | 介质明细ID | `MediaItemId` | `Int32` | 否 |
 | 表单编号 | `FormNo` | `String` | 否 |
-| 资料名称 | `MaterialName` | `String` | 否 |
+| 资料名称快照 | `MaterialName` | `String` | 否 |
 | 项目编号 | `ProjectId` | `Int32?` | 否 |
 | 项目名称 | `ProjectName` | `String` | 否 |
 | 提供单位 | `ProvideUnit` | `String` | 否 |
@@ -800,10 +1085,10 @@ alwaysApply: true
 | 立档事实ID | `FilingFactId` | `Int32` | 否 |
 | 流转类型 | `TransactionType` | `String` | 否 |
 | 业务编号 | `BusinessNo` | `String` | 否 |
-| 来源类别 | `SourceKind` | `String` | 否 |
+| 数据源类别 | `SourceKind` | `String` | 否 |
 | 来源ID | `SourceId` | `Int32` | 否 |
 | 去重键 | `DedupKey` | `String` | 否 |
-| 流转前生命周期状态 | `BeforeLifecycleStatus` | `String` | 否 |
+| 处置前生命周期状态 | `BeforeLifecycleStatus` | `String` | 否 |
 | 流转后生命周期状态 | `AfterLifecycleStatus` | `String` | 否 |
 | 流转前容器编号 | `BeforeContainerCode` | `String` | 否 |
 | 流转后容器编号 | `AfterContainerCode` | `String` | 否 |
@@ -820,7 +1105,7 @@ alwaysApply: true
 | 中文字段 | Property | CLR 类型 | 待补全 |
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
-| 出库单ID | `OutboundRecordId` | `Int32` | 否 |
+| 出网单ID | `OutboundRecordId` | `Int32` | 否 |
 | 排序序号 | `SortOrder` | `Int32` | 否 |
 | 立档事实ID | `FilingFactId` | `Int32` | 否 |
 | 原件立档事实ID | `PrimaryFilingFactId` | `Int32?` | 否 |
@@ -871,7 +1156,7 @@ alwaysApply: true
 | 中文字段 | Property | CLR 类型 | 待补全 |
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
-| 出库单编号 | `OutboundNo` | `String` | 否 |
+| 出网单编号 | `OutboundNo` | `String` | 否 |
 | 状态 | `Status` | `Int32` | 否 |
 | 归档年度 | `ArchiveYear` | `Int32?` | 否 |
 | 项目编号 | `ProjectId` | `Int32?` | 否 |
@@ -881,7 +1166,7 @@ alwaysApply: true
 | 申请部门 | `ApplicantDept` | `String` | 否 |
 | 申请日期 | `ApplyDate` | `DateTime` | 否 |
 | 申请原因 | `Reason` | `String` | 否 |
-| 去向类别 | `DestinationKind` | `String` | 否 |
+| 目的地类别 | `DestinationKind` | `String` | 否 |
 | 外部单位 | `ExternalUnit` | `String` | 否 |
 | 自留处置方式 | `SelfRetainDisposition` | `String` | 否 |
 | 证明材料备注 | `ProofMaterialNote` | `String` | 否 |
@@ -1013,7 +1298,7 @@ alwaysApply: true
 | 科研开发室负责人 | `RndLeader` | `String` | 否 |
 | 科研开发室日期 | `RndDate` | `DateTime?` | 否 |
 | 分管领导意见 | `DeputyOpinion` | `String` | 否 |
-| 分管领导签字 | `DeputyLeader` | `String` | 否 |
+| 分管领导 | `DeputyLeader` | `String` | 否 |
 | 分管领导日期 | `DeputyDate` | `DateTime?` | 否 |
 | 移交人 | `Deliverer` | `String` | 否 |
 | 移交日期 | `DeliverDate` | `DateTime?` | 否 |

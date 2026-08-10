@@ -2,6 +2,7 @@ using DocMgr.Repositories.Cabinets;
 using DocMgr.Repositories.HardDiskMedia;
 using DocMgr.Repositories.HistoryArchive;
 using DocMgr.Repositories.Interfaces;
+using DocMgr.Repositories.NetworkTransfer;
 using DocMgr.Repositories.Projects;
 using DocMgr.Repositories.SystemSettings;
 using DocMgr.Repositories.YearlyArchive;
@@ -43,6 +44,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IHardDiskInventoryRegisterRepository, HardDiskInventoryRegisterRepository>();
         services.AddScoped<IArchiveInventoryRegisterRepository, ArchiveInventoryRegisterRepository>();
         services.AddScoped<IArchiveDisposalRepository, ArchiveDisposalRepository>();
+        services.AddScoped<INetworkTransferRepository, NetworkTransferRepository>();
         services.AddScoped<IDbOperationLogRepository, DbOperationLogRepository>();
         return services;
     }

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Navigation;
 using System.Windows.Threading;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
@@ -11,6 +12,7 @@ using DocMgr.Services.Interfaces;
 using DocMgr.Views.Cabinets;
 using DocMgr.Views.HardDiskMedia;
 using DocMgr.Views.HistoryArchive;
+using DocMgr.Views.NetworkTransfer;
 using DocMgr.Views.Projects;
 using DocMgr.Views.SystemSettings;
 using DocMgr.ViewModels.YearlyArchive;
@@ -463,6 +465,11 @@ namespace DocMgr.Views
                 ArchiveCirculationLedgerPage => BtnArchiveCirculationLedger,
                 ArchiveInventoryRegisterPage page => ResolveArchiveInventoryRegisterNavButton(page),
                 ArchiveDisposalPage page => ResolveArchiveDisposalNavButton(page),
+                NetworkInboundApplicationPage => BtnNetInboundApply,
+                NetworkInboundApprovalPage => BtnNetInboundApprove,
+                NetworkOutboundApplicationPage => BtnNetOutboundApply,
+                NetworkOutboundApprovalPage => BtnNetOutboundApprove,
+                NetworkOnNetDisposalPage => BtnNetDispose,
                 TopoMapPage => BtnHistMap,
                 AerialPhotoPage => BtnHistAerial,
                 OtherMapPage => BtnOtherData,
@@ -597,6 +604,11 @@ namespace DocMgr.Views
                 ArchiveElectronicRelocationPage => "年度资料档案化管理（资料迁档·电子介质资料迁档）",
                 ArchiveOutboundApplyPage => "年度资料档案化管理（资料流转·借出申请）",
                 ArchiveOutboundApprovalPage => "年度资料档案化管理（资料流转·审批出库）",
+                NetworkInboundApplicationPage => "年度资料出入网管理（入网申请）",
+                NetworkInboundApprovalPage => "年度资料出入网管理（入网审批）",
+                NetworkOutboundApplicationPage => "年度资料出入网管理（出网申请）",
+                NetworkOutboundApprovalPage => "年度资料出入网管理（出网审批）",
+                NetworkOnNetDisposalPage => "年度资料出入网管理（在网数据处置）",
                 ArchiveReturnWorkbenchPage page => page.WorkspaceMode == ArchiveReturnWorkspaceMode.Application
                     ? "年度资料档案化管理（资料流转·归还申请）"
                     : "年度资料档案化管理（资料流转·审批入库）",
@@ -693,6 +705,20 @@ namespace DocMgr.Views
                 return Task.CompletedTask;
             }
 
+            if (item.BizType == "NetworkInboundApproval" || item.BizType == "NetworkInboundHandover")
+            {
+                TxtPageTitle.Text = "年度资料出入网管理（入网审批）";
+                MainContentFrame.Navigate(new NetworkInboundApprovalPage(item.BizId));
+                return Task.CompletedTask;
+            }
+
+            if (item.BizType == "NetworkOutboundApproval" || item.BizType == "NetworkOutboundHandover")
+            {
+                TxtPageTitle.Text = "年度资料出入网管理（出网审批）";
+                MainContentFrame.Navigate(new NetworkOutboundApprovalPage(item.BizId));
+                return Task.CompletedTask;
+            }
+
             if (item.BizType == "HardDiskMediaOutboundOverdue")
             {
                 NavigateToHardDiskReturnPage(HardDiskReturnWorkspaceMode.Application);
@@ -783,12 +809,11 @@ namespace DocMgr.Views
             SetNavButton(BtnArchiveSimulatedDisposal, true);
             SetNavButton(BtnArchiveElectronicDisposal, true);
 
-            SetNavButton(BtnNetRegister, true);
-            SetNavButton(BtnNetImport, true);
-            SetNavButton(BtnNetSearch, true);
-            SetNavButton(BtnNetExportReg, true);
-            SetNavButton(BtnNetExport, true);
-            SetNavButton(BtnNetDispose, true);
+            SetNavButton(BtnNetInboundApply, canSubmitApplication);
+            SetNavButton(BtnNetInboundApprove, isArchiveAdmin);
+            SetNavButton(BtnNetOutboundApply, canSubmitApplication);
+            SetNavButton(BtnNetOutboundApprove, isArchiveAdmin);
+            SetNavButton(BtnNetDispose, isArchiveAdmin);
 
             SetNavButton(BtnHistMap, true);
             SetNavButton(BtnHistAerial, true);
@@ -1277,34 +1302,64 @@ namespace DocMgr.Views
                 : BtnArchiveSimulatedDisposal;
         }
 
-        private void BtnNetRegister_Click(object sender, RoutedEventArgs e)
+        private void BtnNetInboundApply_Click(object sender, RoutedEventArgs e)
         {
-            ShowMenuNotReady("年度资料出入网管理（入网登记）");
+            if (!CanAccessDepartmentArchiveApply() && !IsSystemAdministrator())
+            {
+                MessageBox.Show("仅部门资料管理员可发起入网申请。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            TxtPageTitle.Text = "年度资料出入网管理（入网申请）";
+            MainContentFrame.Navigate(new NetworkInboundApplicationPage());
         }
 
-        private void BtnNetImport_Click(object sender, RoutedEventArgs e)
+        private void BtnNetInboundApprove_Click(object sender, RoutedEventArgs e)
         {
-            ShowMenuNotReady("年度资料出入网管理（数据入网）");
+            if (!CanAccessArchiveRelocation())
+            {
+                MessageBox.Show("仅资料室管理员可办理入网审批。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            TxtPageTitle.Text = "年度资料出入网管理（入网审批）";
+            MainContentFrame.Navigate(new NetworkInboundApprovalPage());
         }
 
-        private void BtnNetSearch_Click(object sender, RoutedEventArgs e)
+        private void BtnNetOutboundApply_Click(object sender, RoutedEventArgs e)
         {
-            ShowMenuNotReady("年度资料出入网管理（数据检索）");
+            if (!CanAccessDepartmentArchiveApply() && !IsSystemAdministrator())
+            {
+                MessageBox.Show("仅部门资料管理员可发起出网申请。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            TxtPageTitle.Text = "年度资料出入网管理（出网申请）";
+            MainContentFrame.Navigate(new NetworkOutboundApplicationPage());
         }
 
-        private void BtnNetExportReg_Click(object sender, RoutedEventArgs e)
+        private void BtnNetOutboundApprove_Click(object sender, RoutedEventArgs e)
         {
-            ShowMenuNotReady("年度资料出入网管理（出网登记）");
-        }
+            if (!CanAccessArchiveRelocation())
+            {
+                MessageBox.Show("仅资料室管理员可办理出网审批。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
 
-        private void BtnNetExport_Click(object sender, RoutedEventArgs e)
-        {
-            ShowMenuNotReady("年度资料出入网管理（数据出网）");
+            TxtPageTitle.Text = "年度资料出入网管理（出网审批）";
+            MainContentFrame.Navigate(new NetworkOutboundApprovalPage());
         }
 
         private void BtnNetDispose_Click(object sender, RoutedEventArgs e)
         {
-            ShowMenuNotReady("年度资料出入网管理（在网数据处置）");
+            if (!CanAccessArchiveRelocation())
+            {
+                MessageBox.Show("仅资料室管理员可办理在网数据处置。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            TxtPageTitle.Text = "年度资料出入网管理（在网数据处置）";
+            MainContentFrame.Navigate(new NetworkOnNetDisposalPage());
         }
 
         private void BtnDiskLedger_Click(object sender, RoutedEventArgs e)

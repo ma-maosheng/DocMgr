@@ -452,12 +452,11 @@
                         <!-- 2. 年度资料出入网管理 -->
                         <Expander x:Name="ExpNetworkMgr" Header="年度资料出入网管理" Style="{StaticResource NavExpander}">
                             <StackPanel>
-                                <Button x:Name="BtnNetRegister"  Content="入网登记" Style="{StaticResource SubNavButton}" Click="BtnNetRegister_Click"/>
-                                <Button x:Name="BtnNetImport"    Content="数据入网" Style="{StaticResource SubNavButton}" Click="BtnNetImport_Click"/>
-                                <Button x:Name="BtnNetSearch"    Content="数据检索" Style="{StaticResource SubNavButton}" Click="BtnNetSearch_Click"/>
-                                <Button x:Name="BtnNetExportReg" Content="出网登记" Style="{StaticResource SubNavButton}" Click="BtnNetExportReg_Click"/>
-                                <Button x:Name="BtnNetExport"    Content="数据出网" Style="{StaticResource SubNavButton}" Click="BtnNetExport_Click"/>
-                                <Button x:Name="BtnNetDispose"   Content="在网数据处置" Style="{StaticResource SubNavButton}" Click="BtnNetDispose_Click"/>
+                                <Button x:Name="BtnNetInboundApply"   Content="入网申请" Style="{StaticResource SubNavButton}" Click="BtnNetInboundApply_Click"/>
+                                <Button x:Name="BtnNetInboundApprove" Content="入网审批" Style="{StaticResource SubNavButton}" Click="BtnNetInboundApprove_Click"/>
+                                <Button x:Name="BtnNetOutboundApply"  Content="出网申请" Style="{StaticResource SubNavButton}" Click="BtnNetOutboundApply_Click"/>
+                                <Button x:Name="BtnNetOutboundApprove" Content="出网审批" Style="{StaticResource SubNavButton}" Click="BtnNetOutboundApprove_Click"/>
+                                <Button x:Name="BtnNetDispose"        Content="在网数据处置" Style="{StaticResource SubNavButton}" Click="BtnNetDispose_Click"/>
                             </StackPanel>
                         </Expander>
 

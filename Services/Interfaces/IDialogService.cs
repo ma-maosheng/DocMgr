@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.ViewModels.Cabinets;
 using DocMgr.ViewModels.YearlyArchive;
@@ -60,6 +61,10 @@ namespace DocMgr.Services.Interfaces
         IReadOnlyList<HardDiskMedium>? ShowHardDiskMediumSelectionDialog(IEnumerable<string>? initialSelectedCodes = null, int? currentElectronicArchiveUnitId = null, string? selectionMode = null);
         bool ShowHardDiskMediaOutboundApplicationEditDialog(HardDiskMediaApplication applicationToEdit);
         bool ShowHardDiskDisposalEditDialog(HardDiskDisposalRecord record);
+        bool ShowNetworkInboundEditDialog(NetworkInboundRecord record, NetworkTransferWorkspaceMode mode);
+        bool ShowNetworkOutboundEditDialog(NetworkOutboundRecord record, NetworkTransferWorkspaceMode mode);
+        bool ShowNetworkOnNetDisposalEditDialog(NetworkOnNetDisposalRecord record);
+        bool ShowNetworkProcessedOutputEditDialog();
         bool ShowArchiveDisposalEditDialog(YearlyArchiveDisposalRecord record);
         bool ShowHardDiskInventoryRegisterEditDialog(HardDiskInventoryRegisterRecord record);
         bool ShowSimulatedArchiveInventoryRegisterEditDialog(YearlyArchiveInventoryRegisterRecord record);

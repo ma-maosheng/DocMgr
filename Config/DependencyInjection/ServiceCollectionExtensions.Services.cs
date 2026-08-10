@@ -3,6 +3,7 @@ using DocMgr.Services.Cabinets;
 using DocMgr.Services.HardDiskMedia;
 using DocMgr.Services.HistoryArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.NetworkTransfer;
 using DocMgr.Services.Projects;
 using DocMgr.Services.Shared;
 using DocMgr.Services.SystemSettings;
@@ -32,6 +33,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IHardDiskInventoryRegisterService, HardDiskInventoryRegisterService>();
         services.AddScoped<IArchiveInventoryRegisterService, ArchiveInventoryRegisterService>();
         services.AddScoped<IArchiveDisposalService, ArchiveDisposalService>();
+        services.AddScoped<INetworkTransferService, NetworkTransferService>();
         services.AddScoped<IAerialPhotoService, AerialPhotoService>();
         services.AddScoped<IOtherMapService, OtherMapService>();
         services.AddScoped<ITopoMapService, TopoMapService>();
@@ -66,6 +68,7 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton<ICabinetOpenLayoutRefreshNotifier, CabinetOpenLayoutRefreshNotifier>();
         services.AddScoped<IToDoProvider, YearlyArchiveToDoProvider>();
         services.AddScoped<IToDoProvider, HardDiskMediaToDoProvider>();
+        services.AddScoped<IToDoProvider, NetworkTransferToDoProvider>();
         services.AddScoped<IToDoService, ToDoAggregationService>();
         services.AddScoped<IUserPreferenceService, UserPreferenceService>();
         services.AddScoped<IBusinessLogicSettingsService, BusinessLogicSettingsService>();

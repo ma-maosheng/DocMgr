@@ -14,7 +14,10 @@ namespace DocMgr.Models.Shared
         DiskInventoryRegister,
         DiskDisposalApply,
         ArchiveInventoryRegister,
-        ArchiveDisposalApply
+        ArchiveDisposalApply,
+        NetworkInboundApply,
+        NetworkOutboundApply,
+        NetworkDisposalApply
     }
 
     /// <summary>

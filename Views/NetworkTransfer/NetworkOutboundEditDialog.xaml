@@ -1,0 +1,99 @@
+<Window x:Class="DocMgr.Views.NetworkTransfer.NetworkOutboundEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding WindowTitle, Mode=OneWay}" Height="720" Width="980"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip">
+  <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+  </Window.Resources>
+  <DockPanel Margin="12">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+      <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Width="88" Margin="0,0,8,0"/>
+      <Button Content="提交" Command="{Binding SubmitCommand}" Width="72" Margin="0,0,8,0"/>
+      <Button Content="审批通过" Command="{Binding ApproveCommand}" Width="88" Margin="0,0,8,0"/>
+      <Button Content="确认交接" Command="{Binding ConfirmHandoverCommand}" Width="88" Margin="0,0,8,0"/>
+      <Button Content="办结" Command="{Binding CompleteCommand}" Width="72" Margin="0,0,8,0"/>
+      <Button Content="关闭" Command="{Binding CloseCommand}" Width="72"/>
+    </StackPanel>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+        <TextBlock Text="{Binding BannerText, Mode=OneWay}" TextWrapping="Wrap" Margin="0,0,0,10" Foreground="#666"/>
+        <Grid Margin="0,0,0,8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/><ColumnDefinition Width="160"/>
+            <ColumnDefinition Width="Auto"/><ColumnDefinition Width="160"/>
+            <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="单号" VerticalAlignment="Center"/><TextBox Grid.Column="1" Text="{Binding OutboundNo}" IsReadOnly="True" Margin="6,0,12,0"/>
+          <TextBlock Grid.Column="2" Text="目的地" VerticalAlignment="Center"/><ComboBox Grid.Column="3" ItemsSource="{Binding DestinationKindOptions}" SelectedItem="{Binding DestinationKind}" IsEnabled="{Binding CanEditHeader}" Margin="6,0,12,0"/>
+          <TextBlock Grid.Column="4" Text="状态" VerticalAlignment="Center"/><TextBlock Grid.Column="5" Text="{Binding StatusDisplay, Mode=OneWay}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+        </Grid>
+        <Grid Margin="0,0,0,8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/><ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="项目" VerticalAlignment="Center"/><TextBox Grid.Column="1" Text="{Binding ProjectName}" IsEnabled="{Binding CanEditHeader}" Margin="6,0,12,0"/>
+          <TextBlock Grid.Column="2" Text="年度" VerticalAlignment="Center"/><TextBox Grid.Column="3" Text="{Binding Year}" IsEnabled="{Binding CanEditHeader}" Margin="6,0,0,0"/>
+        </Grid>
+        <TextBlock Text="申请说明"/><TextBox Text="{Binding Reason}" Height="48" AcceptsReturn="True" TextWrapping="Wrap" IsEnabled="{Binding CanEditHeader}" Margin="0,2,0,8"/>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+          <Button Content="刷新候选" Command="{Binding RefreshCandidatesCommand}" Width="88" Margin="0,0,8,0"/>
+          <Button Content="加入明细" Command="{Binding AddSelectedCommand}" Width="88"/>
+        </StackPanel>
+        <DataGrid ItemsSource="{Binding AvailableAssets}" AutoGenerateColumns="False" Height="120" CanUserAddRows="False" Margin="0,0,0,8">
+          <DataGrid.Columns>
+            <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected}" Width="40"/>
+            <DataGridTextColumn Header="候选加工产出" Binding="{Binding Display, Mode=OneWay}" Width="*"/>
+          </DataGrid.Columns>
+        </DataGrid>
+        <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" Height="160" CanUserAddRows="False">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="资产编号" Binding="{Binding AssetNo, Mode=OneWay}" Width="130"/>
+            <DataGridTextColumn Header="名称" Binding="{Binding AssetName, Mode=OneWay}" Width="160"/>
+            <DataGridTextColumn Header="路径" Binding="{Binding ServerPath, Mode=OneWay}" Width="*"/>
+            <DataGridTemplateColumn Width="60">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <Button Content="移除" Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+        <StackPanel Visibility="{Binding ShowApprovalPanel, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,12,0,0">
+          <UniformGrid Columns="3" Margin="0,0,0,8">
+            <StackPanel Margin="0,0,8,0"><TextBlock Text="生产管理科"/><TextBox Text="{Binding ProdLeader}"/><DatePicker SelectedDate="{Binding ProdDate}"/></StackPanel>
+            <StackPanel Margin="0,0,8,0"><TextBlock Text="科研开发室"/><TextBox Text="{Binding RndLeader}"/><DatePicker SelectedDate="{Binding RndDate}"/></StackPanel>
+            <StackPanel><TextBlock Text="分管领导"/><TextBox Text="{Binding DeputyLeader}"/><DatePicker SelectedDate="{Binding DeputyDate}"/></StackPanel>
+          </UniformGrid>
+          <UniformGrid Columns="3" Margin="0,0,0,8">
+            <StackPanel Margin="0,0,8,0"><TextBlock Text="移交人"/><TextBox Text="{Binding Deliverer}"/><DatePicker SelectedDate="{Binding DeliverDate}"/></StackPanel>
+            <StackPanel Margin="0,0,8,0"><TextBlock Text="资料员"/><TextBox Text="{Binding Administrator}"/><DatePicker SelectedDate="{Binding AdminDate}"/></StackPanel>
+            <StackPanel><TextBlock Text="部门负责人"/><TextBox Text="{Binding DeptLeader}"/><DatePicker SelectedDate="{Binding DeptDate}"/></StackPanel>
+          </UniformGrid>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+            <ComboBox Width="140" ItemsSource="{Binding UploadCategoryOptions}" SelectedItem="{Binding UploadCategory}"/>
+            <Button Content="上传附件" Command="{Binding UploadAttachmentCommand}" Margin="8,0" Width="88"/>
+          </StackPanel>
+          <DataGrid ItemsSource="{Binding Attachments}" AutoGenerateColumns="False" Height="90" IsReadOnly="True">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="分类" Binding="{Binding FileCategory, Mode=OneWay}" Width="100"/>
+              <DataGridTextColumn Header="文件名" Binding="{Binding FileName, Mode=OneWay}" Width="*"/>
+              <DataGridTemplateColumn Width="120">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                      <Button Content="查看" Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Margin="0,0,4,0"/>
+                      <Button Content="删除" Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

@@ -8,6 +8,7 @@ using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Models.NetworkTransfer;
 using DocMgr.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -79,6 +80,15 @@ namespace DocMgr.Data
         public DbSet<YearlyArchiveInventoryRegisterItem> YearlyArchiveInventoryRegisterItems { get; set; }
         public DbSet<YearlyArchiveDisposalRecord> YearlyArchiveDisposalRecords { get; set; }
         public DbSet<YearlyArchiveDisposalItem> YearlyArchiveDisposalItems { get; set; }
+
+        // === 年度资料出入网管理 ===
+        public DbSet<NetworkInboundRecord> NetworkInboundRecords { get; set; }
+        public DbSet<NetworkInboundItem> NetworkInboundItems { get; set; }
+        public DbSet<NetworkOnNetAsset> NetworkOnNetAssets { get; set; }
+        public DbSet<NetworkOutboundRecord> NetworkOutboundRecords { get; set; }
+        public DbSet<NetworkOutboundItem> NetworkOutboundItems { get; set; }
+        public DbSet<NetworkOnNetDisposalRecord> NetworkOnNetDisposalRecords { get; set; }
+        public DbSet<NetworkOnNetDisposalItem> NetworkOnNetDisposalItems { get; set; }
 
         // === 通用附件表 ===
         public DbSet<SystemAttachment> SystemAttachments { get; set; }
@@ -357,6 +367,84 @@ namespace DocMgr.Data
                 entity.HasIndex(item => item.ContainerId);
                 entity.HasIndex(item => new { item.DisposalRecordId, item.FilingFactId });
                 entity.HasIndex(item => new { item.DisposalRecordId, item.MediumKind, item.MediumId });
+            });
+
+            modelBuilder.Entity<NetworkInboundRecord>(entity =>
+            {
+                entity.HasIndex(item => item.InboundNo).IsUnique();
+                entity.HasIndex(item => item.Status);
+                entity.HasIndex(item => item.ApplyTime);
+                entity.HasIndex(item => item.SourceResultSetId);
+
+                entity.HasMany(item => item.Items)
+                    .WithOne(item => item.InboundRecord)
+                    .HasForeignKey(item => item.InboundRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<NetworkInboundItem>(entity =>
+            {
+                entity.HasIndex(item => item.InboundRecordId);
+                entity.HasIndex(item => item.SourceFilingFactId);
+                entity.HasIndex(item => item.OnNetAssetId);
+            });
+
+            modelBuilder.Entity<NetworkOnNetAsset>(entity =>
+            {
+                entity.HasIndex(item => item.AssetNo).IsUnique();
+                entity.HasIndex(item => item.LifecycleStatus);
+                entity.HasIndex(item => item.OriginKind);
+                entity.HasIndex(item => item.OriginInboundItemId);
+                entity.HasIndex(item => item.ParentAssetId);
+            });
+
+            modelBuilder.Entity<NetworkOutboundRecord>(entity =>
+            {
+                entity.HasIndex(item => item.OutboundNo).IsUnique();
+                entity.HasIndex(item => item.Status);
+                entity.HasIndex(item => item.ApplyTime);
+                entity.HasIndex(item => item.TargetRegisterRecordId);
+
+                entity.HasMany(item => item.Items)
+                    .WithOne(item => item.OutboundRecord)
+                    .HasForeignKey(item => item.OutboundRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<NetworkOutboundItem>(entity =>
+            {
+                entity.HasIndex(item => item.OutboundRecordId);
+                entity.HasIndex(item => item.OnNetAssetId);
+                entity.HasIndex(item => new { item.OutboundRecordId, item.OnNetAssetId }).IsUnique();
+
+                entity.HasOne(item => item.OnNetAsset)
+                    .WithMany()
+                    .HasForeignKey(item => item.OnNetAssetId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<NetworkOnNetDisposalRecord>(entity =>
+            {
+                entity.HasIndex(item => item.DisposalNo).IsUnique();
+                entity.HasIndex(item => item.Status);
+                entity.HasIndex(item => item.ApplyTime);
+
+                entity.HasMany(item => item.Items)
+                    .WithOne(item => item.DisposalRecord)
+                    .HasForeignKey(item => item.DisposalRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<NetworkOnNetDisposalItem>(entity =>
+            {
+                entity.HasIndex(item => item.DisposalRecordId);
+                entity.HasIndex(item => item.OnNetAssetId);
+                entity.HasIndex(item => new { item.DisposalRecordId, item.OnNetAssetId }).IsUnique();
+
+                entity.HasOne(item => item.OnNetAsset)
+                    .WithMany()
+                    .HasForeignKey(item => item.OnNetAssetId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<YearlyElectronicArchiveUnit>(entity =>

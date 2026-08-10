@@ -15,6 +15,7 @@ namespace DocMgr.Services.Shared
         private readonly IHardDiskDisposalRepository _hardDiskDisposalRepository;
         private readonly IArchiveInventoryRegisterRepository _archiveInventoryRegisterRepository;
         private readonly IArchiveDisposalRepository _archiveDisposalRepository;
+        private readonly INetworkTransferRepository _networkTransferRepository;
 
         public DefaultBusinessNoGenerator(
             IArchiveRegisterRepository archiveRegisterRepository,
@@ -24,7 +25,8 @@ namespace DocMgr.Services.Shared
             IHardDiskInventoryRegisterRepository hardDiskInventoryRegisterRepository,
             IHardDiskDisposalRepository hardDiskDisposalRepository,
             IArchiveInventoryRegisterRepository archiveInventoryRegisterRepository,
-            IArchiveDisposalRepository archiveDisposalRepository)
+            IArchiveDisposalRepository archiveDisposalRepository,
+            INetworkTransferRepository networkTransferRepository)
         {
             _archiveRegisterRepository = archiveRegisterRepository;
             _archiveOutboundRepository = archiveOutboundRepository;
@@ -34,6 +36,7 @@ namespace DocMgr.Services.Shared
             _hardDiskDisposalRepository = hardDiskDisposalRepository;
             _archiveInventoryRegisterRepository = archiveInventoryRegisterRepository;
             _archiveDisposalRepository = archiveDisposalRepository;
+            _networkTransferRepository = networkTransferRepository;
         }
 
         /// <summary>
@@ -76,6 +79,9 @@ namespace DocMgr.Services.Shared
                 BusinessNoCategory.DiskDisposalApply => _hardDiskDisposalRepository.GetLastDisposalNoByPrefixAsync(prefix),
                 BusinessNoCategory.ArchiveInventoryRegister => _archiveInventoryRegisterRepository.GetLastRegisterNoByPrefixAsync(prefix),
                 BusinessNoCategory.ArchiveDisposalApply => _archiveDisposalRepository.GetLastDisposalNoByPrefixAsync(prefix),
+                BusinessNoCategory.NetworkInboundApply => _networkTransferRepository.GetLastInboundNoByPrefixAsync(prefix),
+                BusinessNoCategory.NetworkOutboundApply => _networkTransferRepository.GetLastOutboundNoByPrefixAsync(prefix),
+                BusinessNoCategory.NetworkDisposalApply => _networkTransferRepository.GetLastDisposalNoByPrefixAsync(prefix),
                 _ => throw new ArgumentException($"不支持的业务编号类别：{category}", nameof(category))
             };
         }

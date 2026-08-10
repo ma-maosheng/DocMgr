@@ -7,6 +7,7 @@ using System.Windows.Input;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.HistoryArchive;
+using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.Projects;
 using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
@@ -16,6 +17,7 @@ using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Cabinets;
 using DocMgr.ViewModels.HardDiskMedia;
 using DocMgr.ViewModels.HistoryArchive;
+using DocMgr.ViewModels.NetworkTransfer;
 using DocMgr.ViewModels.Projects;
 using DocMgr.ViewModels.Shared;
 using DocMgr.ViewModels.SystemSettings;
@@ -23,6 +25,7 @@ using DocMgr.ViewModels.YearlyArchive;
 using DocMgr.Views.Cabinets;
 using DocMgr.Views.HardDiskMedia;
 using DocMgr.Views.HistoryArchive;
+using DocMgr.Views.NetworkTransfer;
 using DocMgr.Views.Projects;
 using DocMgr.Views.Shared;
 using DocMgr.Views.SystemSettings;
@@ -800,6 +803,121 @@ namespace DocMgr.Services.Shared
                     viewModel.RequestClose -= HandleRequestClose;
                 }
 
+                scope?.Dispose();
+            }
+        }
+
+        public bool ShowNetworkInboundEditDialog(NetworkInboundRecord record, NetworkTransferWorkspaceMode mode)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            var dialog = new NetworkInboundEditDialog { Owner = GetOwnerWindow() };
+            IServiceScope? scope = null;
+            NetworkInboundEditDialogViewModel? viewModel = null;
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            try
+            {
+                (scope, viewModel) = CreateScopedViewModel<NetworkInboundEditDialogViewModel>(
+                    new[] { typeof(NetworkInboundRecord), typeof(NetworkTransferWorkspaceMode) },
+                    record,
+                    mode);
+                dialog.DataContext = viewModel;
+                viewModel.RequestClose += HandleRequestClose;
+                dialog.ShowDialog();
+                return viewModel.HasCommittedChanges;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"打开入网申请窗口失败：{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (viewModel != null) viewModel.RequestClose -= HandleRequestClose;
+                scope?.Dispose();
+            }
+        }
+
+        public bool ShowNetworkOutboundEditDialog(NetworkOutboundRecord record, NetworkTransferWorkspaceMode mode)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            var dialog = new NetworkOutboundEditDialog { Owner = GetOwnerWindow() };
+            IServiceScope? scope = null;
+            NetworkOutboundEditDialogViewModel? viewModel = null;
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            try
+            {
+                (scope, viewModel) = CreateScopedViewModel<NetworkOutboundEditDialogViewModel>(
+                    new[] { typeof(NetworkOutboundRecord), typeof(NetworkTransferWorkspaceMode) },
+                    record,
+                    mode);
+                dialog.DataContext = viewModel;
+                viewModel.RequestClose += HandleRequestClose;
+                dialog.ShowDialog();
+                return viewModel.HasCommittedChanges;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"打开出网申请窗口失败：{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (viewModel != null) viewModel.RequestClose -= HandleRequestClose;
+                scope?.Dispose();
+            }
+        }
+
+        public bool ShowNetworkOnNetDisposalEditDialog(NetworkOnNetDisposalRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            var dialog = new NetworkOnNetDisposalEditDialog { Owner = GetOwnerWindow() };
+            IServiceScope? scope = null;
+            NetworkOnNetDisposalEditDialogViewModel? viewModel = null;
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            try
+            {
+                (scope, viewModel) = CreateScopedViewModel<NetworkOnNetDisposalEditDialogViewModel>(
+                    new[] { typeof(NetworkOnNetDisposalRecord) },
+                    record);
+                dialog.DataContext = viewModel;
+                viewModel.RequestClose += HandleRequestClose;
+                dialog.ShowDialog();
+                return viewModel.HasCommittedChanges;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"打开在网处置窗口失败：{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (viewModel != null) viewModel.RequestClose -= HandleRequestClose;
+                scope?.Dispose();
+            }
+        }
+
+        public bool ShowNetworkProcessedOutputEditDialog()
+        {
+            var dialog = new NetworkProcessedOutputEditDialog { Owner = GetOwnerWindow() };
+            IServiceScope? scope = null;
+            NetworkProcessedOutputEditDialogViewModel? viewModel = null;
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            try
+            {
+                (scope, viewModel) = CreateScopedViewModel<NetworkProcessedOutputEditDialogViewModel>();
+                dialog.DataContext = viewModel;
+                viewModel.RequestClose += HandleRequestClose;
+                dialog.ShowDialog();
+                return viewModel.HasCommittedChanges;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"打开加工产出登记窗口失败：{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (viewModel != null) viewModel.RequestClose -= HandleRequestClose;
                 scope?.Dispose();
             }
         }
