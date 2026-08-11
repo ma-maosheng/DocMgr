@@ -24,6 +24,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IAdvancedDataService, AdvancedDataService>();
         services.AddScoped<ISchemaDictionaryMaintenanceService, SchemaDictionaryMaintenanceService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IServerPathSettingService, ServerPathSettingService>();
         services.AddScoped<ICabinetService, CabinetService>();
         services.AddScoped<ICabinetArchiveBoxPlacementService, CabinetArchiveBoxPlacementService>();
         services.AddScoped<ICabinetOpenLayoutService, CabinetOpenLayoutService>();

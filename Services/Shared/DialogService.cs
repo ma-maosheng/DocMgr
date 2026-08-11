@@ -1373,6 +1373,32 @@ namespace DocMgr.Services.Shared
             }
         }
 
+        public bool ShowServerPathSettingEditDialog(ServerPathSetting? settingToEdit)
+        {
+            var dialog = new ServerPathSettingEditDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+            var (scope, viewModel) = CreateScopedViewModel<ServerPathSettingEditDialogViewModel>(
+                new[] { typeof(ServerPathSetting) },
+                settingToEdit);
+
+            dialog.DataContext = viewModel;
+
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            viewModel.RequestClose += HandleRequestClose;
+
+            try
+            {
+                return dialog.ShowDialog() == true;
+            }
+            finally
+            {
+                viewModel.RequestClose -= HandleRequestClose;
+                scope.Dispose();
+            }
+        }
+
         //private (IServiceScope Scope, TViewModel ViewModel) CreateScopedViewModel<TViewModel>(params object?[] parameters)
         //    where TViewModel : class
         //{

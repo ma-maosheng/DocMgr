@@ -488,6 +488,7 @@ namespace DocMgr.Views
                 UserManagementPage => BtnUserMgr,
                 DeptSettingPage => BtnDeptMgr,
                 RoleSettingPage => BtnRoleMgr,
+                ServerPathSettingPage => BtnServerPathMgr,
                 TestPreparationPage => BtnTestPreparation,
                 AdvancedDataPage => BtnAdvancedData,
                 BusinessLogicSettingsPage => BtnBusinessLogicSettings,
@@ -634,6 +635,7 @@ namespace DocMgr.Views
                 UserManagementPage => "系统设置（用户管理）",
                 DeptSettingPage => "系统设置（部门设置）",
                 RoleSettingPage => "系统设置（角色设置）",
+                ServerPathSettingPage => "系统设置（服务器路径设置）",
                 TestPreparationPage => "系统设置（测试准备）",
                 UserPreferencePage => "系统设置（个人设置）",
                 BusinessLogicSettingsPage => "系统设置（业务逻辑设置）",
@@ -778,6 +780,7 @@ namespace DocMgr.Views
             SetNavButton(BtnUserMgr, isSystemAdmin);
             SetNavButton(BtnDeptMgr, isSystemAdmin);
             SetNavButton(BtnRoleMgr, isSystemAdmin);
+            SetNavButton(BtnServerPathMgr, isSystemAdmin);
             SetNavButton(BtnTestPreparation, isSystemAdmin);
             SetNavButton(BtnAdvancedData, isSystemAdmin);
             SetNavButton(BtnBusinessLogicSettings, isSystemAdmin);
@@ -919,6 +922,12 @@ namespace DocMgr.Views
         {
             TxtPageTitle.Text = "系统设置（角色设置）";
             MainContentFrame.Navigate(new RoleSettingPage());
+        }
+
+        private void BtnServerPathSetting_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "系统设置（服务器路径设置）";
+            MainContentFrame.Navigate(new ServerPathSettingPage());
         }
 
         private void BtnUserManagement_Click(object sender, RoutedEventArgs e)

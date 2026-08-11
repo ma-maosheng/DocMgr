@@ -89,6 +89,7 @@ namespace DocMgr.Services.Interfaces
         void ShowArchiveDetailWindow(ArchiveDetailOpenRequest request);
         bool ShowDeptEditDialog(Department? deptToEdit);
         bool ShowRoleEditDialog(Role? roleToEdit);
+        bool ShowServerPathSettingEditDialog(ServerPathSetting? settingToEdit);
         bool ShowHardDiskMediaApprovalEditDialog(HardDiskMediaApplication application, User? currentUser, out HardDiskMediaApprovalInput? approvalInput);
 
         /// <summary>

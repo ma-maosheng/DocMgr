@@ -53,6 +53,8 @@ public interface INetworkTransferRepository
 
     Task<string?> GetLastOnNetAssetNoByPrefixAsync(string prefix);
 
+    Task<Dictionary<int, YearlyArchiveFilingFact>> GetFilingFactsByIdsAsync(IReadOnlyCollection<int> filingFactIds);
+
     Task<YearlyArchiveSearchResultSet?> GetElectronicSearchResultSetAsync(int resultSetId);
 
     Task<List<SystemAttachment>> GetAttachmentsAsync(string businessType, string businessNo);

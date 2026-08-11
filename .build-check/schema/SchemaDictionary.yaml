@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-07-10T09:14:31Z
+generatedAt: 2026-08-11T07:08:19Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -132,7 +132,7 @@ tables:
         needsReview: false
         aliases: []
       SortOrder:
-        chineseName: 排序
+        chineseName: 排序序号
         description: ''
         clrType: Int32
         needsReview: false
@@ -297,6 +297,56 @@ tables:
     tableName: CabinetHardDiskSlotCategoryAssignments
     chineseName: 资料柜硬盘槽位分类
     description: 定义某资料柜指定面/槽位可存放的硬盘介质分类。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      CabinetId:
+        chineseName: 柜体ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      FaceCode:
+        chineseName: 门别编码
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      SlotCode:
+        chineseName: 档口编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      CategoryName:
+        chineseName: 档口用途
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      CreatedTime:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UpdatedTime:
+        chineseName: 更新时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+  CabinetArchiveSlotCategoryAssignment:
+    tableName: CabinetArchiveSlotCategoryAssignments
+    chineseName: 标准档案柜档口用途
+    description: 定义标准滑道式档案柜指定面/档口的模拟介质资料存放用途（未设置、年度资料专用、历史资料专用）。
     isView: false
     deprecated: false
     aliases: []
@@ -759,6 +809,274 @@ tables:
         clrType: Int32
         needsReview: false
         aliases: []
+  HardDiskDisposalItem:
+    tableName: HardDiskDisposalItems
+    chineseName: 硬盘离库处置明细
+    description: 硬盘离库处置单中的硬盘明细（一单多盘）。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DisposalRecordId:
+        chineseName: 处置单ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      SortOrder:
+        chineseName: 排序序号
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      MediumId:
+        chineseName: 介质ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DiskCode:
+        chineseName: 硬盘编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      SerialNumber:
+        chineseName: 序列号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      BeforeMediaStatus:
+        chineseName: 处置前介质状态
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      BeforeStorageLocation:
+        chineseName: 处置前存放位置
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      BeforeMediaNature:
+        chineseName: 处置前介质属性
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DisposalReason:
+        chineseName: 处置原因
+        description: 按盘：淘汰/损坏/盘失（由处置前介质状态自动赋值）
+        clrType: String
+        needsReview: false
+        aliases: []
+      DispositionMethod:
+        chineseName: 处置方式
+        description: 按盘：直接销毁/退还办公室/库内注销/其他（盘失自动库内注销）
+        clrType: String
+        needsReview: false
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+  HardDiskDisposalRecord:
+    tableName: HardDiskDisposalRecords
+    chineseName: 硬盘离库处置单
+    description: 硬盘淘汰/损坏/盘失等正式离库处置申请单（一单多盘；离库原因与处置方式按明细）。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DisposalNo:
+        chineseName: 处置单编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Status:
+        chineseName: 状态
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DisposalReason:
+        chineseName: 离库原因
+        description: 明细原因汇总（淘汰/损坏/盘失）；权威值在明细
+        clrType: String
+        needsReview: false
+        aliases: []
+      DispositionMethod:
+        chineseName: 离库后处置方式
+        description: 明细处置方式汇总（直接销毁/退还办公室/库内注销/其他）；权威值在明细
+        clrType: String
+        needsReview: false
+        aliases: []
+      OtherRemark:
+        chineseName: 其他说明
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Reason:
+        chineseName: 申请说明
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Remark:
+        chineseName: 备注
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantUserId:
+        chineseName: 申请人用户ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      ApplicantName:
+        chineseName: 申请人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantDept:
+        chineseName: 申请部门
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplyTime:
+        chineseName: 申请时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      ApprovedBy:
+        chineseName: 审批人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApprovedTime:
+        chineseName: 审批时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ApprovalOpinion:
+        chineseName: 审批意见
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ConfirmedBy:
+        chineseName: 确认可上传人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ConfirmedTime:
+        chineseName: 确认可上传时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploaded:
+        chineseName: 已上传签批单
+        description: ''
+        clrType: Boolean
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploadedTime:
+        chineseName: 签批单上传时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploader:
+        chineseName: 签批单上传人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DiskPhotoUploaded:
+        chineseName: 已上传硬盘照片
+        description: ''
+        clrType: Boolean
+        needsReview: false
+        aliases: []
+      CompletedAt:
+        chineseName: 办结时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      CompletedBy:
+        chineseName: 办结人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      SubmittedAt:
+        chineseName: 提交时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      WithdrawnAt:
+        chineseName: 撤回时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      WithdrawReason:
+        chineseName: 撤回原因
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      PrintCount:
+        chineseName: 打印次数
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      LastPrintedAt:
+        chineseName: 最后打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UpdatedAt:
+        chineseName: 更新时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
   HardDiskLedger:
     tableName: HardDiskLedgers
     chineseName: 硬盘台账
@@ -798,7 +1116,7 @@ tables:
         needsReview: false
         aliases: []
       StorageLocation:
-        chineseName: 存放位置
+        chineseName: 存储位置
         description: ''
         clrType: String
         needsReview: false
@@ -2380,7 +2698,7 @@ tables:
         needsReview: false
         aliases: []
       MaterialName:
-        chineseName: 资料名称
+        chineseName: 资料名称快照
         description: ''
         clrType: String
         needsReview: false
@@ -2430,6 +2748,18 @@ tables:
       ContentCount:
         chineseName: 内容份数
         description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      InventoryLostCopyCount:
+        chineseName: 盘库丢失份数
+        description: 盘库登记累计丢失份数（与归还灭失、盘库拟销分流）
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      InventoryScrapCopyCount:
+        chineseName: 盘库拟销份数
+        description: 盘库登记累计拟销份数（与归还灭失、盘库丢失分流）
         clrType: Int32
         needsReview: false
         aliases: []
@@ -2595,6 +2925,250 @@ tables:
         clrType: DateTime
         needsReview: false
         aliases: []
+  YearlyArchiveInventoryRegisterItem:
+    tableName: YearlyArchiveInventoryRegisterItems
+    chineseName: 资料盘库登记明细
+    description: 模拟子项丢失份数或电子袋内硬盘/光盘损坏丢失明细。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      RegisterRecordId:
+        chineseName: 盘库登记单ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      SortOrder:
+        chineseName: 排序序号
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      FilingFactId:
+        chineseName: 立档事实ID
+        description: 模拟轨
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      MediaItemId:
+        chineseName: 登记介质明细ID
+        description: 模拟轨
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      ContainerId:
+        chineseName: 容器ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      ContainerCode:
+        chineseName: 容器编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      LostCopyCount:
+        chineseName: 本次丢失份数
+        description: 模拟轨
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      BeforeAvailableCopyCount:
+        chineseName: 登记前可用份数
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      MediumKind:
+        chineseName: 介质类别
+        description: 硬盘/光盘（电子轨）
+        clrType: String
+        needsReview: false
+        aliases: []
+      MediumId:
+        chineseName: 介质ID
+        description: 电子轨
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      MediumCode:
+        chineseName: 介质编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ElectronicArchiveUnitId:
+        chineseName: 电子立档单元ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      ElectronicArchiveNo:
+        chineseName: 电子立档编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      BeforeMediaStatus:
+        chineseName: 登记前介质状态
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      BeforeStorageLocation:
+        chineseName: 登记前存放位置
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ProjectName:
+        chineseName: 所属项目
+        description: 登记前快照
+        clrType: String
+        needsReview: false
+        aliases: []
+      Year:
+        chineseName: 项目年度
+        description: 登记前快照
+        clrType: String
+        needsReview: false
+        aliases: []
+      MaterialName:
+        chineseName: 资料名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ItemName:
+        chineseName: 明细名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+  YearlyArchiveInventoryRegisterRecord:
+    tableName: YearlyArchiveInventoryRegisterRecords
+    chineseName: 资料盘库登记单
+    description: 年度资料盘库登记主单（模拟丢失/电子损坏丢失；草稿直接办结）。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      RegisterNo:
+        chineseName: 登记单编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Status:
+        chineseName: 状态
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      MediaKind:
+        chineseName: 介质类别
+        description: 模拟/电子
+        clrType: String
+        needsReview: false
+        aliases: []
+      RegisterKind:
+        chineseName: 登记类型
+        description: 盘失登记/损坏登记
+        clrType: String
+        needsReview: false
+        aliases: []
+      Reason:
+        chineseName: 登记说明
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Remark:
+        chineseName: 备注
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantUserId:
+        chineseName: 申请人用户ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      ApplicantName:
+        chineseName: 申请人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantDept:
+        chineseName: 申请部门
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplyTime:
+        chineseName: 申请时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      CompletedAt:
+        chineseName: 办结时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      CompletedBy:
+        chineseName: 办结人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      WithdrawnAt:
+        chineseName: 撤回时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      WithdrawReason:
+        chineseName: 撤回原因
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UpdatedAt:
+        chineseName: 更新时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
   YearlyArchiveMaterialTransaction:
     tableName: YearlyArchiveMaterialTransactions
     chineseName: 资料流转履历
@@ -2628,7 +3202,7 @@ tables:
         needsReview: false
         aliases: []
       SourceKind:
-        chineseName: 来源类别
+        chineseName: 数据源类别
         description: ''
         clrType: String
         needsReview: false
@@ -2646,7 +3220,7 @@ tables:
         needsReview: false
         aliases: []
       BeforeLifecycleStatus:
-        chineseName: 流转前生命周期状态
+        chineseName: 处置前生命周期状态
         description: ''
         clrType: String
         needsReview: false
@@ -2726,7 +3300,7 @@ tables:
         needsReview: false
         aliases: []
       OutboundRecordId:
-        chineseName: 出库单ID
+        chineseName: 出网单ID
         description: ''
         clrType: Int32
         needsReview: false
@@ -3010,7 +3584,7 @@ tables:
         needsReview: false
         aliases: []
       OutboundNo:
-        chineseName: 出库单编号
+        chineseName: 出网单编号
         description: ''
         clrType: String
         needsReview: false
@@ -3070,7 +3644,7 @@ tables:
         needsReview: false
         aliases: []
       DestinationKind:
-        chineseName: 去向类别
+        chineseName: 目的地类别
         description: ''
         clrType: String
         needsReview: false
@@ -3657,6 +4231,12 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      ProofMaterialNote:
+        chineseName: 证明材料备注
+        description: 申请时声明是否附有证明材料；「无」表示未附，有材料时填写名称。
+        clrType: String
+        needsReview: false
+        aliases: []
       OtherRequests:
         chineseName: 其他要求
         description: ''
@@ -3724,7 +4304,7 @@ tables:
         needsReview: false
         aliases: []
       DeputyLeader:
-        chineseName: 分管领导签字
+        chineseName: 分管领导
         description: ''
         clrType: String
         needsReview: false
@@ -4189,14 +4769,122 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      ReviewerName:
+        chineseName: 审核人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ReviewerDate:
+        chineseName: 审核日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ApprovedBy:
+        chineseName: 审批人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApprovalOpinion:
+        chineseName: 审批意见
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ProductionHead:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ProductionHeadDate:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      VicePresident:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      VicePresidentDate:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      HandoverApplicant:
+        chineseName: 办理交接人（归还人）
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      HandoverAdmin:
+        chineseName: 办理交接人（资料管理员）
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      HandoverDate:
+        chineseName: 办理交接日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploaded:
+        chineseName: 已上传签批交接单
+        description: ''
+        clrType: Boolean
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploader:
+        chineseName: 签批交接单上传人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploadedTime:
+        chineseName: 签批交接单上传时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
       RegisteredAt:
         chineseName: 登记时间
         description: ''
         clrType: DateTime?
         needsReview: false
         aliases: []
+      SubmittedAt:
+        chineseName: 提交时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ApprovedAt:
+        chineseName: 审批时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedUploadedAt:
+        chineseName: 实物交接时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
       CompletedAt:
         chineseName: 办结时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      WithdrawnAt:
+        chineseName: 撤回时间
         description: ''
         clrType: DateTime?
         needsReview: false
@@ -4211,6 +4899,18 @@ tables:
         chineseName: 作废原因
         description: ''
         clrType: String
+        needsReview: false
+        aliases: []
+      ForceVoidReason:
+        chineseName: 强制作废原因
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ForceVoidedAt:
+        chineseName: 强制作废时间
+        description: ''
+        clrType: DateTime?
         needsReview: false
         aliases: []
       PrintCount:
@@ -4699,5 +5399,1685 @@ tables:
         chineseName: 单元生命周期状态
         description: ''
         clrType: String
+        needsReview: false
+        aliases: []
+  HardDiskInventoryRegisterItem:
+    tableName: HardDiskInventoryRegisterItems
+    chineseName: HardDiskInventoryRegisterItem
+    description: ''
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      RegisterRecordId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      SortOrder:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      MediumId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      DiskCode:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      SerialNumber:
+        chineseName: 序列编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      BeforeMediaStatus:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      BeforeStorageLocation:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      BeforeMediaNature:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      TargetStorageLocation:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+  HardDiskInventoryRegisterRecord:
+    tableName: HardDiskInventoryRegisterRecords
+    chineseName: HardDiskInventoryRegisterRecord
+    description: ''
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      RegisterNo:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Status:
+        chineseName: 状态
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      RegisterKind:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Reason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Remark:
+        chineseName: 备注
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantUserId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      ApplicantName:
+        chineseName: 申请人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantDept:
+        chineseName: 申请部门
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplyTime:
+        chineseName: 申请时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      CompletedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      CompletedBy:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      WithdrawnAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      WithdrawReason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UpdatedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime
+        needsReview: true
+        aliases: []
+  NetworkInboundItem:
+    tableName: NetworkInboundItems
+    chineseName: 入网申请明细
+    description: ''
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      InboundRecordId:
+        chineseName: 入网单ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      SortOrder:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      AssetKind:
+        chineseName: 资料类别
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      AssetName:
+        chineseName: 资料名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ConfidentialLevel:
+        chineseName: 密级
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DataSizeText:
+        chineseName: 数据量
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      TargetServerPath:
+        chineseName: 目标服务器路径
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      SourceKind:
+        chineseName: 来源类别
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      SourceResultSetItemId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32?
+        needsReview: true
+        aliases: []
+      SourceFilingFactId:
+        chineseName: 来源立档事实ID
+        description: ''
+        clrType: Int32?
+        needsReview: false
+        aliases: []
+      FormNo:
+        chineseName: 表单编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      MaterialName:
+        chineseName: 资料名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ItemName:
+        chineseName: 明细名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ContainerCode:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      StorageLocation:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      OnNetAssetId:
+        chineseName: 在网台账ID
+        description: ''
+        clrType: Int32?
+        needsReview: false
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+  NetworkInboundRecord:
+    tableName: NetworkInboundRecords
+    chineseName: 入网申请单
+    description: ''
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      InboundNo:
+        chineseName: 入网单编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Status:
+        chineseName: 状态
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      SourceKind:
+        chineseName: 来源类别
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ProjectName:
+        chineseName: 项目名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Year:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Reason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Remark:
+        chineseName: 备注
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      SourceResultSetId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32?
+        needsReview: true
+        aliases: []
+      SourceResultSetNo:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ApplicantUserId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      ApplicantName:
+        chineseName: 申请人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantDept:
+        chineseName: 申请部门
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplyTime:
+        chineseName: 申请时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      ProdLeader:
+        chineseName: 生产负责人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ProdDate:
+        chineseName: 生产日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      RndLeader:
+        chineseName: 科研负责人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      RndDate:
+        chineseName: 科研日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      DeputyLeader:
+        chineseName: 分管负责人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DeputyDate:
+        chineseName: 分管日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      Deliverer:
+        chineseName: 移交人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DeliverDate:
+        chineseName: 移交日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      Administrator:
+        chineseName: 管理员
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      AdminDate:
+        chineseName: 管理员日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      DeptLeader:
+        chineseName: 部门负责人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DeptDate:
+        chineseName: 部门日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploaded:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Boolean
+        needsReview: true
+        aliases: []
+      SignedAttachmentUploadedTime:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      SignedAttachmentUploader:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      SubmittedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      ApprovedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      HandoverConfirmedAt:
+        chineseName: 交接确认时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      CompletedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      CompletedBy:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      WithdrawnAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      WithdrawReason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      PrintCount:
+        chineseName: 打印数量
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      LastPrintedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UpdatedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime
+        needsReview: true
+        aliases: []
+  NetworkOnNetAsset:
+    tableName: NetworkOnNetAssets
+    chineseName: 在网台账
+    description: ''
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      AssetNo:
+        chineseName: 在网资产编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      AssetKind:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      AssetName:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ProjectName:
+        chineseName: 项目名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Year:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ServerPath:
+        chineseName: 服务器路径
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ConfidentialLevel:
+        chineseName: 密级
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DataSizeText:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      VersionText:
+        chineseName: 版本
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      OriginKind:
+        chineseName: 来源类别
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      OriginInboundItemId:
+        chineseName: 来源入网明细ID
+        description: ''
+        clrType: Int32?
+        needsReview: false
+        aliases: []
+      ParentAssetId:
+        chineseName: 父级在网资产ID
+        description: ''
+        clrType: Int32?
+        needsReview: false
+        aliases: []
+      SourceFilingFactId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32?
+        needsReview: true
+        aliases: []
+      LifecycleStatus:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Remark:
+        chineseName: 备注
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      RegisteredBy:
+        chineseName: 登记人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      RegisteredAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime
+        needsReview: true
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UpdatedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime
+        needsReview: true
+        aliases: []
+  NetworkOnNetDisposalItem:
+    tableName: NetworkOnNetDisposalItems
+    chineseName: 在网数据处置明细
+    description: ''
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DisposalRecordId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      SortOrder:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      OnNetAssetId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      AssetNo:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      AssetKind:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      AssetName:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ServerPath:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      BeforeLifecycleStatus:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      DisposalReason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      DispositionMethod:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+  NetworkOnNetDisposalRecord:
+    tableName: NetworkOnNetDisposalRecords
+    chineseName: 在网数据处置单
+    description: ''
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DisposalNo:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Status:
+        chineseName: 状态
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DisposalReason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      DispositionMethod:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Reason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Remark:
+        chineseName: 备注
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantUserId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      ApplicantName:
+        chineseName: 申请人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantDept:
+        chineseName: 申请部门
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplyTime:
+        chineseName: 申请时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      ApprovedBy:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ApprovedTime:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      ApprovalOpinion:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ConfirmedBy:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ConfirmedTime:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      SignedAttachmentUploaded:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Boolean
+        needsReview: true
+        aliases: []
+      SignedAttachmentUploadedTime:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      SignedAttachmentUploader:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      CompletedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      CompletedBy:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      SubmittedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      WithdrawnAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      WithdrawReason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      PrintCount:
+        chineseName: 打印数量
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      LastPrintedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UpdatedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime
+        needsReview: true
+        aliases: []
+  NetworkOutboundItem:
+    tableName: NetworkOutboundItems
+    chineseName: 出网申请明细
+    description: ''
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      OutboundRecordId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      SortOrder:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      OnNetAssetId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      AssetNo:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      AssetKind:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      AssetName:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ServerPath:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ConfidentialLevel:
+        chineseName: 密级
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DataSizeText:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ProjectName:
+        chineseName: 项目名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Year:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+  NetworkOutboundRecord:
+    tableName: NetworkOutboundRecords
+    chineseName: 出网申请单
+    description: ''
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      OutboundNo:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Status:
+        chineseName: 状态
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DestinationKind:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ProjectName:
+        chineseName: 项目名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Year:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Reason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Remark:
+        chineseName: 备注
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      TargetRegisterRecordId:
+        chineseName: 目标建档申请ID
+        description: ''
+        clrType: Int32?
+        needsReview: false
+        aliases: []
+      TargetRegisterFormNo:
+        chineseName: 目标建档表单编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantUserId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      ApplicantName:
+        chineseName: 申请人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantDept:
+        chineseName: 申请部门
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplyTime:
+        chineseName: 申请时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      ProdLeader:
+        chineseName: 生产负责人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ProdDate:
+        chineseName: 生产日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      RndLeader:
+        chineseName: 科研负责人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      RndDate:
+        chineseName: 科研日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      DeputyLeader:
+        chineseName: 分管负责人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DeputyDate:
+        chineseName: 分管日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      Deliverer:
+        chineseName: 移交人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DeliverDate:
+        chineseName: 移交日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      Administrator:
+        chineseName: 管理员
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      AdminDate:
+        chineseName: 管理员日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      DeptLeader:
+        chineseName: 部门负责人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DeptDate:
+        chineseName: 部门日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploaded:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Boolean
+        needsReview: true
+        aliases: []
+      SignedAttachmentUploadedTime:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      SignedAttachmentUploader:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      SubmittedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      ApprovedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      HandoverConfirmedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      CompletedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      CompletedBy:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      WithdrawnAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      WithdrawReason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      PrintCount:
+        chineseName: 打印数量
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      LastPrintedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UpdatedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime
+        needsReview: true
+        aliases: []
+  YearlyArchiveDisposalItem:
+    tableName: YearlyArchiveDisposalItems
+    chineseName: YearlyArchiveDisposalItem
+    description: ''
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DisposalRecordId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      SortOrder:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      FilingFactId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      ContainerId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      ContainerCode:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      BeforeStorageLocation:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      SourceRegisterKind:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      DisposalReason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      DispositionMethod:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      MaterialName:
+        chineseName: 资料名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ItemName:
+        chineseName: 明细名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      FormNo:
+        chineseName: 表单编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      InventoryLostCopyCount:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      InventoryScrapCopyCount:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      BeforeLifecycleStatus:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      MediumKind:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      MediumId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      MediumCode:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ElectronicArchiveUnitId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      ElectronicArchiveNo:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      BeforeMediaStatus:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      TargetBlankSlotLocation:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+  YearlyArchiveDisposalRecord:
+    tableName: YearlyArchiveDisposalRecords
+    chineseName: YearlyArchiveDisposalRecord
+    description: ''
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DisposalNo:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      MediaKind:
+        chineseName: 介质类别
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Status:
+        chineseName: 状态
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DisposalReason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      DispositionMethod:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Reason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      Remark:
+        chineseName: 备注
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantUserId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      ApplicantName:
+        chineseName: 申请人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantDept:
+        chineseName: 申请部门
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplyTime:
+        chineseName: 申请时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      ApprovedBy:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ApprovedTime:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      ApprovalOpinion:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ConfirmedBy:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ConfirmedTime:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      SignedAttachmentUploaded:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Boolean
+        needsReview: true
+        aliases: []
+      SignedAttachmentUploadedTime:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      SignedAttachmentUploader:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      ScenePhotoUploaded:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Boolean
+        needsReview: true
+        aliases: []
+      PhysicalRemovalConfirmed:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Boolean
+        needsReview: true
+        aliases: []
+      PhysicalRemovalConfirmedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      PhysicalRemovalConfirmedBy:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      FormatRetainedConfirmed:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Boolean
+        needsReview: true
+        aliases: []
+      FormatRetainedConfirmedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      FormatRetainedConfirmedBy:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      CompletedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      CompletedBy:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      SubmittedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      WithdrawnAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      WithdrawReason:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      PrintCount:
+        chineseName: 打印数量
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      LastPrintedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UpdatedAt:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime
+        needsReview: true
+        aliases: []
+  ServerPathSetting:
+    tableName: ServerPathSettings
+    chineseName: 服务器路径设置
+    description: 服务器路径预设，按部门配置路径名称、物理地址、权限与容量上限。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DepartmentName:
+        chineseName: 部门
+        description: 部门名称或「公用」
+        clrType: String
+        needsReview: false
+        aliases: []
+      PathName:
+        chineseName: 路径名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      PhysicalPath:
+        chineseName: 物理地址
+        description: 服务器物理路径地址
+        clrType: String
+        needsReview: false
+        aliases: []
+      Permission:
+        chineseName: 权限
+        description: 读、写、读写
+        clrType: String
+        needsReview: false
+        aliases: []
+      CapacityTb:
+        chineseName: 容量(TB)
+        description: ''
+        clrType: Decimal
         needsReview: false
         aliases: []

@@ -1,30 +1,128 @@
-<Window x:Class="DocMgr.Views.NetworkTransfer.NetworkProcessedOutputEditDialog"
+﻿<Window x:Class="DocMgr.Views.NetworkTransfer.NetworkProcessedOutputEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="加工产出登记" Height="420" Width="520" WindowStartupLocation="CenterOwner">
-  <DockPanel Margin="14">
-    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-      <Button Content="登记" Command="{Binding SaveCommand}" Width="80" Margin="0,0,8,0"/>
-      <Button Content="取消" Command="{Binding CloseCommand}" Width="80"/>
+        Width="720"
+        Height="520"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F7FA">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../YearlyArchive/ArchiveRegisterResources.xaml"/>
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
+
+  <Grid Margin="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,12">
+      <TextBlock Text="{Binding WindowTitle, Mode=OneWay}" FontSize="18" FontWeight="Bold"/>
     </StackPanel>
-    <Grid>
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="100"/><ColumnDefinition Width="*"/>
-      </Grid.ColumnDefinitions>
-      <Grid.RowDefinitions>
-        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-      </Grid.RowDefinitions>
-      <TextBlock Text="资料类别" VerticalAlignment="Center"/><ComboBox Grid.Column="1" ItemsSource="{Binding AssetKindOptions}" SelectedItem="{Binding AssetKind}" Margin="0,0,0,8"/>
-      <TextBlock Grid.Row="1" Text="名称" VerticalAlignment="Center"/><TextBox Grid.Row="1" Grid.Column="1" Text="{Binding AssetName}" Margin="0,0,0,8"/>
-      <TextBlock Grid.Row="2" Text="服务器路径" VerticalAlignment="Center"/><TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ServerPath}" Margin="0,0,0,8"/>
-      <TextBlock Grid.Row="3" Text="项目" VerticalAlignment="Center"/><TextBox Grid.Row="3" Grid.Column="1" Text="{Binding ProjectName}" Margin="0,0,0,8"/>
-      <TextBlock Grid.Row="4" Text="年度" VerticalAlignment="Center"/><TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Year}" Margin="0,0,0,8"/>
-      <TextBlock Grid.Row="5" Text="密级" VerticalAlignment="Center"/><TextBox Grid.Row="5" Grid.Column="1" Text="{Binding ConfidentialLevel}" Margin="0,0,0,8"/>
-      <TextBlock Grid.Row="6" Text="数据量" VerticalAlignment="Center"/><TextBox Grid.Row="6" Grid.Column="1" Text="{Binding DataSizeText}" Margin="0,0,0,8"/>
-      <TextBlock Grid.Row="7" Text="父资产Id" VerticalAlignment="Center"/><TextBox Grid.Row="7" Grid.Column="1" Text="{Binding ParentAssetIdText}" Margin="0,0,0,8"/>
-      <TextBlock Grid.Row="8" Text="备注" VerticalAlignment="Center"/><TextBox Grid.Row="8" Grid.Column="1" Text="{Binding Remark}"/>
-    </Grid>
-  </DockPanel>
+
+    <Border Grid.Row="1" BorderBrush="#D8E2EC" BorderThickness="1" CornerRadius="4" Background="White">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10">
+        <StackPanel Margin="12">
+          <GroupBox Header="1. 加工产出信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
+            <StackPanel>
+              <Grid Margin="0,2">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="12"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <DockPanel>
+                  <TextBlock Text="资料类别" Width="90" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                  <ComboBox Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                            ItemsSource="{Binding AssetKindOptions}"
+                            SelectedItem="{Binding AssetKind}"/>
+                </DockPanel>
+                <DockPanel Grid.Column="2">
+                  <TextBlock Text="名称" Width="70" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                  <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                           Text="{Binding AssetName, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+              </Grid>
+
+              <DockPanel Margin="0,6,0,0">
+                <TextBlock Text="服务器路径" Width="90" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                         Text="{Binding ServerPath, UpdateSourceTrigger=PropertyChanged}"/>
+              </DockPanel>
+
+              <Grid Margin="0,6,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="12"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <DockPanel>
+                  <TextBlock Text="项目" Width="90" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                  <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                           Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+                <DockPanel Grid.Column="2">
+                  <TextBlock Text="年度" Width="70" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                  <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                           Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+              </Grid>
+
+              <Grid Margin="0,6,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="12"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <DockPanel>
+                  <TextBlock Text="密级" Width="90" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                  <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                           Text="{Binding ConfidentialLevel, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+                <DockPanel Grid.Column="2">
+                  <TextBlock Text="数据量" Width="70" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                  <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                           Text="{Binding DataSizeText, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+              </Grid>
+
+              <Grid Margin="0,6,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="12"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <DockPanel>
+                  <TextBlock Text="父资产Id" Width="90" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                  <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                           Text="{Binding ParentAssetIdText, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+                <DockPanel Grid.Column="2">
+                  <TextBlock Text="备注" Width="70" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                  <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                           Text="{Binding Remark, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+              </Grid>
+            </StackPanel>
+          </GroupBox>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <Border Grid.Row="2" Margin="0,12,0,0" Padding="12,10,0,0"
+            BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Background="#FAFBFC">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Button Content="登记" Command="{Binding SaveCommand}" HorizontalAlignment="Left" Padding="12,6"/>
+        <Button Grid.Column="1" Content="取消" Command="{Binding CloseCommand}" Padding="16,6"/>
+      </Grid>
+    </Border>
+  </Grid>
 </Window>

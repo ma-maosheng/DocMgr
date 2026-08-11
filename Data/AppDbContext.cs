@@ -26,6 +26,7 @@ namespace DocMgr.Data
         public DbSet<UserSession> UserSessions { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<Department> Departments { get; set; }
+        public DbSet<ServerPathSetting> ServerPathSettings { get; set; }
         public DbSet<Cabinet> Cabinets { get; set; }
         public DbSet<CabinetHardDiskSlotCategoryAssignment> CabinetHardDiskSlotCategoryAssignments { get; set; }
         public DbSet<CabinetArchiveSlotCategoryAssignment> CabinetArchiveSlotCategoryAssignments { get; set; }

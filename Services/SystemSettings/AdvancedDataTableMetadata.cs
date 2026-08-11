@@ -30,6 +30,11 @@ namespace DocMgr.Services.SystemSettings
                 "← 被 Users 及各类业务单据引用。",
                 "可维护。删除前请确认无用户或业务记录仍引用该部门。"),
 
+            [nameof(ServerPathSetting)] = new(
+                "服务器路径预设，按部门配置可访问的路径名称、权限与容量上限。",
+                "DepartmentName 引用 Departments.Name 或固定值「公用」。",
+                "可维护。请通过「服务器路径设置」页面维护。"),
+
             [nameof(UserSession)] = new(
                 "记录用户登录会话令牌及过期时间，用于会话校验。",
                 "→ 引用 Users（UserId）。",

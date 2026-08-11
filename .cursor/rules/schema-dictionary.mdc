@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-08-10T03:52:24Z
+> 生成时间（UTC）：2026-08-11T08:43:10Z
 
 ## 表索引
 
@@ -55,6 +55,7 @@ alwaysApply: true
 | 其他图件 | `OtherMap` | `OtherMaps` | 表 |
 | 项目信息 | `ProjectInfo` | `ProjectInfos` | 表 |
 | 角色 | `Role` | `Roles` | 表 |
+| 服务器路径设置 | `ServerPathSetting` | `ServerPathSettings` | 表 |
 | 系统附件 | `SystemAttachment` | `SystemAttachments` | 表 |
 | 待办已读状态 | `ToDoReadState` | `ToDoReadStates` | 表 |
 | 地形图 | `TopoMap` | `TopoMaps` | 表 |
@@ -516,6 +517,7 @@ alwaysApply: true
 | 未映射字段 | `Year` | `String` | 是 |
 | 未映射字段 | `Reason` | `String` | 是 |
 | 备注 | `Remark` | `String` | 否 |
+| 证明材料备注 | `ProofMaterialNote` | `String` | 否 |
 | 未映射字段 | `SourceResultSetId` | `Int32?` | 是 |
 | 未映射字段 | `SourceResultSetNo` | `String` | 是 |
 | 未映射字段 | `ApplicantUserId` | `Int32` | 是 |
@@ -783,6 +785,17 @@ alwaysApply: true
 | ID | `Id` | `Int32` | 否 |
 | 名称 | `Name` | `String` | 否 |
 | 描述 | `Description` | `String` | 否 |
+
+### ServerPathSetting（服务器路径设置）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 部门 | `DepartmentName` | `String` | 否 |
+| 路径名称 | `PathName` | `String` | 否 |
+| 物理地址 | `PhysicalPath` | `String` | 否 |
+| 权限 | `Permission` | `String` | 否 |
+| 容量(TB) | `CapacityTb` | `Decimal` | 否 |
 
 ### SystemAttachment（系统附件）
 

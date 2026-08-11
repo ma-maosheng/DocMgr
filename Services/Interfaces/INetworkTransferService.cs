@@ -33,6 +33,8 @@ public interface INetworkTransferService
         int resultSetId,
         IReadOnlyCollection<int>? selectedItemIds);
 
+    Task<IReadOnlyDictionary<int, YearlyArchiveFilingFact>> GetFilingFactsByIdsAsync(IReadOnlyCollection<int> filingFactIds);
+
     Task SubmitInboundAsync(int recordId, User currentUser);
 
     Task ApproveInboundAsync(NetworkInboundRecord approval, User currentUser);
@@ -43,6 +45,10 @@ public interface INetworkTransferService
     Task UpdateInboundItemPathsAsync(int recordId, IReadOnlyList<NetworkInboundItem> items, User currentUser);
 
     Task CompleteInboundAsync(int recordId, User currentUser);
+
+    Task<NetworkInboundPrintData> BuildInboundPrintDataAsync(int recordId, bool blankApprovalSignatures);
+
+    Task RecordInboundPrintAsync(int recordId);
 
     Task WithdrawInboundAsync(int recordId, string? reason, User currentUser);
 

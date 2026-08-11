@@ -6,6 +6,7 @@ using DocMgr.Views;
 using DocMgr.Views.Cabinets;
 using DocMgr.Views.HardDiskMedia;
 using DocMgr.Views.HistoryArchive;
+using DocMgr.Views.NetworkTransfer;
 using DocMgr.Views.Projects;
 using DocMgr.Views.Shared;
 using DocMgr.Views.SystemSettings;
@@ -92,6 +93,19 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<ElectronicMediaItemEntriesDialog>("YA-ELC-ENT", "电子目录/文件明细");
             Add<ArchiveDisposalEditDialog>("YA-DSP-ED", "资料离库处置编辑");
 
+            // NT Pages（年度资料出入网管理 · 5 子菜单）
+            Add<NetworkInboundApplicationPage>("NT-IB-APP", "入网申请");
+            Add<NetworkInboundApprovalPage>("NT-IB-APV", "入网审批");
+            Add<NetworkOutboundApplicationPage>("NT-OB-APP", "出网申请");
+            Add<NetworkOutboundApprovalPage>("NT-OB-APV", "出网审批");
+            Add<NetworkOnNetDisposalPage>("NT-DSP", "在网数据处置");
+
+            // NT Dialogs / Windows
+            Add<NetworkInboundEditDialog>("NT-IB-ED", "入网编辑");
+            Add<NetworkOutboundEditDialog>("NT-OB-ED", "出网编辑");
+            Add<NetworkOnNetDisposalEditDialog>("NT-DSP-ED", "在网数据处置编辑");
+            Add<NetworkProcessedOutputEditDialog>("NT-PROC-ED", "加工产出登记");
+
             // HD / OD Pages
             Add<HardDiskMediaPage>("HD-MED", "硬盘概览");
             Add<HardDiskMediumLedgerPage>("HD-LDG", "硬盘初始登记");
@@ -136,6 +150,7 @@ namespace DocMgr.Infrastructure.DebugUi
             // SS
             Add<UserManagementPage>("SS-USER", "用户管理");
             Add<RoleSettingPage>("SS-ROLE", "角色设置");
+            Add<ServerPathSettingPage>("SS-SRVPATH", "服务器路径设置");
             Add<DeptSettingPage>("SS-DEPT", "部门设置");
             Add<UserPreferencePage>("SS-PREF", "个人设置");
             Add<BusinessLogicSettingsPage>("SS-BIZ", "业务逻辑设置");
@@ -144,6 +159,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<TestPreparationPage>("SS-TEST", "测试准备");
             Add<UserEditDialog>("SS-USER-ED", "用户编辑");
             Add<RoleEditDialog>("SS-ROLE-ED", "角色编辑");
+            Add<ServerPathSettingEditDialog>("SS-SRVPATH-ED", "服务器路径编辑");
             Add<DeptEditDialog>("SS-DEPT-ED", "部门编辑");
 
             // PR

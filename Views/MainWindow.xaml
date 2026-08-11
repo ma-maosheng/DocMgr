@@ -511,6 +511,7 @@
                                 <Button x:Name="BtnUserMgr" Content="用户管理" Style="{StaticResource SubNavButton}" Click="BtnUserManagement_Click"/>
                                 <Button x:Name="BtnDeptMgr" Content="部门设置" Style="{StaticResource SubNavButton}" Click="BtnDeptSetting_Click"/>
                                 <Button x:Name="BtnRoleMgr" Content="角色设置" Style="{StaticResource SubNavButton}" Click="BtnRoleSetting_Click"/>
+                                <Button x:Name="BtnServerPathMgr" Content="服务器路径设置" Style="{StaticResource SubNavButton}" Click="BtnServerPathSetting_Click"/>
                                 <Button x:Name="BtnTestPreparation" Content="测试准备" Style="{StaticResource SubNavButton}" Click="BtnTestPreparation_Click"/>
                                 <Button x:Name="BtnAdvancedData" Content="⚠️ 高级数据管理" Style="{StaticResource SubNavButton}" Click="BtnAdvancedData_Click"/>
                                 <Button x:Name="BtnBusinessLogicSettings"

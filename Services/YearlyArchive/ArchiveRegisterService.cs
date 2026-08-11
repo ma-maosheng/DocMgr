@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DocMgr.Models.NetworkTransfer;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
@@ -895,6 +896,81 @@ namespace DocMgr.Services.YearlyArchive
                 record.Administrator = currentUser.RealName;
             if (!record.AdminDate.HasValue)
                 record.AdminDate = now;
+        }
+
+        public async Task ApplyDefaultInboundApprovalInfoAsync(NetworkInboundRecord record, User currentUser)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            ArgumentNullException.ThrowIfNull(currentUser);
+
+            if (!IsArchiveAdminUser(currentUser))
+            {
+                throw new InvalidOperationException("仅资料室（资料管理员）可执行该操作。");
+            }
+
+            var users = await _archiveRegisterRepository.GetUsersAsync();
+            var now = DateTime.Now;
+
+            var deptLeader = FindUserByDeptAndRole(users, record.ApplicantDept, "部门负责人");
+            if (string.IsNullOrWhiteSpace(record.DeptLeader) && !string.IsNullOrWhiteSpace(deptLeader))
+            {
+                record.DeptLeader = deptLeader;
+            }
+
+            if (!record.DeptDate.HasValue)
+            {
+                record.DeptDate = now;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.ProdLeader))
+            {
+                record.ProdLeader = FindUserByRoleOrDept(users, "生产管理科");
+            }
+
+            if (!record.ProdDate.HasValue)
+            {
+                record.ProdDate = now;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.RndLeader))
+            {
+                record.RndLeader = FindUserByRoleOrDept(users, "资料室");
+            }
+
+            if (!record.RndDate.HasValue)
+            {
+                record.RndDate = now;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.DeputyLeader))
+            {
+                record.DeputyLeader = FindUserByRoleOrDept(users, "分管资料副院长");
+            }
+
+            if (!record.DeputyDate.HasValue)
+            {
+                record.DeputyDate = now;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.Deliverer))
+            {
+                record.Deliverer = record.ApplicantName;
+            }
+
+            if (!record.DeliverDate.HasValue)
+            {
+                record.DeliverDate = now;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.Administrator))
+            {
+                record.Administrator = currentUser.RealName;
+            }
+
+            if (!record.AdminDate.HasValue)
+            {
+                record.AdminDate = now;
+            }
         }
 
         public async Task ApplyDefaultOutboundApprovalInfoAsync(YearlyArchiveOutboundRecord record, User currentUser)

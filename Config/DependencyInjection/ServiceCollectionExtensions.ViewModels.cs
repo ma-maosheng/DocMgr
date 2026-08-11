@@ -45,6 +45,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<TopoMapViewModel>();
         services.AddTransient<DeptSettingViewModel>();
         services.AddTransient<RoleSettingViewModel>();
+        services.AddTransient<ServerPathSettingViewModel>();
         services.AddTransient<TestPreparationPageViewModel>();
         services.AddTransient<ArchiveFilingViewModel>();
         services.AddTransient<ArchiveFilingLedgerViewModel>();

@@ -26,7 +26,7 @@ namespace DocMgr.Models.NetworkTransfer
 
         public int Status { get; set; } = StatusDraft;
 
-        /// <summary>数据源类别：外部离线 / 已立档资料 / 其他。</summary>
+        /// <summary>数据来源：档外资料 / 立档资料。</summary>
         public string SourceKind { get; set; } = string.Empty;
 
         public string ProjectName { get; set; } = string.Empty;
@@ -36,6 +36,9 @@ namespace DocMgr.Models.NetworkTransfer
         public string Reason { get; set; } = string.Empty;
 
         public string Remark { get; set; } = string.Empty;
+
+        /// <summary>证明材料备注；「无」表示未附，有材料时填写名称。</summary>
+        public string ProofMaterialNote { get; set; } = string.Empty;
 
         /// <summary>已立档入网时挂接的电子检索结果集 Id（唯一明细来源）。</summary>
         public int? SourceResultSetId { get; set; }

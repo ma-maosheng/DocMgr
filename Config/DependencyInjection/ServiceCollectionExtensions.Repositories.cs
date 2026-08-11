@@ -22,6 +22,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IDevSystemSettingsSeedRepository, DevSystemSettingsSeedRepository>();
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IServerPathSettingRepository, ServerPathSettingRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<ICabinetRepository, CabinetRepository>();
         services.AddScoped<ICabinetArchiveBoxPlacementRepository, CabinetArchiveBoxPlacementRepository>();

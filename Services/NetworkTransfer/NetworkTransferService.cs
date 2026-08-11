@@ -11,17 +11,20 @@ namespace DocMgr.Services.NetworkTransfer;
 /// <summary>
 /// 年度资料出入网管理业务服务。
 /// </summary>
-public sealed class NetworkTransferService : INetworkTransferService
+public sealed partial class NetworkTransferService : INetworkTransferService
 {
     private readonly INetworkTransferRepository _repository;
     private readonly IBusinessRuleService _businessRuleService;
+    private readonly IServerPathSettingService _serverPathSettingService;
 
     public NetworkTransferService(
         INetworkTransferRepository repository,
-        IBusinessRuleService businessRuleService)
+        IBusinessRuleService businessRuleService,
+        IServerPathSettingService serverPathSettingService)
     {
         _repository = repository;
         _businessRuleService = businessRuleService;
+        _serverPathSettingService = serverPathSettingService;
     }
 
     public Task<string> GenerateNextInboundNoAsync() =>
@@ -56,12 +59,21 @@ public sealed class NetworkTransferService : INetworkTransferService
             poolItems = poolItems.Where(item => selected.Contains(item.Id));
         }
 
+        List<int> filingFactIds = poolItems
+            .Select(item => item.FilingFactId)
+            .Where(id => id > 0)
+            .Distinct()
+            .ToList();
+        Dictionary<int, YearlyArchiveFilingFact> filingFacts =
+            await _repository.GetFilingFactsByIdsAsync(filingFactIds);
+
         DateTime now = DateTime.Now;
         int sort = 1;
         var items = new List<NetworkInboundItem>();
         foreach (var poolItem in poolItems.OrderBy(item => item.SortOrder).ThenBy(item => item.Id))
         {
-            items.Add(new NetworkInboundItem
+            filingFacts.TryGetValue(poolItem.FilingFactId, out YearlyArchiveFilingFact? filingFact);
+            var inboundItem = new NetworkInboundItem
             {
                 SortOrder = sort++,
                 AssetKind = NetworkTransferDomainValues.AssetKindJobData,
@@ -80,7 +92,9 @@ public sealed class NetworkTransferService : INetworkTransferService
                 ContainerCode = poolItem.ContainerCode?.Trim() ?? string.Empty,
                 StorageLocation = poolItem.StorageLocation?.Trim() ?? string.Empty,
                 CreatedAt = now
-            });
+            };
+            NetworkInboundItemDisplaySupport.ApplyFilingFactSnapshot(inboundItem, filingFact);
+            items.Add(inboundItem);
         }
 
         if (items.Count == 0)
@@ -90,6 +104,10 @@ public sealed class NetworkTransferService : INetworkTransferService
 
         return items;
     }
+
+    public async Task<IReadOnlyDictionary<int, YearlyArchiveFilingFact>> GetFilingFactsByIdsAsync(
+        IReadOnlyCollection<int> filingFactIds) =>
+        await _repository.GetFilingFactsByIdsAsync(filingFactIds);
 
     public async Task<NetworkInboundRecord> CreateInboundDraftAsync(
         NetworkInboundRecord draft,
@@ -114,6 +132,7 @@ public sealed class NetworkTransferService : INetworkTransferService
             Year = draft.Year?.Trim() ?? string.Empty,
             Reason = draft.Reason?.Trim() ?? string.Empty,
             Remark = draft.Remark?.Trim() ?? string.Empty,
+            ProofMaterialNote = NormalizeInboundProofMaterialNote(draft.ProofMaterialNote),
             SourceResultSetId = draft.SourceResultSetId,
             SourceResultSetNo = draft.SourceResultSetNo?.Trim() ?? string.Empty,
             ApplicantUserId = currentUser.Id,
@@ -154,6 +173,7 @@ public sealed class NetworkTransferService : INetworkTransferService
         existing.Year = draft.Year?.Trim() ?? string.Empty;
         existing.Reason = draft.Reason?.Trim() ?? string.Empty;
         existing.Remark = draft.Remark?.Trim() ?? string.Empty;
+        existing.ProofMaterialNote = NormalizeInboundProofMaterialNote(draft.ProofMaterialNote);
         existing.SourceResultSetId = draft.SourceResultSetId;
         existing.SourceResultSetNo = draft.SourceResultSetNo?.Trim() ?? string.Empty;
         existing.UpdatedAt = DateTime.Now;
@@ -187,6 +207,7 @@ public sealed class NetworkTransferService : INetworkTransferService
 
         EnsureOwnerOrAdmin(existing.ApplicantUserId, currentUser);
         ValidateInboundHeader(existing);
+        NetworkInboundApplicationValidationSupport.EnsureValidForSubmit(existing, existing.Items.ToList());
         if (existing.Items.Count == 0)
         {
             throw new InvalidOperationException("请至少录入一条入网明细。");
@@ -211,11 +232,14 @@ public sealed class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅已提交状态可审批。");
         }
 
+        RequireSigner(approval.DeptLeader, "部门负责人");
         RequireSigner(approval.ProdLeader, "生产管理科负责人");
         RequireSigner(approval.RndLeader, "科研开发室负责人");
         RequireSigner(approval.DeputyLeader, "分管领导");
 
         DateTime now = DateTime.Now;
+        existing.DeptLeader = approval.DeptLeader.Trim();
+        existing.DeptDate = approval.DeptDate ?? now.Date;
         existing.ProdLeader = approval.ProdLeader.Trim();
         existing.ProdDate = approval.ProdDate ?? now.Date;
         existing.RndLeader = approval.RndLeader.Trim();
@@ -242,7 +266,6 @@ public sealed class NetworkTransferService : INetworkTransferService
 
         RequireSigner(handover.Deliverer, "移交人");
         RequireSigner(handover.Administrator, "资料员");
-        RequireSigner(handover.DeptLeader, "部门负责人");
         EnsureInboundPathsReady(existing);
 
         DateTime now = DateTime.Now;
@@ -250,8 +273,6 @@ public sealed class NetworkTransferService : INetworkTransferService
         existing.DeliverDate = handover.DeliverDate ?? now.Date;
         existing.Administrator = handover.Administrator.Trim();
         existing.AdminDate = handover.AdminDate ?? now.Date;
-        existing.DeptLeader = handover.DeptLeader.Trim();
-        existing.DeptDate = handover.DeptDate ?? now.Date;
         existing.Status = NetworkInboundRecord.StatusSignedUploaded;
         existing.HandoverConfirmedAt = now;
         existing.UpdatedAt = now;
@@ -1031,7 +1052,7 @@ public sealed class NetworkTransferService : INetworkTransferService
         IReadOnlyList<NetworkInboundItem> items)
     {
         string sourceKind = draft.SourceKind?.Trim() ?? string.Empty;
-        if (!NetworkTransferDomainValues.SourceKindOptions.Contains(sourceKind, StringComparer.Ordinal))
+        if (!NetworkTransferDomainValues.IsValidSourceKind(sourceKind))
         {
             throw new InvalidOperationException("请选择有效的数据源类别。");
         }
@@ -1040,7 +1061,7 @@ public sealed class NetworkTransferService : INetworkTransferService
         {
             if (!draft.SourceResultSetId.HasValue || draft.SourceResultSetId.Value <= 0)
             {
-                throw new InvalidOperationException("已立档资料入网必须挂接电子资料检索结果集。");
+                throw new InvalidOperationException("立档资料入网必须挂接电子资料检索结果集。");
             }
 
             var selectedIds = items?
@@ -1069,11 +1090,25 @@ public sealed class NetworkTransferService : INetworkTransferService
 
                     item.ConfidentialLevel = edited.ConfidentialLevel?.Trim() ?? string.Empty;
                     item.DataSizeText = edited.DataSizeText?.Trim() ?? string.Empty;
-                    item.TargetServerPath = edited.TargetServerPath?.Trim() ?? string.Empty;
                     if (!string.IsNullOrWhiteSpace(edited.AssetName))
                     {
                         item.AssetName = edited.AssetName.Trim();
                     }
+                }
+            }
+
+            string sharedPath = (items ?? Array.Empty<NetworkInboundItem>())
+                .Select(row => row.TargetServerPath?.Trim())
+                .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path))
+                ?? pathMap.Values
+                    .Select(row => row.TargetServerPath?.Trim())
+                    .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path))
+                ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(sharedPath))
+            {
+                foreach (NetworkInboundItem item in imported)
+                {
+                    item.TargetServerPath = sharedPath;
                 }
             }
 
@@ -1090,24 +1125,22 @@ public sealed class NetworkTransferService : INetworkTransferService
         var result = new List<NetworkInboundItem>();
         foreach (var item in items)
         {
-            if (string.IsNullOrWhiteSpace(item.AssetName))
-            {
-                throw new InvalidOperationException("入网明细名称不能为空。");
-            }
-
             string assetKind = item.AssetKind?.Trim() ?? string.Empty;
-            if (!NetworkTransferDomainValues.AssetKindOptions.Contains(assetKind, StringComparer.Ordinal))
+            string dataSizeText = item.DataSizeText?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(dataSizeText)
+                && NetworkInboundItemDisplaySupport.TryParseDataSizeText(dataSizeText, out decimal parsed, out string unit))
             {
-                throw new InvalidOperationException("请为明细选择有效的资料类别。");
+                dataSizeText = NetworkInboundItemDisplaySupport.ComposeDataSizeText(parsed, unit);
             }
 
             result.Add(new NetworkInboundItem
             {
                 SortOrder = sort++,
                 AssetKind = assetKind,
-                AssetName = item.AssetName.Trim(),
+                AssetName = item.AssetName?.Trim() ?? string.Empty,
+                ItemName = item.ItemName?.Trim() ?? string.Empty,
                 ConfidentialLevel = item.ConfidentialLevel?.Trim() ?? string.Empty,
-                DataSizeText = item.DataSizeText?.Trim() ?? string.Empty,
+                DataSizeText = dataSizeText,
                 TargetServerPath = item.TargetServerPath?.Trim() ?? string.Empty,
                 SourceKind = sourceKind,
                 CreatedAt = now
@@ -1315,10 +1348,12 @@ public sealed class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("请填写申请说明。");
         }
 
+        record.ProofMaterialNote = NormalizeInboundProofMaterialNote(record.ProofMaterialNote);
+
         if (NetworkTransferDomainValues.IsArchivedElectronicSearchSource(record.SourceKind)
             && (!record.SourceResultSetId.HasValue || record.SourceResultSetId.Value <= 0))
         {
-            throw new InvalidOperationException("已立档资料入网必须挂接电子资料检索结果集。");
+            throw new InvalidOperationException("立档资料入网必须挂接电子资料检索结果集。");
         }
     }
 
@@ -1413,4 +1448,7 @@ public sealed class NetworkTransferService : INetworkTransferService
 
     private static string ResolveUserDisplayName(User user) =>
         string.IsNullOrWhiteSpace(user.RealName) ? user.LoginName?.Trim() ?? string.Empty : user.RealName.Trim();
+
+    private static string NormalizeInboundProofMaterialNote(string? proofMaterialNote) =>
+        ArchiveRegisterDomainValues.NormalizeProofMaterialNote(proofMaterialNote);
 }

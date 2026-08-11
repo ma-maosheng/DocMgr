@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-08-10T03:52:24Z
+generatedAt: 2026-08-11T08:43:10Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -5751,6 +5751,12 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      ProofMaterialNote:
+        chineseName: 证明材料备注
+        description: 申请时声明是否附有证明材料；「无」表示未附，有材料时填写名称。
+        clrType: String
+        needsReview: false
+        aliases: []
       SourceResultSetId:
         chineseName: 未映射字段
         description: ''
@@ -7036,4 +7042,48 @@ tables:
         description: ''
         clrType: DateTime
         needsReview: true
+        aliases: []
+  ServerPathSetting:
+    tableName: ServerPathSettings
+    chineseName: 服务器路径设置
+    description: 服务器路径预设，按部门配置路径名称、物理地址、权限与容量上限。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DepartmentName:
+        chineseName: 部门
+        description: 部门名称或「公用」
+        clrType: String
+        needsReview: false
+        aliases: []
+      PathName:
+        chineseName: 路径名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      PhysicalPath:
+        chineseName: 物理地址
+        description: 服务器物理路径地址
+        clrType: String
+        needsReview: false
+        aliases: []
+      Permission:
+        chineseName: 权限
+        description: 读、写、读写
+        clrType: String
+        needsReview: false
+        aliases: []
+      CapacityTb:
+        chineseName: 容量(TB)
+        description: ''
+        clrType: Decimal
+        needsReview: false
         aliases: []

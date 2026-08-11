@@ -1,0 +1,183 @@
+using DocMgr.Models.NetworkTransfer;
+
+namespace DocMgr.Services.NetworkTransfer;
+
+/// <summary>
+/// 入网申请提交前完整性与业务逻辑校验。
+/// </summary>
+public static class NetworkInboundApplicationValidationSupport
+{
+    /// <summary>
+    /// 校验提交申请所需的头信息与明细，返回全部错误（空列表表示通过）。
+    /// </summary>
+    public static IReadOnlyList<string> ValidateForSubmit(
+        NetworkInboundRecord header,
+        IReadOnlyList<NetworkInboundItem> items)
+    {
+        var errors = new List<string>();
+        ValidateHeader(header, errors);
+
+        if (items == null || items.Count == 0)
+        {
+            errors.Add("请至少录入一条入网明细。");
+            return errors;
+        }
+
+        string sharedPath = items
+            .Select(item => item.TargetServerPath?.Trim() ?? string.Empty)
+            .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path))
+            ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(sharedPath))
+        {
+            errors.Add("请选择服务器路径。");
+        }
+
+        if (NetworkTransferDomainValues.IsArchivedElectronicSearchSource(header.SourceKind))
+        {
+            ValidateArchivedItems(items, errors);
+        }
+        else
+        {
+            ValidateExternalItems(items, errors);
+        }
+
+        return errors;
+    }
+
+    /// <summary>
+    /// 校验不通过时抛出包含全部错误的异常。
+    /// </summary>
+    public static void EnsureValidForSubmit(NetworkInboundRecord header, IReadOnlyList<NetworkInboundItem> items)
+    {
+        IReadOnlyList<string> errors = ValidateForSubmit(header, items);
+        if (errors.Count > 0)
+        {
+            throw new InvalidOperationException(string.Join(Environment.NewLine, errors));
+        }
+    }
+
+    private static void ValidateHeader(NetworkInboundRecord header, List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(header.SourceKind)
+            || !NetworkTransferDomainValues.IsValidSourceKind(header.SourceKind))
+        {
+            errors.Add("请选择有效的数据来源。");
+        }
+
+        string year = header.Year?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(year) || string.Equals(year, "全部", StringComparison.Ordinal))
+        {
+            errors.Add("请选择具体年度。");
+        }
+
+        if (string.IsNullOrWhiteSpace(header.ProjectName))
+        {
+            errors.Add("请选择项目。");
+        }
+
+        if (string.IsNullOrWhiteSpace(header.Reason))
+        {
+            errors.Add("请填写申请说明。");
+        }
+
+        if (NetworkTransferDomainValues.IsArchivedElectronicSearchSource(header.SourceKind)
+            && (!header.SourceResultSetId.HasValue || header.SourceResultSetId.Value <= 0))
+        {
+            errors.Add("立档资料入网须选择电子检索集。");
+        }
+    }
+
+    private static void ValidateArchivedItems(IReadOnlyList<NetworkInboundItem> items, List<string> errors)
+    {
+        for (int index = 0; index < items.Count; index++)
+        {
+            NetworkInboundItem item = items[index];
+            int rowNo = index + 1;
+            string rowLabel = BuildRowLabel(item, rowNo);
+
+            if (!item.SourceFilingFactId.HasValue || item.SourceFilingFactId.Value <= 0)
+            {
+                errors.Add($"第 {rowNo} 行{rowLabel}：立档明细缺少立档事实关联。");
+            }
+
+            if (string.IsNullOrWhiteSpace(item.ItemName))
+            {
+                errors.Add($"第 {rowNo} 行{rowLabel}：资料明细不能为空。");
+            }
+        }
+    }
+
+    private static void ValidateExternalItems(IReadOnlyList<NetworkInboundItem> items, List<string> errors)
+    {
+        var duplicateKeys = new HashSet<string>(StringComparer.Ordinal);
+        var seenKeys = new HashSet<string>(StringComparer.Ordinal);
+
+        for (int index = 0; index < items.Count; index++)
+        {
+            NetworkInboundItem item = items[index];
+            int rowNo = index + 1;
+            string rowLabel = BuildRowLabel(item, rowNo);
+
+            string assetKind = item.AssetKind?.Trim() ?? string.Empty;
+            if (!NetworkTransferDomainValues.AssetKindOptions.Contains(assetKind, StringComparer.Ordinal))
+            {
+                errors.Add($"第 {rowNo} 行{rowLabel}：请选择资料类别。");
+            }
+
+            if (string.IsNullOrWhiteSpace(item.AssetName))
+            {
+                errors.Add($"第 {rowNo} 行{rowLabel}：资料名称不能为空。");
+            }
+
+            if (string.IsNullOrWhiteSpace(item.ItemName))
+            {
+                errors.Add($"第 {rowNo} 行{rowLabel}：资料明细不能为空。");
+            }
+
+            if (string.IsNullOrWhiteSpace(item.ConfidentialLevel))
+            {
+                errors.Add($"第 {rowNo} 行{rowLabel}：请选择密级。");
+            }
+
+            if (!NetworkInboundItemDisplaySupport.TryParseDataSizeText(item.DataSizeText, out decimal dataSize, out string unit))
+            {
+                errors.Add($"第 {rowNo} 行{rowLabel}：请填写有效的数据量（数值 + MB/GB/TB）。");
+            }
+            else if (!NetworkInboundItemDisplaySupport.DataSizeUnitOptions.Contains(unit, StringComparer.Ordinal))
+            {
+                errors.Add($"第 {rowNo} 行{rowLabel}：数据量单位须为 MB、GB 或 TB。");
+            }
+            else if (dataSize <= 0)
+            {
+                errors.Add($"第 {rowNo} 行{rowLabel}：数据量须大于 0。");
+            }
+
+            string dedupKey = $"{item.AssetName.Trim()}|{item.ItemName.Trim()}|{assetKind}";
+            if (!seenKeys.Add(dedupKey))
+            {
+                duplicateKeys.Add(dedupKey);
+            }
+        }
+
+        foreach (string duplicateKey in duplicateKeys)
+        {
+            string[] parts = duplicateKey.Split('|');
+            errors.Add($"存在重复明细：资料名称「{parts[0]}」、资料明细「{parts[1]}」、资料类别「{parts[2]}」。");
+        }
+    }
+
+    private static string BuildRowLabel(NetworkInboundItem item, int rowNo)
+    {
+        if (!string.IsNullOrWhiteSpace(item.AssetName))
+        {
+            return $"（{item.AssetName.Trim()}）";
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.MaterialName))
+        {
+            return $"（{item.MaterialName.Trim()}）";
+        }
+
+        return string.Empty;
+    }
+}

@@ -1,9 +1,14 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows;
 using System.Windows.Input;
 using DocMgr.Models.NetworkTransfer;
+using DocMgr.Models.Projects;
+using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
+using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.NetworkTransfer;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
@@ -18,17 +23,29 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private readonly INetworkTransferService _service;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IProjectService _projectService;
+        private readonly IArchiveFilingSearchService _searchService;
+        private readonly IUserService _userService;
+        private readonly IServerPathSettingService _serverPathSettingService;
+        private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly NetworkTransferWorkspaceMode _mode;
+        private bool _suppressProjectBinding;
+        private bool _suppressSourceKindSideEffects;
+        private bool _suppressSearchResultSetSelection;
+        private bool _suppressServerPathSelection;
         private NetworkInboundRecord _record;
         private bool _hasCommittedChanges;
         private string _inboundNo = string.Empty;
         private string _sourceKind = string.Empty;
         private string _projectName = string.Empty;
         private string _year = string.Empty;
+        private ProjectInfo? _selectedProject;
         private string _reason = string.Empty;
         private string _remark = string.Empty;
         private string _sourceResultSetNo = string.Empty;
         private int? _sourceResultSetId;
+        private SearchPoolListItem? _selectedSearchResultSet;
+        private ServerPathSetting? _selectedServerPath;
         private string _prodLeader = string.Empty;
         private DateTime? _prodDate = DateTime.Today;
         private string _rndLeader = string.Empty;
@@ -43,14 +60,20 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private DateTime? _deptDate = DateTime.Today;
         private string _uploadCategory = NetworkTransferDomainValues.AttachmentCategorySignedForm;
         private SystemAttachment? _selectedAttachment;
-        private string _manualAssetKind = NetworkTransferDomainValues.AssetKindJobData;
-        private string _manualAssetName = string.Empty;
-        private string _manualServerPath = string.Empty;
+        private string _applicantName = string.Empty;
+        private string _applicantDept = string.Empty;
+        private DateTime _applyTime;
+        private bool _hasProofMaterialSelected;
 
         public NetworkInboundEditDialogViewModel(
             INetworkTransferService service,
             IDialogService dialogService,
             IUserContextService userContextService,
+            IProjectService projectService,
+            IArchiveFilingSearchService searchService,
+            IUserService userService,
+            IServerPathSettingService serverPathSettingService,
+            IArchiveRegisterService archiveRegisterService,
             NetworkInboundRecord record,
             NetworkTransferWorkspaceMode mode)
         {
@@ -58,12 +81,21 @@ namespace DocMgr.ViewModels.NetworkTransfer
             _service = service;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _projectService = projectService;
+            _searchService = searchService;
+            _userService = userService;
+            _serverPathSettingService = serverPathSettingService;
+            _archiveRegisterService = archiveRegisterService;
             _record = record;
             _mode = mode;
 
-            ImportSearchResultSetCommand = new RelayCommand(async _ => await ImportSearchResultSetAsync(), _ => CanEditHeader && IsArchivedSource);
-            AddManualItemCommand = new RelayCommand(_ => AddManualItem(), _ => CanEditHeader && !IsArchivedSource);
-            RemoveItemCommand = new RelayCommand(item => RemoveItem(item as NetworkInboundItem), item => CanEditHeader && item is NetworkInboundItem);
+            RefreshApplicantSearchResultSetsCommand = new RelayCommand(
+                async _ => await LoadApplicantSearchResultSetsAsync(),
+                _ => IsArchivedSource);
+            AddExternalItemCommand = new RelayCommand(_ => AddExternalItem(), _ => CanEditHeader && !IsArchivedSource);
+            RemoveItemCommand = new RelayCommand(
+                item => RemoveItemRow(item as NetworkInboundItemRowViewModel),
+                item => CanEditHeader && item is NetworkInboundItemRowViewModel);
             SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader);
             SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit);
             ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
@@ -78,6 +110,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 }
             }, item => item is SystemAttachment);
             CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
+            PrintApplicationCommand = new RelayCommand(async _ => await PrintApplicationAsync(), _ => CanPrintApplication);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
             _ = InitializeAsync();
@@ -93,17 +126,36 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public string StatusDisplay => NetworkTransferDomainValues.ToStatusDisplay(_record.Status);
 
         public string BannerText =>
-            "已立档资料入网：明细唯一来自电子资料检索结果集，不跟踪中间过程介质。外部离线等其他来源可手工录入明细。流程：草稿→提交→审批签字→确认入网交接→上传签批单→办结（写入在网台账）。";
+            "立档资料入网：明细唯一来自电子资料检索结果集，不跟踪中间过程介质。档外资料可手工录入明细。流程：草稿→提交→审批签字→确认入网交接→上传签批单→办结（写入在网台账）。";
 
         public ObservableCollection<string> SourceKindOptions { get; } = new(NetworkTransferDomainValues.SourceKindOptions);
 
         public ObservableCollection<string> AssetKindOptions { get; } = new(NetworkTransferDomainValues.AssetKindOptions);
 
+        /// <summary>档外资料录入用密级选项（字段域）。</summary>
+        public ObservableCollection<string> ConfidentialLevelOptions { get; } = new();
+
+        /// <summary>数据量单位选项。</summary>
+        public IReadOnlyList<string> DataSizeUnitOptions => NetworkInboundItemDisplaySupport.DataSizeUnitOptions;
+
         public ObservableCollection<string> UploadCategoryOptions { get; } = new(NetworkTransferDomainValues.AttachmentCategoryOptions);
 
         public ObservableCollection<NetworkInboundItem> Items { get; } = new();
 
+        public ObservableCollection<NetworkInboundItemRowViewModel> ItemRows { get; } = new();
+
+        public ObservableCollection<ServerPathSetting> ApplicantServerPathOptions { get; } = new();
+
         public ObservableCollection<SystemAttachment> Attachments { get; } = new();
+
+        /// <summary>项目年度筛选项（实施年度）。</summary>
+        public ObservableCollection<string> ProjectYears { get; } = new();
+
+        /// <summary>按年度筛选后的项目列表。</summary>
+        public ObservableCollection<ProjectInfo> Projects { get; } = new();
+
+        /// <summary>申请人已有的电子检索集列表。</summary>
+        public ObservableCollection<SearchPoolListItem> ApplicantSearchResultSets { get; } = new();
 
         public bool IsArchivedSource =>
             NetworkTransferDomainValues.IsArchivedElectronicSearchSource(SourceKind);
@@ -115,6 +167,13 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 || ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser));
 
         public bool CanSubmit => CanEditHeader && Items.Count > 0;
+
+        /// <summary>已提交及之后阶段可打印申请单。</summary>
+        public bool CanPrintApplication =>
+            _record.Id > 0
+            && _record.Status >= NetworkInboundRecord.StatusSubmitted
+            && _record.Status != NetworkInboundRecord.StatusWithdrawn
+            && _record.Status != NetworkInboundRecord.StatusForceWithdrawn;
 
         public bool CanApprove =>
             _mode == NetworkTransferWorkspaceMode.Approval
@@ -142,6 +201,33 @@ namespace DocMgr.ViewModels.NetworkTransfer
             && _record.Status != NetworkInboundRecord.StatusWithdrawn
             && _record.Status != NetworkInboundRecord.StatusForceWithdrawn;
 
+        /// <summary>申请工作台底栏：保存草稿 / 提交。</summary>
+        public bool ShowApplicationActions => _mode == NetworkTransferWorkspaceMode.Application;
+
+        /// <summary>审批工作台底栏：与审批面板同显隐。</summary>
+        public bool ShowApprovalActions => ShowApprovalPanel;
+
+        /// <summary>档外资料草稿时表格内直接编辑。</summary>
+        public bool IsInboundItemGridReadOnly => !CanEditHeader || IsArchivedSource;
+
+        /// <summary>档外资料时显示添加明细操作。</summary>
+        public bool ShowExternalItemToolbar => CanEditHeader && !IsArchivedSource;
+
+        /// <summary>当前是否为档外资料来源（明细展示与录入口径）。</summary>
+        public bool IsExternalSource => !IsArchivedSource;
+
+        /// <summary>审批态已提交/已审批时可补录服务器路径。</summary>
+        public bool CanEditItemPaths =>
+            _mode == NetworkTransferWorkspaceMode.Approval
+            && _record.Status is NetworkInboundRecord.StatusSubmitted or NetworkInboundRecord.StatusApproved
+            && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+
+        /// <summary>明细服务器路径是否只读（草稿可编；审批补录路径时可编）。</summary>
+        public bool IsItemPathReadOnly => !CanEditServerPath;
+
+        /// <summary>共享服务器路径是否可编辑。</summary>
+        public bool CanEditServerPath => CanEditHeader || CanEditItemPaths;
+
         public string InboundNo
         {
             get => _inboundNo;
@@ -156,21 +242,76 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 if (SetProperty(ref _sourceKind, value))
                 {
                     OnPropertyChanged(nameof(IsArchivedSource));
+                    OnPropertyChanged(nameof(IsExternalSource));
+                    OnPropertyChanged(nameof(ShowExternalItemToolbar));
+                    OnPropertyChanged(nameof(IsInboundItemGridReadOnly));
+                    if (!_suppressSourceKindSideEffects)
+                    {
+                        if (IsArchivedSource)
+                        {
+                            Items.Clear();
+                            _ = LoadApplicantSearchResultSetsAsync();
+                        }
+                        else
+                        {
+                            ClearArchivedSourceState();
+                        }
+                    }
+
                     CommandManager.InvalidateRequerySuggested();
                 }
             }
         }
 
+        public string ApplicantName
+        {
+            get => _applicantName;
+            private set => SetProperty(ref _applicantName, value);
+        }
+
+        public string ApplicantDept
+        {
+            get => _applicantDept;
+            private set => SetProperty(ref _applicantDept, value);
+        }
+
+        public DateTime ApplyTime
+        {
+            get => _applyTime;
+            private set => SetProperty(ref _applyTime, value);
+        }
+
         public string ProjectName
         {
             get => _projectName;
-            set => SetProperty(ref _projectName, value);
+            private set => SetProperty(ref _projectName, value);
         }
 
+        /// <summary>入网数据所属年度，同时作为项目下拉筛选条件。</summary>
         public string Year
         {
             get => _year;
-            set => SetProperty(ref _year, value);
+            set
+            {
+                if (SetProperty(ref _year, value) && !_suppressProjectBinding)
+                {
+                    LoadProjects();
+                    ClearSelectedProjectIfNotInList();
+                }
+            }
+        }
+
+        /// <summary>从项目表选中的项目。</summary>
+        public ProjectInfo? SelectedProject
+        {
+            get => _selectedProject;
+            set
+            {
+                if (SetProperty(ref _selectedProject, value) && !_suppressProjectBinding)
+                {
+                    ProjectName = value?.ProjectName?.Trim() ?? string.Empty;
+                }
+            }
         }
 
         public string Reason
@@ -185,6 +326,57 @@ namespace DocMgr.ViewModels.NetworkTransfer
             set => SetProperty(ref _remark, value);
         }
 
+        /// <summary>申请时是否附有证明材料。</summary>
+        public bool HasProofMaterial
+        {
+            get => _hasProofMaterialSelected;
+            set
+            {
+                if (_hasProofMaterialSelected == value)
+                {
+                    return;
+                }
+
+                _hasProofMaterialSelected = value;
+                if (!value)
+                {
+                    _record.ProofMaterialNote = ArchiveRegisterDomainValues.ProofMaterialNoneText;
+                }
+                else if (string.Equals(
+                             _record.ProofMaterialNote?.Trim(),
+                             ArchiveRegisterDomainValues.ProofMaterialNoneText,
+                             StringComparison.Ordinal)
+                         || string.IsNullOrWhiteSpace(_record.ProofMaterialNote))
+                {
+                    _record.ProofMaterialNote = string.Empty;
+                }
+
+                NotifyProofMaterialStateChanged();
+            }
+        }
+
+        /// <summary>证明材料名称（仅在附有证明材料时有效）。</summary>
+        public string ProofMaterialName
+        {
+            get => HasProofMaterial ? _record.ProofMaterialNote?.Trim() ?? string.Empty : string.Empty;
+            set
+            {
+                if (!HasProofMaterial)
+                {
+                    return;
+                }
+
+                string normalized = value?.Trim() ?? string.Empty;
+                if (string.Equals(_record.ProofMaterialNote, normalized, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _record.ProofMaterialNote = normalized;
+                NotifyProofMaterialStateChanged();
+            }
+        }
+
         public int? SourceResultSetId
         {
             get => _sourceResultSetId;
@@ -195,6 +387,78 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             get => _sourceResultSetNo;
             set => SetProperty(ref _sourceResultSetNo, value);
+        }
+
+        /// <summary>选中的电子检索集。</summary>
+        public SearchPoolListItem? SelectedSearchResultSet
+        {
+            get => _selectedSearchResultSet;
+            set
+            {
+                if (SetProperty(ref _selectedSearchResultSet, value))
+                {
+                    OnPropertyChanged(nameof(SelectedSearchResultSetSummary));
+                    if (!_suppressSearchResultSetSelection)
+                    {
+                        _ = ApplySelectedSearchResultSetAsync();
+                    }
+                }
+            }
+        }
+
+        /// <summary>本单统一目标服务器路径。</summary>
+        public ServerPathSetting? SelectedServerPath
+        {
+            get => _selectedServerPath;
+            set
+            {
+                if (SetProperty(ref _selectedServerPath, value) && !_suppressServerPathSelection)
+                {
+                    ApplySharedServerPathToItems();
+                    OnPropertyChanged(nameof(SelectedServerPathInfo));
+                }
+            }
+        }
+
+        /// <summary>所选服务器路径的属性说明。</summary>
+        public string SelectedServerPathInfo
+        {
+            get
+            {
+                if (SelectedServerPath == null)
+                {
+                    string savedPath = Items.Select(item => item.TargetServerPath?.Trim())
+                        .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path)) ?? string.Empty;
+                    return string.IsNullOrWhiteSpace(savedPath)
+                        ? "请选择目标服务器路径（本单全部明细共用同一路径）。"
+                        : $"当前路径：{savedPath}（列表中未匹配到路径预设，请重新选择。）";
+                }
+
+                ServerPathSetting path = SelectedServerPath;
+                return $"物理地址 {path.PhysicalPath} · 权限 {path.Permission} · 容量上限 {path.CapacityTb:0.##} TB · 所属 {path.DepartmentName}";
+            }
+        }
+
+        /// <summary>当前选中检索集的基本信息摘要。</summary>
+        public string SelectedSearchResultSetSummary
+        {
+            get
+            {
+                if (SelectedSearchResultSet != null)
+                {
+                    SearchPoolListItem pool = SelectedSearchResultSet;
+                    return $"编号 {pool.ResultSetNo} · 名称 {pool.Name} · 明细 {pool.ItemCount} 条 · 状态 {pool.StatusDisplay} · 创建 {pool.CreatedAt.ToString("yyyy-MM-dd HH:mm")} · 更新 {pool.UpdatedAtDisplay}";
+                }
+
+                if (SourceResultSetId.HasValue && SourceResultSetId.Value > 0)
+                {
+                    int id = SourceResultSetId.Value;
+                    string no = string.IsNullOrWhiteSpace(SourceResultSetNo) ? id.ToString() : SourceResultSetNo.Trim();
+                    return $"已关联检索集 {no}（当前列表中未找到，可能已删除或不可见）。";
+                }
+
+                return "请从下方列表选择申请人的电子检索集。";
+            }
         }
 
         public string ProdLeader { get => _prodLeader; set => SetProperty(ref _prodLeader, value); }
@@ -222,26 +486,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
             set => SetProperty(ref _selectedAttachment, value);
         }
 
-        public string ManualAssetKind
-        {
-            get => _manualAssetKind;
-            set => SetProperty(ref _manualAssetKind, value);
-        }
-
-        public string ManualAssetName
-        {
-            get => _manualAssetName;
-            set => SetProperty(ref _manualAssetName, value);
-        }
-
-        public string ManualServerPath
-        {
-            get => _manualServerPath;
-            set => SetProperty(ref _manualServerPath, value);
-        }
-
-        public RelayCommand ImportSearchResultSetCommand { get; }
-        public RelayCommand AddManualItemCommand { get; }
+        public RelayCommand RefreshApplicantSearchResultSetsCommand { get; }
+        public RelayCommand AddExternalItemCommand { get; }
         public RelayCommand RemoveItemCommand { get; }
         public RelayCommand SaveDraftCommand { get; }
         public RelayCommand SubmitCommand { get; }
@@ -251,6 +497,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public RelayCommand DeleteAttachmentCommand { get; }
         public RelayCommand ViewAttachmentCommand { get; }
         public RelayCommand CompleteCommand { get; }
+        public RelayCommand PrintApplicationCommand { get; }
         public RelayCommand CloseCommand { get; }
 
         private async Task InitializeAsync()
@@ -270,7 +517,19 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     _record.InboundNo = await _service.GenerateNextInboundNoAsync();
                 }
 
+                LoadProjectYears();
                 BindFromRecord();
+                await TryAutoFillDefaultApprovalInfoAsync();
+                await LoadConfidentialLevelOptionsAsync();
+                if (IsArchivedSource)
+                {
+                    await LoadApplicantSearchResultSetsAsync();
+                    SyncSelectedSearchResultSetFromRecord();
+                }
+
+                LoadApplicantServerPathOptions();
+                SyncSelectedServerPathFromItems();
+                await RebuildItemRowsAsync();
                 await ReloadAttachmentsAsync();
                 CommandManager.InvalidateRequerySuggested();
             }
@@ -283,13 +542,24 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private void BindFromRecord()
         {
             InboundNo = _record.InboundNo;
-            SourceKind = _record.SourceKind;
-            ProjectName = _record.ProjectName;
-            Year = _record.Year;
+            _suppressSourceKindSideEffects = true;
+            try
+            {
+                SourceKind = NetworkTransferDomainValues.NormalizeSourceKind(_record.SourceKind);
+            }
+            finally
+            {
+                _suppressSourceKindSideEffects = false;
+            }
+
+            BindProjectSelectionFromRecord();
             Reason = _record.Reason;
             Remark = _record.Remark;
             SourceResultSetId = _record.SourceResultSetId;
             SourceResultSetNo = _record.SourceResultSetNo;
+            ApplicantName = _record.ApplicantName;
+            ApplicantDept = _record.ApplicantDept;
+            ApplyTime = _record.ApplyTime == default ? DateTime.Now : _record.ApplyTime;
             ProdLeader = _record.ProdLeader;
             ProdDate = _record.ProdDate ?? DateTime.Today;
             RndLeader = _record.RndLeader;
@@ -306,6 +576,12 @@ namespace DocMgr.ViewModels.NetworkTransfer
             AdminDate = _record.AdminDate ?? DateTime.Today;
             DeptLeader = _record.DeptLeader;
             DeptDate = _record.DeptDate ?? DateTime.Today;
+            _hasProofMaterialSelected = ArchiveRegisterDomainValues.HasProofMaterial(_record.ProofMaterialNote);
+            if (!_hasProofMaterialSelected
+                && string.IsNullOrWhiteSpace(_record.ProofMaterialNote))
+            {
+                _record.ProofMaterialNote = ArchiveRegisterDomainValues.ProofMaterialNoneText;
+            }
 
             Items.Clear();
             foreach (var item in _record.Items.OrderBy(i => i.SortOrder).ThenBy(i => i.Id))
@@ -313,11 +589,402 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 Items.Add(CloneItem(item));
             }
 
+            OnPropertyChanged(nameof(CanEditServerPath));
+
             OnPropertyChanged(nameof(WindowTitle));
             OnPropertyChanged(nameof(StatusDisplay));
             OnPropertyChanged(nameof(CanEditHeader));
             OnPropertyChanged(nameof(ShowApprovalPanel));
+            OnPropertyChanged(nameof(ShowApplicationActions));
+            OnPropertyChanged(nameof(ShowApprovalActions));
+            OnPropertyChanged(nameof(ShowExternalItemToolbar));
+            OnPropertyChanged(nameof(IsInboundItemGridReadOnly));
+            OnPropertyChanged(nameof(CanEditItemPaths));
+            OnPropertyChanged(nameof(CanEditServerPath));
+            OnPropertyChanged(nameof(IsItemPathReadOnly));
             OnPropertyChanged(nameof(IsArchivedSource));
+            OnPropertyChanged(nameof(CanPrintApplication));
+            NotifyProofMaterialStateChanged();
+        }
+
+        private async Task TryAutoFillDefaultApprovalInfoAsync()
+        {
+            if (_mode != NetworkTransferWorkspaceMode.Approval
+                || _record.Status != NetworkInboundRecord.StatusSubmitted)
+            {
+                return;
+            }
+
+            var user = _userContextService.CurrentUser;
+            if (user == null || !ArchiveRegisterBusinessRules.IsArchiveAdminUser(user))
+            {
+                return;
+            }
+
+            try
+            {
+                await _archiveRegisterService.ApplyDefaultInboundApprovalInfoAsync(_record, user);
+                SyncApprovalFieldsFromRecord();
+            }
+            catch
+            {
+                // 自动回填失败不阻断页面打开，用户仍可手工录入审批信息。
+            }
+        }
+
+        private void SyncApprovalFieldsFromRecord()
+        {
+            DeptLeader = _record.DeptLeader;
+            DeptDate = _record.DeptDate ?? DateTime.Today;
+            ProdLeader = _record.ProdLeader;
+            ProdDate = _record.ProdDate ?? DateTime.Today;
+            RndLeader = _record.RndLeader;
+            RndDate = _record.RndDate ?? DateTime.Today;
+            DeputyLeader = _record.DeputyLeader;
+            DeputyDate = _record.DeputyDate ?? DateTime.Today;
+            Deliverer = string.IsNullOrWhiteSpace(_record.Deliverer)
+                ? _record.ApplicantName
+                : _record.Deliverer;
+            DeliverDate = _record.DeliverDate ?? DateTime.Today;
+            Administrator = string.IsNullOrWhiteSpace(_record.Administrator)
+                ? _userContextService.CurrentUser?.RealName ?? string.Empty
+                : _record.Administrator;
+            AdminDate = _record.AdminDate ?? DateTime.Today;
+        }
+
+        private void NotifyProofMaterialStateChanged()
+        {
+            OnPropertyChanged(nameof(HasProofMaterial));
+            OnPropertyChanged(nameof(ProofMaterialName));
+        }
+
+        private void ApplyProofMaterialNoteToDraft(NetworkInboundRecord draft)
+        {
+            if (HasProofMaterial)
+            {
+                draft.ProofMaterialNote = ProofMaterialName.Trim();
+            }
+            else
+            {
+                draft.ProofMaterialNote = ArchiveRegisterDomainValues.ProofMaterialNoneText;
+            }
+        }
+
+        private void LoadProjectYears()
+        {
+            int currentYear = DateTime.Now.Year;
+            ProjectYears.Clear();
+            ProjectYears.Add("全部");
+            for (int i = 0; i < 10; i++)
+            {
+                ProjectYears.Add((currentYear - i).ToString());
+            }
+
+            if (string.IsNullOrWhiteSpace(Year))
+            {
+                Year = currentYear.ToString();
+            }
+        }
+
+        private void LoadProjects()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(Year))
+                {
+                    return;
+                }
+
+                string searchYear = Year == "全部" ? string.Empty : Year.Trim();
+                Projects.Clear();
+                foreach (ProjectInfo project in _projectService.SearchProjects(searchYear, keyword: null))
+                {
+                    Projects.Add(project);
+                }
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError("加载项目异常: " + ex.Message);
+            }
+        }
+
+        private void BindProjectSelectionFromRecord()
+        {
+            _suppressProjectBinding = true;
+            try
+            {
+                ProjectName = _record.ProjectName?.Trim() ?? string.Empty;
+                Year = string.IsNullOrWhiteSpace(_record.Year)
+                    ? DateTime.Now.Year.ToString()
+                    : _record.Year.Trim();
+                LoadProjects();
+
+                ProjectInfo? matched = string.IsNullOrWhiteSpace(ProjectName)
+                    ? null
+                    : Projects.FirstOrDefault(project =>
+                        string.Equals(project.ProjectName?.Trim(), ProjectName, StringComparison.Ordinal));
+
+                if (matched == null && !string.IsNullOrWhiteSpace(ProjectName))
+                {
+                    matched = _projectService.SearchProjects(year: null, keyword: null)
+                        .FirstOrDefault(project =>
+                            string.Equals(project.ProjectName?.Trim(), ProjectName, StringComparison.Ordinal));
+                    if (matched != null && !string.IsNullOrWhiteSpace(matched.ImplementYear))
+                    {
+                        Year = matched.ImplementYear.Trim();
+                        LoadProjects();
+                        matched = Projects.FirstOrDefault(project => project.Id == matched.Id)
+                                  ?? matched;
+                    }
+                }
+
+                SelectedProject = matched;
+            }
+            finally
+            {
+                _suppressProjectBinding = false;
+            }
+        }
+
+        private void ClearSelectedProjectIfNotInList()
+        {
+            if (SelectedProject == null)
+            {
+                ProjectName = string.Empty;
+                return;
+            }
+
+            bool stillExists = Projects.Any(project =>
+                project.Id == SelectedProject.Id
+                || string.Equals(project.ProjectName?.Trim(), SelectedProject.ProjectName?.Trim(), StringComparison.Ordinal));
+            if (!stillExists)
+            {
+                SelectedProject = null;
+            }
+        }
+
+        private async Task LoadConfidentialLevelOptionsAsync()
+        {
+            var domainOptions = await _archiveRegisterService.GetPageDomainOptionsAsync();
+            ConfidentialLevelOptions.Clear();
+            foreach (string level in domainOptions.ConfidentialLevels)
+            {
+                if (!string.IsNullOrWhiteSpace(level))
+                {
+                    ConfidentialLevelOptions.Add(level.Trim());
+                }
+            }
+
+            if (ConfidentialLevelOptions.Count == 0)
+            {
+                ConfidentialLevelOptions.Add(ArchiveRegisterDomainValues.ConfidentialLevelNone);
+            }
+        }
+
+        private async Task LoadApplicantSearchResultSetsAsync()
+        {
+            if (!IsArchivedSource)
+            {
+                ApplicantSearchResultSets.Clear();
+                return;
+            }
+
+            User applicant = ResolveApplicantUser();
+            try
+            {
+                var pools = await _searchService.ListSearchPoolsAsync(
+                    new SearchPoolListCriteria
+                    {
+                        MediaKind = ArchiveRegisterDomainValues.MediaKindElectronic,
+                        Keyword = string.Empty,
+                        Status = ArchiveSearchResultSetStatus.Confirmed,
+                        OnlyMine = true
+                    },
+                    applicant,
+                    isArchiveAdmin: false);
+
+                ApplicantSearchResultSets.Clear();
+                foreach (SearchPoolListItem pool in pools.Where(item => item.ItemCount > 0))
+                {
+                    ApplicantSearchResultSets.Add(pool);
+                }
+
+                SyncSelectedSearchResultSetFromRecord();
+            }
+            catch (Exception ex)
+            {
+                ApplicantSearchResultSets.Clear();
+                _dialogService.ShowError($"加载电子检索集失败：{ex.Message}");
+            }
+        }
+
+        private void SyncSelectedSearchResultSetFromRecord()
+        {
+            _suppressSearchResultSetSelection = true;
+            try
+            {
+                if (SourceResultSetId.HasValue && SourceResultSetId.Value > 0)
+                {
+                    int id = SourceResultSetId.Value;
+                    SelectedSearchResultSet = ApplicantSearchResultSets.FirstOrDefault(pool => pool.Id == id);
+                }
+                else
+                {
+                    SelectedSearchResultSet = null;
+                }
+
+                OnPropertyChanged(nameof(SelectedSearchResultSetSummary));
+            }
+            finally
+            {
+                _suppressSearchResultSetSelection = false;
+            }
+        }
+
+        private async Task ApplySelectedSearchResultSetAsync()
+        {
+            if (SelectedSearchResultSet == null)
+            {
+                SourceResultSetId = null;
+                SourceResultSetNo = string.Empty;
+                OnPropertyChanged(nameof(SelectedSearchResultSetSummary));
+                return;
+            }
+
+            SourceResultSetId = SelectedSearchResultSet.Id;
+            SourceResultSetNo = SelectedSearchResultSet.ResultSetNo;
+            OnPropertyChanged(nameof(SelectedSearchResultSetSummary));
+
+            if (CanEditHeader && IsArchivedSource)
+            {
+                await ImportSelectedSearchResultSetItemsAsync();
+            }
+        }
+
+        private async Task ImportSelectedSearchResultSetItemsAsync()
+        {
+            if (!SourceResultSetId.HasValue || SourceResultSetId.Value <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                var imported = await _service.BuildInboundItemsFromElectronicSearchAsync(SourceResultSetId.Value, null);
+                Items.Clear();
+                foreach (var item in imported)
+                {
+                    Items.Add(item);
+                }
+
+                ApplySharedServerPathToItems();
+                await RebuildItemRowsAsync();
+                CommandManager.InvalidateRequerySuggested();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private void ClearArchivedSourceState()
+        {
+            _suppressSearchResultSetSelection = true;
+            try
+            {
+                SelectedSearchResultSet = null;
+                SourceResultSetId = null;
+                SourceResultSetNo = string.Empty;
+                ApplicantSearchResultSets.Clear();
+                Items.Clear();
+                ItemRows.Clear();
+                OnPropertyChanged(nameof(SelectedSearchResultSetSummary));
+            }
+            finally
+            {
+                _suppressSearchResultSetSelection = false;
+            }
+        }
+
+        private void LoadApplicantServerPathOptions()
+        {
+            string department = string.IsNullOrWhiteSpace(ApplicantDept)
+                ? ResolveApplicantUser().Department?.Trim() ?? string.Empty
+                : ApplicantDept.Trim();
+
+            ApplicantServerPathOptions.Clear();
+            foreach (ServerPathSetting path in _serverPathSettingService.GetWritablePathsForDepartment(department))
+            {
+                ApplicantServerPathOptions.Add(path);
+            }
+        }
+
+        private void SyncSelectedServerPathFromItems()
+        {
+            _suppressServerPathSelection = true;
+            try
+            {
+                string savedPath = Items.Select(item => item.TargetServerPath?.Trim())
+                    .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path)) ?? string.Empty;
+                SelectedServerPath = string.IsNullOrWhiteSpace(savedPath)
+                    ? null
+                    : ApplicantServerPathOptions.FirstOrDefault(path =>
+                        string.Equals(path.PathName, savedPath, StringComparison.Ordinal)
+                        || string.Equals(path.PhysicalPath, savedPath, StringComparison.Ordinal));
+                OnPropertyChanged(nameof(SelectedServerPathInfo));
+            }
+            finally
+            {
+                _suppressServerPathSelection = false;
+            }
+        }
+
+        private void ApplySharedServerPathToItems()
+        {
+            string pathName = SelectedServerPath?.PathName?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(pathName))
+            {
+                return;
+            }
+
+            foreach (NetworkInboundItem item in Items)
+            {
+                item.TargetServerPath = pathName;
+            }
+        }
+
+        private async Task RebuildItemRowsAsync()
+        {
+            List<int> factIds = Items
+                .Where(item => item.SourceFilingFactId is > 0)
+                .Select(item => item.SourceFilingFactId!.Value)
+                .Distinct()
+                .ToList();
+            IReadOnlyDictionary<int, YearlyArchiveFilingFact> filingFacts =
+                await _service.GetFilingFactsByIdsAsync(factIds);
+
+            bool isExternalSource = IsExternalSource;
+            ItemRows.Clear();
+            foreach (NetworkInboundItem item in Items.OrderBy(row => row.SortOrder).ThenBy(row => row.Id))
+            {
+                ItemRows.Add(NetworkInboundItemRowViewModel.Create(item, filingFacts, isExternalSource));
+            }
+        }
+
+        private User ResolveApplicantUser()
+        {
+            if (_record.ApplicantUserId > 0)
+            {
+                User? applicant = _userService.GetAllUsers()
+                    .FirstOrDefault(user => user.Id == _record.ApplicantUserId);
+                if (applicant != null)
+                {
+                    return applicant;
+                }
+            }
+
+            return _userContextService.CurrentUser
+                   ?? throw new InvalidOperationException("当前用户无效。");
         }
 
         private static NetworkInboundItem CloneItem(NetworkInboundItem item) => new()
@@ -343,11 +1010,11 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         private NetworkInboundRecord BuildDraftSnapshot()
         {
-            return new NetworkInboundRecord
+            var draft = new NetworkInboundRecord
             {
                 Id = _record.Id,
                 InboundNo = InboundNo,
-                SourceKind = SourceKind,
+                SourceKind = NetworkTransferDomainValues.NormalizeSourceKind(SourceKind),
                 ProjectName = ProjectName,
                 Year = Year,
                 Reason = Reason,
@@ -355,75 +1022,41 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 SourceResultSetId = SourceResultSetId,
                 SourceResultSetNo = SourceResultSetNo
             };
+            ApplyProofMaterialNoteToDraft(draft);
+            return draft;
         }
 
-        private async Task ImportSearchResultSetAsync()
+        private void AddExternalItem()
         {
-            try
-            {
-                if (!SourceResultSetId.HasValue || SourceResultSetId.Value <= 0)
-                {
-                    _dialogService.ShowError("请先填写电子资料检索结果集 Id。");
-                    return;
-                }
-
-                var imported = await _service.BuildInboundItemsFromElectronicSearchAsync(SourceResultSetId.Value, null);
-                Items.Clear();
-                foreach (var item in imported)
-                {
-                    Items.Add(item);
-                }
-
-                if (string.IsNullOrWhiteSpace(SourceResultSetNo))
-                {
-                    SourceResultSetNo = $"RS-{SourceResultSetId.Value}";
-                }
-
-                CommandManager.InvalidateRequerySuggested();
-                _dialogService.ShowMessage($"已导入 {Items.Count} 条电子检索明细。");
-            }
-            catch (Exception ex)
-            {
-                _dialogService.ShowError(ex.Message);
-            }
-        }
-
-        private void AddManualItem()
-        {
-            if (string.IsNullOrWhiteSpace(ManualAssetName))
-            {
-                _dialogService.ShowError("请填写资料名称。");
-                return;
-            }
-
             Items.Add(new NetworkInboundItem
             {
                 SortOrder = Items.Count + 1,
-                AssetKind = ManualAssetKind,
-                AssetName = ManualAssetName.Trim(),
-                TargetServerPath = ManualServerPath?.Trim() ?? string.Empty,
+                AssetKind = NetworkTransferDomainValues.AssetKindJobData,
+                AssetName = string.Empty,
+                TargetServerPath = SelectedServerPath?.PathName?.Trim() ?? string.Empty,
                 SourceKind = SourceKind,
                 CreatedAt = DateTime.Now
             });
-            ManualAssetName = string.Empty;
-            ManualServerPath = string.Empty;
+            ApplySharedServerPathToItems();
+            _ = RebuildItemRowsAsync();
             CommandManager.InvalidateRequerySuggested();
         }
 
-        private void RemoveItem(NetworkInboundItem? item)
+        private void RemoveItemRow(NetworkInboundItemRowViewModel? row)
         {
-            if (item == null)
+            if (row == null)
             {
                 return;
             }
 
-            Items.Remove(item);
+            Items.Remove(row.Item);
             int sort = 1;
-            foreach (var row in Items)
+            foreach (NetworkInboundItem item in Items)
             {
-                row.SortOrder = sort++;
+                item.SortOrder = sort++;
             }
 
+            _ = RebuildItemRowsAsync();
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -431,6 +1064,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             try
             {
+                ApplySharedServerPathToItems();
                 var user = RequireUser();
                 var draft = BuildDraftSnapshot();
                 _record = _record.Id > 0
@@ -438,6 +1072,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     : await _service.CreateInboundDraftAsync(draft, Items.ToList(), user);
                 _hasCommittedChanges = true;
                 BindFromRecord();
+                LoadApplicantServerPathOptions();
+                SyncSelectedServerPathFromItems();
+                await RebuildItemRowsAsync();
                 _dialogService.ShowMessage("草稿已保存。");
             }
             catch (Exception ex)
@@ -450,6 +1087,23 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             try
             {
+                ApplySharedServerPathToItems();
+                NetworkInboundRecord draft = BuildDraftSnapshot();
+                if (HasProofMaterial && string.IsNullOrWhiteSpace(ProofMaterialName))
+                {
+                    _dialogService.ShowError("已选择附有证明材料，请填写证明材料名称。");
+                    return;
+                }
+
+                IReadOnlyList<string> validationErrors = NetworkInboundApplicationValidationSupport.ValidateForSubmit(
+                    draft,
+                    Items.ToList());
+                if (validationErrors.Count > 0)
+                {
+                    _dialogService.ShowError(string.Join(Environment.NewLine, validationErrors));
+                    return;
+                }
+
                 await SaveDraftAsync();
                 await _service.SubmitInboundAsync(_record.Id, RequireUser());
                 _hasCommittedChanges = true;
@@ -459,6 +1113,32 @@ namespace DocMgr.ViewModels.NetworkTransfer
             catch (Exception ex)
             {
                 _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private async Task PrintApplicationAsync()
+        {
+            try
+            {
+                bool blankApproval = _record.Status < NetworkInboundRecord.StatusApproved;
+                var data = await _service.BuildInboundPrintDataAsync(_record.Id, blankApproval);
+                var document = NetworkInboundPrintDocumentFactory.Create(data);
+                var previewWindow = new PrintPreviewWindow(document)
+                {
+                    Owner = Application.Current.MainWindow
+                };
+
+                await _service.RecordInboundPrintAsync(_record.Id);
+                previewWindow.ShowDialog();
+                await ReloadRecordAsync();
+            }
+            catch (InvalidOperationException ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError("打印生成失败：" + ex.Message);
             }
         }
 
@@ -475,6 +1155,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 await _service.ApproveInboundAsync(new NetworkInboundRecord
                 {
                     Id = _record.Id,
+                    DeptLeader = DeptLeader,
+                    DeptDate = DeptDate,
                     ProdLeader = ProdLeader,
                     ProdDate = ProdDate,
                     RndLeader = RndLeader,
@@ -503,9 +1185,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     Deliverer = Deliverer,
                     DeliverDate = DeliverDate,
                     Administrator = Administrator,
-                    AdminDate = AdminDate,
-                    DeptLeader = DeptLeader,
-                    DeptDate = DeptDate
+                    AdminDate = AdminDate
                 }, RequireUser());
                 _hasCommittedChanges = true;
                 _dialogService.ShowMessage("入网交接已确认。");
@@ -536,6 +1216,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             if (_record.Status is NetworkInboundRecord.StatusSubmitted or NetworkInboundRecord.StatusApproved)
             {
+                ApplySharedServerPathToItems();
                 await _service.UpdateInboundItemPathsAsync(_record.Id, Items.ToList(), RequireUser());
                 await ReloadRecordAsync();
             }
@@ -630,6 +1311,15 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 _record = latest;
                 BindFromRecord();
+                if (IsArchivedSource)
+                {
+                    await LoadApplicantSearchResultSetsAsync();
+                    SyncSelectedSearchResultSetFromRecord();
+                }
+
+                LoadApplicantServerPathOptions();
+                SyncSelectedServerPathFromItems();
+                await RebuildItemRowsAsync();
                 await ReloadAttachmentsAsync();
             }
         }

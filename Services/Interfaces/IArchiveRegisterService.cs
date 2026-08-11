@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using DocMgr.Models.NetworkTransfer;
 
 namespace DocMgr.Services.Interfaces
 {
@@ -126,6 +127,9 @@ namespace DocMgr.Services.Interfaces
 
         // 填充审批默认信息（仅资料室资料管理员可执行）
         Task ApplyDefaultApprovalInfoAsync(YearlyArchiveRegisterRecord record, User currentUser);
+
+        // 填充入网申请审批默认信息（仅资料室资料管理员可执行）
+        Task ApplyDefaultInboundApprovalInfoAsync(NetworkInboundRecord record, User currentUser);
 
         // 填充资料借出申请审批默认信息（仅资料室资料管理员可执行）
         Task ApplyDefaultOutboundApprovalInfoAsync(YearlyArchiveOutboundRecord record, User currentUser);

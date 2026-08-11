@@ -20,9 +20,17 @@ namespace DocMgr.Models.NetworkTransfer
         public const string AssetKindSecuritySoftware = "安全软件";
         public const string AssetKindDocument = "文档资料";
 
-        public const string SourceKindExternalOffline = "外部离线";
-        public const string SourceKindArchivedElectronicSearch = "已立档资料";
-        public const string SourceKindOther = "其他";
+        public const string SourceKindExternalOffline = "档外资料";
+        public const string SourceKindArchivedElectronicSearch = "立档资料";
+
+        /// <summary>历史数据源类别（兼容旧数据）。</summary>
+        public const string LegacySourceKindExternalOffline = "外部离线";
+
+        /// <summary>历史数据源类别（兼容旧数据）。</summary>
+        public const string LegacySourceKindArchivedElectronicSearch = "已立档资料";
+
+        /// <summary>历史数据源类别（兼容旧数据）。</summary>
+        public const string LegacySourceKindOther = "其他";
 
         public const string OriginKindInbound = "入网产生";
         public const string OriginKindProcessedOutput = "加工产出";
@@ -60,8 +68,7 @@ namespace DocMgr.Models.NetworkTransfer
         public static IReadOnlyList<string> SourceKindOptions { get; } =
         [
             SourceKindExternalOffline,
-            SourceKindArchivedElectronicSearch,
-            SourceKindOther
+            SourceKindArchivedElectronicSearch
         ];
 
         public static IReadOnlyList<string> DestinationKindOptions { get; } =
@@ -94,8 +101,45 @@ namespace DocMgr.Models.NetworkTransfer
             AttachmentCategoryOther
         ];
 
-        public static bool IsArchivedElectronicSearchSource(string? sourceKind) =>
-            string.Equals(sourceKind?.Trim(), SourceKindArchivedElectronicSearch, StringComparison.Ordinal);
+        public static bool IsArchivedElectronicSearchSource(string? sourceKind)
+        {
+            string trimmed = sourceKind?.Trim() ?? string.Empty;
+            return string.Equals(trimmed, SourceKindArchivedElectronicSearch, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacySourceKindArchivedElectronicSearch, StringComparison.Ordinal);
+        }
+
+        /// <summary>是否为有效的入网数据来源（含历史值）。</summary>
+        public static bool IsValidSourceKind(string? sourceKind)
+        {
+            string trimmed = sourceKind?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(trimmed))
+            {
+                return false;
+            }
+
+            return SourceKindOptions.Contains(trimmed, StringComparer.Ordinal)
+                   || string.Equals(trimmed, LegacySourceKindExternalOffline, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacySourceKindArchivedElectronicSearch, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacySourceKindOther, StringComparison.Ordinal);
+        }
+
+        /// <summary>将历史数据来源归一化为当前选项值。</summary>
+        public static string NormalizeSourceKind(string? sourceKind)
+        {
+            string trimmed = sourceKind?.Trim() ?? string.Empty;
+            if (string.Equals(trimmed, LegacySourceKindExternalOffline, StringComparison.Ordinal)
+                || string.Equals(trimmed, LegacySourceKindOther, StringComparison.Ordinal))
+            {
+                return SourceKindExternalOffline;
+            }
+
+            if (string.Equals(trimmed, LegacySourceKindArchivedElectronicSearch, StringComparison.Ordinal))
+            {
+                return SourceKindArchivedElectronicSearch;
+            }
+
+            return trimmed;
+        }
 
         public static bool IsArchiveFilingDestination(string? destinationKind) =>
             string.Equals(destinationKind?.Trim(), DestinationKindArchiveFiling, StringComparison.Ordinal);

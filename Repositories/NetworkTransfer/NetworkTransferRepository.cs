@@ -341,6 +341,27 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
                 && item.MediaKind == ArchiveRegisterDomainValues.MediaKindElectronic);
     }
 
+    public async Task<Dictionary<int, YearlyArchiveFilingFact>> GetFilingFactsByIdsAsync(IReadOnlyCollection<int> filingFactIds)
+    {
+        if (filingFactIds == null || filingFactIds.Count == 0)
+        {
+            return new Dictionary<int, YearlyArchiveFilingFact>();
+        }
+
+        HashSet<int> ids = filingFactIds.Where(id => id > 0).ToHashSet();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, YearlyArchiveFilingFact>();
+        }
+
+        List<YearlyArchiveFilingFact> facts = await _dbContext.YearlyArchiveFilingFacts
+            .AsNoTracking()
+            .Where(fact => ids.Contains(fact.Id))
+            .ToListAsync();
+
+        return facts.ToDictionary(fact => fact.Id);
+    }
+
     public Task<List<SystemAttachment>> GetAttachmentsAsync(string businessType, string businessNo)
     {
         string type = businessType?.Trim() ?? string.Empty;

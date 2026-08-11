@@ -1,105 +1,505 @@
 <Window x:Class="DocMgr.Views.NetworkTransfer.NetworkInboundEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="{Binding WindowTitle, Mode=OneWay}" Height="720" Width="980"
-        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip">
-  <Window.Resources>
-    <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-  </Window.Resources>
-  <DockPanel Margin="12">
-    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-      <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Width="88" Margin="0,0,8,0"/>
-      <Button Content="提交" Command="{Binding SubmitCommand}" Width="72" Margin="0,0,8,0"/>
-      <Button Content="审批通过" Command="{Binding ApproveCommand}" Width="88" Margin="0,0,8,0"/>
-      <Button Content="确认交接" Command="{Binding ConfirmHandoverCommand}" Width="88" Margin="0,0,8,0"/>
-      <Button Content="办结" Command="{Binding CompleteCommand}" Width="72" Margin="0,0,8,0"/>
-      <Button Content="关闭" Command="{Binding CloseCommand}" Width="72"/>
-    </StackPanel>
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-      <StackPanel>
-        <TextBlock Text="{Binding BannerText, Mode=OneWay}" TextWrapping="Wrap" Margin="0,0,0,10" Foreground="#666"/>
-        <Grid Margin="0,0,0,8">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/><ColumnDefinition Width="160"/>
-            <ColumnDefinition Width="Auto"/><ColumnDefinition Width="160"/>
-            <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
-          </Grid.ColumnDefinitions>
-          <TextBlock Text="单号" VerticalAlignment="Center"/><TextBox Grid.Column="1" Text="{Binding InboundNo}" IsReadOnly="True" Margin="6,0,12,0"/>
-          <TextBlock Grid.Column="2" Text="数据源" VerticalAlignment="Center"/><ComboBox Grid.Column="3" ItemsSource="{Binding SourceKindOptions}" SelectedItem="{Binding SourceKind}" IsEnabled="{Binding CanEditHeader}" Margin="6,0,12,0"/>
-          <TextBlock Grid.Column="4" Text="状态" VerticalAlignment="Center"/><TextBlock Grid.Column="5" Text="{Binding StatusDisplay, Mode=OneWay}" Margin="6,0,0,0" VerticalAlignment="Center"/>
-        </Grid>
-        <Grid Margin="0,0,0,8">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/><ColumnDefinition Width="2*"/>
-            <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
-          </Grid.ColumnDefinitions>
-          <TextBlock Text="项目" VerticalAlignment="Center"/><TextBox Grid.Column="1" Text="{Binding ProjectName}" IsEnabled="{Binding CanEditHeader}" Margin="6,0,12,0"/>
-          <TextBlock Grid.Column="2" Text="年度" VerticalAlignment="Center"/><TextBox Grid.Column="3" Text="{Binding Year}" IsEnabled="{Binding CanEditHeader}" Margin="6,0,0,0"/>
-        </Grid>
-        <TextBlock Text="申请说明"/><TextBox Text="{Binding Reason}" AcceptsReturn="True" Height="48" TextWrapping="Wrap" IsEnabled="{Binding CanEditHeader}" Margin="0,2,0,8"/>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Visibility="{Binding IsArchivedSource, Converter={StaticResource BooleanToVisibilityConverter}}">
-          <TextBlock Text="检索集Id" VerticalAlignment="Center"/>
-          <TextBox Width="100" Text="{Binding SourceResultSetId}" IsEnabled="{Binding CanEditHeader}" Margin="6,0,8,0"/>
-          <TextBlock Text="检索集编号" VerticalAlignment="Center"/>
-          <TextBox Width="140" Text="{Binding SourceResultSetNo}" IsEnabled="{Binding CanEditHeader}" Margin="6,0,8,0"/>
-          <Button Content="导入电子检索明细" Command="{Binding ImportSearchResultSetCommand}" Width="140"/>
+        xmlns:yearly="clr-namespace:DocMgr.Views.YearlyArchive"
+        Width="1200"
+        Height="820"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResizeWithGrip"
+        Background="#F5F7FA"
+        Title="{Binding WindowTitle, Mode=OneWay}">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../YearlyArchive/ArchiveRegisterResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            <yearly:InverseBoolRadioConverter x:Key="InverseBoolRadioConverter"/>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="{Binding WindowTitle, Mode=OneWay}" FontSize="18" FontWeight="Bold"/>
+            <TextBlock Text="{Binding BannerText, Mode=OneWay}"
+                       Margin="0,6,0,0" Foreground="#666" TextWrapping="Wrap"/>
         </StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-          <ComboBox Width="120" ItemsSource="{Binding AssetKindOptions}" SelectedItem="{Binding ManualAssetKind}" IsEnabled="{Binding CanEditHeader}"/>
-          <TextBox Width="200" Margin="8,0" Text="{Binding ManualAssetName}" IsEnabled="{Binding CanEditHeader}" ToolTip="资料名称"/>
-          <TextBox Width="240" Text="{Binding ManualServerPath}" IsEnabled="{Binding CanEditHeader}" ToolTip="服务器路径"/>
-          <Button Content="添加明细" Command="{Binding AddManualItemCommand}" Margin="8,0,0,0" Width="88"/>
-        </StackPanel>
-        <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" Height="220" CanUserAddRows="False">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="类别" Binding="{Binding AssetKind}" Width="90"/>
-            <DataGridTextColumn Header="名称" Binding="{Binding AssetName}" Width="140"/>
-            <DataGridTextColumn Header="表单号" Binding="{Binding FormNo, Mode=OneWay}" Width="110"/>
-            <DataGridTextColumn Header="服务器路径" Binding="{Binding TargetServerPath}" Width="*"/>
-            <DataGridTemplateColumn Header="" Width="60">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate>
-                  <Button Content="移除" Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-          </DataGrid.Columns>
-        </DataGrid>
-        <StackPanel Visibility="{Binding ShowApprovalPanel, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,12,0,0">
-          <TextBlock Text="审批签字" FontWeight="Bold" Margin="0,0,0,6"/>
-          <UniformGrid Columns="3" Margin="0,0,0,8">
-            <StackPanel Margin="0,0,8,0"><TextBlock Text="生产管理科"/><TextBox Text="{Binding ProdLeader}"/><DatePicker SelectedDate="{Binding ProdDate}"/></StackPanel>
-            <StackPanel Margin="0,0,8,0"><TextBlock Text="科研开发室"/><TextBox Text="{Binding RndLeader}"/><DatePicker SelectedDate="{Binding RndDate}"/></StackPanel>
-            <StackPanel><TextBlock Text="分管领导"/><TextBox Text="{Binding DeputyLeader}"/><DatePicker SelectedDate="{Binding DeputyDate}"/></StackPanel>
-          </UniformGrid>
-          <TextBlock Text="交接签字" FontWeight="Bold" Margin="0,0,0,6"/>
-          <UniformGrid Columns="3" Margin="0,0,0,8">
-            <StackPanel Margin="0,0,8,0"><TextBlock Text="移交人"/><TextBox Text="{Binding Deliverer}"/><DatePicker SelectedDate="{Binding DeliverDate}"/></StackPanel>
-            <StackPanel Margin="0,0,8,0"><TextBlock Text="资料员"/><TextBox Text="{Binding Administrator}"/><DatePicker SelectedDate="{Binding AdminDate}"/></StackPanel>
-            <StackPanel><TextBlock Text="部门负责人"/><TextBox Text="{Binding DeptLeader}"/><DatePicker SelectedDate="{Binding DeptDate}"/></StackPanel>
-          </UniformGrid>
-          <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-            <ComboBox Width="140" ItemsSource="{Binding UploadCategoryOptions}" SelectedItem="{Binding UploadCategory}"/>
-            <Button Content="上传附件" Command="{Binding UploadAttachmentCommand}" Margin="8,0" Width="88"/>
-          </StackPanel>
-          <DataGrid ItemsSource="{Binding Attachments}" AutoGenerateColumns="False" Height="100" IsReadOnly="True">
-            <DataGrid.Columns>
-              <DataGridTextColumn Header="分类" Binding="{Binding FileCategory, Mode=OneWay}" Width="100"/>
-              <DataGridTextColumn Header="文件名" Binding="{Binding FileName, Mode=OneWay}" Width="*"/>
-              <DataGridTemplateColumn Width="120">
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    <StackPanel Orientation="Horizontal">
-                      <Button Content="查看" Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Margin="0,0,4,0"/>
-                      <Button Content="删除" Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+
+        <Border Grid.Row="1" BorderBrush="#D8E2EC" BorderThickness="1" CornerRadius="4" Background="White">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="10">
+                <StackPanel Margin="12" Orientation="Vertical">
+
+                    <!-- 1. 入网信息 -->
+                    <GroupBox Header="1. 入网信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10" Margin="0,0,0,10">
+                        <StackPanel>
+                            <DockPanel Margin="0,2">
+                                <TextBlock Text="年度" Width="110" VerticalAlignment="Center"
+                                           Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                                <ComboBox Width="100" HorizontalAlignment="Left" Margin="0,0,12,0"
+                                          Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                                          ItemsSource="{Binding ProjectYears}"
+                                          SelectedItem="{Binding Year, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding CanEditHeader}"/>
+                                <TextBlock Text="项目" Width="50" VerticalAlignment="Center"
+                                           Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                                <ComboBox Width="300" HorizontalAlignment="Left" Margin="0,0,12,0"
+                                          Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                                          ItemsSource="{Binding Projects}"
+                                          DisplayMemberPath="ProjectName"
+                                          SelectedItem="{Binding SelectedProject, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding CanEditHeader}"/>
+                                <TextBlock Text="数据来源" Width="70" VerticalAlignment="Center"
+                                           Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                                <ComboBox Width="140" HorizontalAlignment="Left"
+                                          Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                                          ItemsSource="{Binding SourceKindOptions}"
+                                          SelectedItem="{Binding SourceKind}"
+                                          IsEnabled="{Binding CanEditHeader}"/>
+                            </DockPanel>
+
+                            <DockPanel Margin="0,6,0,0">
+                                <TextBlock Text="申请说明" Width="110" VerticalAlignment="Top" Margin="0,4,0,0"
+                                           Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                                <TextBox Height="48" AcceptsReturn="True" TextWrapping="Wrap"
+                                         Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                                         Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding CanEditHeader}"/>
+                            </DockPanel>
+
+                            <DockPanel Margin="0,6,0,0">
+                                <TextBlock Text="备注" Width="110" VerticalAlignment="Top" Margin="0,4,0,0"
+                                           Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                                <TextBox Height="36" AcceptsReturn="True" TextWrapping="Wrap"
+                                         Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                                         Text="{Binding Remark, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding CanEditHeader}"/>
+                            </DockPanel>
+
+                            <DockPanel Margin="0,6,0,0" LastChildFill="True">
+                                <TextBlock DockPanel.Dock="Left" Text="附有证明材料" Width="110" VerticalAlignment="Center"
+                                           Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="0,0,8,0"
+                                            IsEnabled="{Binding CanEditHeader}">
+                                    <RadioButton Content="是" GroupName="InboundProofMaterialHas"
+                                                 Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
+                                                 IsChecked="{Binding HasProofMaterial, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <RadioButton Content="否" GroupName="InboundProofMaterialHas"
+                                                 Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
+                                                 IsChecked="{Binding HasProofMaterial, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                                <DockPanel LastChildFill="True" IsEnabled="{Binding CanEditHeader}">
+                                    <DockPanel.Style>
+                                        <Style TargetType="DockPanel">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasProofMaterial}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DockPanel.Style>
+                                    <TextBlock DockPanel.Dock="Left" Text="名称" Width="40" VerticalAlignment="Center"
+                                               Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                                    <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                                             Text="{Binding ProofMaterialName, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="填写证明材料名称；审批环节由资料管理员上传扫描件"/>
+                                </DockPanel>
+                            </DockPanel>
+
+                            <DockPanel Margin="0,6,0,0"
+                                       Visibility="{Binding IsArchivedSource, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock DockPanel.Dock="Left" Text="电子检索集" Width="110" VerticalAlignment="Top" Margin="0,4,0,0"
+                                           Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,4">
+                                        <Button Content="刷新列表" Command="{Binding RefreshApplicantSearchResultSetsCommand}"
+                                                Padding="12,6" HorizontalAlignment="Left"
+                                                IsEnabled="{Binding CanEditHeader}"/>
+                                    </DockPanel>
+
+                                    <DataGrid ItemsSource="{Binding ApplicantSearchResultSets}"
+                                              SelectedItem="{Binding SelectedSearchResultSet, UpdateSourceTrigger=PropertyChanged}"
+                                              AutoGenerateColumns="False" CanUserAddRows="False"
+                                              IsReadOnly="True" SelectionMode="Single" Height="132"
+                                              AlternatingRowBackground="#F8FAFC">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="检索集编号" Binding="{Binding ResultSetNo, Mode=OneWay}" Width="140"/>
+                                            <DataGridTextColumn Header="名称" Binding="{Binding Name, Mode=OneWay}" Width="*"/>
+                                            <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="80"/>
+                                            <DataGridTextColumn Header="明细数" Binding="{Binding ItemCount, Mode=OneWay}" Width="70"/>
+                                            <DataGridTextColumn Header="创建人" Binding="{Binding CreatedByName, Mode=OneWay}" Width="90"/>
+                                            <DataGridTextColumn Header="更新时间" Binding="{Binding UpdatedAtDisplay, Mode=OneWay}" Width="130"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding SelectedSearchResultSetSummary, Mode=OneWay}"
+                                               Foreground="#475569" FontSize="11" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- 2. 入网明细 -->
+                    <GroupBox Header="2. 入网明细" Style="{StaticResource Level1GroupBoxStyle}" Padding="10" Margin="0,0,0,10">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,2">
+                                <TextBlock DockPanel.Dock="Left" Text="服务器路径" Width="110" VerticalAlignment="Center"
+                                           Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                                <ComboBox Width="280" HorizontalAlignment="Left"
+                                          Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                                          ItemsSource="{Binding ApplicantServerPathOptions}"
+                                          DisplayMemberPath="PathName"
+                                          SelectedItem="{Binding SelectedServerPath, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding CanEditServerPath}"/>
+                            </DockPanel>
+                            <TextBlock Margin="110,0,0,6" Text="{Binding SelectedServerPathInfo, Mode=OneWay}"
+                                       Foreground="#475569" FontSize="11" TextWrapping="Wrap"/>
+
+                            <DockPanel Margin="0,0,0,6"
+                                        Visibility="{Binding ShowExternalItemToolbar, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock DockPanel.Dock="Left" Text="入网数据信息" Width="110" VerticalAlignment="Center"
+                                           Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                                <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" Foreground="#64748B" FontSize="11"
+                                           Text="在表格中直接录入；提交时校验资料类别、资料名称、资料明细、密级与数据量。" TextWrapping="Wrap"/>
+                                <Button DockPanel.Dock="Right" Content="添加明细" Command="{Binding AddExternalItemCommand}"
+                                        Padding="12,6" Margin="0,0,0,0"/>
+                            </DockPanel>
+
+                            <DataGrid ItemsSource="{Binding ItemRows}" AutoGenerateColumns="False" MinHeight="220" Height="260"
+                                      CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                      AlternatingRowBackground="#F8FAFC" RowHeight="32"
+                                      IsReadOnly="{Binding IsInboundItemGridReadOnly}">
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="资料类别" Width="96">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding AssetKindDisplay, Mode=OneWay}"
+                                                           VerticalAlignment="Center" Margin="6,0"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding DataContext.AssetKindOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          SelectedItem="{Binding AssetKind, UpdateSourceTrigger=PropertyChanged}"
+                                                          Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="资料名称" Width="130">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding MaterialNameDisplay, Mode=OneWay}"
+                                                           VerticalAlignment="Center" Margin="6,0"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <TextBox Text="{Binding MaterialName, UpdateSourceTrigger=PropertyChanged}"
+                                                         Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="表单编号" Width="100" IsReadOnly="True">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding FormNoDisplay, Mode=OneWay}"
+                                                           VerticalAlignment="Center" Margin="6,0"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="资料明细" Width="120">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding ItemNameDisplay, Mode=OneWay}"
+                                                           VerticalAlignment="Center" Margin="6,0"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <TextBox Text="{Binding ItemName, UpdateSourceTrigger=PropertyChanged}"
+                                                         Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="密级" Width="72">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding ConfidentialLevelDisplay, Mode=OneWay}"
+                                                           VerticalAlignment="Center" Margin="6,0"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding DataContext.ConfidentialLevelOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          SelectedItem="{Binding ConfidentialLevel, UpdateSourceTrigger=PropertyChanged}"
+                                                          Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="数据量" Width="118">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding DataSizeTextDisplay, Mode=OneWay}"
+                                                           VerticalAlignment="Center" Margin="6,0"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <DockPanel LastChildFill="True">
+                                                    <ComboBox DockPanel.Dock="Right" Width="52" Margin="4,0,0,0"
+                                                              ItemsSource="{Binding DataContext.DataSizeUnitOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              SelectedItem="{Binding DataSizeUnit, UpdateSourceTrigger=PropertyChanged}"
+                                                              Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"/>
+                                                    <TextBox Text="{Binding DataSizeValue, UpdateSourceTrigger=PropertyChanged}"
+                                                             Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="容器编号" Width="88" IsReadOnly="True">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding ContainerCodeDisplay, Mode=OneWay}"
+                                                           VerticalAlignment="Center" Margin="6,0"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="存放位置" Width="96" IsReadOnly="True">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding StorageLocationDisplay, Mode=OneWay}"
+                                                           VerticalAlignment="Center" Margin="6,0"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="硬盘编号" Width="96" IsReadOnly="True">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding HardDiskCodeDisplay, Mode=OneWay}"
+                                                           VerticalAlignment="Center" Margin="6,0"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="" Width="70">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Content="移除" Padding="8,2"
+                                                        Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- 3. 申请信息 -->
+                    <GroupBox Header="3. 申请信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10" Margin="0,0,0,10">
+                        <DockPanel LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left" Text="申请人" Width="110" VerticalAlignment="Center"
+                                       Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                            <TextBox DockPanel.Dock="Left" Width="100" Margin="0,0,12,0"
+                                     Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                                     Text="{Binding ApplicantName, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"/>
+                            <TextBlock DockPanel.Dock="Left" Text="部门" Width="50" VerticalAlignment="Center"
+                                       Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                            <TextBox DockPanel.Dock="Left" Width="160" Margin="0,0,12,0"
+                                     Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                                     Text="{Binding ApplicantDept, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"/>
+                            <TextBlock DockPanel.Dock="Left" Text="申请时间" Width="70" VerticalAlignment="Center"
+                                       Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                            <TextBox DockPanel.Dock="Left" Width="160"
+                                     Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                                     Text="{Binding ApplyTime, Mode=OneWay, StringFormat={}{0:yyyy-MM-dd HH:mm}}"
+                                     IsReadOnly="True" Background="#F5F5F5"/>
+                        </DockPanel>
+                    </GroupBox>
+
+                    <!-- 4–6 审批面板 -->
+                    <StackPanel Visibility="{Binding ShowApprovalPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Border Margin="0,0,0,12" Padding="10" Background="#EEF3F8" BorderBrush="#C5D3E0" BorderThickness="1">
+                            <TextBlock Text="以下为审批与交接办理区。审批通过前可补录服务器路径；各节点仅需签字人与日期。"
+                                       Foreground="#475569" TextWrapping="Wrap"/>
+                        </Border>
+
+                        <GroupBox Header="4. 审批签字" Style="{StaticResource Level1GroupBoxStyle}" Padding="8">
+                            <StackPanel>
+                                <TextBlock Text="各节点仅需签字人与日期，无需签署具体意见。"
+                                           Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                                            IsEnabled="{Binding CanApprove}">
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock DockPanel.Dock="Left" Text="部门负责人" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                                <TextBox Width="80" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                         Text="{Binding DeptLeader, UpdateSourceTrigger=PropertyChanged}"/>
+                                                <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="8,0,4,0"/>
+                                                <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                            SelectedDate="{Binding DeptDate}"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Border>
+
+                                    <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                                            IsEnabled="{Binding CanApprove}">
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock DockPanel.Dock="Left" Text="生产管理科" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                                <TextBox Width="80" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                         Text="{Binding ProdLeader, UpdateSourceTrigger=PropertyChanged}"/>
+                                                <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="8,0,4,0"/>
+                                                <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                            SelectedDate="{Binding ProdDate}"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Border>
+
+                                    <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                                            IsEnabled="{Binding CanApprove}">
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock DockPanel.Dock="Left" Text="科研开发室" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                                <TextBox Width="80" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                         Text="{Binding RndLeader, UpdateSourceTrigger=PropertyChanged}"/>
+                                                <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="8,0,4,0"/>
+                                                <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                            SelectedDate="{Binding RndDate}"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Border>
+
+                                    <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                                            IsEnabled="{Binding CanApprove}">
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock DockPanel.Dock="Left" Text="分管领导" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                                <TextBox Width="80" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                         Text="{Binding DeputyLeader, UpdateSourceTrigger=PropertyChanged}"/>
+                                                <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="8,0,4,0"/>
+                                                <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                            SelectedDate="{Binding DeputyDate}"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Border>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="5. 入网交接" Style="{StaticResource Level1GroupBoxStyle}" Padding="8">
+                            <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}" Margin="0"
+                                    IsEnabled="{Binding CanConfirmHandover}">
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Text="资料交接" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                                            <TextBlock Text="移交" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                            <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                     Text="{Binding Deliverer, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="8,0,4,0"/>
+                                            <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                        SelectedDate="{Binding DeliverDate}"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="资料员" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                                            <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                     Text="{Binding Administrator, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="8,0,4,0"/>
+                                            <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                        SelectedDate="{Binding AdminDate}"/>
+                                        </StackPanel>
+                                    </WrapPanel>
+                                </DockPanel>
+                            </Border>
+                        </GroupBox>
+
+                        <GroupBox Header="6. 附件材料" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
+                            <StackPanel>
+                                <TextBlock Text="签批单必传；上传完成证明及其他附件按需。办结前须完成签批单上传。"
+                                           Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <Label Width="110" Style="{StaticResource FormLabelStyle}" Content="附件分类："/>
+                                    <ComboBox Width="160"
+                                              Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                                              ItemsSource="{Binding UploadCategoryOptions}"
+                                              SelectedItem="{Binding UploadCategory}"
+                                              IsEnabled="{Binding CanUploadAttachment}"/>
+                                    <Button Content="上传附件" Command="{Binding UploadAttachmentCommand}" Margin="8,0,0,0" Padding="12,6"/>
+                                </StackPanel>
+                                <DataGrid ItemsSource="{Binding Attachments}" AutoGenerateColumns="False" Height="110"
+                                          IsReadOnly="True" HeadersVisibility="Column"
+                                          AlternatingRowBackground="#F8FAFC">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="分类" Binding="{Binding FileCategory, Mode=OneWay}" Width="100"/>
+                                        <DataGridTextColumn Header="文件名" Binding="{Binding FileName, Mode=OneWay}" Width="*"/>
+                                        <DataGridTemplateColumn Width="130">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Content="查看" Padding="8,2" Margin="0,0,4,0"
+                                                                Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}"/>
+                                                        <Button Content="删除" Padding="8,2"
+                                                                Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </StackPanel>
+                        </GroupBox>
                     </StackPanel>
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
-            </DataGrid.Columns>
-          </DataGrid>
-        </StackPanel>
-      </StackPanel>
-    </ScrollViewer>
-  </DockPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <Border Grid.Row="2" Margin="0,12,0,0" Padding="12,10,0,0"
+                BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Background="#FAFBFC">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal"
+                                Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Margin="0,0,8,0" Padding="12,6"/>
+                        <Button Content="提交申请" Command="{Binding SubmitCommand}" Margin="0,0,8,0" Padding="12,6"/>
+                    </StackPanel>
+                    <Button Content="打印申请" Command="{Binding PrintApplicationCommand}" Margin="0,0,8,0" Padding="12,6"/>
+                    <StackPanel Orientation="Horizontal"
+                                Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Button Content="审批通过" Command="{Binding ApproveCommand}" Margin="0,0,8,0" Padding="12,6"/>
+                        <Button Content="确认交接" Command="{Binding ConfirmHandoverCommand}" Margin="0,0,8,0" Padding="12,6"/>
+                        <Button Content="确认办结" Command="{Binding CompleteCommand}" Margin="0,0,8,0" Padding="12,6"/>
+                    </StackPanel>
+                </StackPanel>
+                <Button Grid.Column="1" Content="关闭" Command="{Binding CloseCommand}" Padding="16,6"/>
+            </Grid>
+        </Border>
+    </Grid>
 </Window>
