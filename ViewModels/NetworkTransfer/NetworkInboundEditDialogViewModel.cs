@@ -113,6 +113,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             PrintApplicationCommand = new RelayCommand(async _ => await PrintApplicationAsync(), _ => CanPrintApplication);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
+            RefreshUploadCategoryOptions();
             _ = InitializeAsync();
         }
 
@@ -138,7 +139,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         /// <summary>数据量单位选项。</summary>
         public IReadOnlyList<string> DataSizeUnitOptions => NetworkInboundItemDisplaySupport.DataSizeUnitOptions;
 
-        public ObservableCollection<string> UploadCategoryOptions { get; } = new(NetworkTransferDomainValues.AttachmentCategoryOptions);
+        public ObservableCollection<string> UploadCategoryOptions { get; } = new();
 
         public ObservableCollection<NetworkInboundItem> Items { get; } = new();
 
@@ -605,6 +606,18 @@ namespace DocMgr.ViewModels.NetworkTransfer
             OnPropertyChanged(nameof(IsArchivedSource));
             OnPropertyChanged(nameof(CanPrintApplication));
             NotifyProofMaterialStateChanged();
+            NotifyWorkflowCommandStateChanged();
+        }
+
+        /// <summary>状态变化后刷新审批/交接/附件等命令与控件可用性。</summary>
+        private void NotifyWorkflowCommandStateChanged()
+        {
+            OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(CanApprove));
+            OnPropertyChanged(nameof(CanConfirmHandover));
+            OnPropertyChanged(nameof(CanUploadAttachment));
+            OnPropertyChanged(nameof(CanComplete));
+            CommandManager.InvalidateRequerySuggested();
         }
 
         private async Task TryAutoFillDefaultApprovalInfoAsync()
@@ -656,6 +669,28 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             OnPropertyChanged(nameof(HasProofMaterial));
             OnPropertyChanged(nameof(ProofMaterialName));
+            RefreshUploadCategoryOptions();
+        }
+
+        /// <summary>按是否附有证明材料刷新附件分类下拉（证明材料居第二、其他附件居末）。</summary>
+        private void RefreshUploadCategoryOptions()
+        {
+            string previous = UploadCategory;
+            UploadCategoryOptions.Clear();
+            foreach (string option in NetworkTransferDomainValues.BuildInboundAttachmentCategoryOptions(HasProofMaterial))
+            {
+                UploadCategoryOptions.Add(option);
+            }
+
+            if (!string.IsNullOrWhiteSpace(previous)
+                && UploadCategoryOptions.Contains(previous, StringComparer.Ordinal))
+            {
+                UploadCategory = previous;
+            }
+            else if (UploadCategoryOptions.Count > 0)
+            {
+                UploadCategory = UploadCategoryOptions[0];
+            }
         }
 
         private void ApplyProofMaterialNoteToDraft(NetworkInboundRecord draft)
@@ -1218,7 +1253,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 ApplySharedServerPathToItems();
                 await _service.UpdateInboundItemPathsAsync(_record.Id, Items.ToList(), RequireUser());
-                await ReloadRecordAsync();
+                // 不在此处 Reload：审批/交接区默认信息仅内存回填，提前 Reload 会冲掉界面值；
+                // 调用方在主操作成功后再 Reload。
             }
         }
 
@@ -1311,6 +1347,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 _record = latest;
                 BindFromRecord();
+                // 默认审批信息未落库，Reload 后需重新回填，避免审批/打印等操作清空界面。
+                await TryAutoFillDefaultApprovalInfoAsync();
                 if (IsArchivedSource)
                 {
                     await LoadApplicantSearchResultSetsAsync();

@@ -436,7 +436,7 @@
 
                         <GroupBox Header="6. 附件材料" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
                             <StackPanel>
-                                <TextBlock Text="签批单必传；上传完成证明及其他附件按需。办结前须完成签批单上传。"
+                                <TextBlock Text="签批单必传；证明材料按申请声明；其他附件按需。确认交接前须完成必备附件上传。"
                                            Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                     <Label Width="110" Style="{StaticResource FormLabelStyle}" Content="附件分类："/>

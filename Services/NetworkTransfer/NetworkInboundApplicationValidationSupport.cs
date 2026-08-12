@@ -1,4 +1,6 @@
 using DocMgr.Models.NetworkTransfer;
+using DocMgr.Models.SystemSettings;
+using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Services.NetworkTransfer;
 
@@ -53,6 +55,112 @@ public static class NetworkInboundApplicationValidationSupport
         if (errors.Count > 0)
         {
             throw new InvalidOperationException(string.Join(Environment.NewLine, errors));
+        }
+    }
+
+    /// <summary>
+    /// 校验确认入网交接所需的审批信息、服务器路径与必备附件，返回全部错误（空列表表示通过）。
+    /// </summary>
+    public static IReadOnlyList<string> ValidateForHandoverConfirm(
+        NetworkInboundRecord record,
+        NetworkInboundRecord handoverInput,
+        IReadOnlyList<SystemAttachment> attachments)
+    {
+        ArgumentNullException.ThrowIfNull(record);
+        ArgumentNullException.ThrowIfNull(handoverInput);
+
+        var errors = new List<string>();
+        CollectApprovalSignerErrors(record, handoverInput, errors);
+        CollectInboundPathErrors(record, errors);
+        CollectMandatoryAttachmentErrors(record, attachments ?? Array.Empty<SystemAttachment>(), errors);
+        return errors;
+    }
+
+    /// <summary>
+    /// 校验不通过时抛出包含全部错误的异常。
+    /// </summary>
+    public static void EnsureValidForHandoverConfirm(
+        NetworkInboundRecord record,
+        NetworkInboundRecord handoverInput,
+        IReadOnlyList<SystemAttachment> attachments)
+    {
+        IReadOnlyList<string> errors = ValidateForHandoverConfirm(record, handoverInput, attachments);
+        if (errors.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "交接确认前校验未通过：" + Environment.NewLine + Environment.NewLine
+                + string.Join(Environment.NewLine, errors));
+        }
+    }
+
+    private static void CollectApprovalSignerErrors(
+        NetworkInboundRecord record,
+        NetworkInboundRecord handoverInput,
+        List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(record.DeptLeader))
+        {
+            errors.Add("• 部门负责人签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.ProdLeader))
+        {
+            errors.Add("• 生产管理科负责人签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.RndLeader))
+        {
+            errors.Add("• 科研开发室负责人签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.DeputyLeader))
+        {
+            errors.Add("• 分管领导签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(handoverInput.Deliverer))
+        {
+            errors.Add("• 移交人签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(handoverInput.Administrator))
+        {
+            errors.Add("• 资料员签字缺失");
+        }
+    }
+
+    private static void CollectInboundPathErrors(NetworkInboundRecord record, List<string> errors)
+    {
+        foreach (var item in record.Items)
+        {
+            if (string.IsNullOrWhiteSpace(item.TargetServerPath))
+            {
+                string label = string.IsNullOrWhiteSpace(item.AssetName)
+                    ? "入网明细"
+                    : $"明细「{item.AssetName.Trim()}」";
+                errors.Add($"• {label}缺少目标服务器路径");
+            }
+        }
+    }
+
+    private static void CollectMandatoryAttachmentErrors(
+        NetworkInboundRecord record,
+        IReadOnlyList<SystemAttachment> attachments,
+        List<string> errors)
+    {
+        bool HasCategory(string category) =>
+            attachments.Any(item =>
+                string.Equals(item.FileCategory?.Trim(), category, StringComparison.Ordinal));
+
+        if (!HasCategory(NetworkTransferDomainValues.AttachmentCategorySignedForm))
+        {
+            errors.Add("• 缺少「签批单」附件");
+        }
+
+        if (ArchiveRegisterDomainValues.RequiresProofMaterialAttachment(record.ProofMaterialNote)
+            && !HasCategory(NetworkTransferDomainValues.AttachmentCategoryProofMaterial))
+        {
+            errors.Add("• 申请时已声明附有证明材料，请上传证明材料扫描件");
         }
     }
 

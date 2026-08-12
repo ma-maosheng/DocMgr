@@ -12,7 +12,7 @@ namespace DocMgr.Models.NetworkTransfer
         public const string DisposalAttachmentBusinessType = "NetworkOnNetDisposal";
 
         public const string AttachmentCategorySignedForm = "签批单";
-        public const string AttachmentCategoryUploadProof = "上传完成证明";
+        public const string AttachmentCategoryProofMaterial = "证明材料";
         public const string AttachmentCategoryOther = "其他附件";
 
         public const string AssetKindJobData = "作业数据";
@@ -97,9 +97,26 @@ namespace DocMgr.Models.NetworkTransfer
         public static IReadOnlyList<string> AttachmentCategoryOptions { get; } =
         [
             AttachmentCategorySignedForm,
-            AttachmentCategoryUploadProof,
             AttachmentCategoryOther
         ];
+
+        /// <summary>
+        /// 入网附件分类下拉：签批单 →（有声明时）证明材料 → 其他附件。
+        /// </summary>
+        public static IReadOnlyList<string> BuildInboundAttachmentCategoryOptions(bool hasProofMaterial)
+        {
+            if (!hasProofMaterial)
+            {
+                return AttachmentCategoryOptions;
+            }
+
+            return
+            [
+                AttachmentCategorySignedForm,
+                AttachmentCategoryProofMaterial,
+                AttachmentCategoryOther
+            ];
+        }
 
         public static bool IsArchivedElectronicSearchSource(string? sourceKind)
         {

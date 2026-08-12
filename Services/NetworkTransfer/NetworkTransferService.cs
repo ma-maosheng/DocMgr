@@ -264,9 +264,10 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅已审批状态可确认交接。");
         }
 
-        RequireSigner(handover.Deliverer, "移交人");
-        RequireSigner(handover.Administrator, "资料员");
-        EnsureInboundPathsReady(existing);
+        var attachments = await _repository.GetAttachmentsAsync(
+            NetworkTransferDomainValues.InboundAttachmentBusinessType,
+            existing.InboundNo);
+        NetworkInboundApplicationValidationSupport.EnsureValidForHandoverConfirm(existing, handover, attachments);
 
         DateTime now = DateTime.Now;
         existing.Deliverer = handover.Deliverer.Trim();
