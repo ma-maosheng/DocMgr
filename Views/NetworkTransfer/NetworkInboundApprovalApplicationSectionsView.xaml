@@ -70,18 +70,52 @@
                         </TextBlock>
 
                         <TextBlock Text="检索集明细" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <!-- 列与 YA-FIL-POOL 右侧「池内立档记录」一致；审批阶段密级仍可按线下结果补录。 -->
                         <DataGrid ItemsSource="{Binding ItemRows}" AutoGenerateColumns="False" MinHeight="160" MaxHeight="280"
                                   CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                                  AlternatingRowBackground="#F8FAFC" RowHeight="30" Margin="0,4,0,0">
+                                  AlternatingRowBackground="#F8FAFC" RowHeight="34" Margin="0,4,0,0">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="资料类别" Binding="{Binding AssetKindDisplay, Mode=OneWay}" Width="88" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialNameDisplay, Mode=OneWay}" Width="120" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="表单编号" Binding="{Binding FormNoDisplay, Mode=OneWay}" Width="96" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="资料明细" Binding="{Binding ItemNameDisplay, Mode=OneWay}" Width="120" IsReadOnly="True"/>
-                                <DataGridTemplateColumn Header="密级" Width="72">
+                                <DataGridTextColumn Header="表单号" Binding="{Binding FormNo, Mode=OneWay}" Width="150" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="项目年度" Binding="{Binding ProjectYear, Mode=OneWay}" Width="70" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="所属项目" Binding="{Binding ProjectName, Mode=OneWay}" Width="140" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="*" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="库管模式" Binding="{Binding ArchivePurpose, Mode=OneWay}" Width="88" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName, Mode=OneWay}" Width="140" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="介质类型" Binding="{Binding StorageCarrierTypeDisplay, Mode=OneWay}" Width="80" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="所在目录" Binding="{Binding FilingDirectoryDisplay, Mode=OneWay}" Width="200" IsReadOnly="True">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextWrapping" Value="Wrap"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="资料类型" Binding="{Binding MaterialCategory, Mode=OneWay}" Width="72" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="所属子类" Binding="{Binding SubCategory, Mode=OneWay}" Width="88" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="组织形式" Binding="{Binding DataOrganizationForm, Mode=OneWay}" Width="72" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="份数" Binding="{Binding RequestedCopyCount, Mode=OneWay}" Width="70" IsReadOnly="True">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsCopyCountEditable}" Value="False">
+                                                    <Setter Property="Text" Value="1"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="筛选范围" Binding="{Binding SelectionScopeDisplay, Mode=OneWay}" Width="180" IsReadOnly="True">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextWrapping" Value="Wrap"/>
+                                            <Setter Property="Foreground" Value="#00695C"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTemplateColumn Header="密级" Width="70">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding ConfidentialLevelDisplay, Mode=OneWay}" VerticalAlignment="Center" Margin="6,0"/>
+                                            <TextBlock Text="{Binding ConfidentialLevel, Mode=OneWay}" VerticalAlignment="Center" Margin="6,0"/>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                     <DataGridTemplateColumn.CellEditingTemplate>
@@ -93,10 +127,27 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellEditingTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="数据量" Binding="{Binding DataSizeTextDisplay, Mode=OneWay}" Width="96" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="容器编号" Binding="{Binding ContainerCodeDisplay, Mode=OneWay}" Width="88" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="存放位置" Binding="{Binding StorageLocationDisplay, Mode=OneWay}" Width="96" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="硬盘编号" Binding="{Binding HardDiskCodeDisplay, Mode=OneWay}" Width="88" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="命中明细" Binding="{Binding MatchedContentEntrySummary, Mode=OneWay}" Width="200" IsReadOnly="True">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextWrapping" Value="Wrap"/>
+                                            <Setter Property="Foreground" Value="#00695C"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="数据量" Binding="{Binding DataSizeDisplay, Mode=OneWay}" Width="90" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="档案盒/介质袋编号" Binding="{Binding ContainerCode, Mode=OneWay}" Width="130" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="立档位置" Binding="{Binding StorageLocation, Mode=OneWay}" Width="100" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="当前位置" Binding="{Binding CurrentStorageLocation, Mode=OneWay}" Width="100" IsReadOnly="True">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#1B5E20"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="借出提示" Binding="{Binding BorrowHintDisplay, Mode=OneWay}" Width="120" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="状态" Binding="{Binding LifecycleStatusDisplay, Mode=OneWay}" Width="80" IsReadOnly="True"/>
                             </DataGrid.Columns>
                         </DataGrid>
                         </StackPanel>

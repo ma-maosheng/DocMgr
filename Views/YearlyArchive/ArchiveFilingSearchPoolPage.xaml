@@ -7,6 +7,34 @@
       d:DesignHeight="900" d:DesignWidth="1300"
       Title="ArchiveFilingSearchPoolPage" Background="#F0F2F5">
 
+    <Page.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <Style x:Key="SearchPoolPaneGridSplitterStyle" TargetType="GridSplitter">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="#E2E8F0"/>
+            <Setter Property="ResizeBehavior" Value="PreviousAndNext"/>
+            <Setter Property="ResizeDirection" Value="Columns"/>
+            <Setter Property="ShowsPreview" Value="True"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Cursor" Value="SizeWE"/>
+            <Setter Property="ToolTip" Value="左右拖动以调整检索池列表与明细区宽度"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="2" Margin="2,8">
+                            <Border Width="3" Height="48" CornerRadius="1.5"
+                                    Background="#94A3B8"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+
     <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -51,9 +79,9 @@
 
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.1*"/>
-                <ColumnDefinition Width="8"/>
-                <ColumnDefinition Width="1.4*"/>
+                <ColumnDefinition Width="0.55*" MinWidth="240"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*" MinWidth="480"/>
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" Background="White" CornerRadius="4" Padding="10">
@@ -74,6 +102,8 @@
                     </DataGrid>
                 </DockPanel>
             </Border>
+
+            <GridSplitter Grid.Column="1" Style="{StaticResource SearchPoolPaneGridSplitterStyle}"/>
 
             <Border Grid.Column="2" Background="White" CornerRadius="4" Padding="10">
                 <DockPanel>
@@ -113,7 +143,7 @@
                                     Command="{Binding CreateOutboundFromPoolCommand}"/>
                             <Button Content="发起入网申请" Margin="10,0,0,0"
                                     Command="{Binding CreateInboundFromPoolCommand}"
-                                    ToolTip="勾选部分条目可按明细发起；未勾选时使用检索池全部条目">
+                                    ToolTip="选中明细行时仅发起该行；未选中时使用检索池全部条目">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource ToolbarActionButtonStyle}">
                                         <Style.Triggers>
@@ -130,17 +160,60 @@
                         <TextBlock Text="池内立档记录" FontWeight="SemiBold" Foreground="#37474F" VerticalAlignment="Center"/>
                     </DockPanel>
 
-                    <DataGrid x:Name="PoolItemsDataGrid" AutoGenerateColumns="False" IsReadOnly="False" CanUserAddRows="False"
+                    <DataGrid x:Name="PoolItemsDataGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
                               ItemsSource="{Binding PoolItems}" SelectedItem="{Binding SelectedPoolItem, Mode=TwoWay}"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                              BorderThickness="0" RowHeight="36">
+                              BorderThickness="0" RowHeight="34">
                         <DataGrid.Columns>
-                            <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
-                            <DataGridTextColumn Header="表单号" Binding="{Binding FormNo}" Width="130" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="*" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName}" Width="160" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="筛选份数" Binding="{Binding RequestedCopyCountDisplay}" Width="80" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="筛选范围" Binding="{Binding SelectionScopeDisplay}" Width="180" IsReadOnly="True">
+                            <DataGridTextColumn Header="表单号" Binding="{Binding FormNo}" Width="150"/>
+                            <DataGridTextColumn Header="项目年度" Binding="{Binding ProjectYear}" Width="70"/>
+                            <DataGridTextColumn Header="所属项目" Binding="{Binding ProjectName}" Width="140"/>
+                            <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="*"/>
+                            <DataGridTextColumn Header="库管模式" Binding="{Binding ArchivePurpose}" Width="88"/>
+                            <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName}" Width="140"/>
+                            <DataGridTextColumn Header="介质类型" Binding="{Binding StorageCarrierTypeDisplay}" Width="80">
+                                <DataGridTextColumn.Visibility>
+                                    <Binding Path="DataContext.IsElectronicSearch" RelativeSource="{RelativeSource AncestorType=Page}" Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                                </DataGridTextColumn.Visibility>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="所在目录" Binding="{Binding FilingDirectoryDisplay}" Width="200">
+                                <DataGridTextColumn.Visibility>
+                                    <Binding Path="DataContext.IsElectronicSearch" RelativeSource="{RelativeSource AncestorType=Page}" Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                                </DataGridTextColumn.Visibility>
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="资料类型" Binding="{Binding MaterialCategory}" Width="72">
+                                <DataGridTextColumn.Visibility>
+                                    <Binding Path="DataContext.IsElectronicSearch" RelativeSource="{RelativeSource AncestorType=Page}" Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                                </DataGridTextColumn.Visibility>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="所属子类" Binding="{Binding SubCategory}" Width="88">
+                                <DataGridTextColumn.Visibility>
+                                    <Binding Path="DataContext.IsElectronicSearch" RelativeSource="{RelativeSource AncestorType=Page}" Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                                </DataGridTextColumn.Visibility>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="组织形式" Binding="{Binding DataOrganizationForm}" Width="72">
+                                <DataGridTextColumn.Visibility>
+                                    <Binding Path="DataContext.IsElectronicSearch" RelativeSource="{RelativeSource AncestorType=Page}" Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                                </DataGridTextColumn.Visibility>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="份数" Binding="{Binding RequestedCopyCount}" Width="70">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Center"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsCopyCountEditable}" Value="False">
+                                                <Setter Property="Text" Value="1"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="筛选范围" Binding="{Binding SelectionScopeDisplay}" Width="180">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="TextWrapping" Value="Wrap"/>
@@ -148,10 +221,23 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevel}" Width="70" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="盒/袋编号" Binding="{Binding ContainerCode}" Width="120" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="立档位置" Binding="{Binding StorageLocation}" Width="100" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="当前位置" Binding="{Binding CurrentStorageLocation}" Width="100" IsReadOnly="True">
+                            <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevel}" Width="70"/>
+                            <DataGridTextColumn Header="命中明细" Binding="{Binding MatchedContentEntrySummary}" Width="200">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                        <Setter Property="Foreground" Value="#00695C"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="数据量" Binding="{Binding DataSizeDisplay}" Width="90">
+                                <DataGridTextColumn.Visibility>
+                                    <Binding Path="DataContext.IsElectronicSearch" RelativeSource="{RelativeSource AncestorType=Page}" Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                                </DataGridTextColumn.Visibility>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="档案盒/介质袋编号" Binding="{Binding ContainerCode}" Width="130"/>
+                            <DataGridTextColumn Header="立档位置" Binding="{Binding StorageLocation}" Width="100"/>
+                            <DataGridTextColumn Header="当前位置" Binding="{Binding CurrentStorageLocation}" Width="100">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="#1B5E20"/>
@@ -159,12 +245,8 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Binding="{Binding StatusColumnDisplay}" Width="100" IsReadOnly="True">
-                                <DataGridTextColumn.Header>
-                                    <TextBlock Text="{Binding DataContext.PoolItemStatusColumnHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}"/>
-                                </DataGridTextColumn.Header>
-                            </DataGridTextColumn>
-                            <DataGridTextColumn Header="借出提示" Binding="{Binding BorrowHintDisplay}" Width="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="借出提示" Binding="{Binding BorrowHintDisplay}" Width="120"/>
+                            <DataGridTextColumn Header="状态" Binding="{Binding LifecycleStatusDisplay, Mode=OneWay}" Width="80"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>

@@ -32,6 +32,10 @@ namespace DocMgr.Repositories.Interfaces
         Task<IReadOnlyDictionary<int, string>> GetArchivePurposesByRegisterRecordIdsAsync(
             IReadOnlyCollection<int> registerRecordIds);
 
+        /// <summary>按项目 ID 批量取实施年度（ImplementYear）。</summary>
+        Task<IReadOnlyDictionary<int, string>> GetProjectImplementYearsByIdsAsync(
+            IReadOnlyCollection<int> projectIds);
+
         Task<List<YearlyArchiveRegisterElectronicMediaItemEntry>> GetElectronicContentEntriesByMediaItemIdsAsync(
             IReadOnlyCollection<int> mediaItemIds);
 
@@ -62,6 +66,9 @@ namespace DocMgr.Repositories.Interfaces
             bool isArchiveAdmin);
 
         Task<YearlyArchiveSearchResultSet?> GetResultSetWithItemsAsync(int resultSetId);
+
+        /// <summary>只读加载检索集及明细，避免跟踪缓存导致 Items 为空。</summary>
+        Task<YearlyArchiveSearchResultSet?> GetResultSetWithItemsAsNoTrackingAsync(int resultSetId);
 
         Task<bool> DeleteResultSetAsync(int resultSetId);
 

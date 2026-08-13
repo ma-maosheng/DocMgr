@@ -6,50 +6,49 @@ namespace DocMgr.ViewModels.YearlyArchive
 {
     public sealed class SearchPoolItemRow : ViewModelBase
     {
+        private readonly string _matchedContentEntrySummaryFromHit;
+
         public SearchPoolItemRow(
-            int resultSetItemId,
-            int filingFactId,
-            string formNo,
-            string materialName,
-            string itemName,
-            string containerCode,
-            string storageLocation,
-            string currentStorageLocation,
-            string lifecycleStatusDisplay,
-            string borrowHintDisplay,
-            string selectionScopeKind,
-            string contentEntryKind,
-            string contentEntryName,
-            string contentEntryRelativePath,
-            int? contentEntryId = null,
-            string confidentialLevel = "",
-            int requestedCopyCount = 1,
-            bool isSimulatedMedia = false,
-            int filedCopyCount = 1,
-            int currentInArchiveCopyCount = 1,
-            int lostCopyCount = 0)
+            YearlyArchiveSearchResultSetItem item,
+            FiledArchiveSearchHit hit,
+            string currentStorageLocation)
         {
-            ResultSetItemId = resultSetItemId;
-            FilingFactId = filingFactId;
-            FormNo = formNo;
-            MaterialName = materialName;
-            ItemName = itemName;
-            ContainerCode = containerCode;
-            StorageLocation = storageLocation;
+            ArgumentNullException.ThrowIfNull(item);
+            ArgumentNullException.ThrowIfNull(hit);
+
+            ResultSetItemId = item.Id;
+            FilingFactId = item.FilingFactId;
+            FormNo = item.FormNo;
+            MaterialName = item.MaterialName;
+            ItemName = item.ItemName;
+            ContainerCode = item.ContainerCode;
+            StorageLocation = item.StorageLocation;
             CurrentStorageLocation = currentStorageLocation;
-            LifecycleStatusDisplay = lifecycleStatusDisplay;
-            BorrowHintDisplay = borrowHintDisplay;
-            SelectionScopeKind = selectionScopeKind;
-            ContentEntryId = contentEntryId;
-            ContentEntryKind = contentEntryKind;
-            ContentEntryName = contentEntryName;
-            ContentEntryRelativePath = contentEntryRelativePath;
-            ConfidentialLevel = confidentialLevel;
-            RequestedCopyCount = requestedCopyCount > 0 ? requestedCopyCount : 1;
-            IsSimulatedMedia = isSimulatedMedia;
-            FiledCopyCount = SimulatedInArchiveCopyCountSupport.ResolveFiledCopyCount(filedCopyCount);
-            CurrentInArchiveCopyCount = Math.Max(0, currentInArchiveCopyCount);
-            LostCopyCount = Math.Max(0, lostCopyCount);
+            SelectionScopeKind = item.SelectionScopeKind;
+            ContentEntryId = item.ContentEntryId;
+            ContentEntryKind = item.ContentEntryKind;
+            ContentEntryName = item.ContentEntryName;
+            ContentEntryRelativePath = item.ContentEntryRelativePath;
+            ConfidentialLevel = hit.ConfidentialLevel;
+            RequestedCopyCount = item.RequestedCopyCount > 0 ? item.RequestedCopyCount : 1;
+
+            ProjectName = hit.ProjectName;
+            ProjectYear = hit.ProjectYear;
+            ArchivePurpose = hit.ArchivePurpose;
+            StorageCarrierTypeDisplay = hit.StorageCarrierTypeDisplay;
+            FilingDirectoryDisplay = hit.FilingStoragePath?.Trim() ?? string.Empty;
+            MaterialCategory = hit.MaterialCategory;
+            SubCategory = hit.SubCategory;
+            DataOrganizationForm = hit.DataOrganizationForm;
+            DataSizeDisplay = hit.DataSizeDisplay;
+            LifecycleStatusDisplay = hit.LifecycleStatusDisplay;
+            BorrowHintDisplay = hit.BorrowHintDisplay;
+            _matchedContentEntrySummaryFromHit = hit.MatchedContentEntrySummary;
+
+            IsSimulatedMedia = string.Equals(
+                hit.MediaKind,
+                ArchiveRegisterDomainValues.MediaKindSimulated,
+                StringComparison.Ordinal);
         }
 
         public int ResultSetItemId { get; }
@@ -59,6 +58,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string FormNo { get; }
 
         public string MaterialName { get; }
+
+        public string ProjectName { get; }
+
+        public string ProjectYear { get; }
+
+        public string ArchivePurpose { get; }
 
         public string ItemName { get; }
 
@@ -77,22 +82,19 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// <summary>保存结果集时写入的筛选份数。</summary>
         public int RequestedCopyCount { get; }
 
-        public string RequestedCopyCountDisplay => $"{RequestedCopyCount} 份";
-
         public bool IsSimulatedMedia { get; }
 
-        public int FiledCopyCount { get; }
+        public string StorageCarrierTypeDisplay { get; }
 
-        public int CurrentInArchiveCopyCount { get; }
+        public string FilingDirectoryDisplay { get; }
 
-        public int LostCopyCount { get; }
+        public string MaterialCategory { get; }
 
-        public string CurrentInArchiveCopyCountDisplay =>
-            SimulatedInArchiveCopyCountSupport.FormatCurrentVsFiled(CurrentInArchiveCopyCount, FiledCopyCount);
+        public string SubCategory { get; }
 
-        public string StatusColumnDisplay => IsSimulatedMedia
-            ? CurrentInArchiveCopyCountDisplay
-            : LifecycleStatusDisplay;
+        public string DataOrganizationForm { get; }
+
+        public string DataSizeDisplay { get; }
 
         public string SelectionScopeKind { get; }
 
@@ -104,18 +106,51 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string ContentEntryRelativePath { get; }
 
-        public string SelectionScopeDisplay => ArchiveSearchPoolSupport.FormatScopeDisplay(
+        public bool IsWholeMediaItem => string.Equals(
             SelectionScopeKind,
-            ContentEntryKind,
-            ContentEntryName,
-            ContentEntryRelativePath);
+            ArchiveSearchSelectionScopeKind.WholeMediaItem,
+            StringComparison.Ordinal);
 
-        private bool _isSelected;
+        public bool IsContentEntry => string.Equals(
+            SelectionScopeKind,
+            ArchiveSearchSelectionScopeKind.ContentEntry,
+            StringComparison.Ordinal);
 
-        public bool IsSelected
-        {
-            get => _isSelected;
-            set => SetProperty(ref _isSelected, value);
-        }
+        public bool IsCopyCountEditable => ArchiveSearchPoolCopyCountSupport.IsEditableSimulatedWholeItem(
+            IsSimulatedMedia
+                ? ArchiveRegisterDomainValues.MediaKindSimulated
+                : ArchiveRegisterDomainValues.MediaKindElectronic,
+            new ArchiveSearchPoolSelection
+            {
+                FilingFactId = FilingFactId,
+                SelectionScopeKind = SelectionScopeKind,
+                ContentEntryId = ContentEntryId,
+                RequestedCopyCount = RequestedCopyCount
+            });
+
+        public string SelectionScopeDisplay => IsWholeMediaItem
+            ? ArchiveSearchPoolSupport.FormatScopeDisplay(
+                SelectionScopeKind,
+                string.Empty,
+                string.Empty,
+                string.Empty)
+            : IsContentEntry
+                ? "部分子项"
+                : ArchiveSearchPoolSupport.FormatScopeDisplay(
+                    SelectionScopeKind,
+                    ContentEntryKind,
+                    ContentEntryName,
+                    ContentEntryRelativePath);
+
+        public string MatchedContentEntrySummary => IsWholeMediaItem
+            ? _matchedContentEntrySummaryFromHit
+            : IsContentEntry
+                ? ArchiveSearchPoolSupport.FormatScopeDisplay(
+                    SelectionScopeKind,
+                    ContentEntryKind,
+                    ContentEntryName,
+                    ContentEntryRelativePath)
+                : SelectionScopeDisplay;
+
     }
 }

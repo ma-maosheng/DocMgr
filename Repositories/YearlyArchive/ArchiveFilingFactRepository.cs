@@ -335,6 +335,29 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             record => record.ArchivePurpose?.Trim() ?? string.Empty);
     }
 
+    /// <summary>按项目 ID 批量取实施年度（ImplementYear）。</summary>
+    public async Task<IReadOnlyDictionary<int, string>> GetProjectImplementYearsByIdsAsync(
+        IReadOnlyCollection<int> projectIds)
+    {
+        if (projectIds == null || projectIds.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        List<int> ids = projectIds.Where(id => id > 0).Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        return await _dbContext.ProjectInfos
+            .AsNoTracking()
+            .Where(project => ids.Contains(project.Id))
+            .ToDictionaryAsync(
+                project => project.Id,
+                project => project.ImplementYear?.Trim() ?? string.Empty);
+    }
+
     public Task<List<YearlyArchiveRegisterElectronicMediaItemEntry>> GetElectronicContentEntriesByMediaItemIdsAsync(
         IReadOnlyCollection<int> mediaItemIds)
     {
@@ -569,6 +592,14 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
     public Task<YearlyArchiveSearchResultSet?> GetResultSetWithItemsAsync(int resultSetId)
     {
         return _dbContext.YearlyArchiveSearchResultSets
+            .Include(set => set.Items.OrderBy(item => item.SortOrder).ThenBy(item => item.Id))
+            .FirstOrDefaultAsync(set => set.Id == resultSetId);
+    }
+
+    public Task<YearlyArchiveSearchResultSet?> GetResultSetWithItemsAsNoTrackingAsync(int resultSetId)
+    {
+        return _dbContext.YearlyArchiveSearchResultSets
+            .AsNoTracking()
             .Include(set => set.Items.OrderBy(item => item.SortOrder).ThenBy(item => item.Id))
             .FirstOrDefaultAsync(set => set.Id == resultSetId);
     }

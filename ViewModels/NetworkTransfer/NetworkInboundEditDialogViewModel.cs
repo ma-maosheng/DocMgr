@@ -1090,7 +1090,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 Year,
                 ProjectName,
                 _record.MaterialName,
-                InboundNo);
+                InboundNo,
+                SourceKind);
             OnPropertyChanged(nameof(CurrentRecord));
         }
 
@@ -1103,13 +1104,125 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 .ToList();
             IReadOnlyDictionary<int, YearlyArchiveFilingFact> filingFacts =
                 await _service.GetFilingFactsByIdsAsync(factIds);
+            IReadOnlyDictionary<int, FiledArchiveSearchHit> hits = IsArchivedSource
+                ? await _searchService.GetSearchHitsByFilingFactIdsAsync(factIds)
+                : new Dictionary<int, FiledArchiveSearchHit>();
+            IReadOnlyDictionary<int, string> currentLocations = IsArchivedSource
+                ? await _searchService.GetCurrentStorageLocationsByFilingFactIdsAsync(factIds)
+                : new Dictionary<int, string>();
+            IReadOnlyDictionary<int, YearlyArchiveSearchResultSetItem> resultSetItems =
+                await LoadLinkedSearchResultSetItemsAsync();
 
             bool isExternalSource = IsExternalSource;
             ItemRows.Clear();
             foreach (NetworkInboundItem item in Items.OrderBy(row => row.SortOrder).ThenBy(row => row.Id))
             {
-                ItemRows.Add(NetworkInboundItemRowViewModel.Create(item, filingFacts, isExternalSource));
+                YearlyArchiveFilingFact? filingFact = null;
+                if (item.SourceFilingFactId is int factId && factId > 0)
+                {
+                    filingFacts.TryGetValue(factId, out filingFact);
+                }
+
+                if (IsArchivedSource)
+                {
+                    NetworkInboundItemDisplaySupport.ApplyFilingFactSnapshot(item, filingFact);
+                }
+
+                SearchPoolItemRow? poolItem = TryBuildArchivedSearchPoolItemRow(
+                    item,
+                    hits,
+                    currentLocations,
+                    resultSetItems);
+                ItemRows.Add(NetworkInboundItemRowViewModel.Create(item, filingFacts, isExternalSource, poolItem));
             }
+        }
+
+        /// <summary>
+        /// 读取入网单已关联电子检索集的明细（不校验检索池创建人权限）。
+        /// </summary>
+        private async Task<IReadOnlyDictionary<int, YearlyArchiveSearchResultSetItem>> LoadLinkedSearchResultSetItemsAsync()
+        {
+            if (!IsArchivedSource || !SourceResultSetId.HasValue || SourceResultSetId.Value <= 0)
+            {
+                return new Dictionary<int, YearlyArchiveSearchResultSetItem>();
+            }
+
+            YearlyArchiveSearchResultSet? resultSet = await _searchService.GetSearchPoolByIdAsync(SourceResultSetId.Value);
+            if (resultSet?.Items == null || resultSet.Items.Count == 0)
+            {
+                return new Dictionary<int, YearlyArchiveSearchResultSetItem>();
+            }
+
+            return resultSet.Items
+                .Where(item => item.Id > 0)
+                .GroupBy(item => item.Id)
+                .ToDictionary(group => group.Key, group => group.First());
+        }
+
+        private static SearchPoolItemRow? TryBuildArchivedSearchPoolItemRow(
+            NetworkInboundItem inboundItem,
+            IReadOnlyDictionary<int, FiledArchiveSearchHit> hits,
+            IReadOnlyDictionary<int, string> currentLocations,
+            IReadOnlyDictionary<int, YearlyArchiveSearchResultSetItem> resultSetItems)
+        {
+            if (inboundItem.SourceFilingFactId is not int factId || factId <= 0)
+            {
+                return null;
+            }
+
+            if (!hits.TryGetValue(factId, out FiledArchiveSearchHit? hit) || hit == null)
+            {
+                return null;
+            }
+
+            YearlyArchiveSearchResultSetItem? resultSetItem = null;
+            if (inboundItem.SourceResultSetItemId is int resultSetItemId && resultSetItemId > 0)
+            {
+                resultSetItems.TryGetValue(resultSetItemId, out resultSetItem);
+            }
+
+            if (resultSetItem == null)
+            {
+                resultSetItem = resultSetItems.Values.FirstOrDefault(item => item.FilingFactId == factId);
+            }
+
+            resultSetItem ??= CreateSnapshotResultSetItem(inboundItem, hit);
+            currentLocations.TryGetValue(factId, out string? currentLocation);
+            return new SearchPoolItemRow(
+                resultSetItem,
+                hit,
+                currentLocation ?? hit.CurrentStorageLocation);
+        }
+
+        private static YearlyArchiveSearchResultSetItem CreateSnapshotResultSetItem(
+            NetworkInboundItem inboundItem,
+            FiledArchiveSearchHit hit)
+        {
+            return new YearlyArchiveSearchResultSetItem
+            {
+                Id = inboundItem.SourceResultSetItemId ?? 0,
+                FilingFactId = hit.FilingFactId,
+                FormNo = FirstNonEmpty(inboundItem.FormNo, hit.FormNo),
+                MaterialName = FirstNonEmpty(inboundItem.MaterialName, hit.MaterialName),
+                ItemName = FirstNonEmpty(inboundItem.ItemName, hit.ItemName),
+                ContainerCode = FirstNonEmpty(inboundItem.ContainerCode, hit.ContainerCode),
+                StorageLocation = FirstNonEmpty(inboundItem.StorageLocation, hit.StorageLocation),
+                SelectionScopeKind = ArchiveSearchSelectionScopeKind.WholeMediaItem,
+                RequestedCopyCount = 1,
+                LifecycleStatus = hit.LifecycleStatus,
+                BorrowHintLevel = hit.BorrowHintLevel,
+                BorrowHintText = hit.BorrowHintText
+            };
+        }
+
+        private static string FirstNonEmpty(string? first, string? second)
+        {
+            if (!string.IsNullOrWhiteSpace(first))
+            {
+                return first.Trim();
+            }
+
+            return string.IsNullOrWhiteSpace(second) ? string.Empty : second.Trim();
         }
 
         private User ResolveApplicantUser()

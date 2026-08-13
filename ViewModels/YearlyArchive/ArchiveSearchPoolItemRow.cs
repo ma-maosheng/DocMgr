@@ -43,6 +43,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string ProjectName => Hit.ProjectName;
 
+        public string ProjectYear => Hit.ProjectYear;
+
         public string ItemName => Hit.ItemName;
 
         public string ConfidentialLevel => Hit.ConfidentialLevel;
@@ -62,6 +64,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string FilingCopyCountDisplay => Hit.FilingCopyCountDisplay;
 
         public string RegisterMediaType => Hit.RegisterMediaType;
+
+        public string StorageCarrierTypeDisplay => Hit.StorageCarrierTypeDisplay;
+
+        public string FilingDirectoryDisplay => Hit.FilingStoragePath?.Trim() ?? string.Empty;
+
+        public string DataSizeDisplay => Hit.DataSizeDisplay;
 
         public string MaterialCategory => Hit.MaterialCategory;
 

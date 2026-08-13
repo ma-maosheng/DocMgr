@@ -66,6 +66,9 @@ namespace DocMgr.Services.Interfaces
             User currentUser,
             bool isArchiveAdmin);
 
+        /// <summary>按 Id 读取检索集及明细，不做创建人权限校验（入网等已关联业务展示用）。</summary>
+        Task<YearlyArchiveSearchResultSet?> GetSearchPoolByIdAsync(int resultSetId);
+
         Task<YearlyArchiveSearchResultSet> UpdateSearchPoolAsync(
             UpdateSearchPoolRequest request,
             User currentUser,
@@ -77,6 +80,10 @@ namespace DocMgr.Services.Interfaces
             bool isArchiveAdmin);
 
         Task<FiledArchiveSearchHit?> GetSearchHitByFilingFactIdAsync(int filingFactId);
+
+        /// <summary>按立档事实 Id 批量读取检索命中（检索池明细展示用）。</summary>
+        Task<IReadOnlyDictionary<int, FiledArchiveSearchHit>> GetSearchHitsByFilingFactIdsAsync(
+            IReadOnlyCollection<int> filingFactIds);
 
         /// <summary>按立档事实 Id 批量读取资料子项库存份数展示文案。</summary>
         Task<IReadOnlyDictionary<int, string>> GetStockCopyCountDisplaysByFilingFactIdsAsync(

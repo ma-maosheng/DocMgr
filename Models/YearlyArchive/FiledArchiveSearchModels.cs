@@ -24,6 +24,9 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ProjectName { get; init; } = string.Empty;
 
+        /// <summary>所属项目实施年度（<see cref="DocMgr.Models.Projects.ProjectInfo.ImplementYear"/>）。</summary>
+        public string ProjectYear { get; init; } = string.Empty;
+
         public string ProvideUnit { get; init; } = string.Empty;
 
         public string ApplicantName { get; init; } = string.Empty;
@@ -47,9 +50,17 @@ namespace DocMgr.Models.YearlyArchive
 
         public string StorageCarrierType { get; init; } = string.Empty;
 
+        /// <summary>立档存储载体展示（电子介质归一化为「光盘」或「硬盘」）。</summary>
+        public string StorageCarrierTypeDisplay =>
+            ArchiveOutboundDomainValues.NormalizeElectronicStorageCarrierDisplay(StorageCarrierType);
+
         public string MediumCode { get; init; } = string.Empty;
 
         public string FilingStoragePath { get; init; } = string.Empty;
+
+        public decimal DataSizeMb { get; init; }
+
+        public string DataSizeDisplay => DataSizeMb > 0 ? $"{DataSizeMb:0.##} MB" : string.Empty;
 
         public DateTime FiledAt { get; init; }
 

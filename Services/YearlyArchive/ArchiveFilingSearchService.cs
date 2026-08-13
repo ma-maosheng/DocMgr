@@ -28,6 +28,7 @@ namespace DocMgr.Services.YearlyArchive
             var stockCountsByRegisterMediaId = await LoadRegisterMediaStockCountsAsync(facts);
             var supplementsByMediaItemId = await LoadRegisterSupplementsByMediaItemIdAsync(facts);
             var archivePurposeByRegisterRecordId = await LoadArchivePurposeByRegisterRecordIdAsync(facts);
+            var projectYearByProjectId = await LoadProjectYearsByProjectIdAsync(facts);
             var simulatedCopyCountsByFactId = await GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(
                 facts.Select(fact => fact.Id).ToList());
 
@@ -39,6 +40,7 @@ namespace DocMgr.Services.YearlyArchive
                         stockCountsByRegisterMediaId,
                         supplementsByMediaItemId: supplementsByMediaItemId,
                         archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId,
+                        projectYearByProjectId: projectYearByProjectId,
                         simulatedCopyCountsByFactId: simulatedCopyCountsByFactId))
                     .ToList();
             }
@@ -67,7 +69,8 @@ namespace DocMgr.Services.YearlyArchive
                         matchedEntries ?? Array.Empty<MatchedContentEntryInfo>(),
                         supplementsByMediaItemId,
                         archivePurposeByRegisterRecordId,
-                        simulatedCopyCountsByFactId);
+                        simulatedCopyCountsByFactId,
+                        projectYearByProjectId);
                 })
                 .ToList();
         }
@@ -95,6 +98,8 @@ namespace DocMgr.Services.YearlyArchive
                 primaryFacts.Concat(backupFacts));
             var archivePurposeByRegisterRecordId = await LoadArchivePurposeByRegisterRecordIdAsync(
                 primaryFacts.Concat(backupFacts));
+            var projectYearByProjectId = await LoadProjectYearsByProjectIdAsync(
+                primaryFacts.Concat(backupFacts));
             var simulatedCopyCountsByFactId = await GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(
                 primaryFacts.Concat(backupFacts).Select(fact => fact.Id).ToList());
 
@@ -108,6 +113,7 @@ namespace DocMgr.Services.YearlyArchive
                     criteria,
                     supplementsByMediaItemId: supplementsByMediaItemId,
                     archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId,
+                    projectYearByProjectId: projectYearByProjectId,
                     simulatedCopyCountsByFactId: simulatedCopyCountsByFactId));
         }
 
@@ -151,6 +157,7 @@ namespace DocMgr.Services.YearlyArchive
             var stockCountsByRegisterMediaId = await LoadRegisterMediaStockCountsAsync(facts);
             var supplementsByMediaItemId = await LoadRegisterSupplementsByMediaItemIdAsync(facts);
             var archivePurposeByRegisterRecordId = await LoadArchivePurposeByRegisterRecordIdAsync(facts);
+            var projectYearByProjectId = await LoadProjectYearsByProjectIdAsync(facts);
             var simulatedCopyCountsByFactId = await GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(
                 facts.Select(fact => fact.Id).ToList());
             return facts
@@ -159,6 +166,7 @@ namespace DocMgr.Services.YearlyArchive
                     stockCountsByRegisterMediaId,
                     supplementsByMediaItemId: supplementsByMediaItemId,
                     archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId,
+                    projectYearByProjectId: projectYearByProjectId,
                     simulatedCopyCountsByFactId: simulatedCopyCountsByFactId))
                 .ToList();
         }
@@ -398,6 +406,9 @@ namespace DocMgr.Services.YearlyArchive
             return resultSet;
         }
 
+        public Task<YearlyArchiveSearchResultSet?> GetSearchPoolByIdAsync(int resultSetId) =>
+            _filingFactRepository.GetResultSetWithItemsAsNoTrackingAsync(resultSetId);
+
         public async Task<YearlyArchiveSearchResultSet> UpdateSearchPoolAsync(
             UpdateSearchPoolRequest request,
             User currentUser,
@@ -493,23 +504,41 @@ namespace DocMgr.Services.YearlyArchive
                 return null;
             }
 
-            var facts = await _filingFactRepository.GetFactsByIdsAsync(new[] { filingFactId });
+            var hits = await GetSearchHitsByFilingFactIdsAsync(new[] { filingFactId });
+            return hits.TryGetValue(filingFactId, out FiledArchiveSearchHit? hit) ? hit : null;
+        }
+
+        public async Task<IReadOnlyDictionary<int, FiledArchiveSearchHit>> GetSearchHitsByFilingFactIdsAsync(
+            IReadOnlyCollection<int> filingFactIds)
+        {
+            if (filingFactIds == null || filingFactIds.Count == 0)
+            {
+                return new Dictionary<int, FiledArchiveSearchHit>();
+            }
+
+            var facts = await _filingFactRepository.GetFactsByIdsAsync(
+                filingFactIds.Where(id => id > 0).Distinct().ToList());
             if (facts.Count == 0)
             {
-                return null;
+                return new Dictionary<int, FiledArchiveSearchHit>();
             }
 
             var stockCountsByRegisterMediaId = await LoadRegisterMediaStockCountsAsync(facts);
             var supplementsByMediaItemId = await LoadRegisterSupplementsByMediaItemIdAsync(facts);
             var archivePurposeByRegisterRecordId = await LoadArchivePurposeByRegisterRecordIdAsync(facts);
+            var projectYearByProjectId = await LoadProjectYearsByProjectIdAsync(facts);
             var simulatedCopyCountsByFactId = await GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(
                 facts.Select(fact => fact.Id).ToList());
-            return MapHit(
-                facts[0],
-                stockCountsByRegisterMediaId,
-                supplementsByMediaItemId: supplementsByMediaItemId,
-                archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId,
-                simulatedCopyCountsByFactId: simulatedCopyCountsByFactId);
+
+            return facts.ToDictionary(
+                fact => fact.Id,
+                fact => MapHit(
+                    fact,
+                    stockCountsByRegisterMediaId,
+                    supplementsByMediaItemId: supplementsByMediaItemId,
+                    archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId,
+                    projectYearByProjectId: projectYearByProjectId,
+                    simulatedCopyCountsByFactId: simulatedCopyCountsByFactId));
         }
 
         public async Task<IReadOnlyDictionary<int, string>> GetStockCopyCountDisplaysByFilingFactIdsAsync(
@@ -713,7 +742,8 @@ namespace DocMgr.Services.YearlyArchive
             IReadOnlyList<MatchedContentEntryInfo>? matchedContentEntries = null,
             IReadOnlyDictionary<int, RegisterSearchSupplement>? supplementsByMediaItemId = null,
             IReadOnlyDictionary<int, string>? archivePurposeByRegisterRecordId = null,
-            IReadOnlyDictionary<int, SimulatedInArchiveCopyCountInfo>? simulatedCopyCountsByFactId = null)
+            IReadOnlyDictionary<int, SimulatedInArchiveCopyCountInfo>? simulatedCopyCountsByFactId = null,
+            IReadOnlyDictionary<int, string>? projectYearByProjectId = null)
         {
             int stockCopyCount = ResolveStockCopyCount(fact, stockCountsByRegisterMediaId);
             var supplement = fact.MediaItemId > 0
@@ -725,6 +755,11 @@ namespace DocMgr.Services.YearlyArchive
                 && archivePurposeByRegisterRecordId != null
                 && archivePurposeByRegisterRecordId.TryGetValue(fact.RegisterRecordId, out string? purpose)
                 ? purpose
+                : string.Empty;
+            string projectYear = fact.ProjectId is > 0
+                && projectYearByProjectId != null
+                && projectYearByProjectId.TryGetValue(fact.ProjectId.Value, out string? year)
+                ? year
                 : string.Empty;
 
             bool isSimulated = string.Equals(
@@ -762,6 +797,7 @@ namespace DocMgr.Services.YearlyArchive
                 FormNo = fact.FormNo,
                 MaterialName = fact.MaterialName,
                 ProjectName = fact.ProjectName,
+                ProjectYear = projectYear,
                 ProvideUnit = fact.ProvideUnit,
                 ApplicantName = fact.ApplicantName,
                 ItemType = fact.ItemType,
@@ -774,6 +810,7 @@ namespace DocMgr.Services.YearlyArchive
                 StorageCarrierType = fact.StorageCarrierType,
                 MediumCode = fact.MediumCode,
                 FilingStoragePath = fact.FilingStoragePath,
+                DataSizeMb = fact.DataSizeMb,
                 FiledAt = fact.FiledAt,
                 FiledBy = fact.FiledBy,
                 LifecycleStatus = fact.LifecycleStatus,
@@ -846,6 +883,18 @@ namespace DocMgr.Services.YearlyArchive
                 .ToList();
 
             return await _filingFactRepository.GetArchivePurposesByRegisterRecordIdsAsync(registerRecordIds);
+        }
+
+        private async Task<IReadOnlyDictionary<int, string>> LoadProjectYearsByProjectIdAsync(
+            IEnumerable<YearlyArchiveFilingFact> facts)
+        {
+            var projectIds = facts
+                .Where(fact => fact.ProjectId is > 0)
+                .Select(fact => fact.ProjectId!.Value)
+                .Distinct()
+                .ToList();
+
+            return await _filingFactRepository.GetProjectImplementYearsByIdsAsync(projectIds);
         }
 
         private static RegisterSearchSupplement BuildRegisterSearchSupplement(

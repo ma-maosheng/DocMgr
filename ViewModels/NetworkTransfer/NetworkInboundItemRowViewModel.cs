@@ -2,6 +2,7 @@ using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.NetworkTransfer;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.YearlyArchive;
 using System.Globalization;
 
 namespace DocMgr.ViewModels.NetworkTransfer;
@@ -12,16 +13,19 @@ namespace DocMgr.ViewModels.NetworkTransfer;
 public sealed class NetworkInboundItemRowViewModel : ViewModelBase
 {
     private readonly YearlyArchiveFilingFact? _filingFact;
+    private readonly SearchPoolItemRow? _poolItem;
     private readonly bool _isExternalSource;
 
     private NetworkInboundItemRowViewModel(
         NetworkInboundItem item,
         YearlyArchiveFilingFact? filingFact,
-        bool isExternalSource)
+        bool isExternalSource,
+        SearchPoolItemRow? poolItem)
     {
         Item = item;
         _filingFact = filingFact;
         _isExternalSource = isExternalSource;
+        _poolItem = poolItem;
     }
 
     public NetworkInboundItem Item { get; }
@@ -93,7 +97,15 @@ public sealed class NetworkInboundItemRowViewModel : ViewModelBase
 
     public string ConfidentialLevel
     {
-        get => Item.ConfidentialLevel;
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(Item.ConfidentialLevel))
+            {
+                return Item.ConfidentialLevel;
+            }
+
+            return FirstNonEmpty(_poolItem?.ConfidentialLevel, _filingFact?.ConfidentialLevel);
+        }
         set
         {
             string normalized = value?.Trim() ?? string.Empty;
@@ -153,10 +165,87 @@ public sealed class NetworkInboundItemRowViewModel : ViewModelBase
     public string StorageLocationDisplay =>
         NetworkInboundItemDisplaySupport.ResolveStorageLocationDisplay(Item, _isExternalSource);
 
+    /// <summary>立档检索集明细列：与 YA-FIL-POOL 右侧「池内立档记录」同名字段。</summary>
+    public string FormNo => FirstNonEmpty(_poolItem?.FormNo, Item.FormNo);
+
+    public string ProjectYear =>
+        FirstNonEmpty(_poolItem?.ProjectYear, string.Empty);
+
+    public string ProjectName => FirstNonEmpty(_poolItem?.ProjectName, _filingFact?.ProjectName);
+
+    public string ArchivePurpose => _poolItem?.ArchivePurpose?.Trim() ?? string.Empty;
+
+    public string StorageCarrierTypeDisplay =>
+        FirstNonEmpty(
+            _poolItem?.StorageCarrierTypeDisplay,
+            _filingFact == null
+                ? string.Empty
+                : ArchiveOutboundDomainValues.NormalizeElectronicStorageCarrierDisplay(_filingFact.StorageCarrierType));
+
+    public string FilingDirectoryDisplay =>
+        FirstNonEmpty(_poolItem?.FilingDirectoryDisplay, _filingFact?.FilingStoragePath);
+
+    public string MaterialCategory => _poolItem?.MaterialCategory?.Trim() ?? string.Empty;
+
+    public string SubCategory => _poolItem?.SubCategory?.Trim() ?? string.Empty;
+
+    public string DataOrganizationForm => _poolItem?.DataOrganizationForm?.Trim() ?? string.Empty;
+
+    public int RequestedCopyCount => _poolItem?.RequestedCopyCount > 0 ? _poolItem.RequestedCopyCount : 1;
+
+    public bool IsCopyCountEditable => _poolItem?.IsCopyCountEditable ?? false;
+
+    public string SelectionScopeDisplay => _poolItem?.SelectionScopeDisplay ?? string.Empty;
+
+    public string MatchedContentEntrySummary => _poolItem?.MatchedContentEntrySummary ?? string.Empty;
+
+    public string DataSizeDisplay
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(_poolItem?.DataSizeDisplay))
+            {
+                return _poolItem.DataSizeDisplay;
+            }
+
+            if (_filingFact is { DataSizeMb: > 0 })
+            {
+                return $"{_filingFact.DataSizeMb:0.##} MB";
+            }
+
+            if (NetworkInboundItemDisplaySupport.TryParseDataSizeText(Item.DataSizeText, out decimal value, out string unit))
+            {
+                return NetworkInboundItemDisplaySupport.ComposeDataSizeText(value, unit);
+            }
+
+            return string.Empty;
+        }
+    }
+
+    public string ContainerCode => FirstNonEmpty(_poolItem?.ContainerCode, Item.ContainerCode);
+
+    public string StorageLocation => FirstNonEmpty(_poolItem?.StorageLocation, Item.StorageLocation);
+
+    public string CurrentStorageLocation =>
+        FirstNonEmpty(
+            _poolItem?.CurrentStorageLocation,
+            FirstNonEmpty(_filingFact?.CurrentStorageLocation, _filingFact?.StorageLocation));
+
+    public string BorrowHintDisplay =>
+        FirstNonEmpty(_poolItem?.BorrowHintDisplay, _filingFact?.BorrowHintText);
+
+    public string LifecycleStatusDisplay =>
+        FirstNonEmpty(
+            _poolItem?.LifecycleStatusDisplay,
+            _filingFact == null
+                ? string.Empty
+                : MaterialTransactionDomainValues.MapLifecycleStatusDisplay(_filingFact.LifecycleStatus));
+
     public static NetworkInboundItemRowViewModel Create(
         NetworkInboundItem item,
         IReadOnlyDictionary<int, YearlyArchiveFilingFact> filingFacts,
-        bool isExternalSource)
+        bool isExternalSource,
+        SearchPoolItemRow? poolItem = null)
     {
         YearlyArchiveFilingFact? filingFact = null;
         if (item.SourceFilingFactId is int factId && factId > 0)
@@ -164,7 +253,17 @@ public sealed class NetworkInboundItemRowViewModel : ViewModelBase
             filingFacts.TryGetValue(factId, out filingFact);
         }
 
-        return new NetworkInboundItemRowViewModel(item, filingFact, isExternalSource);
+        return new NetworkInboundItemRowViewModel(item, filingFact, isExternalSource, poolItem);
+    }
+
+    private static string FirstNonEmpty(string? first, string? second)
+    {
+        if (!string.IsNullOrWhiteSpace(first))
+        {
+            return first.Trim();
+        }
+
+        return string.IsNullOrWhiteSpace(second) ? string.Empty : second.Trim();
     }
 
     private void UpdateDataSizeText(string? valueText, string? unit)

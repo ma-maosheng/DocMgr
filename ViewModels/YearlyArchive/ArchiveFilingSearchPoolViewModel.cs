@@ -72,7 +72,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             SearchCommand = new RelayCommand(async _ => await SearchPoolsAsync());
             ResetCommand = new RelayCommand(_ => ResetFilter());
             SaveCommand = new RelayCommand(async _ => await SavePoolAsync(), _ => SelectedPool != null);
-            RemoveSelectedItemsCommand = new RelayCommand(_ => RemoveSelectedItems(), _ => PoolItems.Any(item => item.IsSelected));
+            RemoveSelectedItemsCommand = new RelayCommand(_ => RemoveSelectedItems(), _ => SelectedPoolItem != null && PoolItems.Count > 1);
             ViewDetailCommand = new RelayCommand(async _ => await ViewDetailAsync(), _ => SelectedPoolItem != null);
             CreateOutboundFromPoolCommand = new RelayCommand(
                 async _ => await CreateOutboundFromPoolAsync(),
@@ -127,7 +127,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 SetProperty(ref _mediaKind, value);
                 OnPropertyChanged(nameof(PageTitle));
                 OnPropertyChanged(nameof(IsSimulatedMediaPool));
-                OnPropertyChanged(nameof(PoolItemStatusColumnHeader));
+                OnPropertyChanged(nameof(IsElectronicSearch));
                 _selectedPool = null;
                 OnPropertyChanged(nameof(SelectedPool));
                 ClearDetail();
@@ -144,7 +144,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ArchiveRegisterDomainValues.MediaKindSimulated,
             StringComparison.Ordinal);
 
-        public string PoolItemStatusColumnHeader => IsSimulatedMediaPool ? "当前在库份数" : "状态";
+        public bool IsElectronicSearch => !IsSimulatedMediaPool;
 
         public string FilterKeyword
         {
@@ -194,7 +194,13 @@ namespace DocMgr.ViewModels.YearlyArchive
         public SearchPoolItemRow? SelectedPoolItem
         {
             get => _selectedPoolItem;
-            set => SetProperty(ref _selectedPoolItem, value);
+            set
+            {
+                if (SetProperty(ref _selectedPoolItem, value))
+                {
+                    CommandManager.InvalidateRequerySuggested();
+                }
+            }
         }
 
         public string EditableName
@@ -321,50 +327,21 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 var factIds = resultSet.Items.Select(item => item.FilingFactId).Distinct().ToList();
                 var currentLocations = await _searchService.GetCurrentStorageLocationsByFilingFactIdsAsync(factIds);
-
-                IReadOnlyDictionary<int, SimulatedInArchiveCopyCountInfo> inArchiveCopyCountInfo = new Dictionary<int, SimulatedInArchiveCopyCountInfo>();
-                if (IsSimulatedMediaPool)
-                {
-                    inArchiveCopyCountInfo = await _searchService.GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(factIds);
-                }
+                var hits = await _searchService.GetSearchHitsByFilingFactIdsAsync(factIds);
 
                 PoolItems.Clear();
                 foreach (var item in resultSet.Items.OrderBy(i => i.SortOrder).ThenBy(i => i.Id))
                 {
-                    currentLocations.TryGetValue(item.FilingFactId, out string? currentLocation);
-                    int filedCopyCount = 1;
-                    int currentInArchiveCopyCount = 1;
-                    int lostCopyCount = 0;
-                    if (IsSimulatedMediaPool
-                        && inArchiveCopyCountInfo.TryGetValue(item.FilingFactId, out SimulatedInArchiveCopyCountInfo? copyCountInfo))
+                    if (!hits.TryGetValue(item.FilingFactId, out FiledArchiveSearchHit? hit))
                     {
-                        filedCopyCount = copyCountInfo.FiledCopyCount;
-                        currentInArchiveCopyCount = copyCountInfo.CurrentInArchiveCopyCount;
-                        lostCopyCount = copyCountInfo.LostCopyCount;
+                        continue;
                     }
 
+                    currentLocations.TryGetValue(item.FilingFactId, out string? currentLocation);
                     PoolItems.Add(new SearchPoolItemRow(
-                        item.Id,
-                        item.FilingFactId,
-                        item.FormNo,
-                        item.MaterialName,
-                        item.ItemName,
-                        item.ContainerCode,
-                        item.StorageLocation,
-                        currentLocation ?? item.StorageLocation,
-                        MapLifecycleStatus(item.LifecycleStatus),
-                        MapBorrowHint(item.BorrowHintLevel, item.BorrowHintText),
-                        item.SelectionScopeKind,
-                        item.ContentEntryKind,
-                        item.ContentEntryName,
-                        item.ContentEntryRelativePath,
-                        item.ContentEntryId,
-                        confidentialLevel: string.Empty,
-                        requestedCopyCount: item.RequestedCopyCount,
-                        isSimulatedMedia: IsSimulatedMediaPool,
-                        filedCopyCount: filedCopyCount,
-                        currentInArchiveCopyCount: currentInArchiveCopyCount,
-                        lostCopyCount: lostCopyCount));
+                        item,
+                        hit,
+                        currentLocation ?? hit.CurrentStorageLocation));
                 }
 
                 SelectedPoolItem = PoolItems.FirstOrDefault();
@@ -424,27 +401,19 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void RemoveSelectedItems()
         {
-            var toRemove = PoolItems.Where(item => item.IsSelected).ToList();
-            if (toRemove.Count == 0)
+            if (SelectedPoolItem == null)
             {
                 return;
             }
 
-            if (PoolItems.Count - toRemove.Count <= 0)
+            if (PoolItems.Count <= 1)
             {
                 _dialogService.ShowMessage("检索池至少应保留一条记录。", "提示");
                 return;
             }
 
-            foreach (var item in toRemove)
-            {
-                PoolItems.Remove(item);
-            }
-
-            if (SelectedPoolItem != null && !PoolItems.Contains(SelectedPoolItem))
-            {
-                SelectedPoolItem = PoolItems.FirstOrDefault();
-            }
+            PoolItems.Remove(SelectedPoolItem);
+            SelectedPoolItem = PoolItems.FirstOrDefault();
 
             DetailSummary = SelectedPool == null
                 ? DetailSummary
@@ -543,14 +512,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            var selectedItemIds = PoolItems
-                .Where(item => item.IsSelected)
-                .Select(item => item.ResultSetItemId)
-                .ToList();
-            if (selectedItemIds.Count == 0)
-            {
-                selectedItemIds = PoolItems.Select(item => item.ResultSetItemId).ToList();
-            }
+            var selectedItemIds = ResolveResultSetItemIdsForBusinessAction();
 
             try
             {
@@ -591,15 +553,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            var selectedItemIds = PoolItems
-                .Where(item => item.IsSelected)
-                .Select(item => item.ResultSetItemId)
-                .ToList();
-
-            if (selectedItemIds.Count == 0)
-            {
-                selectedItemIds = PoolItems.Select(item => item.ResultSetItemId).ToList();
-            }
+            var selectedItemIds = ResolveResultSetItemIdsForBusinessAction();
 
             try
             {
@@ -647,36 +601,19 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        private List<int> ResolveResultSetItemIdsForBusinessAction()
+        {
+            if (SelectedPoolItem != null)
+            {
+                return [SelectedPoolItem.ResultSetItemId];
+            }
+
+            return PoolItems.Select(item => item.ResultSetItemId).ToList();
+        }
+
         private static bool IsReusableForBusiness(string status) =>
             string.Equals(status, ArchiveSearchResultSetStatus.Confirmed, StringComparison.Ordinal)
             || string.Equals(status, ArchiveSearchResultSetStatus.Referenced, StringComparison.Ordinal);
-
-        private static string MapLifecycleStatus(string status) => status switch
-        {
-            FilingFactLifecycleStatus.InArchive => "在库",
-            FilingFactLifecycleStatus.Borrowed => "借出中",
-            FilingFactLifecycleStatus.Transferred => "已转移",
-            FilingFactLifecycleStatus.Destroyed => "已销毁",
-            FilingFactLifecycleStatus.Disposed => "已处置",
-            _ => status
-        };
-
-        private static string MapBorrowHint(string level, string text)
-        {
-            if (!string.IsNullOrWhiteSpace(text))
-            {
-                return text;
-            }
-
-            return level switch
-            {
-                FilingFactBorrowHintLevel.CopyBorrowed => "有拷贝借出",
-                FilingFactBorrowHintLevel.OriginalBorrowed => "原件借出中",
-                FilingFactBorrowHintLevel.PartialAvailable => "多备份，部分在库",
-                FilingFactBorrowHintLevel.Unknown => "借出状态待确认",
-                _ => string.Empty
-            };
-        }
 
         public sealed class StatusFilterOption
         {

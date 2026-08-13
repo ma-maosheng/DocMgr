@@ -443,14 +443,25 @@
                     <DataGrid.Columns>
                         <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
                         <DataGridTextColumn Header="表单号" Binding="{Binding FormNo}" Width="150"/>
+                        <DataGridTextColumn Header="项目年度" Binding="{Binding ProjectYear}" Width="70"/>
                         <DataGridTextColumn Header="所属项目" Binding="{Binding ProjectName}" Width="140"/>
                         <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="*"/>
                         <DataGridTextColumn Header="库管模式" Binding="{Binding ArchivePurpose}" Width="88"/>
                         <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName}" Width="140"/>
-                        <DataGridTextColumn Header="介质类型" Binding="{Binding RegisterMediaType}" Width="80">
+                        <DataGridTextColumn Header="介质类型" Binding="{Binding StorageCarrierTypeDisplay}" Width="80">
                             <DataGridTextColumn.Visibility>
-                                <Binding Path="DataContext.IsElectronicSearch" RelativeSource="{RelativeSource AncestorType=Page}" Converter="{StaticResource InverseBoolToVisConverter}"/>
+                                <Binding Path="DataContext.IsElectronicSearch" RelativeSource="{RelativeSource AncestorType=Page}" Converter="{StaticResource BooleanToVisibilityConverter}"/>
                             </DataGridTextColumn.Visibility>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="所在目录" Binding="{Binding FilingDirectoryDisplay}" Width="200">
+                            <DataGridTextColumn.Visibility>
+                                <Binding Path="DataContext.IsElectronicSearch" RelativeSource="{RelativeSource AncestorType=Page}" Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                            </DataGridTextColumn.Visibility>
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
                         <DataGridTextColumn Header="资料类型" Binding="{Binding MaterialCategory}" Width="72">
                             <DataGridTextColumn.Visibility>
@@ -506,6 +517,11 @@
                                     <Setter Property="Foreground" Value="#00695C"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="数据量" Binding="{Binding DataSizeDisplay}" Width="90">
+                            <DataGridTextColumn.Visibility>
+                                <Binding Path="DataContext.IsElectronicSearch" RelativeSource="{RelativeSource AncestorType=Page}" Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                            </DataGridTextColumn.Visibility>
                         </DataGridTextColumn>
                         <DataGridTextColumn Header="档案盒/介质袋编号" Binding="{Binding ContainerCode}" Width="130"/>
                         <DataGridTextColumn Header="立档位置" Binding="{Binding StorageLocation}" Width="100"/>
