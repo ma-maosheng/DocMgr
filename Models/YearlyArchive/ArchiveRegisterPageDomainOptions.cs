@@ -71,6 +71,11 @@ namespace DocMgr.Models.YearlyArchive
         public IReadOnlyList<string> ElectronicDataSubCategories { get; init; } = Array.Empty<string>();
 
         /// <summary>
+        /// 软件类所属子类。
+        /// </summary>
+        public IReadOnlyList<string> ElectronicSoftwareSubCategories { get; init; } = Array.Empty<string>();
+
+        /// <summary>
         /// 电子资料数据组织形式。
         /// </summary>
         public IReadOnlyList<string> ElectronicDataOrganizationForms { get; init; } = Array.Empty<string>();

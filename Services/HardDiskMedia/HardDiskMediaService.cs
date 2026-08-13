@@ -325,11 +325,11 @@ namespace DocMgr.Services.HardDiskMedia
 
         /// <inheritdoc/>
         /// <remarks>用于年度资料登记页「硬盘·介质留存」时选择借出硬盘编号：仅返回当前用户名下仍处于借出（临时/长期）且未被占用锁占用的硬盘。</remarks>
-        public async Task<IReadOnlyList<string>> GetCurrentUserBorrowedHardDiskCodesAsync(User? user)
+        public async Task<IReadOnlyList<HardDiskMediaReturnCandidate>> GetBorrowedHardDiskReturnCandidatesForUserAsync(User? user)
         {
             if (user == null)
             {
-                return Array.Empty<string>();
+                return Array.Empty<HardDiskMediaReturnCandidate>();
             }
 
             var identityKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -345,7 +345,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             if (identityKeys.Count == 0)
             {
-                return Array.Empty<string>();
+                return Array.Empty<HardDiskMediaReturnCandidate>();
             }
 
             var candidates = await GetReturnRegistrationCandidatesAsync();
@@ -356,7 +356,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             if (matchedCandidates.Count == 0)
             {
-                return Array.Empty<string>();
+                return Array.Empty<HardDiskMediaReturnCandidate>();
             }
 
             var lockedMediumIds = await _hardDiskMediaRepository.GetMediumIdsWithRegisterLockAsync(
@@ -364,6 +364,16 @@ namespace DocMgr.Services.HardDiskMedia
 
             return matchedCandidates
                 .Where(c => !lockedMediumIds.Contains(c.MediumId))
+                .OrderBy(c => c.DiskCode, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        /// <inheritdoc/>
+        /// <remarks>用于年度资料登记页「硬盘·介质留存」时选择借出硬盘编号：仅返回当前用户名下仍处于借出（临时/长期）且未被占用锁占用的硬盘。</remarks>
+        public async Task<IReadOnlyList<string>> GetCurrentUserBorrowedHardDiskCodesAsync(User? user)
+        {
+            var candidates = await GetBorrowedHardDiskReturnCandidatesForUserAsync(user);
+            return candidates
                 .Select(c => c.DiskCode)
                 .Where(code => !string.IsNullOrWhiteSpace(code))
                 .Distinct(StringComparer.OrdinalIgnoreCase)

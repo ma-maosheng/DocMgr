@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using DocMgr.Models;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.Projects;
 using DocMgr.Models.Shared;
@@ -11,14 +12,15 @@ using DocMgr.Services.Interfaces;
 using DocMgr.Services.NetworkTransfer;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.YearlyArchive;
 using DocMgr.Views.Shared;
 
 namespace DocMgr.ViewModels.NetworkTransfer
 {
     /// <summary>
-    /// 入网申请办理弹窗（草稿编辑 + 审批交接办结）。
+    /// 入网申请编辑弹窗 ViewModel（结构对齐 YA-REG-Ed）。
     /// </summary>
-    public sealed class NetworkInboundEditDialogViewModel : ViewModelBase
+    public sealed partial class NetworkInboundEditDialogViewModel : ViewModelBase
     {
         private readonly INetworkTransferService _service;
         private readonly IDialogService _dialogService;
@@ -28,6 +30,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private readonly IUserService _userService;
         private readonly IServerPathSettingService _serverPathSettingService;
         private readonly IArchiveRegisterService _archiveRegisterService;
+        private readonly IHardDiskMediaService _hardDiskMediaService;
+        private readonly ICabinetService _cabinetService;
+        private readonly ElectronicMediaEditingViewModel _electronicMediaEditor;
         private readonly NetworkTransferWorkspaceMode _mode;
         private bool _suppressProjectBinding;
         private bool _suppressSourceKindSideEffects;
@@ -35,6 +40,25 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private bool _suppressServerPathSelection;
         private NetworkInboundRecord _record;
         private bool _hasCommittedChanges;
+
+        /// <summary>当前入网单（对齐 YA <c>CurrentRecord</c>）。</summary>
+        public NetworkInboundRecord CurrentRecord => _record;
+
+        /// <summary>是否可编辑申请表头（对齐 YA <c>CanEditForm</c>）。</summary>
+        public bool CanEditForm => CanEditHeader;
+
+        /// <summary>数据来源是否可编辑（对齐 YA <c>IsSourceTypeEditable</c>）。</summary>
+        public bool IsSourceKindEditable => CanEditForm;
+
+        /// <summary>跨域业务链进度摘要。</summary>
+        public string BusinessChainProgressDisplay => _record.BusinessChainProgressDisplay;
+
+        /// <summary>当前记录 ID（弹窗 UI 状态恢复键）。</summary>
+        public int RecordId => _record.Id;
+
+        /// <summary>工作台模式（申请 / 审批）。</summary>
+        public NetworkTransferWorkspaceMode WorkspaceMode => _mode;
+
         private string _inboundNo = string.Empty;
         private string _sourceKind = string.Empty;
         private string _projectName = string.Empty;
@@ -74,6 +98,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
             IUserService userService,
             IServerPathSettingService serverPathSettingService,
             IArchiveRegisterService archiveRegisterService,
+            IHardDiskMediaService hardDiskMediaService,
+            ICabinetService cabinetService,
+            ElectronicMediaEditingViewModel electronicMediaEditor,
             NetworkInboundRecord record,
             NetworkTransferWorkspaceMode mode)
         {
@@ -86,6 +113,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
             _userService = userService;
             _serverPathSettingService = serverPathSettingService;
             _archiveRegisterService = archiveRegisterService;
+            _hardDiskMediaService = hardDiskMediaService;
+            _cabinetService = cabinetService;
+            _electronicMediaEditor = electronicMediaEditor;
             _record = record;
             _mode = mode;
 
@@ -97,11 +127,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 item => RemoveItemRow(item as NetworkInboundItemRowViewModel),
                 item => CanEditHeader && item is NetworkInboundItemRowViewModel);
             SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader);
-            SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit);
-            ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
-            ConfirmHandoverCommand = new RelayCommand(async _ => await ConfirmHandoverAsync(), _ => CanConfirmHandover);
-            UploadAttachmentCommand = new RelayCommand(async _ => await UploadAttachmentAsync(), _ => CanUploadAttachment);
-            DeleteAttachmentCommand = new RelayCommand(async item => await DeleteAttachmentAsync(item as SystemAttachment), item => item is SystemAttachment && CanUploadAttachment);
+            DeleteAttachmentCommand = new RelayCommand(
+                async item => await DeleteAttachmentAsync(item as SystemAttachment),
+                item => item is SystemAttachment && CanUploadSignedAttachment);
             ViewAttachmentCommand = new RelayCommand(item =>
             {
                 if (item is SystemAttachment attachment)
@@ -109,9 +137,12 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     _dialogService.ShowSystemAttachmentView(attachment);
                 }
             }, item => item is SystemAttachment);
-            CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
-            PrintApplicationCommand = new RelayCommand(async _ => await PrintApplicationAsync(), _ => CanPrintApplication);
+            CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanCompleteApproval);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
+            FillDefaultMaterialPathCommand = new RelayCommand(
+                _ => FillDefaultMaterialPath(),
+                _ => CanEditServerPath);
+            InitializeApprovalCommands();
 
             RefreshUploadCategoryOptions();
             _ = InitializeAsync();
@@ -127,7 +158,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public string StatusDisplay => NetworkTransferDomainValues.ToStatusDisplay(_record.Status);
 
         public string BannerText =>
-            "立档资料入网：明细唯一来自电子资料检索结果集，不跟踪中间过程介质。档外资料可手工录入明细。流程：草稿→提交→审批签字→确认入网交接→上传签批单→办结（写入在网台账）。";
+            "立档资料入网：明细唯一来自电子资料检索结果集，提供部门固定为资料室。档外资料（内部/外部）可手工录入明细。流程：草稿→提交→审批签字→确认入网交接→上传签批单→办结（写入在网台账）。";
 
         public ObservableCollection<string> SourceKindOptions { get; } = new(NetworkTransferDomainValues.SourceKindOptions);
 
@@ -167,7 +198,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             && (ArchiveRegisterBusinessRules.CanSubmitApplication(_userContextService.CurrentUser)
                 || ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser));
 
-        public bool CanSubmit => CanEditHeader && Items.Count > 0;
+        public bool CanSubmit => CanEditHeader && (IsArchivedSource ? Items.Count > 0 : GetExternalMediaItemCount() > 0);
 
         /// <summary>已提交及之后阶段可打印申请单。</summary>
         public bool CanPrintApplication =>
@@ -176,43 +207,11 @@ namespace DocMgr.ViewModels.NetworkTransfer
             && _record.Status != NetworkInboundRecord.StatusWithdrawn
             && _record.Status != NetworkInboundRecord.StatusForceWithdrawn;
 
-        public bool CanApprove =>
-            _mode == NetworkTransferWorkspaceMode.Approval
-            && _record.Status == NetworkInboundRecord.StatusSubmitted
-            && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
-
-        public bool CanConfirmHandover =>
-            _mode == NetworkTransferWorkspaceMode.Approval
-            && _record.Status == NetworkInboundRecord.StatusApproved
-            && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
-
-        public bool CanUploadAttachment =>
-            _mode == NetworkTransferWorkspaceMode.Approval
-            && _record.Status is NetworkInboundRecord.StatusApproved or NetworkInboundRecord.StatusSignedUploaded
-            && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
-
-        public bool CanComplete =>
-            _mode == NetworkTransferWorkspaceMode.Approval
-            && _record.Status == NetworkInboundRecord.StatusSignedUploaded
-            && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
-
-        public bool ShowApprovalPanel =>
-            _mode == NetworkTransferWorkspaceMode.Approval
-            && _record.Status >= NetworkInboundRecord.StatusSubmitted
-            && _record.Status != NetworkInboundRecord.StatusWithdrawn
-            && _record.Status != NetworkInboundRecord.StatusForceWithdrawn;
-
-        /// <summary>申请工作台底栏：保存草稿 / 提交。</summary>
-        public bool ShowApplicationActions => _mode == NetworkTransferWorkspaceMode.Application;
-
-        /// <summary>审批工作台底栏：与审批面板同显隐。</summary>
-        public bool ShowApprovalActions => ShowApprovalPanel;
-
         /// <summary>档外资料草稿时表格内直接编辑。</summary>
         public bool IsInboundItemGridReadOnly => !CanEditHeader || IsArchivedSource;
 
         /// <summary>档外资料时显示添加明细操作。</summary>
-        public bool ShowExternalItemToolbar => CanEditHeader && !IsArchivedSource;
+        public bool ShowExternalItemToolbar => false;
 
         /// <summary>当前是否为档外资料来源（明细展示与录入口径）。</summary>
         public bool IsExternalSource => !IsArchivedSource;
@@ -240,6 +239,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             get => _sourceKind;
             set
             {
+                string previousSourceKind = _sourceKind;
                 if (SetProperty(ref _sourceKind, value))
                 {
                     OnPropertyChanged(nameof(IsArchivedSource));
@@ -248,6 +248,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     OnPropertyChanged(nameof(IsInboundItemGridReadOnly));
                     if (!_suppressSourceKindSideEffects)
                     {
+                        ApplyProvideUnitSideEffectsForSourceKind(previousSourceKind);
                         if (IsArchivedSource)
                         {
                             Items.Clear();
@@ -258,6 +259,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
                             ClearArchivedSourceState();
                         }
                     }
+
+                    NotifyInboundSourceKindDependentUi();
+                    OnPropertyChanged(nameof(CanSubmit));
 
                     CommandManager.InvalidateRequerySuggested();
                 }
@@ -491,15 +495,11 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public RelayCommand AddExternalItemCommand { get; }
         public RelayCommand RemoveItemCommand { get; }
         public RelayCommand SaveDraftCommand { get; }
-        public RelayCommand SubmitCommand { get; }
-        public RelayCommand ApproveCommand { get; }
-        public RelayCommand ConfirmHandoverCommand { get; }
-        public RelayCommand UploadAttachmentCommand { get; }
         public RelayCommand DeleteAttachmentCommand { get; }
         public RelayCommand ViewAttachmentCommand { get; }
         public RelayCommand CompleteCommand { get; }
-        public RelayCommand PrintApplicationCommand { get; }
         public RelayCommand CloseCommand { get; }
+        public RelayCommand FillDefaultMaterialPathCommand { get; }
 
         private async Task InitializeAsync()
         {
@@ -519,9 +519,11 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 }
 
                 LoadProjectYears();
+                LoadInternalDepartments();
                 BindFromRecord();
                 await TryAutoFillDefaultApprovalInfoAsync();
                 await LoadConfidentialLevelOptionsAsync();
+                await InitializeElectronicMediaEditorAsync();
                 if (IsArchivedSource)
                 {
                     await LoadApplicantSearchResultSetsAsync();
@@ -531,7 +533,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 LoadApplicantServerPathOptions();
                 SyncSelectedServerPathFromItems();
                 await RebuildItemRowsAsync();
+                await InitializeReturnHardDiskSectionsAsync();
                 await ReloadAttachmentsAsync();
+                UpdateApprovalUiState();
                 CommandManager.InvalidateRequerySuggested();
             }
             catch (Exception ex)
@@ -544,13 +548,16 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             InboundNo = _record.InboundNo;
             _suppressSourceKindSideEffects = true;
+            _suppressProvideUnitDefault = true;
             try
             {
                 SourceKind = NetworkTransferDomainValues.NormalizeSourceKind(_record.SourceKind);
+                BindProvideUnitFromRecord();
             }
             finally
             {
                 _suppressSourceKindSideEffects = false;
+                _suppressProvideUnitDefault = false;
             }
 
             BindProjectSelectionFromRecord();
@@ -567,16 +574,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
             RndDate = _record.RndDate ?? DateTime.Today;
             DeputyLeader = _record.DeputyLeader;
             DeputyDate = _record.DeputyDate ?? DateTime.Today;
-            Deliverer = string.IsNullOrWhiteSpace(_record.Deliverer)
-                ? _record.ApplicantName
-                : _record.Deliverer;
-            DeliverDate = _record.DeliverDate ?? DateTime.Today;
-            Administrator = string.IsNullOrWhiteSpace(_record.Administrator)
-                ? _userContextService.CurrentUser?.RealName ?? string.Empty
-                : _record.Administrator;
-            AdminDate = _record.AdminDate ?? DateTime.Today;
             DeptLeader = _record.DeptLeader;
             DeptDate = _record.DeptDate ?? DateTime.Today;
+            BindHandoverFieldsFromRecord();
             _hasProofMaterialSelected = ArchiveRegisterDomainValues.HasProofMaterial(_record.ProofMaterialNote);
             if (!_hasProofMaterialSelected
                 && string.IsNullOrWhiteSpace(_record.ProofMaterialNote))
@@ -595,35 +595,65 @@ namespace DocMgr.ViewModels.NetworkTransfer
             OnPropertyChanged(nameof(WindowTitle));
             OnPropertyChanged(nameof(StatusDisplay));
             OnPropertyChanged(nameof(CanEditHeader));
-            OnPropertyChanged(nameof(ShowApprovalPanel));
-            OnPropertyChanged(nameof(ShowApplicationActions));
-            OnPropertyChanged(nameof(ShowApprovalActions));
+            OnPropertyChanged(nameof(CanEditForm));
+            OnPropertyChanged(nameof(CanEditItemConfidentialLevel));
+            OnPropertyChanged(nameof(IsSourceKindEditable));
+            SyncElectronicMediaEditorEditState();
+            OnPropertyChanged(nameof(ShowExternalElectronicMediaSection));
+            OnPropertyChanged(nameof(ShowArchivedDataSourceSection));
+            OnPropertyChanged(nameof(CurrentRecord));
+            OnPropertyChanged(nameof(BusinessChainProgressDisplay));
             OnPropertyChanged(nameof(ShowExternalItemToolbar));
             OnPropertyChanged(nameof(IsInboundItemGridReadOnly));
             OnPropertyChanged(nameof(CanEditItemPaths));
             OnPropertyChanged(nameof(CanEditServerPath));
             OnPropertyChanged(nameof(IsItemPathReadOnly));
             OnPropertyChanged(nameof(IsArchivedSource));
+            OnPropertyChanged(nameof(IsExternalOfflineInternalSource));
+            OnPropertyChanged(nameof(IsExternalOfflineExternalSource));
+            OnPropertyChanged(nameof(ShowProvideUnitDepartmentCombo));
+            OnPropertyChanged(nameof(ShowProvideUnitExternalTextBox));
+            OnPropertyChanged(nameof(ShowProvideUnitReadOnlyText));
+            OnPropertyChanged(nameof(ProvideUnitDisplay));
             OnPropertyChanged(nameof(CanPrintApplication));
             NotifyProofMaterialStateChanged();
+            BindReturnHardDiskFromRecord();
+            EnsureProvideUnitDefaultAfterBind();
             NotifyWorkflowCommandStateChanged();
+        }
+
+        private void EnsureProvideUnitDefaultAfterBind()
+        {
+            if (!CanEditForm)
+            {
+                return;
+            }
+
+            if (NetworkTransferDomainValues.IsArchivedElectronicSearchSource(SourceKind)
+                && string.IsNullOrWhiteSpace(ProvideUnit))
+            {
+                ProvideUnit = NetworkTransferDomainValues.InboundProvideUnitArchiveRoom;
+                return;
+            }
+
+            if (NetworkTransferDomainValues.IsExternalOfflineInternalSource(SourceKind))
+            {
+                ApplyDefaultProvideUnitForInternalOffline(onlyWhenEmpty: true);
+            }
         }
 
         /// <summary>状态变化后刷新审批/交接/附件等命令与控件可用性。</summary>
         private void NotifyWorkflowCommandStateChanged()
         {
             OnPropertyChanged(nameof(CanSubmit));
-            OnPropertyChanged(nameof(CanApprove));
-            OnPropertyChanged(nameof(CanConfirmHandover));
-            OnPropertyChanged(nameof(CanUploadAttachment));
-            OnPropertyChanged(nameof(CanComplete));
-            CommandManager.InvalidateRequerySuggested();
+            UpdateApprovalUiState();
         }
 
         private async Task TryAutoFillDefaultApprovalInfoAsync()
         {
             if (_mode != NetworkTransferWorkspaceMode.Approval
-                || _record.Status != NetworkInboundRecord.StatusSubmitted)
+                || (_record.Status != NetworkInboundRecord.StatusSubmitted
+                    && _record.Status != NetworkInboundRecord.StatusApproved))
             {
                 return;
             }
@@ -655,6 +685,38 @@ namespace DocMgr.ViewModels.NetworkTransfer
             RndDate = _record.RndDate ?? DateTime.Today;
             DeputyLeader = _record.DeputyLeader;
             DeputyDate = _record.DeputyDate ?? DateTime.Today;
+            BindHandoverFieldsFromRecord();
+            OnPropertyChanged(nameof(CurrentRecord));
+        }
+
+        /// <summary>
+        /// 审批打开时同步资料交接默认值：移交人=申请人，资料员=当前资料管理员，日期缺省为当天。
+        /// </summary>
+        private void BindHandoverFieldsFromRecord()
+        {
+            if (_mode == NetworkTransferWorkspaceMode.Approval)
+            {
+                if (string.IsNullOrWhiteSpace(_record.Deliverer))
+                {
+                    _record.Deliverer = _record.ApplicantName;
+                }
+
+                if (!_record.DeliverDate.HasValue)
+                {
+                    _record.DeliverDate = DateTime.Today;
+                }
+
+                if (string.IsNullOrWhiteSpace(_record.Administrator))
+                {
+                    _record.Administrator = _userContextService.CurrentUser?.RealName ?? string.Empty;
+                }
+
+                if (!_record.AdminDate.HasValue)
+                {
+                    _record.AdminDate = DateTime.Today;
+                }
+            }
+
             Deliverer = string.IsNullOrWhiteSpace(_record.Deliverer)
                 ? _record.ApplicantName
                 : _record.Deliverer;
@@ -959,8 +1021,10 @@ namespace DocMgr.ViewModels.NetworkTransfer
             _suppressServerPathSelection = true;
             try
             {
-                string savedPath = Items.Select(item => item.TargetServerPath?.Trim())
-                    .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path)) ?? string.Empty;
+                string savedPath = IsExternalSource
+                    ? _record.TargetServerPath?.Trim() ?? string.Empty
+                    : Items.Select(item => item.TargetServerPath?.Trim())
+                        .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path)) ?? string.Empty;
                 SelectedServerPath = string.IsNullOrWhiteSpace(savedPath)
                     ? null
                     : ApplicantServerPathOptions.FirstOrDefault(path =>
@@ -986,6 +1050,48 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 item.TargetServerPath = pathName;
             }
+        }
+
+        private void FillDefaultMaterialPath()
+        {
+            if (SelectedServerPath == null)
+            {
+                _dialogService.ShowError("请先选择服务器路径。");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(Year) || string.Equals(Year.Trim(), "全部", StringComparison.Ordinal))
+            {
+                _dialogService.ShowError("请先选择具体年度。");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(ProjectName))
+            {
+                _dialogService.ShowError("请先选择项目。");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_record.MaterialName))
+            {
+                _dialogService.ShowError("请先填写资料名称。");
+                return;
+            }
+
+            if (!NetworkInboundMaterialPathSupport.TryExtractInboundNoSuffix(InboundNo, out _))
+            {
+                _dialogService.ShowError("入网单号尚未生成，无法填入默认资料路径。");
+                return;
+            }
+
+            _record.MaterialPath = NetworkInboundMaterialPathSupport.BuildDefaultMaterialPath(
+                SelectedServerPath,
+                ApplicantDept,
+                Year,
+                ProjectName,
+                _record.MaterialName,
+                InboundNo);
+            OnPropertyChanged(nameof(CurrentRecord));
         }
 
         private async Task RebuildItemRowsAsync()
@@ -1050,14 +1156,34 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 Id = _record.Id,
                 InboundNo = InboundNo,
                 SourceKind = NetworkTransferDomainValues.NormalizeSourceKind(SourceKind),
+                ProvideUnit = ResolveDraftProvideUnit(),
                 ProjectName = ProjectName,
                 Year = Year,
-                Reason = Reason,
-                Remark = Remark,
+                MaterialName = _record.MaterialName,
+                MaterialPath = _record.MaterialPath?.Trim() ?? string.Empty,
+                Reason = _record.Reason,
+                OtherRequests = _record.OtherRequests,
+                Remark = _record.Remark,
                 SourceResultSetId = SourceResultSetId,
                 SourceResultSetNo = SourceResultSetNo
             };
+            if (IsExternalSource)
+            {
+                draft.MediaEntries = BuildExternalMediaEntriesForSave();
+                draft.TargetServerPath = SelectedServerPath?.PathName?.Trim() ?? string.Empty;
+            }
+
             ApplyProofMaterialNoteToDraft(draft);
+            draft.TargetServerPath = SelectedServerPath?.PathName?.Trim()
+                ?? draft.TargetServerPath?.Trim()
+                ?? string.Empty;
+            return draft;
+        }
+
+        private async Task<NetworkInboundRecord> BuildDraftSnapshotAsync()
+        {
+            NetworkInboundRecord draft = BuildDraftSnapshot();
+            await ApplyReturnHardDiskToDraftAsync(draft);
             return draft;
         }
 
@@ -1101,15 +1227,20 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 ApplySharedServerPathToItems();
                 var user = RequireUser();
-                var draft = BuildDraftSnapshot();
+                var draft = await BuildDraftSnapshotAsync();
+                IReadOnlyList<NetworkInboundItem> itemsToSave = IsExternalSource
+                    ? Array.Empty<NetworkInboundItem>()
+                    : Items.ToList();
                 _record = _record.Id > 0
-                    ? await _service.UpdateInboundDraftAsync(draft, Items.ToList(), user)
-                    : await _service.CreateInboundDraftAsync(draft, Items.ToList(), user);
+                    ? await _service.UpdateInboundDraftAsync(draft, itemsToSave, user)
+                    : await _service.CreateInboundDraftAsync(draft, itemsToSave, user);
                 _hasCommittedChanges = true;
                 BindFromRecord();
+                await InitializeElectronicMediaEditorAsync();
                 LoadApplicantServerPathOptions();
                 SyncSelectedServerPathFromItems();
                 await RebuildItemRowsAsync();
+                await InitializeReturnHardDiskSectionsAsync();
                 _dialogService.ShowMessage("草稿已保存。");
             }
             catch (Exception ex)
@@ -1123,7 +1254,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             try
             {
                 ApplySharedServerPathToItems();
-                NetworkInboundRecord draft = BuildDraftSnapshot();
+                NetworkInboundRecord draft = await BuildDraftSnapshotAsync();
                 if (HasProofMaterial && string.IsNullOrWhiteSpace(ProofMaterialName))
                 {
                     _dialogService.ShowError("已选择附有证明材料，请填写证明材料名称。");
@@ -1132,7 +1263,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
                 IReadOnlyList<string> validationErrors = NetworkInboundApplicationValidationSupport.ValidateForSubmit(
                     draft,
-                    Items.ToList());
+                    IsExternalSource ? Array.Empty<NetworkInboundItem>() : Items.ToList(),
+                    IsExternalSource ? draft.MediaEntries?.ToList() : null);
                 if (validationErrors.Count > 0)
                 {
                     _dialogService.ShowError(string.Join(Environment.NewLine, validationErrors));
@@ -1181,10 +1313,23 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             try
             {
-                // 审批前允许资料室补录服务器路径
+                // 审批前允许资料室补录服务器路径与明细密级
                 if (_record.Status == NetworkInboundRecord.StatusSubmitted)
                 {
+                    if (IsExternalSource)
+                    {
+                        IReadOnlyList<string> confidentialErrors =
+                            NetworkInboundApprovalAmendmentSupport.ValidateExternalMediaConfidentialLevels(
+                                BuildExternalMediaEntriesForSave());
+                        if (confidentialErrors.Count > 0)
+                        {
+                            _dialogService.ShowError(string.Join(Environment.NewLine, confidentialErrors));
+                            return;
+                        }
+                    }
+
                     await PersistItemPathsIfNeededAsync();
+                    await PersistReturnHardDiskSlotsIfNeededAsync();
                 }
 
                 await _service.ApproveInboundAsync(new NetworkInboundRecord
@@ -1214,6 +1359,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             try
             {
                 await PersistItemPathsIfNeededAsync();
+                await PersistReturnHardDiskSlotsIfNeededAsync();
                 await _service.ConfirmInboundHandoverAsync(new NetworkInboundRecord
                 {
                     Id = _record.Id,
@@ -1252,7 +1398,13 @@ namespace DocMgr.ViewModels.NetworkTransfer
             if (_record.Status is NetworkInboundRecord.StatusSubmitted or NetworkInboundRecord.StatusApproved)
             {
                 ApplySharedServerPathToItems();
-                await _service.UpdateInboundItemPathsAsync(_record.Id, Items.ToList(), RequireUser());
+                string? targetServerPath = SelectedServerPath?.PathName?.Trim();
+                await _service.UpdateInboundItemPathsAsync(
+                    _record.Id,
+                    Items.ToList(),
+                    RequireUser(),
+                    targetServerPath,
+                    IsExternalSource ? BuildExternalMediaEntriesForSave() : null);
                 // 不在此处 Reload：审批/交接区默认信息仅内存回填，提前 Reload 会冲掉界面值；
                 // 调用方在主操作成功后再 Reload。
             }
@@ -1316,6 +1468,10 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
                 _hasCommittedChanges = true;
                 await ReloadAttachmentsAsync();
+                if (!AttachmentsMeetMandatoryRequirements)
+                {
+                    _dialogService.ShowMessage("附件已删除，当前不满足办结要求：\n\n" + AttachmentRequirementHint);
+                }
             }
             catch (Exception ex)
             {
@@ -1328,6 +1484,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
             Attachments.Clear();
             if (string.IsNullOrWhiteSpace(_record.InboundNo))
             {
+                RedistributeAttachmentsByCategory();
+                await RefreshAttachmentRequirementsAsync();
                 return;
             }
 
@@ -1338,6 +1496,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 Attachments.Add(item);
             }
+
+            RedistributeAttachmentsByCategory();
+            await RefreshAttachmentRequirementsAsync();
         }
 
         private async Task ReloadRecordAsync()
@@ -1347,7 +1508,6 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 _record = latest;
                 BindFromRecord();
-                // 默认审批信息未落库，Reload 后需重新回填，避免审批/打印等操作清空界面。
                 await TryAutoFillDefaultApprovalInfoAsync();
                 if (IsArchivedSource)
                 {
@@ -1358,6 +1518,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 LoadApplicantServerPathOptions();
                 SyncSelectedServerPathFromItems();
                 await RebuildItemRowsAsync();
+                await InitializeReturnHardDiskSectionsAsync();
                 await ReloadAttachmentsAsync();
             }
         }

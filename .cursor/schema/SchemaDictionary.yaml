@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-08-11T08:43:10Z
+generatedAt: 2026-08-13T03:07:20Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -4105,8 +4105,14 @@ tables:
         aliases: []
       YearlyArchiveRegisterRecordId:
         chineseName: 登记记录ID
-        description: ''
-        clrType: Int32
+        description: 资料登记单归属；与入网单归属二选一。
+        clrType: Int32?
+        needsReview: false
+        aliases: []
+      NetworkInboundRecordId:
+        chineseName: 入网申请单ID
+        description: 档外资料入网单归属；与登记单归属二选一。
+        clrType: Int32?
         needsReview: false
         aliases: []
       MediaKind:
@@ -4163,6 +4169,24 @@ tables:
         chineseName: 表单编号
         description: ''
         clrType: String
+        needsReview: false
+        aliases: []
+      SourceNetworkOutboundRecordId:
+        chineseName: 来源出网申请ID
+        description: 出网转入时关联的来源出网申请单。
+        clrType: Int32?
+        needsReview: false
+        aliases: []
+      SourceNetworkOutboundNo:
+        chineseName: 来源出网申请编号
+        description: 出网转入时保存的来源出网申请单编号快照。
+        clrType: String
+        needsReview: false
+        aliases: []
+      BusinessChainId:
+        chineseName: 跨域业务链ID
+        description: 关联出入网与档案化执行任务的业务链。
+        clrType: Int32?
         needsReview: false
         aliases: []
       Status:
@@ -5579,6 +5603,136 @@ tables:
         clrType: DateTime
         needsReview: true
         aliases: []
+  NetworkArchiveBusinessChain:
+    tableName: NetworkArchiveBusinessChains
+    chineseName: 跨域业务链
+    description: 关联年度资料档案化与出入网管理的一次业务意图及执行进度。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      ChainNo:
+        chineseName: 业务链编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ScenarioKind:
+        chineseName: 业务场景
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      PrimaryBusinessType:
+        chineseName: 主单类型
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      PrimaryBusinessId:
+        chineseName: 主单ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      StatusSummary:
+        chineseName: 进度摘要
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UpdatedAt:
+        chineseName: 更新时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+  NetworkArchiveBusinessTask:
+    tableName: NetworkArchiveBusinessTasks
+    chineseName: 跨域业务执行任务
+    description: 跨域业务链中的执行任务、关联子单及幂等结果。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      BusinessChainId:
+        chineseName: 跨域业务链ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      TaskKind:
+        chineseName: 任务类型
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      BusinessType:
+        chineseName: 关联业务类型
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      BusinessId:
+        chineseName: 关联业务ID
+        description: ''
+        clrType: Int32?
+        needsReview: false
+        aliases: []
+      BusinessNo:
+        chineseName: 关联业务编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Status:
+        chineseName: 任务状态
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DedupKey:
+        chineseName: 去重键
+        description: 保证自动建单与执行任务不会重复创建。
+        clrType: String
+        needsReview: false
+        aliases: []
+      ResultMessage:
+        chineseName: 执行结果
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UpdatedAt:
+        chineseName: 更新时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
   NetworkInboundItem:
     tableName: NetworkInboundItems
     chineseName: 入网申请明细
@@ -5727,6 +5881,30 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      ProvideUnit:
+        chineseName: 提供部门（单位）
+        description: 立档资料固定为资料室；档外资料（内部）选院内部门；档外资料（外部）手工填写。
+        clrType: String
+        needsReview: false
+        aliases: []
+      TargetServerPath:
+        chineseName: 目标服务器路径
+        description: 入网整单共用的目标服务器路径名称。
+        clrType: String
+        needsReview: false
+        aliases: []
+      MaterialPath:
+        chineseName: 资料路径
+        description: 服务器路径下的资料相对子目录。
+        clrType: String
+        needsReview: false
+        aliases: []
+      MaterialName:
+        chineseName: 资料名称
+        description: 入网整单资料名称摘要。
+        clrType: String
+        needsReview: false
+        aliases: []
       ProjectName:
         chineseName: 项目名称
         description: ''
@@ -5745,6 +5923,12 @@ tables:
         clrType: String
         needsReview: true
         aliases: []
+      OtherRequests:
+        chineseName: 其他要求
+        description: 申请时的其他要求说明（选填）。
+        clrType: String
+        needsReview: false
+        aliases: []
       Remark:
         chineseName: 备注
         description: ''
@@ -5757,6 +5941,12 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      ReturnBorrowedHardDiskWithInbound:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Boolean
+        needsReview: true
+        aliases: []
       SourceResultSetId:
         chineseName: 未映射字段
         description: ''
@@ -5768,6 +5958,12 @@ tables:
         description: ''
         clrType: String
         needsReview: true
+        aliases: []
+      BusinessChainId:
+        chineseName: 跨域业务链ID
+        description: 关联档案复制、在网登记和介质任务的业务链。
+        clrType: Int32?
+        needsReview: false
         aliases: []
       ApplicantUserId:
         chineseName: 未映射字段
@@ -6360,10 +6556,10 @@ tables:
         needsReview: true
         aliases: []
       OnNetAssetId:
-        chineseName: 未映射字段
-        description: ''
-        clrType: Int32
-        needsReview: true
+        chineseName: 在网台账ID
+        description: 关联在网台账；手工录入明细为空
+        clrType: Int32?
+        needsReview: false
         aliases: []
       AssetNo:
         chineseName: 未映射字段
@@ -6382,6 +6578,12 @@ tables:
         description: ''
         clrType: String
         needsReview: true
+        aliases: []
+      ItemName:
+        chineseName: 资料明细
+        description: ''
+        clrType: String
+        needsReview: false
         aliases: []
       ServerPath:
         chineseName: 未映射字段
@@ -6475,6 +6677,12 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      ProofMaterialNote:
+        chineseName: 证明材料备注
+        description: 申请时声明是否附有证明材料；「无」表示未附，有材料时填写名称。
+        clrType: String
+        needsReview: false
+        aliases: []
       TargetRegisterRecordId:
         chineseName: 目标建档申请ID
         description: ''
@@ -6485,6 +6693,12 @@ tables:
         chineseName: 目标建档表单编号
         description: ''
         clrType: String
+        needsReview: false
+        aliases: []
+      BusinessChainId:
+        chineseName: 跨域业务链ID
+        description: 关联出网、在网台账和后续建档申请的业务链。
+        clrType: Int32?
         needsReview: false
         aliases: []
       ApplicantUserId:
@@ -7085,5 +7299,67 @@ tables:
         chineseName: 容量(TB)
         description: ''
         clrType: Decimal
+        needsReview: false
+        aliases: []
+  NetworkInboundReturnHardDiskItem:
+    tableName: NetworkInboundReturnHardDiskItems
+    chineseName: NetworkInboundReturnHardDiskItem
+    description: ''
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      InboundRecordId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      SortOrder:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      MediumId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32
+        needsReview: true
+        aliases: []
+      DiskCode:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      SourceApplicationId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32?
+        needsReview: true
+        aliases: []
+      SourceOutboundRecordId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32?
+        needsReview: true
+        aliases: []
+      TargetBlankSlotLocation:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
         needsReview: false
         aliases: []

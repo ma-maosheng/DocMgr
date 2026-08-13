@@ -14,10 +14,18 @@ public static class NetworkInboundApplicationValidationSupport
     /// </summary>
     public static IReadOnlyList<string> ValidateForSubmit(
         NetworkInboundRecord header,
-        IReadOnlyList<NetworkInboundItem> items)
+        IReadOnlyList<NetworkInboundItem> items,
+        IReadOnlyList<YearlyArchiveRegisterMedia>? mediaEntries = null)
     {
         var errors = new List<string>();
         ValidateHeader(header, errors);
+
+        if (NetworkTransferDomainValues.IsExternalOfflineSource(header.SourceKind))
+        {
+            NetworkInboundExternalMediaValidationSupport.ValidateForSubmit(header, mediaEntries, errors);
+            NetworkInboundReturnHardDiskSupport.ValidateForSubmit(header, header.ReturnHardDiskItems?.ToList() ?? [], errors);
+            return errors;
+        }
 
         if (items == null || items.Count == 0)
         {
@@ -25,13 +33,20 @@ public static class NetworkInboundApplicationValidationSupport
             return errors;
         }
 
-        string sharedPath = items
-            .Select(item => item.TargetServerPath?.Trim() ?? string.Empty)
-            .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path))
-            ?? string.Empty;
+        string sharedPath = !string.IsNullOrWhiteSpace(header.TargetServerPath)
+            ? header.TargetServerPath.Trim()
+            : items
+                .Select(item => item.TargetServerPath?.Trim() ?? string.Empty)
+                .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path))
+                ?? string.Empty;
         if (string.IsNullOrWhiteSpace(sharedPath))
         {
             errors.Add("请选择服务器路径。");
+        }
+
+        if (string.IsNullOrWhiteSpace(header.MaterialPath))
+        {
+            errors.Add("请填写资料路径。");
         }
 
         if (NetworkTransferDomainValues.IsArchivedElectronicSearchSource(header.SourceKind))
@@ -43,15 +58,20 @@ public static class NetworkInboundApplicationValidationSupport
             ValidateExternalItems(items, errors);
         }
 
+        NetworkInboundReturnHardDiskSupport.ValidateForSubmit(header, header.ReturnHardDiskItems?.ToList() ?? [], errors);
+
         return errors;
     }
 
     /// <summary>
     /// 校验不通过时抛出包含全部错误的异常。
     /// </summary>
-    public static void EnsureValidForSubmit(NetworkInboundRecord header, IReadOnlyList<NetworkInboundItem> items)
+    public static void EnsureValidForSubmit(
+        NetworkInboundRecord header,
+        IReadOnlyList<NetworkInboundItem> items,
+        IReadOnlyList<YearlyArchiveRegisterMedia>? mediaEntries = null)
     {
-        IReadOnlyList<string> errors = ValidateForSubmit(header, items);
+        IReadOnlyList<string> errors = ValidateForSubmit(header, items, mediaEntries);
         if (errors.Count > 0)
         {
             throw new InvalidOperationException(string.Join(Environment.NewLine, errors));
@@ -71,6 +91,50 @@ public static class NetworkInboundApplicationValidationSupport
 
         var errors = new List<string>();
         CollectApprovalSignerErrors(record, handoverInput, errors);
+        CollectInboundPathErrors(record, errors);
+        return errors;
+    }
+
+    /// <summary>
+    /// 校验确认办结所需的审批信息与必备附件。
+    /// </summary>
+    public static IReadOnlyList<string> ValidateForComplete(
+        NetworkInboundRecord record,
+        IReadOnlyList<SystemAttachment> attachments)
+    {
+        ArgumentNullException.ThrowIfNull(record);
+
+        var errors = new List<string>();
+        if (string.IsNullOrWhiteSpace(record.DeptLeader))
+        {
+            errors.Add("• 部门负责人签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.ProdLeader))
+        {
+            errors.Add("• 生产管理科负责人签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.RndLeader))
+        {
+            errors.Add("• 资料室负责人签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.DeputyLeader))
+        {
+            errors.Add("• 分管领导签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.Deliverer))
+        {
+            errors.Add("• 移交人签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.Administrator))
+        {
+            errors.Add("• 资料员签字缺失");
+        }
+
         CollectInboundPathErrors(record, errors);
         CollectMandatoryAttachmentErrors(record, attachments ?? Array.Empty<SystemAttachment>(), errors);
         return errors;
@@ -110,7 +174,7 @@ public static class NetworkInboundApplicationValidationSupport
 
         if (string.IsNullOrWhiteSpace(record.RndLeader))
         {
-            errors.Add("• 科研开发室负责人签字缺失");
+            errors.Add("• 资料室负责人签字缺失");
         }
 
         if (string.IsNullOrWhiteSpace(record.DeputyLeader))
@@ -131,6 +195,16 @@ public static class NetworkInboundApplicationValidationSupport
 
     private static void CollectInboundPathErrors(NetworkInboundRecord record, List<string> errors)
     {
+        if (NetworkTransferDomainValues.IsExternalOfflineSource(record.SourceKind))
+        {
+            if (string.IsNullOrWhiteSpace(record.TargetServerPath))
+            {
+                errors.Add("• 入网单缺少目标服务器路径");
+            }
+
+            return;
+        }
+
         foreach (var item in record.Items)
         {
             if (string.IsNullOrWhiteSpace(item.TargetServerPath))
@@ -183,6 +257,11 @@ public static class NetworkInboundApplicationValidationSupport
             errors.Add("请选择项目。");
         }
 
+        if (string.IsNullOrWhiteSpace(header.MaterialName))
+        {
+            errors.Add("请填写资料名称。");
+        }
+
         if (string.IsNullOrWhiteSpace(header.Reason))
         {
             errors.Add("请填写申请说明。");
@@ -192,6 +271,32 @@ public static class NetworkInboundApplicationValidationSupport
             && (!header.SourceResultSetId.HasValue || header.SourceResultSetId.Value <= 0))
         {
             errors.Add("立档资料入网须选择电子检索集。");
+        }
+
+        ValidateProvideUnit(header, errors);
+    }
+
+    private static void ValidateProvideUnit(NetworkInboundRecord header, List<string> errors)
+    {
+        string provideUnit = NetworkTransferDomainValues.ResolveInboundProvideUnit(
+            header.SourceKind,
+            header.ProvideUnit);
+
+        if (NetworkTransferDomainValues.IsArchivedElectronicSearchSource(header.SourceKind))
+        {
+            if (!string.Equals(provideUnit, NetworkTransferDomainValues.InboundProvideUnitArchiveRoom, StringComparison.Ordinal))
+            {
+                errors.Add("立档资料入网的提供部门须为资料室。");
+            }
+
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(provideUnit))
+        {
+            errors.Add(NetworkTransferDomainValues.IsExternalOfflineExternalSource(header.SourceKind)
+                ? "请填写提供部门（单位）。"
+                : "请选择提供部门（单位）。");
         }
     }
 

@@ -51,6 +51,11 @@ namespace DocMgr.Models.YearlyArchive
                 return ArchiveRegisterDomainValues.ElectronicMaterialCategoryDataScope;
             }
 
+            if (string.Equals(materialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftware, StringComparison.Ordinal))
+            {
+                return ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftwareScope;
+            }
+
             return string.Empty;
         }
 

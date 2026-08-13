@@ -821,6 +821,7 @@ namespace DocMgr.Services.Shared
                     record,
                     mode);
                 dialog.DataContext = viewModel;
+                viewModel.SetDialogMode(true);
                 viewModel.RequestClose += HandleRequestClose;
                 dialog.ShowDialog();
                 return viewModel.HasCommittedChanges;

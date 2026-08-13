@@ -1288,7 +1288,9 @@ namespace DocMgr.Services.YearlyArchive
                 ?? ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocument;
             string subCategory = string.Equals(materialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategoryData, StringComparison.Ordinal)
                 ? domainOptions.ElectronicDataSubCategories.FirstOrDefault() ?? "原始观测数据"
-                : domainOptions.ElectronicDocumentSubCategories.FirstOrDefault() ?? "外来资料类";
+                : string.Equals(materialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftware, StringComparison.Ordinal)
+                    ? domainOptions.ElectronicSoftwareSubCategories.FirstOrDefault() ?? "生产软件"
+                    : domainOptions.ElectronicDocumentSubCategories.FirstOrDefault() ?? "外来资料类";
             string organizationForm = domainOptions.ElectronicDataOrganizationForms.FirstOrDefault()
                 ?? ArchiveRegisterDomainValues.ElectronicDataOrganizationFormDirectory;
             string entryKind = ElectronicMediaItemSupport.ResolveEntryKind(organizationForm);

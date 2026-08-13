@@ -5,7 +5,12 @@ namespace DocMgr.Models.YearlyArchive
     public class YearlyArchiveRegisterMedia
     {
         public int Id { get; set; }
-        public int YearlyArchiveRegisterRecordId { get; set; }
+
+        /// <summary>资料登记单 Id；与 <see cref="NetworkInboundRecordId"/> 二选一。</summary>
+        public int? YearlyArchiveRegisterRecordId { get; set; }
+
+        /// <summary>档外入网单 Id；与 <see cref="YearlyArchiveRegisterRecordId"/> 二选一。</summary>
+        public int? NetworkInboundRecordId { get; set; }
         public string MediaKind { get; set; } = "???";
         public string MediaType { get; set; } = string.Empty;
         public int MediaCount { get; set; }
@@ -22,6 +27,9 @@ namespace DocMgr.Models.YearlyArchive
         public string BorrowedHardDiskCode { get; set; } = string.Empty;
 
         public virtual YearlyArchiveRegisterRecord? RegisterRecord { get; set; }
+
+        public virtual NetworkTransfer.NetworkInboundRecord? NetworkInboundRecord { get; set; }
+
         public virtual List<YearlyArchiveRegisterMediaItem> Items { get; set; } = new();
         public virtual List<YearlyElectronicArchiveUnitMediaLink> ElectronicArchiveUnitLinks { get; set; } = new();
     }

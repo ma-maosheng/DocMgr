@@ -227,7 +227,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 ApplyTime = DateTime.Now,
                 ApplicantName = _userContextService.CurrentUser?.RealName?.Trim() ?? string.Empty,
                 ApplicantDept = _userContextService.CurrentUser?.Department?.Trim() ?? string.Empty,
-                SourceKind = NetworkTransferDomainValues.SourceKindExternalOffline,
+                SourceKind = NetworkTransferDomainValues.SourceKindExternalOfflineInternal,
                 Status = NetworkInboundRecord.StatusDraft
             };
 

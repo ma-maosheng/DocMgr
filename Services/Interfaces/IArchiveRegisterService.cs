@@ -131,6 +131,9 @@ namespace DocMgr.Services.Interfaces
         // 填充入网申请审批默认信息（仅资料室资料管理员可执行）
         Task ApplyDefaultInboundApprovalInfoAsync(NetworkInboundRecord record, User currentUser);
 
+        // 填充出网申请审批默认信息（仅资料室资料管理员可执行）
+        Task ApplyDefaultNetworkOutboundApprovalInfoAsync(NetworkOutboundRecord record, User currentUser);
+
         // 填充资料借出申请审批默认信息（仅资料室资料管理员可执行）
         Task ApplyDefaultOutboundApprovalInfoAsync(YearlyArchiveOutboundRecord record, User currentUser);
 

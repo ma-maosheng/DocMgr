@@ -55,6 +55,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public const string ElectronicMaterialCategoryDocument = "文档类";
         public const string ElectronicMaterialCategoryData = "数据类";
+        public const string ElectronicMaterialCategorySoftware = "软件类";
 
         public const string ElectronicDataOrganizationFormDirectory = "目录型";
         public const string ElectronicDataOrganizationFormFile = "文件型";
@@ -66,6 +67,8 @@ namespace DocMgr.Models.YearlyArchive
             "MaterialCategory=" + ElectronicMaterialCategoryDocument;
         public const string ElectronicMaterialCategoryDataScope =
             "MaterialCategory=" + ElectronicMaterialCategoryData;
+        public const string ElectronicMaterialCategorySoftwareScope =
+            "MaterialCategory=" + ElectronicMaterialCategorySoftware;
 
         public const string ConfidentialLevelNone = "否";
         public const string LegacyConfidentialLevelNone = "无";

@@ -1,4 +1,5 @@
 ﻿using DocMgr.Services.Interfaces;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
 using DocMgr.Models.YearlyArchive;
@@ -104,6 +105,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             get => _selectedSourceType;
             set
             {
+                if (IsNetworkOutboundTransferRegister
+                    && !string.IsNullOrWhiteSpace(_selectedSourceType)
+                    && !string.Equals(value, _selectedSourceType, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
                 if (SetProperty(ref _selectedSourceType, value))
                 {
                     IsExternalSource = _archiveRegisterService.IsExternalSourceType(value);
@@ -118,6 +126,36 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
             }
         }
+
+        /// <summary>是否为出网办结自动生成的建档草稿。</summary>
+        public bool IsNetworkOutboundTransferRegister =>
+            ArchiveRegisterBusinessRules.IsNetworkOutboundTransferRegister(CurrentRecord);
+
+        /// <summary>电子介质「类型」是否允许手工修改。</summary>
+        public bool IsElectronicMediaTypeEditable => CanEditForm && !IsNetworkOutboundTransferRegister;
+
+        /// <summary>电子介质「处置」是否允许手工修改（出网转入固定为无需处置）。</summary>
+        public bool IsElectronicDispositionEditable => CanEditForm && !IsNetworkOutboundTransferRegister;
+
+        /// <summary>出网转入建档单的关联提示。</summary>
+        public string NetworkOutboundTransferHint
+        {
+            get
+            {
+                if (!IsNetworkOutboundTransferRegister)
+                {
+                    return string.Empty;
+                }
+
+                string outboundNo = CurrentRecord?.SourceNetworkOutboundNo?.Trim() ?? string.Empty;
+                return string.IsNullOrWhiteSpace(outboundNo)
+                    ? "本单由出网办结自动生成，电子介质类型与处置不可修改。"
+                    : $"本单由出网单 {outboundNo} 转入，电子介质类型与处置不可修改。";
+            }
+        }
+
+        /// <summary>资料来源是否允许手工修改。</summary>
+        public bool IsSourceTypeEditable => CanEditForm && !IsNetworkOutboundTransferRegister;
 
         private string _selectedArchivePurpose = string.Empty;
         public string SelectedArchivePurpose

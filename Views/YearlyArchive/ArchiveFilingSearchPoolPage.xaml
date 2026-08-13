@@ -111,6 +111,19 @@
                                     Command="{Binding RemoveSelectedItemsCommand}"/>
                             <Button Content="发起借出申请" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}"
                                     Command="{Binding CreateOutboundFromPoolCommand}"/>
+                            <Button Content="发起入网申请" Margin="10,0,0,0"
+                                    Command="{Binding CreateInboundFromPoolCommand}"
+                                    ToolTip="勾选部分条目可按明细发起；未勾选时使用检索池全部条目">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource ToolbarActionButtonStyle}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSimulatedMediaPool}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                             <Button Content="保存修改" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}"
                                     Command="{Binding SaveCommand}"/>
                         </StackPanel>

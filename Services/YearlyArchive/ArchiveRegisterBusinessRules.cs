@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Services.YearlyArchive
@@ -14,6 +15,46 @@ namespace DocMgr.Services.YearlyArchive
             ["内网"] = ["无需处置"],
             ["硬盘"] = ["介质留存", "介质带回"]
         };
+
+        /// <summary>
+        /// 是否为出网办结自动生成的建档草稿。
+        /// </summary>
+        public static bool IsNetworkOutboundTransferRegister(YearlyArchiveRegisterRecord? record)
+        {
+            if (record == null)
+            {
+                return false;
+            }
+
+            if (record.SourceNetworkOutboundRecordId is int outboundRecordId && outboundRecordId > 0)
+            {
+                return true;
+            }
+
+            return string.Equals(
+                record.SourceType?.Trim(),
+                NetworkTransferDomainValues.RegisterSourceTypeNetworkOutbound,
+                StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// 手工新建建档申请时可选的电子介质类型（隐藏「内网」，由出网转立档自动带入）。
+        /// </summary>
+        public static IReadOnlyList<string> FilterManualSelectableElectronicMediaTypes(
+            IReadOnlyCollection<string> options)
+        {
+            if (options == null || options.Count == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            return options
+                .Where(option => !string.Equals(
+                    option?.Trim(),
+                    ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork,
+                    StringComparison.Ordinal))
+                .ToList();
+        }
 
         /// <summary>
         /// 获取指定电子介质类型允许的处置方式列表。

@@ -1,4 +1,5 @@
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Models.NetworkTransfer;
 
 namespace DocMgr.Services.YearlyArchive
 {
@@ -24,6 +25,38 @@ namespace DocMgr.Services.YearlyArchive
 
         public static string BuildReturnItemDedupKey(int returnItemId)
             => $"ReturnItem:{returnItemId}:Completed";
+
+        public static string BuildNetworkInboundItemDedupKey(int inboundItemId)
+            => $"NetworkInboundItem:{inboundItemId}:Completed";
+
+        public static YearlyArchiveMaterialTransaction BuildNetworkInboundCopyTransaction(
+            NetworkInboundRecord record,
+            NetworkInboundItem item,
+            YearlyArchiveFilingFact fact,
+            string operatorName,
+            DateTime operatedAt)
+        {
+            return new YearlyArchiveMaterialTransaction
+            {
+                FilingFactId = fact.Id,
+                TransactionType = MaterialTransactionDomainValues.TypeNetworkInboundCopy,
+                BusinessNo = record.InboundNo,
+                SourceKind = MaterialTransactionDomainValues.SourceNetworkInboundItem,
+                SourceId = item.Id,
+                DedupKey = BuildNetworkInboundItemDedupKey(item.Id),
+                BeforeLifecycleStatus = fact.LifecycleStatus,
+                AfterLifecycleStatus = fact.LifecycleStatus,
+                BeforeContainerCode = fact.CurrentContainerCode,
+                AfterContainerCode = fact.CurrentContainerCode,
+                BeforeStorageLocation = fact.CurrentStorageLocation,
+                AfterStorageLocation = fact.CurrentStorageLocation,
+                Summary = $"立档电子资料复制入网 · {item.AssetName}",
+                Remark = "仅复制数据，档案原件及保管关系不变。",
+                OperatorName = operatorName.Trim(),
+                OperatedAt = operatedAt,
+                CreatedAt = DateTime.Now
+            };
+        }
 
         public static YearlyArchiveMaterialTransaction BuildFilingTransaction(YearlyArchiveFilingFact fact)
         {

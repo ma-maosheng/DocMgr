@@ -39,10 +39,21 @@ public interface INetworkTransferService
 
     Task ApproveInboundAsync(NetworkInboundRecord approval, User currentUser);
 
+    /// <summary>审批环节维护借出硬盘空白归位档口。</summary>
+    Task UpdateInboundReturnHardDiskSlotsAsync(
+        int recordId,
+        IReadOnlyList<NetworkInboundReturnHardDiskItem> slotInputs,
+        User currentUser);
+
     Task ConfirmInboundHandoverAsync(NetworkInboundRecord handover, User currentUser);
 
     /// <summary>审批/交接阶段补录各明细目标服务器路径。</summary>
-    Task UpdateInboundItemPathsAsync(int recordId, IReadOnlyList<NetworkInboundItem> items, User currentUser);
+    Task UpdateInboundItemPathsAsync(
+        int recordId,
+        IReadOnlyList<NetworkInboundItem> items,
+        User currentUser,
+        string? targetServerPath = null,
+        IReadOnlyList<YearlyArchiveRegisterMedia>? externalMediaEntries = null);
 
     Task CompleteInboundAsync(int recordId, User currentUser);
 
@@ -60,12 +71,12 @@ public interface INetworkTransferService
 
     Task<NetworkOutboundRecord> CreateOutboundDraftAsync(
         NetworkOutboundRecord draft,
-        IReadOnlyList<int> onNetAssetIds,
+        IReadOnlyList<NetworkOutboundItem> items,
         User currentUser);
 
     Task<NetworkOutboundRecord> UpdateOutboundDraftAsync(
         NetworkOutboundRecord draft,
-        IReadOnlyList<int> onNetAssetIds,
+        IReadOnlyList<NetworkOutboundItem> items,
         User currentUser);
 
     Task SubmitOutboundAsync(int recordId, User currentUser);
@@ -75,6 +86,10 @@ public interface INetworkTransferService
     Task ConfirmOutboundHandoverAsync(NetworkOutboundRecord handover, User currentUser);
 
     Task CompleteOutboundAsync(int recordId, User currentUser);
+
+    Task<NetworkOutboundPrintData> BuildOutboundPrintDataAsync(int recordId, bool blankApprovalSignatures);
+
+    Task RecordOutboundPrintAsync(int recordId);
 
     Task WithdrawOutboundAsync(int recordId, string? reason, User currentUser);
 

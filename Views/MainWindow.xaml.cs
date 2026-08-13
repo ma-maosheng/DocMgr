@@ -1311,6 +1311,12 @@ namespace DocMgr.Views
                 : BtnArchiveSimulatedDisposal;
         }
 
+        public void NavigateToNetworkInboundApplyPage(int recordId = 0)
+        {
+            TxtPageTitle.Text = "年度资料出入网管理（入网申请）";
+            MainContentFrame.Navigate(new NetworkInboundApplicationPage(recordId));
+        }
+
         private void BtnNetInboundApply_Click(object sender, RoutedEventArgs e)
         {
             if (!CanAccessDepartmentArchiveApply() && !IsSystemAdministrator())
@@ -1319,8 +1325,7 @@ namespace DocMgr.Views
                 return;
             }
 
-            TxtPageTitle.Text = "年度资料出入网管理（入网申请）";
-            MainContentFrame.Navigate(new NetworkInboundApplicationPage());
+            NavigateToNetworkInboundApplyPage();
         }
 
         private void BtnNetInboundApprove_Click(object sender, RoutedEventArgs e)

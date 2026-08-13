@@ -59,6 +59,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<ArchiveSearchViewModel>();
         services.AddTransient<ArchiveDetailViewModel>();
         services.AddTransient<ArchiveRegisterViewModel>();
+        services.AddTransient<ElectronicMediaEditingViewModel>();
         services.AddTransient<Func<ArchiveRegisterWorkspaceMode, int, ArchiveRegisterWorkbenchPageViewModel>>(sp =>
             (mode, initialRecordId) => ActivatorUtilities.CreateInstance<ArchiveRegisterWorkbenchPageViewModel>(
                 sp, mode, initialRecordId));

@@ -77,6 +77,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             await LoadAttachments();
             await RefreshAttachmentRequirementsAsync();
             OnPropertyChanged(nameof(WindowTitle));
+            NotifyNetworkOutboundTransferUiState();
             if (_userContextService.CurrentUser != null)
             {
                 bool shouldAutoFillDefaultApproval =
@@ -375,7 +376,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(RequiresProofMaterialScanUpload));
             OnPropertyChanged(nameof(ProofMaterialAttachmentHint));
             OnPropertyChanged(nameof(CanUploadProofMaterialAttachment));
+            NotifyNetworkOutboundTransferUiState();
             CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void NotifyNetworkOutboundTransferUiState()
+        {
+            OnPropertyChanged(nameof(IsNetworkOutboundTransferRegister));
+            OnPropertyChanged(nameof(IsElectronicMediaTypeEditable));
+            OnPropertyChanged(nameof(IsElectronicDispositionEditable));
+            OnPropertyChanged(nameof(IsSourceTypeEditable));
+            OnPropertyChanged(nameof(NetworkOutboundTransferHint));
         }
 
         private async Task RefreshAttachmentRequirementsAsync()

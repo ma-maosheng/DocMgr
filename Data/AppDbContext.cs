@@ -85,11 +85,14 @@ namespace DocMgr.Data
         // === 年度资料出入网管理 ===
         public DbSet<NetworkInboundRecord> NetworkInboundRecords { get; set; }
         public DbSet<NetworkInboundItem> NetworkInboundItems { get; set; }
+        public DbSet<NetworkInboundReturnHardDiskItem> NetworkInboundReturnHardDiskItems { get; set; }
         public DbSet<NetworkOnNetAsset> NetworkOnNetAssets { get; set; }
         public DbSet<NetworkOutboundRecord> NetworkOutboundRecords { get; set; }
         public DbSet<NetworkOutboundItem> NetworkOutboundItems { get; set; }
         public DbSet<NetworkOnNetDisposalRecord> NetworkOnNetDisposalRecords { get; set; }
         public DbSet<NetworkOnNetDisposalItem> NetworkOnNetDisposalItems { get; set; }
+        public DbSet<NetworkArchiveBusinessChain> NetworkArchiveBusinessChains { get; set; }
+        public DbSet<NetworkArchiveBusinessTask> NetworkArchiveBusinessTasks { get; set; }
 
         // === 通用附件表 ===
         public DbSet<SystemAttachment> SystemAttachments { get; set; }
@@ -376,11 +379,34 @@ namespace DocMgr.Data
                 entity.HasIndex(item => item.Status);
                 entity.HasIndex(item => item.ApplyTime);
                 entity.HasIndex(item => item.SourceResultSetId);
+                entity.HasIndex(item => item.BusinessChainId);
 
                 entity.HasMany(item => item.Items)
                     .WithOne(item => item.InboundRecord)
                     .HasForeignKey(item => item.InboundRecordId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(item => item.ReturnHardDiskItems)
+                    .WithOne(item => item.InboundRecord)
+                    .HasForeignKey(item => item.InboundRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(item => item.MediaEntries)
+                    .WithOne(media => media.NetworkInboundRecord)
+                    .HasForeignKey(media => media.NetworkInboundRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(item => item.BusinessChain)
+                    .WithMany()
+                    .HasForeignKey(item => item.BusinessChainId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<NetworkInboundReturnHardDiskItem>(entity =>
+            {
+                entity.HasIndex(item => item.InboundRecordId);
+                entity.HasIndex(item => item.MediumId);
+                entity.HasIndex(item => new { item.InboundRecordId, item.MediumId }).IsUnique();
             });
 
             modelBuilder.Entity<NetworkInboundItem>(entity =>
@@ -395,7 +421,9 @@ namespace DocMgr.Data
                 entity.HasIndex(item => item.AssetNo).IsUnique();
                 entity.HasIndex(item => item.LifecycleStatus);
                 entity.HasIndex(item => item.OriginKind);
-                entity.HasIndex(item => item.OriginInboundItemId);
+                entity.HasIndex(item => item.OriginInboundItemId)
+                    .IsUnique()
+                    .HasFilter("[OriginInboundItemId] IS NOT NULL");
                 entity.HasIndex(item => item.ParentAssetId);
             });
 
@@ -405,11 +433,40 @@ namespace DocMgr.Data
                 entity.HasIndex(item => item.Status);
                 entity.HasIndex(item => item.ApplyTime);
                 entity.HasIndex(item => item.TargetRegisterRecordId);
+                entity.HasIndex(item => item.BusinessChainId);
 
                 entity.HasMany(item => item.Items)
                     .WithOne(item => item.OutboundRecord)
                     .HasForeignKey(item => item.OutboundRecordId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(item => item.BusinessChain)
+                    .WithMany()
+                    .HasForeignKey(item => item.BusinessChainId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<NetworkArchiveBusinessChain>(entity =>
+            {
+                entity.HasIndex(item => item.ChainNo).IsUnique();
+                entity.HasIndex(item => new { item.PrimaryBusinessType, item.PrimaryBusinessId });
+                entity.HasIndex(item => item.ScenarioKind);
+
+                entity.HasMany(item => item.Tasks)
+                    .WithOne(item => item.BusinessChain)
+                    .HasForeignKey(item => item.BusinessChainId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<NetworkArchiveBusinessTask>(entity =>
+            {
+                entity.HasIndex(item => item.BusinessChainId);
+                entity.HasIndex(item => item.DedupKey).IsUnique();
+                entity.HasIndex(item => new { item.BusinessType, item.BusinessId });
+                entity.Property(item => item.TaskKind).HasMaxLength(80);
+                entity.Property(item => item.BusinessType).HasMaxLength(80);
+                entity.Property(item => item.Status).HasMaxLength(30);
+                entity.Property(item => item.DedupKey).HasMaxLength(240);
             });
 
             modelBuilder.Entity<NetworkOutboundItem>(entity =>
@@ -421,6 +478,7 @@ namespace DocMgr.Data
                 entity.HasOne(item => item.OnNetAsset)
                     .WithMany()
                     .HasForeignKey(item => item.OnNetAssetId)
+                    .IsRequired(false)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -535,9 +593,16 @@ namespace DocMgr.Data
 
             modelBuilder.Entity<YearlyArchiveRegisterMedia>(entity =>
             {
+                entity.HasIndex(media => media.NetworkInboundRecordId);
+
                 entity.HasOne(media => media.RegisterRecord)
                     .WithMany(record => record.MediaEntries)
                     .HasForeignKey(media => media.YearlyArchiveRegisterRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(media => media.NetworkInboundRecord)
+                    .WithMany(record => record.MediaEntries)
+                    .HasForeignKey(media => media.NetworkInboundRecordId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

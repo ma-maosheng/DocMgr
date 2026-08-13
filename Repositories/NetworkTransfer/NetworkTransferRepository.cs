@@ -4,7 +4,9 @@ using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
+using DocMgr.Services.NetworkTransfer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace DocMgr.Repositories.NetworkTransfer;
 
@@ -13,6 +15,22 @@ namespace DocMgr.Repositories.NetworkTransfer;
 /// </summary>
 public sealed class NetworkTransferRepository : INetworkTransferRepository
 {
+    private sealed class NetworkTransferRepositoryTransaction : IArchiveFilingRepositoryTransaction
+    {
+        private readonly IDbContextTransaction _transaction;
+
+        public NetworkTransferRepositoryTransaction(IDbContextTransaction transaction)
+        {
+            _transaction = transaction;
+        }
+
+        public Task CommitAsync() => _transaction.CommitAsync();
+
+        public Task RollbackAsync() => _transaction.RollbackAsync();
+
+        public async ValueTask DisposeAsync() => await _transaction.DisposeAsync();
+    }
+
     private static readonly int[] ActiveStatuses =
     [
         ApplicationWorkflowStatus.Draft,
@@ -28,11 +46,19 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
         _dbContext = dbContext;
     }
 
+    public async Task<IArchiveFilingRepositoryTransaction> BeginTransactionAsync()
+    {
+        IDbContextTransaction transaction = await _dbContext.Database.BeginTransactionAsync();
+        return new NetworkTransferRepositoryTransaction(transaction);
+    }
+
     public async Task<List<NetworkInboundRecord>> SearchInboundRecordsAsync(string? keyword, int? status, int? applyYear)
     {
         IQueryable<NetworkInboundRecord> query = _dbContext.NetworkInboundRecords
             .AsNoTracking()
             .Include(item => item.Items)
+            .Include(item => item.BusinessChain)
+                .ThenInclude(chain => chain!.Tasks)
             .AsQueryable();
 
         if (status.HasValue)
@@ -68,8 +94,24 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
     public Task<NetworkInboundRecord?> GetInboundByIdAsync(int recordId, bool tracking = false)
     {
         IQueryable<NetworkInboundRecord> query = tracking
-            ? _dbContext.NetworkInboundRecords.Include(item => item.Items)
-            : _dbContext.NetworkInboundRecords.AsNoTracking().Include(item => item.Items);
+            ? _dbContext.NetworkInboundRecords
+                .Include(item => item.Items)
+                .Include(item => item.MediaEntries)
+                    .ThenInclude(media => media.Items)
+                        .ThenInclude(mediaItem => mediaItem.ElectronicDetail)
+                            .ThenInclude(detail => detail!.Entries)
+                .Include(item => item.ReturnHardDiskItems)
+                .Include(item => item.BusinessChain)
+                    .ThenInclude(chain => chain!.Tasks)
+            : _dbContext.NetworkInboundRecords.AsNoTracking()
+                .Include(item => item.Items)
+                .Include(item => item.MediaEntries)
+                    .ThenInclude(media => media.Items)
+                        .ThenInclude(mediaItem => mediaItem.ElectronicDetail)
+                            .ThenInclude(detail => detail!.Entries)
+                .Include(item => item.ReturnHardDiskItems)
+                .Include(item => item.BusinessChain)
+                    .ThenInclude(chain => chain!.Tasks);
         return query.FirstOrDefaultAsync(item => item.Id == recordId);
     }
 
@@ -77,6 +119,12 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
 
     public void RemoveInboundItems(IEnumerable<NetworkInboundItem> items) =>
         _dbContext.NetworkInboundItems.RemoveRange(items);
+
+    public void RemoveInboundReturnHardDiskItems(IEnumerable<NetworkInboundReturnHardDiskItem> items) =>
+        _dbContext.NetworkInboundReturnHardDiskItems.RemoveRange(items);
+
+    public Task ReplaceInboundMediaEntriesAsync(int inboundRecordId, IReadOnlyList<YearlyArchiveRegisterMedia> mediaEntries) =>
+        NetworkInboundRegisterMediaPersistenceSupport.ReplaceMediaEntriesAsync(_dbContext, inboundRecordId, mediaEntries);
 
     public async Task<string?> GetLastInboundNoByPrefixAsync(string prefix)
     {
@@ -99,6 +147,8 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
         IQueryable<NetworkOutboundRecord> query = _dbContext.NetworkOutboundRecords
             .AsNoTracking()
             .Include(item => item.Items)
+            .Include(item => item.BusinessChain)
+                .ThenInclude(chain => chain!.Tasks)
             .AsQueryable();
 
         if (status.HasValue)
@@ -132,8 +182,15 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
     public Task<NetworkOutboundRecord?> GetOutboundByIdAsync(int recordId, bool tracking = false)
     {
         IQueryable<NetworkOutboundRecord> query = tracking
-            ? _dbContext.NetworkOutboundRecords.Include(item => item.Items)
-            : _dbContext.NetworkOutboundRecords.AsNoTracking().Include(item => item.Items);
+            ? _dbContext.NetworkOutboundRecords
+                .Include(item => item.Items)
+                .Include(item => item.BusinessChain)
+                    .ThenInclude(chain => chain!.Tasks)
+            : _dbContext.NetworkOutboundRecords
+                .AsNoTracking()
+                .Include(item => item.Items)
+                .Include(item => item.BusinessChain)
+                    .ThenInclude(chain => chain!.Tasks);
         return query.FirstOrDefaultAsync(item => item.Id == recordId);
     }
 
@@ -264,6 +321,16 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
         return query.FirstOrDefaultAsync(item => item.Id == assetId);
     }
 
+    public Task<NetworkOnNetAsset?> GetOnNetAssetByOriginInboundItemIdAsync(
+        int inboundItemId,
+        bool tracking = false)
+    {
+        IQueryable<NetworkOnNetAsset> query = tracking
+            ? _dbContext.NetworkOnNetAssets
+            : _dbContext.NetworkOnNetAssets.AsNoTracking();
+        return query.FirstOrDefaultAsync(item => item.OriginInboundItemId == inboundItemId);
+    }
+
     public async Task<List<NetworkOnNetAsset>> GetOnNetAssetsByIdsAsync(
         IReadOnlyCollection<int> assetIds,
         bool tracking = false)
@@ -384,6 +451,39 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
     public void AddRegisterRecord(YearlyArchiveRegisterRecord record) =>
         _dbContext.YearlyArchiveRegisterRecords.Add(record);
 
+    public Task<YearlyArchiveRegisterRecord?> GetRegisterBySourceOutboundRecordIdAsync(
+        int outboundRecordId,
+        bool tracking = false)
+    {
+        IQueryable<YearlyArchiveRegisterRecord> query = tracking
+            ? _dbContext.YearlyArchiveRegisterRecords
+            : _dbContext.YearlyArchiveRegisterRecords.AsNoTracking();
+        return query.FirstOrDefaultAsync(item => item.SourceNetworkOutboundRecordId == outboundRecordId);
+    }
+
+    public async Task<HashSet<string>> GetExistingMaterialTransactionDedupKeysAsync(
+        IEnumerable<string> dedupKeys)
+    {
+        List<string> keys = dedupKeys
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (keys.Count == 0)
+        {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        List<string> existing = await _dbContext.YearlyArchiveMaterialTransactions
+            .AsNoTracking()
+            .Where(item => keys.Contains(item.DedupKey))
+            .Select(item => item.DedupKey)
+            .ToListAsync();
+        return existing.ToHashSet(StringComparer.Ordinal);
+    }
+
+    public void AddMaterialTransactions(IEnumerable<YearlyArchiveMaterialTransaction> transactions) =>
+        _dbContext.YearlyArchiveMaterialTransactions.AddRange(transactions);
+
     public Task SaveChangesAsync() => _dbContext.SaveChangesAsync();
 
     private async Task<HashSet<int>> GetLockedAssetIdsAsync(
@@ -406,6 +506,10 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
             .Select(item => item.OnNetAssetId)
             .ToListAsync();
 
-        return outboundLocked.Concat(disposalLocked).ToHashSet();
+        return outboundLocked
+            .Where(id => id.HasValue && id.Value > 0)
+            .Select(id => id!.Value)
+            .Concat(disposalLocked)
+            .ToHashSet();
     }
 }

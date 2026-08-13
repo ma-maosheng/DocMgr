@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace DocMgr.Models.NetworkTransfer
 {
     /// <summary>
-    /// 年度资料出网申请明细（勾选在网台账加工产出；不含介质字段）。
+    /// 年度资料出网申请明细（可手工录入；可选关联在网台账；不含介质字段）。
     /// </summary>
     [Table("NetworkOutboundItems")]
     public sealed class NetworkOutboundItem
@@ -16,13 +16,17 @@ namespace DocMgr.Models.NetworkTransfer
 
         public int SortOrder { get; set; }
 
-        public int OnNetAssetId { get; set; }
+        /// <summary>关联在网台账 Id；手工录入明细为 null。</summary>
+        public int? OnNetAssetId { get; set; }
 
         public string AssetNo { get; set; } = string.Empty;
 
         public string AssetKind { get; set; } = string.Empty;
 
         public string AssetName { get; set; } = string.Empty;
+
+        /// <summary>资料明细名称。</summary>
+        public string ItemName { get; set; } = string.Empty;
 
         public string ServerPath { get; set; } = string.Empty;
 

@@ -14,6 +14,7 @@ namespace DocMgr.Models.YearlyArchive
         public const string TypeInventoryRegisterDamage = "InventoryRegisterDamage";
         public const string TypeInventoryRegisterScrap = "InventoryRegisterScrap";
         public const string TypeDisposal = "Disposal";
+        public const string TypeNetworkInboundCopy = "NetworkInboundCopy";
 
         public const string SourceFilingFact = "FilingFact";
         public const string SourceRelocationItem = "RelocationItem";
@@ -21,6 +22,7 @@ namespace DocMgr.Models.YearlyArchive
         public const string SourceReturnItem = "ReturnItem";
         public const string SourceInventoryItem = "InventoryRegisterItem";
         public const string SourceDisposalItem = "DisposalItem";
+        public const string SourceNetworkInboundItem = "NetworkInboundItem";
 
         public const string ProcessNodeCategoryReservation = "Reservation";
         public const string ProcessNodeCategoryCancelled = "Cancelled";
@@ -37,6 +39,7 @@ namespace DocMgr.Models.YearlyArchive
             TypeInventoryRegisterDamage => "盘库登记(损坏)",
             TypeInventoryRegisterScrap => "盘库登记(拟销)",
             TypeDisposal => "资料离库处置",
+            TypeNetworkInboundCopy => "立档资料复制入网",
             _ => transactionType
         };
 

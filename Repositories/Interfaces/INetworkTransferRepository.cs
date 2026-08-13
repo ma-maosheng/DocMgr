@@ -9,6 +9,9 @@ namespace DocMgr.Repositories.Interfaces;
 /// </summary>
 public interface INetworkTransferRepository
 {
+    /// <summary>开启跨域出入网办结事务。</summary>
+    Task<IArchiveFilingRepositoryTransaction> BeginTransactionAsync();
+
     Task<List<NetworkInboundRecord>> SearchInboundRecordsAsync(string? keyword, int? status, int? applyYear);
 
     Task<NetworkInboundRecord?> GetInboundByIdAsync(int recordId, bool tracking = false);
@@ -16,6 +19,11 @@ public interface INetworkTransferRepository
     void AddInbound(NetworkInboundRecord record);
 
     void RemoveInboundItems(IEnumerable<NetworkInboundItem> items);
+
+    void RemoveInboundReturnHardDiskItems(IEnumerable<NetworkInboundReturnHardDiskItem> items);
+
+    /// <summary>替换入网申请关联的登记介质树（档外资料入网）。</summary>
+    Task ReplaceInboundMediaEntriesAsync(int inboundRecordId, IReadOnlyList<YearlyArchiveRegisterMedia> mediaEntries);
 
     Task<string?> GetLastInboundNoByPrefixAsync(string prefix);
 
@@ -43,6 +51,8 @@ public interface INetworkTransferRepository
 
     Task<NetworkOnNetAsset?> GetOnNetAssetByIdAsync(int assetId, bool tracking = false);
 
+    Task<NetworkOnNetAsset?> GetOnNetAssetByOriginInboundItemIdAsync(int inboundItemId, bool tracking = false);
+
     Task<List<NetworkOnNetAsset>> GetOnNetAssetsByIdsAsync(IReadOnlyCollection<int> assetIds, bool tracking = false);
 
     Task<List<NetworkOnNetAsset>> GetSelectableOutboundAssetsAsync(int? currentOutboundRecordId = null);
@@ -66,6 +76,14 @@ public interface INetworkTransferRepository
     void RemoveAttachment(SystemAttachment attachment);
 
     void AddRegisterRecord(YearlyArchiveRegisterRecord record);
+
+    Task<YearlyArchiveRegisterRecord?> GetRegisterBySourceOutboundRecordIdAsync(
+        int outboundRecordId,
+        bool tracking = false);
+
+    Task<HashSet<string>> GetExistingMaterialTransactionDedupKeysAsync(IEnumerable<string> dedupKeys);
+
+    void AddMaterialTransactions(IEnumerable<YearlyArchiveMaterialTransaction> transactions);
 
     Task SaveChangesAsync();
 }

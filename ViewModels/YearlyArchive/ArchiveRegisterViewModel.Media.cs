@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using DocMgr.Services.YearlyArchive;
 using System;
 using System.Collections.Specialized;
 using System.Collections.Generic;
@@ -19,6 +20,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly List<string> _allElectronicDispositionOptions = new();
         private readonly List<string> _electronicDocumentSubCategoryOptions = new();
         private readonly List<string> _electronicDataSubCategoryOptions = new();
+        private readonly List<string> _electronicSoftwareSubCategoryOptions = new();
 
         private bool _isSyncingElectronicMediaSettings;
 
@@ -33,6 +35,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             get => _selectedElectronicMediaType;
             set
             {
+                if (!_isSyncingElectronicMediaSettings
+                    && IsNetworkOutboundTransferRegister
+                    && !string.IsNullOrWhiteSpace(_selectedElectronicMediaType)
+                    && !string.Equals(value, _selectedElectronicMediaType, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
                 if (SetProperty(ref _selectedElectronicMediaType, value))
                 {
                     RefreshElectronicDispositionOptions();
@@ -47,6 +57,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             get => _selectedElectronicDisposition;
             set
             {
+                if (!_isSyncingElectronicMediaSettings
+                    && IsNetworkOutboundTransferRegister
+                    && !string.IsNullOrWhiteSpace(_selectedElectronicDisposition)
+                    && !string.Equals(value, _selectedElectronicDisposition, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
                 if (SetProperty(ref _selectedElectronicDisposition, value))
                 {
                     ApplySelectedElectronicMediaSettingsToEntries();
@@ -527,7 +545,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             ApplyOptions(SimulatedMediaKindOptions, domainOptions.SimulatedMediaKinds);
             ApplyOptions(DataItemTypeOptions, domainOptions.DataItemTypes);
             ApplyOptions(ProofItemTypeOptions, domainOptions.ProofItemTypes);
-            ApplyOptions(DataElectronicMediaTypeOptions, domainOptions.DataElectronicMediaTypes);
+            ApplyOptions(DataElectronicMediaTypeOptions,
+                ArchiveRegisterBusinessRules.FilterManualSelectableElectronicMediaTypes(domainOptions.DataElectronicMediaTypes));
             ApplyOptions(DataSimulatedMediaTypeOptions, domainOptions.DataSimulatedMediaTypes);
             ApplyOptions(ProofSimulatedMediaTypeOptions, domainOptions.ProofSimulatedMediaTypes);
             ApplyOptions(DataElectronicDispositionOptions, domainOptions.DataElectronicDispositions);
@@ -539,6 +558,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             _electronicDocumentSubCategoryOptions.AddRange(domainOptions.ElectronicDocumentSubCategories);
             _electronicDataSubCategoryOptions.Clear();
             _electronicDataSubCategoryOptions.AddRange(domainOptions.ElectronicDataSubCategories);
+            _electronicSoftwareSubCategoryOptions.Clear();
+            _electronicSoftwareSubCategoryOptions.AddRange(domainOptions.ElectronicSoftwareSubCategories);
             ApplyOptions(DataSimulatedDispositionOptions, domainOptions.DataSimulatedDispositions);
             ApplyOptions(ConfidentialLevelOptions, domainOptions.ConfidentialLevels);
             ApplyOptions(ProdOpinionOptions, domainOptions.ProdOpinionOptions);
@@ -629,9 +650,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             foreach (var media in MediaEntries.Where(m => IsDataElectronic(m)))
             {
                 media.MediaKind = ArchiveRegisterDomainValues.MediaKindElectronic;
-                media.MediaType = ResolveSelectedElectronicMediaType();
+                if (!IsNetworkOutboundTransferRegister)
+                {
+                    media.MediaType = ResolveSelectedElectronicMediaType();
+                    media.Disposition = ResolveSelectedElectronicDisposition();
+                }
+
                 media.SetAutoMediaCount(1);
-                media.Disposition = ResolveSelectedElectronicDisposition();
             }
 
             OnPropertyChanged(nameof(DataElectronicMediaCount));
@@ -764,7 +789,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ? _electronicDocumentSubCategoryOptions
                 : string.Equals(item.MaterialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategoryData, StringComparison.Ordinal)
                     ? _electronicDataSubCategoryOptions
-                    : Array.Empty<string>();
+                    : string.Equals(item.MaterialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftware, StringComparison.Ordinal)
+                        ? _electronicSoftwareSubCategoryOptions
+                        : Array.Empty<string>();
 
             item.AvailableSubCategories.Clear();
             foreach (var option in options)

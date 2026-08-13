@@ -16,10 +16,12 @@ public sealed partial class NetworkTransferService
         var record = await _repository.GetInboundByIdAsync(recordId)
             ?? throw new InvalidOperationException("未找到入网申请单。");
 
-        string serverPathName = record.Items
-            .Select(item => item.TargetServerPath?.Trim() ?? string.Empty)
-            .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path))
-            ?? string.Empty;
+        string serverPathName = !string.IsNullOrWhiteSpace(record.TargetServerPath)
+            ? record.TargetServerPath.Trim()
+            : record.Items
+                .Select(item => item.TargetServerPath?.Trim() ?? string.Empty)
+                .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path))
+                ?? string.Empty;
 
         string serverPhysicalPath = ResolveServerPhysicalPath(serverPathName);
 
@@ -30,6 +32,25 @@ public sealed partial class NetworkTransferService
     {
         var record = await _repository.GetInboundByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到入网申请单。");
+
+        record.PrintCount++;
+        record.LastPrintedAt = DateTime.Now;
+        record.UpdatedAt = DateTime.Now;
+        await _repository.SaveChangesAsync();
+    }
+
+    public async Task<NetworkOutboundPrintData> BuildOutboundPrintDataAsync(int recordId, bool blankApprovalSignatures)
+    {
+        var record = await _repository.GetOutboundByIdAsync(recordId)
+            ?? throw new InvalidOperationException("未找到出网申请单。");
+
+        return BuildOutboundPrintData(record, blankApprovalSignatures);
+    }
+
+    public async Task RecordOutboundPrintAsync(int recordId)
+    {
+        var record = await _repository.GetOutboundByIdAsync(recordId, tracking: true)
+            ?? throw new InvalidOperationException("未找到出网申请单。");
 
         record.PrintCount++;
         record.LastPrintedAt = DateTime.Now;
@@ -67,12 +88,16 @@ public sealed partial class NetworkTransferService
             ApplicantDept = record.ApplicantDept,
             YearText = record.Year?.Trim() ?? string.Empty,
             ProjectName = record.ProjectName?.Trim() ?? string.Empty,
+            MaterialName = record.MaterialName?.Trim() ?? string.Empty,
             SourceKindText = NetworkTransferDomainValues.NormalizeSourceKind(record.SourceKind),
+            ProvideUnitText = NetworkTransferDomainValues.ResolveInboundProvideUnit(record.SourceKind, record.ProvideUnit),
             Reason = record.Reason?.Trim() ?? string.Empty,
+            OtherRequests = record.OtherRequests?.Trim() ?? string.Empty,
             ProofMaterialNote = proofMaterial,
+            ReturnBorrowedHardDiskText = NetworkInboundReturnHardDiskPrintSupport.BuildReturnHardDiskDescription(record) ?? string.Empty,
             ServerPath = string.IsNullOrWhiteSpace(serverPathName) ? "(未指定)" : serverPathName,
             ServerPhysicalPath = serverPhysicalPath,
-            ItemLines = NetworkInboundItemPrintSupport.BuildItemLines(record.Items, record.SourceKind).ToList(),
+            ItemLines = NetworkInboundItemPrintSupport.BuildItemLines(record).ToList(),
             DeptLeaderBlock = BuildApprovalBlock(
                 blankApprovalSignatures ? string.Empty : record.DeptLeader,
                 blankApprovalSignatures ? BlankDateText : FormatDate(record.DeptDate)),
@@ -104,6 +129,72 @@ public sealed partial class NetworkTransferService
         "资料员签字：                                           日期:______年___月___日";
 
     private static string BuildFilledInboundHandoverSignatureBlock(NetworkInboundRecord record)
+    {
+        string deliverer = string.IsNullOrWhiteSpace(record.Deliverer) ? "________________" : record.Deliverer.Trim();
+        string administrator = string.IsNullOrWhiteSpace(record.Administrator) ? "________________" : record.Administrator.Trim();
+        string deliverDate = FormatDate(record.DeliverDate);
+        string adminDate = FormatDate(record.AdminDate);
+
+        return $"移交人签字：{deliverer}    日期：{deliverDate}\n" +
+               $"资料员签字：{administrator}    日期：{adminDate}";
+    }
+
+    private static NetworkOutboundPrintData BuildOutboundPrintData(
+        NetworkOutboundRecord record,
+        bool blankApprovalSignatures)
+    {
+        if (record.Status < NetworkOutboundRecord.StatusSubmitted)
+        {
+            throw new InvalidOperationException("请先提交申请后再打印。");
+        }
+
+        string applyDate = record.ApplyTime == default
+            ? string.Empty
+            : record.ApplyTime.ToString("yyyy-MM-dd");
+
+        string proofMaterial = ArchiveRegisterDomainValues.HasProofMaterial(record.ProofMaterialNote)
+            ? record.ProofMaterialNote.Trim()
+            : ArchiveRegisterDomainValues.ProofMaterialNoneText;
+
+        // 办结前交接签字留白；已办结预填。
+        bool blankHandover = record.Status != NetworkOutboundRecord.StatusCompleted;
+
+        return new NetworkOutboundPrintData
+        {
+            OutboundNo = record.OutboundNo,
+            ApplyDateText = applyDate,
+            ApplicantName = record.ApplicantName,
+            ApplicantDept = record.ApplicantDept,
+            YearText = record.Year?.Trim() ?? string.Empty,
+            ProjectName = record.ProjectName?.Trim() ?? string.Empty,
+            DestinationKindText = record.DestinationKind?.Trim() ?? string.Empty,
+            Reason = record.Reason?.Trim() ?? string.Empty,
+            ProofMaterialNote = proofMaterial,
+            ItemLines = NetworkOutboundItemPrintSupport.BuildItemLines(record.Items).ToList(),
+            DeptLeaderBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.DeptLeader,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.DeptDate)),
+            ProdLeaderBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.ProdLeader,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.ProdDate)),
+            RndLeaderBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.RndLeader,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.RndDate)),
+            DeputyLeaderBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.DeputyLeader,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.DeputyDate)),
+            HandoverSignatureBlock = blankHandover
+                ? BuildBlankOutboundHandoverSignatureBlock()
+                : BuildFilledOutboundHandoverSignatureBlock(record),
+            PrintCount = record.PrintCount
+        };
+    }
+
+    private static string BuildBlankOutboundHandoverSignatureBlock() =>
+        "移交人签字：                                            日期:______年___月___日\n" +
+        "资料员签字：                                           日期:______年___月___日";
+
+    private static string BuildFilledOutboundHandoverSignatureBlock(NetworkOutboundRecord record)
     {
         string deliverer = string.IsNullOrWhiteSpace(record.Deliverer) ? "________________" : record.Deliverer.Trim();
         string administrator = string.IsNullOrWhiteSpace(record.Administrator) ? "________________" : record.Administrator.Trim();

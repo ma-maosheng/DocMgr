@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
@@ -14,6 +15,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveFilingSearchService _searchService;
         private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly IArchiveOutboundService _outboundService;
+        private readonly INetworkTransferService _networkTransferService;
         private readonly IUserContextService _userContextService;
         private readonly IDialogService _dialogService;
         private string _mediaKind;
@@ -34,11 +36,14 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public event Action<int>? CreateOutboundRequested;
 
+        public event Action<int>? CreateInboundRequested;
+
         public ArchiveFilingSearchPoolViewModel(
             string mediaKind,
             IArchiveFilingSearchService searchService,
             IArchiveRegisterService archiveRegisterService,
             IArchiveOutboundService outboundService,
+            INetworkTransferService networkTransferService,
             IUserContextService userContextService,
             IDialogService dialogService)
         {
@@ -46,6 +51,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _searchService = searchService;
             _archiveRegisterService = archiveRegisterService;
             _outboundService = outboundService;
+            _networkTransferService = networkTransferService;
             _userContextService = userContextService;
             _dialogService = dialogService;
 
@@ -72,6 +78,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 async _ => await CreateOutboundFromPoolAsync(),
                 _ => SelectedPool != null
                      && PoolItems.Count > 0
+                     && _outboundService.CanSubmitApplication(_userContextService.CurrentUser));
+            CreateInboundFromPoolCommand = new RelayCommand(
+                async _ => await CreateInboundFromPoolAsync(),
+                _ => !IsSimulatedMediaPool
+                     && SelectedPool != null
+                     && PoolItems.Count > 0
+                     && IsReusableForBusiness(SelectedPool.Status)
                      && _outboundService.CanSubmitApplication(_userContextService.CurrentUser));
 
             StatusFilterOptions =
@@ -215,6 +228,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand ViewDetailCommand { get; }
 
         public RelayCommand CreateOutboundFromPoolCommand { get; }
+
+        public RelayCommand CreateInboundFromPoolCommand { get; }
 
         public async Task InitializeAsync()
         {
@@ -514,6 +529,54 @@ namespace DocMgr.ViewModels.YearlyArchive
             return user;
         }
 
+        private async Task CreateInboundFromPoolAsync()
+        {
+            if (SelectedPool == null || IsSimulatedMediaPool)
+            {
+                return;
+            }
+
+            var user = _userContextService.CurrentUser;
+            if (user == null)
+            {
+                _dialogService.ShowError("请先登录。");
+                return;
+            }
+
+            var selectedItemIds = PoolItems
+                .Where(item => item.IsSelected)
+                .Select(item => item.ResultSetItemId)
+                .ToList();
+            if (selectedItemIds.Count == 0)
+            {
+                selectedItemIds = PoolItems.Select(item => item.ResultSetItemId).ToList();
+            }
+
+            try
+            {
+                var items = await _networkTransferService.BuildInboundItemsFromElectronicSearchAsync(
+                    SelectedPool.Id,
+                    selectedItemIds);
+                var record = await _networkTransferService.CreateInboundDraftAsync(
+                    new NetworkInboundRecord
+                    {
+                        SourceKind = NetworkTransferDomainValues.SourceKindArchivedElectronicSearch,
+                        ProvideUnit = NetworkTransferDomainValues.InboundProvideUnitArchiveRoom,
+                        SourceResultSetId = SelectedPool.Id,
+                        SourceResultSetNo = SelectedPool.ResultSetNo,
+                        Reason = $"由电子检索池 {SelectedPool.ResultSetNo} 发起立档资料入网。"
+                    },
+                    items,
+                    user);
+
+                CreateInboundRequested?.Invoke(record.Id);
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"发起入网申请失败：{ex.Message}");
+            }
+        }
+
         private async Task CreateOutboundFromPoolAsync()
         {
             if (SelectedPool == null)
@@ -583,6 +646,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _dialogService.ShowError($"发起借出申请失败：{ex.Message}");
             }
         }
+
+        private static bool IsReusableForBusiness(string status) =>
+            string.Equals(status, ArchiveSearchResultSetStatus.Confirmed, StringComparison.Ordinal)
+            || string.Equals(status, ArchiveSearchResultSetStatus.Referenced, StringComparison.Ordinal);
 
         private static string MapLifecycleStatus(string status) => status switch
         {

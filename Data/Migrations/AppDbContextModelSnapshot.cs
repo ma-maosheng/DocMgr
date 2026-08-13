@@ -1222,6 +1222,107 @@ namespace DocMgr.Data.Migrations
                     b.ToTable("TopoMaps");
                 });
 
+            modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkArchiveBusinessChain", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ChainNo")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PrimaryBusinessId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PrimaryBusinessType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ScenarioKind")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StatusSummary")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChainNo")
+                        .IsUnique();
+
+                    b.HasIndex("ScenarioKind");
+
+                    b.HasIndex("PrimaryBusinessType", "PrimaryBusinessId");
+
+                    b.ToTable("NetworkArchiveBusinessChains");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkArchiveBusinessTask", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("BusinessChainId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BusinessId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BusinessNo")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BusinessType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DedupKey")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ResultMessage")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TaskKind")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessChainId");
+
+                    b.HasIndex("DedupKey")
+                        .IsUnique();
+
+                    b.HasIndex("BusinessType", "BusinessId");
+
+                    b.ToTable("NetworkArchiveBusinessTasks");
+                });
+
             modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkInboundItem", b =>
                 {
                     b.Property<int>("Id")
@@ -1331,6 +1432,9 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("ApprovedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("BusinessChainId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("TEXT");
 
@@ -1372,6 +1476,18 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("LastPrintedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("MaterialName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MaterialPath")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OtherRequests")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("PrintCount")
                         .HasColumnType("INTEGER");
 
@@ -1390,6 +1506,10 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ProvideUnit")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1397,6 +1517,9 @@ namespace DocMgr.Data.Migrations
                     b.Property<string>("Remark")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("ReturnBorrowedHardDiskWithInbound")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("RndDate")
                         .HasColumnType("TEXT");
@@ -1432,6 +1555,10 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("SubmittedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("TargetServerPath")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
 
@@ -1450,6 +1577,8 @@ namespace DocMgr.Data.Migrations
 
                     b.HasIndex("ApplyTime");
 
+                    b.HasIndex("BusinessChainId");
+
                     b.HasIndex("InboundNo")
                         .IsUnique();
 
@@ -1458,6 +1587,50 @@ namespace DocMgr.Data.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("NetworkInboundRecords");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkInboundReturnHardDiskItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DiskCode")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("InboundRecordId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MediumId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("SourceApplicationId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("SourceOutboundRecordId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TargetBlankSlotLocation")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InboundRecordId");
+
+                    b.HasIndex("MediumId");
+
+                    b.HasIndex("InboundRecordId", "MediumId")
+                        .IsUnique();
+
+                    b.ToTable("NetworkInboundReturnHardDiskItems");
                 });
 
             modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkOnNetAsset", b =>
@@ -1543,7 +1716,9 @@ namespace DocMgr.Data.Migrations
 
                     b.HasIndex("LifecycleStatus");
 
-                    b.HasIndex("OriginInboundItemId");
+                    b.HasIndex("OriginInboundItemId")
+                        .IsUnique()
+                        .HasFilter("[OriginInboundItemId] IS NOT NULL");
 
                     b.HasIndex("OriginKind");
 
@@ -1751,7 +1926,11 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("OnNetAssetId")
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("OnNetAssetId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("OutboundRecordId")
@@ -1814,6 +1993,9 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("ApprovedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("BusinessChainId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("TEXT");
 
@@ -1873,6 +2055,10 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ProofMaterialNote")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1928,6 +2114,8 @@ namespace DocMgr.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ApplyTime");
+
+                    b.HasIndex("BusinessChainId");
 
                     b.HasIndex("OutboundNo")
                         .IsUnique();
@@ -3984,10 +4172,15 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("YearlyArchiveRegisterRecordId")
+                    b.Property<int?>("NetworkInboundRecordId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("YearlyArchiveRegisterRecordId")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("NetworkInboundRecordId");
 
                     b.HasIndex("YearlyArchiveRegisterRecordId");
 
@@ -4063,6 +4256,9 @@ namespace DocMgr.Data.Migrations
 
                     b.Property<DateTime?>("ArchivedDate")
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("BusinessChainId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("TEXT");
@@ -4146,6 +4342,13 @@ namespace DocMgr.Data.Migrations
                     b.Property<int>("SimulatedArchiveStatus")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("SourceNetworkOutboundNo")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SourceNetworkOutboundRecordId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("SourceType")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -4155,8 +4358,14 @@ namespace DocMgr.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BusinessChainId");
+
                     b.HasIndex("FormNo")
                         .IsUnique();
+
+                    b.HasIndex("SourceNetworkOutboundRecordId")
+                        .IsUnique()
+                        .HasFilter("[SourceNetworkOutboundRecordId] IS NOT NULL");
 
                     b.ToTable("YearlyArchiveRegisterRecords");
                 });
@@ -5052,10 +5261,42 @@ namespace DocMgr.Data.Migrations
                     b.Navigation("Medium");
                 });
 
+            modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkArchiveBusinessTask", b =>
+                {
+                    b.HasOne("DocMgr.Models.NetworkTransfer.NetworkArchiveBusinessChain", "BusinessChain")
+                        .WithMany("Tasks")
+                        .HasForeignKey("BusinessChainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BusinessChain");
+                });
+
             modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkInboundItem", b =>
                 {
                     b.HasOne("DocMgr.Models.NetworkTransfer.NetworkInboundRecord", "InboundRecord")
                         .WithMany("Items")
+                        .HasForeignKey("InboundRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InboundRecord");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkInboundRecord", b =>
+                {
+                    b.HasOne("DocMgr.Models.NetworkTransfer.NetworkArchiveBusinessChain", "BusinessChain")
+                        .WithMany()
+                        .HasForeignKey("BusinessChainId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("BusinessChain");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkInboundReturnHardDiskItem", b =>
+                {
+                    b.HasOne("DocMgr.Models.NetworkTransfer.NetworkInboundRecord", "InboundRecord")
+                        .WithMany("ReturnHardDiskItems")
                         .HasForeignKey("InboundRecordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -5087,8 +5328,7 @@ namespace DocMgr.Data.Migrations
                     b.HasOne("DocMgr.Models.NetworkTransfer.NetworkOnNetAsset", "OnNetAsset")
                         .WithMany()
                         .HasForeignKey("OnNetAssetId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("DocMgr.Models.NetworkTransfer.NetworkOutboundRecord", "OutboundRecord")
                         .WithMany("Items")
@@ -5099,6 +5339,16 @@ namespace DocMgr.Data.Migrations
                     b.Navigation("OnNetAsset");
 
                     b.Navigation("OutboundRecord");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkOutboundRecord", b =>
+                {
+                    b.HasOne("DocMgr.Models.NetworkTransfer.NetworkArchiveBusinessChain", "BusinessChain")
+                        .WithMany()
+                        .HasForeignKey("BusinessChainId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("BusinessChain");
                 });
 
             modelBuilder.Entity("DocMgr.Models.OpticalDiscMedia.OpticalDiscLedger", b =>
@@ -5232,11 +5482,17 @@ namespace DocMgr.Data.Migrations
 
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterMedia", b =>
                 {
+                    b.HasOne("DocMgr.Models.NetworkTransfer.NetworkInboundRecord", "NetworkInboundRecord")
+                        .WithMany("MediaEntries")
+                        .HasForeignKey("NetworkInboundRecordId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterRecord", "RegisterRecord")
                         .WithMany("MediaEntries")
                         .HasForeignKey("YearlyArchiveRegisterRecordId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("NetworkInboundRecord");
 
                     b.Navigation("RegisterRecord");
                 });
@@ -5250,6 +5506,16 @@ namespace DocMgr.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("MediaEntry");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterRecord", b =>
+                {
+                    b.HasOne("DocMgr.Models.NetworkTransfer.NetworkArchiveBusinessChain", "BusinessChain")
+                        .WithMany()
+                        .HasForeignKey("BusinessChainId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("BusinessChain");
                 });
 
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveRelocationItem", b =>
@@ -5414,9 +5680,18 @@ namespace DocMgr.Data.Migrations
                     b.Navigation("Transactions");
                 });
 
+            modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkArchiveBusinessChain", b =>
+                {
+                    b.Navigation("Tasks");
+                });
+
             modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkInboundRecord", b =>
                 {
                     b.Navigation("Items");
+
+                    b.Navigation("MediaEntries");
+
+                    b.Navigation("ReturnHardDiskItems");
                 });
 
             modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkOnNetDisposalRecord", b =>

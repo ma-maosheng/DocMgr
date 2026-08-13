@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-08-11T08:43:10Z
+> 生成时间（UTC）：2026-08-13T03:07:20Z
 
 ## 表索引
 
@@ -42,8 +42,11 @@ alwaysApply: true
 | 硬盘出入库流水 | `HardDiskMediaTransaction` | `HardDiskMediaTransactions` | 表 |
 | 硬盘介质 | `HardDiskMedium` | `HardDiskMedia` | 表 |
 | 硬盘登记锁 | `HardDiskRegisterLock` | `HardDiskRegisterLocks` | 表 |
+| 跨域业务链 | `NetworkArchiveBusinessChain` | `NetworkArchiveBusinessChains` | 表 |
+| 跨域业务执行任务 | `NetworkArchiveBusinessTask` | `NetworkArchiveBusinessTasks` | 表 |
 | 入网申请明细 | `NetworkInboundItem` | `NetworkInboundItems` | 表 |
 | 入网申请单 | `NetworkInboundRecord` | `NetworkInboundRecords` | 表 |
+| NetworkInboundReturnHardDiskItem | `NetworkInboundReturnHardDiskItem` | `NetworkInboundReturnHardDiskItems` | 表 |
 | 在网台账 | `NetworkOnNetAsset` | `NetworkOnNetAssets` | 表 |
 | 在网数据处置明细 | `NetworkOnNetDisposalItem` | `NetworkOnNetDisposalItems` | 表 |
 | 在网数据处置单 | `NetworkOnNetDisposalRecord` | `NetworkOnNetDisposalRecords` | 表 |
@@ -482,6 +485,35 @@ alwaysApply: true
 | 占用前状态 | `PreviousStatus` | `String` | 否 |
 | 锁定时间 | `LockedTime` | `DateTime` | 否 |
 
+### NetworkArchiveBusinessChain（跨域业务链）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 业务链编号 | `ChainNo` | `String` | 否 |
+| 业务场景 | `ScenarioKind` | `String` | 否 |
+| 主单类型 | `PrimaryBusinessType` | `String` | 否 |
+| 主单ID | `PrimaryBusinessId` | `Int32` | 否 |
+| 进度摘要 | `StatusSummary` | `String` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 更新时间 | `UpdatedAt` | `DateTime` | 否 |
+
+### NetworkArchiveBusinessTask（跨域业务执行任务）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 跨域业务链ID | `BusinessChainId` | `Int32` | 否 |
+| 任务类型 | `TaskKind` | `String` | 否 |
+| 关联业务类型 | `BusinessType` | `String` | 否 |
+| 关联业务ID | `BusinessId` | `Int32?` | 否 |
+| 关联业务编号 | `BusinessNo` | `String` | 否 |
+| 任务状态 | `Status` | `String` | 否 |
+| 去重键 | `DedupKey` | `String` | 否 |
+| 执行结果 | `ResultMessage` | `String` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 更新时间 | `UpdatedAt` | `DateTime` | 否 |
+
 ### NetworkInboundItem（入网申请明细）
 
 | 中文字段 | Property | CLR 类型 | 待补全 |
@@ -513,13 +545,20 @@ alwaysApply: true
 | 入网单编号 | `InboundNo` | `String` | 否 |
 | 状态 | `Status` | `Int32` | 否 |
 | 来源类别 | `SourceKind` | `String` | 否 |
+| 提供部门（单位） | `ProvideUnit` | `String` | 否 |
+| 目标服务器路径 | `TargetServerPath` | `String` | 否 |
+| 资料路径 | `MaterialPath` | `String` | 否 |
+| 资料名称 | `MaterialName` | `String` | 否 |
 | 项目名称 | `ProjectName` | `String` | 否 |
 | 未映射字段 | `Year` | `String` | 是 |
 | 未映射字段 | `Reason` | `String` | 是 |
+| 其他要求 | `OtherRequests` | `String` | 否 |
 | 备注 | `Remark` | `String` | 否 |
 | 证明材料备注 | `ProofMaterialNote` | `String` | 否 |
+| 未映射字段 | `ReturnBorrowedHardDiskWithInbound` | `Boolean` | 是 |
 | 未映射字段 | `SourceResultSetId` | `Int32?` | 是 |
 | 未映射字段 | `SourceResultSetNo` | `String` | 是 |
+| 跨域业务链ID | `BusinessChainId` | `Int32?` | 否 |
 | 未映射字段 | `ApplicantUserId` | `Int32` | 是 |
 | 申请人 | `ApplicantName` | `String` | 否 |
 | 申请部门 | `ApplicantDept` | `String` | 否 |
@@ -550,6 +589,20 @@ alwaysApply: true
 | 未映射字段 | `LastPrintedAt` | `DateTime?` | 是 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 未映射字段 | `UpdatedAt` | `DateTime` | 是 |
+
+### NetworkInboundReturnHardDiskItem（NetworkInboundReturnHardDiskItem）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 未映射字段 | `InboundRecordId` | `Int32` | 是 |
+| 未映射字段 | `SortOrder` | `Int32` | 是 |
+| 未映射字段 | `MediumId` | `Int32` | 是 |
+| 未映射字段 | `DiskCode` | `String` | 是 |
+| 未映射字段 | `SourceApplicationId` | `Int32?` | 是 |
+| 未映射字段 | `SourceOutboundRecordId` | `Int32?` | 是 |
+| 未映射字段 | `TargetBlankSlotLocation` | `String` | 是 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
 
 ### NetworkOnNetAsset（在网台账）
 
@@ -633,10 +686,11 @@ alwaysApply: true
 | ID | `Id` | `Int32` | 否 |
 | 未映射字段 | `OutboundRecordId` | `Int32` | 是 |
 | 未映射字段 | `SortOrder` | `Int32` | 是 |
-| 未映射字段 | `OnNetAssetId` | `Int32` | 是 |
+| 在网台账ID | `OnNetAssetId` | `Int32?` | 否 |
 | 未映射字段 | `AssetNo` | `String` | 是 |
 | 未映射字段 | `AssetKind` | `String` | 是 |
 | 未映射字段 | `AssetName` | `String` | 是 |
+| 资料明细 | `ItemName` | `String` | 否 |
 | 未映射字段 | `ServerPath` | `String` | 是 |
 | 密级 | `ConfidentialLevel` | `String` | 否 |
 | 未映射字段 | `DataSizeText` | `String` | 是 |
@@ -656,8 +710,10 @@ alwaysApply: true
 | 未映射字段 | `Year` | `String` | 是 |
 | 未映射字段 | `Reason` | `String` | 是 |
 | 备注 | `Remark` | `String` | 否 |
+| 证明材料备注 | `ProofMaterialNote` | `String` | 否 |
 | 目标建档申请ID | `TargetRegisterRecordId` | `Int32?` | 否 |
 | 目标建档表单编号 | `TargetRegisterFormNo` | `String` | 否 |
+| 跨域业务链ID | `BusinessChainId` | `Int32?` | 否 |
 | 未映射字段 | `ApplicantUserId` | `Int32` | 是 |
 | 申请人 | `ApplicantName` | `String` | 否 |
 | 申请部门 | `ApplicantDept` | `String` | 否 |
@@ -1261,7 +1317,8 @@ alwaysApply: true
 | 中文字段 | Property | CLR 类型 | 待补全 |
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
-| 登记记录ID | `YearlyArchiveRegisterRecordId` | `Int32` | 否 |
+| 登记记录ID | `YearlyArchiveRegisterRecordId` | `Int32?` | 否 |
+| 入网申请单ID | `NetworkInboundRecordId` | `Int32?` | 否 |
 | 载体分类 | `MediaKind` | `String` | 否 |
 | 载体名称 | `MediaType` | `String` | 否 |
 | 载体数量 | `MediaCount` | `Int32` | 否 |
@@ -1288,6 +1345,9 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 表单编号 | `FormNo` | `String` | 否 |
+| 来源出网申请ID | `SourceNetworkOutboundRecordId` | `Int32?` | 否 |
+| 来源出网申请编号 | `SourceNetworkOutboundNo` | `String` | 否 |
+| 跨域业务链ID | `BusinessChainId` | `Int32?` | 否 |
 | 状态 | `Status` | `Int32` | 否 |
 | 创建日期 | `CreatedDate` | `DateTime` | 否 |
 | 归档日期 | `ArchivedDate` | `DateTime?` | 否 |

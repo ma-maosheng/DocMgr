@@ -5,7 +5,7 @@ using DocMgr.Models.Shared;
 namespace DocMgr.Models.NetworkTransfer
 {
     /// <summary>
-    /// 年度资料出网申请单。明细仅可选加工产出在网对象；不跟踪中间过程介质。
+    /// 年度资料出网申请单。明细可手工录入，不强制关联在网台账；不跟踪中间过程介质。
     /// </summary>
     [Table("NetworkOutboundRecords")]
     public sealed class NetworkOutboundRecord
@@ -36,10 +36,16 @@ namespace DocMgr.Models.NetworkTransfer
 
         public string Remark { get; set; } = string.Empty;
 
+        /// <summary>证明材料备注；「无」表示未附，有材料时填写名称。</summary>
+        public string ProofMaterialNote { get; set; } = string.Empty;
+
         /// <summary>目的地=资料室立档时，办结后写入的建档草稿 Id。</summary>
         public int? TargetRegisterRecordId { get; set; }
 
         public string TargetRegisterFormNo { get; set; } = string.Empty;
+
+        /// <summary>跨域业务链 Id；用于关联出网、在网台账和后续建档申请。</summary>
+        public int? BusinessChainId { get; set; }
 
         public int ApplicantUserId { get; set; }
 
@@ -103,6 +109,8 @@ namespace DocMgr.Models.NetworkTransfer
 
         public ICollection<NetworkOutboundItem> Items { get; set; } = new List<NetworkOutboundItem>();
 
+        public NetworkArchiveBusinessChain? BusinessChain { get; set; }
+
         [NotMapped]
         public string StatusDisplay => NetworkTransferDomainValues.ToStatusDisplay(Status);
 
@@ -114,5 +122,11 @@ namespace DocMgr.Models.NetworkTransfer
 
         [NotMapped]
         public bool IsCompleted => Status == StatusCompleted;
+
+        [NotMapped]
+        public string BusinessChainProgressDisplay =>
+            BusinessChain == null
+                ? "关联业务链：待建立"
+                : $"关联业务链 {BusinessChain.ChainNo} · {BusinessChain.StatusSummary}";
     }
 }

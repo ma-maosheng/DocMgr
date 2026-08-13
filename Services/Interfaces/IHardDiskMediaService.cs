@@ -77,6 +77,22 @@ namespace DocMgr.Services.Interfaces
         Task<string> ResolveReturnSourceApplicationNoAsync(int? sourceApplicationId, int? sourceOutboundRecordId);
 
         /// <summary>
+        /// 获取指定申请人名下仍处于借出（临时/长期）且未被占用锁占用的借出硬盘归还候选。
+        /// </summary>
+        Task<IReadOnlyList<HardDiskMediaReturnCandidate>> GetBorrowedHardDiskReturnCandidatesForUserAsync(User? user);
+
+        /// <summary>
+        /// 资料入网办结后，由资料室管理员代办办结借出硬盘空盘归还登记（不走部门管理员申请流程）。
+        /// </summary>
+        Task CompleteBlankReturnFromNetworkInboundAsync(
+            HardDiskMediaReturnCandidate candidate,
+            string targetBlankSlotLocation,
+            string inboundNo,
+            string projectName,
+            User currentUser,
+            DateTime completedAt);
+
+        /// <summary>
         /// 获取「年度资料登记」中资料室借出硬盘随资料归档归还场景下，指定申请人当前名下仍可用于新登记申请的借出硬盘介质编号列表（仅限临时/长期出库，排除已被占用锁占用的硬盘），按 DiskCode 返回。
         /// </summary>
         Task<IReadOnlyList<string>> GetCurrentUserBorrowedHardDiskCodesAsync(User? user);

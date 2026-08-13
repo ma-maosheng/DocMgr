@@ -973,6 +973,83 @@ namespace DocMgr.Services.YearlyArchive
             }
         }
 
+        public async Task ApplyDefaultNetworkOutboundApprovalInfoAsync(NetworkOutboundRecord record, User currentUser)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            ArgumentNullException.ThrowIfNull(currentUser);
+
+            if (!IsArchiveAdminUser(currentUser))
+            {
+                throw new InvalidOperationException("仅资料室（资料管理员）可执行该操作。");
+            }
+
+            var users = await _archiveRegisterRepository.GetUsersAsync();
+            var now = DateTime.Now;
+
+            var deptLeader = FindUserByDeptAndRole(users, record.ApplicantDept, "部门负责人");
+            if (string.IsNullOrWhiteSpace(record.DeptLeader) && !string.IsNullOrWhiteSpace(deptLeader))
+            {
+                record.DeptLeader = deptLeader;
+            }
+
+            if (!record.DeptDate.HasValue)
+            {
+                record.DeptDate = now;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.ProdLeader))
+            {
+                record.ProdLeader = FindUserByRoleOrDept(users, "生产管理科");
+            }
+
+            if (!record.ProdDate.HasValue)
+            {
+                record.ProdDate = now;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.RndLeader))
+            {
+                record.RndLeader = FindUserByRoleOrDept(users, "资料室");
+            }
+
+            if (!record.RndDate.HasValue)
+            {
+                record.RndDate = now;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.DeputyLeader))
+            {
+                record.DeputyLeader = FindUserByRoleOrDept(
+                    users,
+                    NetworkTransferDomainValues.ResolveOutboundDeputyLeaderRole(record.DestinationKind));
+            }
+
+            if (!record.DeputyDate.HasValue)
+            {
+                record.DeputyDate = now;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.Deliverer))
+            {
+                record.Deliverer = record.ApplicantName;
+            }
+
+            if (!record.DeliverDate.HasValue)
+            {
+                record.DeliverDate = now;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.Administrator))
+            {
+                record.Administrator = currentUser.RealName;
+            }
+
+            if (!record.AdminDate.HasValue)
+            {
+                record.AdminDate = now;
+            }
+        }
+
         public async Task ApplyDefaultOutboundApprovalInfoAsync(YearlyArchiveOutboundRecord record, User currentUser)
         {
             ArgumentNullException.ThrowIfNull(record);
@@ -1041,6 +1118,7 @@ namespace DocMgr.Services.YearlyArchive
             var errors = new List<string>();
             var entries = mediaEntries?.ToList() ?? new List<YearlyArchiveRegisterMedia>();
             var sourceType = string.IsNullOrWhiteSpace(record.SourceType) ? string.Empty : record.SourceType.Trim();
+            bool isNetworkOutboundTransfer = ArchiveRegisterBusinessRules.IsNetworkOutboundTransferRegister(record);
 
             var pageDomainOptions = await GetPageDomainOptionsAsync();
 
@@ -1053,8 +1131,16 @@ namespace DocMgr.Services.YearlyArchive
 
             if (string.IsNullOrWhiteSpace(record.FormNo)) errors.Add("• 表单编号未生成");
             if (string.IsNullOrWhiteSpace(record.MaterialName)) errors.Add("• 资料名称未填写");
-            if (!IsAllowedDomainValue(sourceType, sourceTypeOptions))
+            if (!IsAllowedDomainValue(sourceType, sourceTypeOptions)
+                && !(isNetworkOutboundTransfer
+                     && string.Equals(sourceType, NetworkTransferDomainValues.RegisterSourceTypeNetworkOutbound, StringComparison.Ordinal)))
                 errors.Add($"• 资料来源不在域值定义中（允许值：{string.Join("、", sourceTypeOptions)}）");
+
+            if (isNetworkOutboundTransfer
+                && !string.Equals(sourceType, NetworkTransferDomainValues.RegisterSourceTypeNetworkOutbound, StringComparison.Ordinal))
+            {
+                errors.Add("• 出网转入建档申请的资料来源不可修改");
+            }
 
             record.ProofMaterialNote = ArchiveRegisterDomainValues.NormalizeProofMaterialNote(record.ProofMaterialNote);
 
@@ -1094,6 +1180,32 @@ namespace DocMgr.Services.YearlyArchive
                     {
                         if (!IsAllowedDomainValue(media.MediaType, dataElectronicMediaTypeOptions))
                             errors.Add($"• 第{seq}条电子介质类型不在域值定义中（允许值：{string.Join("、", dataElectronicMediaTypeOptions)}）");
+
+                        bool isInnerNetworkMedia = string.Equals(
+                            media.MediaType?.Trim(),
+                            ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork,
+                            StringComparison.Ordinal);
+                        if (isInnerNetworkMedia && !isNetworkOutboundTransfer)
+                        {
+                            errors.Add("• 「内网」介质类型仅允许出网转入建档使用，请通过出网申请（资料室立档）发起");
+                        }
+
+                        if (isNetworkOutboundTransfer)
+                        {
+                            if (!isInnerNetworkMedia)
+                            {
+                                errors.Add($"• 出网转入建档申请的第{seq}条电子介质类型须为「{ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork}」");
+                            }
+
+                            if (!string.Equals(
+                                    media.Disposition?.Trim(),
+                                    ArchiveRegisterDomainValues.ElectronicDispositionNone,
+                                    StringComparison.Ordinal))
+                            {
+                                errors.Add($"• 出网转入建档申请的第{seq}条电子处置方式须为「{ArchiveRegisterDomainValues.ElectronicDispositionNone}」");
+                            }
+                        }
+
                         if (!string.IsNullOrWhiteSpace(media.Disposition) && !IsAllowedDomainValue(media.Disposition, dataElectronicDispositionOptions))
                             errors.Add($"• 第{seq}条电子处置方式不在域值定义中（允许值：{string.Join("、", dataElectronicDispositionOptions)}）");
                         if (media.MediaCount != 1)

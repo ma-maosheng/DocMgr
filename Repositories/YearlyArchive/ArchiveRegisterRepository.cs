@@ -250,7 +250,7 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
         var medias = existingRecord?.MediaEntries ?? record.MediaEntries ?? new List<YearlyArchiveRegisterMedia>();
         foreach (var media in medias)
         {
-            if (media.YearlyArchiveRegisterRecordId == 0)
+            if (!media.YearlyArchiveRegisterRecordId.HasValue || media.YearlyArchiveRegisterRecordId.Value <= 0)
             {
                 media.YearlyArchiveRegisterRecordId = recordId;
                 needsFix = true;
@@ -467,7 +467,8 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
     {
         return _dbContext.YearlyElectronicArchiveUnitMediaLinks
             .AsNoTracking()
-            .Where(link => link.MediaEntry != null && link.MediaEntry.YearlyArchiveRegisterRecordId == registerRecordId)
+            .Where(link => link.MediaEntry != null
+                           && link.MediaEntry.YearlyArchiveRegisterRecordId == registerRecordId)
             .Select(link => link.YearlyElectronicArchiveUnitId)
             .Distinct()
             .ToListAsync();

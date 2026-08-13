@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
+using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.Shared;
 
 namespace DocMgr.Models.YearlyArchive
@@ -37,6 +38,17 @@ namespace DocMgr.Models.YearlyArchive
         /// 申请单编号
         /// </summary>
         public string FormNo { get; set; } = string.Empty;
+
+        /// <summary>来源出网申请单 Id；非出网转入草稿时为空。</summary>
+        public int? SourceNetworkOutboundRecordId { get; set; }
+
+        /// <summary>来源出网申请单编号快照。</summary>
+        public string SourceNetworkOutboundNo { get; set; } = string.Empty;
+
+        /// <summary>跨域业务链 Id；用于从建档申请反查来源出网业务。</summary>
+        public int? BusinessChainId { get; set; }
+
+        public NetworkArchiveBusinessChain? BusinessChain { get; set; }
 
         /// <summary>
         /// 状态

@@ -9,7 +9,8 @@
     </Grid.RowDefinitions>
     <Border Style="{StaticResource ToolbarCardBorderStyle}" Padding="16,12">
       <StackPanel Orientation="Horizontal">
-        <Button Content="新增申请" Command="{Binding AddCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
+        <Button Content="按目的新增入网" ToolTip="选择档外资料或存档资料入网，系统自动决定关联任务"
+                Command="{Binding AddCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="128" Margin="0,0,10,0"/>
         <Button Content="打开办理" Command="{Binding OpenCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
         <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="96" Margin="0,0,16,0"/>
         <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -30,6 +31,7 @@
         <DataGridTextColumn Header="数据源" Binding="{Binding SourceKind, Mode=OneWay}" Width="100"/>
         <DataGridTextColumn Header="项目" Binding="{Binding ProjectName, Mode=OneWay}" Width="*"/>
         <DataGridTextColumn Header="明细数" Binding="{Binding ItemCount, Mode=OneWay}" Width="70"/>
+        <DataGridTextColumn Header="关联业务进度" Binding="{Binding BusinessChainProgressDisplay, Mode=OneWay}" Width="230"/>
         <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName, Mode=OneWay}" Width="90"/>
         <DataGridTextColumn Header="申请时间" Binding="{Binding ApplyTime, Mode=OneWay, StringFormat={}{0:yyyy-MM-dd HH:mm}}" Width="140"/>
       </DataGrid.Columns>

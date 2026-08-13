@@ -22,6 +22,7 @@ namespace DocMgr.Views.YearlyArchive
 
             _viewModel.ViewRegisterDetailRequested += ViewModel_ViewRegisterDetailRequested;
             _viewModel.CreateOutboundRequested += ViewModel_CreateOutboundRequested;
+            _viewModel.CreateInboundRequested += ViewModel_CreateInboundRequested;
 
             Loaded += ArchiveFilingSearchPoolPage_Loaded;
             Unloaded += ArchiveFilingSearchPoolPage_Unloaded;
@@ -44,7 +45,17 @@ namespace DocMgr.Views.YearlyArchive
             Unloaded -= ArchiveFilingSearchPoolPage_Unloaded;
             _viewModel.ViewRegisterDetailRequested -= ViewModel_ViewRegisterDetailRequested;
             _viewModel.CreateOutboundRequested -= ViewModel_CreateOutboundRequested;
+            _viewModel.CreateInboundRequested -= ViewModel_CreateInboundRequested;
             _pageScope.Dispose();
+        }
+
+        private void ViewModel_CreateInboundRequested(int recordId)
+        {
+            if (Application.Current.MainWindow is MainWindow mainWindow)
+            {
+                _preserveStateOnUnload = true;
+                mainWindow.NavigateToNetworkInboundApplyPage(recordId);
+            }
         }
 
         private void ViewModel_CreateOutboundRequested(int recordId)

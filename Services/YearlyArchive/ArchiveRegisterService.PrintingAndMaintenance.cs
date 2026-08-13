@@ -368,6 +368,7 @@ namespace DocMgr.Services.YearlyArchive
                 ElectronicMaterialCategories = GetDomainOptionValues(definitions, RegisterElectronicDetailEntityName, nameof(YearlyArchiveRegisterElectronicMediaItemDetail.MaterialCategory), EmptyScope),
                 ElectronicDocumentSubCategories = GetDomainOptionValues(definitions, RegisterElectronicDetailEntityName, nameof(YearlyArchiveRegisterElectronicMediaItemDetail.SubCategory), ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocumentScope),
                 ElectronicDataSubCategories = GetDomainOptionValues(definitions, RegisterElectronicDetailEntityName, nameof(YearlyArchiveRegisterElectronicMediaItemDetail.SubCategory), ArchiveRegisterDomainValues.ElectronicMaterialCategoryDataScope),
+                ElectronicSoftwareSubCategories = GetDomainOptionValues(definitions, RegisterElectronicDetailEntityName, nameof(YearlyArchiveRegisterElectronicMediaItemDetail.SubCategory), ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftwareScope),
                 ElectronicDataOrganizationForms = GetDomainOptionValues(definitions, RegisterElectronicDetailEntityName, nameof(YearlyArchiveRegisterElectronicMediaItemDetail.DataOrganizationForm), EmptyScope),
                 ConfidentialLevels = GetDomainOptionValues(definitions, RegisterMediaItemEntityName, nameof(YearlyArchiveRegisterMediaItem.ConfidentialLevel), EmptyScope),
                 ProdOpinionOptions = GetDomainOptionValues(definitions, RegisterRecordEntityName, nameof(YearlyArchiveRegisterRecord.ProdDeptOpinion), EmptyScope),
@@ -415,6 +416,7 @@ namespace DocMgr.Services.YearlyArchive
                 && options.ElectronicMaterialCategories.Count > 0
                 && options.ElectronicDocumentSubCategories.Count > 0
                 && options.ElectronicDataSubCategories.Count > 0
+                && options.ElectronicSoftwareSubCategories.Count > 0
                 && options.ElectronicDataOrganizationForms.Count > 0
                 && options.ConfidentialLevels.Count > 0
                 && options.ProdOpinionOptions.Count > 0
@@ -465,7 +467,9 @@ namespace DocMgr.Services.YearlyArchive
                 ? pageDomainOptions.ElectronicDocumentSubCategories
                 : string.Equals(detail.MaterialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategoryData, StringComparison.Ordinal)
                     ? pageDomainOptions.ElectronicDataSubCategories
-                    : Array.Empty<string>();
+                    : string.Equals(detail.MaterialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftware, StringComparison.Ordinal)
+                        ? pageDomainOptions.ElectronicSoftwareSubCategories
+                        : Array.Empty<string>();
 
             if (string.IsNullOrWhiteSpace(detail.SubCategory))
             {

@@ -17,11 +17,20 @@ public sealed class NetworkInboundPrintData
 
     public string ProjectName { get; init; } = string.Empty;
 
+    public string MaterialName { get; init; } = string.Empty;
+
     public string SourceKindText { get; init; } = string.Empty;
+
+    public string ProvideUnitText { get; init; } = string.Empty;
 
     public string Reason { get; init; } = string.Empty;
 
+    public string OtherRequests { get; init; } = string.Empty;
+
     public string ProofMaterialNote { get; init; } = string.Empty;
+
+    /// <summary>借出硬盘随资料归还说明；无则留空且不打印对应行。</summary>
+    public string ReturnBorrowedHardDiskText { get; init; } = string.Empty;
 
     public string ServerPath { get; init; } = string.Empty;
 

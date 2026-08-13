@@ -561,7 +561,8 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
 
         return _dbContext.YearlyArchiveRegisterMedias
             .AnyAsync(media =>
-                targetRecordIds.Contains(media.YearlyArchiveRegisterRecordId)
+                media.YearlyArchiveRegisterRecordId.HasValue
+                && targetRecordIds.Contains(media.YearlyArchiveRegisterRecordId.Value)
                 && media.MediaKind == ArchiveRegisterDomainValues.MediaKindElectronic
                 && media.MediaType == ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk
                 && media.Disposition == ArchiveRegisterDomainValues.ElectronicDispositionRetain
@@ -587,8 +588,9 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
 
         return _dbContext.YearlyArchiveRegisterMedias
             .AsNoTracking()
-            .Where(media => targetMediaEntryIds.Contains(media.Id))
-            .Select(media => media.YearlyArchiveRegisterRecordId)
+            .Where(media => targetMediaEntryIds.Contains(media.Id)
+                            && media.YearlyArchiveRegisterRecordId.HasValue)
+            .Select(media => media.YearlyArchiveRegisterRecordId!.Value)
             .Distinct()
             .ToListAsync();
     }

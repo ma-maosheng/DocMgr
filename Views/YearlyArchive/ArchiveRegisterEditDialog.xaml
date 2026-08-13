@@ -35,7 +35,32 @@
 
                             <StackPanel Orientation="Horizontal" Margin="0,4" VerticalAlignment="Center">
                                 <Label Width="110" VerticalAlignment="Center">资料来源 *：</Label>
-                                <ComboBox Width="98" Style="{StaticResource ArchiveRegisterFormComboBoxStyle}" ItemsSource="{Binding SourceTypeOptions}" SelectedItem="{Binding SelectedSourceType}"/>
+                                <ComboBox Width="98"
+                                          ItemsSource="{Binding SourceTypeOptions}" SelectedItem="{Binding SelectedSourceType}">
+                                    <ComboBox.Style>
+                                        <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSourceTypeEditable}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ComboBox.Style>
+                                </ComboBox>
+                                <TextBox Width="98" Text="{Binding SelectedSourceType, Mode=OneWay}" IsReadOnly="True"
+                                         Background="#F5F5F5" VerticalContentAlignment="Center">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSourceTypeEditable}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
                                 <Label Width="140" VerticalAlignment="Center" Content="        提供部门(单位) *："/>
                                 <ComboBox Width="260"
                                           ItemsSource="{Binding Departments}" DisplayMemberPath="Name" SelectedValuePath="Name"
@@ -83,20 +108,81 @@
                                         <TextBlock Grid.Column="0" Text="介质：" VerticalAlignment="Center"/>
                                         <TextBox Grid.Column="1" Text="电子" Height="26" Margin="2,0" VerticalContentAlignment="Center" IsReadOnly="True" Background="#F5F5F5"/>
                                         <TextBlock Grid.Column="2" Text="类型：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
-                                        <ComboBox Grid.Column="3" Style="{StaticResource ArchiveRegisterFormComboBoxStyle}" Margin="2,0" VerticalContentAlignment="Center"
+                                        <ComboBox Grid.Column="3" Margin="2,0" VerticalContentAlignment="Center"
                                                   ItemsSource="{Binding DataElectronicMediaTypeOptions}"
-                                                  SelectedItem="{Binding SelectedElectronicMediaType}"/>
+                                                  SelectedItem="{Binding SelectedElectronicMediaType}">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsElectronicMediaTypeEditable}" Value="False">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ComboBox.Style>
+                                        </ComboBox>
+                                        <TextBox Grid.Column="3" Margin="2,0" Height="26" VerticalContentAlignment="Center"
+                                                 Text="{Binding SelectedElectronicMediaType, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsElectronicMediaTypeEditable}" Value="False">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
                                         <TextBlock Grid.Column="4" Text="数量：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
                                         <TextBox Grid.Column="5" Text="{Binding DataElectronicMediaCount, Mode=OneWay}" Height="26" Margin="2,0" VerticalContentAlignment="Center" IsReadOnly="True" Background="#F5F5F5"/>
                                         <TextBlock Grid.Column="6" Text="处置：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
-                                        <ComboBox Grid.Column="7" Style="{StaticResource ArchiveRegisterFormComboBoxStyle}" Margin="2,0" VerticalContentAlignment="Center"
+                                        <ComboBox Grid.Column="7" Margin="2,0" VerticalContentAlignment="Center"
                                                   ItemsSource="{Binding DataElectronicDispositionOptions}"
-                                                  SelectedItem="{Binding SelectedElectronicDisposition}"/>
+                                                  SelectedItem="{Binding SelectedElectronicDisposition}">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsElectronicDispositionEditable}" Value="False">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ComboBox.Style>
+                                        </ComboBox>
+                                        <TextBox Grid.Column="7" Margin="2,0" Height="26" VerticalContentAlignment="Center"
+                                                 Text="{Binding SelectedElectronicDisposition, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsElectronicDispositionEditable}" Value="False">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
                                         <Button Grid.Column="8"
                                                 Content="+ 添加资料介质（电子）"
                                                 Command="{Binding AddDataElectronicMediaEntryCommand}"
                                                 Padding="8,2"/>
                                     </Grid>
+                                    <TextBlock Margin="2,0,0,4" Foreground="#00695C" TextWrapping="Wrap"
+                                               Text="{Binding NetworkOutboundTransferHint, Mode=OneWay}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsNetworkOutboundTransferRegister}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <ItemsControl ItemsSource="{Binding DataElectronicMediaView}" ItemTemplate="{StaticResource MediaEntryTemplate_DataElectronic}"/>
                                 </StackPanel>
                             </GroupBox>

@@ -27,6 +27,7 @@
         <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="160"/>
         <DataGridTextColumn Header="数据源" Binding="{Binding SourceKind, Mode=OneWay}" Width="100"/>
         <DataGridTextColumn Header="项目" Binding="{Binding ProjectName, Mode=OneWay}" Width="*"/>
+        <DataGridTextColumn Header="关联业务进度" Binding="{Binding BusinessChainProgressDisplay, Mode=OneWay}" Width="230"/>
         <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName, Mode=OneWay}" Width="90"/>
         <DataGridTextColumn Header="申请时间" Binding="{Binding ApplyTime, Mode=OneWay, StringFormat={}{0:yyyy-MM-dd HH:mm}}" Width="140"/>
       </DataGrid.Columns>

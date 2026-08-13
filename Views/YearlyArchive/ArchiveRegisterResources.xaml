@@ -247,47 +247,78 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <TextBlock Text="借出硬盘：" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
-                        <StackPanel Orientation="Horizontal" Style="{StaticResource FormInlineRadioGroupStyle}">
-                            <RadioButton Content="是"
-                                         GroupName="{Binding BorrowedHardDiskRadioGroup}"
-                                         Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
-                                         IsChecked="{Binding IsBorrowedHardDisk, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                            <RadioButton Content="否"
-                                         GroupName="{Binding BorrowedHardDiskRadioGroup}"
-                                         Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
-                                         IsChecked="{Binding IsBorrowedHardDisk, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DataContext.RestrictRetainedHardDiskToBorrowedOnly, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Text="借出硬盘：" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                            <StackPanel Orientation="Horizontal" Style="{StaticResource FormInlineRadioGroupStyle}">
+                                <RadioButton Content="是"
+                                             GroupName="{Binding BorrowedHardDiskRadioGroup}"
+                                             Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
+                                             IsChecked="{Binding IsBorrowedHardDisk, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                <RadioButton Content="否"
+                                             GroupName="{Binding BorrowedHardDiskRadioGroup}"
+                                             Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
+                                             IsChecked="{Binding IsBorrowedHardDisk, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                            <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource ArchiveRegisterFormLabelStyle}">
+                                        <Setter Property="Text" Value="介质编号："/>
+                                        <Setter Property="HorizontalAlignment" Value="Left"/>
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BorrowedHardDiskDetailsVisibility}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <ComboBox Width="180"
+                                      IsEditable="False"
+                                      ItemsSource="{Binding DataContext.UserBorrowedHardDiskCodes, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      SelectedItem="{Binding BorrowedHardDiskCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      ToolTip="当前登记人名下借出且尚未归还的硬盘编号">
+                                <ComboBox.Style>
+                                    <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterCompactComboBoxStyle}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BorrowedHardDiskDetailsVisibility}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ComboBox.Style>
+                            </ComboBox>
                         </StackPanel>
-                        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource ArchiveRegisterFormLabelStyle}">
-                                    <Setter Property="Text" Value="介质编号："/>
-                                    <Setter Property="HorizontalAlignment" Value="Left"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding BorrowedHardDiskDetailsVisibility}" Value="True">
+                                        <DataTrigger Binding="{Binding DataContext.RestrictRetainedHardDiskToBorrowedOnly, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <ComboBox Width="180"
-                                  IsEditable="False"
-                                  ItemsSource="{Binding DataContext.UserBorrowedHardDiskCodes, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                  SelectedItem="{Binding BorrowedHardDiskCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                  ToolTip="当前登记人名下借出且尚未归还的硬盘编号">
-                            <ComboBox.Style>
-                                <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterCompactComboBoxStyle}">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding BorrowedHardDiskDetailsVisibility}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ComboBox.Style>
-                        </ComboBox>
+                            </StackPanel.Style>
+                            <TextBlock Text="借出硬盘编号：" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
+                            <ComboBox Width="180"
+                                      IsEditable="False"
+                                      ItemsSource="{Binding DataContext.UserBorrowedHardDiskCodes, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      SelectedItem="{Binding BorrowedHardDiskCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      ToolTip="硬盘介质留存须选择资料室借出硬盘编号"
+                                      Style="{StaticResource ArchiveRegisterCompactComboBoxStyle}"/>
+                        </StackPanel>
                     </StackPanel>
                 </DockPanel>
 

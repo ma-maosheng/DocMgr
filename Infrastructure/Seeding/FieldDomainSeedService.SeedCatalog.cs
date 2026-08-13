@@ -21,6 +21,7 @@ public static partial class FieldDomainSeedService
                     {
                         new(string.Empty, "内部", "内部", true, 10),
                         new(string.Empty, "外来", "外来", true, 20),
+                        new(string.Empty, "出网转入", "出网转入", true, 30),
                     }),
                 new(
                     "YearlyArchiveRegisterMedia",
@@ -56,6 +57,7 @@ public static partial class FieldDomainSeedService
                     {
                         new(string.Empty, ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocument, ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocument, true, 10),
                         new(string.Empty, ArchiveRegisterDomainValues.ElectronicMaterialCategoryData, ArchiveRegisterDomainValues.ElectronicMaterialCategoryData, true, 20),
+                        new(string.Empty, ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftware, ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftware, true, 30),
                     }),
                 new(
                     nameof(YearlyArchiveRegisterElectronicMediaItemDetail),
@@ -75,6 +77,10 @@ public static partial class FieldDomainSeedService
                         new(ArchiveRegisterDomainValues.ElectronicMaterialCategoryDataScope, "过程处理数据", "过程处理数据", true, 130),
                         new(ArchiveRegisterDomainValues.ElectronicMaterialCategoryDataScope, "过程检查数据", "过程检查数据", true, 140),
                         new(ArchiveRegisterDomainValues.ElectronicMaterialCategoryDataScope, "最终成果数据", "最终成果数据", true, 150),
+                        new(ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftwareScope, "生产软件", "生产软件", true, 210),
+                        new(ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftwareScope, "安全软件", "安全软件", true, 220),
+                        new(ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftwareScope, "办公软件", "办公软件", true, 230),
+                        new(ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftwareScope, "其他软件", "其他软件", true, 240),
                     }),
                 new(
                     nameof(YearlyArchiveRegisterElectronicMediaItemDetail),

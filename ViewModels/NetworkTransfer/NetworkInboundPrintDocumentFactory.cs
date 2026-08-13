@@ -26,7 +26,7 @@ internal static class NetworkInboundPrintDocumentFactory
     {
         ArgumentNullException.ThrowIfNull(data);
 
-        double itemDetailRowHeight = CalculateItemDetailRowHeight();
+        double itemDetailRowHeight = CalculateItemDetailRowHeight(data);
 
         var document = CreateDocumentSkeleton();
         document.Blocks.Add(CreateTitleBlock());
@@ -37,9 +37,24 @@ internal static class NetworkInboundPrintDocumentFactory
         var rowGroup = new TableRowGroup();
         rowGroup.Rows.Add(CreateDoubleRow("申请部门", data.ApplicantDept, "申请人", data.ApplicantName));
         rowGroup.Rows.Add(CreateDoubleRow("年度", EmptyAsPlaceholder(data.YearText), "项目", EmptyAsPlaceholder(data.ProjectName)));
-        rowGroup.Rows.Add(CreateSingleRow("数据来源", EmptyAsPlaceholder(data.SourceKindText)));
+        rowGroup.Rows.Add(CreateSingleRow("资料名称", EmptyAsPlaceholder(data.MaterialName)));
+        rowGroup.Rows.Add(CreateDoubleRow(
+            "数据来源",
+            EmptyAsPlaceholder(data.SourceKindText),
+            "提供部门(单位)",
+            EmptyAsPlaceholder(data.ProvideUnitText)));
         rowGroup.Rows.Add(CreateSingleRow("申请说明", EmptyAsPlaceholder(data.Reason), ReasonRowHeight, CellVerticalAlignment.ContentTop));
+        rowGroup.Rows.Add(CreateSingleRow(
+            "其他要求",
+            string.IsNullOrWhiteSpace(data.OtherRequests) ? "(无)" : data.OtherRequests.Trim(),
+            ReasonRowHeight,
+            CellVerticalAlignment.ContentTop));
         rowGroup.Rows.Add(CreateSingleRow("证明材料名称", EmptyAsPlaceholder(data.ProofMaterialNote)));
+        if (!string.IsNullOrWhiteSpace(data.ReturnBorrowedHardDiskText))
+        {
+            rowGroup.Rows.Add(CreateSingleRow("借出硬盘随资料归还", data.ReturnBorrowedHardDiskText.Trim()));
+        }
+
         rowGroup.Rows.Add(CreateSingleRow(
             "服务器路径",
             FormatServerPathText(data),
@@ -52,7 +67,7 @@ internal static class NetworkInboundPrintDocumentFactory
             CellVerticalAlignment.ContentTop));
         rowGroup.Rows.Add(CreateSingleRow("申请部门", data.DeptLeaderBlock));
         rowGroup.Rows.Add(CreateSingleRow("生产管理科", data.ProdLeaderBlock));
-        rowGroup.Rows.Add(CreateSingleRow("科研开发室", data.RndLeaderBlock));
+        rowGroup.Rows.Add(CreateSingleRow("资料室", data.RndLeaderBlock));
         rowGroup.Rows.Add(CreateSingleRow("分管领导", data.DeputyLeaderBlock));
         rowGroup.Rows.Add(CreateSingleRow(
             "入网交接",
@@ -66,11 +81,12 @@ internal static class NetworkInboundPrintDocumentFactory
         return document;
     }
 
-    private static double CalculateItemDetailRowHeight()
+    private static double CalculateItemDetailRowHeight(NetworkInboundPrintData data)
     {
+        int standardRowCount = string.IsNullOrWhiteSpace(data.ReturnBorrowedHardDiskText) ? 11 : 12;
         double fixedTableHeight =
-            PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 9
-            + PrintPageLayoutSupport.GetTableRowOuterHeightDip(ReasonRowHeight, CellPadding) * 2
+            PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * standardRowCount
+            + PrintPageLayoutSupport.GetTableRowOuterHeightDip(ReasonRowHeight, CellPadding) * 3
             + PrintPageLayoutSupport.GetTableRowOuterHeightDip(HandoverRowHeight, CellPadding);
         double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 3, lineHeightDip: 16, topMarginDip: 8);
         double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
