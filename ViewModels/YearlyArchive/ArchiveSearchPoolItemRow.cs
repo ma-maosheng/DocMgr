@@ -103,28 +103,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        public string SelectionScopeDisplay => Selection.IsWholeMediaItem
-            ? ArchiveSearchPoolSupport.FormatScopeDisplay(
-                Selection.SelectionScopeKind,
-                string.Empty,
-                string.Empty,
-                string.Empty)
-            : Selection.IsContentEntry
-                ? "部分子项"
-                : ArchiveSearchPoolSupport.FormatScopeDisplay(
-                    Selection.SelectionScopeKind,
-                    ContentEntry?.EntryKind ?? string.Empty,
-                    ContentEntry?.EntryName ?? string.Empty,
-                    ContentEntry?.RelativePath ?? string.Empty);
+        public string SelectionScopeDisplay => ArchiveSearchPoolSupport.ResolveSelectionScopeDisplay(
+            Selection.SelectionScopeKind,
+            ContentEntry?.EntryKind ?? string.Empty,
+            ContentEntry?.EntryName ?? string.Empty,
+            ContentEntry?.RelativePath ?? string.Empty);
 
-        public string MatchedContentEntrySummary => Selection.IsWholeMediaItem
-            ? Hit.MatchedContentEntrySummary
-            : Selection.IsContentEntry && ContentEntry != null
-                ? ArchiveSearchPoolSupport.FormatScopeDisplay(
-                    Selection.SelectionScopeKind,
-                    ContentEntry.EntryKind,
-                    ContentEntry.EntryName,
-                    ContentEntry.RelativePath)
-                : SelectionScopeDisplay;
+        public string MatchedContentEntrySummary => ArchiveSearchPoolSupport.ResolveMatchedContentEntrySummary(
+            Selection.SelectionScopeKind,
+            ContentEntry?.EntryKind ?? string.Empty,
+            ContentEntry?.EntryName ?? string.Empty,
+            ContentEntry?.RelativePath ?? string.Empty,
+            Hit.MatchedContentEntrySummary);
     }
 }

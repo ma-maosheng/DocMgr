@@ -1,6 +1,7 @@
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Services.Interfaces;
 
 namespace DocMgr.Services.NetworkTransfer;
 
@@ -24,8 +25,49 @@ public sealed partial class NetworkTransferService
                 ?? string.Empty;
 
         string serverPhysicalPath = ResolveServerPhysicalPath(serverPathName);
+        NetworkInboundItemPrintContext itemPrintContext = await BuildInboundItemPrintContextAsync(record);
 
-        return BuildInboundPrintData(record, blankApprovalSignatures, serverPathName, serverPhysicalPath);
+        return BuildInboundPrintData(record, blankApprovalSignatures, serverPathName, serverPhysicalPath, itemPrintContext);
+    }
+
+    private async Task<NetworkInboundItemPrintContext> BuildInboundItemPrintContextAsync(NetworkInboundRecord record)
+    {
+        if (!NetworkTransferDomainValues.IsArchivedElectronicSearchSource(record.SourceKind))
+        {
+            return NetworkInboundItemPrintContext.Empty;
+        }
+
+        List<int> factIds = record.Items
+            .Where(item => item.SourceFilingFactId is > 0)
+            .Select(item => item.SourceFilingFactId!.Value)
+            .Distinct()
+            .ToList();
+        if (factIds.Count == 0)
+        {
+            return NetworkInboundItemPrintContext.Empty;
+        }
+
+        IReadOnlyDictionary<int, FiledArchiveSearchHit> hitsByFactId =
+            await _archiveFilingSearchService.GetSearchHitsByFilingFactIdsAsync(factIds);
+
+        Dictionary<int, YearlyArchiveSearchResultSetItem> resultSetItemsById = new();
+        if (record.SourceResultSetId is int resultSetId && resultSetId > 0)
+        {
+            YearlyArchiveSearchResultSet? resultSet = await _archiveFilingSearchService.GetSearchPoolByIdAsync(resultSetId);
+            if (resultSet?.Items != null)
+            {
+                foreach (YearlyArchiveSearchResultSetItem item in resultSet.Items.Where(item => item.Id > 0))
+                {
+                    resultSetItemsById.TryAdd(item.Id, item);
+                }
+            }
+        }
+
+        return new NetworkInboundItemPrintContext
+        {
+            HitsByFactId = hitsByFactId,
+            ResultSetItemsById = resultSetItemsById
+        };
     }
 
     public async Task RecordInboundPrintAsync(int recordId)
@@ -62,7 +104,8 @@ public sealed partial class NetworkTransferService
         NetworkInboundRecord record,
         bool blankApprovalSignatures,
         string serverPathName,
-        string serverPhysicalPath)
+        string serverPhysicalPath,
+        NetworkInboundItemPrintContext itemPrintContext)
     {
         if (record.Status < NetworkInboundRecord.StatusSubmitted)
         {
@@ -97,7 +140,7 @@ public sealed partial class NetworkTransferService
             ReturnBorrowedHardDiskText = NetworkInboundReturnHardDiskPrintSupport.BuildReturnHardDiskDescription(record) ?? string.Empty,
             ServerPath = string.IsNullOrWhiteSpace(serverPathName) ? "(未指定)" : serverPathName,
             ServerPhysicalPath = serverPhysicalPath,
-            ItemLines = NetworkInboundItemPrintSupport.BuildItemLines(record).ToList(),
+            ItemLines = NetworkInboundItemPrintSupport.BuildItemLines(record, itemPrintContext).ToList(),
             DeptLeaderBlock = BuildApprovalBlock(
                 blankApprovalSignatures ? string.Empty : record.DeptLeader,
                 blankApprovalSignatures ? BlankDateText : FormatDate(record.DeptDate)),

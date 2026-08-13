@@ -72,6 +72,81 @@ namespace DocMgr.Models.YearlyArchive
                 entry.RelativePath);
         }
 
+        /// <summary>检索集明细筛选范围展示（与入网申请明细列表一致）。</summary>
+        public static string ResolveSelectionScopeDisplay(
+            string selectionScopeKind,
+            string contentEntryKind,
+            string contentEntryName,
+            string contentEntryRelativePath)
+        {
+            if (string.Equals(
+                    selectionScopeKind,
+                    ArchiveSearchSelectionScopeKind.WholeMediaItem,
+                    StringComparison.Ordinal))
+            {
+                return FormatScopeDisplay(selectionScopeKind, string.Empty, string.Empty, string.Empty);
+            }
+
+            if (string.Equals(
+                    selectionScopeKind,
+                    ArchiveSearchSelectionScopeKind.ContentEntry,
+                    StringComparison.Ordinal))
+            {
+                return "部分子项";
+            }
+
+            return FormatScopeDisplay(
+                selectionScopeKind,
+                contentEntryKind,
+                contentEntryName,
+                contentEntryRelativePath);
+        }
+
+        /// <summary>检索集明细命中条目展示（整子项取检索命中摘要，部分子项取具体条目）。</summary>
+        public static string ResolveMatchedContentEntrySummary(
+            string selectionScopeKind,
+            string contentEntryKind,
+            string contentEntryName,
+            string contentEntryRelativePath,
+            string matchedSummaryFromHit)
+        {
+            if (string.Equals(
+                    selectionScopeKind,
+                    ArchiveSearchSelectionScopeKind.WholeMediaItem,
+                    StringComparison.Ordinal))
+            {
+                return matchedSummaryFromHit;
+            }
+
+            if (string.Equals(
+                    selectionScopeKind,
+                    ArchiveSearchSelectionScopeKind.ContentEntry,
+                    StringComparison.Ordinal))
+            {
+                if (string.IsNullOrWhiteSpace(contentEntryName)
+                    && string.IsNullOrWhiteSpace(contentEntryRelativePath))
+                {
+                    return ResolveSelectionScopeDisplay(
+                        selectionScopeKind,
+                        contentEntryKind,
+                        contentEntryName,
+                        contentEntryRelativePath);
+                }
+
+                return FormatScopeDisplay(
+                    selectionScopeKind,
+                    contentEntryKind,
+                    contentEntryName,
+                    contentEntryRelativePath);
+            }
+
+            return ResolveSelectionScopeDisplay(
+                selectionScopeKind,
+                contentEntryKind,
+                contentEntryName,
+                contentEntryRelativePath);
+        }
+
         public sealed class MergeResult
         {
             public int AddedCount { get; init; }

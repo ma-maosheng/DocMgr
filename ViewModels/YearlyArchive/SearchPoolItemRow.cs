@@ -128,29 +128,18 @@ namespace DocMgr.ViewModels.YearlyArchive
                 RequestedCopyCount = RequestedCopyCount
             });
 
-        public string SelectionScopeDisplay => IsWholeMediaItem
-            ? ArchiveSearchPoolSupport.FormatScopeDisplay(
-                SelectionScopeKind,
-                string.Empty,
-                string.Empty,
-                string.Empty)
-            : IsContentEntry
-                ? "部分子项"
-                : ArchiveSearchPoolSupport.FormatScopeDisplay(
-                    SelectionScopeKind,
-                    ContentEntryKind,
-                    ContentEntryName,
-                    ContentEntryRelativePath);
+        public string SelectionScopeDisplay => ArchiveSearchPoolSupport.ResolveSelectionScopeDisplay(
+            SelectionScopeKind,
+            ContentEntryKind,
+            ContentEntryName,
+            ContentEntryRelativePath);
 
-        public string MatchedContentEntrySummary => IsWholeMediaItem
-            ? _matchedContentEntrySummaryFromHit
-            : IsContentEntry
-                ? ArchiveSearchPoolSupport.FormatScopeDisplay(
-                    SelectionScopeKind,
-                    ContentEntryKind,
-                    ContentEntryName,
-                    ContentEntryRelativePath)
-                : SelectionScopeDisplay;
+        public string MatchedContentEntrySummary => ArchiveSearchPoolSupport.ResolveMatchedContentEntrySummary(
+            SelectionScopeKind,
+            ContentEntryKind,
+            ContentEntryName,
+            ContentEntryRelativePath,
+            _matchedContentEntrySummaryFromHit);
 
     }
 }

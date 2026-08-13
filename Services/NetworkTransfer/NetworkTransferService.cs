@@ -17,17 +17,20 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     private readonly IBusinessRuleService _businessRuleService;
     private readonly IServerPathSettingService _serverPathSettingService;
     private readonly IHardDiskMediaService _hardDiskMediaService;
+    private readonly IArchiveFilingSearchService _archiveFilingSearchService;
 
     public NetworkTransferService(
         INetworkTransferRepository repository,
         IBusinessRuleService businessRuleService,
         IServerPathSettingService serverPathSettingService,
-        IHardDiskMediaService hardDiskMediaService)
+        IHardDiskMediaService hardDiskMediaService,
+        IArchiveFilingSearchService archiveFilingSearchService)
     {
         _repository = repository;
         _businessRuleService = businessRuleService;
         _serverPathSettingService = serverPathSettingService;
         _hardDiskMediaService = hardDiskMediaService;
+        _archiveFilingSearchService = archiveFilingSearchService;
     }
 
     public Task<string> GenerateNextInboundNoAsync() =>
