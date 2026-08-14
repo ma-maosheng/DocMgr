@@ -144,7 +144,7 @@ public sealed partial class NetworkInboundEditDialogViewModel
     }
 
     public string ApproveHintText => CanApprovePass
-        ? "请先根据线下审批结果核实各明细密级，再执行审批通过；可补录服务器路径与借出硬盘归位档口。"
+        ? "请先根据线下审批结果核实各明细密级，再执行审批通过；可补录服务器路径、资料路径与借出硬盘归位档口。"
         : "仅「已提交」状态可执行审批通过。";
 
     public string ConfirmHandoverHintText => CanConfirmPhysicalHandover
@@ -290,6 +290,10 @@ public sealed partial class NetworkInboundEditDialogViewModel
         OnPropertyChanged(nameof(RegisterWorkspaceBannerText));
         OnPropertyChanged(nameof(WorkspaceBannerText));
         OnPropertyChanged(nameof(CanEditItemConfidentialLevel));
+        OnPropertyChanged(nameof(CanEditApprovalPaths));
+        OnPropertyChanged(nameof(CanEditItemPaths));
+        OnPropertyChanged(nameof(CanEditServerPath));
+        OnPropertyChanged(nameof(IsItemPathReadOnly));
         OnPropertyChanged(nameof(CanApprovePass));
         OnPropertyChanged(nameof(CanApprove));
         OnPropertyChanged(nameof(CanConfirmPhysicalHandover));

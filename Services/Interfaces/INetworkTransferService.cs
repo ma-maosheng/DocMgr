@@ -47,12 +47,13 @@ public interface INetworkTransferService
 
     Task ConfirmInboundHandoverAsync(NetworkInboundRecord handover, User currentUser);
 
-    /// <summary>审批/交接阶段补录各明细目标服务器路径。</summary>
+    /// <summary>审批/交接阶段补录各明细目标服务器路径与资料路径。</summary>
     Task UpdateInboundItemPathsAsync(
         int recordId,
         IReadOnlyList<NetworkInboundItem> items,
         User currentUser,
         string? targetServerPath = null,
+        string? materialPath = null,
         IReadOnlyList<YearlyArchiveRegisterMedia>? externalMediaEntries = null);
 
     Task CompleteInboundAsync(int recordId, User currentUser);

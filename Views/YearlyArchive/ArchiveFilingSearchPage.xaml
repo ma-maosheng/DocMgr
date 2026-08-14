@@ -549,8 +549,7 @@
                     <TextBox Width="160" Style="{StaticResource SearchTextBoxStyle}" Text="{Binding ResultSetRemarks, UpdateSourceTrigger=PropertyChanged}"/>
                     <Button Content="保存筛选池为结果集" Margin="16,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding SaveResultSetCommand}"/>
                 </StackPanel>
-                <TextBlock Text="{Binding ResultSetSaveLimitHint}" Foreground="#888" Margin="0,8,0,0" TextWrapping="Wrap"/>
-                <TextBlock Text="{Binding LastSaveResultSetNotice}" Foreground="#1B5E20" Margin="0,6,0,0" TextWrapping="Wrap">
+                <TextBlock Text="{Binding LastSaveResultSetNotice}" Foreground="#1B5E20" Margin="0,8,0,0" TextWrapping="Wrap">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
                             <Setter Property="Visibility" Value="Collapsed"/>

@@ -7,6 +7,9 @@ namespace DocMgr.Models.YearlyArchive
     {
         public string MediaKind { get; set; } = string.Empty;
 
+        /// <summary>空或「全部年度」表示不限；否则为立档年度字符串。</summary>
+        public string? Year { get; set; }
+
         public string Keyword { get; set; } = string.Empty;
 
         public string? Status { get; set; }
@@ -54,15 +57,8 @@ namespace DocMgr.Models.YearlyArchive
         public IReadOnlyList<int> RemainingResultSetItemIds { get; set; } = Array.Empty<int>();
     }
 
-    public static class SearchPoolLimits
-    {
-        public const int MaxResultSetsPerUserPerMediaKind = 5;
-    }
-
     public sealed class SearchResultSetSaveResult
     {
         public YearlyArchiveSearchResultSet ResultSet { get; init; } = null!;
-
-        public IReadOnlyList<string> AutoRemovedResultSetNames { get; init; } = Array.Empty<string>();
     }
 }

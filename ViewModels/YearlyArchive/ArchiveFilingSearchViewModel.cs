@@ -180,9 +180,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool HasLastSaveResultSetNotice => !string.IsNullOrWhiteSpace(LastSaveResultSetNotice);
 
-        public string ResultSetSaveLimitHint =>
-            $"每位用户每种介质类型最多保存 {SearchPoolLimits.MaxResultSetsPerUserPerMediaKind} 个结果集，超出时将自动删除最早保存的记录。";
-
         public bool HasSearchResults => UseArchiveBoxGroupedResults
             ? _searchResultBoxGroups.Count > 0
             : _searchResultGroups.Count > 0;
@@ -717,10 +714,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }, user, isAdmin);
 
                 string notice = $"已保存结果集「{saveResult.ResultSet.Name}」（编号 {saveResult.ResultSet.ResultSetNo}）。";
-                if (saveResult.AutoRemovedResultSetNames.Count > 0)
-                {
-                    notice += $" 已自动删除最早的结果集：{string.Join("、", saveResult.AutoRemovedResultSetNames)}。";
-                }
 
                 LastSaveResultSetNotice = notice;
                 _dialogService.ShowMessage(notice, "保存完成");

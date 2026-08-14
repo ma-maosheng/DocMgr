@@ -20,21 +20,37 @@
                 </DockPanel>
 
                 <Border Margin="0,0,0,8" Padding="8,6" Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="3"
-                        Visibility="{Binding CanEditServerPath, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        Visibility="{Binding CanEditApprovalPaths, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <StackPanel>
-                        <TextBlock Text="审批通过前可补录本单统一服务器路径（全部明细共用）。"
+                        <TextBlock Text="审批通过前可补录本单统一服务器路径与资料路径（全部明细共用同一路径设置）。"
                                    Foreground="#92400E" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"/>
-                        <DockPanel LastChildFill="True">
+                        <DockPanel LastChildFill="True" Margin="0,0,0,4">
                             <TextBlock DockPanel.Dock="Left" Text="服务器路径" Width="72" VerticalAlignment="Center"
                                        Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                             <ComboBox Width="280" HorizontalAlignment="Left"
-                                      Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                                      Style="{StaticResource NetworkInboundApprovalPathComboBoxStyle}"
                                       ItemsSource="{Binding ApplicantServerPathOptions}"
                                       DisplayMemberPath="PathName"
                                       SelectedItem="{Binding SelectedServerPath, UpdateSourceTrigger=PropertyChanged}"/>
                         </DockPanel>
-                        <TextBlock Margin="72,4,0,0" Text="{Binding SelectedServerPathInfo, Mode=OneWay}"
+                        <TextBlock Margin="72,0,0,6" Text="{Binding SelectedServerPathInfo, Mode=OneWay}"
                                    Foreground="#475569" FontSize="11" TextWrapping="Wrap"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="72"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="资料路径" VerticalAlignment="Center"
+                                       Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                            <TextBox Grid.Column="1" Margin="0,0,8,0"
+                                     Style="{StaticResource NetworkInboundApprovalPathTextBoxStyle}"
+                                     VerticalContentAlignment="Center"
+                                     Text="{Binding CurrentRecord.MaterialPath, UpdateSourceTrigger=PropertyChanged}"/>
+                            <Button Grid.Column="2" Padding="8,2"
+                                    Content="填入默认资料路径"
+                                    Command="{Binding FillDefaultMaterialPathCommand}"/>
+                        </Grid>
                     </StackPanel>
                 </Border>
 

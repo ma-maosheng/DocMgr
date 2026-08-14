@@ -195,6 +195,11 @@ public static class NetworkInboundApplicationValidationSupport
 
     private static void CollectInboundPathErrors(NetworkInboundRecord record, List<string> errors)
     {
+        if (string.IsNullOrWhiteSpace(record.MaterialPath))
+        {
+            errors.Add("• 入网单缺少资料路径");
+        }
+
         if (NetworkTransferDomainValues.IsExternalOfflineSource(record.SourceKind))
         {
             if (string.IsNullOrWhiteSpace(record.TargetServerPath))

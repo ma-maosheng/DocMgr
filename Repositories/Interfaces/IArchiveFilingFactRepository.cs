@@ -74,13 +74,6 @@ namespace DocMgr.Repositories.Interfaces
 
         Task SaveResultSetChangesAsync();
 
-        Task<int> CountUserResultSetsByMediaKindAsync(int userId, string mediaKind);
-
-        Task<List<YearlyArchiveSearchResultSet>> GetOldestUserResultSetsByMediaKindAsync(
-            int userId,
-            string mediaKind,
-            int count);
-
         Task UpdateFilingFactLifecycleAsync(
             int filingFactId,
             string lifecycleStatus,

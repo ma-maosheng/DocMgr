@@ -12,7 +12,7 @@
     </UserControl.Resources>
     <StackPanel>
         <Border Margin="0,0,0,12" Padding="10" Background="#EEF3F8" BorderBrush="#C5D3E0" BorderThickness="1">
-            <TextBlock Text="以下为申请人提交信息（只读）。审批人可在「审批通过」前根据线下审批结果编辑各明细密级；其余申请内容不可修改。"
+            <TextBlock Text="以下为申请人提交信息（只读）。资料室资料管理员可在「审批通过」前编辑各明细密级，以及本单服务器路径与资料路径；其余申请内容不可修改。"
                        Foreground="#475569" TextWrapping="Wrap"/>
         </Border>
 
@@ -44,15 +44,74 @@
                         <TextBlock Text="数据来源" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding SourceKindDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,6">
+                    <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,6">
                         <TextBlock Text="提供部门(单位)" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding ProvideUnitDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,6">
-                        <TextBlock Text="服务器路径" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                        <TextBlock Text="{Binding SelectedServerPathInfo, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap"/>
-                    </StackPanel>
                 </Grid>
+
+                <Border Margin="0,0,0,8" Padding="8,6" Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="3"
+                        Visibility="{Binding CanEditApprovalPaths, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Text="审批通过前可补录本单统一服务器路径与资料路径（全部明细共用）。"
+                                   Foreground="#92400E" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="88"/>
+                                <ColumnDefinition Width="280"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="服务器路径" VerticalAlignment="Center"
+                                       Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                            <ComboBox Grid.Column="1" Margin="2,0"
+                                      Style="{StaticResource NetworkInboundApprovalPathComboBoxStyle}"
+                                      ItemsSource="{Binding ApplicantServerPathOptions}"
+                                      DisplayMemberPath="PathName"
+                                      SelectedItem="{Binding SelectedServerPath, UpdateSourceTrigger=PropertyChanged}"/>
+                        </Grid>
+                        <TextBlock Margin="90,0,0,6" Foreground="#475569" FontSize="11" TextWrapping="Wrap"
+                                   Text="{Binding SelectedServerPathInfo, Mode=OneWay}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="88"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="资料路径" VerticalAlignment="Center"
+                                       Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                            <TextBox Grid.Column="1" Margin="2,0"
+                                     Style="{StaticResource NetworkInboundApprovalPathTextBoxStyle}"
+                                     VerticalContentAlignment="Center"
+                                     Text="{Binding CurrentRecord.MaterialPath, UpdateSourceTrigger=PropertyChanged}"/>
+                            <Button Grid.Column="2" Margin="8,0,0,0" Padding="8,2"
+                                    Content="填入默认资料路径"
+                                    Command="{Binding FillDefaultMaterialPathCommand}"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Margin="0,0,0,8">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanEditApprovalPaths}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <StackPanel Margin="0,0,0,6">
+                        <TextBlock Text="服务器路径" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding SelectedServerPathInfo, Mode=OneWay}"
+                                   Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="资料路径" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding CurrentRecord.MaterialPath, Mode=OneWay}"
+                                   Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </StackPanel>
 
                 <Grid Visibility="{Binding ShowExternalElectronicMediaSection, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <nt:NetworkInboundElectronicMediaSectionView DataContext="{Binding ElectronicMediaEditor}"/>

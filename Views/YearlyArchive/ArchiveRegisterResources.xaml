@@ -162,6 +162,24 @@
         </Style.Triggers>
     </Style>
 
+    <!-- 入网审批：资料室资料管理员补录路径（不受 CanEditForm 约束） -->
+    <Style x:Key="NetworkInboundApprovalPathTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource FormTextBoxStyle}">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding CanEditApprovalPaths}" Value="False">
+                <Setter Property="IsReadOnly" Value="True"/>
+                <Setter Property="Background" Value="#F5F5F5"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="NetworkInboundApprovalPathComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource FormComboBoxStyle}">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding CanEditApprovalPaths}" Value="False">
+                <Setter Property="IsEnabled" Value="False"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
     <Style x:Key="ArchiveRegisterFormTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource FormTextBoxStyle}">
         <Style.Triggers>
             <DataTrigger Binding="{Binding DataContext.CanEditForm, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False">

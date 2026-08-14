@@ -377,6 +377,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         IReadOnlyList<NetworkInboundItem> items,
         User currentUser,
         string? targetServerPath = null,
+        string? materialPath = null,
         IReadOnlyList<YearlyArchiveRegisterMedia>? externalMediaEntries = null)
     {
         EnsureArchiveAdmin(currentUser);
@@ -385,7 +386,12 @@ public sealed partial class NetworkTransferService : INetworkTransferService
 
         if (existing.Status is not (NetworkInboundRecord.StatusSubmitted or NetworkInboundRecord.StatusApproved))
         {
-            throw new InvalidOperationException("仅已提交或已审批状态可补录服务器路径。");
+            throw new InvalidOperationException("仅已提交或已审批状态可补录服务器路径与资料路径。");
+        }
+
+        if (!string.IsNullOrWhiteSpace(materialPath))
+        {
+            existing.MaterialPath = materialPath.Trim();
         }
 
         if (NetworkTransferDomainValues.IsExternalOfflineSource(existing.SourceKind))

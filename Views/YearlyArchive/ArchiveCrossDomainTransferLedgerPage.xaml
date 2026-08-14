@@ -1,0 +1,322 @@
+<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveCrossDomainTransferLedgerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      mc:Ignorable="d"
+      d:DesignHeight="800"
+      d:DesignWidth="1400"
+      Title="ArchiveCrossDomainTransferLedgerPage"
+      Background="#F0F2F5">
+
+    <Page.Resources>
+        <Style x:Key="PageTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#004D40"/>
+        </Style>
+        <Style x:Key="PageSubtitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#6B7280"/>
+            <Setter Property="Margin" Value="0,4,0,0"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style x:Key="CompactToolbarButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarActionButtonStyle}">
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MinHeight" Value="28"/>
+        </Style>
+        <Style x:Key="QuickChipButtonStyle" TargetType="Button" BasedOn="{StaticResource ButtonBaseStyle}">
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="MinHeight" Value="28"/>
+            <Setter Property="MinWidth" Value="72"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#94A3B8"/>
+            <Setter Property="Foreground" Value="#1F2937"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#ECFDF5"/>
+                    <Setter Property="BorderBrush" Value="#059669"/>
+                    <Setter Property="Foreground" Value="#065F46"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#D1FAE5"/>
+                    <Setter Property="BorderBrush" Value="#047857"/>
+                    <Setter Property="Foreground" Value="#064E3B"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="LedgerFilterLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource ToolbarFilterLabelStyle}">
+            <Setter Property="Margin" Value="0,0,6,0"/>
+        </Style>
+        <Style x:Key="FilterRowLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource LedgerFilterLabelStyle}">
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="FilterCardHintStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#9CA3AF"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#37474F"/>
+        </Style>
+        <Style x:Key="SectionHintStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#9CA3AF"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style x:Key="SectionHeaderBarStyle" TargetType="Border">
+            <Setter Property="Background" Value="#F9FAFB"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="12,8"/>
+        </Style>
+        <Style x:Key="ContentCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="跨域流转台账" Style="{StaticResource PageTitleStyle}"/>
+            <TextBlock Style="{StaticResource PageSubtitleStyle}"
+                       Text="横向浏览立档电子资料复制上传入网等跨域流转流水；原件保管关系不变，生产网侧见在网资产编号与服务器路径。"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Padding="10,8" Margin="0,0,0,8">
+            <Grid Grid.IsSharedSizeScope="True">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <Grid MinHeight="32">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="CrossDomainFilterLabel"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="112"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="112"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="176"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="88"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="176"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="筛选条件" Style="{StaticResource FilterRowLabelStyle}"
+                                   FontWeight="SemiBold" Foreground="#37474F"/>
+
+                        <TextBlock Grid.Column="2" Text="自" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <DatePicker Grid.Column="3" Style="{StaticResource FilterDatePickerStyle}"
+                                    SelectedDate="{Binding OperatedFrom, Mode=TwoWay}"/>
+
+                        <TextBlock Grid.Column="5" Text="至" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <DatePicker Grid.Column="6" Style="{StaticResource FilterDatePickerStyle}"
+                                    SelectedDate="{Binding OperatedTo, Mode=TwoWay}"/>
+
+                        <TextBlock Grid.Column="8" Text="流转类型" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="9" Style="{StaticResource FilterInputStyle}"
+                                  ItemsSource="{Binding TransactionTypeOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedValuePath="Value"
+                                  SelectedValue="{Binding SelectedTransactionType, Mode=TwoWay}"
+                                  ToolTip="立档资料复制入网等跨域流转类型"/>
+
+                        <TextBlock Grid.Column="11" Text="介质" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="12" Style="{StaticResource FilterInputStyle}"
+                                  ItemsSource="{Binding MediaKindOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedValuePath="Value"
+                                  SelectedValue="{Binding SelectedMediaKind, Mode=TwoWay}"/>
+
+                        <TextBlock Grid.Column="14" Text="操作人" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBox Grid.Column="15" Style="{StaticResource SearchTextBoxStyle}"
+                                 Text="{Binding OperatorName, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Grid.Column="17" Text="关键字" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBox Grid.Column="18" Style="{StaticResource SearchTextBoxStyle}"
+                                 Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="立档编号、资料名称、服务器路径、在网资产编号等">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
+                            </TextBox.InputBindings>
+                        </TextBox>
+
+                        <StackPanel Grid.Column="20" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                            <Button Content="重置" Margin="4,0,0,0" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                            <Button Content="定位立档" Margin="6,0,0,0" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                            <Button Content="导出" Margin="4,0,0,0" Command="{Binding ExportCommand}" Style="{StaticResource CompactToolbarButtonStyle}"
+                                    ToolTip="导出当前查询结果为 Excel"/>
+                         
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+
+                <Grid Grid.Row="1" Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="CrossDomainFilterLabel"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="248"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="CrossDomainFilterLabel"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="入网单号" Style="{StaticResource FilterRowLabelStyle}"/>
+                    <ComboBox Grid.Row="0" Grid.Column="2"
+                              Style="{StaticResource FilterInputStyle}"
+                              Height="{StaticResource ToolbarControlHeight}"
+                              IsEditable="True"
+                              IsTextSearchEnabled="True"
+                              StaysOpenOnEdit="True"
+                              ItemsSource="{Binding BusinessNoOptions}"
+                              Text="{Binding BusinessNo, UpdateSourceTrigger=PropertyChanged}"
+                              ToolTip="可直接输入、下拉选择历史办结入网单号，或点选最近单号"/>
+                    <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="用选中行" MinWidth="84"
+                                Command="{Binding UseSelectedRowBusinessNoCommand}"
+                                Style="{StaticResource CompactToolbarButtonStyle}"
+                                ToolTip="将当前列表选中行的入网单号填入筛选框"/>
+                        <Button Content="清空单号" MinWidth="84" Margin="4,0,0,0"
+                                Command="{Binding ClearBusinessNoCommand}"
+                                Style="{StaticResource CompactToolbarButtonStyle}"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="0" Grid.Column="6" Text="时间快捷" Style="{StaticResource FilterRowLabelStyle}"/>
+                    <WrapPanel Grid.Row="0" Grid.Column="8" VerticalAlignment="Center">
+                        <Button Content="近30天" MinWidth="72" Style="{StaticResource QuickChipButtonStyle}"
+                                Command="{Binding ApplyRecentDaysCommand}" CommandParameter="30"/>
+                        <Button Content="近90天" MinWidth="72" Style="{StaticResource QuickChipButtonStyle}"
+                                Command="{Binding ApplyRecentDaysCommand}" CommandParameter="90"/>
+                        <Button Content="全部时间" MinWidth="84" Style="{StaticResource QuickChipButtonStyle}"
+                                Command="{Binding ApplyRecentDaysCommand}" CommandParameter="{x:Null}"/>
+                    </WrapPanel>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="最近单号" Style="{StaticResource FilterRowLabelStyle}" Margin="0,6,8,0"/>
+                    <ScrollViewer Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="7"
+                                  Margin="0,6,0,0"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding RecentBusinessNoOptions}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Style="{StaticResource QuickChipButtonStyle}"
+                                            MinWidth="120"
+                                            MaxWidth="280"
+                                            Command="{Binding DataContext.SelectRecentBusinessNoCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                            CommandParameter="{Binding}"
+                                            ToolTip="{Binding}">
+                                        <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" MaxWidth="260"/>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="7"
+                               Margin="0,4,0,0"
+                               Style="{StaticResource FilterCardHintStyle}"
+                               Text="最近单号来自当前查询结果或最近办结入网单；可直接输入、下拉选择，或点选上方最近单号。"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1"
+                CornerRadius="4" Padding="12,8" Margin="0,0,0,8">
+            <StackPanel>
+                <TextBlock Text="{Binding SummaryText}" Foreground="#065F46" FontSize="12"/>
+                <TextBlock Text="{Binding FilterScopeHint}" Foreground="#047857" FontSize="11" Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="3" Style="{StaticResource ContentCardStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Border Style="{StaticResource SectionHeaderBarStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="跨域流转流水" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text="一行对应一条复制上传入网等跨域落账记录" Style="{StaticResource SectionHintStyle}"/>
+                    </StackPanel>
+                </Border>
+                <DataGrid Grid.Row="1" Margin="8"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          RowHeight="36"
+                          ColumnHeaderHeight="36"
+                          GridLinesVisibility="Horizontal"
+                          BorderThickness="0"
+                          ItemsSource="{Binding LedgerRows}"
+                          SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
+                          MouseDoubleClick="LedgerGrid_MouseDoubleClick">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="操作时间" Binding="{Binding OperatedAtDisplay, Mode=OneWay}" Width="130"/>
+                        <DataGridTextColumn Header="流转类型" Binding="{Binding TransactionTypeDisplay, Mode=OneWay}" Width="130"/>
+                        <DataGridTextColumn Header="入网单号" Binding="{Binding BusinessNo, Mode=OneWay}" Width="140"/>
+                        <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo, Mode=OneWay}" Width="130"/>
+                        <DataGridTextColumn Header="表单编号" Binding="{Binding FormNo, Mode=OneWay}" Width="120"/>
+                        <DataGridTextColumn Header="介质" Binding="{Binding MediaKind, Mode=OneWay}" Width="72"/>
+                        <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="140"/>
+                        <DataGridTextColumn Header="分项名称" Binding="{Binding ItemName, Mode=OneWay}" Width="120"/>
+                        <DataGridTextColumn Header="项目" Binding="{Binding ProjectName, Mode=OneWay}" Width="120"/>
+                        <DataGridTextColumn Header="跨域路径" Binding="{Binding TransferPathDisplay, Mode=OneWay}" Width="220"/>
+                        <DataGridTextColumn Header="在网资产编号" Binding="{Binding OnNetAssetNo, Mode=OneWay}" Width="130"/>
+                        <DataGridTextColumn Header="操作人" Binding="{Binding OperatorName, Mode=OneWay}" Width="80"/>
+                        <DataGridTextColumn Header="摘要" Binding="{Binding Summary, Mode=OneWay}" Width="160"/>
+                        <DataGridTextColumn Header="备注" Binding="{Binding Remark, Mode=OneWay}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

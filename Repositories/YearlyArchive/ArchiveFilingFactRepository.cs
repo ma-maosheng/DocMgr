@@ -567,6 +567,16 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             query = query.Where(set => set.Status == criteria.Status);
         }
 
+        if (!string.IsNullOrWhiteSpace(criteria.Year)
+            && !string.Equals(criteria.Year.Trim(), "全部年度", StringComparison.Ordinal))
+        {
+            string year = criteria.Year.Trim();
+            query = query.Where(set => set.Items.Any(item =>
+                _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                    fact.Id == item.FilingFactId
+                    && (fact.FiledAt.Year.ToString() == year || fact.ContainerCode.Contains(year)))));
+        }
+
         var rows = await query
             .OrderByDescending(set => set.UpdatedAt ?? set.CreatedAt)
             .ThenByDescending(set => set.Id)
@@ -623,30 +633,6 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
         return _dbContext.SaveChangesAsync();
     }
 
-    public Task<int> CountUserResultSetsByMediaKindAsync(int userId, string mediaKind)
-    {
-        return _dbContext.YearlyArchiveSearchResultSets
-            .AsNoTracking()
-            .CountAsync(set => set.CreatedByUserId == userId && set.MediaKind == mediaKind);
-    }
-
-    public Task<List<YearlyArchiveSearchResultSet>> GetOldestUserResultSetsByMediaKindAsync(
-        int userId,
-        string mediaKind,
-        int count)
-    {
-        if (count <= 0)
-        {
-            return Task.FromResult(new List<YearlyArchiveSearchResultSet>());
-        }
-
-        return _dbContext.YearlyArchiveSearchResultSets
-            .Where(set => set.CreatedByUserId == userId && set.MediaKind == mediaKind)
-            .OrderBy(set => set.CreatedAt)
-            .ThenBy(set => set.Id)
-            .Take(count)
-            .ToListAsync();
-    }
 
     public async Task UpdateFilingFactLifecycleAsync(
         int filingFactId,

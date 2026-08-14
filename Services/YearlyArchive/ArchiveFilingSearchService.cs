@@ -189,8 +189,6 @@ namespace DocMgr.Services.YearlyArchive
                 throw new InvalidOperationException("筛选池为空，无法保存。");
             }
 
-            var autoRemovedNames = await EnforceUserResultSetLimitAsync(currentUser.Id, request.MediaKind);
-
             var factIds = request.Selections.Select(item => item.FilingFactId).Distinct().ToList();
             var facts = await _filingFactRepository.GetFactsByIdsAsync(factIds);
             if (facts.Count == 0)
@@ -332,41 +330,8 @@ namespace DocMgr.Services.YearlyArchive
             await _filingFactRepository.SaveChangesAsync();
             return new SearchResultSetSaveResult
             {
-                ResultSet = resultSet,
-                AutoRemovedResultSetNames = autoRemovedNames
+                ResultSet = resultSet
             };
-        }
-
-        private async Task<List<string>> EnforceUserResultSetLimitAsync(int userId, string mediaKind)
-        {
-            int existingCount = await _filingFactRepository.CountUserResultSetsByMediaKindAsync(userId, mediaKind);
-            int needRemove = Math.Max(0, existingCount - SearchPoolLimits.MaxResultSetsPerUserPerMediaKind + 1);
-            if (needRemove <= 0)
-            {
-                return new List<string>();
-            }
-
-            var oldestSets = await _filingFactRepository.GetOldestUserResultSetsByMediaKindAsync(
-                userId,
-                mediaKind,
-                needRemove);
-
-            var removedNames = new List<string>();
-            foreach (var resultSet in oldestSets)
-            {
-                removedNames.Add(resultSet.Name);
-                if (!await _filingFactRepository.DeleteResultSetAsync(resultSet.Id))
-                {
-                    throw new InvalidOperationException($"自动清理最早结果集失败：{resultSet.Name}");
-                }
-            }
-
-            if (removedNames.Count > 0)
-            {
-                await _filingFactRepository.SaveResultSetChangesAsync();
-            }
-
-            return removedNames;
         }
 
         public Task<List<SearchPoolListItem>> ListSearchPoolsAsync(

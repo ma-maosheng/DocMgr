@@ -141,7 +141,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
             FillDefaultMaterialPathCommand = new RelayCommand(
                 _ => FillDefaultMaterialPath(),
-                _ => CanEditServerPath);
+                _ => CanEditHeader || CanEditApprovalPaths);
             InitializeApprovalCommands();
 
             RefreshUploadCategoryOptions();
@@ -216,17 +216,24 @@ namespace DocMgr.ViewModels.NetworkTransfer
         /// <summary>当前是否为档外资料来源（明细展示与录入口径）。</summary>
         public bool IsExternalSource => !IsArchivedSource;
 
-        /// <summary>审批态已提交/已审批时可补录服务器路径。</summary>
-        public bool CanEditItemPaths =>
+        /// <summary>资料室资料管理员在审批通过前可补录服务器路径与资料路径。</summary>
+        public bool CanEditApprovalPaths =>
             _mode == NetworkTransferWorkspaceMode.Approval
-            && _record.Status is NetworkInboundRecord.StatusSubmitted or NetworkInboundRecord.StatusApproved
+            && _record.Status == NetworkInboundRecord.StatusSubmitted
             && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+
+        /// <summary>审批态已提交/已审批时可持久化路径补录（含交接阶段重保存）。</summary>
+        public bool CanEditItemPaths =>
+            CanEditApprovalPaths
+            || (_mode == NetworkTransferWorkspaceMode.Approval
+                && _record.Status == NetworkInboundRecord.StatusApproved
+                && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser));
 
         /// <summary>明细服务器路径是否只读（草稿可编；审批补录路径时可编）。</summary>
         public bool IsItemPathReadOnly => !CanEditServerPath;
 
-        /// <summary>共享服务器路径是否可编辑。</summary>
-        public bool CanEditServerPath => CanEditHeader || CanEditItemPaths;
+        /// <summary>共享服务器路径与资料路径是否可编辑。</summary>
+        public bool CanEditServerPath => CanEditHeader || CanEditApprovalPaths;
 
         public string InboundNo
         {
@@ -590,8 +597,6 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 Items.Add(CloneItem(item));
             }
 
-            OnPropertyChanged(nameof(CanEditServerPath));
-
             OnPropertyChanged(nameof(WindowTitle));
             OnPropertyChanged(nameof(StatusDisplay));
             OnPropertyChanged(nameof(CanEditHeader));
@@ -605,6 +610,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             OnPropertyChanged(nameof(BusinessChainProgressDisplay));
             OnPropertyChanged(nameof(ShowExternalItemToolbar));
             OnPropertyChanged(nameof(IsInboundItemGridReadOnly));
+            OnPropertyChanged(nameof(CanEditApprovalPaths));
             OnPropertyChanged(nameof(CanEditItemPaths));
             OnPropertyChanged(nameof(CanEditServerPath));
             OnPropertyChanged(nameof(IsItemPathReadOnly));
@@ -1005,9 +1011,19 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         private void LoadApplicantServerPathOptions()
         {
-            string department = string.IsNullOrWhiteSpace(ApplicantDept)
-                ? ResolveApplicantUser().Department?.Trim() ?? string.Empty
-                : ApplicantDept.Trim();
+            string department;
+            if (_mode == NetworkTransferWorkspaceMode.Approval
+                && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser))
+            {
+                // 审批办理按资料室资料管理员可见路径加载，便于跨部门申请单补录。
+                department = _userContextService.CurrentUser?.Department?.Trim() ?? string.Empty;
+            }
+            else
+            {
+                department = string.IsNullOrWhiteSpace(ApplicantDept)
+                    ? ResolveApplicantUser().Department?.Trim() ?? string.Empty
+                    : ApplicantDept.Trim();
+            }
 
             ApplicantServerPathOptions.Clear();
             foreach (ServerPathSetting path in _serverPathSettingService.GetWritablePathsForDepartment(department))
@@ -1441,6 +1457,12 @@ namespace DocMgr.ViewModels.NetworkTransfer
                         }
                     }
 
+                    if (string.IsNullOrWhiteSpace(_record.MaterialPath))
+                    {
+                        _dialogService.ShowError("请填写资料路径。");
+                        return;
+                    }
+
                     await PersistItemPathsIfNeededAsync();
                     await PersistReturnHardDiskSlotsIfNeededAsync();
                 }
@@ -1517,6 +1539,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     Items.ToList(),
                     RequireUser(),
                     targetServerPath,
+                    _record.MaterialPath?.Trim(),
                     IsExternalSource ? BuildExternalMediaEntriesForSave() : null);
                 // 不在此处 Reload：审批/交接区默认信息仅内存回填，提前 Reload 会冲掉界面值；
                 // 调用方在主操作成功后再 Reload。

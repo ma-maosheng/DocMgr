@@ -31,6 +31,11 @@ namespace DocMgr.Repositories.Interfaces
         Task<IReadOnlyList<MaterialOutboundProcessNodeSearchRow>> SearchOutboundProcessNodeLedgerAsync(
             OutboundProcessNodeLedgerSearchCriteria criteria);
 
+        Task<IReadOnlyList<CrossDomainTransferLedgerRow>> SearchCrossDomainTransferLedgerAsync(
+            CrossDomainTransferLedgerSearchCriteria criteria);
+
+        Task<IReadOnlyList<string>> GetCrossDomainTransferBusinessNoOptionsAsync(int maxCount = 50);
+
         Task SaveChangesAsync();
     }
 }

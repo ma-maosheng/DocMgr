@@ -72,6 +72,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<ArchiveOutboundHandoverPage>("YA-OB-HND", "出库交接");
             Add<ArchiveReturnWorkbenchPage>("YA-RTN", "归还工作台");
             Add<ArchiveCirculationLedgerPage>("YA-CIR-LDG", "流转台账");
+            Add<ArchiveCrossDomainTransferLedgerPage>("YA-XDM-LDG", "跨域流转台账");
             Add<ArchiveInventoryRegisterPage>("YA-INV", "资料盘库登记");
             Add<ArchiveSimulatedRelocationPage>("YA-REL-SIM", "模拟介质迁档");
             Add<ArchiveElectronicRelocationPage>("YA-REL-ELC", "电子介质迁档");

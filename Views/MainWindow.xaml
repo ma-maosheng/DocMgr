@@ -432,6 +432,7 @@
                                         <Button x:Name="BtnArchiveReturnApply" Content="归还申请" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveReturnApply_Click"/>
                                         <Button x:Name="BtnArchiveReturnApproval" Content="审批入库" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveReturnApproval_Click"/>
                                         <Button x:Name="BtnArchiveCirculationLedger" Content="流转台账" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveCirculationLedger_Click"/>
+                                        <Button x:Name="BtnArchiveCrossDomainTransferLedger" Content="跨域流转台账" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveCrossDomainTransferLedger_Click"/>
                                     </StackPanel>
                                 </Expander>
                                 <Expander Header="盘库登记" Style="{StaticResource SubNavExpander}">

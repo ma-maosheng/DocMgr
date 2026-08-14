@@ -51,6 +51,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<ArchiveFilingLedgerViewModel>();
         services.AddTransient<ArchiveRelocationLedgerViewModel>();
         services.AddTransient<ArchiveCirculationLedgerViewModel>();
+        services.AddTransient<ArchiveCrossDomainTransferLedgerViewModel>();
         services.AddTransient<ArchiveSimulatedRelocationViewModel>();
         services.AddTransient<Func<ArchiveReturnWorkspaceMode, ArchiveReturnWorkbenchViewModel>>(sp =>
             mode => ActivatorUtilities.CreateInstance<ArchiveReturnWorkbenchViewModel>(sp, mode));

@@ -26,6 +26,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _isInitialized;
         private string _filterKeyword = string.Empty;
         private string _filterStatus = string.Empty;
+        private string _selectedYear = "全部年度";
         private bool _onlyMine;
         private string _editableName = string.Empty;
         private string _editableRemarks = string.Empty;
@@ -112,6 +113,22 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<StatusFilterOption> EditableStatusOptions { get; }
 
         public ObservableCollection<MediaKindOption> MediaKindOptions { get; }
+
+        public ObservableCollection<string> Years { get; } = new() { "全部年度" };
+
+        public string SelectedYear
+        {
+            get => _selectedYear;
+            set
+            {
+                if (!SetProperty(ref _selectedYear, value))
+                {
+                    return;
+                }
+
+                _ = SearchPoolsAsync();
+            }
+        }
 
         public string SelectedMediaKind
         {
@@ -254,7 +271,31 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             CanBrowseAllPools = _archiveRegisterService.IsArchiveAdminUser(user);
             OnlyMine = !CanBrowseAllPools;
+            await LoadYearsAsync();
             await SearchPoolsAsync();
+        }
+
+        private async Task LoadYearsAsync()
+        {
+            try
+            {
+                var yearsList = await _archiveRegisterService.GetExistingYearsAsync();
+                Years.Clear();
+                Years.Add("全部年度");
+                foreach (int year in yearsList)
+                {
+                    Years.Add(year.ToString());
+                }
+
+                if (!Years.Contains(_selectedYear))
+                {
+                    SelectedYear = "全部年度";
+                }
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"加载年度失败：{ex.Message}");
+            }
         }
 
         private async Task SearchPoolsAsync()
@@ -267,6 +308,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                     new SearchPoolListCriteria
                     {
                         MediaKind = _mediaKind,
+                        Year = string.Equals(SelectedYear, "全部年度", StringComparison.Ordinal)
+                            ? null
+                            : SelectedYear,
                         Keyword = FilterKeyword,
                         Status = string.IsNullOrWhiteSpace(FilterStatus) ? null : FilterStatus,
                         OnlyMine = OnlyMine || !CanBrowseAllPools
@@ -295,6 +339,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void ResetFilter()
         {
+            SelectedYear = "全部年度";
             FilterKeyword = string.Empty;
             FilterStatus = string.Empty;
             OnlyMine = !CanBrowseAllPools;

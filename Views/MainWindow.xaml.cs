@@ -463,6 +463,7 @@ namespace DocMgr.Views
                 ArchiveOutboundApprovalPage => BtnArchiveOutboundApproval,
                 ArchiveReturnWorkbenchPage page => ResolveArchiveReturnNavButton(page),
                 ArchiveCirculationLedgerPage => BtnArchiveCirculationLedger,
+                ArchiveCrossDomainTransferLedgerPage => BtnArchiveCrossDomainTransferLedger,
                 ArchiveInventoryRegisterPage page => ResolveArchiveInventoryRegisterNavButton(page),
                 ArchiveDisposalPage page => ResolveArchiveDisposalNavButton(page),
                 NetworkInboundApplicationPage => BtnNetInboundApply,
@@ -589,6 +590,7 @@ namespace DocMgr.Views
                 ArchiveFilingLedgerPage => "年度资料档案化管理（资料建档·立档台账）",
                 ArchiveRelocationLedgerPage => "年度资料档案化管理（资料迁档·迁档台账）",
                 ArchiveCirculationLedgerPage => "年度资料档案化管理（资料流转·流转台账）",
+                ArchiveCrossDomainTransferLedgerPage => "年度资料档案化管理（资料流转·跨域流转台账）",
                 ArchiveInventoryRegisterPage page => string.Equals(
                         page.MediaKind,
                         ArchiveInventoryRegisterDomainValues.MediaKindElectronic,
@@ -797,6 +799,7 @@ namespace DocMgr.Views
             SetNavButton(BtnArchiveFilingLedger, canFiling);
             SetNavButton(BtnArchiveRelocationLedger, canFiling);
             SetNavButton(BtnArchiveCirculationLedger, canFiling);
+            SetNavButton(BtnArchiveCrossDomainTransferLedger, canFiling);
             SetNavButton(BtnArchiveSearch, true);
             SetNavButton(BtnArchiveElectronicFilingSearch, true);
             SetNavButton(BtnArchiveSimulatedFilingSearch, true);
@@ -1102,6 +1105,23 @@ namespace DocMgr.Views
             }
 
             MainContentFrame.Navigate(new ArchiveCirculationLedgerPage());
+        }
+
+        private void BtnArchiveCrossDomainTransferLedger_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "年度资料档案化管理（资料流转·跨域流转台账）";
+
+            if (!CanAccessArchiveFiling())
+            {
+                MessageBox.Show(
+                    "抱歉，您没有【跨域流转台账】的访问权限（仅资料室资料管理员可操作）。",
+                    "权限提示",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            MainContentFrame.Navigate(new ArchiveCrossDomainTransferLedgerPage());
         }
 
         private void BtnArchiveSimulatedInventoryRegister_Click(object sender, RoutedEventArgs e)

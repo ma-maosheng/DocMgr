@@ -452,4 +452,99 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ContainerStatusDisplay { get; init; } = string.Empty;
     }
+
+    /// <summary>
+    /// 跨域流转台账查询条件（离线档案域 ↔ 生产网络域）。
+    /// </summary>
+    public sealed class CrossDomainTransferLedgerSearchCriteria
+    {
+        public DateTime? OperatedFrom { get; set; }
+
+        public DateTime? OperatedTo { get; set; }
+
+        /// <summary>空表示全部；当前仅「立档资料复制入网」。</summary>
+        public string TransactionType { get; set; } = string.Empty;
+
+        public string MediaKind { get; set; } = string.Empty;
+
+        public string BusinessNo { get; set; } = string.Empty;
+
+        public string OperatorName { get; set; } = string.Empty;
+
+        public string Keyword { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// 跨域流转台账流水行。
+    /// </summary>
+    public sealed class CrossDomainTransferLedgerRow
+    {
+        public int TransactionId { get; init; }
+
+        public int FilingFactId { get; init; }
+
+        public DateTime OperatedAt { get; init; }
+
+        public string OperatedAtDisplay => OperatedAt.ToString("yyyy-MM-dd HH:mm");
+
+        public string TransactionType { get; init; } = string.Empty;
+
+        public string TransactionTypeDisplay =>
+            MaterialTransactionDomainValues.MapTypeDisplay(TransactionType);
+
+        public string BusinessNo { get; init; } = string.Empty;
+
+        public string FilingFactNo { get; init; } = string.Empty;
+
+        public string FormNo { get; init; } = string.Empty;
+
+        public string MediaKind { get; init; } = string.Empty;
+
+        public string MaterialName { get; init; } = string.Empty;
+
+        public string ItemName { get; init; } = string.Empty;
+
+        public string ProjectName { get; init; } = string.Empty;
+
+        /// <summary>资料室离线侧存放位置。</summary>
+        public string SourceStorageLocation { get; init; } = string.Empty;
+
+        /// <summary>生产网络侧服务器路径。</summary>
+        public string TargetServerPath { get; init; } = string.Empty;
+
+        /// <summary>办结后写入的在网资产编号。</summary>
+        public string OnNetAssetNo { get; init; } = string.Empty;
+
+        public string OperatorName { get; init; } = string.Empty;
+
+        public string Summary { get; init; } = string.Empty;
+
+        public string Remark { get; init; } = string.Empty;
+
+        /// <summary>离线存放位置 → 生产网服务器路径。</summary>
+        public string TransferPathDisplay
+        {
+            get
+            {
+                string source = SourceStorageLocation?.Trim() ?? string.Empty;
+                string target = TargetServerPath?.Trim() ?? string.Empty;
+                if (string.IsNullOrEmpty(source) && string.IsNullOrEmpty(target))
+                {
+                    return "—";
+                }
+
+                if (string.IsNullOrEmpty(source))
+                {
+                    return $"→ {target}";
+                }
+
+                if (string.IsNullOrEmpty(target))
+                {
+                    return source;
+                }
+
+                return $"{source} → {target}";
+            }
+        }
+    }
 }
