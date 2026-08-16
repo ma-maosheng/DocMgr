@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-08-13T03:07:20Z
+generatedAt: 2026-08-16T03:24:56Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -4105,13 +4105,19 @@ tables:
         aliases: []
       YearlyArchiveRegisterRecordId:
         chineseName: 登记记录ID
-        description: 资料登记单归属；与入网单归属二选一。
+        description: 资料登记单归属；与入网/出网单归属三选一。
         clrType: Int32?
         needsReview: false
         aliases: []
       NetworkInboundRecordId:
         chineseName: 入网申请单ID
-        description: 档外资料入网单归属；与登记单归属二选一。
+        description: 档外资料入网单归属；与登记单、出网单归属三选一。
+        clrType: Int32?
+        needsReview: false
+        aliases: []
+      NetworkOutboundRecordId:
+        chineseName: 出网申请单ID
+        description: 出网单归属；与登记单、入网单归属三选一。
         clrType: Int32?
         needsReview: false
         aliases: []
@@ -4150,6 +4156,36 @@ tables:
         description: ''
         clrType: String
         needsReview: false
+        aliases: []
+      UseInStockBlankHardDisk:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Boolean
+        needsReview: true
+        aliases: []
+      RequisitionedMediumId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32?
+        needsReview: true
+        aliases: []
+      RequisitionedHardDiskCode:
+        chineseName: 未映射字段
+        description: ''
+        clrType: String
+        needsReview: true
+        aliases: []
+      RequisitionedDiskNeedReturn:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Boolean
+        needsReview: true
+        aliases: []
+      ExpectedReturnDate:
+        chineseName: 未映射字段
+        description: ''
+        clrType: DateTime?
+        needsReview: true
         aliases: []
   YearlyArchiveRegisterRecord:
     tableName: YearlyArchiveRegisterRecords
@@ -5883,7 +5919,7 @@ tables:
         aliases: []
       ProvideUnit:
         chineseName: 提供部门（单位）
-        description: 立档资料固定为资料室；档外资料（内部）选院内部门；档外资料（外部）手工填写。
+        description: 存档资料固定为资料室；档外资料（院内）选院内部门；档外资料（院外）手工填写。
         clrType: String
         needsReview: false
         aliases: []
@@ -6222,6 +6258,12 @@ tables:
       OriginInboundItemId:
         chineseName: 来源入网明细ID
         description: ''
+        clrType: Int32?
+        needsReview: false
+        aliases: []
+      OriginOutboundItemId:
+        chineseName: 来源出网明细ID
+        description: 出网办结写入台账时回写。
         clrType: Int32?
         needsReview: false
         aliases: []
@@ -6648,10 +6690,28 @@ tables:
         needsReview: false
         aliases: []
       DestinationKind:
-        chineseName: 未映射字段
-        description: ''
+        chineseName: 目的地类别
+        description: 出网（院内） / 出网（院外） / 资料室存档
         clrType: String
-        needsReview: true
+        needsReview: false
+        aliases: []
+      MaterialName:
+        chineseName: 资料名称
+        description: 出网整单摘要
+        clrType: String
+        needsReview: false
+        aliases: []
+      ServerPath:
+        chineseName: 服务器路径
+        description: 生产网来源路径（手工）
+        clrType: String
+        needsReview: false
+        aliases: []
+      MaterialPath:
+        chineseName: 出网资料所在具体路径
+        description: 拟出网资料在服务器路径下的具体目录，由申请人填写。
+        clrType: String
+        needsReview: false
         aliases: []
       ProjectName:
         chineseName: 项目名称
@@ -6666,10 +6726,16 @@ tables:
         needsReview: true
         aliases: []
       Reason:
-        chineseName: 未映射字段
+        chineseName: 申请说明
         description: ''
         clrType: String
-        needsReview: true
+        needsReview: false
+        aliases: []
+      OtherRequests:
+        chineseName: 其他要求
+        description: ''
+        clrType: String
+        needsReview: false
         aliases: []
       Remark:
         chineseName: 备注

@@ -25,6 +25,9 @@ public sealed class NetworkOutboundPrintData
 
     public List<string> ItemLines { get; init; } = new();
 
+    /// <summary>是否存在尚未从离线拷贝介质补录目录/数据量的子项。</summary>
+    public bool HasPendingItemDetailCapture { get; init; }
+
     /// <summary>申请部门负责人签字栏。</summary>
     public string DeptLeaderBlock { get; init; } = string.Empty;
 

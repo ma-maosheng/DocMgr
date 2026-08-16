@@ -87,6 +87,8 @@
                                     Content="填入默认资料路径"
                                     Command="{Binding FillDefaultMaterialPathCommand}"/>
                         </Grid>
+                        <TextBlock Margin="90,4,0,0" Foreground="#64748B" FontSize="11" TextWrapping="Wrap"
+                                   Text="{Binding MaterialPathHint, Mode=OneWay}"/>
                     </StackPanel>
                 </Border>
 

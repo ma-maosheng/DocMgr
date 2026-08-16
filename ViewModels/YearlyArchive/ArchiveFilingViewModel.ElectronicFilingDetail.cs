@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,11 +25,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ElectronicFilingMediumAvailableCapacityText { get; private set; } = "—";
 
         /// <summary>
-        /// 原光盘直接留袋、原硬盘直接留袋时不可编辑立档路径；拷贝型立档可编辑。
+        /// 原光盘直接留袋时不可编辑立档路径；拷贝型立档与原硬盘直接立档可编辑。
         /// </summary>
         public bool IsElectronicFilingStoragePathEditable =>
-            SelectedElectronicSubmissionMode != ElectronicArchiveSubmissionMode.RetainedOpticalDiscSingleNew
-            && SelectedElectronicSubmissionMode != ElectronicArchiveSubmissionMode.RetainedHardDiskDirectNew;
+            SelectedElectronicSubmissionMode != ElectronicArchiveSubmissionMode.RetainedOpticalDiscSingleNew;
 
         private IReadOnlyList<int> GetSelectedMediaItemIdsForElectronicSubmit()
         {
@@ -237,7 +237,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             string sourceStoragePath = source.StoragePath?.Trim() ?? string.Empty;
             string defaultFilingPath = sourceStoragePath;
-            if (pathEditable)
+            if (pathEditable
+                && SelectedElectronicSubmissionMode != ElectronicArchiveSubmissionMode.RetainedHardDiskDirectNew)
             {
                 int sequence = sequenceByMediaItemId.TryGetValue(source.MediaItemId, out int resolvedSequence)
                     ? resolvedSequence
@@ -307,6 +308,19 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 ElectronicStoragePath = merged;
             }
+        }
+
+        /// <summary>
+        /// 提交前单独确认用户已核对第四步「立档存储路径」。
+        /// </summary>
+        private bool ConfirmElectronicFilingStoragePaths()
+        {
+            MessageBoxResult result = MessageBox.Show(
+                "是否已对立档存储路径进行了确认？",
+                "立档存储路径确认",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            return result == MessageBoxResult.Yes;
         }
 
         private void ClearElectronicFilingDetailState()

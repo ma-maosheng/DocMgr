@@ -37,6 +37,9 @@ namespace DocMgr.Models.NetworkTransfer
 
         public int? OriginInboundItemId { get; set; }
 
+        /// <summary>来源出网明细 Id（出网办结写入台账）。</summary>
+        public int? OriginOutboundItemId { get; set; }
+
         public int? ParentAssetId { get; set; }
 
         public int? SourceFilingFactId { get; set; }

@@ -25,6 +25,9 @@ public interface INetworkTransferRepository
     /// <summary>替换入网申请关联的登记介质树（档外资料入网）。</summary>
     Task ReplaceInboundMediaEntriesAsync(int inboundRecordId, IReadOnlyList<YearlyArchiveRegisterMedia> mediaEntries);
 
+    /// <summary>替换出网申请关联的登记介质树。</summary>
+    Task ReplaceOutboundMediaEntriesAsync(int outboundRecordId, IReadOnlyList<YearlyArchiveRegisterMedia> mediaEntries);
+
     Task<string?> GetLastInboundNoByPrefixAsync(string prefix);
 
     Task<List<NetworkOutboundRecord>> SearchOutboundRecordsAsync(string? keyword, int? status, int? applyYear);

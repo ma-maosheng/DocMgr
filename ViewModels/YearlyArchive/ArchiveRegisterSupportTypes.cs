@@ -39,6 +39,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     OnPropertyChanged(nameof(IsElectronicMedia));
                     OnPropertyChanged(nameof(IsSimulatedMedia));
                     OnPropertyChanged(nameof(IsRetainedHardDiskScenario));
+                    OnPropertyChanged(nameof(BorrowedHardDiskRegistrationRowVisibility));
                     OnPropertyChanged(nameof(BorrowedHardDiskDetailsVisibility));
                 }
             }
@@ -54,7 +55,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     ResetBorrowedHardDiskRegistrationIfNotApplicable();
                     OnPropertyChanged(nameof(IsRetainedHardDiskScenario));
+                    OnPropertyChanged(nameof(IsExternalOfflineReturnedHardDiskScenario));
+                    OnPropertyChanged(nameof(BorrowedHardDiskRegistrationRowVisibility));
                     OnPropertyChanged(nameof(BorrowedHardDiskDetailsVisibility));
+                    NotifyOutboundHardDiskRequisitionPropertiesChanged();
                 }
             }
         }
@@ -81,7 +85,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     ResetBorrowedHardDiskRegistrationIfNotApplicable();
                     OnPropertyChanged(nameof(IsRetainedHardDiskScenario));
+                    OnPropertyChanged(nameof(IsExternalOfflineReturnedHardDiskScenario));
+                    OnPropertyChanged(nameof(BorrowedHardDiskRegistrationRowVisibility));
                     OnPropertyChanged(nameof(BorrowedHardDiskDetailsVisibility));
+                    NotifyOutboundHardDiskRequisitionPropertiesChanged();
                 }
             }
         }
@@ -123,7 +130,150 @@ namespace DocMgr.ViewModels.YearlyArchive
             && string.Equals(MediaType?.Trim(), ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk, StringComparison.OrdinalIgnoreCase)
             && string.Equals(Disposition?.Trim(), ArchiveRegisterDomainValues.ElectronicDispositionRetain, StringComparison.OrdinalIgnoreCase);
 
-        public bool BorrowedHardDiskDetailsVisibility => IsRetainedHardDiskScenario && IsBorrowedHardDisk;
+        public bool IsExternalOfflineReturnedHardDiskScenario =>
+            string.Equals(MediaKind?.Trim(), ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(MediaType?.Trim(), ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(Disposition?.Trim(), ArchiveRegisterDomainValues.ElectronicDispositionReturn, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// 是否允许展示「借出硬盘」交互（出网资料室立档场景关闭，由后续立档负责）。
+        /// </summary>
+        private bool _showBorrowedHardDiskRegistrationUi = true;
+
+        public bool ShowBorrowedHardDiskRegistrationUi
+        {
+            get => _showBorrowedHardDiskRegistrationUi;
+            private set
+            {
+                if (SetProperty(ref _showBorrowedHardDiskRegistrationUi, value))
+                {
+                    OnPropertyChanged(nameof(BorrowedHardDiskRegistrationRowVisibility));
+                    if (!value && IsBorrowedHardDisk)
+                    {
+                        IsBorrowedHardDisk = false;
+                    }
+                }
+            }
+        }
+
+        /// <summary>硬盘·介质留存且允许录入借出硬盘时显示「借出硬盘是/否」行。</summary>
+        public bool BorrowedHardDiskRegistrationRowVisibility =>
+            IsRetainedHardDiskScenario && ShowBorrowedHardDiskRegistrationUi;
+
+        public bool BorrowedHardDiskDetailsVisibility =>
+            BorrowedHardDiskRegistrationRowVisibility && IsBorrowedHardDisk;
+
+        internal void SetShowBorrowedHardDiskRegistrationUi(bool show) =>
+            ShowBorrowedHardDiskRegistrationUi = show;
+
+        public bool OutboundHardDiskRequisitionVisibility => IsExternalOfflineReturnedHardDiskScenario;
+
+        public bool OutboundBlankHardDiskFieldsVisibility =>
+            IsExternalOfflineReturnedHardDiskScenario && UseInStockBlankHardDisk;
+
+        public bool OutboundRequisitionedDiskNeedReturnVisibility =>
+            OutboundBlankHardDiskFieldsVisibility && RequisitionedMediumId is > 0;
+
+        public bool RequiresExpectedReturnDate =>
+            OutboundRequisitionedDiskNeedReturnVisibility && RequisitionedDiskNeedReturn;
+
+        private readonly string _useInStockBlankHardDiskRadioGroup = Guid.NewGuid().ToString("N");
+        public string UseInStockBlankHardDiskRadioGroup => _useInStockBlankHardDiskRadioGroup;
+
+        private readonly string _requisitionedDiskNeedReturnRadioGroup = Guid.NewGuid().ToString("N");
+        public string RequisitionedDiskNeedReturnRadioGroup => _requisitionedDiskNeedReturnRadioGroup;
+
+        private bool _useInStockBlankHardDisk;
+        public bool UseInStockBlankHardDisk
+        {
+            get => _useInStockBlankHardDisk;
+            set
+            {
+                if (SetProperty(ref _useInStockBlankHardDisk, value))
+                {
+                    if (!value)
+                    {
+                        ClearOutboundRequisitionedDiskState();
+                    }
+                    else
+                    {
+                        RequisitionedDiskNeedReturn = true;
+                    }
+
+                    NotifyOutboundHardDiskRequisitionPropertiesChanged();
+                }
+            }
+        }
+
+        private int? _requisitionedMediumId;
+        public int? RequisitionedMediumId
+        {
+            get => _requisitionedMediumId;
+            set
+            {
+                if (SetProperty(ref _requisitionedMediumId, value))
+                {
+                    NotifyOutboundHardDiskRequisitionPropertiesChanged();
+                }
+            }
+        }
+
+        private string _requisitionedHardDiskCode = string.Empty;
+        public string RequisitionedHardDiskCode
+        {
+            get => _requisitionedHardDiskCode;
+            set => SetProperty(ref _requisitionedHardDiskCode, value);
+        }
+
+        private bool _requisitionedDiskNeedReturn = true;
+        public bool RequisitionedDiskNeedReturn
+        {
+            get => _requisitionedDiskNeedReturn;
+            set
+            {
+                if (SetProperty(ref _requisitionedDiskNeedReturn, value))
+                {
+                    if (!value)
+                    {
+                        ExpectedReturnDate = null;
+                    }
+
+                    NotifyOutboundHardDiskRequisitionPropertiesChanged();
+                }
+            }
+        }
+
+        private DateTime? _expectedReturnDate;
+        public DateTime? ExpectedReturnDate
+        {
+            get => _expectedReturnDate;
+            set => SetProperty(ref _expectedReturnDate, value?.Date);
+        }
+
+        internal void ApplyOutboundRequisitionedDisk(int mediumId, string diskCode)
+        {
+            RequisitionedMediumId = mediumId;
+            RequisitionedHardDiskCode = diskCode?.Trim() ?? string.Empty;
+            RequisitionedDiskNeedReturn = true;
+            NotifyOutboundHardDiskRequisitionPropertiesChanged();
+        }
+
+        internal void ClearOutboundRequisitionedDiskState()
+        {
+            RequisitionedMediumId = null;
+            RequisitionedHardDiskCode = string.Empty;
+            RequisitionedDiskNeedReturn = false;
+            ExpectedReturnDate = null;
+            NotifyOutboundHardDiskRequisitionPropertiesChanged();
+        }
+
+        internal void NotifyOutboundHardDiskRequisitionPropertiesChanged()
+        {
+            OnPropertyChanged(nameof(OutboundHardDiskRequisitionVisibility));
+            OnPropertyChanged(nameof(OutboundBlankHardDiskFieldsVisibility));
+            OnPropertyChanged(nameof(OutboundRequisitionedDiskNeedReturnVisibility));
+            OnPropertyChanged(nameof(RequiresExpectedReturnDate));
+        }
 
         private void ResetBorrowedHardDiskRegistrationIfNotApplicable()
         {
@@ -142,6 +292,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 _borrowedHardDiskCode = string.Empty;
                 OnPropertyChanged(nameof(BorrowedHardDiskCode));
+            }
+
+            if (!IsExternalOfflineReturnedHardDiskScenario)
+            {
+                if (_useInStockBlankHardDisk)
+                {
+                    _useInStockBlankHardDisk = false;
+                    OnPropertyChanged(nameof(UseInStockBlankHardDisk));
+                }
+
+                ClearOutboundRequisitionedDiskState();
             }
         }
 
@@ -199,6 +360,8 @@ namespace DocMgr.ViewModels.YearlyArchive
     {
         public Action<MediaItemViewModel>? SubCategoryOptionsRefreshHandler { get; set; }
 
+        public Action<MediaItemViewModel>? StoragePathRefreshHandler { get; set; }
+
         private string _contentScanSummaryText = "尚未扫描目录/文件明细";
         private int _contentFileCount;
 
@@ -225,7 +388,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ItemType { get => _itemType; set => SetProperty(ref _itemType, value); }
 
         private string _contentDesc = string.Empty;
-        public string ContentDesc { get => _contentDesc; set => SetProperty(ref _contentDesc, value); }
+        public string ContentDesc
+        {
+            get => _contentDesc;
+            set
+            {
+                if (SetProperty(ref _contentDesc, value))
+                {
+                    StoragePathRefreshHandler?.Invoke(this);
+                }
+            }
+        }
 
         private int _contentCount = 1;
         public int ContentCount
@@ -237,7 +410,62 @@ namespace DocMgr.ViewModels.YearlyArchive
         internal void SetAutoContentCount(int count) => ContentCount = count;
 
         private string _storagePath = string.Empty;
-        public string StoragePath { get => _storagePath; set => SetProperty(ref _storagePath, value); }
+        private bool _suppressOutboundStoragePathUserEdit;
+        private string _storagePathLabel = "存储目录：";
+        private bool _isStoragePathEditable = true;
+        private bool _showOutboundStoragePathHint;
+        private string _outboundServerFullPathHint = string.Empty;
+
+        public string StoragePath
+        {
+            get => _storagePath;
+            set
+            {
+                if (SetProperty(ref _storagePath, value) && !_suppressOutboundStoragePathUserEdit)
+                {
+                    HasCustomizedOutboundStoragePath = true;
+                }
+            }
+        }
+
+        public string StoragePathLabel
+        {
+            get => _storagePathLabel;
+            set => SetProperty(ref _storagePathLabel, value);
+        }
+
+        public bool IsStoragePathEditable
+        {
+            get => _isStoragePathEditable;
+            set => SetProperty(ref _isStoragePathEditable, value);
+        }
+
+        public bool ShowOutboundStoragePathHint
+        {
+            get => _showOutboundStoragePathHint;
+            set => SetProperty(ref _showOutboundStoragePathHint, value);
+        }
+
+        public string OutboundServerFullPathHint
+        {
+            get => _outboundServerFullPathHint;
+            set => SetProperty(ref _outboundServerFullPathHint, value);
+        }
+
+        internal bool HasCustomizedOutboundStoragePath { get; set; }
+
+        internal void SetStoragePathFromSystem(string path)
+        {
+            _suppressOutboundStoragePathUserEdit = true;
+            try
+            {
+                StoragePath = path ?? string.Empty;
+            }
+            finally
+            {
+                _suppressOutboundStoragePathUserEdit = false;
+            }
+        }
 
         private string _note = string.Empty;
         public string Note { get => _note; set => SetProperty(ref _note, value); }
@@ -249,13 +477,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             set => SetProperty(ref _confidentialLevel, value);
         }
 
+        private bool _suppressElectronicDetailSideEffects;
+        private bool _treatContentMetricsAsUnknown;
+
         private string _materialCategory = string.Empty;
         public string MaterialCategory
         {
             get => _materialCategory;
             set
             {
-                if (SetProperty(ref _materialCategory, value))
+                if (SetProperty(ref _materialCategory, value) && !_suppressElectronicDetailSideEffects)
                 {
                     SubCategory = string.Empty;
                     SubCategoryOptionsRefreshHandler?.Invoke(this);
@@ -276,7 +507,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             get => _dataOrganizationForm;
             set
             {
-                if (SetProperty(ref _dataOrganizationForm, value))
+                if (SetProperty(ref _dataOrganizationForm, value) && !_suppressElectronicDetailSideEffects)
                 {
                     ClearScannedContent();
                     OnPropertyChanged(nameof(ContentEntryKindLabel));
@@ -291,7 +522,42 @@ namespace DocMgr.ViewModels.YearlyArchive
         public decimal DataSizeMb
         {
             get => _dataSizeMb;
-            set => SetProperty(ref _dataSizeMb, value);
+            set
+            {
+                if (SetProperty(ref _dataSizeMb, value))
+                {
+                    OnPropertyChanged(nameof(DataSizeMbDisplay));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 从已持久化的电子扩展信息回填，避免资料类型/组织形式 setter 清空子类与扫描明细。
+        /// </summary>
+        internal void LoadElectronicDetail(
+            string? materialCategory,
+            string? subCategory,
+            string? dataOrganizationForm,
+            decimal dataSizeMb)
+        {
+            _suppressElectronicDetailSideEffects = true;
+            try
+            {
+                MaterialCategory = materialCategory?.Trim() ?? string.Empty;
+                SubCategory = subCategory?.Trim() ?? string.Empty;
+                DataOrganizationForm = dataOrganizationForm?.Trim() ?? string.Empty;
+                DataSizeMb = dataSizeMb;
+            }
+            finally
+            {
+                _suppressElectronicDetailSideEffects = false;
+            }
+
+            OnPropertyChanged(nameof(ContentEntryKindLabel));
+            OnPropertyChanged(nameof(IsDirectoryOrganizationForm));
+            OnPropertyChanged(nameof(IsFileOrganizationForm));
+            OnPropertyChanged(nameof(ScannedEntryCountDisplay));
+            SubCategoryOptionsRefreshHandler?.Invoke(this);
         }
 
         public ObservableCollection<string> AvailableSubCategories { get; } = new();
@@ -330,10 +596,38 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// <summary>
         /// 扫描得到的目录或文件数量展示（非资料子项份数）。
         /// </summary>
+        /// <summary>
+        /// 申请阶段无法扫描时，数据量与目录/文件个数按未知展示。
+        /// </summary>
+        public bool TreatContentMetricsAsUnknown
+        {
+            get => _treatContentMetricsAsUnknown;
+            set
+            {
+                if (SetProperty(ref _treatContentMetricsAsUnknown, value))
+                {
+                    OnPropertyChanged(nameof(ScannedEntryCountDisplay));
+                    OnPropertyChanged(nameof(DataSizeMbDisplay));
+                    RefreshContentScanSummary();
+                }
+            }
+        }
+
+        /// <summary>数据量展示：未知或具体 MB。</summary>
+        public string DataSizeMbDisplay =>
+            TreatContentMetricsAsUnknown && DataSizeMb <= 0
+                ? "未知"
+                : DataSizeMb.ToString("0.##");
+
         public string ScannedEntryCountDisplay
         {
             get
             {
+                if (TreatContentMetricsAsUnknown && ContentEntries.Count == 0)
+                {
+                    return IsFileOrganizationForm ? "文件个数：未知" : "目录个数：未知";
+                }
+
                 int count = ContentEntries.Count;
                 if (IsDirectoryOrganizationForm)
                 {
@@ -366,6 +660,16 @@ namespace DocMgr.ViewModels.YearlyArchive
         public void RefreshContentScanSummary(int? fileCount = null)
         {
             ContentFileCount = fileCount ?? (IsFileOrganizationForm ? ContentEntries.Count : ContentFileCount);
+            if (TreatContentMetricsAsUnknown && ContentEntries.Count == 0)
+            {
+                ContentScanSummaryText = "申请阶段尚不能读取具体目录或文件，数据量与文件个数均为未知。";
+                OnPropertyChanged(nameof(HasScannedEntries));
+                OnPropertyChanged(nameof(ContentEntryCount));
+                OnPropertyChanged(nameof(ScannedEntryCountDisplay));
+                OnPropertyChanged(nameof(DataSizeMbDisplay));
+                return;
+            }
+
             decimal totalSizeMb = DataSizeMb > 0
                 ? DataSizeMb
                 : ContentEntries.Sum(entry => entry.SizeMb ?? 0);

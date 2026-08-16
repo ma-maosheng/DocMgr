@@ -10,6 +10,9 @@ namespace DocMgr.Data.Configurations
             builder.Property(m => m.BorrowedHardDiskCode)
                 .HasMaxLength(100)
                 .HasDefaultValue(string.Empty);
+            builder.Property(m => m.RequisitionedHardDiskCode)
+                .HasMaxLength(64)
+                .HasDefaultValue(string.Empty);
             // 一对多：介质条目 -> 介质明细（级联删除）
             builder.HasMany(m => m.Items)
                 .WithOne()

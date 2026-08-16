@@ -259,7 +259,7 @@
                             <Style TargetType="StackPanel">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsRetainedHardDiskScenario}" Value="True">
+                                    <DataTrigger Binding="{Binding BorrowedHardDiskRegistrationRowVisibility}" Value="True">
                                         <Setter Property="Visibility" Value="Visible"/>
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -340,6 +340,94 @@
                     </StackPanel>
                 </DockPanel>
 
+                <StackPanel Margin="0,0,0,4">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding DataContext.ShowOutboundExternalHardDiskRequisitionFields, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True"/>
+                                        <Condition Binding="{Binding IsExternalOfflineReturnedHardDiskScenario}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <WrapPanel Orientation="Horizontal">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,4" VerticalAlignment="Center">
+                            <TextBlock Text="使用库内空盘：" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
+                            <StackPanel Orientation="Horizontal" Style="{StaticResource FormInlineRadioGroupStyle}">
+                                <RadioButton Content="是"
+                                             GroupName="{Binding UseInStockBlankHardDiskRadioGroup}"
+                                             Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
+                                             IsChecked="{Binding UseInStockBlankHardDisk, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                <RadioButton Content="否"
+                                             GroupName="{Binding UseInStockBlankHardDiskRadioGroup}"
+                                             Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
+                                             IsChecked="{Binding UseInStockBlankHardDisk, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,4" VerticalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding OutboundBlankHardDiskFieldsVisibility}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Text="库内空盘：" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
+                            <TextBox Width="120" Text="{Binding RequisitionedHardDiskCode, Mode=OneWay}" IsReadOnly="True"
+                                     Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}" Background="#F8FAFC"/>
+                            <Button Content="选择" Margin="6,0,0,0" Padding="8,2"
+                                    Command="{Binding DataContext.PickOutboundBlankHardDiskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,4" VerticalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding OutboundRequisitionedDiskNeedReturnVisibility}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Text="硬盘是否归还：" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
+                            <StackPanel Orientation="Horizontal" Style="{StaticResource FormInlineRadioGroupStyle}">
+                                <RadioButton Content="是"
+                                             GroupName="{Binding RequisitionedDiskNeedReturnRadioGroup}"
+                                             Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
+                                             IsChecked="{Binding RequisitionedDiskNeedReturn, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                <RadioButton Content="否"
+                                             GroupName="{Binding RequisitionedDiskNeedReturnRadioGroup}"
+                                             Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
+                                             IsChecked="{Binding RequisitionedDiskNeedReturn, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4" VerticalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding RequiresExpectedReturnDate}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Text="预计归还日期：" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
+                            <DatePicker Width="130" SelectedDate="{Binding ExpectedReturnDate, UpdateSourceTrigger=PropertyChanged}"
+                                        Style="{StaticResource ArchiveRegisterFormDatePickerStyle}"/>
+                        </StackPanel>
+                    </WrapPanel>
+                </StackPanel>
+
                 <viewShared:ItemDetailsPanelHeader DataContext="{Binding ItemDetailsPanel}" Margin="0,6,0,4"/>
                 <ItemsControl ItemsSource="{Binding ItemDetailsPanel.PageItems}" Style="{StaticResource ItemDetailsPanelItemsControlStyle}">
                     <ItemsControl.ItemTemplate>
@@ -350,7 +438,7 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="80"/>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="160"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="1.2*"/>
                                             <ColumnDefinition Width="40"/>
                                             <ColumnDefinition Width="48"/>
@@ -358,26 +446,59 @@
                                         </Grid.ColumnDefinitions>
 
                                         <TextBlock Grid.Column="0" Text="子项名称：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
-                                        <TextBox Grid.Column="1" Text="{Binding ContentDesc}" Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}" ToolTip="电子资料子项名称"/>
-                                        <TextBlock Grid.Column="2" Text="存储目录：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
-                                        <TextBox Grid.Column="3"
-                                                 Text="{Binding StoragePath, UpdateSourceTrigger=PropertyChanged}"
-                                                 Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}">
-                                            <TextBox.ToolTip>
-                                                <ToolTip MaxWidth="360">
-                                                    <StackPanel>
-                                                        <TextBlock Text="一个资料子项对应一个存储目录。" TextWrapping="Wrap"/>
-                                                        <TextBlock Margin="0,4,0,0"
-                                                                   Text="{x:Static models:ElectronicMediaItemSupport.RegistrationStoragePathFormatDescription}"
-                                                                   TextWrapping="Wrap"/>
-                                                        <TextBlock Margin="0,2,0,0"
-                                                                   Text="{x:Static models:ElectronicMediaItemSupport.RegistrationStoragePathFormatExamples}"
-                                                                   Foreground="#666"
-                                                                   TextWrapping="Wrap"/>
-                                                    </StackPanel>
-                                                </ToolTip>
-                                            </TextBox.ToolTip>
-                                        </TextBox>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding ContentDesc, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}"
+                                                 ToolTip="电子资料子项名称"/>
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding StoragePathLabel, Mode=OneWay}"
+                                                   Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
+                                        <DockPanel Grid.Column="3" LastChildFill="True">
+                                            <Button DockPanel.Dock="Right"
+                                                    Margin="6,0,0,0"
+                                                    Padding="8,2"
+                                                    Content="填写默认目录"
+                                                    ToolTip="按当前年度、项目、资料名称与子项名称强制填入默认存储目录"
+                                                    Command="{Binding DataContext.FillDefaultOutboundStoragePathCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsStoragePathEditable}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                            <TextBox Text="{Binding StoragePath, UpdateSourceTrigger=PropertyChanged}">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterCompactTextBoxStyle}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsStoragePathEditable}" Value="False">
+                                                                <Setter Property="IsReadOnly" Value="True"/>
+                                                                <Setter Property="Background" Value="#F5F5F5"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                                <TextBox.ToolTip>
+                                                    <ToolTip MaxWidth="360">
+                                                        <StackPanel>
+                                                            <TextBlock Text="一个资料子项对应一个存储目录。" TextWrapping="Wrap"/>
+                                                            <TextBlock Margin="0,4,0,0"
+                                                                       Text="{x:Static models:ElectronicMediaItemSupport.RegistrationStoragePathFormatDescription}"
+                                                                       TextWrapping="Wrap"/>
+                                                            <TextBlock Margin="0,2,0,0"
+                                                                       Text="{x:Static models:ElectronicMediaItemSupport.RegistrationStoragePathFormatExamples}"
+                                                                       Foreground="#666"
+                                                                       TextWrapping="Wrap"/>
+                                                        </StackPanel>
+                                                    </ToolTip>
+                                                </TextBox.ToolTip>
+                                            </TextBox>
+                                        </DockPanel>
                                         <TextBlock Grid.Column="4" Text="份数：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
                                         <TextBox Grid.Column="5"
                                                  Text="{Binding ContentCount, Mode=OneWay}"
@@ -395,9 +516,35 @@
                                                FontSize="11"
                                                Foreground="#888"
                                                TextWrapping="Wrap">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ShowOutboundStoragePathHint}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
                                         <Run Text="{x:Static models:ElectronicMediaItemSupport.RegistrationStoragePathFormatDescription}"/>
                                         <Run Text=" "/>
                                         <Run Text="{x:Static models:ElectronicMediaItemSupport.RegistrationStoragePathFormatExamples}"/>
+                                    </TextBlock>
+                                    <TextBlock Margin="80,2,0,0"
+                                               FontSize="11"
+                                               Foreground="#475569"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding OutboundServerFullPathHint, Mode=OneWay}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ShowOutboundStoragePathHint}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
                                     </TextBlock>
 
                                     <Grid Margin="0,4,0,0">
@@ -452,8 +599,34 @@
                                         <TextBlock Grid.Column="6" Text="数据量：" Style="{StaticResource ArchiveRegisterFormLabelStyle}" Margin="6,0,4,0"/>
                                         <TextBox Grid.Column="7"
                                                  Text="{Binding DataSizeMb}"
-                                                 Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}"
-                                                 ToolTip="由扫描自动计算，可按需微调"/>
+                                                 ToolTip="由扫描自动计算，可按需微调">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterCompactTextBoxStyle}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding TreatContentMetricsAsUnknown}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                        <TextBox Grid.Column="7"
+                                                 Text="{Binding DataSizeMbDisplay, Mode=OneWay}"
+                                                 IsReadOnly="True"
+                                                 IsEnabled="False"
+                                                 ToolTip="申请阶段尚不能读取具体文件或目录">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterCompactTextBoxStyle}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding TreatContentMetricsAsUnknown}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
                                         <TextBlock Grid.Column="8"
                                                    VerticalAlignment="Center"
                                                    Margin="0,0,6,0"
@@ -1001,6 +1174,16 @@
                         <TextBlock Text="{Binding Disposition, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="3" Margin="0,0,0,8">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ShowBorrowedHardDiskRegistrationUi}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
                         <TextBlock Text="借出硬盘" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock>
                             <TextBlock.Style>

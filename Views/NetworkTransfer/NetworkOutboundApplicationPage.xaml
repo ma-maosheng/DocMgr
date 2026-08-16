@@ -9,7 +9,7 @@
     </Grid.RowDefinitions>
     <Border Style="{StaticResource ToolbarCardBorderStyle}" Padding="16,12">
       <StackPanel Orientation="Horizontal">
-        <Button Content="按目的新增出网" ToolTip="选择外部离线或资料室立档，系统自动决定后续任务"
+        <Button Content="按目的新增出网" ToolTip="选择出网（院内/院外）或资料室存档，系统自动决定后续任务"
                 Command="{Binding AddCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="128" Margin="0,0,10,0"/>
         <Button Content="打开办理" Command="{Binding OpenCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
         <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="96" Margin="0,0,16,0"/>
@@ -29,7 +29,7 @@
         <DataGridTextColumn Header="出网单号" Binding="{Binding OutboundNo, Mode=OneWay}" Width="160"/>
         <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="160"/>
         <DataGridTextColumn Header="目的地" Binding="{Binding DestinationKind, Mode=OneWay}" Width="110"/>
-        <DataGridTextColumn Header="项目" Binding="{Binding ProjectName, Mode=OneWay}" Width="*"/>
+        <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="*"/>
         <DataGridTextColumn Header="明细数" Binding="{Binding ItemCount, Mode=OneWay}" Width="70"/>
         <DataGridTextColumn Header="关联业务进度" Binding="{Binding BusinessChainProgressDisplay, Mode=OneWay}" Width="230"/>
         <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName, Mode=OneWay}" Width="90"/>

@@ -1187,7 +1187,7 @@ namespace DocMgr.Services.YearlyArchive
                             StringComparison.Ordinal);
                         if (isInnerNetworkMedia && !isNetworkOutboundTransfer)
                         {
-                            errors.Add("• 「内网」介质类型仅允许出网转入建档使用，请通过出网申请（资料室立档）发起");
+                            errors.Add("• 「内网」介质类型仅允许出网转入建档使用，请通过出网申请（资料室存档）发起");
                         }
 
                         if (isNetworkOutboundTransfer)

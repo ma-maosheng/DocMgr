@@ -21,7 +21,7 @@ namespace DocMgr.ViewModels.YearlyArchive
     /// <summary>
     /// 电子介质登记编辑 ViewModel，供资料登记与入网申请等场景复用。
     /// </summary>
-    public class ElectronicMediaEditingViewModel : ViewModelBase
+    public partial class ElectronicMediaEditingViewModel : ViewModelBase
     {
         private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly IDialogService _dialogService;
@@ -43,6 +43,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _canEditItemConfidentialLevel;
         private bool _lockElectronicMediaTypeAndDisposition;
         private bool _restrictRetainedHardDiskToBorrowedOnly;
+        private bool _enableRetainedHardDiskBorrowedRegistration = true;
+        private bool _showOutboundExternalHardDiskRequisitionFields;
+        private bool _allowElectronicContentScan = true;
         private string _sectionHeader = "资料介质（电子）";
 
         private string _selectedElectronicMediaType = string.Empty;
@@ -71,21 +74,27 @@ namespace DocMgr.ViewModels.YearlyArchive
             AddMediaItemCommand = new RelayCommand<MediaEntryViewModel>(AddMediaItem, _ => CanEditForm);
             RemoveMediaEntryCommand = new RelayCommand<MediaEntryViewModel>(RemoveMediaEntry, _ => CanEditForm);
             RemoveMediaItemCommand = new RelayCommand<MediaItemViewModel>(RemoveMediaItem, _ => CanEditForm);
+            FillDefaultOutboundStoragePathCommand = new RelayCommand<MediaItemViewModel>(
+                FillDefaultOutboundStoragePath,
+                item => item != null && item.IsStoragePathEditable);
             PickFolderAndScanElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
                 async item => await PickFolderAndScanElectronicContentAsync(item),
-                item => CanEditForm && item != null && item.IsDirectoryOrganizationForm);
+                item => AllowElectronicContentScan && CanEditForm && item != null && item.IsDirectoryOrganizationForm);
             PickFilesAndScanElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
                 async item => await PickFilesAndScanElectronicContentAsync(item),
-                item => CanEditForm && item != null && item.IsFileOrganizationForm);
+                item => AllowElectronicContentScan && CanEditForm && item != null && item.IsFileOrganizationForm);
             RescanElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
                 async item => await RescanElectronicContentAsync(item),
-                item => CanEditForm && item != null && CanRescanElectronicContent(item));
+                item => AllowElectronicContentScan && CanEditForm && item != null && CanRescanElectronicContent(item));
             ClearElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
                 item => ClearElectronicContent(item),
-                item => CanEditForm && item != null && item.HasScannedEntries);
+                item => AllowElectronicContentScan && CanEditForm && item != null && item.HasScannedEntries);
             ViewElectronicContentEntriesCommand = new RelayCommand<MediaItemViewModel>(
                 item => ViewElectronicContentEntries(item),
-                item => item != null && item.HasScannedEntries && CanViewElectronicContentEntries());
+                item => AllowElectronicContentScan && item != null && item.HasScannedEntries && CanViewElectronicContentEntries());
+            PickOutboundBlankHardDiskCommand = new RelayCommand<MediaEntryViewModel>(
+                media => PickOutboundBlankHardDisk(media),
+                media => CanEditForm && media != null && ShowOutboundExternalHardDiskRequisitionFields && media.OutboundBlankHardDiskFieldsVisibility);
         }
 
         public ObservableCollection<MediaEntryViewModel> MediaEntries { get; } = new();
@@ -148,7 +157,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public int DataElectronicMediaCount => MediaEntries.Count(RegisterMediaTreeSupport.IsDataElectronic);
 
         public bool IsBorrowedHardDiskRegistrationVisible =>
-            string.Equals(SelectedElectronicMediaType?.Trim(), ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk, StringComparison.OrdinalIgnoreCase)
+            EnableRetainedHardDiskBorrowedRegistration
+            && string.Equals(SelectedElectronicMediaType?.Trim(), ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk, StringComparison.OrdinalIgnoreCase)
             && string.Equals(SelectedElectronicDisposition?.Trim(), ArchiveRegisterDomainValues.ElectronicDispositionRetain, StringComparison.OrdinalIgnoreCase);
 
         public bool IsBorrowedHardDiskCodeRequired =>
@@ -167,6 +177,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     OnPropertyChanged(nameof(IsElectronicMediaTypeEditable));
                     OnPropertyChanged(nameof(IsElectronicDispositionEditable));
                     CommandManager.InvalidateRequerySuggested();
+                    RefreshOutboundItemStoragePaths();
                 }
             }
         }
@@ -201,9 +212,49 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         /// <summary>
-        /// 可选：覆盖默认处置方式解析（如入网档外「光盘→介质带回」）。
+        /// 可选：覆盖默认处置方式解析（如入网档外「光盘→介质带回」、出网按目的地约束）。
         /// </summary>
         public Func<string?, IReadOnlyCollection<string>, IReadOnlyList<string>>? AllowedDispositionOptionsResolver { get; set; }
+
+        /// <summary>
+        /// 可选：覆盖默认可选电子介质类型（如出网按目的地限制光盘/硬盘/U盘）。
+        /// </summary>
+        public Func<IReadOnlyCollection<string>, IReadOnlyList<string>>? AllowedMediaTypeOptionsResolver { get; set; }
+
+        /// <summary>
+        /// 是否启用「硬盘·介质留存」借出硬盘登记区（出网场景应关闭）。
+        /// </summary>
+        public bool EnableRetainedHardDiskBorrowedRegistration
+        {
+            get => _enableRetainedHardDiskBorrowedRegistration;
+            set
+            {
+                if (SetProperty(ref _enableRetainedHardDiskBorrowedRegistration, value))
+                {
+                    ApplyBorrowedHardDiskRegistrationVisibilityToEntries();
+                    OnPropertyChanged(nameof(IsBorrowedHardDiskRegistrationVisible));
+                    OnPropertyChanged(nameof(IsBorrowedHardDiskCodeRequired));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 出网外部离线场景：展示库内空盘征用与归还设置。
+        /// </summary>
+        public bool ShowOutboundExternalHardDiskRequisitionFields
+        {
+            get => _showOutboundExternalHardDiskRequisitionFields;
+            set
+            {
+                if (SetProperty(ref _showOutboundExternalHardDiskRequisitionFields, value))
+                {
+                    foreach (MediaEntryViewModel media in MediaEntries)
+                    {
+                        media.NotifyOutboundHardDiskRequisitionPropertiesChanged();
+                    }
+                }
+            }
+        }
 
         /// <summary>
         /// 硬盘·介质留存时仅允许资料室借出硬盘，且必须填写借出硬盘编号。
@@ -217,6 +268,22 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     EnforceRetainedHardDiskBorrowedRegistration();
                     OnPropertyChanged(nameof(IsBorrowedHardDiskCodeRequired));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 是否允许从本地选择目录/文件并扫描明细。出网申请阶段应关闭。
+        /// </summary>
+        public bool AllowElectronicContentScan
+        {
+            get => _allowElectronicContentScan;
+            set
+            {
+                if (SetProperty(ref _allowElectronicContentScan, value))
+                {
+                    ApplyElectronicContentScanAvailabilityToItems();
+                    CommandManager.InvalidateRequerySuggested();
                 }
             }
         }
@@ -240,6 +307,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public RelayCommand<MediaItemViewModel> RemoveMediaItemCommand { get; }
 
+        public RelayCommand<MediaItemViewModel> FillDefaultOutboundStoragePathCommand { get; }
+
         public RelayCommand<MediaItemViewModel> PickFolderAndScanElectronicContentCommand { get; }
 
         public RelayCommand<MediaItemViewModel> PickFilesAndScanElectronicContentCommand { get; }
@@ -249,6 +318,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand<MediaItemViewModel> ClearElectronicContentCommand { get; }
 
         public RelayCommand<MediaItemViewModel> ViewElectronicContentEntriesCommand { get; }
+
+        public RelayCommand<MediaEntryViewModel> PickOutboundBlankHardDiskCommand { get; }
 
         /// <summary>
         /// 加载域值选项并刷新借出硬盘列表。
@@ -273,6 +344,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             var domainOptions = await _archiveRegisterService.GetPageDomainOptionsAsync();
 
             ApplyOptions(DataElectronicMediaTypeOptions,
+                GetAllowedElectronicMediaTypeOptions(domainOptions.DataElectronicMediaTypes));
+            _allElectronicMediaTypeOptions.Clear();
+            _allElectronicMediaTypeOptions.AddRange(
                 ArchiveRegisterBusinessRules.FilterManualSelectableElectronicMediaTypes(domainOptions.DataElectronicMediaTypes));
             ApplyOptions(DataElectronicDispositionOptions, domainOptions.DataElectronicDispositions);
             _allElectronicDispositionOptions.Clear();
@@ -315,6 +389,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             RecalculateAllQuantities();
             EnsureUserBorrowedHardDiskListIncludesSelected();
             EnforceRetainedHardDiskBorrowedRegistration();
+            RefreshOutboundItemStoragePaths();
         }
 
         /// <summary>
@@ -324,6 +399,11 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             EnsureElectronicMediaSelections();
             RecalculateAllQuantities();
+            if (!EnableRetainedHardDiskBorrowedRegistration)
+            {
+                ApplyBorrowedHardDiskRegistrationVisibilityToEntries();
+            }
+
             return RegisterMediaTreeSupport.BuildElectronicMediaEntities(
                 MediaEntries,
                 ResolveSelectedElectronicMediaType,
@@ -337,6 +417,64 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             RecalculateQuantities();
         }
+
+        /// <summary>
+        /// 出网目的地变更后刷新类型/处置选项并同步到已有介质组。
+        /// </summary>
+        public void RefreshOutboundDestinationDependentSettings()
+        {
+            RefreshAllowedElectronicMediaTypeOptions();
+            RefreshElectronicDispositionOptions();
+            ApplySelectedElectronicMediaSettingsToEntries();
+            ApplyBorrowedHardDiskRegistrationVisibilityToEntries();
+            foreach (MediaEntryViewModel media in MediaEntries.Where(RegisterMediaTreeSupport.IsDataElectronic))
+            {
+                if (!ShowOutboundExternalHardDiskRequisitionFields)
+                {
+                    media.UseInStockBlankHardDisk = false;
+                    media.ClearOutboundRequisitionedDiskState();
+                }
+
+                media.NotifyOutboundHardDiskRequisitionPropertiesChanged();
+            }
+
+            RefreshOutboundItemStoragePaths();
+        }
+
+        /// <summary>
+        /// 按当前解析器刷新可选电子介质类型。
+        /// </summary>
+        public void RefreshAllowedElectronicMediaTypeOptions()
+        {
+            var allowedTypes = GetAllowedElectronicMediaTypeOptions(_allElectronicMediaTypeOptions);
+            ApplyOptions(DataElectronicMediaTypeOptions, allowedTypes);
+
+            string current = SelectedElectronicMediaType?.Trim() ?? string.Empty;
+            string? matched = allowedTypes.FirstOrDefault(option =>
+                string.Equals(option, current, StringComparison.OrdinalIgnoreCase));
+            if (matched != null)
+            {
+                if (!string.Equals(SelectedElectronicMediaType, matched, StringComparison.Ordinal))
+                {
+                    SelectedElectronicMediaType = matched;
+                }
+            }
+            else
+            {
+                string? entryMediaType = MediaEntries
+                    .FirstOrDefault(RegisterMediaTreeSupport.IsDataElectronic)
+                    ?.MediaType?.Trim();
+                string? entryMatched = string.IsNullOrWhiteSpace(entryMediaType)
+                    ? null
+                    : allowedTypes.FirstOrDefault(option =>
+                        string.Equals(option, entryMediaType, StringComparison.OrdinalIgnoreCase));
+                SelectedElectronicMediaType = entryMatched
+                    ?? allowedTypes.FirstOrDefault()
+                    ?? string.Empty;
+            }
+        }
+
+        private readonly List<string> _allElectronicMediaTypeOptions = new();
 
         private void MediaEntries_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
@@ -383,6 +521,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void AttachMediaEntry(MediaEntryViewModel media)
         {
+            media.SetShowBorrowedHardDiskRegistrationUi(EnableRetainedHardDiskBorrowedRegistration);
             media.PropertyChanged += MediaEntry_PropertyChanged;
             media.Items.CollectionChanged += MediaItems_CollectionChanged;
             foreach (var item in media.Items)
@@ -392,6 +531,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             RecalculateQuantities(media);
+        }
+
+        private void ApplyBorrowedHardDiskRegistrationVisibilityToEntries()
+        {
+            foreach (MediaEntryViewModel media in MediaEntries.Where(RegisterMediaTreeSupport.IsDataElectronic))
+            {
+                media.SetShowBorrowedHardDiskRegistrationUi(EnableRetainedHardDiskBorrowedRegistration);
+            }
         }
 
         private void DetachMediaEntry(MediaEntryViewModel media)
@@ -530,6 +677,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 IsBorrowedHardDisk = false,
                 BorrowedHardDiskCode = string.Empty
             };
+            entry.SetShowBorrowedHardDiskRegistrationUi(EnableRetainedHardDiskBorrowedRegistration);
             entry.Items.Add(CreateDefaultElectronicMediaItem(ArchiveRegisterDomainValues.ItemTypeData));
             MediaEntries.Add(entry);
             RecalculateQuantities(entry);
@@ -552,6 +700,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             media.Items.Add(CreateDefaultElectronicMediaItem(ArchiveRegisterDomainValues.ItemTypeData));
+            RefreshOutboundItemStoragePath(media.Items[^1]);
         }
 
         private void RemoveMediaItem(MediaItemViewModel? item)
@@ -656,6 +805,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(DataElectronicMediaCount));
             OnPropertyChanged(nameof(IsBorrowedHardDiskRegistrationVisible));
             OnPropertyChanged(nameof(IsBorrowedHardDiskCodeRequired));
+            RefreshOutboundItemStoragePaths();
         }
 
         private string ResolveSelectedElectronicMediaType()
@@ -692,6 +842,44 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             SyncBorrowedHardDiskSettingsFromSelections();
+        }
+
+        private IReadOnlyList<string> GetAllowedElectronicMediaTypeOptions(IReadOnlyCollection<string> allMediaTypeOptions)
+        {
+            if (AllowedMediaTypeOptionsResolver != null)
+            {
+                return AllowedMediaTypeOptionsResolver(allMediaTypeOptions);
+            }
+
+            return ArchiveRegisterBusinessRules.FilterManualSelectableElectronicMediaTypes(allMediaTypeOptions);
+        }
+
+        private void PickOutboundBlankHardDisk(MediaEntryViewModel? media)
+        {
+            if (media == null || !CanEditForm || !ShowOutboundExternalHardDiskRequisitionFields || !media.OutboundBlankHardDiskFieldsVisibility)
+            {
+                return;
+            }
+
+            var selectedMedia = _dialogService.ShowHardDiskMediumSelectionDialog(
+                string.IsNullOrWhiteSpace(media.RequisitionedHardDiskCode)
+                    ? null
+                    : new[] { media.RequisitionedHardDiskCode },
+                currentElectronicArchiveUnitId: null,
+                selectionMode: "BlankTarget");
+
+            if (selectedMedia == null || selectedMedia.Count == 0)
+            {
+                return;
+            }
+
+            if (selectedMedia.Count > 1)
+            {
+                _dialogService.ShowMessage("请只选择一块库内空盘。", "提示");
+                return;
+            }
+
+            media.ApplyOutboundRequisitionedDisk(selectedMedia[0].Id, selectedMedia[0].DiskCode);
         }
 
         private IReadOnlyList<string> GetAllowedElectronicDispositionOptions()
@@ -861,14 +1049,25 @@ namespace DocMgr.ViewModels.YearlyArchive
             };
 
             ConfigureElectronicMediaItem(item);
+            RefreshOutboundItemStoragePath(item);
             return item;
         }
 
         private void ConfigureElectronicMediaItem(MediaItemViewModel item)
         {
             item.SubCategoryOptionsRefreshHandler = RefreshElectronicSubCategoryOptions;
+            item.StoragePathRefreshHandler = RefreshOutboundItemStoragePath;
+            item.TreatContentMetricsAsUnknown = !AllowElectronicContentScan;
             RefreshElectronicSubCategoryOptions(item);
             AttachContentEntryQuantityHandler(item);
+        }
+
+        private void ApplyElectronicContentScanAvailabilityToItems()
+        {
+            foreach (MediaItemViewModel item in MediaEntries.SelectMany(entry => entry.Items))
+            {
+                item.TreatContentMetricsAsUnknown = !AllowElectronicContentScan;
+            }
         }
 
         private void AttachContentEntryQuantityHandler(MediaItemViewModel item)
@@ -938,7 +1137,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IReadOnlyList<string>? scannedDirectoryPaths = null)
         {
             item.StorageRootFullPath = result.RootPath;
-            item.StoragePath = ElectronicMediaItemSupport.FormatStoragePathForRegistration(result.RootPath);
+            ApplyScannedStoragePath(item, result.RootPath);
             item.ContentEntries.Clear();
             foreach (var entry in result.Entries)
             {

@@ -522,6 +522,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            if (!ConfirmElectronicFilingStoragePaths())
+            {
+                return;
+            }
+
             if (IsNewBoxMode)
             {
                 try

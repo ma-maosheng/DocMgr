@@ -1,4 +1,5 @@
 using DocMgr.Models.Shared;
+using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Models.NetworkTransfer
 {
@@ -20,20 +21,29 @@ namespace DocMgr.Models.NetworkTransfer
         public const string AssetKindSecuritySoftware = "安全软件";
         public const string AssetKindDocument = "文档资料";
 
-        public const string SourceKindExternalOfflineInternal = "档外资料（内部）";
-        public const string SourceKindExternalOfflineExternal = "档外资料（外部）";
-        public const string SourceKindArchivedElectronicSearch = "立档资料";
+        public const string SourceKindExternalOfflineInternal = "档外资料（院内）";
+        public const string SourceKindExternalOfflineExternal = "档外资料（院外）";
+        public const string SourceKindArchivedElectronicSearch = "存档资料";
 
-        /// <summary>入网立档来源对应的提供部门固定值。</summary>
+        /// <summary>入网存档来源对应的提供部门固定值。</summary>
         public const string InboundProvideUnitArchiveRoom = "资料室";
 
         /// <summary>历史数据源类别（兼容旧数据）。</summary>
         public const string LegacySourceKindExternalOffline = "外部离线";
 
-        /// <summary>历史数据源类别（兼容旧数据，归一化为档外资料（内部））。</summary>
+        /// <summary>历史数据源类别（兼容旧数据，归一化为档外资料（院内））。</summary>
         public const string LegacySourceKindExternalOfflineLabel = "档外资料";
 
-        /// <summary>历史数据源类别（兼容旧数据）。</summary>
+        /// <summary>历史数据源类别（兼容旧数据，归一化为档外资料（院内））。</summary>
+        public const string LegacySourceKindExternalOfflineInternal = "档外资料（内部）";
+
+        /// <summary>历史数据源类别（兼容旧数据，归一化为档外资料（院外））。</summary>
+        public const string LegacySourceKindExternalOfflineExternal = "档外资料（外部）";
+
+        /// <summary>历史数据源类别（兼容旧数据，归一化为存档资料）。</summary>
+        public const string LegacySourceKindArchivedElectronicSearchLabel = "立档资料";
+
+        /// <summary>历史数据源类别（兼容旧数据，归一化为存档资料）。</summary>
         public const string LegacySourceKindArchivedElectronicSearch = "已立档资料";
 
         /// <summary>历史数据源类别（兼容旧数据）。</summary>
@@ -48,9 +58,22 @@ namespace DocMgr.Models.NetworkTransfer
         public const string LifecycleDisposalLocked = "处置中";
         public const string LifecycleDisposed = "已处置";
 
-        public const string DestinationKindExternalOffline = "外部离线";
-        public const string DestinationKindArchiveFiling = "资料室立档";
+        public const string DestinationKindOutboundInternal = "出网（院内）";
+        public const string DestinationKindOutboundExternal = "出网（院外）";
+        public const string DestinationKindArchiveFiling = "资料室存档";
         public const string DestinationKindOther = "其他";
+
+        /// <summary>出网外部离线场景下的电子介质处置方式（拷贝后介质由申请人带走）。</summary>
+        public const string OutboundElectronicDispositionTakeAway = "介质带走";
+
+        /// <summary>历史出网外部离线处置方式（兼容旧数据，语义同「介质带走」）。</summary>
+        public const string LegacyOutboundElectronicDispositionReturn = "介质带回";
+
+        /// <summary>历史出网目的地（兼容旧数据，归一化为出网（院内））。</summary>
+        public const string LegacyDestinationKindExternalOffline = "外部离线";
+
+        /// <summary>历史出网目的地（兼容旧数据）。</summary>
+        public const string LegacyDestinationKindArchiveFiling = "资料室立档";
 
         public const string RegisterSourceTypeNetworkOutbound = "出网转入";
 
@@ -103,7 +126,8 @@ namespace DocMgr.Models.NetworkTransfer
 
         public static IReadOnlyList<string> DestinationKindOptions { get; } =
         [
-            DestinationKindExternalOffline,
+            DestinationKindOutboundInternal,
+            DestinationKindOutboundExternal,
             DestinationKindArchiveFiling,
             DestinationKindOther
         ];
@@ -111,7 +135,8 @@ namespace DocMgr.Models.NetworkTransfer
         /// <summary>出网编辑页目的地下拉（不含「其他」）。</summary>
         public static IReadOnlyList<string> OutboundDestinationKindOptions { get; } =
         [
-            DestinationKindExternalOffline,
+            DestinationKindOutboundInternal,
+            DestinationKindOutboundExternal,
             DestinationKindArchiveFiling
         ];
 
@@ -188,23 +213,29 @@ namespace DocMgr.Models.NetworkTransfer
         {
             string trimmed = sourceKind?.Trim() ?? string.Empty;
             return string.Equals(trimmed, SourceKindArchivedElectronicSearch, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacySourceKindArchivedElectronicSearchLabel, StringComparison.Ordinal)
                    || string.Equals(trimmed, LegacySourceKindArchivedElectronicSearch, StringComparison.Ordinal);
         }
 
-        /// <summary>是否为档外资料（内部）入网来源。</summary>
+        /// <summary>是否为档外资料（院内）入网来源。</summary>
         public static bool IsExternalOfflineInternalSource(string? sourceKind)
         {
             string trimmed = sourceKind?.Trim() ?? string.Empty;
             return string.Equals(trimmed, SourceKindExternalOfflineInternal, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacySourceKindExternalOfflineInternal, StringComparison.Ordinal)
                    || string.Equals(trimmed, LegacySourceKindExternalOfflineLabel, StringComparison.Ordinal)
                    || string.Equals(trimmed, LegacySourceKindExternalOffline, StringComparison.Ordinal);
         }
 
-        /// <summary>是否为档外资料（外部）入网来源。</summary>
-        public static bool IsExternalOfflineExternalSource(string? sourceKind) =>
-            string.Equals(sourceKind?.Trim(), SourceKindExternalOfflineExternal, StringComparison.Ordinal);
+        /// <summary>是否为档外资料（院外）入网来源。</summary>
+        public static bool IsExternalOfflineExternalSource(string? sourceKind)
+        {
+            string trimmed = sourceKind?.Trim() ?? string.Empty;
+            return string.Equals(trimmed, SourceKindExternalOfflineExternal, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacySourceKindExternalOfflineExternal, StringComparison.Ordinal);
+        }
 
-        /// <summary>是否为档外资料入网来源（内部或外部）。</summary>
+        /// <summary>是否为档外资料入网来源（院内或院外）。</summary>
         public static bool IsExternalOfflineSource(string? sourceKind) =>
             IsExternalOfflineInternalSource(sourceKind)
             || IsExternalOfflineExternalSource(sourceKind);
@@ -219,8 +250,11 @@ namespace DocMgr.Models.NetworkTransfer
             }
 
             return SourceKindOptions.Contains(trimmed, StringComparer.Ordinal)
+                   || string.Equals(trimmed, LegacySourceKindExternalOfflineInternal, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacySourceKindExternalOfflineExternal, StringComparison.Ordinal)
                    || string.Equals(trimmed, LegacySourceKindExternalOfflineLabel, StringComparison.Ordinal)
                    || string.Equals(trimmed, LegacySourceKindExternalOffline, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacySourceKindArchivedElectronicSearchLabel, StringComparison.Ordinal)
                    || string.Equals(trimmed, LegacySourceKindArchivedElectronicSearch, StringComparison.Ordinal)
                    || string.Equals(trimmed, LegacySourceKindOther, StringComparison.Ordinal);
         }
@@ -231,12 +265,19 @@ namespace DocMgr.Models.NetworkTransfer
             string trimmed = sourceKind?.Trim() ?? string.Empty;
             if (string.Equals(trimmed, LegacySourceKindExternalOfflineLabel, StringComparison.Ordinal)
                 || string.Equals(trimmed, LegacySourceKindExternalOffline, StringComparison.Ordinal)
+                || string.Equals(trimmed, LegacySourceKindExternalOfflineInternal, StringComparison.Ordinal)
                 || string.Equals(trimmed, LegacySourceKindOther, StringComparison.Ordinal))
             {
                 return SourceKindExternalOfflineInternal;
             }
 
-            if (string.Equals(trimmed, LegacySourceKindArchivedElectronicSearch, StringComparison.Ordinal))
+            if (string.Equals(trimmed, LegacySourceKindExternalOfflineExternal, StringComparison.Ordinal))
+            {
+                return SourceKindExternalOfflineExternal;
+            }
+
+            if (string.Equals(trimmed, LegacySourceKindArchivedElectronicSearchLabel, StringComparison.Ordinal)
+                || string.Equals(trimmed, LegacySourceKindArchivedElectronicSearch, StringComparison.Ordinal))
             {
                 return SourceKindArchivedElectronicSearch;
             }
@@ -255,19 +296,46 @@ namespace DocMgr.Models.NetworkTransfer
             return provideUnit?.Trim() ?? string.Empty;
         }
 
-        public static bool IsArchiveFilingDestination(string? destinationKind) =>
-            string.Equals(destinationKind?.Trim(), DestinationKindArchiveFiling, StringComparison.Ordinal);
+        public static bool IsArchiveFilingDestination(string? destinationKind)
+        {
+            string trimmed = destinationKind?.Trim() ?? string.Empty;
+            return string.Equals(trimmed, DestinationKindArchiveFiling, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacyDestinationKindArchiveFiling, StringComparison.Ordinal);
+        }
 
-        public static bool IsExternalOfflineDestination(string? destinationKind) =>
-            string.Equals(destinationKind?.Trim(), DestinationKindExternalOffline, StringComparison.Ordinal);
+        /// <summary>是否为出网（院内/院外）目的地（含历史「外部离线」）。</summary>
+        public static bool IsExternalOfflineDestination(string? destinationKind)
+        {
+            string trimmed = destinationKind?.Trim() ?? string.Empty;
+            return string.Equals(trimmed, DestinationKindOutboundInternal, StringComparison.Ordinal)
+                   || string.Equals(trimmed, DestinationKindOutboundExternal, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacyDestinationKindExternalOffline, StringComparison.Ordinal);
+        }
 
-        /// <summary>出网单分管领导默认审批角色：外部离线→分管生产副院长，否则→分管资料副院长。</summary>
+        /// <summary>出网单分管领导默认审批角色：出网（院内/院外）→分管生产副院长，否则→分管资料副院长。</summary>
         public static string ResolveOutboundDeputyLeaderRole(string? destinationKind) =>
             IsExternalOfflineDestination(destinationKind)
                 ? "分管生产副院长"
                 : "分管资料副院长";
 
-        /// <summary>是否为有效的出网目的地（新单据仅两项；含历史「其他」只读识别）。</summary>
+        /// <summary>将历史出网目的地归一化为当前选项值。</summary>
+        public static string NormalizeOutboundDestinationKind(string? destinationKind)
+        {
+            string trimmed = destinationKind?.Trim() ?? string.Empty;
+            if (string.Equals(trimmed, LegacyDestinationKindExternalOffline, StringComparison.Ordinal))
+            {
+                return DestinationKindOutboundInternal;
+            }
+
+            if (string.Equals(trimmed, LegacyDestinationKindArchiveFiling, StringComparison.Ordinal))
+            {
+                return DestinationKindArchiveFiling;
+            }
+
+            return trimmed;
+        }
+
+        /// <summary>是否为有效的出网目的地（含历史值只读识别）。</summary>
         public static bool IsValidOutboundDestinationKind(string? destinationKind)
         {
             string trimmed = destinationKind?.Trim() ?? string.Empty;
@@ -277,7 +345,9 @@ namespace DocMgr.Models.NetworkTransfer
             }
 
             return OutboundDestinationKindOptions.Contains(trimmed, StringComparer.Ordinal)
-                   || string.Equals(trimmed, DestinationKindOther, StringComparison.Ordinal);
+                   || string.Equals(trimmed, DestinationKindOther, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacyDestinationKindExternalOffline, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacyDestinationKindArchiveFiling, StringComparison.Ordinal);
         }
 
         /// <summary>新出网单是否允许保存/提交的目的地值。</summary>
@@ -285,6 +355,22 @@ namespace DocMgr.Models.NetworkTransfer
             OutboundDestinationKindOptions.Contains(
                 destinationKind?.Trim() ?? string.Empty,
                 StringComparer.Ordinal);
+
+        /// <summary>是否为出网「介质带走」处置（含历史「介质带回」）。</summary>
+        public static bool IsOutboundTakeAwayDisposition(string? disposition)
+        {
+            string trimmed = disposition?.Trim() ?? string.Empty;
+            return string.Equals(trimmed, OutboundElectronicDispositionTakeAway, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacyOutboundElectronicDispositionReturn, StringComparison.Ordinal);
+        }
+
+        /// <summary>将出网外部离线处置方式归一化为当前选项值。</summary>
+        public static string NormalizeOutboundTakeAwayDisposition(string? disposition)
+        {
+            return IsOutboundTakeAwayDisposition(disposition)
+                ? OutboundElectronicDispositionTakeAway
+                : disposition?.Trim() ?? string.Empty;
+        }
 
         public static bool IsProcessedOutputOrigin(string? originKind) =>
             string.Equals(originKind?.Trim(), OriginKindProcessedOutput, StringComparison.Ordinal);

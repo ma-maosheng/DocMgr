@@ -1,0 +1,97 @@
+<UserControl x:Class="DocMgr.Views.NetworkTransfer.NetworkOutboundApprovalApplicationSectionsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:nt="clr-namespace:DocMgr.Views.NetworkTransfer">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../YearlyArchive/ArchiveRegisterResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <StackPanel>
+        <Border Margin="0,0,0,12" Padding="10" Background="#EEF3F8" BorderBrush="#C5D3E0" BorderThickness="1">
+            <TextBlock Text="以下为申请人提交信息。资料室资料管理员可在「审批通过」前补录服务器路径；出网资料所在具体路径由系统按规范自动生成。可从离线介质读取目录/数据量、核实密级。"
+                       Foreground="#475569" TextWrapping="Wrap"/>
+        </Border>
+        <GroupBox Header="1. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
+            <StackPanel>
+                <StackPanel Margin="0,0,0,8">
+                    <TextBlock Text="资料名称" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                    <TextBlock Text="{Binding CurrentRecord.MaterialName, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                </StackPanel>
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="所属项目" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}">
+                            <Run Text="{Binding CurrentRecord.Year, Mode=OneWay}"/>
+                            <Run Text="  ·  "/>
+                            <Run Text="{Binding CurrentRecord.ProjectName, Mode=OneWay}"/>
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="目的地" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding DestinationKindDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                    </StackPanel>
+                </Grid>
+                <Border Margin="0,0,0,8" Padding="8,6" Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="3"
+                        Visibility="{Binding CanEditApprovalPaths, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Text="审批通过前可补录生产网来源服务器路径；出网资料所在具体路径随服务器路径自动更新。"
+                                   Foreground="#92400E" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                        <ComboBox Width="280" HorizontalAlignment="Left"
+                                  Style="{StaticResource NetworkInboundApprovalPathComboBoxStyle}"
+                                  ItemsSource="{Binding ApplicantServerPathOptions}"
+                                  DisplayMemberPath="PathName"
+                                  SelectedItem="{Binding SelectedServerPath, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Margin="0,6,0,6" Foreground="#475569" FontSize="11" TextWrapping="Wrap"
+                                   Text="{Binding SelectedServerPathInfo, Mode=OneWay}"/>
+                        <DockPanel LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Left" Text="出网资料所在具体路径" VerticalAlignment="Top"
+                                       Margin="0,2,8,0" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                            <TextBlock Text="{Binding MaterialPathDisplay, Mode=OneWay}"
+                                       TextWrapping="Wrap"
+                                       Foreground="#1E293B"/>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+                <StackPanel Margin="0,0,0,8">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanEditApprovalPaths}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="服务器路径" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                    <TextBlock Text="{Binding SelectedServerPathInfo, Mode=OneWay}"
+                               Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap"/>
+                    <TextBlock Text="出网资料所在具体路径" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding MaterialPathDisplay, Mode=OneWay}"
+                               Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap"/>
+                </StackPanel>
+                <nt:NetworkInboundElectronicMediaSectionView DataContext="{Binding ElectronicMediaEditor}"/>
+            </StackPanel>
+        </GroupBox>
+        <GroupBox Header="2. 申请信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10" Margin="0,10,0,0">
+            <StackPanel>
+                <TextBlock Text="申请说明" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                <TextBlock Text="{Binding CurrentRecord.Reason, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <TextBlock Text="其他要求" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                <TextBlock Text="{Binding CurrentRecord.OtherRequests, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <TextBlock Text="证明材料" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                <TextBlock Text="{Binding ProofMaterialDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" Margin="0,0,0,8"/>
+                <TextBlock Text="备注" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                <TextBlock Text="{Binding CurrentRecord.Remark, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap"/>
+            </StackPanel>
+        </GroupBox>
+    </StackPanel>
+</UserControl>

@@ -126,6 +126,9 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
     public Task ReplaceInboundMediaEntriesAsync(int inboundRecordId, IReadOnlyList<YearlyArchiveRegisterMedia> mediaEntries) =>
         NetworkInboundRegisterMediaPersistenceSupport.ReplaceMediaEntriesAsync(_dbContext, inboundRecordId, mediaEntries);
 
+    public Task ReplaceOutboundMediaEntriesAsync(int outboundRecordId, IReadOnlyList<YearlyArchiveRegisterMedia> mediaEntries) =>
+        NetworkOutboundRegisterMediaPersistenceSupport.ReplaceMediaEntriesAsync(_dbContext, outboundRecordId, mediaEntries);
+
     public async Task<string?> GetLastInboundNoByPrefixAsync(string prefix)
     {
         if (string.IsNullOrWhiteSpace(prefix))
@@ -184,11 +187,19 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
         IQueryable<NetworkOutboundRecord> query = tracking
             ? _dbContext.NetworkOutboundRecords
                 .Include(item => item.Items)
+                .Include(item => item.MediaEntries)
+                    .ThenInclude(media => media.Items)
+                        .ThenInclude(mediaItem => mediaItem.ElectronicDetail)
+                            .ThenInclude(detail => detail!.Entries)
                 .Include(item => item.BusinessChain)
                     .ThenInclude(chain => chain!.Tasks)
             : _dbContext.NetworkOutboundRecords
                 .AsNoTracking()
                 .Include(item => item.Items)
+                .Include(item => item.MediaEntries)
+                    .ThenInclude(media => media.Items)
+                        .ThenInclude(mediaItem => mediaItem.ElectronicDetail)
+                            .ThenInclude(detail => detail!.Entries)
                 .Include(item => item.BusinessChain)
                     .ThenInclude(chain => chain!.Tasks);
         return query.FirstOrDefaultAsync(item => item.Id == recordId);

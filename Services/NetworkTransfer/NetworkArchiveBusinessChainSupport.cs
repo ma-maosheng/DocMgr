@@ -101,6 +101,13 @@ internal static class NetworkArchiveBusinessChainSupport
         SetPrimaryBusiness(chain, record.Id, record.OutboundNo, now);
         SetOptionalTask(
             chain,
+            NetworkTransferDomainValues.TaskKindOnNetRegistration,
+            "NetworkOnNetAsset",
+            true,
+            "出网办结后登记出网台账",
+            now);
+        SetOptionalTask(
+            chain,
             NetworkTransferDomainValues.TaskKindArchiveRegister,
             NetworkTransferDomainValues.BusinessTypeArchiveRegister,
             NetworkTransferDomainValues.IsArchiveFilingDestination(record.DestinationKind),
@@ -134,6 +141,9 @@ internal static class NetworkArchiveBusinessChainSupport
         {
             return;
         }
+
+        MarkTask(chain, NetworkTransferDomainValues.TaskKindOnNetRegistration,
+            NetworkTransferDomainValues.BusinessTaskStatusCompleted, "出网台账已登记", now);
 
         NetworkArchiveBusinessTask? task =
             chain.Tasks.FirstOrDefault(item =>

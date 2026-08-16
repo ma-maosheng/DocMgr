@@ -6,11 +6,14 @@ namespace DocMgr.Models.YearlyArchive
     {
         public int Id { get; set; }
 
-        /// <summary>资料登记单 Id；与 <see cref="NetworkInboundRecordId"/> 二选一。</summary>
+        /// <summary>资料登记单 Id；与入网/出网单 Id 三选一。</summary>
         public int? YearlyArchiveRegisterRecordId { get; set; }
 
-        /// <summary>档外入网单 Id；与 <see cref="YearlyArchiveRegisterRecordId"/> 二选一。</summary>
+        /// <summary>档外入网单 Id；与登记单、出网单 Id 三选一。</summary>
         public int? NetworkInboundRecordId { get; set; }
+
+        /// <summary>出网申请单 Id；与登记单、入网单 Id 三选一。</summary>
+        public int? NetworkOutboundRecordId { get; set; }
         public string MediaKind { get; set; } = "???";
         public string MediaType { get; set; } = string.Empty;
         public int MediaCount { get; set; }
@@ -26,9 +29,26 @@ namespace DocMgr.Models.YearlyArchive
         /// </summary>
         public string BorrowedHardDiskCode { get; set; } = string.Empty;
 
+        /// <summary>出网外部离线·硬盘·介质带回：是否使用资料室库存空盘。</summary>
+        public bool UseInStockBlankHardDisk { get; set; }
+
+        /// <summary>出网外部离线征用库内空盘时的介质 Id。</summary>
+        public int? RequisitionedMediumId { get; set; }
+
+        /// <summary>出网外部离线征用库内空盘时的硬盘编号。</summary>
+        public string RequisitionedHardDiskCode { get; set; } = string.Empty;
+
+        /// <summary>出网外部离线征用库内空盘后，该盘是否需归还。</summary>
+        public bool RequisitionedDiskNeedReturn { get; set; }
+
+        /// <summary>出网外部离线征用库内空盘且需归还时的预计归还日期。</summary>
+        public DateTime? ExpectedReturnDate { get; set; }
+
         public virtual YearlyArchiveRegisterRecord? RegisterRecord { get; set; }
 
         public virtual NetworkTransfer.NetworkInboundRecord? NetworkInboundRecord { get; set; }
+
+        public virtual NetworkTransfer.NetworkOutboundRecord? NetworkOutboundRecord { get; set; }
 
         public virtual List<YearlyArchiveRegisterMediaItem> Items { get; set; } = new();
         public virtual List<YearlyElectronicArchiveUnitMediaLink> ElectronicArchiveUnitLinks { get; set; } = new();

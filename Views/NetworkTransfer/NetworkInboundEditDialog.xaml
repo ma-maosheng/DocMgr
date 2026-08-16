@@ -167,6 +167,8 @@
                                                     Content="填入默认资料路径"
                                                     Command="{Binding FillDefaultMaterialPathCommand}"/>
                                         </Grid>
+                                        <TextBlock Margin="90,0,0,6" Foreground="#64748B" FontSize="11" TextWrapping="Wrap"
+                                                   Text="{Binding MaterialPathHint, Mode=OneWay}"/>
 
                                         <Grid Visibility="{Binding ShowExternalElectronicMediaSection, Converter={StaticResource BooleanToVisibilityConverter}}">
                                             <nt:NetworkInboundElectronicMediaSectionView DataContext="{Binding ElectronicMediaEditor}"/>

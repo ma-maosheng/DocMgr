@@ -275,7 +275,7 @@ public static class NetworkInboundApplicationValidationSupport
         if (NetworkTransferDomainValues.IsArchivedElectronicSearchSource(header.SourceKind)
             && (!header.SourceResultSetId.HasValue || header.SourceResultSetId.Value <= 0))
         {
-            errors.Add("立档资料入网须选择电子检索集。");
+            errors.Add("存档资料入网须选择电子检索集。");
         }
 
         ValidateProvideUnit(header, errors);
@@ -291,7 +291,7 @@ public static class NetworkInboundApplicationValidationSupport
         {
             if (!string.Equals(provideUnit, NetworkTransferDomainValues.InboundProvideUnitArchiveRoom, StringComparison.Ordinal))
             {
-                errors.Add("立档资料入网的提供部门须为资料室。");
+                errors.Add("存档资料入网的提供部门须为资料室。");
             }
 
             return;

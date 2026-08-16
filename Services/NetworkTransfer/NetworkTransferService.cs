@@ -594,8 +594,6 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     {
         EnsureApplicant(currentUser);
         ArgumentNullException.ThrowIfNull(draft);
-        var builtItems = NormalizeOutboundItems(draft, items);
-
         DateTime now = DateTime.Now;
         string outboundNo = string.IsNullOrWhiteSpace(draft.OutboundNo)
             ? await GenerateNextOutboundNoAsync()
@@ -606,9 +604,13 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             OutboundNo = outboundNo,
             Status = NetworkOutboundRecord.StatusDraft,
             DestinationKind = draft.DestinationKind?.Trim() ?? string.Empty,
+            MaterialName = draft.MaterialName?.Trim() ?? string.Empty,
+            ServerPath = draft.ServerPath?.Trim() ?? string.Empty,
+            MaterialPath = draft.MaterialPath?.Trim() ?? string.Empty,
             ProjectName = draft.ProjectName?.Trim() ?? string.Empty,
             Year = draft.Year?.Trim() ?? string.Empty,
             Reason = draft.Reason?.Trim() ?? string.Empty,
+            OtherRequests = draft.OtherRequests?.Trim() ?? string.Empty,
             Remark = draft.Remark?.Trim() ?? string.Empty,
             ProofMaterialNote = NormalizeOutboundProofMaterialNote(draft.ProofMaterialNote),
             ApplicantUserId = currentUser.Id,
@@ -616,14 +618,14 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             ApplicantDept = currentUser.Department?.Trim() ?? string.Empty,
             ApplyTime = now,
             CreatedAt = now,
-            UpdatedAt = now,
-            Items = builtItems
+            UpdatedAt = now
         };
         record.BusinessChain = NetworkArchiveBusinessChainSupport.CreateForOutbound(record, now);
 
         ValidateOutboundHeader(record);
         _repository.AddOutbound(record);
         await _repository.SaveChangesAsync();
+        await ReplaceOutboundMediaAndItemsAsync(record, draft.MediaEntries?.ToList() ?? []);
         NetworkArchiveBusinessChainSupport.SynchronizeOutboundTasks(record.BusinessChain, record, now);
         await _repository.SaveChangesAsync();
         return (await _repository.GetOutboundByIdAsync(record.Id))!;
@@ -645,30 +647,14 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         }
 
         EnsureOwnerOrAdmin(existing.ApplicantUserId, currentUser);
-        var builtItems = NormalizeOutboundItems(draft, items);
-
-        existing.DestinationKind = draft.DestinationKind?.Trim() ?? string.Empty;
-        existing.ProjectName = draft.ProjectName?.Trim() ?? string.Empty;
-        existing.Year = draft.Year?.Trim() ?? string.Empty;
-        existing.Reason = draft.Reason?.Trim() ?? string.Empty;
-        existing.Remark = draft.Remark?.Trim() ?? string.Empty;
-        existing.ProofMaterialNote = NormalizeOutboundProofMaterialNote(draft.ProofMaterialNote);
+        ApplyOutboundHeader(existing, draft);
         existing.UpdatedAt = DateTime.Now;
-
-        if (existing.Items.Count > 0)
-        {
-            _repository.RemoveOutboundItems(existing.Items.ToList());
-            existing.Items.Clear();
-        }
-
-        foreach (var item in builtItems)
-        {
-            existing.Items.Add(item);
-        }
         existing.BusinessChain ??= NetworkArchiveBusinessChainSupport.CreateForOutbound(existing, DateTime.Now);
         NetworkArchiveBusinessChainSupport.SynchronizeOutboundTasks(existing.BusinessChain, existing, DateTime.Now);
 
         ValidateOutboundHeader(existing);
+        await _repository.SaveChangesAsync();
+        await ReplaceOutboundMediaAndItemsAsync(existing, draft.MediaEntries?.ToList() ?? []);
         await _repository.SaveChangesAsync();
         return (await _repository.GetOutboundByIdAsync(existing.Id))!;
     }
@@ -686,9 +672,9 @@ public sealed partial class NetworkTransferService : INetworkTransferService
 
         EnsureOwnerOrAdmin(existing.ApplicantUserId, currentUser);
         ValidateOutboundHeader(existing);
-        NetworkOutboundApplicationValidationSupport.EnsureValidForSubmit(existing, existing.Items.ToList());
-
-        await LockOutboundAssetsAsync(existing, NetworkTransferDomainValues.LifecycleOutboundLocked);
+        NetworkOutboundApplicationValidationSupport.EnsureValidForSubmit(
+            existing,
+            existing.MediaEntries?.ToList());
 
         DateTime now = DateTime.Now;
         existing.BusinessChain ??= NetworkArchiveBusinessChainSupport.CreateForOutbound(existing, now);
@@ -729,6 +715,41 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         existing.Status = NetworkOutboundRecord.StatusApproved;
         existing.ApprovedAt = now;
         existing.UpdatedAt = now;
+        await _repository.SaveChangesAsync();
+    }
+
+    public async Task UpdateOutboundMediaAsync(
+        int recordId,
+        IReadOnlyList<YearlyArchiveRegisterMedia> mediaEntries,
+        User currentUser,
+        string? serverPath = null,
+        string? materialPath = null)
+    {
+        EnsureArchiveAdmin(currentUser);
+        var existing = await _repository.GetOutboundByIdAsync(recordId, tracking: true)
+            ?? throw new InvalidOperationException("未找到出网申请单。");
+
+        if (existing.Status is not (
+            NetworkOutboundRecord.StatusSubmitted
+            or NetworkOutboundRecord.StatusApproved
+            or NetworkOutboundRecord.StatusSignedUploaded))
+        {
+            throw new InvalidOperationException("当前状态不允许补录出网介质信息。");
+        }
+
+        if (!string.IsNullOrWhiteSpace(serverPath))
+        {
+            existing.ServerPath = serverPath.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(materialPath))
+        {
+            existing.MaterialPath = materialPath.Trim();
+        }
+
+        existing.UpdatedAt = DateTime.Now;
+        await _repository.SaveChangesAsync();
+        await ReplaceOutboundMediaAndItemsAsync(existing, mediaEntries ?? []);
         await _repository.SaveChangesAsync();
     }
 
@@ -773,12 +794,21 @@ public sealed partial class NetworkTransferService : INetworkTransferService
 
         if (existing.Status != NetworkOutboundRecord.StatusSignedUploaded)
         {
-            throw new InvalidOperationException("请先完成交接确认后再办结。");
+            throw new InvalidOperationException("请先确认实物交接并上传签批单后再确认办结。");
         }
 
-        await EnsureSignedAttachmentAsync(
+        var attachments = await _repository.GetAttachmentsAsync(
             NetworkTransferDomainValues.OutboundAttachmentBusinessType,
             existing.OutboundNo);
+        IReadOnlyList<string> completeErrors = NetworkOutboundApplicationValidationSupport.ValidateForComplete(
+            existing,
+            attachments);
+        if (completeErrors.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "附件或审批信息尚未满足办结要求：" + Environment.NewLine + Environment.NewLine
+                + string.Join(Environment.NewLine, completeErrors));
+        }
 
         DateTime now = DateTime.Now;
         string operatorName = ResolveUserDisplayName(currentUser);
@@ -787,6 +817,8 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         await using IArchiveFilingRepositoryTransaction transaction = await _repository.BeginTransactionAsync();
         try
         {
+            await CompleteOutboundLedgerAsync(existing, operatorName, now);
+
             YearlyArchiveRegisterRecord? register = null;
             if (NetworkTransferDomainValues.IsArchiveFilingDestination(existing.DestinationKind))
             {
@@ -801,15 +833,6 @@ public sealed partial class NetworkTransferService : INetworkTransferService
 
                 existing.TargetRegisterRecordId = register.Id;
                 existing.TargetRegisterFormNo = register.FormNo;
-            }
-
-            var assets = await _repository.GetOnNetAssetsByIdsAsync(
-                GetLinkedOnNetAssetIds(existing.Items).ToList(),
-                tracking: true);
-            foreach (var asset in assets)
-            {
-                asset.LifecycleStatus = NetworkTransferDomainValues.LifecycleOutbounded;
-                asset.UpdatedAt = now;
             }
 
             existing.Status = NetworkOutboundRecord.StatusCompleted;
@@ -839,15 +862,6 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         }
 
         EnsureOwnerOrAdmin(existing.ApplicantUserId, currentUser);
-
-        if (existing.Status == NetworkOutboundRecord.StatusSubmitted)
-        {
-            await UnlockAssetsAsync(
-                GetLinkedOnNetAssetIds(existing.Items).ToList(),
-                NetworkTransferDomainValues.LifecycleOutboundLocked,
-                NetworkTransferDomainValues.LifecycleOnNet);
-        }
-
         DateTime now = DateTime.Now;
         existing.Status = NetworkOutboundRecord.StatusWithdrawn;
         existing.WithdrawnAt = now;
@@ -1273,7 +1287,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         {
             if (!draft.SourceResultSetId.HasValue || draft.SourceResultSetId.Value <= 0)
             {
-                throw new InvalidOperationException("立档资料入网必须挂接电子资料检索结果集。");
+                throw new InvalidOperationException("存档资料入网必须挂接电子资料检索结果集。");
             }
 
             var selectedIds = items?
@@ -1360,6 +1374,81 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         }
 
         return result;
+    }
+
+    private static void ApplyOutboundHeader(NetworkOutboundRecord target, NetworkOutboundRecord draft)
+    {
+        target.DestinationKind = draft.DestinationKind?.Trim() ?? string.Empty;
+        target.MaterialName = draft.MaterialName?.Trim() ?? string.Empty;
+        target.ServerPath = draft.ServerPath?.Trim() ?? string.Empty;
+        target.MaterialPath = draft.MaterialPath?.Trim() ?? string.Empty;
+        target.ProjectName = draft.ProjectName?.Trim() ?? string.Empty;
+        target.Year = draft.Year?.Trim() ?? string.Empty;
+        target.Reason = draft.Reason?.Trim() ?? string.Empty;
+        target.OtherRequests = draft.OtherRequests?.Trim() ?? string.Empty;
+        target.Remark = draft.Remark?.Trim() ?? string.Empty;
+        target.ProofMaterialNote = NormalizeOutboundProofMaterialNote(draft.ProofMaterialNote);
+    }
+
+    private async Task ReplaceOutboundMediaAndItemsAsync(
+        NetworkOutboundRecord record,
+        IReadOnlyList<YearlyArchiveRegisterMedia> mediaEntries)
+    {
+        await _repository.ReplaceOutboundMediaEntriesAsync(record.Id, mediaEntries);
+        if (record.Items.Count > 0)
+        {
+            _repository.RemoveOutboundItems(record.Items.ToList());
+            record.Items.Clear();
+        }
+
+        foreach (NetworkOutboundItem item in NetworkOutboundOnNetAssetMappingSupport.BuildItemSnapshots(record, mediaEntries))
+        {
+            record.Items.Add(item);
+        }
+    }
+
+    private async Task CompleteOutboundLedgerAsync(
+        NetworkOutboundRecord existing,
+        string operatorName,
+        DateTime now)
+    {
+        if (existing.Items.Count == 0)
+        {
+            foreach (NetworkOutboundItem item in NetworkOutboundOnNetAssetMappingSupport.BuildItemSnapshots(
+                         existing,
+                         existing.MediaEntries?.ToList()))
+            {
+                existing.Items.Add(item);
+            }
+
+            await _repository.SaveChangesAsync();
+        }
+
+        foreach (NetworkOutboundItem item in existing.Items.OrderBy(row => row.SortOrder).ThenBy(row => row.Id))
+        {
+            if (item.OnNetAssetId is > 0)
+            {
+                NetworkOnNetAsset? linked = await _repository.GetOnNetAssetByIdAsync(item.OnNetAssetId.Value, tracking: true);
+                if (linked != null)
+                {
+                    linked.LifecycleStatus = NetworkTransferDomainValues.LifecycleOutbounded;
+                    linked.UpdatedAt = now;
+                    continue;
+                }
+            }
+
+            string assetNo = await GenerateNextOnNetAssetNoAsync();
+            NetworkOnNetAsset asset = NetworkOutboundOnNetAssetMappingSupport.CreateOutboundedAsset(
+                existing,
+                item,
+                assetNo,
+                operatorName,
+                now);
+            _repository.AddOnNetAsset(asset);
+            await _repository.SaveChangesAsync();
+            item.OnNetAssetId = asset.Id;
+            asset.OriginOutboundItemId = item.Id;
+        }
     }
 
     private static List<NetworkOutboundItem> NormalizeOutboundItems(
@@ -1527,11 +1616,13 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         User currentUser,
         DateTime now)
     {
-        string materialName = outbound.Items
-            .OrderBy(item => item.SortOrder)
-            .Select(item => item.AssetName)
-            .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name))
-            ?? $"出网转入-{outbound.OutboundNo}";
+        string materialName = string.IsNullOrWhiteSpace(outbound.MaterialName)
+            ? outbound.Items
+                .OrderBy(item => item.SortOrder)
+                .Select(item => item.AssetName)
+                .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name))
+                ?? $"出网转入-{outbound.OutboundNo}"
+            : outbound.MaterialName.Trim();
 
         var register = new YearlyArchiveRegisterRecord
         {
@@ -1546,50 +1637,33 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             ProofMaterialNote = NormalizeOutboundProofMaterialNote(outbound.ProofMaterialNote),
             ApplicantName = ResolveUserDisplayName(currentUser),
             ApplicantDept = currentUser.Department?.Trim() ?? string.Empty,
-            OtherRequests = $"由出网单 {outbound.OutboundNo} 办结自动生成草稿；资料明细已带入，请确认介质类型、所属子类及归档目的。",
+            OtherRequests = string.IsNullOrWhiteSpace(outbound.OtherRequests)
+                ? $"由出网单 {outbound.OutboundNo} 办结自动生成草稿；资料明细已带入，请确认介质类型、所属子类及归档目的。"
+                : outbound.OtherRequests.Trim(),
             SourceNetworkOutboundRecordId = outbound.Id,
             SourceNetworkOutboundNo = outbound.OutboundNo,
             BusinessChainId = outbound.BusinessChainId
         };
 
-        var media = new YearlyArchiveRegisterMedia
+        foreach (YearlyArchiveRegisterMedia media in NetworkOutboundOnNetAssetMappingSupport.CloneMediaForArchiveRegister(
+                     outbound.MediaEntries,
+                     outbound.OutboundNo))
         {
-            MediaKind = ArchiveRegisterDomainValues.MediaKindElectronic,
-            MediaType = ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork,
-            MediaCount = 1,
-            Disposition = ArchiveRegisterDomainValues.ElectronicDispositionNone
-        };
-
-        foreach (NetworkOutboundItem outboundItem in outbound.Items
-                     .OrderBy(item => item.SortOrder)
-                     .ThenBy(item => item.Id))
-        {
-            string contentDescription = string.IsNullOrWhiteSpace(outboundItem.ItemName)
-                ? outboundItem.AssetName?.Trim() ?? string.Empty
-                : outboundItem.ItemName.Trim();
-            var mediaItem = new YearlyArchiveRegisterMediaItem
-            {
-                ItemType = ArchiveRegisterDomainValues.ItemTypeData,
-                ContentDesc = contentDescription,
-                ContentCount = 1,
-                StoragePath = outboundItem.ServerPath?.Trim() ?? string.Empty,
-                Note = string.IsNullOrWhiteSpace(outboundItem.AssetNo)
-                    ? $"来源出网单 {outbound.OutboundNo}"
-                    : $"来源在网资产 {outboundItem.AssetNo.Trim()}；出网单 {outbound.OutboundNo}",
-                ConfidentialLevel = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(
-                    outboundItem.ConfidentialLevel),
-                ElectronicDetail = new YearlyArchiveRegisterElectronicMediaItemDetail
-                {
-                    MaterialCategory = ArchiveRegisterDomainValues.ElectronicMaterialCategoryData,
-                    SubCategory = string.Empty,
-                    DataOrganizationForm = ArchiveRegisterDomainValues.ElectronicDataOrganizationFormDirectory,
-                    DataSizeMb = ConvertDataSizeTextToMb(outboundItem.DataSizeText)
-                }
-            };
-            media.Items.Add(mediaItem);
+            register.MediaEntries.Add(media);
         }
 
-        register.MediaEntries.Add(media);
+        if (register.MediaEntries.Count == 0)
+        {
+            var fallback = new YearlyArchiveRegisterMedia
+            {
+                MediaKind = ArchiveRegisterDomainValues.MediaKindElectronic,
+                MediaType = ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork,
+                MediaCount = 1,
+                Disposition = ArchiveRegisterDomainValues.ElectronicDispositionNone
+            };
+            register.MediaEntries.Add(fallback);
+        }
+
         return register;
     }
 
@@ -1763,7 +1837,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         if (NetworkTransferDomainValues.IsArchivedElectronicSearchSource(record.SourceKind)
             && (!record.SourceResultSetId.HasValue || record.SourceResultSetId.Value <= 0))
         {
-            throw new InvalidOperationException("立档资料入网必须挂接电子资料检索结果集。");
+            throw new InvalidOperationException("存档资料入网必须挂接电子资料检索结果集。");
         }
     }
 
@@ -1772,6 +1846,11 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         if (!NetworkTransferDomainValues.IsAllowedOutboundDestinationKind(record.DestinationKind))
         {
             throw new InvalidOperationException("请选择有效的出网目的地。");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.MaterialName))
+        {
+            throw new InvalidOperationException("请填写资料名称。");
         }
 
         if (string.IsNullOrWhiteSpace(record.Reason))

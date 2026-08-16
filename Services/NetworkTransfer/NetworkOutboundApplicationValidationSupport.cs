@@ -5,54 +5,31 @@ using DocMgr.Models.YearlyArchive;
 namespace DocMgr.Services.NetworkTransfer;
 
 /// <summary>
-/// 出网申请提交前完整性与业务逻辑校验。
+/// 出网申请提交、交接与办结校验。
 /// </summary>
 public static class NetworkOutboundApplicationValidationSupport
 {
-    /// <summary>
-    /// 校验提交申请所需的头信息与明细，返回全部错误（空列表表示通过）。
-    /// </summary>
     public static IReadOnlyList<string> ValidateForSubmit(
         NetworkOutboundRecord header,
-        IReadOnlyList<NetworkOutboundItem> items)
+        IReadOnlyList<YearlyArchiveRegisterMedia>? mediaEntries)
     {
         var errors = new List<string>();
         ValidateHeader(header, errors);
-
-        if (items == null || items.Count == 0)
-        {
-            errors.Add("请至少录入一条出网明细。");
-            return errors;
-        }
-
-        string sharedPath = items
-            .Select(item => item.ServerPath?.Trim() ?? string.Empty)
-            .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path))
-            ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(sharedPath))
-        {
-            errors.Add("请选择服务器路径。");
-        }
-
-        ValidateManualItems(items, errors);
+        NetworkOutboundExternalMediaValidationSupport.ValidateForSubmit(header, mediaEntries, errors);
         return errors;
     }
 
-    /// <summary>
-    /// 校验不通过时抛出包含全部错误的异常。
-    /// </summary>
-    public static void EnsureValidForSubmit(NetworkOutboundRecord header, IReadOnlyList<NetworkOutboundItem> items)
+    public static void EnsureValidForSubmit(
+        NetworkOutboundRecord header,
+        IReadOnlyList<YearlyArchiveRegisterMedia>? mediaEntries)
     {
-        IReadOnlyList<string> errors = ValidateForSubmit(header, items);
+        IReadOnlyList<string> errors = ValidateForSubmit(header, mediaEntries);
         if (errors.Count > 0)
         {
             throw new InvalidOperationException(string.Join(Environment.NewLine, errors));
         }
     }
 
-    /// <summary>
-    /// 校验确认出网交接所需的审批信息与必备附件，返回全部错误（空列表表示通过）。
-    /// </summary>
     public static IReadOnlyList<string> ValidateForHandoverConfirm(
         NetworkOutboundRecord record,
         NetworkOutboundRecord handoverInput,
@@ -63,13 +40,9 @@ public static class NetworkOutboundApplicationValidationSupport
 
         var errors = new List<string>();
         CollectApprovalSignerErrors(record, handoverInput, errors);
-        CollectMandatoryAttachmentErrors(record, attachments ?? Array.Empty<SystemAttachment>(), errors);
         return errors;
     }
 
-    /// <summary>
-    /// 校验不通过时抛出包含全部错误的异常。
-    /// </summary>
     public static void EnsureValidForHandoverConfirm(
         NetworkOutboundRecord record,
         NetworkOutboundRecord handoverInput,
@@ -81,6 +54,54 @@ public static class NetworkOutboundApplicationValidationSupport
             throw new InvalidOperationException(
                 "交接确认前校验未通过：" + Environment.NewLine + Environment.NewLine
                 + string.Join(Environment.NewLine, errors));
+        }
+    }
+
+    public static IReadOnlyList<string> ValidateForComplete(
+        NetworkOutboundRecord record,
+        IReadOnlyList<SystemAttachment> attachments)
+    {
+        ArgumentNullException.ThrowIfNull(record);
+        var errors = new List<string>();
+        CollectCompleteSignerErrors(record, errors);
+        CollectMandatoryAttachmentErrors(record, attachments ?? Array.Empty<SystemAttachment>(), errors);
+        NetworkOutboundExternalMediaValidationSupport.ValidateForComplete(
+            record.DestinationKind,
+            record.MediaEntries?.ToList(),
+            errors);
+        return errors;
+    }
+
+    private static void CollectCompleteSignerErrors(NetworkOutboundRecord record, List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(record.DeptLeader))
+        {
+            errors.Add("• 部门负责人签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.ProdLeader))
+        {
+            errors.Add("• 生产管理科负责人签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.RndLeader))
+        {
+            errors.Add("• 资料室负责人签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.DeputyLeader))
+        {
+            errors.Add("• 分管领导签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.Deliverer))
+        {
+            errors.Add("• 移交人签字缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.Administrator))
+        {
+            errors.Add("• 资料员签字缺失");
         }
     }
 
@@ -159,78 +180,14 @@ public static class NetworkOutboundApplicationValidationSupport
             errors.Add("请选择项目。");
         }
 
+        if (string.IsNullOrWhiteSpace(header.MaterialName))
+        {
+            errors.Add("请填写资料名称。");
+        }
+
         if (string.IsNullOrWhiteSpace(header.Reason))
         {
             errors.Add("请填写申请说明。");
         }
-    }
-
-    private static void ValidateManualItems(IReadOnlyList<NetworkOutboundItem> items, List<string> errors)
-    {
-        var duplicateKeys = new HashSet<string>(StringComparer.Ordinal);
-        var seenKeys = new HashSet<string>(StringComparer.Ordinal);
-
-        for (int index = 0; index < items.Count; index++)
-        {
-            NetworkOutboundItem item = items[index];
-            int rowNo = index + 1;
-            string rowLabel = BuildRowLabel(item, rowNo);
-
-            string assetKind = item.AssetKind?.Trim() ?? string.Empty;
-            if (!NetworkTransferDomainValues.AssetKindOptions.Contains(assetKind, StringComparer.Ordinal))
-            {
-                errors.Add($"第 {rowNo} 行{rowLabel}：请选择资料类别。");
-            }
-
-            if (string.IsNullOrWhiteSpace(item.AssetName))
-            {
-                errors.Add($"第 {rowNo} 行{rowLabel}：资料名称不能为空。");
-            }
-
-            if (string.IsNullOrWhiteSpace(item.ItemName))
-            {
-                errors.Add($"第 {rowNo} 行{rowLabel}：资料明细不能为空。");
-            }
-
-            if (string.IsNullOrWhiteSpace(item.ConfidentialLevel))
-            {
-                errors.Add($"第 {rowNo} 行{rowLabel}：请选择密级。");
-            }
-
-            if (!NetworkInboundItemDisplaySupport.TryParseDataSizeText(item.DataSizeText, out decimal dataSize, out string unit))
-            {
-                errors.Add($"第 {rowNo} 行{rowLabel}：请填写有效的数据量（数值 + MB/GB/TB）。");
-            }
-            else if (!NetworkInboundItemDisplaySupport.DataSizeUnitOptions.Contains(unit, StringComparer.Ordinal))
-            {
-                errors.Add($"第 {rowNo} 行{rowLabel}：数据量单位须为 MB、GB 或 TB。");
-            }
-            else if (dataSize <= 0)
-            {
-                errors.Add($"第 {rowNo} 行{rowLabel}：数据量须大于 0。");
-            }
-
-            string dedupKey = $"{item.AssetName.Trim()}|{item.ItemName.Trim()}|{assetKind}";
-            if (!seenKeys.Add(dedupKey))
-            {
-                duplicateKeys.Add(dedupKey);
-            }
-        }
-
-        foreach (string duplicateKey in duplicateKeys)
-        {
-            string[] parts = duplicateKey.Split('|');
-            errors.Add($"存在重复明细：资料名称「{parts[0]}」、资料明细「{parts[1]}」、资料类别「{parts[2]}」。");
-        }
-    }
-
-    private static string BuildRowLabel(NetworkOutboundItem item, int rowNo)
-    {
-        if (!string.IsNullOrWhiteSpace(item.AssetName))
-        {
-            return $"（{item.AssetName.Trim()}）";
-        }
-
-        return string.Empty;
     }
 }

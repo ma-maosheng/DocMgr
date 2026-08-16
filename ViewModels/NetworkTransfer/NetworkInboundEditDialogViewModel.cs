@@ -158,7 +158,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public string StatusDisplay => NetworkTransferDomainValues.ToStatusDisplay(_record.Status);
 
         public string BannerText =>
-            "立档资料入网：明细唯一来自电子资料检索结果集，提供部门固定为资料室。档外资料（内部/外部）可手工录入明细。流程：草稿→提交→审批签字→确认入网交接→上传签批单→办结（写入在网台账）。";
+            "存档资料入网：明细唯一来自电子资料检索结果集，提供部门固定为资料室。档外资料（院内/院外）可手工录入明细。流程：草稿→提交→审批签字→确认入网交接→上传签批单→办结（写入在网台账）。";
 
         public ObservableCollection<string> SourceKindOptions { get; } = new(NetworkTransferDomainValues.SourceKindOptions);
 
@@ -450,6 +450,10 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 return $"物理地址 {path.PhysicalPath} · 权限 {path.Permission} · 容量上限 {path.CapacityTb:0.##} TB · 所属 {path.DepartmentName}";
             }
         }
+
+        /// <summary>资料路径组成说明。</summary>
+        public string MaterialPathHint =>
+            "默认组成为「入网\\年度\\项目\\资料名称」（共用服务器路径时前加申请部门）。各子项名称作为该路径下的子目录。";
 
         /// <summary>当前选中检索集的基本信息摘要。</summary>
         public string SelectedSearchResultSetSummary
@@ -1094,20 +1098,12 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 return;
             }
 
-            if (!NetworkInboundMaterialPathSupport.TryExtractInboundNoSuffix(InboundNo, out _))
-            {
-                _dialogService.ShowError("入网单号尚未生成，无法填入默认资料路径。");
-                return;
-            }
-
             _record.MaterialPath = NetworkInboundMaterialPathSupport.BuildDefaultMaterialPath(
                 SelectedServerPath,
                 ApplicantDept,
                 Year,
                 ProjectName,
-                _record.MaterialName,
-                InboundNo,
-                SourceKind);
+                _record.MaterialName);
             OnPropertyChanged(nameof(CurrentRecord));
         }
 

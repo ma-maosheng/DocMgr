@@ -26,7 +26,7 @@ internal static class NetworkOutboundPrintDocumentFactory
     {
         ArgumentNullException.ThrowIfNull(data);
 
-        double itemDetailRowHeight = CalculateItemDetailRowHeight();
+        double itemDetailRowHeight = CalculateItemDetailRowHeight(data);
 
         var document = CreateDocumentSkeleton();
         document.Blocks.Add(CreateTitleBlock());
@@ -61,13 +61,16 @@ internal static class NetworkOutboundPrintDocumentFactory
         return document;
     }
 
-    private static double CalculateItemDetailRowHeight()
+    private static double CalculateItemDetailRowHeight(NetworkOutboundPrintData data)
     {
+        ArgumentNullException.ThrowIfNull(data);
+
         double fixedTableHeight =
             PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 8
             + PrintPageLayoutSupport.GetTableRowOuterHeightDip(ReasonRowHeight, CellPadding)
             + PrintPageLayoutSupport.GetTableRowOuterHeightDip(HandoverRowHeight, CellPadding);
-        double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 3, lineHeightDip: 16, topMarginDip: 8);
+        int footerLineCount = data.HasPendingItemDetailCapture ? 4 : 3;
+        double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: footerLineCount, lineHeightDip: 16, topMarginDip: 8);
         double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
         return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
             reservedHeight,
@@ -154,9 +157,19 @@ internal static class NetworkOutboundPrintDocumentFactory
         };
 
         footer.Inlines.Add(new Run("备注：") { FontWeight = FontWeights.Bold });
-        footer.Inlines.Add(new Run("1、申请提交后，按“线上申请、打印表单、线下审批签字、上传签批单、确认出网交接”的流程办理。\n"));
-        footer.Inlines.Add(new Run("      2、签字后的审批单应回传系统，作为办理依据和归档附件。\n"));
-        footer.Inlines.Add(new Run($"      3、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
+
+        int noteIndex = 1;
+        if (data.HasPendingItemDetailCapture)
+        {
+            footer.Inlines.Add(new Run($"{noteIndex}、本单子项资料的目录、数据量等具体信息尚未录入，资料室办理前需从离线拷贝介质读取并补录。\n"));
+            noteIndex++;
+        }
+
+        footer.Inlines.Add(new Run($"      {noteIndex}、申请提交后，按“线上申请、打印表单、线下审批签字、上传签批单、确认出网交接”的流程办理。\n"));
+        noteIndex++;
+        footer.Inlines.Add(new Run($"      {noteIndex}、签字后的审批单应回传系统，作为办理依据和归档附件。\n"));
+        noteIndex++;
+        footer.Inlines.Add(new Run($"      {noteIndex}、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
 
         return footer;
     }

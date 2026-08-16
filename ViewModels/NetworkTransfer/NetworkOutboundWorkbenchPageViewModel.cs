@@ -50,6 +50,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         public bool IsApplicationMode => _mode == NetworkTransferWorkspaceMode.Application;
 
+        public bool IsApprovalMode => _mode == NetworkTransferWorkspaceMode.Approval;
+
         public string PageTitle => IsApplicationMode ? "出网申请" : "出网审批";
 
         public ObservableCollection<NetworkOutboundRecord> Records { get; } = new();
@@ -179,7 +181,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 ApplyTime = DateTime.Now,
                 ApplicantName = _userContextService.CurrentUser?.RealName?.Trim() ?? string.Empty,
                 ApplicantDept = _userContextService.CurrentUser?.Department?.Trim() ?? string.Empty,
-                DestinationKind = NetworkTransferDomainValues.DestinationKindExternalOffline,
+                DestinationKind = NetworkTransferDomainValues.DestinationKindOutboundInternal,
                 Status = NetworkOutboundRecord.StatusDraft
             };
             if (_dialogService.ShowNetworkOutboundEditDialog(draft, _mode))

@@ -27,10 +27,10 @@ namespace DocMgr.Models.NetworkTransfer
 
         public int Status { get; set; } = StatusDraft;
 
-        /// <summary>数据来源：立档资料 / 档外资料（内部） / 档外资料（外部）。</summary>
+        /// <summary>数据来源：存档资料 / 档外资料（院内） / 档外资料（院外）。</summary>
         public string SourceKind { get; set; } = string.Empty;
 
-        /// <summary>提供部门（单位）；立档资料固定为资料室。</summary>
+        /// <summary>提供部门（单位）；存档资料固定为资料室。</summary>
         public string ProvideUnit { get; set; } = string.Empty;
 
         /// <summary>入网目标服务器路径（整单共用）。</summary>

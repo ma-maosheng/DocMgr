@@ -84,6 +84,14 @@ public interface INetworkTransferService
 
     Task ApproveOutboundAsync(NetworkOutboundRecord approval, User currentUser);
 
+    /// <summary>审批阶段补录电子介质树、生产网来源路径与出网资料具体路径。</summary>
+    Task UpdateOutboundMediaAsync(
+        int recordId,
+        IReadOnlyList<YearlyArchiveRegisterMedia> mediaEntries,
+        User currentUser,
+        string? serverPath = null,
+        string? materialPath = null);
+
     Task ConfirmOutboundHandoverAsync(NetworkOutboundRecord handover, User currentUser);
 
     Task CompleteOutboundAsync(int recordId, User currentUser);

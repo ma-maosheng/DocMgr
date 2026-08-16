@@ -213,7 +213,8 @@ public sealed partial class NetworkTransferService
             DestinationKindText = record.DestinationKind?.Trim() ?? string.Empty,
             Reason = record.Reason?.Trim() ?? string.Empty,
             ProofMaterialNote = proofMaterial,
-            ItemLines = NetworkOutboundItemPrintSupport.BuildItemLines(record.Items).ToList(),
+            ItemLines = NetworkOutboundItemPrintSupport.BuildItemLines(record).ToList(),
+            HasPendingItemDetailCapture = NetworkOutboundItemPrintSupport.HasPendingItemDetailCapture(record.MediaEntries),
             DeptLeaderBlock = BuildApprovalBlock(
                 blankApprovalSignatures ? string.Empty : record.DeptLeader,
                 blankApprovalSignatures ? BlankDateText : FormatDate(record.DeptDate)),

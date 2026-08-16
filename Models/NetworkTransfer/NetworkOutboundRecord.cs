@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using DocMgr.Models.Shared;
+using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Models.NetworkTransfer
 {
@@ -28,18 +29,30 @@ namespace DocMgr.Models.NetworkTransfer
 
         public string DestinationKind { get; set; } = string.Empty;
 
+        /// <summary>资料名称（整单摘要）。</summary>
+        public string MaterialName { get; set; } = string.Empty;
+
+        /// <summary>生产网来源服务器路径（整单共用，手工填写）。</summary>
+        public string ServerPath { get; set; } = string.Empty;
+
+        /// <summary>出网资料所在具体路径（服务器路径下的相对目录，由系统按规范生成）。</summary>
+        public string MaterialPath { get; set; } = string.Empty;
+
         public string ProjectName { get; set; } = string.Empty;
 
         public string Year { get; set; } = string.Empty;
 
         public string Reason { get; set; } = string.Empty;
 
+        /// <summary>其他要求（选填）。</summary>
+        public string OtherRequests { get; set; } = string.Empty;
+
         public string Remark { get; set; } = string.Empty;
 
         /// <summary>证明材料备注；「无」表示未附，有材料时填写名称。</summary>
         public string ProofMaterialNote { get; set; } = string.Empty;
 
-        /// <summary>目的地=资料室立档时，办结后写入的建档草稿 Id。</summary>
+        /// <summary>目的地=资料室存档时，办结后写入的建档草稿 Id。</summary>
         public int? TargetRegisterRecordId { get; set; }
 
         public string TargetRegisterFormNo { get; set; } = string.Empty;
@@ -108,6 +121,10 @@ namespace DocMgr.Models.NetworkTransfer
         public DateTime UpdatedAt { get; set; }
 
         public ICollection<NetworkOutboundItem> Items { get; set; } = new List<NetworkOutboundItem>();
+
+        /// <summary>出网登记介质树（与入网档外/YA 电子介质同构）。</summary>
+        public ICollection<YearlyArchiveRegisterMedia> MediaEntries { get; set; } =
+            new List<YearlyArchiveRegisterMedia>();
 
         public NetworkArchiveBusinessChain? BusinessChain { get; set; }
 

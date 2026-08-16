@@ -424,6 +424,9 @@ namespace DocMgr.Data
                 entity.HasIndex(item => item.OriginInboundItemId)
                     .IsUnique()
                     .HasFilter("[OriginInboundItemId] IS NOT NULL");
+                entity.HasIndex(item => item.OriginOutboundItemId)
+                    .IsUnique()
+                    .HasFilter("[OriginOutboundItemId] IS NOT NULL");
                 entity.HasIndex(item => item.ParentAssetId);
             });
 
@@ -438,6 +441,11 @@ namespace DocMgr.Data
                 entity.HasMany(item => item.Items)
                     .WithOne(item => item.OutboundRecord)
                     .HasForeignKey(item => item.OutboundRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(item => item.MediaEntries)
+                    .WithOne(media => media.NetworkOutboundRecord)
+                    .HasForeignKey(media => media.NetworkOutboundRecordId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(item => item.BusinessChain)
@@ -594,6 +602,7 @@ namespace DocMgr.Data
             modelBuilder.Entity<YearlyArchiveRegisterMedia>(entity =>
             {
                 entity.HasIndex(media => media.NetworkInboundRecordId);
+                entity.HasIndex(media => media.NetworkOutboundRecordId);
 
                 entity.HasOne(media => media.RegisterRecord)
                     .WithMany(record => record.MediaEntries)
@@ -603,6 +612,11 @@ namespace DocMgr.Data
                 entity.HasOne(media => media.NetworkInboundRecord)
                     .WithMany(record => record.MediaEntries)
                     .HasForeignKey(media => media.NetworkInboundRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(media => media.NetworkOutboundRecord)
+                    .WithMany(record => record.MediaEntries)
+                    .HasForeignKey(media => media.NetworkOutboundRecordId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

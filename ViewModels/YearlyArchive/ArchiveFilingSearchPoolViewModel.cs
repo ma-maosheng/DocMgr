@@ -571,7 +571,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                         ProvideUnit = NetworkTransferDomainValues.InboundProvideUnitArchiveRoom,
                         SourceResultSetId = SelectedPool.Id,
                         SourceResultSetNo = SelectedPool.ResultSetNo,
-                        Reason = $"由电子检索池 {SelectedPool.ResultSetNo} 发起立档资料入网。"
+                        Reason = $"由电子检索池 {SelectedPool.ResultSetNo} 发起存档资料入网。"
                     },
                     items,
                     user);
