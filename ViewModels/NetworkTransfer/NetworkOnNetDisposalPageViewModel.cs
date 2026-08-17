@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
@@ -19,6 +20,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private readonly INetworkTransferService _service;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IServerPathSettingService _serverPathSettingService;
         private readonly List<NetworkOnNetDisposalRecord> _allRecords = new();
         private bool _isInitialized;
         private int _applyYear = DateTime.Today.Year;
@@ -27,16 +29,20 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private string _assetKeyword = string.Empty;
         private string _assetOriginKind = "全部";
         private string _assetLifecycle = "全部";
+        private string _assetServerPath = "全部";
+        private string _assetDepartment = "全部";
         private NetworkOnNetDisposalRecord? _selectedRecord;
 
         public NetworkOnNetDisposalPageViewModel(
             INetworkTransferService service,
             IDialogService dialogService,
-            IUserContextService userContextService)
+            IUserContextService userContextService,
+            IServerPathSettingService serverPathSettingService)
         {
             _service = service;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _serverPathSettingService = serverPathSettingService;
 
             RefreshCommand = new RelayCommand(async _ => await RefreshAllAsync());
             SearchCommand = new RelayCommand(async _ => await RefreshDisposalsAsync());
@@ -52,6 +58,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public ObservableCollection<int> ApplyYears { get; } = new();
         public ObservableCollection<string> StatusOptions { get; } = new();
         public ObservableCollection<string> OriginKindOptions { get; } = new() { "全部", NetworkTransferDomainValues.OriginKindInbound, NetworkTransferDomainValues.OriginKindProcessedOutput };
+        public ObservableCollection<string> ServerPathOptions { get; } = new() { "全部" };
+        public ObservableCollection<string> DepartmentOptions { get; } = new() { "全部" };
         public ObservableCollection<string> LifecycleOptions { get; } = new()
         {
             "全部",
@@ -73,6 +81,16 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             get => _assetLifecycle;
             set { if (SetProperty(ref _assetLifecycle, value) && _isInitialized) _ = RefreshAssetsAsync(); }
+        }
+        public string AssetServerPath
+        {
+            get => _assetServerPath;
+            set { if (SetProperty(ref _assetServerPath, value) && _isInitialized) _ = RefreshAssetsAsync(); }
+        }
+        public string AssetDepartment
+        {
+            get => _assetDepartment;
+            set { if (SetProperty(ref _assetDepartment, value) && _isInitialized) _ = RefreshAssetsAsync(); }
         }
         public int ApplyYear
         {
@@ -116,8 +134,34 @@ namespace DocMgr.ViewModels.NetworkTransfer
             int currentYear = DateTime.Today.Year;
             for (int year = currentYear; year >= currentYear - 5; year--)
                 ApplyYears.Add(year);
+            LoadAssetFilterOptions();
             await RefreshAllAsync();
             _isInitialized = true;
+        }
+
+        private void LoadAssetFilterOptions()
+        {
+            ServerPathOptions.Clear();
+            ServerPathOptions.Add("全部");
+            foreach (string pathName in _serverPathSettingService.GetAll()
+                         .Select(item => item.PathName?.Trim() ?? string.Empty)
+                         .Where(item => !string.IsNullOrWhiteSpace(item))
+                         .Distinct(StringComparer.Ordinal)
+                         .OrderBy(item => item, StringComparer.Ordinal))
+            {
+                ServerPathOptions.Add(pathName);
+            }
+
+            DepartmentOptions.Clear();
+            DepartmentOptions.Add("全部");
+            foreach (string department in _serverPathSettingService.GetAll()
+                         .Select(item => item.DepartmentName?.Trim() ?? string.Empty)
+                         .Where(item => !string.IsNullOrWhiteSpace(item))
+                         .Distinct(StringComparer.Ordinal)
+                         .OrderBy(item => item, StringComparer.Ordinal))
+            {
+                DepartmentOptions.Add(department);
+            }
         }
 
         private async Task RefreshAllAsync()
@@ -132,8 +176,10 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 string? origin = string.Equals(AssetOriginKind, "全部", StringComparison.Ordinal) ? null : AssetOriginKind;
                 string? life = string.Equals(AssetLifecycle, "全部", StringComparison.Ordinal) ? null : AssetLifecycle;
+                string? serverPath = string.Equals(AssetServerPath, "全部", StringComparison.Ordinal) ? null : AssetServerPath;
+                string? department = string.Equals(AssetDepartment, "全部", StringComparison.Ordinal) ? null : AssetDepartment;
                 string? keyword = string.IsNullOrWhiteSpace(AssetKeyword) ? null : AssetKeyword.Trim();
-                var list = await _service.SearchOnNetAssetsAsync(keyword, origin, life);
+                var list = await _service.SearchOnNetAssetsAsync(keyword, origin, life, serverPath, department);
                 Assets.Clear();
                 foreach (var item in list) Assets.Add(item);
             }

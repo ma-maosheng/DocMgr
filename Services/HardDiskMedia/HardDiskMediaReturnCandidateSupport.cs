@@ -10,9 +10,16 @@ namespace DocMgr.Services.HardDiskMedia
         public static bool MatchesCandidateSource(
             HardDiskMediaReturnCandidate candidate,
             int? sourceApplicationId,
-            int? sourceOutboundRecordId)
+            int? sourceOutboundRecordId,
+            int? sourceNetworkOutboundRecordId = null)
         {
             ArgumentNullException.ThrowIfNull(candidate);
+
+            if (sourceNetworkOutboundRecordId is > 0
+                && candidate.SourceNetworkOutboundRecordId == sourceNetworkOutboundRecordId)
+            {
+                return true;
+            }
 
             if (sourceOutboundRecordId is > 0
                 && candidate.SourceOutboundRecordId == sourceOutboundRecordId)

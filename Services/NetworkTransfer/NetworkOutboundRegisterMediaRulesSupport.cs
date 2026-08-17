@@ -1,5 +1,6 @@
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Services.YearlyArchive;
 
 namespace DocMgr.Services.NetworkTransfer;
 
@@ -8,10 +9,12 @@ namespace DocMgr.Services.NetworkTransfer;
 /// </summary>
 internal static class NetworkOutboundRegisterMediaRulesSupport
 {
+    /// <summary>
+    /// 资料室存档：出网不定归档载体，建档/立档侧按「内网」拷贝型再选光盘、空盘或并档。
+    /// </summary>
     private static readonly string[] ArchiveFilingElectronicMediaTypes =
     [
-        ArchiveRegisterDomainValues.ElectronicMediaTypeOpticalDisc,
-        ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk
+        ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork
     ];
 
     private static readonly string[] ExternalOfflineElectronicMediaTypes =
@@ -22,7 +25,7 @@ internal static class NetworkOutboundRegisterMediaRulesSupport
     ];
 
     /// <summary>
-    /// 出网：资料室立档仅光盘/硬盘；外部离线另允许 U 盘。
+    /// 出网：资料室存档固定「内网」（归档载体立档时再定）；外部离线允许光盘/硬盘/U 盘。
     /// </summary>
     internal static IReadOnlyList<string> GetAllowedElectronicMediaTypes(
         string? destinationKind,
@@ -34,27 +37,26 @@ internal static class NetworkOutboundRegisterMediaRulesSupport
             return allowedTypes.ToList();
         }
 
-        var filtered = allMediaTypeOptions
-            .Where(option => allowedTypes.Any(allowed =>
-                string.Equals(option?.Trim(), allowed, StringComparison.OrdinalIgnoreCase)))
-            .ToList();
-
+        // 按业务优先级（光盘→硬盘→U盘）排序，勿沿用域值种子顺序（U盘 在首）。
+        var ordered = new List<string>();
         foreach (string allowed in allowedTypes)
         {
-            if (filtered.Any(option =>
-                    string.Equals(option?.Trim(), allowed, StringComparison.OrdinalIgnoreCase)))
+            string? matched = allMediaTypeOptions.FirstOrDefault(option =>
+                string.Equals(option?.Trim(), allowed, StringComparison.OrdinalIgnoreCase));
+            string candidate = string.IsNullOrWhiteSpace(matched) ? allowed : matched.Trim();
+            if (ordered.Any(option => string.Equals(option, candidate, StringComparison.OrdinalIgnoreCase)))
             {
                 continue;
             }
 
-            filtered.Add(allowed);
+            ordered.Add(candidate);
         }
 
-        return filtered;
+        return ordered;
     }
 
     /// <summary>
-    /// 出网：资料室立档→介质留存；外部离线（含 U 盘）→介质带走。
+    /// 出网：资料室存档→无需处置（载体待立档确定）；外部离线（含 U 盘）→介质带走。
     /// </summary>
     internal static IReadOnlyList<string> GetAllowedElectronicDispositions(
         string? destinationKind,
@@ -77,7 +79,7 @@ internal static class NetworkOutboundRegisterMediaRulesSupport
     {
         if (NetworkTransferDomainValues.IsArchiveFilingDestination(destinationKind))
         {
-            return ArchiveRegisterDomainValues.ElectronicDispositionRetain;
+            return ArchiveRegisterDomainValues.ElectronicDispositionNone;
         }
 
         if (NetworkTransferDomainValues.IsExternalOfflineDestination(destinationKind))
@@ -115,6 +117,23 @@ internal static class NetworkOutboundRegisterMediaRulesSupport
     {
         string[] allowedTypes = ResolveAllowedMediaTypes(destinationKind);
         return string.Join("、", allowedTypes);
+    }
+
+    /// <summary>
+    /// 资料室存档：将电子介质规范为「内网 + 无需处置」，归档载体由立档操作台选择。
+    /// </summary>
+    internal static void ApplyPendingFilingCarrier(IEnumerable<YearlyArchiveRegisterMedia>? mediaEntries)
+    {
+        foreach (YearlyArchiveRegisterMedia media in mediaEntries ?? [])
+        {
+            if (!RegisterMediaTreeSupport.IsElectronicMediaEntity(media))
+            {
+                continue;
+            }
+
+            media.MediaType = ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork;
+            media.Disposition = ArchiveRegisterDomainValues.ElectronicDispositionNone;
+        }
     }
 
     private static string[] ResolveAllowedMediaTypes(string? destinationKind)

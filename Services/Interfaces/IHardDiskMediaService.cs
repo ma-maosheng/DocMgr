@@ -72,9 +72,12 @@ namespace DocMgr.Services.Interfaces
         Task<HardDiskMediaReturnCandidate?> GetReturnRegistrationCandidateByDiskCodeAsync(string diskCode);
 
         /// <summary>
-        /// 解析归还登记关联的来源借出单号（硬盘借出申请单号或资料出库单号）。
+        /// 解析归还登记关联的来源借出单号（硬盘借出申请单号、资料出库单号或出网申请单号）。
         /// </summary>
-        Task<string> ResolveReturnSourceApplicationNoAsync(int? sourceApplicationId, int? sourceOutboundRecordId);
+        Task<string> ResolveReturnSourceApplicationNoAsync(
+            int? sourceApplicationId,
+            int? sourceOutboundRecordId,
+            int? sourceNetworkOutboundRecordId = null);
 
         /// <summary>
         /// 获取指定申请人名下仍处于借出（临时/长期）且未被占用锁占用的借出硬盘归还候选。
@@ -104,7 +107,8 @@ namespace DocMgr.Services.Interfaces
             string applicationType,
             int mediumId,
             int? sourceApplicationId,
-            int? sourceOutboundRecordId = null);
+            int? sourceOutboundRecordId = null,
+            int? sourceNetworkOutboundRecordId = null);
 
         /// <summary>
         /// 读取导入文件中的工作表名称。

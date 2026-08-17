@@ -111,7 +111,7 @@ internal static class NetworkArchiveBusinessChainSupport
             NetworkTransferDomainValues.TaskKindArchiveRegister,
             NetworkTransferDomainValues.BusinessTypeArchiveRegister,
             NetworkTransferDomainValues.IsArchiveFilingDestination(record.DestinationKind),
-            "出网办结后生成完整建档草稿",
+            "出网办结后生成待立档建档单",
             now);
         RefreshSummary(chain, now);
     }
@@ -153,7 +153,7 @@ internal static class NetworkArchiveBusinessChainSupport
             task.BusinessId = register.Id;
             task.BusinessNo = register.FormNo;
             task.Status = NetworkTransferDomainValues.BusinessTaskStatusCompleted;
-            task.ResultMessage = "完整建档草稿已生成，待确认立档专属信息";
+            task.ResultMessage = "建档单已办结，待资料立档（光盘/空白硬盘/并档）";
             task.UpdatedAt = now;
         }
 

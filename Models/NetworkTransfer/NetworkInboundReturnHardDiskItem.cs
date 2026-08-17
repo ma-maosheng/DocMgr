@@ -26,6 +26,9 @@ namespace DocMgr.Models.NetworkTransfer
         /// <summary>来源资料出库单 Id（库内空盘征用等）。</summary>
         public int? SourceOutboundRecordId { get; set; }
 
+        /// <summary>来源出网申请单 Id（库内空盘征用等）。</summary>
+        public int? SourceNetworkOutboundRecordId { get; set; }
+
         /// <summary>资料入网后空白硬盘归位档口（审批环节指定）。</summary>
         public string TargetBlankSlotLocation { get; set; } = string.Empty;
 

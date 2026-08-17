@@ -17,6 +17,16 @@ internal static class NetworkOutboundExternalHardDiskRequisitionSupport
             StringComparison.OrdinalIgnoreCase)
         && NetworkTransferDomainValues.IsOutboundTakeAwayDisposition(media.Disposition);
 
+    internal static bool IsBlankHardDiskRequisitionMedia(YearlyArchiveRegisterMedia media) =>
+        IsExternalOfflineReturnedHardDiskMedia(media)
+        && media.UseInStockBlankHardDisk
+        && media.RequisitionedMediumId is > 0;
+
+    internal static IEnumerable<YearlyArchiveRegisterMedia> EnumerateBlankHardDiskRequisitions(
+        IEnumerable<YearlyArchiveRegisterMedia>? mediaEntries) =>
+        mediaEntries?.Where(IsBlankHardDiskRequisitionMedia)
+        ?? Enumerable.Empty<YearlyArchiveRegisterMedia>();
+
     internal static bool RequiresExpectedReturnDate(YearlyArchiveRegisterMedia media) =>
         media.UseInStockBlankHardDisk
         && media.RequisitionedDiskNeedReturn

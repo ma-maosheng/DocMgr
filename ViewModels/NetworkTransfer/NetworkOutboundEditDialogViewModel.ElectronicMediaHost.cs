@@ -16,9 +16,8 @@ public sealed partial class NetworkOutboundEditDialogViewModel
     private async Task InitializeElectronicMediaEditorAsync()
     {
         ApplyOutboundElectronicMediaEditorRules();
-        _electronicMediaEditor.CanEditForm = CanEditForm || CanEditApprovalPaths;
+        _electronicMediaEditor.CanEditForm = CanEditForm;
         _electronicMediaEditor.CanEditItemConfidentialLevel = CanEditItemConfidentialLevel;
-        _electronicMediaEditor.LockElectronicMediaTypeAndDisposition = false;
         _electronicMediaEditor.SectionHeader = ExternalDataSourceSectionTitle;
         await _electronicMediaEditor.InitializeAsync();
         _electronicMediaEditor.SyncFromEntities(_record.MediaEntries?.ToList() ?? []);
@@ -28,7 +27,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
     private void SyncElectronicMediaEditorEditState()
     {
         ApplyOutboundElectronicMediaEditorRules();
-        _electronicMediaEditor.CanEditForm = CanEditForm || CanEditApprovalPaths;
+        _electronicMediaEditor.CanEditForm = CanEditForm;
         _electronicMediaEditor.CanEditItemConfidentialLevel = CanEditItemConfidentialLevel;
         _electronicMediaEditor.SectionHeader = ExternalDataSourceSectionTitle;
     }
@@ -45,7 +44,8 @@ public sealed partial class NetworkOutboundEditDialogViewModel
         bool isExternalOffline = NetworkTransferDomainValues.IsExternalOfflineDestination(DestinationKind);
         bool isArchiveFiling = NetworkTransferDomainValues.IsArchiveFilingDestination(DestinationKind);
 
-        // 资料室立档：不在本单录入借出硬盘；具体硬盘使用由后续立档负责。
+        // 资料室存档：锁定「内网 + 无需处置」，归档载体由后续立档选择。
+        _electronicMediaEditor.LockElectronicMediaTypeAndDisposition = isArchiveFiling;
         _electronicMediaEditor.AllowedMediaTypeOptionsResolver = isExternalOffline || isArchiveFiling
             ? (allOptions => NetworkOutboundRegisterMediaRulesSupport.GetAllowedElectronicMediaTypes(
                 DestinationKind,
@@ -60,11 +60,12 @@ public sealed partial class NetworkOutboundEditDialogViewModel
             : null;
         _electronicMediaEditor.EnableRetainedHardDiskBorrowedRegistration = false;
         _electronicMediaEditor.RestrictRetainedHardDiskToBorrowedOnly = false;
+        _electronicMediaEditor.ShowElectronicDispositionInHeader = false;
         _electronicMediaEditor.ShowOutboundExternalHardDiskRequisitionFields = isExternalOffline;
         _electronicMediaEditor.EnableOutboundItemStoragePathMode = true;
         _electronicMediaEditor.OutboundStoragePathHeaderResolver = BuildOutboundStoragePathHeader;
-        // 申请阶段无法读取具体文件/目录；仅审批补录时允许扫描。
-        _electronicMediaEditor.AllowElectronicContentScan = CanEditApprovalPaths;
+        // 申请与审批通过前无法读取具体文件/目录；审批通过后、确认实物交接前允许补录扫描。
+        _electronicMediaEditor.AllowElectronicContentScan = CanSupplementElectronicContentScan;
     }
 
     private NetworkOutboundItemStoragePathSupport.HeaderSnapshot BuildOutboundStoragePathHeader() =>
@@ -79,7 +80,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
                 CurrentRecord.ServerPath),
             DestinationKind = DestinationKind,
             MediaType = _electronicMediaEditor.SelectedElectronicMediaType,
-            CanEditForm = CanEditForm || CanEditApprovalPaths
+            CanEditForm = CanEditForm
         };
 
     private void RefreshOutboundElectronicMediaTypeOptions()

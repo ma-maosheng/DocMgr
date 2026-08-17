@@ -105,7 +105,9 @@ public interface INetworkTransferService
     Task<IReadOnlyList<NetworkOnNetAsset>> SearchOnNetAssetsAsync(
         string? keyword,
         string? originKind,
-        string? lifecycleStatus);
+        string? lifecycleStatus,
+        string? serverPath,
+        string? departmentName);
 
     Task<NetworkOnNetAsset> RegisterProcessedOutputAsync(NetworkOnNetAsset draft, User currentUser);
 

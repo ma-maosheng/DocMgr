@@ -51,7 +51,8 @@ namespace DocMgr.Services.HardDiskMedia
                 var returnCandidate = await GetActiveReturnCandidateAsync(
                     existing.MediumId,
                     existing.SourceApplicationId,
-                    existing.SourceOutboundRecordId);
+                    existing.SourceOutboundRecordId,
+                    existing.SourceNetworkOutboundRecordId);
                 if (returnCandidate == null)
                 {
                     return HardDiskMediaFlowResult.Fail("未找到当前有效的借出记录，无法确定归还位置。");
@@ -144,7 +145,8 @@ namespace DocMgr.Services.HardDiskMedia
                 var returnCandidate = await GetActiveReturnCandidateAsync(
                     existing.MediumId,
                     existing.SourceApplicationId,
-                    existing.SourceOutboundRecordId);
+                    existing.SourceOutboundRecordId,
+                    existing.SourceNetworkOutboundRecordId);
                 if (returnCandidate == null)
                 {
                     return HardDiskMediaFlowResult.Fail("未找到当前有效的借出记录，无法确定归还位置。");
@@ -326,7 +328,8 @@ namespace DocMgr.Services.HardDiskMedia
             var returnCandidate = await GetActiveReturnCandidateAsync(
                 existingApplication.MediumId,
                 existingApplication.SourceApplicationId,
-                existingApplication.SourceOutboundRecordId);
+                existingApplication.SourceOutboundRecordId,
+                existingApplication.SourceNetworkOutboundRecordId);
             if (IsReturnOrLossRegistrationType(existingApplication.ApplicationType) && returnCandidate == null)
             {
                 return HardDiskMediaFlowResult.Fail("未找到当前有效的借出记录，无法完成登记。\n请检查介质状态与借出记录是否一致。");
@@ -338,6 +341,7 @@ namespace DocMgr.Services.HardDiskMedia
                 {
                     existingApplication.SourceApplicationId = returnCandidate.SourceApplicationId;
                     existingApplication.SourceOutboundRecordId = returnCandidate.SourceOutboundRecordId;
+                    existingApplication.SourceNetworkOutboundRecordId = returnCandidate.SourceNetworkOutboundRecordId;
                     existingApplication.ApplicantName = returnCandidate.ApplicantName;
                     existingApplication.ApplicantDept = returnCandidate.ApplicantDept;
                     existingApplication.CurrentLocation = EmptyAsFallback(returnCandidate.BorrowedLocation, ledger.StorageLocation);
@@ -447,6 +451,11 @@ namespace DocMgr.Services.HardDiskMedia
             {
                 sourceApplicationNo = await _hardDiskMediaRepository.GetOutboundNoByRecordIdAsync(existingApplication.SourceOutboundRecordId.Value) ?? string.Empty;
             }
+            else if (existingApplication.SourceNetworkOutboundRecordId.HasValue)
+            {
+                sourceApplicationNo = await _hardDiskMediaRepository.GetNetworkOutboundNoByRecordIdAsync(existingApplication.SourceNetworkOutboundRecordId.Value)
+                    ?? string.Empty;
+            }
 
             return new HardDiskMediaPrintData
             {
@@ -552,11 +561,16 @@ namespace DocMgr.Services.HardDiskMedia
         private async Task<HardDiskMediaReturnCandidate?> GetActiveReturnCandidateAsync(
             int mediumId,
             int? sourceApplicationId,
-            int? sourceOutboundRecordId = null)
+            int? sourceOutboundRecordId = null,
+            int? sourceNetworkOutboundRecordId = null)
         {
             var candidates = await GetReturnRegistrationCandidatesAsync();
             var exactCandidate = candidates.FirstOrDefault(item =>
-                HardDiskMediaReturnCandidateSupport.MatchesCandidateSource(item, sourceApplicationId, sourceOutboundRecordId));
+                HardDiskMediaReturnCandidateSupport.MatchesCandidateSource(
+                    item,
+                    sourceApplicationId,
+                    sourceOutboundRecordId,
+                    sourceNetworkOutboundRecordId));
             if (exactCandidate != null)
             {
                 return exactCandidate;
@@ -568,7 +582,11 @@ namespace DocMgr.Services.HardDiskMedia
                 return mediumCandidate;
             }
 
-            return await ResolveReturnCandidateFromSourceAsync(mediumId, sourceApplicationId, sourceOutboundRecordId);
+            return await ResolveReturnCandidateFromSourceAsync(
+                mediumId,
+                sourceApplicationId,
+                sourceOutboundRecordId,
+                sourceNetworkOutboundRecordId);
         }
 
         /// <summary>
@@ -577,7 +595,8 @@ namespace DocMgr.Services.HardDiskMedia
         private async Task<HardDiskMediaReturnCandidate?> ResolveReturnCandidateFromSourceAsync(
             int mediumId,
             int? sourceApplicationId,
-            int? sourceOutboundRecordId)
+            int? sourceOutboundRecordId,
+            int? sourceNetworkOutboundRecordId = null)
         {
             if (sourceApplicationId is > 0)
             {
@@ -602,6 +621,16 @@ namespace DocMgr.Services.HardDiskMedia
                 if (archiveOutboundSource != null)
                 {
                     return CreateReturnRegistrationCandidateFromArchiveOutbound(archiveOutboundSource);
+                }
+            }
+
+            if (sourceNetworkOutboundRecordId is > 0)
+            {
+                var networkOutboundSource = (await _hardDiskMediaRepository.GetNetworkOutboundRequisitionReturnSourcesAsync())
+                    .FirstOrDefault(item => item.MediumId == mediumId && item.OutboundRecordId == sourceNetworkOutboundRecordId.Value);
+                if (networkOutboundSource != null)
+                {
+                    return CreateReturnRegistrationCandidateFromNetworkOutbound(networkOutboundSource);
                 }
             }
 
@@ -635,7 +664,8 @@ namespace DocMgr.Services.HardDiskMedia
                 applicationType,
                 candidate.MediumId,
                 candidate.SourceApplicationId,
-                candidate.SourceOutboundRecordId);
+                candidate.SourceOutboundRecordId,
+                candidate.SourceNetworkOutboundRecordId);
             if (options.Count == 0)
             {
                 if (applicationType == HardDiskMediaApplication.TypeReturnDataRegistration)

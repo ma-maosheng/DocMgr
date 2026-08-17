@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-08-16T03:24:56Z
+generatedAt: 2026-08-17T08:45:25Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -1298,6 +1298,12 @@ tables:
         description: 来源资料出库单主键（库内空盘征用时填写）
         clrType: Int32?
         needsReview: false
+        aliases: []
+      SourceNetworkOutboundRecordId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32?
+        needsReview: true
         aliases: []
       ApplicationType:
         chineseName: 申请类型
@@ -6719,6 +6725,12 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      ArchivePurpose:
+        chineseName: 库管模式
+        description: 目的地为资料室存档时由申请人填写，办结后带入待立档建档单。
+        clrType: String
+        needsReview: false
+        aliases: []
       Year:
         chineseName: 未映射字段
         description: ''
@@ -7412,6 +7424,12 @@ tables:
         needsReview: true
         aliases: []
       SourceOutboundRecordId:
+        chineseName: 未映射字段
+        description: ''
+        clrType: Int32?
+        needsReview: true
+        aliases: []
+      SourceNetworkOutboundRecordId:
         chineseName: 未映射字段
         description: ''
         clrType: Int32?

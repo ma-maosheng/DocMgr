@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
+using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
@@ -133,7 +134,14 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool IsExternalOfflineReturnedHardDiskScenario =>
             string.Equals(MediaKind?.Trim(), ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.OrdinalIgnoreCase)
             && string.Equals(MediaType?.Trim(), ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(Disposition?.Trim(), ArchiveRegisterDomainValues.ElectronicDispositionReturn, StringComparison.OrdinalIgnoreCase);
+            && IsExternalOfflineHardDiskTakeAwayDisposition(Disposition);
+
+        private static bool IsExternalOfflineHardDiskTakeAwayDisposition(string? disposition)
+        {
+            string trimmed = disposition?.Trim() ?? string.Empty;
+            return string.Equals(trimmed, ArchiveRegisterDomainValues.ElectronicDispositionReturn, StringComparison.OrdinalIgnoreCase)
+                   || NetworkTransferDomainValues.IsOutboundTakeAwayDisposition(trimmed);
+        }
 
         /// <summary>
         /// 是否允许展示「借出硬盘」交互（出网资料室立档场景关闭，由后续立档负责）。

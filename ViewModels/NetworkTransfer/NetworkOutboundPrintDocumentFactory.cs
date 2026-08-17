@@ -38,6 +38,10 @@ internal static class NetworkOutboundPrintDocumentFactory
         rowGroup.Rows.Add(CreateDoubleRow("申请部门", data.ApplicantDept, "申请人", data.ApplicantName));
         rowGroup.Rows.Add(CreateDoubleRow("年度", EmptyAsPlaceholder(data.YearText), "项目", EmptyAsPlaceholder(data.ProjectName)));
         rowGroup.Rows.Add(CreateSingleRow("目的地", EmptyAsPlaceholder(data.DestinationKindText)));
+        if (!string.IsNullOrWhiteSpace(data.ArchivePurposeText))
+        {
+            rowGroup.Rows.Add(CreateSingleRow("库管模式", EmptyAsPlaceholder(data.ArchivePurposeText)));
+        }
         rowGroup.Rows.Add(CreateSingleRow("申请说明", EmptyAsPlaceholder(data.Reason), ReasonRowHeight, CellVerticalAlignment.ContentTop));
         rowGroup.Rows.Add(CreateSingleRow("证明材料名称", EmptyAsPlaceholder(data.ProofMaterialNote)));
         rowGroup.Rows.Add(CreateSingleRow(
@@ -48,7 +52,9 @@ internal static class NetworkOutboundPrintDocumentFactory
         rowGroup.Rows.Add(CreateSingleRow("申请部门", data.DeptLeaderBlock));
         rowGroup.Rows.Add(CreateSingleRow("生产管理科", data.ProdLeaderBlock));
         rowGroup.Rows.Add(CreateSingleRow("资料室", data.RndLeaderBlock));
-        rowGroup.Rows.Add(CreateSingleRow("分管领导", data.DeputyLeaderBlock));
+        rowGroup.Rows.Add(CreateSingleRow(
+            string.IsNullOrWhiteSpace(data.DeputyLeaderLabel) ? "分管领导" : data.DeputyLeaderLabel.Trim(),
+            data.DeputyLeaderBlock));
         rowGroup.Rows.Add(CreateSingleRow(
             "出网交接",
             data.HandoverSignatureBlock,

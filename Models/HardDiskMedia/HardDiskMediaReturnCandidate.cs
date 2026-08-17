@@ -23,6 +23,11 @@ namespace DocMgr.Models.HardDiskMedia
         public int? SourceOutboundRecordId { get; init; }
 
         /// <summary>
+        /// 来源出网申请单主键（库内空盘征用时填写）。
+        /// </summary>
+        public int? SourceNetworkOutboundRecordId { get; init; }
+
+        /// <summary>
         /// 来源借出单编号（硬盘借出申请单号或资料出库单号）。
         /// </summary>
         public string SourceApplicationNo { get; init; } = string.Empty;

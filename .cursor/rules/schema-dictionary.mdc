@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-08-16T03:24:56Z
+> 生成时间（UTC）：2026-08-17T08:45:25Z
 
 ## 表索引
 
@@ -399,6 +399,7 @@ alwaysApply: true
 | 介质ID | `MediumId` | `Int32` | 否 |
 | 来源申请单ID | `SourceApplicationId` | `Int32?` | 否 |
 | 来源资料出库单ID | `SourceOutboundRecordId` | `Int32?` | 否 |
+| 未映射字段 | `SourceNetworkOutboundRecordId` | `Int32?` | 是 |
 | 申请类型 | `ApplicationType` | `String` | 否 |
 | 申请状态 | `ApplicationStatus` | `String` | 否 |
 | 申请人 | `ApplicantName` | `String` | 否 |
@@ -601,6 +602,7 @@ alwaysApply: true
 | 未映射字段 | `DiskCode` | `String` | 是 |
 | 未映射字段 | `SourceApplicationId` | `Int32?` | 是 |
 | 未映射字段 | `SourceOutboundRecordId` | `Int32?` | 是 |
+| 未映射字段 | `SourceNetworkOutboundRecordId` | `Int32?` | 是 |
 | 未映射字段 | `TargetBlankSlotLocation` | `String` | 是 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 
@@ -711,6 +713,7 @@ alwaysApply: true
 | 服务器路径 | `ServerPath` | `String` | 否 |
 | 出网资料所在具体路径 | `MaterialPath` | `String` | 否 |
 | 项目名称 | `ProjectName` | `String` | 否 |
+| 库管模式 | `ArchivePurpose` | `String` | 否 |
 | 未映射字段 | `Year` | `String` | 是 |
 | 申请说明 | `Reason` | `String` | 否 |
 | 其他要求 | `OtherRequests` | `String` | 否 |

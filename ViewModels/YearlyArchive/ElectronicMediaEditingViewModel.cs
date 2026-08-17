@@ -45,6 +45,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _restrictRetainedHardDiskToBorrowedOnly;
         private bool _enableRetainedHardDiskBorrowedRegistration = true;
         private bool _showOutboundExternalHardDiskRequisitionFields;
+        private bool _showElectronicDispositionInHeader = true;
         private bool _allowElectronicContentScan = true;
         private string _sectionHeader = "资料介质（电子）";
 
@@ -79,19 +80,19 @@ namespace DocMgr.ViewModels.YearlyArchive
                 item => item != null && item.IsStoragePathEditable);
             PickFolderAndScanElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
                 async item => await PickFolderAndScanElectronicContentAsync(item),
-                item => AllowElectronicContentScan && CanEditForm && item != null && item.IsDirectoryOrganizationForm);
+                item => AllowElectronicContentScan && item != null && item.IsDirectoryOrganizationForm);
             PickFilesAndScanElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
                 async item => await PickFilesAndScanElectronicContentAsync(item),
-                item => AllowElectronicContentScan && CanEditForm && item != null && item.IsFileOrganizationForm);
+                item => AllowElectronicContentScan && item != null && item.IsFileOrganizationForm);
             RescanElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
                 async item => await RescanElectronicContentAsync(item),
-                item => AllowElectronicContentScan && CanEditForm && item != null && CanRescanElectronicContent(item));
+                item => AllowElectronicContentScan && item != null && CanRescanElectronicContent(item));
             ClearElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
                 item => ClearElectronicContent(item),
-                item => AllowElectronicContentScan && CanEditForm && item != null && item.HasScannedEntries);
+                item => AllowElectronicContentScan && item != null && item.HasScannedEntries);
             ViewElectronicContentEntriesCommand = new RelayCommand<MediaItemViewModel>(
                 item => ViewElectronicContentEntries(item),
-                item => AllowElectronicContentScan && item != null && item.HasScannedEntries && CanViewElectronicContentEntries());
+                item => item != null && item.HasScannedEntries && CanViewElectronicContentEntries());
             PickOutboundBlankHardDiskCommand = new RelayCommand<MediaEntryViewModel>(
                 media => PickOutboundBlankHardDisk(media),
                 media => CanEditForm && media != null && ShowOutboundExternalHardDiskRequisitionFields && media.OutboundBlankHardDiskFieldsVisibility);
@@ -236,6 +237,15 @@ namespace DocMgr.ViewModels.YearlyArchive
                     OnPropertyChanged(nameof(IsBorrowedHardDiskCodeRequired));
                 }
             }
+        }
+
+        /// <summary>
+        /// 是否在「出网资料/资料介质（电子）」卡片顶栏展示处置方式（出网申请页隐藏，后台仍按目的地约束）。
+        /// </summary>
+        public bool ShowElectronicDispositionInHeader
+        {
+            get => _showElectronicDispositionInHeader;
+            set => SetProperty(ref _showElectronicDispositionInHeader, value);
         }
 
         /// <summary>
@@ -449,6 +459,24 @@ namespace DocMgr.ViewModels.YearlyArchive
             var allowedTypes = GetAllowedElectronicMediaTypeOptions(_allElectronicMediaTypeOptions);
             ApplyOptions(DataElectronicMediaTypeOptions, allowedTypes);
 
+            string? entryMediaType = MediaEntries
+                .FirstOrDefault(RegisterMediaTreeSupport.IsDataElectronic)
+                ?.MediaType?.Trim();
+            if (!string.IsNullOrWhiteSpace(entryMediaType))
+            {
+                string? entryMatched = allowedTypes.FirstOrDefault(option =>
+                    string.Equals(option, entryMediaType, StringComparison.OrdinalIgnoreCase));
+                if (entryMatched != null)
+                {
+                    if (!string.Equals(SelectedElectronicMediaType, entryMatched, StringComparison.Ordinal))
+                    {
+                        SelectedElectronicMediaType = entryMatched;
+                    }
+
+                    return;
+                }
+            }
+
             string current = SelectedElectronicMediaType?.Trim() ?? string.Empty;
             string? matched = allowedTypes.FirstOrDefault(option =>
                 string.Equals(option, current, StringComparison.OrdinalIgnoreCase));
@@ -461,16 +489,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             else
             {
-                string? entryMediaType = MediaEntries
-                    .FirstOrDefault(RegisterMediaTreeSupport.IsDataElectronic)
-                    ?.MediaType?.Trim();
-                string? entryMatched = string.IsNullOrWhiteSpace(entryMediaType)
-                    ? null
-                    : allowedTypes.FirstOrDefault(option =>
-                        string.Equals(option, entryMediaType, StringComparison.OrdinalIgnoreCase));
-                SelectedElectronicMediaType = entryMatched
-                    ?? allowedTypes.FirstOrDefault()
-                    ?? string.Empty;
+                SelectedElectronicMediaType = allowedTypes.FirstOrDefault() ?? string.Empty;
             }
         }
 
@@ -731,7 +750,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (string.IsNullOrWhiteSpace(SelectedElectronicMediaType))
                 {
-                    SelectedElectronicMediaType = DataElectronicMediaTypeOptions.FirstOrDefault() ?? string.Empty;
+                    ApplyDefaultSelectedElectronicMediaType();
                 }
 
                 if (string.IsNullOrWhiteSpace(SelectedElectronicDisposition))
@@ -745,6 +764,29 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             SyncBorrowedHardDiskSettingsFromSelections();
+        }
+
+        /// <summary>
+        /// 优先沿用已有介质组上的类型，避免域值排序首项（U盘）覆盖用户已选光盘/硬盘。
+        /// </summary>
+        private void ApplyDefaultSelectedElectronicMediaType()
+        {
+            IReadOnlyList<string> allowedTypes = DataElectronicMediaTypeOptions.Count > 0
+                ? DataElectronicMediaTypeOptions.ToList()
+                : GetAllowedElectronicMediaTypeOptions(_allElectronicMediaTypeOptions);
+
+            string? entryMediaType = MediaEntries
+                .FirstOrDefault(RegisterMediaTreeSupport.IsDataElectronic)
+                ?.MediaType?.Trim();
+            if (!string.IsNullOrWhiteSpace(entryMediaType))
+            {
+                string? entryMatched = allowedTypes.FirstOrDefault(option =>
+                    string.Equals(option, entryMediaType, StringComparison.OrdinalIgnoreCase));
+                SelectedElectronicMediaType = entryMatched ?? entryMediaType;
+                return;
+            }
+
+            SelectedElectronicMediaType = allowedTypes.FirstOrDefault() ?? string.Empty;
         }
 
         private void SyncElectronicMediaSettingsFromEntries()

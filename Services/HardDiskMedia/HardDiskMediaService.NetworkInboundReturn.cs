@@ -36,7 +36,8 @@ public partial class HardDiskMediaService
         HardDiskMediaReturnCandidate? returnCandidate = await GetActiveReturnCandidateAsync(
             candidate.MediumId,
             candidate.SourceApplicationId,
-            candidate.SourceOutboundRecordId);
+            candidate.SourceOutboundRecordId,
+            candidate.SourceNetworkOutboundRecordId);
         if (returnCandidate == null)
         {
             throw new InvalidOperationException(
@@ -71,6 +72,7 @@ public partial class HardDiskMediaService
             MediumId = medium.Id,
             SourceApplicationId = returnCandidate.SourceApplicationId,
             SourceOutboundRecordId = returnCandidate.SourceOutboundRecordId,
+            SourceNetworkOutboundRecordId = returnCandidate.SourceNetworkOutboundRecordId,
             ApplicationType = HardDiskMediaApplication.TypeReturnBlankRegistration,
             ApplicationStatus = HardDiskMediaApplication.StatusCompleted,
             ApplicantName = returnCandidate.ApplicantName.Trim(),

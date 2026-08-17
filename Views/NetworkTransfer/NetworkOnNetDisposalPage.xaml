@@ -19,23 +19,43 @@
       </StackPanel>
     </Border>
     <DockPanel Grid.Row="1">
-      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-        <TextBlock Text="在网台账" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
-        <TextBlock Text="来源:" VerticalAlignment="Center" Margin="0,0,4,0"/>
-        <ComboBox Width="120" ItemsSource="{Binding OriginKindOptions}" SelectedItem="{Binding AssetOriginKind}"/>
-        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="12,0,4,0"/>
-        <ComboBox Width="110" ItemsSource="{Binding LifecycleOptions}" SelectedItem="{Binding AssetLifecycle}"/>
-        <TextBox Width="160" Margin="12,0,8,0" Height="28" VerticalContentAlignment="Center" Text="{Binding AssetKeyword, UpdateSourceTrigger=PropertyChanged}"/>
-        <Button Content="查询台账" Command="{Binding SearchAssetsCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"/>
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+          <TextBlock Text="在网台账" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+          <TextBlock Text="来源:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+          <ComboBox Width="110" ItemsSource="{Binding OriginKindOptions}" SelectedItem="{Binding AssetOriginKind}"/>
+          <TextBlock Text="状态:" VerticalAlignment="Center" Margin="12,0,4,0"/>
+          <ComboBox Width="100" ItemsSource="{Binding LifecycleOptions}" SelectedItem="{Binding AssetLifecycle}"/>
+          <TextBlock Text="服务器路径:" VerticalAlignment="Center" Margin="12,0,4,0"/>
+          <ComboBox Width="140" ItemsSource="{Binding ServerPathOptions}" SelectedItem="{Binding AssetServerPath}"/>
+          <TextBlock Text="部门:" VerticalAlignment="Center" Margin="12,0,4,0"/>
+          <ComboBox Width="120" ItemsSource="{Binding DepartmentOptions}" SelectedItem="{Binding AssetDepartment}"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="关键字:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+          <TextBox Width="220" Margin="0,0,8,0" Height="28" VerticalContentAlignment="Center" Text="{Binding AssetKeyword, UpdateSourceTrigger=PropertyChanged}"/>
+          <Button Content="查询台账" Command="{Binding SearchAssetsCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"/>
+        </StackPanel>
       </StackPanel>
-      <DataGrid ItemsSource="{Binding Assets}" AutoGenerateColumns="False" IsReadOnly="True">
+      <DataGrid ItemsSource="{Binding Assets}" AutoGenerateColumns="False" IsReadOnly="True" HorizontalScrollBarVisibility="Auto">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="资产编号" Binding="{Binding AssetNo, Mode=OneWay}" Width="140"/>
-          <DataGridTextColumn Header="类别" Binding="{Binding AssetKind, Mode=OneWay}" Width="90"/>
-          <DataGridTextColumn Header="名称" Binding="{Binding AssetName, Mode=OneWay}" Width="*"/>
-          <DataGridTextColumn Header="来源" Binding="{Binding OriginKind, Mode=OneWay}" Width="90"/>
-          <DataGridTextColumn Header="生命周期" Binding="{Binding LifecycleStatus, Mode=OneWay}" Width="90"/>
-          <DataGridTextColumn Header="服务器路径" Binding="{Binding ServerPath, Mode=OneWay}" Width="220"/>
+          <DataGridTextColumn Header="资产编号" Binding="{Binding AssetNo, Mode=OneWay}" Width="130"/>
+          <DataGridTextColumn Header="类别" Binding="{Binding AssetKind, Mode=OneWay}" Width="80"/>
+          <DataGridTextColumn Header="名称" Binding="{Binding AssetName, Mode=OneWay}" Width="160"/>
+          <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="160"/>
+          <DataGridTextColumn Header="年度" Binding="{Binding Year, Mode=OneWay}" Width="60"/>
+          <DataGridTextColumn Header="项目名称" Binding="{Binding ProjectName, Mode=OneWay}" Width="140"/>
+          <DataGridTextColumn Header="部门" Binding="{Binding DepartmentName, Mode=OneWay}" Width="100"/>
+          <DataGridTextColumn Header="提供部门" Binding="{Binding ProvideUnit, Mode=OneWay}" Width="100"/>
+          <DataGridTextColumn Header="申请部门" Binding="{Binding ApplicantDept, Mode=OneWay}" Width="100"/>
+          <DataGridTextColumn Header="来源" Binding="{Binding OriginKind, Mode=OneWay}" Width="80"/>
+          <DataGridTextColumn Header="生命周期" Binding="{Binding LifecycleStatus, Mode=OneWay}" Width="80"/>
+          <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevel, Mode=OneWay}" Width="70"/>
+          <DataGridTextColumn Header="数据量" Binding="{Binding DataSizeText, Mode=OneWay}" Width="80"/>
+          <DataGridTextColumn Header="服务器路径" Binding="{Binding ServerPath, Mode=OneWay}" Width="140"/>
+          <DataGridTextColumn Header="资料相对路径" Binding="{Binding MaterialPath, Mode=OneWay}" Width="180"/>
+          <DataGridTextColumn Header="物理地址" Binding="{Binding PhysicalPath, Mode=OneWay}" Width="180"/>
+          <DataGridTextColumn Header="完整存储地址" Binding="{Binding FullStorageAddress, Mode=OneWay}" Width="260"/>
         </DataGrid.Columns>
       </DataGrid>
     </DockPanel>

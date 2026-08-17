@@ -86,7 +86,9 @@ public sealed partial class NetworkTransferService
         var record = await _repository.GetOutboundByIdAsync(recordId)
             ?? throw new InvalidOperationException("未找到出网申请单。");
 
-        return BuildOutboundPrintData(record, blankApprovalSignatures);
+        // 以数据库状态为准：已审批及之后预填审批签字；已确认实物交接后预填交接签字。
+        bool effectiveBlankApproval = record.Status < NetworkOutboundRecord.StatusApproved;
+        return BuildOutboundPrintData(record, effectiveBlankApproval);
     }
 
     public async Task RecordOutboundPrintAsync(int recordId)
@@ -199,8 +201,9 @@ public sealed partial class NetworkTransferService
             ? record.ProofMaterialNote.Trim()
             : ArchiveRegisterDomainValues.ProofMaterialNoneText;
 
-        // 办结前交接签字留白；已办结预填。
-        bool blankHandover = record.Status != NetworkOutboundRecord.StatusCompleted;
+        // 办结前交接签字留白；已确认实物交接或已办结时从库中预填。
+        bool blankHandover = !record.HandoverConfirmedAt.HasValue
+                             && record.Status != NetworkOutboundRecord.StatusCompleted;
 
         return new NetworkOutboundPrintData
         {
@@ -211,6 +214,7 @@ public sealed partial class NetworkTransferService
             YearText = record.Year?.Trim() ?? string.Empty,
             ProjectName = record.ProjectName?.Trim() ?? string.Empty,
             DestinationKindText = record.DestinationKind?.Trim() ?? string.Empty,
+            ArchivePurposeText = record.ArchivePurpose?.Trim() ?? string.Empty,
             Reason = record.Reason?.Trim() ?? string.Empty,
             ProofMaterialNote = proofMaterial,
             ItemLines = NetworkOutboundItemPrintSupport.BuildItemLines(record).ToList(),
@@ -224,6 +228,7 @@ public sealed partial class NetworkTransferService
             RndLeaderBlock = BuildApprovalBlock(
                 blankApprovalSignatures ? string.Empty : record.RndLeader,
                 blankApprovalSignatures ? BlankDateText : FormatDate(record.RndDate)),
+            DeputyLeaderLabel = NetworkTransferDomainValues.ResolveOutboundDeputyLeaderRole(record.DestinationKind),
             DeputyLeaderBlock = BuildApprovalBlock(
                 blankApprovalSignatures ? string.Empty : record.DeputyLeader,
                 blankApprovalSignatures ? BlankDateText : FormatDate(record.DeputyDate)),

@@ -46,6 +46,26 @@
                                               Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
                                               IsEnabled="{Binding CanEditForm}"/>
                                 </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,4">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsArchiveFilingDestination}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <Label Width="110" VerticalAlignment="Center">库管模式 *：</Label>
+                                    <ComboBox Width="200"
+                                              ItemsSource="{Binding ArchivePurposeOptions}"
+                                              SelectedItem="{Binding SelectedArchivePurpose}"
+                                              Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                                              IsEnabled="{Binding CanEditForm}"/>
+                                    <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Foreground="#64748B" FontSize="11"
+                                               Text="归档载体（光盘/空白硬盘/并档）在资料立档时选择。"/>
+                                </StackPanel>
                                 <GroupBox Header="出网明细 *" Margin="0,8,0,0" BorderBrush="#DDD" Padding="6">
                                     <StackPanel Margin="4">
                                         <Grid Margin="0,0,0,4">
@@ -182,7 +202,7 @@
                                 <Setter Property="ContentTemplate" Value="{StaticResource ApplicantSectionsTemplate}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding ShowApprovalWorkflowPanel}" Value="True">
-                                        <Setter Property="ContentTemplate" Value="{x:Null}"/>
+                                        <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>

@@ -54,7 +54,18 @@
                 </TextBox>
                 <TextBlock Grid.Column="4" Text="数量：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
                 <TextBox Grid.Column="5" Text="{Binding DataElectronicMediaCount, Mode=OneWay}" Height="26" Margin="2,0" VerticalContentAlignment="Center" IsReadOnly="True" Background="#F5F5F5"/>
-                <TextBlock Grid.Column="6" Text="处置：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                <TextBlock Grid.Column="6" Text="处置：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ShowElectronicDispositionInHeader}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
                 <ComboBox Grid.Column="7" Margin="2,0" VerticalContentAlignment="Center"
                           ItemsSource="{Binding DataElectronicDispositionOptions}"
                           SelectedItem="{Binding SelectedElectronicDisposition}">
@@ -62,6 +73,9 @@
                         <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
                             <Setter Property="Visibility" Value="Visible"/>
                             <Style.Triggers>
+                                <DataTrigger Binding="{Binding ShowElectronicDispositionInHeader}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding IsElectronicDispositionEditable}" Value="False">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
@@ -75,9 +89,13 @@
                         <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsElectronicDispositionEditable}" Value="False">
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding ShowElectronicDispositionInHeader}" Value="True"/>
+                                        <Condition Binding="{Binding IsElectronicDispositionEditable}" Value="False"/>
+                                    </MultiDataTrigger.Conditions>
                                     <Setter Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
+                                </MultiDataTrigger>
                             </Style.Triggers>
                         </Style>
                     </TextBox.Style>

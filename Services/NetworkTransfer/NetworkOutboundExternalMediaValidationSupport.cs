@@ -5,7 +5,7 @@ using DocMgr.Services.YearlyArchive;
 namespace DocMgr.Services.NetworkTransfer;
 
 /// <summary>
-/// 出网电子介质树校验。申请阶段无法扫描目录/文件，提交不核验数据量与明细个数；办结前须补全数据量。
+/// 出网电子介质树校验。申请阶段无法扫描目录/文件，提交不核验数据量与明细个数；办结前须补全组织形式、数据量与目录/文件明细。
 /// </summary>
 internal static class NetworkOutboundExternalMediaValidationSupport
 {
@@ -43,6 +43,36 @@ internal static class NetworkOutboundExternalMediaValidationSupport
         if (NetworkTransferDomainValues.IsExternalOfflineDestination(destinationKind))
         {
             NetworkOutboundExternalHardDiskRequisitionSupport.ValidateForSubmit(mediaEntries, errors);
+        }
+    }
+
+    /// <summary>
+    /// 确认实物交接前核验离线补录的数据量与目录/文件个数。
+    /// </summary>
+    internal static void ValidateForHandoverConfirm(
+        IReadOnlyList<YearlyArchiveRegisterMedia>? mediaEntries,
+        List<string> errors)
+    {
+        var entries = mediaEntries?.Where(RegisterMediaTreeSupport.IsElectronicMediaEntity).ToList()
+            ?? [];
+        if (entries.Count == 0)
+        {
+            return;
+        }
+
+        int mediaSeq = 0;
+        foreach (YearlyArchiveRegisterMedia media in entries)
+        {
+            mediaSeq++;
+            if (media.Items == null || media.Items.Count == 0)
+            {
+                continue;
+            }
+
+            for (int itemIndex = 0; itemIndex < media.Items.Count; itemIndex++)
+            {
+                ValidateMediaItemHandoverSupplement(media.Items[itemIndex], mediaSeq, itemIndex + 1, errors);
+            }
         }
     }
 
@@ -133,9 +163,49 @@ internal static class NetworkOutboundExternalMediaValidationSupport
             errors.Add($"• {label}：请选择所属子类");
         }
 
+        if (requireDataSize && string.IsNullOrWhiteSpace(detail.DataOrganizationForm))
+        {
+            errors.Add($"• {label}：请选择组织形式");
+        }
+
         if (requireDataSize && detail.DataSizeMb <= 0)
         {
-            errors.Add($"• {label}：请从离线介质读取或填写有效的数据量（MB）");
+            errors.Add($"• {label}：请从离线介质补录有效的数据量（MB）");
+        }
+
+        if (requireDataSize)
+        {
+            int entryCount = detail.Entries?.Count ?? 0;
+            if (entryCount <= 0)
+            {
+                errors.Add($"• {label}：请从离线介质补录目录或文件明细（文件/目录个数不能为 0）");
+            }
+        }
+    }
+
+    private static void ValidateMediaItemHandoverSupplement(
+        YearlyArchiveRegisterMediaItem item,
+        int mediaSeq,
+        int itemSeq,
+        List<string> errors)
+    {
+        string label = $"第{mediaSeq}条介质第{itemSeq}项";
+        YearlyArchiveRegisterElectronicMediaItemDetail? detail = item.ElectronicDetail;
+        if (detail == null)
+        {
+            errors.Add($"• {label}：缺少电子介质扩展信息，无法核验数据量与目录/文件个数");
+            return;
+        }
+
+        if (detail.DataSizeMb <= 0)
+        {
+            errors.Add($"• {label}：请从离线介质补录有效的数据量（MB）");
+        }
+
+        int entryCount = detail.Entries?.Count ?? 0;
+        if (entryCount <= 0)
+        {
+            errors.Add($"• {label}：请从离线介质补录目录或文件明细（文件/文件夹个数不能为 0）");
         }
     }
 }

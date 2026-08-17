@@ -290,6 +290,7 @@ public sealed partial class NetworkInboundEditDialogViewModel
         DiskCode = item.DiskCode,
         SourceApplicationId = item.SourceApplicationId,
         SourceOutboundRecordId = item.SourceOutboundRecordId,
+        SourceNetworkOutboundRecordId = item.SourceNetworkOutboundRecordId,
         TargetBlankSlotLocation = item.TargetBlankSlotLocation,
         CreatedAt = item.CreatedAt
     };

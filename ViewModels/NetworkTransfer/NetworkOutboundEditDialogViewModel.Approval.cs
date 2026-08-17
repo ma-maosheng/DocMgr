@@ -47,7 +47,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
         NetworkTransferWorkspaceMode.Application =>
             "请填写出网资料与电子介质明细，可使用「保存草稿」「提交申请」。拷贝完成后由资料室在「出网审批」补录目录/数据量并办理。",
         NetworkTransferWorkspaceMode.Approval =>
-            "请先根据线下审批结果核实密级，可从离线介质补录目录与数据量，再按“审批通过→确认实物交接→上传签批交接单→确认办结→打印交接单”办理。",
+            "请先根据线下审批结果执行审批通过；审批通过后从离线介质补录目录与数据量，再按“确认实物交接→上传签批交接单→确认办结→打印交接单”办理。",
         _ => BannerText
     };
 
@@ -97,11 +97,11 @@ public sealed partial class NetworkOutboundEditDialogViewModel
     }
 
     public string ApproveHintText => CanApprovePass
-        ? "请核实密级，并可从离线介质补录目录与数据量后执行审批通过。"
+        ? "请核实线下审批结果后执行审批通过；电子介质目录与数据量可在审批通过后补录。"
         : "仅「已提交」状态可执行审批通过。";
 
     public string ConfirmHandoverHintText => CanConfirmPhysicalHandover
-        ? "请核实移交人、资料员签字后确认实物交接。"
+        ? "请先从离线介质补录数据量与目录/文件明细，核实移交人、资料员签字后确认实物交接。"
         : "请先执行「审批通过」。";
 
     public string UploadHintText => CanUploadSignedAttachment
@@ -121,7 +121,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
         CanUploadSignedAttachment && RequiresProofMaterialScanUpload;
 
     public string CompleteHintText => CanCompleteApproval
-        ? "确认办结后写入出网台账，可打印交接单。"
+        ? "确认办结前将校验审批交接信息、电子介质数据量与目录/文件个数、必备附件等。"
         : (RequiresProofMaterialScanUpload
             ? "请先在附件区上传签批交接单及证明材料后再确认办结。"
             : "请先在附件区上传签批交接单后再确认办结。");
@@ -190,7 +190,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
         try
         {
             await _archiveRegisterService.ApplyDefaultNetworkOutboundApprovalInfoAsync(_record, user);
-            await ReloadRecordAsync();
+            SyncApprovalFieldsFromRecord();
             _dialogService.ShowMessage("已回填默认审批信息。");
         }
         catch (Exception ex)
@@ -233,6 +233,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
         OnPropertyChanged(nameof(RegisterWorkspaceBannerText));
         OnPropertyChanged(nameof(CanEditItemConfidentialLevel));
         OnPropertyChanged(nameof(CanEditApprovalPaths));
+        OnPropertyChanged(nameof(CanSupplementElectronicContentScan));
         OnPropertyChanged(nameof(CanEditServerPath));
         OnPropertyChanged(nameof(CanApprovePass));
         OnPropertyChanged(nameof(CanConfirmPhysicalHandover));
@@ -285,17 +286,60 @@ public sealed partial class NetworkOutboundEditDialogViewModel
             return Task.CompletedTask;
         }
 
-        IReadOnlyList<string> errors = NetworkOutboundApplicationValidationSupport.ValidateForComplete(
-            _record,
-            Attachments.ToList());
+        IReadOnlyList<string> errors = CollectCompleteValidationErrors();
         AttachmentsMeetMandatoryRequirements = errors.Count == 0;
         AttachmentRequirementHint = errors.Count == 0
-            ? (RequiresProofMaterialScanUpload
-                ? "必备附件已齐全：签批交接单、证明材料。"
-                : "必备附件已齐全：签批交接单。")
-            : "必备附件未齐全：\n" + string.Join(Environment.NewLine, errors);
+            ? "办结信息已齐全：审批交接、电子介质数据量与目录/文件个数、必备附件均已满足要求。"
+            : "办结前信息完整性校验未通过：" + Environment.NewLine + string.Join(Environment.NewLine, errors);
         UpdateApprovalUiState();
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 汇总确认实物交接前的校验（含当前界面中的电子介质补录结果）。
+    /// </summary>
+    private IReadOnlyList<string> CollectHandoverValidationErrors()
+    {
+        NetworkOutboundRecord validationRecord = BuildCompleteValidationRecord();
+        return NetworkOutboundApplicationValidationSupport.ValidateForHandoverConfirm(
+            validationRecord,
+            validationRecord,
+            Attachments.ToList());
+    }
+
+    /// <summary>
+    /// 汇总确认办结前的完整性校验（含当前界面中的电子介质补录结果）。
+    /// </summary>
+    private IReadOnlyList<string> CollectCompleteValidationErrors()
+    {
+        NetworkOutboundRecord validationRecord = BuildCompleteValidationRecord();
+        return NetworkOutboundApplicationValidationSupport.ValidateForComplete(
+            validationRecord,
+            Attachments.ToList());
+    }
+
+    private NetworkOutboundRecord BuildCompleteValidationRecord()
+    {
+        return new NetworkOutboundRecord
+        {
+            DestinationKind = _record.DestinationKind,
+            ServerPath = SelectedServerPath?.PathName ?? _record.ServerPath,
+            MaterialPath = _record.MaterialPath,
+            ProofMaterialNote = _record.ProofMaterialNote,
+            DeptLeader = DeptLeader,
+            DeptDate = DeptDate,
+            ProdLeader = ProdLeader,
+            ProdDate = ProdDate,
+            RndLeader = RndLeader,
+            RndDate = RndDate,
+            DeputyLeader = DeputyLeader,
+            DeputyDate = DeputyDate,
+            Deliverer = Deliverer,
+            DeliverDate = DeliverDate,
+            Administrator = Administrator,
+            AdminDate = AdminDate,
+            MediaEntries = BuildExternalMediaEntriesForSave()
+        };
     }
 
     private async Task UploadAttachmentByCategoryAsync(string fileCategory)
@@ -374,8 +418,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
     {
         try
         {
-            bool blankApproval = _record.Status < NetworkOutboundRecord.StatusCompleted;
-            var data = await _service.BuildOutboundPrintDataAsync(_record.Id, blankApproval);
+            var data = await _service.BuildOutboundPrintDataAsync(_record.Id, blankApprovalSignatures: false);
             var document = NetworkOutboundPrintDocumentFactory.Create(data);
             var previewWindow = new PrintPreviewWindow(document)
             {

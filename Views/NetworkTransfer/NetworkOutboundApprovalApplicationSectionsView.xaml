@@ -12,7 +12,7 @@
     </UserControl.Resources>
     <StackPanel>
         <Border Margin="0,0,0,12" Padding="10" Background="#EEF3F8" BorderBrush="#C5D3E0" BorderThickness="1">
-            <TextBlock Text="以下为申请人提交信息。资料室资料管理员可在「审批通过」前补录服务器路径；出网资料所在具体路径由系统按规范自动生成。可从离线介质读取目录/数据量、核实密级。"
+            <TextBlock Text="以下为申请人提交信息。资料室资料管理员可在「审批通过」前补录服务器路径；出网资料所在具体路径由系统按规范自动生成。审批通过后、确认实物交接前，可从离线介质补录电子介质目录与数据量。"
                        Foreground="#475569" TextWrapping="Wrap"/>
         </Border>
         <GroupBox Header="1. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
@@ -39,6 +39,22 @@
                         <TextBlock Text="{Binding DestinationKindDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
                 </Grid>
+                <StackPanel Margin="0,0,0,8">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsArchiveFilingDestination}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="库管模式" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                    <TextBlock Text="{Binding SelectedArchivePurpose, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                    <TextBlock Margin="0,4,0,0" Foreground="#64748B" FontSize="11" TextWrapping="Wrap"
+                               Text="归档载体（光盘/空白硬盘/并入同项目资料盘）在资料立档时确定。"/>
+                </StackPanel>
                 <Border Margin="0,0,0,8" Padding="8,6" Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="3"
                         Visibility="{Binding CanEditApprovalPaths, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <StackPanel>

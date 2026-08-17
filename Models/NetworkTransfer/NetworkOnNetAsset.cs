@@ -63,5 +63,33 @@ namespace DocMgr.Models.NetworkTransfer
         [NotMapped]
         public bool CanDispose =>
             NetworkTransferDomainValues.CanDispose(LifecycleStatus);
+
+        /// <summary>来源入网/出网单资料相对路径（列表展示）。</summary>
+        [NotMapped]
+        public string MaterialPath { get; set; } = string.Empty;
+
+        /// <summary>来源入网/出网单资料名称（列表展示）。</summary>
+        [NotMapped]
+        public string MaterialName { get; set; } = string.Empty;
+
+        /// <summary>来源入网提供部门（列表展示）。</summary>
+        [NotMapped]
+        public string ProvideUnit { get; set; } = string.Empty;
+
+        /// <summary>来源申请部门（列表展示）。</summary>
+        [NotMapped]
+        public string ApplicantDept { get; set; } = string.Empty;
+
+        /// <summary>服务器路径所属部门（列表展示）。</summary>
+        [NotMapped]
+        public string DepartmentName { get; set; } = string.Empty;
+
+        /// <summary>服务器物理地址（列表展示）。</summary>
+        [NotMapped]
+        public string PhysicalPath { get; set; } = string.Empty;
+
+        /// <summary>完整存储地址：物理地址 · 服务器路径 · 资料相对路径。</summary>
+        [NotMapped]
+        public string FullStorageAddress { get; set; } = string.Empty;
     }
 }

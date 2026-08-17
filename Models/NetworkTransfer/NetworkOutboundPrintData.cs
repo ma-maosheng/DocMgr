@@ -19,6 +19,8 @@ public sealed class NetworkOutboundPrintData
 
     public string DestinationKindText { get; init; } = string.Empty;
 
+    public string ArchivePurposeText { get; init; } = string.Empty;
+
     public string Reason { get; init; } = string.Empty;
 
     public string ProofMaterialNote { get; init; } = string.Empty;
@@ -34,6 +36,9 @@ public sealed class NetworkOutboundPrintData
     public string ProdLeaderBlock { get; init; } = string.Empty;
 
     public string RndLeaderBlock { get; init; } = string.Empty;
+
+    /// <summary>分管领导签字栏标签（分管生产副院长 / 分管资料副院长）。</summary>
+    public string DeputyLeaderLabel { get; init; } = string.Empty;
 
     public string DeputyLeaderBlock { get; init; } = string.Empty;
 

@@ -92,13 +92,9 @@ internal static class NetworkOutboundOnNetAssetMappingSupport
             var clone = new YearlyArchiveRegisterMedia
             {
                 MediaKind = source.MediaKind,
-                MediaType = string.IsNullOrWhiteSpace(source.MediaType)
-                    ? ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork
-                    : source.MediaType.Trim(),
+                MediaType = ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork,
                 MediaCount = source.MediaCount > 0 ? source.MediaCount : 1,
-                Disposition = string.IsNullOrWhiteSpace(source.Disposition)
-                    ? ArchiveRegisterDomainValues.ElectronicDispositionNone
-                    : source.Disposition.Trim()
+                Disposition = ArchiveRegisterDomainValues.ElectronicDispositionNone
             };
 
             foreach (YearlyArchiveRegisterMediaItem item in source.Items ?? [])

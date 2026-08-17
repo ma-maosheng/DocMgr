@@ -292,7 +292,9 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
     public async Task<List<NetworkOnNetAsset>> SearchOnNetAssetsAsync(
         string? keyword,
         string? originKind,
-        string? lifecycleStatus)
+        string? lifecycleStatus,
+        string? serverPath,
+        IReadOnlyCollection<string>? serverPathNamesForDepartment)
     {
         IQueryable<NetworkOnNetAsset> query = _dbContext.NetworkOnNetAssets.AsNoTracking();
 
@@ -305,7 +307,37 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
         if (!string.IsNullOrWhiteSpace(lifecycleStatus))
         {
             string status = lifecycleStatus.Trim();
-            query = query.Where(item => item.LifecycleStatus == status);
+            if (string.Equals(status, NetworkTransferDomainValues.LifecycleOnNet, StringComparison.Ordinal))
+            {
+                query = query.Where(item =>
+                    item.LifecycleStatus == NetworkTransferDomainValues.LifecycleOnNet
+                    || item.LifecycleStatus == NetworkTransferDomainValues.LifecycleOutbounded);
+            }
+            else
+            {
+                query = query.Where(item => item.LifecycleStatus == status);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(serverPath))
+        {
+            string path = serverPath.Trim();
+            query = query.Where(item => item.ServerPath == path);
+        }
+
+        if (serverPathNamesForDepartment != null)
+        {
+            List<string> pathNames = serverPathNamesForDepartment
+                .Select(item => item?.Trim() ?? string.Empty)
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            if (pathNames.Count == 0)
+            {
+                return [];
+            }
+
+            query = query.Where(item => pathNames.Contains(item.ServerPath));
         }
 
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -321,6 +353,36 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
         return await query
             .OrderByDescending(item => item.RegisteredAt)
             .ThenByDescending(item => item.Id)
+            .ToListAsync();
+    }
+
+    public async Task<List<NetworkInboundItem>> GetInboundItemsByIdsAsync(IReadOnlyCollection<int> itemIds)
+    {
+        if (itemIds == null || itemIds.Count == 0)
+        {
+            return [];
+        }
+
+        HashSet<int> ids = itemIds.Where(id => id > 0).ToHashSet();
+        return await _dbContext.NetworkInboundItems
+            .AsNoTracking()
+            .Include(item => item.InboundRecord)
+            .Where(item => ids.Contains(item.Id))
+            .ToListAsync();
+    }
+
+    public async Task<List<NetworkOutboundItem>> GetOutboundItemsByIdsAsync(IReadOnlyCollection<int> itemIds)
+    {
+        if (itemIds == null || itemIds.Count == 0)
+        {
+            return [];
+        }
+
+        HashSet<int> ids = itemIds.Where(id => id > 0).ToHashSet();
+        return await _dbContext.NetworkOutboundItems
+            .AsNoTracking()
+            .Include(item => item.OutboundRecord)
+            .Where(item => ids.Contains(item.Id))
             .ToListAsync();
     }
 
@@ -469,7 +531,9 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
         IQueryable<YearlyArchiveRegisterRecord> query = tracking
             ? _dbContext.YearlyArchiveRegisterRecords
             : _dbContext.YearlyArchiveRegisterRecords.AsNoTracking();
-        return query.FirstOrDefaultAsync(item => item.SourceNetworkOutboundRecordId == outboundRecordId);
+        return query
+            .Include(item => item.MediaEntries)
+            .FirstOrDefaultAsync(item => item.SourceNetworkOutboundRecordId == outboundRecordId);
     }
 
     public async Task<HashSet<string>> GetExistingMaterialTransactionDedupKeysAsync(

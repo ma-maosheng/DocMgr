@@ -40,6 +40,9 @@ public static class NetworkOutboundApplicationValidationSupport
 
         var errors = new List<string>();
         CollectApprovalSignerErrors(record, handoverInput, errors);
+        NetworkOutboundExternalMediaValidationSupport.ValidateForHandoverConfirm(
+            record.MediaEntries?.ToList(),
+            errors);
         return errors;
     }
 
@@ -64,6 +67,7 @@ public static class NetworkOutboundApplicationValidationSupport
         ArgumentNullException.ThrowIfNull(record);
         var errors = new List<string>();
         CollectCompleteSignerErrors(record, errors);
+        CollectCompletePathErrors(record, errors);
         CollectMandatoryAttachmentErrors(record, attachments ?? Array.Empty<SystemAttachment>(), errors);
         NetworkOutboundExternalMediaValidationSupport.ValidateForComplete(
             record.DestinationKind,
@@ -72,36 +76,57 @@ public static class NetworkOutboundApplicationValidationSupport
         return errors;
     }
 
+    public static void EnsureValidForComplete(
+        NetworkOutboundRecord record,
+        IReadOnlyList<SystemAttachment> attachments)
+    {
+        IReadOnlyList<string> errors = ValidateForComplete(record, attachments);
+        if (errors.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "办结前信息完整性校验未通过：" + Environment.NewLine + Environment.NewLine
+                + string.Join(Environment.NewLine, errors));
+        }
+    }
+
+    private static void CollectCompletePathErrors(NetworkOutboundRecord record, List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(record.ServerPath))
+        {
+            errors.Add("• 生产网来源服务器路径缺失");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.MaterialPath))
+        {
+            errors.Add("• 出网资料所在具体路径缺失");
+        }
+    }
+
     private static void CollectCompleteSignerErrors(NetworkOutboundRecord record, List<string> errors)
     {
-        if (string.IsNullOrWhiteSpace(record.DeptLeader))
+        CollectSignerAndDateErrors(record.DeptLeader, record.DeptDate, "部门负责人", errors);
+        CollectSignerAndDateErrors(record.ProdLeader, record.ProdDate, "生产管理科负责人", errors);
+        CollectSignerAndDateErrors(record.RndLeader, record.RndDate, "资料室负责人", errors);
+        CollectSignerAndDateErrors(record.DeputyLeader, record.DeputyDate, "分管领导", errors);
+        CollectSignerAndDateErrors(record.Deliverer, record.DeliverDate, "移交人", errors);
+        CollectSignerAndDateErrors(record.Administrator, record.AdminDate, "资料员", errors);
+    }
+
+    private static void CollectSignerAndDateErrors(
+        string? signer,
+        DateTime? signedDate,
+        string roleLabel,
+        List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(signer))
         {
-            errors.Add("• 部门负责人签字缺失");
+            errors.Add($"• {roleLabel}签字缺失");
+            return;
         }
 
-        if (string.IsNullOrWhiteSpace(record.ProdLeader))
+        if (!signedDate.HasValue)
         {
-            errors.Add("• 生产管理科负责人签字缺失");
-        }
-
-        if (string.IsNullOrWhiteSpace(record.RndLeader))
-        {
-            errors.Add("• 资料室负责人签字缺失");
-        }
-
-        if (string.IsNullOrWhiteSpace(record.DeputyLeader))
-        {
-            errors.Add("• 分管领导签字缺失");
-        }
-
-        if (string.IsNullOrWhiteSpace(record.Deliverer))
-        {
-            errors.Add("• 移交人签字缺失");
-        }
-
-        if (string.IsNullOrWhiteSpace(record.Administrator))
-        {
-            errors.Add("• 资料员签字缺失");
+            errors.Add($"• {roleLabel}签字日期缺失");
         }
     }
 
@@ -178,6 +203,12 @@ public static class NetworkOutboundApplicationValidationSupport
         if (string.IsNullOrWhiteSpace(header.ProjectName))
         {
             errors.Add("请选择项目。");
+        }
+
+        if (NetworkTransferDomainValues.IsArchiveFilingDestination(header.DestinationKind)
+            && string.IsNullOrWhiteSpace(header.ArchivePurpose))
+        {
+            errors.Add("目的地为资料室存档时，请选择库管模式。");
         }
 
         if (string.IsNullOrWhiteSpace(header.MaterialName))

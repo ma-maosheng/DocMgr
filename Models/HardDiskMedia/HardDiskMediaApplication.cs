@@ -83,6 +83,11 @@ namespace DocMgr.Models.HardDiskMedia
         public int? SourceOutboundRecordId { get; set; }
 
         /// <summary>
+        /// 来源出网申请单ID（库内空盘征用时填写）。
+        /// </summary>
+        public int? SourceNetworkOutboundRecordId { get; set; }
+
+        /// <summary>
         /// 申请类型。
         /// </summary>
         public string ApplicationType { get; set; } = string.Empty;

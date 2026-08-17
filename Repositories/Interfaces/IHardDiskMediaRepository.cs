@@ -41,6 +41,9 @@ public interface IHardDiskMediaRepository
     /// <summary>查询资料出库办结后需归还硬盘来源（库内空盘征用或提档数据硬盘）。</summary>
     Task<List<HardDiskMediaArchiveOutboundRequisitionReturnSource>> GetArchiveOutboundRequisitionReturnSourcesAsync();
 
+    /// <summary>查询出网办结后需归还硬盘来源（库内空盘征用）。</summary>
+    Task<List<HardDiskMediaNetworkOutboundRequisitionReturnSource>> GetNetworkOutboundRequisitionReturnSourcesAsync();
+
     Task<HardDiskMediaApplication?> GetLatestCompletedOutboundApplicationByDiskCodeAsync(string diskCode);
 
     Task<List<HardDiskMedium>> SearchMediaAsync(string? keyword, string? status, string? nature);
@@ -100,6 +103,8 @@ public interface IHardDiskMediaRepository
     Task<string?> GetApplicationNoByIdAsync(int applicationId);
 
     Task<string?> GetOutboundNoByRecordIdAsync(int outboundRecordId);
+
+    Task<string?> GetNetworkOutboundNoByRecordIdAsync(int outboundRecordId);
 
     Task<HardDiskMediaBorrowApprovalSnapshot?> GetOutboundApprovalSnapshotAsync(int outboundRecordId);
 

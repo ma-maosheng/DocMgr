@@ -350,7 +350,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 string sourceBorrowApplicationNo = await _hardDiskMediaService.ResolveReturnSourceApplicationNoAsync(
                     application.SourceApplicationId,
-                    application.SourceOutboundRecordId);
+                    application.SourceOutboundRecordId,
+                    application.SourceNetworkOutboundRecordId);
 
                 if (!string.IsNullOrWhiteSpace(sourceBorrowApplicationNo))
                 {
@@ -560,6 +561,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 MediumId = SelectedCandidate.MediumId,
                 SourceApplicationId = SelectedCandidate.SourceApplicationId,
                 SourceOutboundRecordId = SelectedCandidate.SourceOutboundRecordId,
+                SourceNetworkOutboundRecordId = SelectedCandidate.SourceNetworkOutboundRecordId,
                 ApplicantName = SelectedCandidate.ApplicantName,
                 ApplicantDept = SelectedCandidate.ApplicantDept,
                 CurrentLocation = SelectedCandidate.BorrowedLocation,

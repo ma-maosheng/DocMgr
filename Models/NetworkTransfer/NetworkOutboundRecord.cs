@@ -40,6 +40,9 @@ namespace DocMgr.Models.NetworkTransfer
 
         public string ProjectName { get; set; } = string.Empty;
 
+        /// <summary>库管模式；目的地为资料室存档时由申请人填写，办结后带入待立档建档单。</summary>
+        public string ArchivePurpose { get; set; } = string.Empty;
+
         public string Year { get; set; } = string.Empty;
 
         public string Reason { get; set; } = string.Empty;
@@ -52,7 +55,7 @@ namespace DocMgr.Models.NetworkTransfer
         /// <summary>证明材料备注；「无」表示未附，有材料时填写名称。</summary>
         public string ProofMaterialNote { get; set; } = string.Empty;
 
-        /// <summary>目的地=资料室存档时，办结后写入的建档草稿 Id。</summary>
+        /// <summary>目的地=资料室存档时，办结后写入的已办结待立档建档单 Id。</summary>
         public int? TargetRegisterRecordId { get; set; }
 
         public string TargetRegisterFormNo { get; set; } = string.Empty;

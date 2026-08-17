@@ -22,7 +22,7 @@
                 <Border Margin="0,0,0,8" Padding="8,6" Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="3"
                         Visibility="{Binding CanEditApprovalPaths, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <StackPanel>
-                        <TextBlock Text="审批通过前可补录本单生产网来源服务器路径；出网资料所在具体路径由系统按规范自动生成。可从离线介质补录电子介质目录与数据量。"
+                        <TextBlock Text="审批通过前可补录本单生产网来源服务器路径；出网资料所在具体路径由系统按规范自动生成。电子介质目录与数据量须在审批通过后、确认实物交接前补录。"
                                    Foreground="#92400E" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"/>
                         <DockPanel LastChildFill="True" Margin="0,0,0,4">
                             <TextBlock DockPanel.Dock="Left" Text="服务器路径" Width="72" VerticalAlignment="Center"

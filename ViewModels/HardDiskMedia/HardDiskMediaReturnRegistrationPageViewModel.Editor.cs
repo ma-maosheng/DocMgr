@@ -738,7 +738,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             SourceApplicationNo = await _hardDiskMediaService.ResolveReturnSourceApplicationNoAsync(
                 _editingApplication.SourceApplicationId,
-                _editingApplication.SourceOutboundRecordId);
+                _editingApplication.SourceOutboundRecordId,
+                _editingApplication.SourceNetworkOutboundRecordId);
 
             if (_editingApplication.Id == 0)
             {
@@ -1329,6 +1330,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _editingApplication.MediumId = savedApplication.MediumId;
             _editingApplication.SourceApplicationId = savedApplication.SourceApplicationId;
             _editingApplication.SourceOutboundRecordId = savedApplication.SourceOutboundRecordId;
+            _editingApplication.SourceNetworkOutboundRecordId = savedApplication.SourceNetworkOutboundRecordId;
             _editingApplication.ApplicationType = savedApplication.ApplicationType;
             _editingApplication.ApplicationStatus = savedApplication.ApplicationStatus;
             _editingApplication.ApplicantName = savedApplication.ApplicantName;

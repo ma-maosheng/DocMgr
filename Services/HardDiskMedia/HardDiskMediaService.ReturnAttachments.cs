@@ -35,7 +35,8 @@ namespace DocMgr.Services.HardDiskMedia
 
             string sourceApplicationNo = await ResolveReturnSourceApplicationNoAsync(
                 existingApplication.SourceApplicationId,
-                existingApplication.SourceOutboundRecordId);
+                existingApplication.SourceOutboundRecordId,
+                existingApplication.SourceNetworkOutboundRecordId);
 
             var borrowApproval = await ResolveBorrowApprovalSignatureSnapshotAsync(
                 existingApplication.SourceApplicationId,

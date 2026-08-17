@@ -312,6 +312,10 @@ namespace DocMgr.Models.NetworkTransfer
                    || string.Equals(trimmed, LegacyDestinationKindExternalOffline, StringComparison.Ordinal);
         }
 
+        /// <summary>是否为出网（院外）目的地。</summary>
+        public static bool IsOutboundExternalDestination(string? destinationKind) =>
+            string.Equals(destinationKind?.Trim(), DestinationKindOutboundExternal, StringComparison.Ordinal);
+
         /// <summary>出网单分管领导默认审批角色：出网（院内/院外）→分管生产副院长，否则→分管资料副院长。</summary>
         public static string ResolveOutboundDeputyLeaderRole(string? destinationKind) =>
             IsExternalOfflineDestination(destinationKind)

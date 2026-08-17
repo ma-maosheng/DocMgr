@@ -8,6 +8,7 @@ namespace DocMgr.Models.HardDiskMedia
         public const string BusinessTypeArchiveRegister = "年度资料登记";
         public const string BusinessTypeOutboundApplication = "硬盘借出申请";
         public const string BusinessTypeArchiveOutboundRequisition = "资料出库征用";
+        public const string BusinessTypeNetworkOutboundRequisition = "出网征用";
         public const string BusinessTypeDisposal = "硬盘离库处置";
         public const string BusinessTypeInventoryRegister = "硬盘盘库登记";
         public const string BusinessTypeArchiveInventoryRegister = "资料盘库登记";

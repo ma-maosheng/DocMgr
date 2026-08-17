@@ -110,7 +110,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
     public string StatusDisplay => NetworkTransferDomainValues.ToStatusDisplay(_record.Status);
 
     public string BannerText =>
-        "本系统与生产网隔离：请手工填写资料信息与电子介质明细；拷贝完成后可从离线介质读取目录与数据量。办结后写入出网台账；目的地为资料室存档时同时生成建档草稿。";
+        "本系统与生产网隔离：请手工填写资料信息与电子介质明细；拷贝完成后可从离线介质读取目录与数据量。办结后写入出网台账；目的地为资料室存档时生成待立档任务，归档载体在资料立档时选择。";
 
     public string BusinessChainProgressDisplay => _record.BusinessChainProgressDisplay;
 
@@ -148,13 +148,17 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         && _record.Status == NetworkOutboundRecord.StatusSubmitted
         && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
 
+    /// <summary>
+    /// 审批通过后、确认实物交接前，资料室管理员可从离线介质补录目录/文件并回写数据量与文件个数。
+    /// </summary>
+    public bool CanSupplementElectronicContentScan =>
+        _mode == NetworkTransferWorkspaceMode.Approval
+        && _record.Status == NetworkOutboundRecord.StatusApproved
+        && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+
     public bool CanEditServerPath => CanEditHeader || CanEditApprovalPaths;
 
-    public bool CanEditItemConfidentialLevel =>
-        CanEditForm
-        || (_mode == NetworkTransferWorkspaceMode.Approval
-            && _record.Status == NetworkOutboundRecord.StatusSubmitted
-            && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser));
+    public bool CanEditItemConfidentialLevel => CanEditForm;
 
     public string OutboundNo
     {
@@ -171,6 +175,15 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(DestinationKindDisplay));
                 OnPropertyChanged(nameof(IsArchiveFilingDestination));
+                if (!IsArchiveFilingDestination)
+                {
+                    SelectedArchivePurpose = string.Empty;
+                }
+                else if (string.IsNullOrWhiteSpace(SelectedArchivePurpose))
+                {
+                    SelectedArchivePurpose = ArchivePurposeOptions.FirstOrDefault() ?? string.Empty;
+                }
+
                 NotifyOutboundDestinationDependentUi();
             }
         }
@@ -181,6 +194,24 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
 
     public bool IsArchiveFilingDestination =>
         NetworkTransferDomainValues.IsArchiveFilingDestination(DestinationKind);
+
+    public ObservableCollection<string> ArchivePurposeOptions { get; } = new();
+
+    private string _selectedArchivePurpose = string.Empty;
+
+    public string SelectedArchivePurpose
+    {
+        get => _selectedArchivePurpose;
+        set
+        {
+            if (SetProperty(ref _selectedArchivePurpose, value ?? string.Empty))
+            {
+                _record.ArchivePurpose = IsArchiveFilingDestination
+                    ? _selectedArchivePurpose.Trim()
+                    : string.Empty;
+            }
+        }
+    }
 
     public string ApplicantName
     {
@@ -391,6 +422,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
             BindFromRecord();
             await TryAutoFillDefaultApprovalInfoAsync();
             await LoadConfidentialLevelOptionsAsync();
+            await LoadArchivePurposeOptionsAsync();
             await InitializeElectronicMediaEditorAsync();
             LoadApplicantServerPathOptions();
             await ReloadAttachmentsAsync();
@@ -408,6 +440,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         OutboundNo = _record.OutboundNo;
         DestinationKind = NetworkTransferDomainValues.NormalizeOutboundDestinationKind(_record.DestinationKind);
         BindProjectSelectionFromRecord();
+        SelectedArchivePurpose = _record.ArchivePurpose?.Trim() ?? string.Empty;
         ApplicantName = _record.ApplicantName;
         ApplicantDept = _record.ApplicantDept;
         ApplyTime = _record.ApplyTime == default ? DateTime.Now : _record.ApplyTime;
@@ -417,12 +450,9 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         RndDate = _record.RndDate ?? DateTime.Today;
         DeputyLeader = _record.DeputyLeader;
         DeputyDate = _record.DeputyDate ?? DateTime.Today;
-        Deliverer = _record.Deliverer;
-        DeliverDate = _record.DeliverDate ?? DateTime.Today;
-        Administrator = _record.Administrator;
-        AdminDate = _record.AdminDate ?? DateTime.Today;
         DeptLeader = _record.DeptLeader;
         DeptDate = _record.DeptDate ?? DateTime.Today;
+        BindHandoverFieldsFromRecord();
         _hasProofMaterialSelected = ArchiveRegisterDomainValues.RequiresProofMaterialAttachment(_record.ProofMaterialNote);
         OnPropertyChanged(nameof(HasProofMaterial));
         OnPropertyChanged(nameof(ProofMaterialName));
@@ -551,6 +581,24 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         }
     }
 
+    private async Task LoadArchivePurposeOptionsAsync()
+    {
+        var domainOptions = await _archiveRegisterService.GetPageDomainOptionsAsync();
+        ArchivePurposeOptions.Clear();
+        foreach (string purpose in domainOptions.ArchivePurposes)
+        {
+            if (!string.IsNullOrWhiteSpace(purpose))
+            {
+                ArchivePurposeOptions.Add(purpose.Trim());
+            }
+        }
+
+        if (IsArchiveFilingDestination && string.IsNullOrWhiteSpace(SelectedArchivePurpose))
+        {
+            SelectedArchivePurpose = ArchivePurposeOptions.FirstOrDefault() ?? string.Empty;
+        }
+    }
+
     private NetworkOutboundRecord BuildDraftSnapshot()
     {
         var draft = new NetworkOutboundRecord
@@ -562,6 +610,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
             ServerPath = SelectedServerPath?.PathName?.Trim() ?? _record.ServerPath?.Trim() ?? string.Empty,
             MaterialPath = _record.MaterialPath?.Trim() ?? string.Empty,
             ProjectName = ProjectName,
+            ArchivePurpose = IsArchiveFilingDestination ? SelectedArchivePurpose : string.Empty,
             Year = Year,
             Reason = _record.Reason,
             OtherRequests = _record.OtherRequests,
@@ -591,8 +640,9 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
                 : await _service.CreateOutboundDraftAsync(draft, [], user);
             _hasCommittedChanges = true;
             BindFromRecord();
-            await InitializeElectronicMediaEditorAsync();
+            // 保存后仅同步表头字段，避免重载电子介质区把已选类型重置为域值首项（U盘）。
             LoadApplicantServerPathOptions();
+            OnPropertyChanged(nameof(WindowTitle));
             OnPropertyChanged(nameof(CanSubmit));
             CommandManager.InvalidateRequerySuggested();
             _dialogService.ShowMessage("草稿已保存。");
@@ -708,6 +758,16 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         try
         {
             await PersistOutboundMediaIfNeededAsync();
+
+            IReadOnlyList<string> validationErrors = CollectHandoverValidationErrors();
+            if (validationErrors.Count > 0)
+            {
+                _dialogService.ShowError(
+                    "交接确认前校验未通过：" + Environment.NewLine + Environment.NewLine
+                    + string.Join(Environment.NewLine, validationErrors));
+                return;
+            }
+
             await _service.ConfirmOutboundHandoverAsync(new NetworkOutboundRecord
             {
                 Id = _record.Id,
@@ -731,18 +791,28 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         try
         {
             await PersistOutboundMediaIfNeededAsync();
+
+            IReadOnlyList<string> validationErrors = CollectCompleteValidationErrors();
+            if (validationErrors.Count > 0)
+            {
+                _dialogService.ShowError(
+                    "办结前信息完整性校验未通过：" + Environment.NewLine + Environment.NewLine
+                    + string.Join(Environment.NewLine, validationErrors));
+                await RefreshAttachmentRequirementsAsync();
+                return;
+            }
+
             await _service.CompleteOutboundAsync(_record.Id, RequireUser());
             _hasCommittedChanges = true;
+            if (NetworkTransferDomainValues.IsArchiveFilingDestination(_record.DestinationKind))
+            {
+                _dialogService.ShowMessage("出网申请已办结。已写入出网台账，并生成待立档任务，请在「资料立档」中选择光盘、空白硬盘或并入同项目资料盘。");
+                RequestClose?.Invoke(true);
+                return;
+            }
+
             _dialogService.ShowMessage("出网申请已办结，出网台账已写入。");
             await ReloadRecordAsync();
-            if (NetworkTransferDomainValues.IsArchiveFilingDestination(_record.DestinationKind)
-                && _record.TargetRegisterRecordId is > 0)
-            {
-                _dialogService.ShowArchiveRegisterEditDialog(
-                    ArchiveRegisterWorkspaceMode.Application,
-                    out _,
-                    _record.TargetRegisterRecordId);
-            }
         }
         catch (Exception ex)
         {
@@ -815,6 +885,9 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// 重载单据表头、审批态与附件；不重载电子介质明细，避免已选类型被域值首项（U盘）覆盖。
+    /// </summary>
     private async Task ReloadRecordAsync()
     {
         var latest = await _service.GetOutboundByIdAsync(_record.Id);
@@ -826,7 +899,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         _record = latest;
         BindFromRecord();
         await TryAutoFillDefaultApprovalInfoAsync();
-        await InitializeElectronicMediaEditorAsync();
+        SyncElectronicMediaEditorEditState();
         LoadApplicantServerPathOptions();
         await ReloadAttachmentsAsync();
         UpdateApprovalUiState();
@@ -835,34 +908,83 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
     private async Task TryAutoFillDefaultApprovalInfoAsync()
     {
         if (_mode != NetworkTransferWorkspaceMode.Approval
-            || _record.Status != NetworkOutboundRecord.StatusSubmitted
-            || _userContextService.CurrentUser == null)
+            || (_record.Status != NetworkOutboundRecord.StatusSubmitted
+                && _record.Status != NetworkOutboundRecord.StatusApproved))
+        {
+            return;
+        }
+
+        var user = _userContextService.CurrentUser;
+        if (user == null || !ArchiveRegisterBusinessRules.IsArchiveAdminUser(user))
         {
             return;
         }
 
         try
         {
-            await _archiveRegisterService.ApplyDefaultNetworkOutboundApprovalInfoAsync(
-                _record,
-                _userContextService.CurrentUser);
-            ProdLeader = _record.ProdLeader;
-            ProdDate = _record.ProdDate ?? DateTime.Today;
-            RndLeader = _record.RndLeader;
-            RndDate = _record.RndDate ?? DateTime.Today;
-            DeputyLeader = _record.DeputyLeader;
-            DeputyDate = _record.DeputyDate ?? DateTime.Today;
-            DeptLeader = _record.DeptLeader;
-            DeptDate = _record.DeptDate ?? DateTime.Today;
-            Deliverer = _record.Deliverer;
-            DeliverDate = _record.DeliverDate ?? DateTime.Today;
-            Administrator = _record.Administrator;
-            AdminDate = _record.AdminDate ?? DateTime.Today;
+            await _archiveRegisterService.ApplyDefaultNetworkOutboundApprovalInfoAsync(_record, user);
+            SyncApprovalFieldsFromRecord();
         }
         catch
         {
-            // 默认审批信息失败不阻断打开。
+            // 自动回填失败不阻断打开；交接默认值仍由 BindHandoverFieldsFromRecord 保障。
+            BindHandoverFieldsFromRecord();
         }
+    }
+
+    /// <summary>
+    /// 将审批节点与资料交接字段同步到界面绑定。
+    /// </summary>
+    private void SyncApprovalFieldsFromRecord()
+    {
+        ProdLeader = _record.ProdLeader;
+        ProdDate = _record.ProdDate ?? DateTime.Today;
+        RndLeader = _record.RndLeader;
+        RndDate = _record.RndDate ?? DateTime.Today;
+        DeputyLeader = _record.DeputyLeader;
+        DeputyDate = _record.DeputyDate ?? DateTime.Today;
+        DeptLeader = _record.DeptLeader;
+        DeptDate = _record.DeptDate ?? DateTime.Today;
+        BindHandoverFieldsFromRecord();
+        OnPropertyChanged(nameof(CurrentRecord));
+    }
+
+    /// <summary>
+    /// 审批打开时同步资料交接默认值：移交人=申请人，资料员=当前资料管理员，日期缺省为当天。
+    /// </summary>
+    private void BindHandoverFieldsFromRecord()
+    {
+        if (_mode == NetworkTransferWorkspaceMode.Approval)
+        {
+            if (string.IsNullOrWhiteSpace(_record.Deliverer))
+            {
+                _record.Deliverer = _record.ApplicantName;
+            }
+
+            if (!_record.DeliverDate.HasValue)
+            {
+                _record.DeliverDate = DateTime.Today;
+            }
+
+            if (string.IsNullOrWhiteSpace(_record.Administrator))
+            {
+                _record.Administrator = _userContextService.CurrentUser?.RealName ?? string.Empty;
+            }
+
+            if (!_record.AdminDate.HasValue)
+            {
+                _record.AdminDate = DateTime.Today;
+            }
+        }
+
+        Deliverer = string.IsNullOrWhiteSpace(_record.Deliverer)
+            ? _record.ApplicantName
+            : _record.Deliverer;
+        DeliverDate = _record.DeliverDate ?? DateTime.Today;
+        Administrator = string.IsNullOrWhiteSpace(_record.Administrator)
+            ? _userContextService.CurrentUser?.RealName ?? string.Empty
+            : _record.Administrator;
+        AdminDate = _record.AdminDate ?? DateTime.Today;
     }
 
     private User RequireUser() =>

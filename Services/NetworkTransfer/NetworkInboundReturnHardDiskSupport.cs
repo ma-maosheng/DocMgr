@@ -71,6 +71,7 @@ internal static class NetworkInboundReturnHardDiskSupport
                 DiskCode = candidate.DiskCode.Trim(),
                 SourceApplicationId = candidate.SourceApplicationId,
                 SourceOutboundRecordId = candidate.SourceOutboundRecordId,
+                SourceNetworkOutboundRecordId = candidate.SourceNetworkOutboundRecordId,
                 TargetBlankSlotLocation = savedSlot ?? string.Empty,
                 CreatedAt = now
             });

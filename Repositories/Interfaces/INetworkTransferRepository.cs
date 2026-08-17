@@ -50,7 +50,16 @@ public interface INetworkTransferRepository
 
     Task<string?> GetLastDisposalNoByPrefixAsync(string prefix);
 
-    Task<List<NetworkOnNetAsset>> SearchOnNetAssetsAsync(string? keyword, string? originKind, string? lifecycleStatus);
+    Task<List<NetworkOnNetAsset>> SearchOnNetAssetsAsync(
+        string? keyword,
+        string? originKind,
+        string? lifecycleStatus,
+        string? serverPath,
+        IReadOnlyCollection<string>? serverPathNamesForDepartment);
+
+    Task<List<NetworkInboundItem>> GetInboundItemsByIdsAsync(IReadOnlyCollection<int> itemIds);
+
+    Task<List<NetworkOutboundItem>> GetOutboundItemsByIdsAsync(IReadOnlyCollection<int> itemIds);
 
     Task<NetworkOnNetAsset?> GetOnNetAssetByIdAsync(int assetId, bool tracking = false);
 
