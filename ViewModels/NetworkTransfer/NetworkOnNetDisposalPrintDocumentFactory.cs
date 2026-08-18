@@ -19,12 +19,10 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         private const double TitleChromeHeight = 90;
         private const double HeaderHeight = 28;
-        /// <summary>单行内容统一行高（原因/方式、说明、申请人、备注等）。</summary>
+        /// <summary>单行内容统一行高（原因/方式、说明、申请人、审核、审批、备注等）。</summary>
         private const double StandardRowHeight = 36;
-        /// <summary>资料室审批（意见+签字，约 2 行）。</summary>
-        private const double ApprovalRowHeight = 72;
-        /// <summary>签批签字（三方签字，约 3 行）。</summary>
-        private const double SignatureRowHeight = 96;
+        /// <summary>审核/审批（签字+日期，约 1 行）。</summary>
+        private const double ReviewRowHeight = 40;
         private const double RowChromeDip = 6;
         private const string BlankDateSuffix = "日期:______年___月___日";
 
@@ -67,8 +65,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 "申请人", EmptyAsPlaceholder(data.ApplicantName),
                 "申请部门", EmptyAsPlaceholder(data.ApplicantDept),
                 StandardRowHeight));
-            rowGroup.Rows.Add(CreateSingleRow("资料室审批", BuildApprovalSection(data), ApprovalRowHeight, verticalAlignTop: true));
-            rowGroup.Rows.Add(CreateSingleRow("签批签字", BuildSignatureSection(data), SignatureRowHeight, verticalAlignTop: true));
+            rowGroup.Rows.Add(CreateSingleRow("审核", BuildReviewSection(data), ReviewRowHeight, verticalAlignTop: true));
+            rowGroup.Rows.Add(CreateSingleRow("审批", BuildApproveSection(data), ReviewRowHeight, verticalAlignTop: true));
             rowGroup.Rows.Add(CreateSingleRow("备注", EmptyAsPlaceholder(data.Remark), StandardRowHeight));
 
             document.Blocks.Add(CreateMainTable(rowGroup));
@@ -79,11 +77,10 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         private static double CalculateItemRowHeight()
         {
-            // 固定行：原因方式、申请说明、申请人、审批、签字、备注。
+            // 固定行：原因方式、申请说明、申请人、审核、审批、备注。
             double fixedContentHeight =
                 StandardRowHeight * 4
-                + ApprovalRowHeight
-                + SignatureRowHeight;
+                + ReviewRowHeight * 2;
             const int fixedRowCount = 6;
             double fixedTableHeight = fixedContentHeight
                 + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, RowChromeDip) * fixedRowCount;
@@ -138,68 +135,33 @@ namespace DocMgr.ViewModels.NetworkTransfer
             return builder.ToString();
         }
 
-        private static string BuildApprovalSection(NetworkOnNetDisposalPrintData data)
+        private static string BuildReviewSection(NetworkOnNetDisposalPrintData data)
         {
-            bool hasApproval = !string.IsNullOrWhiteSpace(data.ApprovedBy)
-                || !string.IsNullOrWhiteSpace(data.ApprovalOpinion)
-                || !string.IsNullOrWhiteSpace(data.ApprovedDateText);
-
-            if (!hasApproval)
+            if (string.IsNullOrWhiteSpace(data.ArchiveRoomHead)
+                && string.IsNullOrWhiteSpace(data.ArchiveRoomHeadDateText))
             {
-                return "审批意见：\n                    签字：                              " + BlankDateSuffix;
+                return "资料室负责人签字：                              " + BlankDateSuffix;
             }
 
-            string opinion = string.IsNullOrWhiteSpace(data.ApprovalOpinion)
-                ? string.Empty
-                : data.ApprovalOpinion.Trim();
-            string signature = BuildFilledSignatureLine(data.ApprovedBy, data.ApprovedDateText);
-            return string.IsNullOrWhiteSpace(opinion)
-                ? $"审批意见：\n{signature}"
-                : $"审批意见：{opinion}\n{signature}";
+            return BuildSignerLine("资料室负责人签字", data.ArchiveRoomHead, data.ArchiveRoomHeadDateText);
         }
 
-        private static string BuildSignatureSection(NetworkOnNetDisposalPrintData data)
+        private static string BuildApproveSection(NetworkOnNetDisposalPrintData data)
         {
-            if (!data.IsCompleted)
+            if (string.IsNullOrWhiteSpace(data.ArchiveDeputyPresident)
+                && string.IsNullOrWhiteSpace(data.ArchiveDeputyPresidentDateText))
             {
-                return "申请人签字：                                            " + BlankDateSuffix + "\n"
-                     + "资料室负责人签字：                                      " + BlankDateSuffix + "\n"
-                     + "资料室分管领导签字：                                    " + BlankDateSuffix;
+                return "分管资料副院长签字：                            " + BlankDateSuffix;
             }
 
-            string dateText = string.IsNullOrWhiteSpace(data.CompletedDateText)
-                ? "______年___月___日"
-                : data.CompletedDateText.Trim();
-            string applicant = string.IsNullOrWhiteSpace(data.ApplicantName)
-                ? "________________"
-                : data.ApplicantName.Trim();
-
-            return $"申请人签字：{applicant}    日期：{dateText}\n"
-                 + $"资料室负责人签字：____________________    日期：{dateText}\n"
-                 + $"资料室分管领导签字：____________________    日期：{dateText}";
+            return BuildSignerLine("分管资料副院长签字", data.ArchiveDeputyPresident, data.ArchiveDeputyPresidentDateText);
         }
 
-        private static string BuildFilledSignatureLine(string? name, string? dateText)
+        private static string BuildSignerLine(string label, string? name, string? dateText)
         {
-            string normalizedName = name?.Trim() ?? string.Empty;
-            string normalizedDate = dateText?.Trim() ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(normalizedName) && string.IsNullOrWhiteSpace(normalizedDate))
-            {
-                return "签字：                              " + BlankDateSuffix;
-            }
-
-            if (string.IsNullOrWhiteSpace(normalizedName))
-            {
-                return $"签字：    日期：{normalizedDate}";
-            }
-
-            if (string.IsNullOrWhiteSpace(normalizedDate))
-            {
-                return $"签字：{normalizedName}";
-            }
-
-            return $"签字：{normalizedName}    日期：{normalizedDate}";
+            string signer = string.IsNullOrWhiteSpace(name) ? "____________________" : name.Trim();
+            string date = string.IsNullOrWhiteSpace(dateText) ? "______年___月___日" : dateText.Trim();
+            return $"{label}：{signer}    日期：{date}";
         }
 
         private static Paragraph CreateFooterParagraph(NetworkOnNetDisposalPrintData data)
@@ -213,9 +175,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
             footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
             footer.Inlines.Add(new Run(
-                "1、本单由资料室资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批、上传签批单、办结”流程办理。\n"));
+                "1、本单由资料室资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批通过、上传签批单、办结”流程办理。\n"));
             footer.Inlines.Add(new Run(
-                "      2、请线下完成申请人、资料室负责人、资料室分管领导签字后回传系统；办结前须上传签批单。\n"));
+                "      2、审核为资料室负责人、审批为分管资料副院长，仅需签字与日期；请线下完成后回传签批单。\n"));
             footer.Inlines.Add(new Run(
                 $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
 

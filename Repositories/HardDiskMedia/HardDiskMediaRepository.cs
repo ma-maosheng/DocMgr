@@ -646,8 +646,19 @@ public partial class HardDiskMediaRepository : IHardDiskMediaRepository
 
     public Task<bool> HasDuplicateSerialNumberAsync(int currentId, string serialNumber)
     {
+        string normalized = serialNumber.Trim();
         return _dbContext.HardDiskMedia
-            .AnyAsync(item => !item.IsDeleted && item.Id != currentId && item.SerialNumber == serialNumber);
+            .AnyAsync(item => !item.IsDeleted && item.Id != currentId && item.SerialNumber.Trim() == normalized);
+    }
+
+    public Task<HardDiskMedium?> GetActiveMediumWithLedgerBySerialNumberAsync(int excludeMediumId, string serialNumber)
+    {
+        string normalized = serialNumber.Trim();
+        return _dbContext.HardDiskMedia
+            .AsNoTracking()
+            .Include(item => item.Ledger)
+            .Where(item => !item.IsDeleted && item.Id != excludeMediumId)
+            .FirstOrDefaultAsync(item => item.SerialNumber.Trim() == normalized);
     }
 
     public void AddApplication(HardDiskMediaApplication application)

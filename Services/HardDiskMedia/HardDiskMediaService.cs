@@ -546,10 +546,10 @@ namespace DocMgr.Services.HardDiskMedia
                 throw new InvalidOperationException($"硬盘编号 [{diskCode}] 已存在。");
             }
 
-            bool duplicateSerialNumber = await _hardDiskMediaRepository.HasDuplicateSerialNumberAsync(medium.Id, serialNumber);
-            if (duplicateSerialNumber)
+            HardDiskMedium? registeredBySerial = await _hardDiskMediaRepository.GetActiveMediumWithLedgerBySerialNumberAsync(medium.Id, serialNumber);
+            if (registeredBySerial != null)
             {
-                throw new InvalidOperationException($"序列号 [{serialNumber}] 已存在。");
+                throw new InvalidOperationException(HardDiskMediumSerialRegistrationSupport.BuildAlreadyRegisteredMessage(registeredBySerial));
             }
 
             if (medium.Id == 0)
@@ -1025,6 +1025,28 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             return await _hardDiskMediaRepository.GetDomainOptionLabelsAsync(entityName, fieldName);
+        }
+
+        /// <inheritdoc/>
+        public Task<bool> HasDuplicateSerialNumberAsync(int currentMediumId, string serialNumber)
+        {
+            if (string.IsNullOrWhiteSpace(serialNumber))
+            {
+                return Task.FromResult(false);
+            }
+
+            return _hardDiskMediaRepository.HasDuplicateSerialNumberAsync(currentMediumId, serialNumber.Trim());
+        }
+
+        /// <inheritdoc/>
+        public Task<HardDiskMedium?> FindRegisteredMediumBySerialNumberAsync(int currentMediumId, string serialNumber)
+        {
+            if (string.IsNullOrWhiteSpace(serialNumber))
+            {
+                return Task.FromResult<HardDiskMedium?>(null);
+            }
+
+            return _hardDiskMediaRepository.GetActiveMediumWithLedgerBySerialNumberAsync(currentMediumId, serialNumber.Trim());
         }
 
     }

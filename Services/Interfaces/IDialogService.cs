@@ -55,6 +55,12 @@ namespace DocMgr.Services.Interfaces
         bool ShowOtherMapEditDialog(OtherMap mapToEdit);
         bool ShowProjectEditDialog(ProjectInfo? projectToEdit);
         bool ShowHardDiskMediumEditDialog(HardDiskMedium mediumToEdit, bool persistOnConfirm = true);
+
+        /// <summary>
+        /// 从本机物理磁盘中选择一块，供硬盘介质半自动登记回填。取消时返回 null。
+        /// </summary>
+        LocalPhysicalDiskInfo? ShowLocalPhysicalDiskPickerDialog();
+
         /// <summary>
         /// 选择一个或多个硬盘介质。
         /// </summary>

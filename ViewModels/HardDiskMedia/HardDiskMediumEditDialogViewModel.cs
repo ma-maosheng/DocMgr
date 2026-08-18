@@ -68,6 +68,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             Title = mediumToEdit.Id == 0 ? "硬盘参数交互式登记" : "硬盘参数修正";
             GenerateDiskCodeCommand = new RelayCommand(async _ => await GenerateDiskCodeAsync(), _ => IsNewMode);
+            ReadLocalDiskCommand = new RelayCommand(async _ => await ReadLocalDiskAsync());
             RecommendBlankSlotLocationCommand = new RelayCommand(async _ => await RecommendBlankSlotLocationAsync(), _ => CanRecommendBlankSlotLocation);
             ShowBlankSlotSnapshotCommand = new RelayCommand(async _ => await ShowBlankSlotSnapshotAsync(), _ => CanShowBlankSlotSnapshot);
             ConfirmCommand = new RelayCommand(async _ => await ConfirmAsync());
@@ -257,6 +258,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public ICommand ConfirmCommand { get; }
         public ICommand CancelCommand { get; }
         public ICommand GenerateDiskCodeCommand { get; }
+        public ICommand ReadLocalDiskCommand { get; }
         public ICommand RecommendBlankSlotLocationCommand { get; }
         public ICommand ShowBlankSlotSnapshotCommand { get; }
 
@@ -427,32 +429,23 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task ConfirmAsync()
         {
-            if (string.IsNullOrWhiteSpace(DiskCode))
+            if (!TryValidateIdentityCompleteness(out string completenessError))
             {
-                _dialogService.ShowMessage("请输入硬盘编号。");
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(SerialNumber))
-            {
-                _dialogService.ShowMessage("请输入序列号。");
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(DiskType))
-            {
-                _dialogService.ShowMessage("请选择硬盘类型。");
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(Brand))
-            {
-                _dialogService.ShowMessage("请输入品牌。");
+                _dialogService.ShowMessage(completenessError);
                 return;
             }
 
             try
             {
+                HardDiskMedium? registered = await _hardDiskMediaService.FindRegisteredMediumBySerialNumberAsync(
+                    _sourceMedium.Id,
+                    SerialNumber);
+                if (registered != null)
+                {
+                    _dialogService.ShowMessage(HardDiskMediumSerialRegistrationSupport.BuildAlreadyRegisteredMessage(registered));
+                    return;
+                }
+
                 var medium = new HardDiskMedium
                 {
                     Id = _sourceMedium.Id,
@@ -504,6 +497,54 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
         }
 
+        private bool TryValidateIdentityCompleteness(out string errorMessage)
+        {
+            if (string.IsNullOrWhiteSpace(DiskCode))
+            {
+                errorMessage = "请输入硬盘编号。";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(SerialNumber))
+            {
+                errorMessage = "请输入序列号。保存前须以序列号核验是否已登记。";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(DiskType))
+            {
+                errorMessage = "请选择硬盘类型。";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(Brand))
+            {
+                errorMessage = "请输入品牌。";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(CapacityValue))
+            {
+                errorMessage = $"序列号 [{SerialNumber.Trim()}] 对应的容量尚未填写，请补全后再保存。";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(InterfaceType))
+            {
+                errorMessage = $"序列号 [{SerialNumber.Trim()}] 对应的接口类型尚未选择，请补全后再保存。";
+                return false;
+            }
+
+            if (!FactoryDate.HasValue)
+            {
+                errorMessage = $"序列号 [{SerialNumber.Trim()}] 对应的出厂日期尚未填写，请补全后再保存。";
+                return false;
+            }
+
+            errorMessage = string.Empty;
+            return true;
+        }
+
         private static void ResetOptions(ObservableCollection<string> target, IReadOnlyList<string> values)
         {
             target.Clear();
@@ -528,6 +569,94 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 _dialogService.SetBusyState(false);
                 CommandManager.InvalidateRequerySuggested();
+            }
+        }
+
+        private async Task ReadLocalDiskAsync()
+        {
+            LocalPhysicalDiskInfo? selectedDisk;
+            try
+            {
+                selectedDisk = _dialogService.ShowLocalPhysicalDiskPickerDialog();
+            }
+            catch (InvalidOperationException ex)
+            {
+                _dialogService.ShowError(ex.Message);
+                return;
+            }
+
+            if (selectedDisk == null)
+            {
+                return;
+            }
+
+            if (HasFilledHardwareFields()
+                && !_dialogService.ShowConfirm("将用本机硬盘信息覆盖当前序列号、品牌、容量、硬盘类型、接口类型和出厂日期（仅当能解析制造年份时），是否继续？"))
+            {
+                return;
+            }
+
+            ApplyLocalDisk(selectedDisk);
+
+            if (string.IsNullOrWhiteSpace(selectedDisk.SerialNumber))
+            {
+                _dialogService.ShowMessage("已回填可识别字段，但该硬盘未读到序列号，请手工补录后再保存。");
+                return;
+            }
+
+            HardDiskMedium? registered = await _hardDiskMediaService.FindRegisteredMediumBySerialNumberAsync(
+                _sourceMedium.Id,
+                selectedDisk.SerialNumber);
+            if (registered != null)
+            {
+                _dialogService.ShowMessage(HardDiskMediumSerialRegistrationSupport.BuildAlreadyRegisteredMessage(registered));
+                return;
+            }
+
+            string factoryDateSummary = selectedDisk.FactoryDate.HasValue
+                ? $"出厂日期已按制造年份回填为 {selectedDisk.FactoryDate:yyyy-MM-dd}。"
+                : "出厂日期未能从硬件解析到制造年份，请手工填写。";
+            _dialogService.ShowMessage($"已回填本机硬盘信息，请核对后保存。{factoryDateSummary}硬盘编号和存放档口仍需手工确认。");
+        }
+
+        private bool HasFilledHardwareFields()
+        {
+            return !string.IsNullOrWhiteSpace(SerialNumber)
+                || !string.IsNullOrWhiteSpace(Brand)
+                || !string.IsNullOrWhiteSpace(CapacityValue)
+                || FactoryDate.HasValue;
+        }
+
+        private void ApplyLocalDisk(LocalPhysicalDiskInfo disk)
+        {
+            if (!string.IsNullOrWhiteSpace(disk.SerialNumber))
+            {
+                SerialNumber = disk.SerialNumber;
+            }
+
+            if (!string.IsNullOrWhiteSpace(disk.Brand))
+            {
+                Brand = disk.Brand;
+            }
+            else if (!string.IsNullOrWhiteSpace(disk.Model) && string.IsNullOrWhiteSpace(Brand))
+            {
+                Brand = disk.Model.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(disk.CapacityValue))
+            {
+                CapacityValue = disk.CapacityValue;
+                CapacityUnit = string.IsNullOrWhiteSpace(disk.CapacityUnit)
+                    ? ElectronicMediaCapacitySupport.DefaultCapacityUnit
+                    : disk.CapacityUnit;
+            }
+
+            DiskType = LocalPhysicalDiskHardwareSupport.MatchDomainOption(DiskTypeOptions, disk.DiskType);
+            InterfaceType = LocalPhysicalDiskHardwareSupport.MatchDomainOption(InterfaceTypeOptions, disk.InterfaceType);
+
+            if (disk.FactoryDate.HasValue)
+            {
+                FactoryDate = disk.FactoryDate;
             }
         }
 

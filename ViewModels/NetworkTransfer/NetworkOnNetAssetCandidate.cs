@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.ViewModels.Base;
 
@@ -14,10 +15,20 @@ public sealed class NetworkOnNetAssetCandidate : ViewModelBase
 
     public NetworkOnNetAsset Asset { get; }
 
+    /// <summary>勾选变化时通知父级刷新「加入明细」等命令。</summary>
+    public event Action? SelectionChanged;
+
     public bool IsSelected
     {
         get => _isSelected;
-        set => SetProperty(ref _isSelected, value);
+        set
+        {
+            if (!SetProperty(ref _isSelected, value))
+                return;
+
+            SelectionChanged?.Invoke();
+            CommandManager.InvalidateRequerySuggested();
+        }
     }
 
     public string AssetNo => Asset.AssetNo;

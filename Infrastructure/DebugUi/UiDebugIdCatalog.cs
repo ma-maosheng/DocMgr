@@ -122,6 +122,7 @@ namespace DocMgr.Infrastructure.DebugUi
             // HD Dialogs
             Add<HardDiskMediumEditDialog>("HD-MED-ED", "硬盘介质编辑");
             Add<HardDiskMediumSelectionDialog>("HD-MED-PICK", "硬盘介质选择");
+            Add<LocalPhysicalDiskPickerDialog>("HD-MED-HW", "本机硬盘选择");
             Add<HardDiskMediaOutboundApplicationEditDialog>("HD-OB-ED", "硬盘出库申请编辑");
             Add<HardDiskMediaApplicationViewDialog>("HD-OB-VW", "硬盘出库申请查看");
             Add<HardDiskMediaApprovalEditDialog>("HD-OB-APV-ED", "硬盘出库审批编辑");

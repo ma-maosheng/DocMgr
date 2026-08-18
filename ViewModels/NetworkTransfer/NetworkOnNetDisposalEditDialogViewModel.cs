@@ -23,10 +23,14 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private readonly IUserContextService _userContextService;
         private NetworkOnNetDisposalRecord _record;
         private bool _hasCommittedChanges;
+        private bool _suppressReviewSignerPersist;
         private string _disposalNo = string.Empty;
         private string _reason = string.Empty;
         private string _remark = string.Empty;
-        private string _approvalOpinion = "同意";
+        private string _archiveRoomHead = string.Empty;
+        private DateTime? _archiveRoomHeadDate;
+        private string _archiveDeputyPresident = string.Empty;
+        private DateTime? _archiveDeputyPresidentDate;
         private string _batchReason = NetworkTransferDomainValues.DisposalReasonExpired;
         private string _batchMethod = NetworkTransferDomainValues.DisposalMethodDelete;
         private string _uploadCategory = NetworkTransferDomainValues.AttachmentCategorySignedForm;
@@ -48,7 +52,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             RefreshCandidatesCommand = new RelayCommand(async _ => await LoadCandidatesAsync(), _ => CanEditHeader);
             ViewAssetDetailCommand = new RelayCommand(async item => await ViewAssetDetailAsync(item), item =>
                 NetworkOnNetAssetDetailTextSupport.Resolve(item, ResolveCurrentAsset()) != null);
-            AddSelectedCommand = new RelayCommand(_ => AddSelected(), _ => CanEditHeader && AvailableAssets.Any(a => a.IsSelected));
+            AddSelectedCommand = new RelayCommand(_ => AddSelected(), _ => CanAddSelected);
             RemoveItemCommand = new RelayCommand(item => RemoveItem(item as NetworkOnNetDisposalItemRow),
                 item => CanEditHeader && item is NetworkOnNetDisposalItemRow);
             ApplyBatchToItemsCommand = new RelayCommand(_ => ApplyBatchToItems(), _ => CanEditHeader);
@@ -105,6 +109,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
             _record.Status == NetworkOnNetDisposalRecord.StatusDraft
             && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
         public bool CanSubmit => CanEditHeader && Items.Count > 0;
+        /// <summary>草稿且至少勾选一条候选时，可加入明细。</summary>
+        public bool CanAddSelected => CanEditHeader && AvailableAssets.Any(item => item.IsSelected);
         /// <summary>已提交及之后（非撤回）可打印签批单。</summary>
         public bool CanPrint =>
             _record.Id > 0
@@ -123,11 +129,38 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public bool CanComplete =>
             _record.Status == NetworkOnNetDisposalRecord.StatusSignedUploaded
             && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+        /// <summary>已审批后可改审核审批人姓名。</summary>
+        public bool CanEditReviewSigners =>
+            _record.Status is NetworkOnNetDisposalRecord.StatusApproved or NetworkOnNetDisposalRecord.StatusSignedUploaded
+            && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
 
         public string DisposalNo { get => _disposalNo; set => SetProperty(ref _disposalNo, value); }
         public string Reason { get => _reason; set => SetProperty(ref _reason, value); }
         public string Remark { get => _remark; set => SetProperty(ref _remark, value); }
-        public string ApprovalOpinion { get => _approvalOpinion; set => SetProperty(ref _approvalOpinion, value); }
+        /// <summary>资料室负责人姓名（审批通过后自动填写，可改）。</summary>
+        public string ArchiveRoomHead
+        {
+            get => _archiveRoomHead;
+            set
+            {
+                if (!SetProperty(ref _archiveRoomHead, value ?? string.Empty))
+                    return;
+                _ = PersistReviewSignersAsync();
+            }
+        }
+        public string ArchiveRoomHeadDateDisplay => FormatDate(_archiveRoomHeadDate);
+        /// <summary>分管资料副院长姓名（审批通过后自动填写，可改）。</summary>
+        public string ArchiveDeputyPresident
+        {
+            get => _archiveDeputyPresident;
+            set
+            {
+                if (!SetProperty(ref _archiveDeputyPresident, value ?? string.Empty))
+                    return;
+                _ = PersistReviewSignersAsync();
+            }
+        }
+        public string ArchiveDeputyPresidentDateDisplay => FormatDate(_archiveDeputyPresidentDate);
         public string BatchReason { get => _batchReason; set => SetProperty(ref _batchReason, value); }
         public string BatchMethod { get => _batchMethod; set => SetProperty(ref _batchMethod, value); }
         public string UploadCategory { get => _uploadCategory; set => SetProperty(ref _uploadCategory, value); }
@@ -141,6 +174,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public RelayCommand SubmitCommand { get; }
         /// <summary>打开签批单打印预览。</summary>
         public RelayCommand PrintCommand { get; }
+        /// <summary>提交后审批通过，并自动填写审核审批姓名与日期。</summary>
         public RelayCommand ApproveCommand { get; }
         public RelayCommand ConfirmUploadCommand { get; }
         public RelayCommand UploadAttachmentCommand { get; }
@@ -173,16 +207,34 @@ namespace DocMgr.ViewModels.NetworkTransfer
             DisposalNo = _record.DisposalNo;
             Reason = _record.Reason;
             Remark = _record.Remark;
-            RebuildItemsFromRecord();
-            OnPropertyChanged(nameof(WindowTitle));
-            OnPropertyChanged(nameof(StatusDisplay));
-            OnPropertyChanged(nameof(CanEditHeader));
-            OnPropertyChanged(nameof(CanPrint));
-            OnPropertyChanged(nameof(CanApprove));
-            OnPropertyChanged(nameof(CanConfirmUpload));
-            OnPropertyChanged(nameof(CanUploadAttachment));
-            OnPropertyChanged(nameof(CanComplete));
-            NotifyItemListsChanged();
+            _suppressReviewSignerPersist = true;
+            try
+            {
+                _archiveRoomHead = _record.ArchiveRoomHead;
+                _archiveRoomHeadDate = _record.ArchiveRoomHeadDate;
+                _archiveDeputyPresident = _record.ArchiveDeputyPresident;
+                _archiveDeputyPresidentDate = _record.ArchiveDeputyPresidentDate;
+                RebuildItemsFromRecord();
+                OnPropertyChanged(nameof(WindowTitle));
+                OnPropertyChanged(nameof(StatusDisplay));
+                OnPropertyChanged(nameof(CanEditHeader));
+                OnPropertyChanged(nameof(CanPrint));
+                OnPropertyChanged(nameof(CanApprove));
+                OnPropertyChanged(nameof(CanConfirmUpload));
+                OnPropertyChanged(nameof(CanUploadAttachment));
+                OnPropertyChanged(nameof(CanComplete));
+                OnPropertyChanged(nameof(CanEditReviewSigners));
+                OnPropertyChanged(nameof(CanAddSelected));
+                OnPropertyChanged(nameof(ArchiveRoomHead));
+                OnPropertyChanged(nameof(ArchiveRoomHeadDateDisplay));
+                OnPropertyChanged(nameof(ArchiveDeputyPresident));
+                OnPropertyChanged(nameof(ArchiveDeputyPresidentDateDisplay));
+                NotifyItemListsChanged();
+            }
+            finally
+            {
+                _suppressReviewSignerPersist = false;
+            }
         }
 
         private void RebuildItemsFromRecord()
@@ -222,9 +274,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
             var list = await _service.GetSelectableDisposalAssetsAsync(_record.Id > 0 ? _record.Id : null);
             HashSet<int> selectedIds = Items.Select(row => row.OnNetAssetId).ToHashSet();
             int? keepSelectedId = SelectedAsset?.Asset.Id;
-            AvailableAssets.Clear();
+            ClearAvailableAssets();
             foreach (var asset in list.Where(item => !selectedIds.Contains(item.Id)))
-                AvailableAssets.Add(new NetworkOnNetAssetCandidate(asset));
+                AttachAvailableAsset(new NetworkOnNetAssetCandidate(asset));
             SelectedAsset = keepSelectedId is int id
                 ? AvailableAssets.FirstOrDefault(item => item.Asset.Id == id)
                 : null;
@@ -263,7 +315,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     continue;
 
                 Items.Add(NetworkOnNetDisposalItemRow.FromCandidate(candidate, BatchReason, BatchMethod));
-                AvailableAssets.Remove(candidate);
+                DetachAvailableAsset(candidate);
             }
 
             SelectedAsset = AvailableAssets.FirstOrDefault(item => item.IsSelected);
@@ -286,7 +338,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             if (AvailableAssets.Any(item => item.Asset.Id == row.OnNetAssetId))
                 return;
 
-            AvailableAssets.Insert(0, row.ToCandidate());
+            AttachAvailableAsset(row.ToCandidate(), insertAtFront: true);
         }
 
         private void ApplyBatchToItems()
@@ -317,6 +369,38 @@ namespace DocMgr.ViewModels.NetworkTransfer
             OnPropertyChanged(nameof(AvailableAssetsTitle));
             OnPropertyChanged(nameof(SelectedItemsTitle));
             OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(CanAddSelected));
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void AttachAvailableAsset(NetworkOnNetAssetCandidate candidate, bool insertAtFront = false)
+        {
+            candidate.SelectionChanged += OnCandidateSelectionChanged;
+            if (AvailableAssets.Contains(candidate))
+                return;
+
+            if (insertAtFront)
+                AvailableAssets.Insert(0, candidate);
+            else
+                AvailableAssets.Add(candidate);
+        }
+
+        private void DetachAvailableAsset(NetworkOnNetAssetCandidate candidate)
+        {
+            candidate.SelectionChanged -= OnCandidateSelectionChanged;
+            AvailableAssets.Remove(candidate);
+        }
+
+        private void ClearAvailableAssets()
+        {
+            foreach (var candidate in AvailableAssets)
+                candidate.SelectionChanged -= OnCandidateSelectionChanged;
+            AvailableAssets.Clear();
+        }
+
+        private void OnCandidateSelectionChanged()
+        {
+            OnPropertyChanged(nameof(CanAddSelected));
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -393,6 +477,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             try
             {
+                await PersistReviewSignersAsync();
                 NetworkOnNetDisposalPrintData data = await _service.BuildDisposalPrintDataAsync(_record.Id);
                 FlowDocument document = NetworkOnNetDisposalPrintDocumentFactory.Create(data);
                 var previewWindow = new PrintPreviewWindow(document)
@@ -418,18 +503,44 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             try
             {
-                await _service.ApproveDisposalAsync(_record.Id, ApprovalOpinion, RequireUser());
+                if (!_dialogService.ShowConfirm("确认审批通过？将自动填写资料室负责人、分管资料副院长的姓名与日期。"))
+                    return;
+
+                await _service.ApproveDisposalAsync(_record.Id, RequireUser());
                 _hasCommittedChanges = true;
-                _dialogService.ShowMessage("审批已通过。");
+                _dialogService.ShowMessage("审批已通过，审核审批姓名已填写，可按实际签字人修改。");
                 await ReloadAsync();
             }
             catch (Exception ex) { _dialogService.ShowError(ex.Message); }
+        }
+
+        private static string FormatDate(DateTime? value)
+            => value.HasValue ? value.Value.ToString("yyyy-MM-dd") : "—";
+
+        private async Task PersistReviewSignersAsync()
+        {
+            if (_suppressReviewSignerPersist || !CanEditReviewSigners || _record.Id <= 0)
+                return;
+
+            try
+            {
+                await _service.UpdateDisposalReviewSignersAsync(
+                    _record.Id, _archiveRoomHead, _archiveDeputyPresident, RequireUser());
+                _hasCommittedChanges = true;
+                _record.ArchiveRoomHead = _archiveRoomHead.Trim();
+                _record.ArchiveDeputyPresident = _archiveDeputyPresident.Trim();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
         }
 
         private async Task ConfirmUploadAsync()
         {
             try
             {
+                await PersistReviewSignersAsync();
                 await _service.ConfirmDisposalReadyForUploadAsync(_record.Id, RequireUser());
                 _hasCommittedChanges = true;
                 _dialogService.ShowMessage("已确认可上传签批单。");
@@ -442,6 +553,25 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             try
             {
+                await PersistReviewSignersAsync();
+                await ReloadAttachmentsAsync();
+
+                IReadOnlyList<string> validationErrors = NetworkOnNetDisposalValidationSupport.ValidateForComplete(
+                    Reason,
+                    BuildItems(),
+                    ArchiveRoomHead,
+                    _archiveRoomHeadDate,
+                    ArchiveDeputyPresident,
+                    _archiveDeputyPresidentDate,
+                    Attachments.ToList());
+                if (validationErrors.Count > 0)
+                {
+                    _dialogService.ShowError(
+                        "办结前信息完整性校验未通过：" + Environment.NewLine + Environment.NewLine
+                        + string.Join(Environment.NewLine, validationErrors));
+                    return;
+                }
+
                 await _service.CompleteDisposalAsync(_record.Id, RequireUser());
                 _hasCommittedChanges = true;
                 _dialogService.ShowMessage("处置单已办结。");

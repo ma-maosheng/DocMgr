@@ -3,7 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:nt="clr-namespace:DocMgr.Views.NetworkTransfer"
         Width="1200"
+        MinHeight="760"
         Height="820"
+        Loaded="OnLoaded"
+        SizeChanged="OnSizeChanged"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResizeWithGrip"
         Background="#F5F7FA">
@@ -25,12 +28,13 @@
 
     <StackPanel Grid.Row="0" Margin="0,0,0,12">
       <TextBlock Text="{Binding WindowTitle, Mode=OneWay}" FontSize="18" FontWeight="Bold"/>
-      <TextBlock Text="在网数据处置：选择在网对象，填写原因与方式后提交；提交后打印签批单并线下签字，再审批办结。"
+      <TextBlock Text="在网数据处置：选择在网对象，填写原因与方式后提交；提交后打印签批单，再审批通过自动填写审核审批信息。"
                  Margin="0,6,0,0" Foreground="#666" TextWrapping="Wrap"/>
     </StackPanel>
 
     <Border Grid.Row="1" BorderBrush="#D8E2EC" BorderThickness="1" CornerRadius="4" Background="White">
-      <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="10">
+      <ScrollViewer x:Name="ContentScrollViewer"
+                    HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="10">
         <StackPanel Margin="12" Orientation="Vertical">
 
           <GroupBox Header="1. 基本信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
@@ -87,21 +91,52 @@
                                             Margin="0,0,0,10"/>
 
               <TextBlock Text="{Binding SelectedItemsTitle, Mode=OneWay}" FontWeight="SemiBold" Foreground="#00796B" Margin="0,0,0,4"/>
-              <nt:NetworkOnNetAssetDataGrid ItemsSource="{Binding Items}"
+              <nt:NetworkOnNetAssetDataGrid x:Name="SelectedItemsGrid"
+                                            ItemsSource="{Binding Items}"
                                             SelectedItem="{Binding SelectedItem}"
                                             ViewDetailCommand="{Binding ViewAssetDetailCommand}"
                                             RemoveItemCommand="{Binding RemoveItemCommand}"
                                             ShowDisposalColumns="True"
-                                            Height="180"/>
+                                            MinHeight="220"/>
             </StackPanel>
           </GroupBox>
 
-          <GroupBox Header="3. 审批办结" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
-            <DockPanel>
-              <TextBlock Text="审批意见" Width="110" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
-              <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                       Text="{Binding ApprovalOpinion, UpdateSourceTrigger=PropertyChanged}"/>
-            </DockPanel>
+          <GroupBox Header="3. 审核审批" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
+            <StackPanel>
+              <TextBlock Text="提交后点击「审批通过」自动填写姓名与日期；姓名可按实际签字人修改。"
+                         Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6"/>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="8"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}">
+                  <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left" Text="资料室负责人" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}" Width="90"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                      <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                               IsEnabled="{Binding CanEditReviewSigners}"
+                               Text="{Binding ArchiveRoomHead, UpdateSourceTrigger=LostFocus}"/>
+                      <TextBlock Text="日期" Margin="10,0,4,0" VerticalAlignment="Center"/>
+                      <TextBlock Text="{Binding ArchiveRoomHeadDateDisplay, Mode=OneWay}" VerticalAlignment="Center" Foreground="#1E293B"/>
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}">
+                  <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left" Text="分管资料副院长" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}" Width="96"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                      <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                               IsEnabled="{Binding CanEditReviewSigners}"
+                               Text="{Binding ArchiveDeputyPresident, UpdateSourceTrigger=LostFocus}"/>
+                      <TextBlock Text="日期" Margin="10,0,4,0" VerticalAlignment="Center"/>
+                      <TextBlock Text="{Binding ArchiveDeputyPresidentDateDisplay, Mode=OneWay}" VerticalAlignment="Center" Foreground="#1E293B"/>
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+              </Grid>
+            </StackPanel>
           </GroupBox>
 
           <GroupBox Header="4. 附件材料" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
@@ -154,7 +189,7 @@
           <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Margin="0,0,8,0" Padding="12,6"/>
           <Button Content="提交" Command="{Binding SubmitCommand}" Margin="0,0,8,0" Padding="12,6"/>
           <Button Content="打印签批单" Command="{Binding PrintCommand}" Margin="0,0,8,0" Padding="12,6"/>
-          <Button Content="审批" Command="{Binding ApproveCommand}" Margin="0,0,8,0" Padding="12,6"/>
+          <Button Content="审批通过" Command="{Binding ApproveCommand}" Margin="0,0,8,0" Padding="12,6"/>
           <Button Content="确认可上传" Command="{Binding ConfirmUploadCommand}" Margin="0,0,8,0" Padding="12,6"/>
           <Button Content="办结" Command="{Binding CompleteCommand}" Margin="0,0,8,0" Padding="12,6"/>
         </StackPanel>

@@ -56,7 +56,22 @@
         </StackPanel>
         <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,0,0,14">
             <TextBlock Text="序列号 *" Foreground="#666666" Margin="0,0,0,5"/>
-            <TextBox Padding="6,0" Text="{Binding SerialNumber, UpdateSourceTrigger=PropertyChanged}"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                         Padding="6,0"
+                         Text="{Binding SerialNumber, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Column="1"
+                        Width="96"
+                        Margin="8,0,0,0"
+                        Content="读取本机"
+                        Style="{StaticResource FormInlineButtonStyle}"
+                        ToolTip="从本机已连接硬盘读取序列号、品牌、容量、硬盘类型、接口类型；若能解析制造年份则回填出厂日期。"
+                        Command="{Binding ReadLocalDiskCommand}"/>
+            </Grid>
         </StackPanel>
 
         <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,10,14">
@@ -69,7 +84,7 @@
         </StackPanel>
 
         <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,10,14">
-            <TextBlock Text="容量" Foreground="#666666" Margin="0,0,0,5"/>
+            <TextBlock Text="容量 *" Foreground="#666666" Margin="0,0,0,5"/>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -89,7 +104,7 @@
             </Grid>
         </StackPanel>
         <StackPanel Grid.Row="3" Grid.Column="1" Margin="10,0,0,14">
-            <TextBlock Text="接口类型" Foreground="#666666" Margin="0,0,0,5"/>
+            <TextBlock Text="接口类型 *" Foreground="#666666" Margin="0,0,0,5"/>
             <ComboBox ItemsSource="{Binding InterfaceTypeOptions}" SelectedItem="{Binding InterfaceType}"/>
         </StackPanel>
 
@@ -103,7 +118,7 @@
         </StackPanel>
 
         <StackPanel Grid.Row="5" Grid.Column="0" Margin="0,0,10,14">
-            <TextBlock Text="出厂日期" Foreground="#666666" Margin="0,0,0,5"/>
+            <TextBlock Text="出厂日期 *" Foreground="#666666" Margin="0,0,0,5"/>
             <DatePicker SelectedDate="{Binding FactoryDate}"/>
         </StackPanel>
         <StackPanel Grid.Row="5" Grid.Column="1" Margin="10,0,0,14">

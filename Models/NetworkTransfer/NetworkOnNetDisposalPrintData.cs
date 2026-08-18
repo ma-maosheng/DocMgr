@@ -21,11 +21,13 @@ namespace DocMgr.Models.NetworkTransfer
 
         public string ApplicantDept { get; init; } = string.Empty;
 
-        public string ApprovedBy { get; init; } = string.Empty;
+        public string ArchiveRoomHead { get; init; } = string.Empty;
 
-        public string ApprovedDateText { get; init; } = string.Empty;
+        public string ArchiveRoomHeadDateText { get; init; } = string.Empty;
 
-        public string ApprovalOpinion { get; init; } = string.Empty;
+        public string ArchiveDeputyPresident { get; init; } = string.Empty;
+
+        public string ArchiveDeputyPresidentDateText { get; init; } = string.Empty;
 
         public string CompletedBy { get; init; } = string.Empty;
 

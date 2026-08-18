@@ -1,9 +1,10 @@
 using DocMgr.Models.NetworkTransfer;
+using DocMgr.Models.SystemSettings;
 
 namespace DocMgr.Services.NetworkTransfer;
 
 /// <summary>
-/// 在网数据处置提交前完整性与业务逻辑校验。
+/// 在网数据处置提交/办结前完整性与业务逻辑校验。
 /// </summary>
 public static class NetworkOnNetDisposalValidationSupport
 {
@@ -44,6 +45,137 @@ public static class NetworkOnNetDisposalValidationSupport
                 "提交前校验未通过：" + Environment.NewLine + Environment.NewLine
                 + string.Join(Environment.NewLine, errors));
         }
+    }
+
+    /// <summary>
+    /// 校验办结所需的申请说明、明细、审核审批人与签批单附件，返回全部错误（空列表表示通过）。
+    /// </summary>
+    public static IReadOnlyList<string> ValidateForComplete(
+        string? reason,
+        IReadOnlyList<NetworkOnNetDisposalItem> items,
+        string? archiveRoomHead,
+        DateTime? archiveRoomHeadDate,
+        string? archiveDeputyPresident,
+        DateTime? archiveDeputyPresidentDate,
+        IReadOnlyList<SystemAttachment>? attachments,
+        IReadOnlySet<int>? existingAssetIds = null)
+    {
+        var errors = new List<string>();
+        foreach (string error in ValidateForSubmit(reason, items))
+        {
+            errors.Add(error.StartsWith("• ", StringComparison.Ordinal) ? error : "• " + error);
+        }
+
+        CollectSignerAndDateErrors(archiveRoomHead, archiveRoomHeadDate, "资料室负责人", errors);
+        CollectSignerAndDateErrors(archiveDeputyPresident, archiveDeputyPresidentDate, "分管资料副院长", errors);
+        CollectMandatoryAttachmentErrors(attachments, errors);
+
+        if (existingAssetIds != null)
+        {
+            CollectMissingAssetErrors(items, existingAssetIds, errors);
+        }
+
+        return errors;
+    }
+
+    /// <summary>
+    /// 办结校验不通过时抛出包含全部错误的异常。
+    /// </summary>
+    public static void EnsureValidForComplete(
+        string? reason,
+        IReadOnlyList<NetworkOnNetDisposalItem> items,
+        string? archiveRoomHead,
+        DateTime? archiveRoomHeadDate,
+        string? archiveDeputyPresident,
+        DateTime? archiveDeputyPresidentDate,
+        IReadOnlyList<SystemAttachment>? attachments,
+        IReadOnlySet<int>? existingAssetIds = null)
+    {
+        IReadOnlyList<string> errors = ValidateForComplete(
+            reason,
+            items,
+            archiveRoomHead,
+            archiveRoomHeadDate,
+            archiveDeputyPresident,
+            archiveDeputyPresidentDate,
+            attachments,
+            existingAssetIds);
+        if (errors.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "办结前信息完整性校验未通过：" + Environment.NewLine + Environment.NewLine
+                + string.Join(Environment.NewLine, errors));
+        }
+    }
+
+    private static void CollectSignerAndDateErrors(
+        string? signer,
+        DateTime? signedDate,
+        string roleLabel,
+        List<string> errors)
+    {
+        string name = NormalizeSignerName(signer);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            errors.Add($"• {roleLabel}姓名缺失");
+            return;
+        }
+
+        if (!signedDate.HasValue)
+        {
+            errors.Add($"• {roleLabel}日期缺失");
+        }
+    }
+
+    private static void CollectMandatoryAttachmentErrors(
+        IReadOnlyList<SystemAttachment>? attachments,
+        List<string> errors)
+    {
+        bool hasSignedForm = (attachments ?? Array.Empty<SystemAttachment>()).Any(item =>
+            string.Equals(
+                item.FileCategory?.Trim(),
+                NetworkTransferDomainValues.AttachmentCategorySignedForm,
+                StringComparison.Ordinal));
+        if (!hasSignedForm)
+        {
+            errors.Add("• 缺少「签批单」附件");
+        }
+    }
+
+    private static void CollectMissingAssetErrors(
+        IReadOnlyList<NetworkOnNetDisposalItem> items,
+        IReadOnlySet<int> existingAssetIds,
+        List<string> errors)
+    {
+        var reported = new HashSet<int>();
+        foreach (NetworkOnNetDisposalItem item in items)
+        {
+            if (item.OnNetAssetId <= 0 || !reported.Add(item.OnNetAssetId))
+            {
+                continue;
+            }
+
+            if (existingAssetIds.Contains(item.OnNetAssetId))
+            {
+                continue;
+            }
+
+            string label = ResolveAssetNo(item);
+            errors.Add(string.IsNullOrWhiteSpace(label)
+                ? "• 部分在网对象已不存在，无法办结。"
+                : $"• 在网对象「{label}」已不存在，无法办结。");
+        }
+    }
+
+    private static string NormalizeSignerName(string? name)
+    {
+        string normalized = name?.Trim() ?? string.Empty;
+        if (normalized.StartsWith("签字", StringComparison.Ordinal))
+        {
+            normalized = normalized[2..].Trim();
+        }
+
+        return normalized;
     }
 
     private static void ValidateHeader(

@@ -30,6 +30,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<ICabinetOpenLayoutService, CabinetOpenLayoutService>();
         services.AddScoped<ICabinetArchiveBoxContentService, CabinetArchiveBoxContentService>();
         services.AddScoped<IHardDiskMediaService, HardDiskMediaService>();
+        services.AddScoped<ILocalPhysicalDiskHardwareService, LocalPhysicalDiskHardwareService>();
         services.AddScoped<IHardDiskDisposalService, HardDiskDisposalService>();
         services.AddScoped<IHardDiskInventoryRegisterService, HardDiskInventoryRegisterService>();
         services.AddScoped<IArchiveInventoryRegisterService, ArchiveInventoryRegisterService>();

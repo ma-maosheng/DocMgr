@@ -32,7 +32,7 @@ public partial class NetworkOnNetAssetDataGrid : DataGrid
         typeof(ICommand),
         typeof(NetworkOnNetAssetDataGrid));
 
-    private DataGridCheckBoxColumn? _selectionColumn;
+    private DataGridTemplateColumn? _selectionColumn;
     private readonly List<DataGridColumn> _disposalColumns = new();
 
     public NetworkOnNetAssetDataGrid()
@@ -90,12 +90,22 @@ public partial class NetworkOnNetAssetDataGrid : DataGrid
                 return;
             }
 
-            _selectionColumn = new DataGridCheckBoxColumn
+            var checkBoxFactory = new FrameworkElementFactory(typeof(CheckBox));
+            checkBoxFactory.SetBinding(
+                CheckBox.IsCheckedProperty,
+                new Binding("IsSelected")
+                {
+                    Mode = BindingMode.TwoWay,
+                    UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+                });
+            checkBoxFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            checkBoxFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+            checkBoxFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(0));
+            _selectionColumn = new DataGridTemplateColumn
             {
                 Header = "选",
-                Binding = new Binding("IsSelected"),
                 Width = new DataGridLength(40),
-                IsReadOnly = false
+                CellTemplate = new DataTemplate { VisualTree = checkBoxFactory }
             };
             Columns.Insert(0, _selectionColumn);
             return;

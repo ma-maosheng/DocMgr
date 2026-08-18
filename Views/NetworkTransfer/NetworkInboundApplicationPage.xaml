@@ -9,8 +9,8 @@
     </Grid.RowDefinitions>
     <Border Style="{StaticResource ToolbarCardBorderStyle}" Padding="16,12">
       <StackPanel Orientation="Horizontal">
-        <Button Content="按目的新增入网" ToolTip="选择档外资料或存档资料入网，系统自动决定关联任务"
-                Command="{Binding AddCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="128" Margin="0,0,10,0"/>
+        <Button Content="新增入网" ToolTip="选择档外资料或存档资料入网，系统自动决定关联任务"
+                Command="{Binding AddCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
         <Button Content="打开办理" Command="{Binding OpenCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
         <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="96" Margin="0,0,16,0"/>
         <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>

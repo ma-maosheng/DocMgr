@@ -316,5 +316,15 @@ namespace DocMgr.Services.Interfaces
         /// 获取指定字段的启用域值标签。
         /// </summary>
         Task<IReadOnlyList<string>> GetDomainOptionLabelsAsync(string entityName, string fieldName);
+
+        /// <summary>
+        /// 判断序列号是否已被其他未删除硬盘占用。
+        /// </summary>
+        Task<bool> HasDuplicateSerialNumberAsync(int currentMediumId, string serialNumber);
+
+        /// <summary>
+        /// 按序列号查找已登记硬盘（含台账），排除当前正在编辑的记录。
+        /// </summary>
+        Task<HardDiskMedium?> FindRegisteredMediumBySerialNumberAsync(int currentMediumId, string serialNumber);
     }
 }

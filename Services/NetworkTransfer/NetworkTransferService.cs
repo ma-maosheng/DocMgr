@@ -20,6 +20,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     private readonly IHardDiskMediaRepository _hardDiskMediaRepository;
     private readonly IArchiveFilingSearchService _archiveFilingSearchService;
     private readonly IProjectService _projectService;
+    private readonly IUserService _userService;
 
     public NetworkTransferService(
         INetworkTransferRepository repository,
@@ -28,7 +29,8 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         IHardDiskMediaService hardDiskMediaService,
         IHardDiskMediaRepository hardDiskMediaRepository,
         IArchiveFilingSearchService archiveFilingSearchService,
-        IProjectService projectService)
+        IProjectService projectService,
+        IUserService userService)
     {
         _repository = repository;
         _businessRuleService = businessRuleService;
@@ -37,6 +39,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         _hardDiskMediaRepository = hardDiskMediaRepository;
         _archiveFilingSearchService = archiveFilingSearchService;
         _projectService = projectService;
+        _userService = userService;
     }
 
     public Task<string> GenerateNextInboundNoAsync() =>
@@ -1199,7 +1202,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         await _repository.SaveChangesAsync();
     }
 
-    public async Task ApproveDisposalAsync(int recordId, string approvalOpinion, User currentUser)
+    public async Task ApproveDisposalAsync(int recordId, User currentUser)
     {
         EnsureArchiveAdmin(currentUser);
         var existing = await _repository.GetDisposalByIdAsync(recordId, tracking: true)
@@ -1210,12 +1213,45 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅已提交状态可审批。");
         }
 
+        ArchiveDisposalDefaultApprovers approvers = ArchiveDisposalDefaultApproverSupport.Resolve(_userService.GetAllUsers());
+        if (string.IsNullOrWhiteSpace(approvers.ArchiveRoomHead)
+            || string.IsNullOrWhiteSpace(approvers.ArchiveDeputyPresident))
+        {
+            throw new InvalidOperationException("未找到资料室负责人或分管资料副院长，请先在用户管理中维护对应角色后再审批通过。");
+        }
+
         DateTime now = DateTime.Now;
         existing.ApprovedBy = ResolveUserDisplayName(currentUser);
         existing.ApprovedTime = now;
-        existing.ApprovalOpinion = approvalOpinion?.Trim() ?? string.Empty;
+        existing.ApprovalOpinion = string.Empty;
+        existing.ArchiveRoomHead = NormalizeReviewSignerName(approvers.ArchiveRoomHead);
+        existing.ArchiveRoomHeadDate = now.Date;
+        existing.ArchiveDeputyPresident = NormalizeReviewSignerName(approvers.ArchiveDeputyPresident);
+        existing.ArchiveDeputyPresidentDate = now.Date;
         existing.Status = NetworkOnNetDisposalRecord.StatusApproved;
         existing.UpdatedAt = now;
+        await _repository.SaveChangesAsync();
+    }
+
+    public async Task UpdateDisposalReviewSignersAsync(
+        int recordId,
+        string? archiveRoomHead,
+        string? archiveDeputyPresident,
+        User currentUser)
+    {
+        EnsureArchiveAdmin(currentUser);
+        var existing = await _repository.GetDisposalByIdAsync(recordId, tracking: true)
+            ?? throw new InvalidOperationException("未找到在网处置单。");
+
+        if (existing.Status is not (NetworkOnNetDisposalRecord.StatusApproved
+            or NetworkOnNetDisposalRecord.StatusSignedUploaded))
+        {
+            throw new InvalidOperationException("仅已审批或已确认可上传状态可修改审核审批人。");
+        }
+
+        existing.ArchiveRoomHead = NormalizeReviewSignerName(archiveRoomHead);
+        existing.ArchiveDeputyPresident = NormalizeReviewSignerName(archiveDeputyPresident);
+        existing.UpdatedAt = DateTime.Now;
         await _repository.SaveChangesAsync();
     }
 
@@ -1249,14 +1285,24 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("请先确认可上传并上传签批单后再办结。");
         }
 
-        await EnsureSignedAttachmentAsync(
+        var attachments = await _repository.GetAttachmentsAsync(
             NetworkTransferDomainValues.DisposalAttachmentBusinessType,
             existing.DisposalNo);
-
-        DateTime now = DateTime.Now;
         var assets = await _repository.GetOnNetAssetsByIdsAsync(
             existing.Items.Select(item => item.OnNetAssetId).ToList(),
             tracking: true);
+        HashSet<int> existingAssetIds = assets.Select(item => item.Id).ToHashSet();
+        NetworkOnNetDisposalValidationSupport.EnsureValidForComplete(
+            existing.Reason,
+            existing.Items.ToList(),
+            existing.ArchiveRoomHead,
+            existing.ArchiveRoomHeadDate,
+            existing.ArchiveDeputyPresident,
+            existing.ArchiveDeputyPresidentDate,
+            attachments,
+            existingAssetIds);
+
+        DateTime now = DateTime.Now;
         foreach (var asset in assets)
         {
             asset.LifecycleStatus = NetworkTransferDomainValues.LifecycleDisposed;
@@ -2302,6 +2348,15 @@ public sealed partial class NetworkTransferService : INetworkTransferService
 
     private static string ResolveUserDisplayName(User user) =>
         string.IsNullOrWhiteSpace(user.RealName) ? user.LoginName?.Trim() ?? string.Empty : user.RealName.Trim();
+
+    /// <summary>审核审批人只保留人名，去掉误带的「签字」前缀。</summary>
+    private static string NormalizeReviewSignerName(string? name)
+    {
+        string normalized = name?.Trim() ?? string.Empty;
+        if (normalized.StartsWith("签字", StringComparison.Ordinal))
+            normalized = normalized[2..].Trim();
+        return normalized;
+    }
 
     private static string NormalizeInboundProofMaterialNote(string? proofMaterialNote) =>
         ArchiveRegisterDomainValues.NormalizeProofMaterialNote(proofMaterialNote);

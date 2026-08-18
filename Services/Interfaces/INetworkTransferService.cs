@@ -138,7 +138,14 @@ public interface INetworkTransferService
 
     Task SubmitDisposalAsync(int recordId, User currentUser);
 
-    Task ApproveDisposalAsync(int recordId, string approvalOpinion, User currentUser);
+    Task ApproveDisposalAsync(int recordId, User currentUser);
+
+    /// <summary>已审批后更新审核审批人姓名（不含「签字」前缀）。</summary>
+    Task UpdateDisposalReviewSignersAsync(
+        int recordId,
+        string? archiveRoomHead,
+        string? archiveDeputyPresident,
+        User currentUser);
 
     Task ConfirmDisposalReadyForUploadAsync(int recordId, User currentUser);
 

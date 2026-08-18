@@ -724,6 +724,30 @@ namespace DocMgr.Services.Shared
             }
         }
 
+        public LocalPhysicalDiskInfo? ShowLocalPhysicalDiskPickerDialog()
+        {
+            var dialog = new LocalPhysicalDiskPickerDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+            var (scope, viewModel) = CreateScopedViewModel<LocalPhysicalDiskPickerDialogViewModel>();
+
+            dialog.DataContext = viewModel;
+
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            viewModel.RequestClose += HandleRequestClose;
+
+            try
+            {
+                return dialog.ShowDialog() == true ? viewModel.SelectedDisk : null;
+            }
+            finally
+            {
+                viewModel.RequestClose -= HandleRequestClose;
+                scope.Dispose();
+            }
+        }
+
         public bool ShowHardDiskMediaOutboundApplicationEditDialog(HardDiskMediaApplication applicationToEdit)
         {
             ArgumentNullException.ThrowIfNull(applicationToEdit);

@@ -114,6 +114,11 @@ public interface IHardDiskMediaRepository
 
     Task<bool> HasDuplicateSerialNumberAsync(int currentId, string serialNumber);
 
+    /// <summary>
+    /// 按序列号查找未删除硬盘（含台账），排除指定主键。
+    /// </summary>
+    Task<HardDiskMedium?> GetActiveMediumWithLedgerBySerialNumberAsync(int excludeMediumId, string serialNumber);
+
     void AddApplication(HardDiskMediaApplication application);
 
     void AddMedium(HardDiskMedium medium);

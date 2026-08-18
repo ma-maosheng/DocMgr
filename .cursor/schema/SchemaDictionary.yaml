@@ -6493,6 +6493,30 @@ tables:
         clrType: String
         needsReview: true
         aliases: []
+      ArchiveRoomHead:
+        chineseName: 资料室负责人
+        description: 审核签字人
+        clrType: String
+        needsReview: false
+        aliases: []
+      ArchiveRoomHeadDate:
+        chineseName: 资料室负责人日期
+        description: 审核日期
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ArchiveDeputyPresident:
+        chineseName: 分管资料副院长
+        description: 审批签字人
+        clrType: String
+        needsReview: false
+        aliases: []
+      ArchiveDeputyPresidentDate:
+        chineseName: 分管资料副院长日期
+        description: 审批日期
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
       ConfirmedBy:
         chineseName: 未映射字段
         description: ''

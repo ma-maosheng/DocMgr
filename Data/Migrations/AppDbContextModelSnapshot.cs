@@ -1829,6 +1829,20 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("ApprovedTime")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ArchiveDeputyPresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveDeputyPresidentDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArchiveRoomHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveRoomHeadDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("TEXT");
 
