@@ -91,5 +91,21 @@ namespace DocMgr.Models.NetworkTransfer
         /// <summary>完整存储地址：物理地址 · 服务器路径 · 资料相对路径。</summary>
         [NotMapped]
         public string FullStorageAddress { get; set; } = string.Empty;
+
+        /// <summary>来源入网/出网申请单号（列表展示）。</summary>
+        [NotMapped]
+        public string ApplicationNo { get; set; } = string.Empty;
+
+        /// <summary>数据组织形式：目录型 / 文件型（列表展示）。</summary>
+        [NotMapped]
+        public string DataOrganizationForm { get; set; } = string.Empty;
+
+        /// <summary>目录或文件个数（列表展示）。</summary>
+        [NotMapped]
+        public string EntryCountDisplay { get; set; } = string.Empty;
+
+        /// <summary>关联电子介质明细 Id，供查看目录/文件详情。</summary>
+        [NotMapped]
+        public int? ElectronicMediaItemId { get; set; }
     }
 }

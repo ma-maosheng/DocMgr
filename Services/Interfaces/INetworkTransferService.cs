@@ -120,6 +120,12 @@ public interface INetworkTransferService
 
     Task<IReadOnlyList<NetworkOnNetAsset>> GetSelectableDisposalAssetsAsync(int? currentDisposalRecordId = null);
 
+    /// <summary>按 Id 读取在网对象并补全列表展示字段，供已选明细回填。</summary>
+    Task<IReadOnlyList<NetworkOnNetAsset>> GetOnNetAssetsByIdsAsync(IReadOnlyCollection<int> assetIds);
+
+    /// <summary>读取在网对象关联的目录/文件明细，供查看详情。</summary>
+    Task<IReadOnlyList<ElectronicMediaItemEntryDisplayItem>> GetOnNetAssetContentEntriesAsync(int mediaItemId);
+
     Task<NetworkOnNetDisposalRecord> CreateDisposalDraftAsync(
         NetworkOnNetDisposalRecord draft,
         IReadOnlyList<NetworkOnNetDisposalItem> items,
@@ -137,6 +143,12 @@ public interface INetworkTransferService
     Task ConfirmDisposalReadyForUploadAsync(int recordId, User currentUser);
 
     Task CompleteDisposalAsync(int recordId, User currentUser);
+
+    /// <summary>组装在网处置签批单打印数据；须已提交且未撤回。</summary>
+    Task<NetworkOnNetDisposalPrintData> BuildDisposalPrintDataAsync(int recordId);
+
+    /// <summary>记录签批单打印次数。</summary>
+    Task RecordDisposalPrintAsync(int recordId);
 
     Task WithdrawDisposalAsync(int recordId, string? reason, User currentUser);
 

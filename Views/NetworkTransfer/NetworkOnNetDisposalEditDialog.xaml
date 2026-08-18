@@ -1,6 +1,7 @@
 ﻿<Window x:Class="DocMgr.Views.NetworkTransfer.NetworkOnNetDisposalEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:nt="clr-namespace:DocMgr.Views.NetworkTransfer"
         Width="1200"
         Height="820"
         WindowStartupLocation="CenterOwner"
@@ -24,7 +25,7 @@
 
     <StackPanel Grid.Row="0" Margin="0,0,0,12">
       <TextBlock Text="{Binding WindowTitle, Mode=OneWay}" FontSize="18" FontWeight="Bold"/>
-      <TextBlock Text="在网数据处置：选择在网对象，填写原因与方式后提交审批办结。"
+      <TextBlock Text="在网数据处置：选择在网对象，填写原因与方式后提交；提交后打印签批单并线下签字，再审批办结。"
                  Margin="0,6,0,0" Foreground="#666" TextWrapping="Wrap"/>
     </StackPanel>
 
@@ -59,52 +60,39 @@
                 <ComboBox Width="140"
                           Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
                           ItemsSource="{Binding ReasonOptions}"
-                          SelectedItem="{Binding BatchReason}"
-                          IsEnabled="{Binding CanEditHeader}"/>
+                          SelectedItem="{Binding BatchReason, UpdateSourceTrigger=PropertyChanged}"
+                          IsEnabled="{Binding CanEditHeader}"
+                          ToolTip="加入明细时写入；也可点「赋值」覆盖已选明细"/>
                 <TextBlock Text="批量方式" Width="70" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
                 <ComboBox Width="140"
                           Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
                           ItemsSource="{Binding MethodOptions}"
-                          SelectedItem="{Binding BatchMethod}"
-                          IsEnabled="{Binding CanEditHeader}" Margin="0,0,12,0"/>
+                          SelectedItem="{Binding BatchMethod, UpdateSourceTrigger=PropertyChanged}"
+                          IsEnabled="{Binding CanEditHeader}"
+                          ToolTip="加入明细时写入；也可点「赋值」覆盖已选明细"
+                          Margin="0,0,12,0"/>
+                <Button Content="赋值" Command="{Binding ApplyBatchToItemsCommand}" Padding="12,6" Margin="0,0,8,0"
+                        ToolTip="将当前原因和方式写入全部已选明细"/>
                 <Button Content="刷新候选" Command="{Binding RefreshCandidatesCommand}" Padding="12,6" Margin="0,0,8,0"/>
+                <Button Content="查看详情" Command="{Binding ViewAssetDetailCommand}" Padding="12,6" Margin="0,0,8,0"/>
                 <Button Content="加入明细" Command="{Binding AddSelectedCommand}" Padding="12,6"/>
               </StackPanel>
 
-              <TextBlock Text="候选在网对象" FontWeight="SemiBold" Foreground="#00796B" Margin="0,0,0,4"/>
-              <DataGrid ItemsSource="{Binding AvailableAssets}" Height="110" AutoGenerateColumns="False"
-                        CanUserAddRows="False" HeadersVisibility="Column"
-                        AlternatingRowBackground="#F8FAFC" Margin="0,0,0,10">
-                <DataGrid.Columns>
-                  <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected}" Width="40"/>
-                  <DataGridTextColumn Header="候选在网对象" Binding="{Binding Display, Mode=OneWay}" Width="*"/>
-                </DataGrid.Columns>
-              </DataGrid>
+              <TextBlock Text="{Binding AvailableAssetsTitle, Mode=OneWay}" FontWeight="SemiBold" Foreground="#00796B" Margin="0,0,0,4"/>
+              <nt:NetworkOnNetAssetDataGrid ItemsSource="{Binding AvailableAssets}"
+                                            SelectedItem="{Binding SelectedAsset}"
+                                            ViewDetailCommand="{Binding ViewAssetDetailCommand}"
+                                            ShowSelectionColumn="True"
+                                            Height="200"
+                                            Margin="0,0,0,10"/>
 
-              <TextBlock Text="已选明细" FontWeight="SemiBold" Foreground="#00796B" Margin="0,0,0,4"/>
-              <DataGrid ItemsSource="{Binding Items}" Height="180" AutoGenerateColumns="False"
-                        CanUserAddRows="False" HeadersVisibility="Column"
-                        AlternatingRowBackground="#F8FAFC">
-                <DataGrid.Columns>
-                  <DataGridTextColumn Header="编号" Binding="{Binding AssetNo, Mode=OneWay}" Width="120"/>
-                  <DataGridTextColumn Header="名称" Binding="{Binding AssetName, Mode=OneWay}" Width="140"/>
-                  <DataGridComboBoxColumn Header="原因" Width="120"
-                                          ItemsSource="{Binding DataContext.ReasonOptions, RelativeSource={RelativeSource AncestorType=Window}}"
-                                          SelectedItemBinding="{Binding DisposalReason}"/>
-                  <DataGridComboBoxColumn Header="方式" Width="120"
-                                          ItemsSource="{Binding DataContext.MethodOptions, RelativeSource={RelativeSource AncestorType=Window}}"
-                                          SelectedItemBinding="{Binding DispositionMethod}"/>
-                  <DataGridTemplateColumn Width="70">
-                    <DataGridTemplateColumn.CellTemplate>
-                      <DataTemplate>
-                        <Button Content="移除" Padding="8,2"
-                                Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                CommandParameter="{Binding}"/>
-                      </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                  </DataGridTemplateColumn>
-                </DataGrid.Columns>
-              </DataGrid>
+              <TextBlock Text="{Binding SelectedItemsTitle, Mode=OneWay}" FontWeight="SemiBold" Foreground="#00796B" Margin="0,0,0,4"/>
+              <nt:NetworkOnNetAssetDataGrid ItemsSource="{Binding Items}"
+                                            SelectedItem="{Binding SelectedItem}"
+                                            ViewDetailCommand="{Binding ViewAssetDetailCommand}"
+                                            RemoveItemCommand="{Binding RemoveItemCommand}"
+                                            ShowDisposalColumns="True"
+                                            Height="180"/>
             </StackPanel>
           </GroupBox>
 
@@ -165,6 +153,7 @@
         <StackPanel Orientation="Horizontal">
           <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Margin="0,0,8,0" Padding="12,6"/>
           <Button Content="提交" Command="{Binding SubmitCommand}" Margin="0,0,8,0" Padding="12,6"/>
+          <Button Content="打印签批单" Command="{Binding PrintCommand}" Margin="0,0,8,0" Padding="12,6"/>
           <Button Content="审批" Command="{Binding ApproveCommand}" Margin="0,0,8,0" Padding="12,6"/>
           <Button Content="确认可上传" Command="{Binding ConfirmUploadCommand}" Margin="0,0,8,0" Padding="12,6"/>
           <Button Content="办结" Command="{Binding CompleteCommand}" Margin="0,0,8,0" Padding="12,6"/>

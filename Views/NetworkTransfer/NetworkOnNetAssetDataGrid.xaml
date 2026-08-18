@@ -1,0 +1,55 @@
+<DataGrid x:Class="DocMgr.Views.NetworkTransfer.NetworkOnNetAssetDataGrid"
+          xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+          AutoGenerateColumns="False"
+          CanUserAddRows="False"
+          HeadersVisibility="Column"
+          HorizontalScrollBarVisibility="Auto"
+          AlternatingRowBackground="#F8FAFC">
+  <DataGrid.Resources>
+    <DataTemplate x:Key="DisposalReasonCellTemplate">
+      <ComboBox ItemsSource="{Binding DataContext.ReasonOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                SelectedItem="{Binding DisposalReason, UpdateSourceTrigger=PropertyChanged}"
+                IsEnabled="{Binding DataContext.CanEditHeader, RelativeSource={RelativeSource AncestorType=Window}}"
+                Style="{StaticResource FormComboBoxStyle}"/>
+    </DataTemplate>
+    <DataTemplate x:Key="DisposalMethodCellTemplate">
+      <ComboBox ItemsSource="{Binding DataContext.MethodOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                SelectedItem="{Binding DispositionMethod, UpdateSourceTrigger=PropertyChanged}"
+                IsEnabled="{Binding DataContext.CanEditHeader, RelativeSource={RelativeSource AncestorType=Window}}"
+                Style="{StaticResource FormComboBoxStyle}"/>
+    </DataTemplate>
+    <DataTemplate x:Key="DisposalActionsCellTemplate">
+      <StackPanel Orientation="Horizontal">
+        <Button Content="详情" Padding="8,2" Margin="0,0,4,0"
+                Command="{Binding ViewDetailCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                CommandParameter="{Binding}"/>
+        <Button Content="移除" Padding="8,2"
+                Command="{Binding RemoveItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                CommandParameter="{Binding}"/>
+      </StackPanel>
+    </DataTemplate>
+  </DataGrid.Resources>
+  <DataGrid.Columns>
+    <DataGridTextColumn Header="资产编号" Binding="{Binding AssetNo, Mode=OneWay}" Width="130" IsReadOnly="True"/>
+    <DataGridTextColumn Header="申请单号" Binding="{Binding ApplicationNo, Mode=OneWay}" Width="150" IsReadOnly="True"/>
+    <DataGridTextColumn Header="来源" Binding="{Binding OriginKind, Mode=OneWay}" Width="80" IsReadOnly="True"/>
+    <DataGridTextColumn Header="申请部门" Binding="{Binding ApplicantDept, Mode=OneWay}" Width="100" IsReadOnly="True"/>
+    <DataGridTextColumn Header="年度" Binding="{Binding Year, Mode=OneWay}" Width="60" IsReadOnly="True"/>
+    <DataGridTextColumn Header="项目名称" Binding="{Binding ProjectName, Mode=OneWay}" Width="140" IsReadOnly="True"/>
+    <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="160" IsReadOnly="True"/>
+    <DataGridTextColumn Header="资料子项" Binding="{Binding AssetName, Mode=OneWay}" Width="160" IsReadOnly="True"/>
+    <DataGridTextColumn Header="提供部门" Binding="{Binding ProvideUnit, Mode=OneWay}" Width="100" IsReadOnly="True"/>
+    <DataGridTextColumn Header="资料存储区" Binding="{Binding DepartmentName, Mode=OneWay}" Width="110" IsReadOnly="True"/>
+    <DataGridTextColumn Header="物理地址" Binding="{Binding PhysicalPath, Mode=OneWay}" Width="180" IsReadOnly="True"/>
+    <DataGridTextColumn Header="服务器路径" Binding="{Binding ServerPath, Mode=OneWay}" Width="140" IsReadOnly="True"/>
+    <DataGridTextColumn Header="资料相对路径" Binding="{Binding MaterialPath, Mode=OneWay}" Width="180" IsReadOnly="True"/>
+    <DataGridTextColumn Header="完整存储路径" Binding="{Binding FullStorageAddress, Mode=OneWay}" Width="260" IsReadOnly="True"/>
+    <DataGridTextColumn Header="类别" Binding="{Binding AssetKind, Mode=OneWay}" Width="80" IsReadOnly="True"/>
+    <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevel, Mode=OneWay}" Width="70" IsReadOnly="True"/>
+    <DataGridTextColumn Header="组织形式" Binding="{Binding DataOrganizationForm, Mode=OneWay}" Width="80" IsReadOnly="True"/>
+    <DataGridTextColumn Header="个数" Binding="{Binding EntryCountDisplay, Mode=OneWay}" Width="60" IsReadOnly="True"/>
+    <DataGridTextColumn Header="数据量" Binding="{Binding DataSizeText, Mode=OneWay}" Width="80" IsReadOnly="True"/>
+    <DataGridTextColumn Header="生命周期" Binding="{Binding LifecycleStatus, Mode=OneWay}" Width="80" IsReadOnly="True"/>
+  </DataGrid.Columns>
+</DataGrid>

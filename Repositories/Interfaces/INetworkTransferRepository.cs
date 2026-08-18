@@ -77,6 +77,16 @@ public interface INetworkTransferRepository
 
     Task<Dictionary<int, YearlyArchiveFilingFact>> GetFilingFactsByIdsAsync(IReadOnlyCollection<int> filingFactIds);
 
+    /// <summary>按介质明细 Id 或入网/出网单 Id 读取电子组织形式与目录/文件个数。</summary>
+    Task<List<NetworkOnNetElectronicMediaSnapshot>> GetElectronicMediaSnapshotsAsync(
+        IReadOnlyCollection<int> mediaItemIds,
+        IReadOnlyCollection<int> inboundRecordIds,
+        IReadOnlyCollection<int> outboundRecordIds);
+
+    /// <summary>读取指定电子介质明细的目录/文件条目。</summary>
+    Task<List<YearlyArchiveRegisterElectronicMediaItemEntry>> GetElectronicMediaEntriesByMediaItemIdAsync(
+        int mediaItemId);
+
     Task<YearlyArchiveSearchResultSet?> GetElectronicSearchResultSetAsync(int resultSetId);
 
     Task<List<SystemAttachment>> GetAttachmentsAsync(string businessType, string businessNo);

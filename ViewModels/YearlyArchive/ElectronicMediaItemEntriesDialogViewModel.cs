@@ -18,7 +18,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             string summaryText)
         {
             Title = string.IsNullOrWhiteSpace(title) ? "目录/文件明细" : title.Trim();
-            SummaryText = summaryText;
+            SummaryText = summaryText ?? string.Empty;
             _allEntries = entries ?? Array.Empty<ElectronicMediaItemEntryDisplayItem>();
             PageEntries = new ObservableCollection<ElectronicMediaItemEntryDisplayItem>();
 
@@ -27,11 +27,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             NextPageCommand = new RelayCommand(_ => GoToPage(CurrentPage + 1), _ => CanGoNext);
             LastPageCommand = new RelayCommand(_ => GoToPage(TotalPages), _ => CanGoNext);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke());
+            LoadCurrentPage();
         }
 
         public string Title { get; }
 
         public string SummaryText { get; }
+
+        public bool HasSummaryText => !string.IsNullOrWhiteSpace(SummaryText);
 
         public ObservableCollection<ElectronicMediaItemEntryDisplayItem> PageEntries { get; }
 

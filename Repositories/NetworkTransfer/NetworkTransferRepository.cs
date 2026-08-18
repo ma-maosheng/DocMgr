@@ -309,9 +309,14 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
             string status = lifecycleStatus.Trim();
             if (string.Equals(status, NetworkTransferDomainValues.LifecycleOnNet, StringComparison.Ordinal))
             {
+                string[] onNetStatuses = NetworkTransferDomainValues.OnNetLifecycleStatuses;
+                query = query.Where(item => onNetStatuses.Contains(item.LifecycleStatus));
+            }
+            else if (string.Equals(status, NetworkTransferDomainValues.LifecycleOutbounded, StringComparison.Ordinal))
+            {
                 query = query.Where(item =>
-                    item.LifecycleStatus == NetworkTransferDomainValues.LifecycleOnNet
-                    || item.LifecycleStatus == NetworkTransferDomainValues.LifecycleOutbounded);
+                    item.LifecycleStatus == NetworkTransferDomainValues.LifecycleOutbounded
+                    || item.LifecycleStatus == NetworkTransferDomainValues.LegacyLifecycleOutbounded);
             }
             else
             {
@@ -426,11 +431,12 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
             excludeOutboundRecordId: currentOutboundRecordId,
             excludeDisposalRecordId: null);
 
+        string[] onNetStatuses = NetworkTransferDomainValues.OnNetLifecycleStatuses;
         return await _dbContext.NetworkOnNetAssets
             .AsNoTracking()
             .Where(item =>
                 item.OriginKind == NetworkTransferDomainValues.OriginKindProcessedOutput
-                && item.LifecycleStatus == NetworkTransferDomainValues.LifecycleOnNet
+                && onNetStatuses.Contains(item.LifecycleStatus)
                 && !lockedIds.Contains(item.Id))
             .OrderByDescending(item => item.RegisteredAt)
             .ThenByDescending(item => item.Id)
@@ -443,10 +449,11 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
             excludeOutboundRecordId: null,
             excludeDisposalRecordId: currentDisposalRecordId);
 
+        string[] onNetStatuses = NetworkTransferDomainValues.OnNetLifecycleStatuses;
         return await _dbContext.NetworkOnNetAssets
             .AsNoTracking()
             .Where(item =>
-                item.LifecycleStatus == NetworkTransferDomainValues.LifecycleOnNet
+                onNetStatuses.Contains(item.LifecycleStatus)
                 && !lockedIds.Contains(item.Id))
             .OrderByDescending(item => item.RegisteredAt)
             .ThenByDescending(item => item.Id)
@@ -500,6 +507,55 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
             .ToListAsync();
 
         return facts.ToDictionary(fact => fact.Id);
+    }
+
+    public async Task<List<NetworkOnNetElectronicMediaSnapshot>> GetElectronicMediaSnapshotsAsync(
+        IReadOnlyCollection<int> mediaItemIds,
+        IReadOnlyCollection<int> inboundRecordIds,
+        IReadOnlyCollection<int> outboundRecordIds)
+    {
+        HashSet<int> itemIds = (mediaItemIds ?? []).Where(id => id > 0).ToHashSet();
+        HashSet<int> inboundIds = (inboundRecordIds ?? []).Where(id => id > 0).ToHashSet();
+        HashSet<int> outboundIds = (outboundRecordIds ?? []).Where(id => id > 0).ToHashSet();
+        if (itemIds.Count == 0 && inboundIds.Count == 0 && outboundIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await (
+            from item in _dbContext.YearlyArchiveRegisterMediaItems.AsNoTracking()
+            join media in _dbContext.YearlyArchiveRegisterMedias.AsNoTracking()
+                on item.YearlyArchiveRegisterMediaId equals media.Id
+            join detail in _dbContext.YearlyArchiveRegisterElectronicMediaItemDetails.AsNoTracking()
+                on item.Id equals detail.MediaItemId
+            where itemIds.Contains(item.Id)
+                  || (media.NetworkInboundRecordId.HasValue && inboundIds.Contains(media.NetworkInboundRecordId.Value))
+                  || (media.NetworkOutboundRecordId.HasValue && outboundIds.Contains(media.NetworkOutboundRecordId.Value))
+            select new NetworkOnNetElectronicMediaSnapshot
+            {
+                MediaItemId = item.Id,
+                InboundRecordId = media.NetworkInboundRecordId,
+                OutboundRecordId = media.NetworkOutboundRecordId,
+                ContentDesc = item.ContentDesc,
+                DataOrganizationForm = detail.DataOrganizationForm,
+                EntryCount = detail.Entries.Count
+            }).ToListAsync();
+    }
+
+    public async Task<List<YearlyArchiveRegisterElectronicMediaItemEntry>> GetElectronicMediaEntriesByMediaItemIdAsync(
+        int mediaItemId)
+    {
+        if (mediaItemId <= 0)
+        {
+            return [];
+        }
+
+        return await _dbContext.YearlyArchiveRegisterElectronicMediaItemEntries
+            .AsNoTracking()
+            .Where(item => item.ElectronicMediaItemDetailId == mediaItemId)
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Id)
+            .ToListAsync();
     }
 
     public Task<List<SystemAttachment>> GetAttachmentsAsync(string businessType, string businessNo)

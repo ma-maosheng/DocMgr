@@ -10,9 +10,40 @@
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         Background="#F5F7FA">
+    <Window.Resources>
+        <Style x:Key="EntriesDialogColumnHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource DataGridHeaderStyle}">
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="EntriesPaneGridSplitterStyle" TargetType="GridSplitter">
+            <Setter Property="Height" Value="10"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="#E2E8F0"/>
+            <Setter Property="ResizeBehavior" Value="PreviousAndNext"/>
+            <Setter Property="ResizeDirection" Value="Rows"/>
+            <Setter Property="ShowsPreview" Value="True"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Cursor" Value="SizeNS"/>
+            <Setter Property="ToolTip" Value="上下拖动以调整摘要与明细表高度"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="2" Margin="80,2">
+                            <Border Height="3" Width="48" CornerRadius="1.5"
+                                    Background="#94A3B8"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <Grid Margin="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
@@ -24,40 +55,68 @@
                 Style="{StaticResource DialogCloseButtonStyle}"
                 HorizontalAlignment="Right"/>
 
-        <StackPanel Grid.Row="0" Margin="0,0,120,0">
-            <TextBlock Text="{Binding Title}"
-                       FontSize="15"
-                       FontWeight="Bold"
-                       Foreground="#333"/>
-            <TextBlock Margin="0,8,0,0"
-                       Foreground="#4B5563"
-                       TextWrapping="Wrap"
-                       Text="{Binding SummaryText}"/>
-        </StackPanel>
+        <TextBlock Grid.Row="0"
+                   Margin="0,0,120,8"
+                   Text="{Binding Title, Mode=OneWay}"
+                   FontSize="15"
+                   FontWeight="Bold"
+                   Foreground="#333"/>
 
-        <DataGrid Grid.Row="2"
-                  ItemsSource="{Binding PageEntries}"
-                  AutoGenerateColumns="False"
-                  CanUserAddRows="False"
-                  CanUserDeleteRows="False"
-                  HeadersVisibility="Column"
-                  IsReadOnly="True"
-                  Margin="0,16,0,0"
-                  ColumnHeaderStyle="{StaticResource DataGridHeaderStyle}">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="类型" Binding="{Binding EntryKind}" Width="70"/>
-                <DataGridTextColumn Header="名称" Binding="{Binding EntryName}" Width="200"/>
-                <DataGridTextColumn Header="创建日期" Binding="{Binding CreatedDateText}" Width="150"/>
-                <DataGridTextColumn Header="修改日期" Binding="{Binding ModifiedDateText}" Width="150"/>
-                <DataGridTextColumn Header="大小(MB)" Binding="{Binding SizeMb}" Width="100"/>
-            </DataGrid.Columns>
-        </DataGrid>
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" MinHeight="72"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*" MinHeight="120"/>
+            </Grid.RowDefinitions>
 
-        <DockPanel Grid.Row="3" Margin="0,12,0,0">
+            <ScrollViewer Grid.Row="0"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasSummaryText}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ScrollViewer.Style>
+                <TextBlock Foreground="#4B5563"
+                           TextWrapping="Wrap"
+                           Text="{Binding SummaryText, Mode=OneWay}"/>
+            </ScrollViewer>
+
+            <GridSplitter Grid.Row="1" Style="{StaticResource EntriesPaneGridSplitterStyle}"/>
+
+            <DataGrid Grid.Row="2"
+                      ItemsSource="{Binding PageEntries}"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      HeadersVisibility="Column"
+                      IsReadOnly="True"
+                      EnableRowVirtualization="False"
+                      EnableColumnVirtualization="False"
+                      VirtualizingPanel.IsVirtualizing="False"
+                      ScrollViewer.CanContentScroll="True"
+                      RowHeight="32"
+                      ColumnHeaderStyle="{StaticResource EntriesDialogColumnHeaderStyle}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="类型" Binding="{Binding EntryKind, Mode=OneWay}" Width="70"/>
+                    <DataGridTextColumn Header="名称" Binding="{Binding EntryName, Mode=OneWay}" Width="*"/>
+                    <DataGridTextColumn Header="创建日期" Binding="{Binding CreatedDateText, Mode=OneWay}" Width="150"/>
+                    <DataGridTextColumn Header="修改日期" Binding="{Binding ModifiedDateText, Mode=OneWay}" Width="150"/>
+                    <DataGridTextColumn Header="大小(MB)" Binding="{Binding SizeMbText, Mode=OneWay}" Width="100"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+
+        <DockPanel Grid.Row="2" Margin="0,12,0,0">
             <TextBlock DockPanel.Dock="Left"
                        VerticalAlignment="Center"
                        Foreground="#666"
-                       Text="{Binding PageInfo}"/>
+                       Text="{Binding PageInfo, Mode=OneWay}"/>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <Button Content="首页" Width="64" Margin="0,0,6,0" Command="{Binding FirstPageCommand}"/>
                 <Button Content="上一页" Width="72" Margin="0,0,6,0" Command="{Binding PreviousPageCommand}"/>
@@ -66,7 +125,7 @@
             </StackPanel>
         </DockPanel>
 
-        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
             <Button Content="关闭"
                     Width="96"
                     Style="{StaticResource DialogPrimaryActionButtonStyle}"

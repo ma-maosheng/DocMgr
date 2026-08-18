@@ -1,6 +1,7 @@
 <Page x:Class="DocMgr.Views.NetworkTransfer.NetworkOnNetDisposalPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:nt="clr-namespace:DocMgr.Views.NetworkTransfer"
       Title="在网数据处置" Background="#F0F2F5">
   <Grid Margin="12">
     <Grid.RowDefinitions>
@@ -11,7 +12,6 @@
     </Grid.RowDefinitions>
     <Border Style="{StaticResource ToolbarCardBorderStyle}" Padding="12,10" Margin="0,0,0,8">
       <StackPanel Orientation="Horizontal">
-        <Button Content="加工产出登记" Command="{Binding RegisterOutputCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="120" Margin="0,0,10,0"/>
         <Button Content="新增处置" Command="{Binding AddDisposalCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
         <Button Content="打开处置" Command="{Binding OpenDisposalCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
         <Button Content="撤回作废" Command="{Binding WithdrawDisposalCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="96" Margin="0,0,16,0"/>
@@ -28,36 +28,20 @@
           <ComboBox Width="100" ItemsSource="{Binding LifecycleOptions}" SelectedItem="{Binding AssetLifecycle}"/>
           <TextBlock Text="服务器路径:" VerticalAlignment="Center" Margin="12,0,4,0"/>
           <ComboBox Width="140" ItemsSource="{Binding ServerPathOptions}" SelectedItem="{Binding AssetServerPath}"/>
-          <TextBlock Text="部门:" VerticalAlignment="Center" Margin="12,0,4,0"/>
+          <TextBlock Text="资料存储区:" VerticalAlignment="Center" Margin="12,0,4,0"/>
           <ComboBox Width="120" ItemsSource="{Binding DepartmentOptions}" SelectedItem="{Binding AssetDepartment}"/>
         </StackPanel>
         <StackPanel Orientation="Horizontal">
           <TextBlock Text="关键字:" VerticalAlignment="Center" Margin="0,0,4,0"/>
           <TextBox Width="220" Margin="0,0,8,0" Height="28" VerticalContentAlignment="Center" Text="{Binding AssetKeyword, UpdateSourceTrigger=PropertyChanged}"/>
           <Button Content="查询台账" Command="{Binding SearchAssetsCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"/>
+          <Button Content="查看详情" Command="{Binding ViewAssetDetailCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88" Margin="8,0,0,0"/>
         </StackPanel>
       </StackPanel>
-      <DataGrid ItemsSource="{Binding Assets}" AutoGenerateColumns="False" IsReadOnly="True" HorizontalScrollBarVisibility="Auto">
-        <DataGrid.Columns>
-          <DataGridTextColumn Header="资产编号" Binding="{Binding AssetNo, Mode=OneWay}" Width="130"/>
-          <DataGridTextColumn Header="类别" Binding="{Binding AssetKind, Mode=OneWay}" Width="80"/>
-          <DataGridTextColumn Header="名称" Binding="{Binding AssetName, Mode=OneWay}" Width="160"/>
-          <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="160"/>
-          <DataGridTextColumn Header="年度" Binding="{Binding Year, Mode=OneWay}" Width="60"/>
-          <DataGridTextColumn Header="项目名称" Binding="{Binding ProjectName, Mode=OneWay}" Width="140"/>
-          <DataGridTextColumn Header="部门" Binding="{Binding DepartmentName, Mode=OneWay}" Width="100"/>
-          <DataGridTextColumn Header="提供部门" Binding="{Binding ProvideUnit, Mode=OneWay}" Width="100"/>
-          <DataGridTextColumn Header="申请部门" Binding="{Binding ApplicantDept, Mode=OneWay}" Width="100"/>
-          <DataGridTextColumn Header="来源" Binding="{Binding OriginKind, Mode=OneWay}" Width="80"/>
-          <DataGridTextColumn Header="生命周期" Binding="{Binding LifecycleStatus, Mode=OneWay}" Width="80"/>
-          <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevel, Mode=OneWay}" Width="70"/>
-          <DataGridTextColumn Header="数据量" Binding="{Binding DataSizeText, Mode=OneWay}" Width="80"/>
-          <DataGridTextColumn Header="服务器路径" Binding="{Binding ServerPath, Mode=OneWay}" Width="140"/>
-          <DataGridTextColumn Header="资料相对路径" Binding="{Binding MaterialPath, Mode=OneWay}" Width="180"/>
-          <DataGridTextColumn Header="物理地址" Binding="{Binding PhysicalPath, Mode=OneWay}" Width="180"/>
-          <DataGridTextColumn Header="完整存储地址" Binding="{Binding FullStorageAddress, Mode=OneWay}" Width="260"/>
-        </DataGrid.Columns>
-      </DataGrid>
+      <nt:NetworkOnNetAssetDataGrid ItemsSource="{Binding Assets}"
+                                    SelectedItem="{Binding SelectedAsset}"
+                                    ViewDetailCommand="{Binding ViewAssetDetailCommand}"
+                                    IsReadOnly="True"/>
     </DockPanel>
     <TextBlock Grid.Row="2" Text="处置单" FontWeight="Bold" Margin="0,10,0,6"/>
     <DockPanel Grid.Row="3">

@@ -5,5 +5,8 @@ namespace DocMgr.Models.YearlyArchive
         string EntryName,
         string CreatedDateText,
         string ModifiedDateText,
-        decimal? SizeMb);
+        decimal? SizeMb)
+    {
+        public string SizeMbText => SizeMb.HasValue ? SizeMb.Value.ToString("0.##") : string.Empty;
+    }
 }

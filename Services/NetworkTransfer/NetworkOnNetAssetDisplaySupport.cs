@@ -1,5 +1,6 @@
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.SystemSettings;
+using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Services.NetworkTransfer;
 
@@ -14,21 +15,39 @@ internal static class NetworkOnNetAssetDisplaySupport
         IReadOnlyDictionary<int, NetworkInboundRecord> inboundRecords,
         IReadOnlyDictionary<int, NetworkOutboundItem> outboundItems,
         IReadOnlyDictionary<int, NetworkOutboundRecord> outboundRecords,
-        IReadOnlyDictionary<string, ServerPathSetting> serverPathsByName)
+        IReadOnlyDictionary<string, ServerPathSetting> serverPathsByName,
+        IReadOnlyDictionary<int, YearlyArchiveFilingFact> filingFacts,
+        IReadOnlyList<NetworkOnNetElectronicMediaSnapshot> electronicSnapshots)
     {
+        Dictionary<int, NetworkOnNetElectronicMediaSnapshot> snapshotByMediaItemId = electronicSnapshots
+            .GroupBy(item => item.MediaItemId)
+            .ToDictionary(group => group.Key, group => group.First());
+        ILookup<int, NetworkOnNetElectronicMediaSnapshot> snapshotsByInboundRecordId = electronicSnapshots
+            .Where(item => item.InboundRecordId is > 0)
+            .ToLookup(item => item.InboundRecordId!.Value);
+        ILookup<int, NetworkOnNetElectronicMediaSnapshot> snapshotsByOutboundRecordId = electronicSnapshots
+            .Where(item => item.OutboundRecordId is > 0)
+            .ToLookup(item => item.OutboundRecordId!.Value);
+
         foreach (NetworkOnNetAsset asset in assets)
         {
             ClearDisplayFields(asset);
 
+            NetworkInboundItem? inboundItem = null;
+            NetworkInboundRecord? inbound = null;
+            NetworkOutboundItem? outboundItem = null;
+            NetworkOutboundRecord? outbound = null;
+
             if (asset.OriginInboundItemId is int inboundItemId
-                && inboundItems.TryGetValue(inboundItemId, out NetworkInboundItem? inboundItem))
+                && inboundItems.TryGetValue(inboundItemId, out inboundItem))
             {
-                NetworkInboundRecord? inbound = inboundItem.InboundRecord
+                inbound = inboundItem.InboundRecord
                     ?? (inboundRecords.TryGetValue(inboundItem.InboundRecordId, out NetworkInboundRecord? record)
                         ? record
                         : null);
                 if (inbound != null)
                 {
+                    asset.ApplicationNo = inbound.InboundNo?.Trim() ?? string.Empty;
                     asset.MaterialPath = inbound.MaterialPath?.Trim() ?? string.Empty;
                     asset.MaterialName = ResolveMaterialName(
                         inbound.MaterialName,
@@ -40,14 +59,15 @@ internal static class NetworkOnNetAssetDisplaySupport
                 }
             }
             else if (asset.OriginOutboundItemId is int outboundItemId
-                     && outboundItems.TryGetValue(outboundItemId, out NetworkOutboundItem? outboundItem))
+                     && outboundItems.TryGetValue(outboundItemId, out outboundItem))
             {
-                NetworkOutboundRecord? outbound = outboundItem.OutboundRecord
+                outbound = outboundItem.OutboundRecord
                     ?? (outboundRecords.TryGetValue(outboundItem.OutboundRecordId, out NetworkOutboundRecord? record)
                         ? record
                         : null);
                 if (outbound != null)
                 {
+                    asset.ApplicationNo = outbound.OutboundNo?.Trim() ?? string.Empty;
                     asset.MaterialPath = outbound.MaterialPath?.Trim() ?? string.Empty;
                     asset.MaterialName = ResolveMaterialName(
                         outbound.MaterialName,
@@ -58,6 +78,17 @@ internal static class NetworkOnNetAssetDisplaySupport
                 }
             }
 
+            ApplyElectronicSnapshot(
+                asset,
+                inboundItem,
+                inbound,
+                outboundItem,
+                outbound,
+                filingFacts,
+                snapshotByMediaItemId,
+                snapshotsByInboundRecordId,
+                snapshotsByOutboundRecordId);
+
             string serverPath = asset.ServerPath?.Trim() ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(serverPath)
                 && serverPathsByName.TryGetValue(serverPath, out ServerPathSetting? setting))
@@ -66,6 +97,7 @@ internal static class NetworkOnNetAssetDisplaySupport
                 asset.PhysicalPath = setting.PhysicalPath?.Trim() ?? string.Empty;
             }
 
+            asset.LifecycleStatus = NetworkTransferDomainValues.NormalizeLifecycleStatus(asset.LifecycleStatus);
             asset.FullStorageAddress = ComposeFullStorageAddress(
                 asset.PhysicalPath,
                 asset.ServerPath,
@@ -112,6 +144,92 @@ internal static class NetworkOnNetAssetDisplaySupport
         asset.DepartmentName = string.Empty;
         asset.PhysicalPath = string.Empty;
         asset.FullStorageAddress = string.Empty;
+        asset.ApplicationNo = string.Empty;
+        asset.DataOrganizationForm = string.Empty;
+        asset.EntryCountDisplay = string.Empty;
+        asset.ElectronicMediaItemId = null;
+    }
+
+    private static void ApplyElectronicSnapshot(
+        NetworkOnNetAsset asset,
+        NetworkInboundItem? inboundItem,
+        NetworkInboundRecord? inbound,
+        NetworkOutboundItem? outboundItem,
+        NetworkOutboundRecord? outbound,
+        IReadOnlyDictionary<int, YearlyArchiveFilingFact> filingFacts,
+        IReadOnlyDictionary<int, NetworkOnNetElectronicMediaSnapshot> snapshotByMediaItemId,
+        ILookup<int, NetworkOnNetElectronicMediaSnapshot> snapshotsByInboundRecordId,
+        ILookup<int, NetworkOnNetElectronicMediaSnapshot> snapshotsByOutboundRecordId)
+    {
+        int? filingFactId = asset.SourceFilingFactId is > 0
+            ? asset.SourceFilingFactId
+            : inboundItem?.SourceFilingFactId;
+        if (filingFactId is > 0
+            && filingFacts.TryGetValue(filingFactId.Value, out YearlyArchiveFilingFact? fact)
+            && snapshotByMediaItemId.TryGetValue(fact.MediaItemId, out NetworkOnNetElectronicMediaSnapshot? fromFact))
+        {
+            ApplySnapshot(asset, fromFact);
+            return;
+        }
+
+        if (inbound != null)
+        {
+            NetworkOnNetElectronicMediaSnapshot? matched = MatchSnapshot(
+                snapshotsByInboundRecordId[inbound.Id],
+                asset.AssetName,
+                inboundItem?.ItemName,
+                inboundItem?.AssetName,
+                inboundItem?.MaterialName);
+            if (matched != null)
+            {
+                ApplySnapshot(asset, matched);
+                return;
+            }
+        }
+
+        if (outbound != null)
+        {
+            NetworkOnNetElectronicMediaSnapshot? matched = MatchSnapshot(
+                snapshotsByOutboundRecordId[outbound.Id],
+                asset.AssetName,
+                outboundItem?.ItemName,
+                outboundItem?.AssetName);
+            if (matched != null)
+            {
+                ApplySnapshot(asset, matched);
+            }
+        }
+    }
+
+    private static NetworkOnNetElectronicMediaSnapshot? MatchSnapshot(
+        IEnumerable<NetworkOnNetElectronicMediaSnapshot> snapshots,
+        params string?[] names)
+    {
+        HashSet<string> keys = names
+            .Select(item => item?.Trim() ?? string.Empty)
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .ToHashSet(StringComparer.Ordinal);
+        List<NetworkOnNetElectronicMediaSnapshot> list = snapshots.ToList();
+        if (list.Count == 0)
+        {
+            return null;
+        }
+
+        if (keys.Count == 0)
+        {
+            return list.Count == 1 ? list[0] : null;
+        }
+
+        return list.FirstOrDefault(item => keys.Contains(item.ContentDesc?.Trim() ?? string.Empty));
+    }
+
+    private static void ApplySnapshot(NetworkOnNetAsset asset, NetworkOnNetElectronicMediaSnapshot snapshot)
+    {
+        asset.ElectronicMediaItemId = snapshot.MediaItemId > 0 ? snapshot.MediaItemId : null;
+        asset.DataOrganizationForm = snapshot.DataOrganizationForm?.Trim() ?? string.Empty;
+        asset.EntryCountDisplay = string.IsNullOrWhiteSpace(asset.DataOrganizationForm) && snapshot.EntryCount <= 0
+            ? string.Empty
+            : snapshot.EntryCount.ToString();
     }
 
     private static string ResolveMaterialName(

@@ -956,13 +956,34 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             .GroupBy(item => item.PathName.Trim(), StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
 
+        List<int> filingFactIds = assets
+            .Select(item => item.SourceFilingFactId)
+            .Concat(inboundItems.Select(item => item.SourceFilingFactId))
+            .Where(id => id is > 0)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+        Dictionary<int, YearlyArchiveFilingFact> filingFactMap =
+            await _repository.GetFilingFactsByIdsAsync(filingFactIds);
+        List<int> mediaItemIds = filingFactMap.Values
+            .Select(item => item.MediaItemId)
+            .Where(id => id > 0)
+            .Distinct()
+            .ToList();
+        List<int> inboundRecordIds = inboundRecordMap.Keys.ToList();
+        List<int> outboundRecordIds = outboundRecordMap.Keys.ToList();
+        List<NetworkOnNetElectronicMediaSnapshot> electronicSnapshots =
+            await _repository.GetElectronicMediaSnapshotsAsync(mediaItemIds, inboundRecordIds, outboundRecordIds);
+
         NetworkOnNetAssetDisplaySupport.EnrichListItems(
             assets,
             inboundItemMap,
             inboundRecordMap,
             outboundItemMap,
             outboundRecordMap,
-            serverPathMap);
+            serverPathMap,
+            filingFactMap,
+            electronicSnapshots);
     }
 
     public async Task<NetworkOnNetAsset> RegisterProcessedOutputAsync(NetworkOnNetAsset draft, User currentUser)
@@ -990,8 +1011,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         {
             var parent = await _repository.GetOnNetAssetByIdAsync(draft.ParentAssetId.Value)
                 ?? throw new InvalidOperationException("未找到父级在网对象。");
-            if (!string.Equals(parent.LifecycleStatus, NetworkTransferDomainValues.LifecycleOnNet, StringComparison.Ordinal)
-                && !string.Equals(parent.LifecycleStatus, NetworkTransferDomainValues.LifecycleOutbounded, StringComparison.Ordinal)
+            if (!NetworkTransferDomainValues.IsOnNetLifecycle(parent.LifecycleStatus)
                 && !string.Equals(parent.LifecycleStatus, NetworkTransferDomainValues.LifecycleDisposed, StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("父级在网对象状态异常，无法建立血缘。");
@@ -1035,8 +1055,33 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         _repository.GetDisposalByIdAsync(recordId);
 
     public async Task<IReadOnlyList<NetworkOnNetAsset>> GetSelectableDisposalAssetsAsync(
-        int? currentDisposalRecordId = null) =>
-        await _repository.GetSelectableDisposalAssetsAsync(currentDisposalRecordId);
+        int? currentDisposalRecordId = null)
+    {
+        List<NetworkOnNetAsset> assets = await _repository.GetSelectableDisposalAssetsAsync(currentDisposalRecordId);
+        await EnrichOnNetAssetListItemsAsync(assets, _serverPathSettingService.GetAll());
+        return assets;
+    }
+
+    public async Task<IReadOnlyList<NetworkOnNetAsset>> GetOnNetAssetsByIdsAsync(IReadOnlyCollection<int> assetIds)
+    {
+        List<NetworkOnNetAsset> assets = await _repository.GetOnNetAssetsByIdsAsync(assetIds);
+        await EnrichOnNetAssetListItemsAsync(assets, _serverPathSettingService.GetAll());
+        return assets;
+    }
+
+    public async Task<IReadOnlyList<ElectronicMediaItemEntryDisplayItem>> GetOnNetAssetContentEntriesAsync(int mediaItemId)
+    {
+        List<YearlyArchiveRegisterElectronicMediaItemEntry> entries =
+            await _repository.GetElectronicMediaEntriesByMediaItemIdAsync(mediaItemId);
+        return entries
+            .Select(item => new ElectronicMediaItemEntryDisplayItem(
+                item.EntryKind?.Trim() ?? string.Empty,
+                item.EntryName?.Trim() ?? string.Empty,
+                ElectronicMediaItemSupport.FormatModifiedDate(item.CreatedAt),
+                ElectronicMediaItemSupport.FormatModifiedDate(item.ModifiedAt),
+                item.SizeMb))
+            .ToList();
+    }
 
     public async Task<NetworkOnNetDisposalRecord> CreateDisposalDraftAsync(
         NetworkOnNetDisposalRecord draft,
@@ -1137,6 +1182,14 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("请至少选择一条在网对象。");
         }
 
+        HashSet<int> selectableIds = (await _repository.GetSelectableDisposalAssetsAsync(existing.Id))
+            .Select(item => item.Id)
+            .ToHashSet();
+        NetworkOnNetDisposalValidationSupport.EnsureValidForSubmit(
+            existing.Reason,
+            existing.Items.ToList(),
+            selectableIds);
+
         await LockDisposalAssetsAsync(existing);
 
         DateTime now = DateTime.Now;
@@ -1230,10 +1283,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
 
         if (existing.Status == NetworkOnNetDisposalRecord.StatusSubmitted)
         {
-            await UnlockAssetsAsync(
-                existing.Items.Select(item => item.OnNetAssetId).ToList(),
-                NetworkTransferDomainValues.LifecycleDisposalLocked,
-                NetworkTransferDomainValues.LifecycleOnNet);
+            await UnlockDisposalAssetsAsync(existing);
         }
 
         DateTime now = DateTime.Now;
@@ -1501,6 +1551,9 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         }
     }
 
+    /// <summary>
+    /// 出网办结写台账：原件改为「曾出网」（拷贝后仍在网）；无关联对象时新建同等状态台账。
+    /// </summary>
     private async Task CompleteOutboundLedgerAsync(
         NetworkOutboundRecord existing,
         string operatorName,
@@ -1638,7 +1691,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
                 AssetKind = asset.AssetKind,
                 AssetName = asset.AssetName,
                 ServerPath = asset.ServerPath,
-                BeforeLifecycleStatus = asset.LifecycleStatus,
+                BeforeLifecycleStatus = NetworkTransferDomainValues.NormalizeLifecycleStatus(asset.LifecycleStatus),
                 DisposalReason = reason,
                 DispositionMethod = method,
                 CreatedAt = now
@@ -1688,20 +1741,36 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         }
     }
 
-    private async Task UnlockAssetsAsync(
-        IReadOnlyList<int> assetIds,
-        string expectedStatus,
-        string restoreStatus)
+    /// <summary>
+    /// 撤回已提交处置单时，按明细处置前状态还原（「曾出网」不回写成「在网」）。
+    /// </summary>
+    private async Task UnlockDisposalAssetsAsync(NetworkOnNetDisposalRecord record)
     {
-        var assets = await _repository.GetOnNetAssetsByIdsAsync(assetIds, tracking: true);
+        var assets = await _repository.GetOnNetAssetsByIdsAsync(
+            record.Items.Select(item => item.OnNetAssetId).ToList(),
+            tracking: true);
+        Dictionary<int, string> beforeByAssetId = record.Items
+            .GroupBy(item => item.OnNetAssetId)
+            .ToDictionary(
+                group => group.Key,
+                group => NetworkTransferDomainValues.NormalizeLifecycleStatus(group.First().BeforeLifecycleStatus));
         DateTime now = DateTime.Now;
         foreach (var asset in assets)
         {
-            if (string.Equals(asset.LifecycleStatus, expectedStatus, StringComparison.Ordinal))
+            if (!string.Equals(
+                    asset.LifecycleStatus,
+                    NetworkTransferDomainValues.LifecycleDisposalLocked,
+                    StringComparison.Ordinal))
             {
-                asset.LifecycleStatus = restoreStatus;
-                asset.UpdatedAt = now;
+                continue;
             }
+
+            string restore = beforeByAssetId.TryGetValue(asset.Id, out string? before)
+                             && NetworkTransferDomainValues.IsOnNetLifecycle(before)
+                ? before
+                : NetworkTransferDomainValues.LifecycleOnNet;
+            asset.LifecycleStatus = restore;
+            asset.UpdatedAt = now;
         }
     }
 

@@ -54,9 +54,20 @@ namespace DocMgr.Models.NetworkTransfer
 
         public const string LifecycleOnNet = "在网";
         public const string LifecycleOutboundLocked = "出网中";
-        public const string LifecycleOutbounded = "已出网";
+        /// <summary>拷贝出网办结后原件仍在网，仅标记曾经出网。</summary>
+        public const string LifecycleOutbounded = "曾出网";
+        /// <summary>历史出网办结状态（兼容旧数据，语义同「曾出网」）。</summary>
+        public const string LegacyLifecycleOutbounded = "已出网";
         public const string LifecycleDisposalLocked = "处置中";
         public const string LifecycleDisposed = "已处置";
+
+        /// <summary>仍视为在网、可出网/可处置的生命周期（含历史「已出网」）。</summary>
+        public static readonly string[] OnNetLifecycleStatuses =
+        [
+            LifecycleOnNet,
+            LifecycleOutbounded,
+            LegacyLifecycleOutbounded
+        ];
 
         public const string DestinationKindOutboundInternal = "出网（院内）";
         public const string DestinationKindOutboundExternal = "出网（院外）";
@@ -379,12 +390,27 @@ namespace DocMgr.Models.NetworkTransfer
         public static bool IsProcessedOutputOrigin(string? originKind) =>
             string.Equals(originKind?.Trim(), OriginKindProcessedOutput, StringComparison.Ordinal);
 
-        public static bool CanOutbound(string? originKind, string? lifecycleStatus) =>
-            IsProcessedOutputOrigin(originKind)
-            && string.Equals(lifecycleStatus?.Trim(), LifecycleOnNet, StringComparison.Ordinal);
+        /// <summary>将历史「已出网」归一为「曾出网」。</summary>
+        public static string NormalizeLifecycleStatus(string? lifecycleStatus)
+        {
+            string status = lifecycleStatus?.Trim() ?? string.Empty;
+            return string.Equals(status, LegacyLifecycleOutbounded, StringComparison.Ordinal)
+                ? LifecycleOutbounded
+                : status;
+        }
 
-        public static bool CanDispose(string? lifecycleStatus) =>
-            string.Equals(lifecycleStatus?.Trim(), LifecycleOnNet, StringComparison.Ordinal);
+        /// <summary>是否仍视为在网（「在网」「曾出网」及历史「已出网」）。</summary>
+        public static bool IsOnNetLifecycle(string? lifecycleStatus)
+        {
+            string status = NormalizeLifecycleStatus(lifecycleStatus);
+            return string.Equals(status, LifecycleOnNet, StringComparison.Ordinal)
+                   || string.Equals(status, LifecycleOutbounded, StringComparison.Ordinal);
+        }
+
+        public static bool CanOutbound(string? originKind, string? lifecycleStatus) =>
+            IsProcessedOutputOrigin(originKind) && IsOnNetLifecycle(lifecycleStatus);
+
+        public static bool CanDispose(string? lifecycleStatus) => IsOnNetLifecycle(lifecycleStatus);
 
         public static string ToStatusDisplay(int status) => ApplicationWorkflowStatus.ToDisplay(status);
     }

@@ -276,6 +276,107 @@ public sealed partial class NetworkTransferService
         return string.Empty;
     }
 
+    public async Task<NetworkOnNetDisposalPrintData> BuildDisposalPrintDataAsync(int recordId)
+    {
+        var record = await _repository.GetDisposalByIdAsync(recordId)
+            ?? throw new InvalidOperationException("未找到在网处置单。");
+
+        if (record.Status is NetworkOnNetDisposalRecord.StatusDraft
+            or NetworkOnNetDisposalRecord.StatusWithdrawn
+            or NetworkOnNetDisposalRecord.StatusForceWithdrawn)
+        {
+            throw new InvalidOperationException("请先提交处置单后再打印。");
+        }
+
+        IReadOnlyList<NetworkOnNetDisposalItem> orderedItems = record.Items
+            .OrderBy(item => item.SortOrder)
+            .ToList();
+        Dictionary<int, NetworkOnNetAsset> assetsById = (await GetOnNetAssetsByIdsAsync(
+                orderedItems.Select(item => item.OnNetAssetId).Where(id => id > 0).Distinct().ToList()))
+            .ToDictionary(item => item.Id);
+
+        return new NetworkOnNetDisposalPrintData
+        {
+            DisposalNo = record.DisposalNo,
+            ApplyDateText = record.ApplyTime == default
+                ? string.Empty
+                : record.ApplyTime.ToString("yyyy-MM-dd"),
+            DisposalReason = FirstNonEmpty(
+                record.DisposalReason,
+                BuildDistinctSummary(orderedItems.Select(item => item.DisposalReason))),
+            DispositionMethod = FirstNonEmpty(
+                record.DispositionMethod,
+                BuildDistinctSummary(orderedItems.Select(item => item.DispositionMethod))),
+            Reason = record.Reason,
+            Remark = record.Remark,
+            ApplicantName = record.ApplicantName,
+            ApplicantDept = record.ApplicantDept,
+            ApprovedBy = record.ApprovedBy,
+            ApprovedDateText = record.ApprovedTime?.ToString("yyyy-MM-dd") ?? string.Empty,
+            ApprovalOpinion = record.ApprovalOpinion,
+            CompletedBy = record.CompletedBy,
+            CompletedDateText = record.CompletedAt?.ToString("yyyy-MM-dd") ?? string.Empty,
+            IsCompleted = record.Status == NetworkOnNetDisposalRecord.StatusCompleted,
+            PrintCount = record.PrintCount,
+            Items = orderedItems
+                .Select(item => BuildDisposalPrintItem(item, assetsById))
+                .ToList()
+        };
+    }
+
+    public async Task RecordDisposalPrintAsync(int recordId)
+    {
+        var record = await _repository.GetDisposalByIdAsync(recordId, tracking: true)
+            ?? throw new InvalidOperationException("未找到在网处置单。");
+
+        if (record.Status is NetworkOnNetDisposalRecord.StatusDraft
+            or NetworkOnNetDisposalRecord.StatusWithdrawn
+            or NetworkOnNetDisposalRecord.StatusForceWithdrawn)
+        {
+            throw new InvalidOperationException("当前状态不可打印签批单。");
+        }
+
+        DateTime now = DateTime.Now;
+        record.PrintCount++;
+        record.LastPrintedAt = now;
+        record.UpdatedAt = now;
+        await _repository.SaveChangesAsync();
+    }
+
+    private static NetworkOnNetDisposalPrintItemData BuildDisposalPrintItem(
+        NetworkOnNetDisposalItem item,
+        IReadOnlyDictionary<int, NetworkOnNetAsset> assetsById)
+    {
+        assetsById.TryGetValue(item.OnNetAssetId, out NetworkOnNetAsset? asset);
+        string materialName = FirstNonEmpty(asset?.MaterialName, asset?.AssetName, item.AssetName);
+        return new NetworkOnNetDisposalPrintItemData
+        {
+            SortOrder = item.SortOrder,
+            AssetNo = FirstNonEmpty(item.AssetNo, asset?.AssetNo),
+            Year = asset?.Year?.Trim() ?? string.Empty,
+            ProjectName = asset?.ProjectName?.Trim() ?? string.Empty,
+            MaterialName = materialName,
+            AssetKind = FirstNonEmpty(item.AssetKind, asset?.AssetKind),
+            ServerPath = FirstNonEmpty(item.ServerPath, asset?.ServerPath),
+            BeforeLifecycleStatus = FirstNonEmpty(item.BeforeLifecycleStatus, asset?.LifecycleStatus),
+            DisposalReason = item.DisposalReason?.Trim() ?? string.Empty,
+            DispositionMethod = item.DispositionMethod?.Trim() ?? string.Empty
+        };
+    }
+
+    private static string FirstNonEmpty(params string?[] values)
+    {
+        foreach (string? value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+        }
+
+        return string.Empty;
+    }
+
     private static string FormatDate(DateTime? value) =>
         value.HasValue ? value.Value.ToString("yyyy-MM-dd") : BlankDateText;
 }

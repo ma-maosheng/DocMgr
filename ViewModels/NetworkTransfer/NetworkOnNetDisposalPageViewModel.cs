@@ -11,7 +11,7 @@ using DocMgr.Views.Shared;
 namespace DocMgr.ViewModels.NetworkTransfer
 {
     /// <summary>
-    /// 在网数据处置页：台账浏览 + 加工产出登记 + 处置单。
+    /// 在网数据处置页：台账浏览 + 处置单。
     /// </summary>
     public sealed class NetworkOnNetDisposalPageViewModel : ViewModelBase
     {
@@ -32,6 +32,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private string _assetServerPath = "全部";
         private string _assetDepartment = "全部";
         private NetworkOnNetDisposalRecord? _selectedRecord;
+        private NetworkOnNetAsset? _selectedAsset;
 
         public NetworkOnNetDisposalPageViewModel(
             INetworkTransferService service,
@@ -47,7 +48,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
             RefreshCommand = new RelayCommand(async _ => await RefreshAllAsync());
             SearchCommand = new RelayCommand(async _ => await RefreshDisposalsAsync());
             SearchAssetsCommand = new RelayCommand(async _ => await RefreshAssetsAsync());
-            RegisterOutputCommand = new RelayCommand(async _ => await RegisterOutputAsync(), _ => CanOperate);
+            ViewAssetDetailCommand = new RelayCommand(async item => await ViewAssetDetailAsync(item), item =>
+                NetworkOnNetAssetDetailTextSupport.Resolve(item, SelectedAsset) != null);
             AddDisposalCommand = new RelayCommand(async _ => await AddDisposalAsync(), _ => CanOperate);
             OpenDisposalCommand = new RelayCommand(async _ => await OpenDisposalAsync(), _ => SelectedRecord != null && CanOperate);
             WithdrawDisposalCommand = new RelayCommand(async _ => await WithdrawDisposalAsync(), _ => CanWithdrawSelected);
@@ -108,6 +110,12 @@ namespace DocMgr.ViewModels.NetworkTransfer
             set { if (SetProperty(ref _selectedRecord, value)) CommandManager.InvalidateRequerySuggested(); }
         }
 
+        public NetworkOnNetAsset? SelectedAsset
+        {
+            get => _selectedAsset;
+            set { if (SetProperty(ref _selectedAsset, value)) CommandManager.InvalidateRequerySuggested(); }
+        }
+
         private bool CanOperate => ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
         private bool CanWithdrawSelected =>
             CanOperate
@@ -117,7 +125,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public RelayCommand RefreshCommand { get; }
         public RelayCommand SearchCommand { get; }
         public RelayCommand SearchAssetsCommand { get; }
-        public RelayCommand RegisterOutputCommand { get; }
+        public RelayCommand ViewAssetDetailCommand { get; }
         public RelayCommand AddDisposalCommand { get; }
         public RelayCommand OpenDisposalCommand { get; }
         public RelayCommand WithdrawDisposalCommand { get; }
@@ -182,6 +190,24 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 var list = await _service.SearchOnNetAssetsAsync(keyword, origin, life, serverPath, department);
                 Assets.Clear();
                 foreach (var item in list) Assets.Add(item);
+                if (SelectedAsset != null)
+                    SelectedAsset = Assets.FirstOrDefault(item => item.Id == SelectedAsset.Id);
+            }
+            catch (Exception ex) { _dialogService.ShowError(ex.Message); }
+        }
+
+        private async Task ViewAssetDetailAsync(object? parameter)
+        {
+            NetworkOnNetAsset? asset = NetworkOnNetAssetDetailTextSupport.Resolve(parameter, SelectedAsset);
+            if (asset == null)
+            {
+                _dialogService.ShowMessage("请先选择一条在网对象。");
+                return;
+            }
+
+            try
+            {
+                await NetworkOnNetAssetDetailTextSupport.ShowAsync(_service, _dialogService, asset);
             }
             catch (Exception ex) { _dialogService.ShowError(ex.Message); }
         }
@@ -225,12 +251,6 @@ namespace DocMgr.ViewModels.NetworkTransfer
             foreach (var item in query.OrderByDescending(r => r.ApplyTime).ThenByDescending(r => r.Id))
                 Records.Add(item);
             CommandManager.InvalidateRequerySuggested();
-        }
-
-        private async Task RegisterOutputAsync()
-        {
-            if (_dialogService.ShowNetworkProcessedOutputEditDialog())
-                await RefreshAssetsAsync();
         }
 
         private async Task AddDisposalAsync()
