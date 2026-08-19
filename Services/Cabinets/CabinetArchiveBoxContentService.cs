@@ -510,6 +510,16 @@ namespace DocMgr.Services.Cabinets
 
                 IsElectronicMedia = isElectronic,
 
+                FilingFactId = fact.Id,
+
+                RegisterRecordId = fact.RegisterRecordId,
+
+                RegisterMediaId = fact.RegisterMediaId,
+
+                MediaItemId = fact.MediaItemId,
+
+                MediaKind = fact.MediaKind?.Trim() ?? string.Empty,
+
                 FiledCopyCount = breakdown.FiledCopyCount,
 
                 CurrentInArchiveCopyCount = breakdown.CurrentInArchiveCopyCount,

@@ -15,7 +15,7 @@ using Microsoft.Win32;
 namespace DocMgr.ViewModels.YearlyArchive
 {
     /// <summary>
-    /// 资料建档（登记）申请单只读查看弹窗 ViewModel。仅展示申请、审批流程与附件信息，支持打印与关闭。
+    /// 资料建档（登记）申请单只读查看弹窗 ViewModel。展示申请、审批流程与附件信息，支持查看资料详情、打印与关闭。
     /// 资料室资料管理员可在办结后增补「其他附件」（仅新增、不可删除）。
     /// </summary>
     public sealed class ArchiveRegisterApplicationViewDialogViewModel : ViewModelBase
@@ -53,6 +53,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             SupplementOtherAttachmentCommand = new RelayCommand(
                 async _ => await SupplementOtherAttachmentAsync(),
                 _ => CanSupplementOtherAttachments);
+            ViewArchiveDetailCommand = new RelayCommand(_ => ViewArchiveDetail(), _ => CanViewArchiveDetail);
             PrintCommand = new RelayCommand(_ => Print(), _ => CanPrint);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
@@ -107,6 +108,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool CanPrint => _record.Id > 0;
 
+        /// <summary>已持久化登记单可打开资料详情窗口。</summary>
+        public bool CanViewArchiveDetail => _record.Id > 0;
+
         /// <summary>办结后，资料室资料管理员可增补其他附件。</summary>
         public bool CanSupplementOtherAttachments =>
             _record.Id > 0
@@ -117,6 +121,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             "办结后仅可增补「其他附件」；请确保文件命名清晰准确。本页不可删除已有附件。";
 
         public ICommand ViewAttachmentCommand { get; }
+        public ICommand ViewArchiveDetailCommand { get; }
         public ICommand SupplementOtherAttachmentCommand { get; }
         public ICommand PrintCommand { get; }
         public ICommand CloseCommand { get; }
@@ -252,6 +257,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        private void ViewArchiveDetail()
+        {
+            if (!CanViewArchiveDetail)
+            {
+                return;
+            }
+
+            _dialogService.ShowArchiveDetailWindow(new ArchiveDetailOpenRequest(_record.Id, null));
+        }
+
         private void Print()
         {
             if (!CanPrint)
@@ -344,6 +359,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(Administrator));
             OnPropertyChanged(nameof(AdminDateDisplay));
             OnPropertyChanged(nameof(CanPrint));
+            OnPropertyChanged(nameof(CanViewArchiveDetail));
             OnPropertyChanged(nameof(CanSupplementOtherAttachments));
         }
 

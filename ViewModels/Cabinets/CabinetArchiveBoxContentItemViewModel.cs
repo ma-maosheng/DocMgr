@@ -82,6 +82,16 @@ namespace DocMgr.ViewModels.Cabinets
 
             IsElectronicMedia = descriptor.IsElectronicMedia;
 
+            FilingFactId = descriptor.FilingFactId;
+
+            RegisterRecordId = descriptor.RegisterRecordId;
+
+            RegisterMediaId = descriptor.RegisterMediaId;
+
+            MediaItemId = descriptor.MediaItemId;
+
+            MediaKind = descriptor.MediaKind;
+
             FiledCopyCount = descriptor.FiledCopyCount;
 
             CurrentInArchiveCopyCount = descriptor.CurrentInArchiveCopyCount;
@@ -235,6 +245,26 @@ namespace DocMgr.ViewModels.Cabinets
 
 
         public bool IsElectronicMedia { get; }
+
+
+
+        public int FilingFactId { get; }
+
+
+
+        public int RegisterRecordId { get; }
+
+
+
+        public int RegisterMediaId { get; }
+
+
+
+        public int MediaItemId { get; }
+
+
+
+        public string MediaKind { get; }
 
 
 

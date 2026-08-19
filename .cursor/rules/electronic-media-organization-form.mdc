@@ -1,0 +1,25 @@
+---
+description: 电子资料数据组织形式：目录型允许根目录混合文件与子目录；文件型仅散文件
+globs: "**/{ElectronicMediaItemSupport.cs,ElectronicMediaContentScanService.cs,ArchiveRegisterService.PrintingAndMaintenance.cs,NetworkInboundExternalMediaValidationSupport.cs,NetworkOutboundExternalMediaValidationSupport.cs,ElectronicMediaEditingViewModel.cs,ArchiveRegisterViewModel.Media.cs,StockHardDiskDirectFilingModels.cs,ArchiveRegisterDomainValues.cs}"
+alwaysApply: false
+---
+
+# 电子资料数据组织形式（方案 B）
+
+域值只有 **目录型** / **文件型**，不增加「混合型」，也不把一个子项拆成两条。
+
+## 目录型
+
+- 子项有**统一根目录**（扫描时选择该根，而不是只勾选其中一部分子文件夹当作整条子项）。
+- 根下可以**同时**有散文件和一级子目录；`Entries` 的 `EntryKind` 允许「目录」「文件」混合。
+- 扫描：把所选文件夹当作子项根，登记其**直接子项**（一级子目录 + 根下文件）；数据量按根目录整棵树统计。
+- 存量硬盘直办的第四层子项文件夹一律记目录型（即使根下暂时只有文件）。
+
+## 文件型
+
+- **没有**统一根目录，只登记散文件。
+- 全部明细必须是「文件」；出现「目录」即校验失败。
+
+## 共用校验
+
+提交/办结校验走 `ElectronicMediaItemSupport.CollectDataOrganizationEntryErrors`，建档申请、入网、出网补录/交接、存量直办写入立档链均适用。不得再用「全部 EntryKind 必须等于组织形式对应的单一类型」去覆盖已扫描明细。

@@ -1,8 +1,14 @@
 using DocMgr.Models.Cabinets;
 
+using DocMgr.Models.YearlyArchive;
+
+using DocMgr.Services.Interfaces;
+
 using DocMgr.ViewModels.Base;
 
 using DocMgr.ViewModels.Shared;
+
+using DocMgr.ViewModels.YearlyArchive;
 
 using System;
 
@@ -12,7 +18,11 @@ using System.Collections.ObjectModel;
 
 using System.Linq;
 
+using System.Threading.Tasks;
+
 using System.Windows;
+
+using System.Windows.Input;
 
 
 
@@ -24,6 +34,14 @@ namespace DocMgr.ViewModels.Cabinets
 
     {
 
+        private readonly IDialogService _dialogService;
+
+        private readonly IArchiveFilingSearchService _searchService;
+
+        private CabinetArchiveBoxContentItemViewModel? _selectedItem;
+
+
+
         public CabinetArchiveBoxContentViewModel(
 
             string locationCode,
@@ -32,11 +50,19 @@ namespace DocMgr.ViewModels.Cabinets
 
             CabinetArchiveContainerViewMode viewMode,
 
+            IDialogService dialogService,
+
+            IArchiveFilingSearchService searchService,
+
             CabinetElectronicArchiveBagHeader? electronicBagHeader = null,
 
             CabinetArchiveContainerOccupationLockSummary? occupationLockSummary = null)
 
         {
+
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+
+            _searchService = searchService ?? throw new ArgumentNullException(nameof(searchService));
 
             if (string.IsNullOrWhiteSpace(locationCode))
 
@@ -136,6 +162,12 @@ namespace DocMgr.ViewModels.Cabinets
 
             OccupationLockNoticeVisibility = lockSummary.HasAnyLock ? Visibility.Visible : Visibility.Collapsed;
 
+            ViewArchiveDetailCommand = new RelayCommand(
+
+                async _ => await ViewArchiveDetailAsync(),
+
+                _ => CanViewArchiveDetail);
+
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
         }
@@ -150,6 +182,10 @@ namespace DocMgr.ViewModels.Cabinets
 
             bool isYearlyArchiveBox,
 
+            IDialogService dialogService,
+
+            IArchiveFilingSearchService searchService,
+
             CabinetArchiveContainerOccupationLockSummary? occupationLockSummary = null)
 
         {
@@ -160,7 +196,21 @@ namespace DocMgr.ViewModels.Cabinets
 
                 : CabinetArchiveContainerViewMode.HistoryArchiveBox;
 
-            return new CabinetArchiveBoxContentViewModel(boxCode, contents, viewMode, null, occupationLockSummary);
+            return new CabinetArchiveBoxContentViewModel(
+
+                boxCode,
+
+                contents,
+
+                viewMode,
+
+                dialogService,
+
+                searchService,
+
+                null,
+
+                occupationLockSummary);
 
         }
 
@@ -174,6 +224,10 @@ namespace DocMgr.ViewModels.Cabinets
 
             CabinetElectronicArchiveBagHeader? bagHeader,
 
+            IDialogService dialogService,
+
+            IArchiveFilingSearchService searchService,
+
             CabinetArchiveContainerOccupationLockSummary? occupationLockSummary = null)
 
         {
@@ -185,6 +239,10 @@ namespace DocMgr.ViewModels.Cabinets
                 contents,
 
                 CabinetArchiveContainerViewMode.ElectronicArchiveBag,
+
+                dialogService,
+
+                searchService,
 
                 bagHeader,
 
@@ -295,6 +353,34 @@ namespace DocMgr.ViewModels.Cabinets
 
 
         public ItemDetailsListPresenter<CabinetArchiveBoxContentItemViewModel> ItemDetailsPanel { get; }
+
+
+
+        public CabinetArchiveBoxContentItemViewModel? SelectedItem
+
+        {
+
+            get => _selectedItem;
+
+            set => SetProperty(ref _selectedItem, value);
+
+        }
+
+
+
+        public bool CanViewArchiveDetail =>
+
+            SelectedItem != null
+
+            && SelectedItem.IsYearlyArchiveMediaItem
+
+            && SelectedItem.FilingFactId > 0
+
+            && SelectedItem.RegisterRecordId > 0;
+
+
+
+        public ICommand ViewArchiveDetailCommand { get; }
 
 
 
@@ -613,6 +699,134 @@ namespace DocMgr.ViewModels.Cabinets
 
 
             return $"该批资料登记时涉及多个档案盒，当前未细化到具体盒。\n涉及档案盒：{relatedText}\n原始登记：{originalText}";
+
+        }
+
+
+
+        private async Task ViewArchiveDetailAsync()
+
+        {
+
+            if (SelectedItem == null)
+
+            {
+
+                return;
+
+            }
+
+
+
+            if (!SelectedItem.IsYearlyArchiveMediaItem)
+
+            {
+
+                _dialogService.ShowMessage("历史存档记录暂不支持查看资料详情。", "提示");
+
+                return;
+
+            }
+
+
+
+            if (SelectedItem.FilingFactId <= 0 || SelectedItem.RegisterRecordId <= 0)
+
+            {
+
+                _dialogService.ShowMessage("该记录未关联立档资料，无法查看资料详情。", "提示");
+
+                return;
+
+            }
+
+
+
+            try
+
+            {
+
+                var hit = await _searchService.GetSearchHitByFilingFactIdAsync(SelectedItem.FilingFactId);
+
+                if (hit == null)
+
+                {
+
+                    _dialogService.ShowMessage("无法定位该条立档记录对应的登记资料。", "提示");
+
+                    return;
+
+                }
+
+
+
+                _dialogService.ShowArchiveDetailWindow(new ArchiveDetailOpenRequest(
+
+                    SelectedItem.RegisterRecordId,
+
+                    BuildHighlightContext(SelectedItem, hit),
+
+                    SelectedItem.MediaKind,
+
+                    SelectedItem.FilingFactId));
+
+            }
+
+            catch (Exception ex)
+
+            {
+
+                _dialogService.ShowError($"打开资料详情失败：{ex.Message}");
+
+            }
+
+        }
+
+
+
+        private static ArchiveDetailHighlightContext BuildHighlightContext(
+
+            CabinetArchiveBoxContentItemViewModel item,
+
+            FiledArchiveSearchHit hit)
+
+        {
+
+            if (item.MediaItemId <= 0)
+
+            {
+
+                return ArchiveDetailHighlightContext.FromHit(hit);
+
+            }
+
+
+
+            var context = ArchiveDetailHighlightContext.FromHit(hit);
+
+            return new ArchiveDetailHighlightContext
+
+            {
+
+                MediaKind = string.IsNullOrWhiteSpace(item.MediaKind) ? hit.MediaKind : item.MediaKind,
+
+                RegisterMediaId = hit.RegisterMediaId,
+
+                MediaItemId = item.MediaItemId,
+
+                ItemType = string.IsNullOrWhiteSpace(item.ItemType) ? hit.ItemType : item.ItemType,
+
+                ItemName = string.IsNullOrWhiteSpace(item.TitleText) ? hit.ItemName : item.TitleText,
+
+                ContainerCode = string.IsNullOrWhiteSpace(item.ContainerCode) ? hit.ContainerCode : item.ContainerCode,
+
+                ContentEntryKeyword = context.ContentEntryKeyword,
+
+                ContentEntryKindFilter = context.ContentEntryKindFilter,
+
+                MatchedContentEntryIds = context.MatchedContentEntryIds,
+
+            };
 
         }
 

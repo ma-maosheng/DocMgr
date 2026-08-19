@@ -23,6 +23,10 @@ namespace DocMgr.Repositories.Interfaces
 
         Task<List<YearlyArchiveFilingFact>> SearchLedgerAsync(FilingLedgerSearchCriteria criteria);
 
+        Task<List<int>> GetDistinctLedgerArchiveYearsAsync();
+
+        Task<List<FilingLedgerProjectFilterItem>> GetLedgerProjectsByArchiveYearAsync(string? archiveYear);
+
         Task<List<YearlyArchiveRegisterMediaItem>> GetRegisterMediaItemsWithSupplementsAsync(
             IReadOnlyCollection<int> mediaItemIds);
 

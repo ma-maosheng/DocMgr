@@ -96,11 +96,11 @@ namespace DocMgr.Models.NetworkTransfer
         [NotMapped]
         public string ApplicationNo { get; set; } = string.Empty;
 
-        /// <summary>数据组织形式：目录型 / 文件型（列表展示）。</summary>
+        /// <summary>数据组织形式：目录型（根下可混合文件与子目录） / 文件型（仅散文件）。</summary>
         [NotMapped]
         public string DataOrganizationForm { get; set; } = string.Empty;
 
-        /// <summary>目录或文件个数（列表展示）。</summary>
+        /// <summary>目录/文件明细个数（目录型可为混合明细）。</summary>
         [NotMapped]
         public string EntryCountDisplay { get; set; } = string.Empty;
 

@@ -260,6 +260,10 @@
 
         <Border Grid.Row="2" Margin="0,12,0,0" Padding="12,10,0,0" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Background="#FAFBFC">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="查看资料详情"
+                        Command="{Binding ViewArchiveDetailCommand}"
+                        Padding="12,6" Margin="0,0,8,0"
+                        ToolTip="查看登记介质明细、立档容器与关联信息"/>
                 <Button Content="增补附件"
                         Command="{Binding SupplementOtherAttachmentCommand}"
                         Padding="12,6" Margin="0,0,8,0"

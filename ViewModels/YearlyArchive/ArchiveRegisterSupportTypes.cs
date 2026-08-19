@@ -595,9 +595,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         public string ContentEntryKindLabel =>
-            string.Equals(DataOrganizationForm, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormDirectory, StringComparison.Ordinal)
-                ? ArchiveRegisterDomainValues.ElectronicEntryKindDirectory
-                : string.Equals(DataOrganizationForm, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormFile, StringComparison.Ordinal)
+            IsDirectoryOrganizationForm
+                ? "目录/文件"
+                : IsFileOrganizationForm
                     ? ArchiveRegisterDomainValues.ElectronicEntryKindFile
                     : "目录/文件";
 
@@ -627,43 +627,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ? "未知"
                 : DataSizeMb.ToString("0.##");
 
-        public string ScannedEntryCountDisplay
-        {
-            get
-            {
-                if (TreatContentMetricsAsUnknown && ContentEntries.Count == 0)
-                {
-                    return IsFileOrganizationForm ? "文件个数：未知" : "目录个数：未知";
-                }
-
-                int count = ContentEntries.Count;
-                if (IsDirectoryOrganizationForm)
-                {
-                    return $"目录个数：{count}";
-                }
-
-                if (IsFileOrganizationForm)
-                {
-                    return $"文件个数：{count}";
-                }
-
-                return $"目录个数：{count}";
-            }
-        }
-
-        public void SyncContentEntryKinds()
-        {
-            string entryKind = ElectronicMediaItemSupport.ResolveEntryKind(DataOrganizationForm);
-            if (string.IsNullOrWhiteSpace(entryKind))
-            {
-                return;
-            }
-
-            foreach (var entry in ContentEntries)
-            {
-                entry.EntryKind = entryKind;
-            }
-        }
+        public string ScannedEntryCountDisplay =>
+            ElectronicMediaItemSupport.BuildScannedEntryCountDisplayFromKinds(
+                DataOrganizationForm,
+                ContentEntries.Select(entry => entry.EntryKind),
+                TreatContentMetricsAsUnknown);
 
         public void RefreshContentScanSummary(int? fileCount = null)
         {
@@ -681,9 +649,15 @@ namespace DocMgr.ViewModels.YearlyArchive
             decimal totalSizeMb = DataSizeMb > 0
                 ? DataSizeMb
                 : ContentEntries.Sum(entry => entry.SizeMb ?? 0);
+            int directoryEntryCount = ContentEntries.Count(entry =>
+                string.Equals(entry.EntryKind, ArchiveRegisterDomainValues.ElectronicEntryKindDirectory, StringComparison.Ordinal));
+            int fileEntryCount = ContentEntries.Count(entry =>
+                string.Equals(entry.EntryKind, ArchiveRegisterDomainValues.ElectronicEntryKindFile, StringComparison.Ordinal));
             ContentScanSummaryText = ElectronicMediaItemSupport.BuildContentScanSummary(
                 DataOrganizationForm,
                 ContentEntries.Count,
+                directoryEntryCount,
+                fileEntryCount,
                 ContentFileCount,
                 totalSizeMb);
             OnPropertyChanged(nameof(HasScannedEntries));

@@ -479,20 +479,19 @@ namespace DocMgr.Services.Shared
 
         public void ShowCabinetArchiveBoxContentDialog(string boxCode)
         {
-            try
+            ShowArchiveContainerContentDialog(dialogFactory: (dialogService, searchService) =>
             {
-                var dialog = new CabinetArchiveBoxContentDialog();
                 var contents = _cabinetArchiveBoxContentService.GetContents(boxCode);
                 bool isYearlyArchiveBox = _cabinetArchiveBoxContentService.IsYearlyArchiveBoxAtLocation(boxCode);
                 var occupationLockSummary = _cabinetArchiveBoxContentService.GetArchiveBoxOccupationLockSummary(boxCode);
-                var viewModel = CabinetArchiveBoxContentViewModel.CreateArchiveBoxView(boxCode, contents, isYearlyArchiveBox, occupationLockSummary);
-
-                ShowArchiveContainerContentDialog(dialog, viewModel);
-            }
-            catch (Exception ex)
-            {
-                ShowError($"查看档案盒内容失败：{ex.Message}");
-            }
+                return CabinetArchiveBoxContentViewModel.CreateArchiveBoxView(
+                    boxCode,
+                    contents,
+                    isYearlyArchiveBox,
+                    dialogService,
+                    searchService,
+                    occupationLockSummary);
+            }, errorMessage: "查看档案盒内容失败");
         }
 
         public void ShowCabinetArchiveBoxPendingReturnDetailDialog(string boxCode, string boxLabel, int pendingReturnCopyCount)
@@ -543,7 +542,7 @@ namespace DocMgr.Services.Shared
 
         public void ShowCabinetElectronicBagContentDialog(int electronicArchiveUnitId)
         {
-            try
+            ShowArchiveContainerContentDialog(dialogFactory: (dialogService, searchService) =>
             {
                 var header = _cabinetArchiveBoxContentService.GetElectronicBagHeader(electronicArchiveUnitId);
                 var contents = _cabinetArchiveBoxContentService.GetElectronicBagContents(electronicArchiveUnitId);
@@ -554,30 +553,48 @@ namespace DocMgr.Services.Shared
                     locationCode = header?.ElectronicArchiveNo ?? $"袋#{electronicArchiveUnitId}";
                 }
 
-                var dialog = new CabinetArchiveBoxContentDialog();
-                var viewModel = CabinetArchiveBoxContentViewModel.CreateElectronicBagView(locationCode, contents, header, occupationLockSummary);
-                ShowArchiveContainerContentDialog(dialog, viewModel);
-            }
-            catch (Exception ex)
-            {
-                ShowError($"查看电子介质袋内容失败：{ex.Message}");
-            }
+                return CabinetArchiveBoxContentViewModel.CreateElectronicBagView(
+                    locationCode,
+                    contents,
+                    header,
+                    dialogService,
+                    searchService,
+                    occupationLockSummary);
+            }, errorMessage: "查看电子介质袋内容失败");
         }
 
         public void ShowCabinetElectronicBagContentDialogByLocation(string storageLocationCode)
         {
-            try
+            ShowArchiveContainerContentDialog(dialogFactory: (dialogService, searchService) =>
             {
                 var header = _cabinetArchiveBoxContentService.GetElectronicBagHeaderByLocation(storageLocationCode);
                 var contents = _cabinetArchiveBoxContentService.GetElectronicBagContentsByLocation(storageLocationCode);
                 var occupationLockSummary = _cabinetArchiveBoxContentService.GetElectronicBagOccupationLockSummaryByLocation(storageLocationCode);
+                return CabinetArchiveBoxContentViewModel.CreateElectronicBagView(
+                    storageLocationCode,
+                    contents,
+                    header,
+                    dialogService,
+                    searchService,
+                    occupationLockSummary);
+            }, errorMessage: "查看电子介质袋内容失败");
+        }
+
+        private void ShowArchiveContainerContentDialog(
+            Func<IDialogService, IArchiveFilingSearchService, CabinetArchiveBoxContentViewModel> dialogFactory,
+            string errorMessage)
+        {
+            try
+            {
+                using var scope = _serviceScopeFactory.CreateScope();
+                var searchService = scope.ServiceProvider.GetRequiredService<IArchiveFilingSearchService>();
                 var dialog = new CabinetArchiveBoxContentDialog();
-                var viewModel = CabinetArchiveBoxContentViewModel.CreateElectronicBagView(storageLocationCode, contents, header, occupationLockSummary);
+                var viewModel = dialogFactory(this, searchService);
                 ShowArchiveContainerContentDialog(dialog, viewModel);
             }
             catch (Exception ex)
             {
-                ShowError($"查看电子介质袋内容失败：{ex.Message}");
+                ShowError($"{errorMessage}：{ex.Message}");
             }
         }
 
@@ -1198,6 +1215,18 @@ namespace DocMgr.Services.Shared
                 viewModel.RequestClose -= HandleRequestClose;
                 scope.Dispose();
             }
+        }
+
+        public ProjectInfo? ShowYearProjectPickDialog(string year, IReadOnlyList<ProjectInfo> projects)
+        {
+            var viewModel = new StockHardDiskYearProjectPickDialogViewModel(year, projects);
+            var dialog = new StockHardDiskYearProjectPickDialog
+            {
+                Owner = GetOwnerWindow(),
+                DataContext = viewModel
+            };
+
+            return dialog.ShowDialog() == true ? viewModel.SelectedProject : null;
         }
 
         public void ShowArchiveDetailWindow(ArchiveDetailOpenRequest request)

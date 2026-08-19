@@ -106,7 +106,7 @@ namespace DocMgr.Services.Interfaces
         Task DeleteAttachmentAsync(int attachmentId);
 
         // 新增：自动生成下一个表单编号
-        Task<string> GenerateNextFormNoAsync();
+        Task<string> GenerateNextFormNoAsync(int? numberingYear = null);
 
         // [新增] 管理员查询所有记录 (按年份)
         Task<List<YearlyArchiveRegisterRecord>> GetAllRecordsByYearAsync(int year);

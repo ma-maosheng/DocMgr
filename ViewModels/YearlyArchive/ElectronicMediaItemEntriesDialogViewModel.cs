@@ -58,7 +58,12 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string PageInfo => TotalCount == 0
             ? "暂无明细"
-            : $"第 {CurrentPage} / {TotalPages} 页，共 {TotalCount} 条";
+            : ShowPagination
+                ? $"第 {CurrentPage} / {TotalPages} 页，共 {TotalCount} 条"
+                : $"共 {TotalCount} 条";
+
+        /// <summary>明细超过一页时显示分页按钮。</summary>
+        public bool ShowPagination => TotalCount > PageSize;
 
         public bool CanGoPrevious => CurrentPage > 1;
 

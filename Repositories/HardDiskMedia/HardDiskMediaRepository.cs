@@ -718,6 +718,70 @@ public partial class HardDiskMediaRepository : IHardDiskMediaRepository
             .ToListAsync();
     }
 
+    public async Task EnsureEnabledDomainOptionAsync(string entityName, string fieldName, string displayName, string? optionValue)
+    {
+        if (string.IsNullOrWhiteSpace(entityName) || string.IsNullOrWhiteSpace(fieldName))
+        {
+            return;
+        }
+
+        string trimmedValue = optionValue?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmedValue))
+        {
+            return;
+        }
+
+        string trimmedEntity = entityName.Trim();
+        string trimmedField = fieldName.Trim();
+        var definition = await _dbContext.FieldDomainDefinitions
+            .Include(item => item.Options)
+            .FirstOrDefaultAsync(item => item.EntityName == trimmedEntity && item.FieldName == trimmedField);
+
+        if (definition == null)
+        {
+            int maxSort = await _dbContext.FieldDomainDefinitions
+                .Where(item => item.EntityName == trimmedEntity)
+                .Select(item => (int?)item.SortOrder)
+                .MaxAsync() ?? 0;
+
+            definition = new FieldDomainDefinition
+            {
+                EntityName = trimmedEntity,
+                FieldName = trimmedField,
+                DisplayName = string.IsNullOrWhiteSpace(displayName) ? trimmedField : displayName.Trim(),
+                Description = string.Empty,
+                IsDomainEnabled = true,
+                SortOrder = maxSort + 10
+            };
+            _dbContext.FieldDomainDefinitions.Add(definition);
+        }
+        else
+        {
+            definition.IsDomainEnabled = true;
+        }
+
+        var existing = definition.Options.FirstOrDefault(item =>
+            string.IsNullOrWhiteSpace(item.Scope)
+            && string.Equals((item.OptionValue ?? string.Empty).Trim(), trimmedValue, StringComparison.OrdinalIgnoreCase));
+        if (existing != null)
+        {
+            existing.IsEnabled = true;
+            return;
+        }
+
+        int optionSort = definition.Options.Count == 0
+            ? 10
+            : definition.Options.Max(item => item.SortOrder) + 10;
+        definition.Options.Add(new FieldDomainOption
+        {
+            Scope = string.Empty,
+            OptionValue = trimmedValue,
+            OptionLabel = trimmedValue,
+            IsEnabled = true,
+            SortOrder = optionSort
+        });
+    }
+
     public async Task<List<CabinetHardDiskSlotCategoryAssignment>> GetDedicatedMagneticSlotsByCategoryAsync(string categoryName)
     {
         var items = await _dbContext.CabinetHardDiskSlotCategoryAssignments

@@ -6,6 +6,9 @@ namespace DocMgr.Services.YearlyArchive
 {
     public class ElectronicMediaContentScanService : IElectronicMediaContentScanService
     {
+        /// <summary>
+        /// 将所选目录视为子项根目录，扫描其直接子项（一级子目录与根下文件可同时存在）。
+        /// </summary>
         public ElectronicMediaContentScanResult ScanDirectories(IReadOnlyList<string> directoryPaths, string? storageRootDirectory = null)
         {
             ArgumentNullException.ThrowIfNull(directoryPaths);
@@ -45,90 +48,51 @@ namespace DocMgr.Services.YearlyArchive
 
             foreach (var directoryPath in normalizedDirectories)
             {
-                var directoryInfo = new DirectoryInfo(directoryPath);
-                long directoryBytes = 0;
-                int directoryFileCount = 0;
-                DateTime? latestModifiedAt = null;
-                DateTime? earliestCreatedAt = null;
+                var (treeBytes, treeFileCount) = SummarizeDirectoryTree(directoryPath);
+                totalBytes += treeBytes;
+                totalFileCount += treeFileCount;
 
-                foreach (var filePath in Directory.EnumerateFiles(directoryPath, "*", SearchOption.AllDirectories))
+                foreach (var childDirectory in EnumerateImmediateBusinessDirectories(directoryPath))
                 {
-                    try
+                    var (childBytes, _) = SummarizeDirectoryTree(childDirectory.FullName);
+                    var times = ResolveDirectoryTimes(childDirectory.FullName, childDirectory);
+                    entries.Add(new ElectronicMediaContentScanEntry
                     {
-                        var fileInfo = new FileInfo(filePath);
-                        directoryBytes += fileInfo.Length;
-                        directoryFileCount++;
-                        if (latestModifiedAt == null || fileInfo.LastWriteTime > latestModifiedAt)
-                        {
-                            latestModifiedAt = fileInfo.LastWriteTime;
-                        }
-
-                        if (earliestCreatedAt == null || fileInfo.CreationTime < earliestCreatedAt)
-                        {
-                            earliestCreatedAt = fileInfo.CreationTime;
-                        }
-                    }
-                    catch (IOException)
-                    {
-                        // 个别文件被占用或读取失败时跳过，不影响其余文件的容量与时间统计。
-                    }
-                    catch (UnauthorizedAccessException)
-                    {
-                        // 无访问权限的文件跳过，继续统计其余文件。
-                    }
+                        EntryKind = ArchiveRegisterDomainValues.ElectronicEntryKindDirectory,
+                        EntryName = childDirectory.Name,
+                        RelativePath = Path.GetRelativePath(rootPath, childDirectory.FullName),
+                        SizeMb = BytesToMb(childBytes),
+                        CreatedAt = times.CreatedAt,
+                        ModifiedAt = times.ModifiedAt
+                    });
                 }
 
-                if (latestModifiedAt == null)
+                foreach (var childFile in EnumerateImmediateFiles(directoryPath))
                 {
-                    try
+                    entries.Add(new ElectronicMediaContentScanEntry
                     {
-                        latestModifiedAt = directoryInfo.LastWriteTime;
-                    }
-                    catch (IOException)
-                    {
-                        // 目录时间不可读时保持为空，由上层按缺省值处理。
-                    }
-                    catch (UnauthorizedAccessException)
-                    {
-                        // 无访问权限时保持为空，由上层按缺省值处理。
-                    }
+                        EntryKind = ArchiveRegisterDomainValues.ElectronicEntryKindFile,
+                        EntryName = childFile.Name,
+                        RelativePath = Path.GetRelativePath(rootPath, childFile.FullName),
+                        SizeMb = BytesToMb(childFile.Length),
+                        CreatedAt = childFile.CreationTime,
+                        ModifiedAt = childFile.LastWriteTime
+                    });
                 }
+            }
 
-                if (earliestCreatedAt == null)
-                {
-                    try
-                    {
-                        earliestCreatedAt = directoryInfo.CreationTime;
-                    }
-                    catch (IOException)
-                    {
-                        // 目录时间不可读时保持为空，由上层按缺省值处理。
-                    }
-                    catch (UnauthorizedAccessException)
-                    {
-                        // 无访问权限时保持为空，由上层按缺省值处理。
-                    }
-                }
-
-                string relativePath = Path.GetRelativePath(rootPath, directoryPath);
-                entries.Add(new ElectronicMediaContentScanEntry
-                {
-                    EntryKind = ArchiveRegisterDomainValues.ElectronicEntryKindDirectory,
-                    EntryName = directoryInfo.Name,
-                    RelativePath = relativePath,
-                    SizeMb = BytesToMb(directoryBytes),
-                    CreatedAt = earliestCreatedAt,
-                    ModifiedAt = latestModifiedAt
-                });
-
-                totalFileCount += directoryFileCount;
-                totalBytes += directoryBytes;
+            if (entries.Count == 0)
+            {
+                throw new InvalidOperationException("所选子项根目录下没有可登记的文件或一级子目录。");
             }
 
             return new ElectronicMediaContentScanResult
             {
                 RootPath = rootPath,
-                Entries = entries,
+                Entries = entries
+                    .OrderBy(entry => entry.EntryKind, StringComparer.Ordinal)
+                    .ThenBy(entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
                 FileCount = totalFileCount,
                 TotalSizeMb = BytesToMb(totalBytes)
             };
@@ -246,6 +210,162 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return Path.Combine(commonParts.ToArray());
+        }
+
+        private static IEnumerable<DirectoryInfo> EnumerateImmediateBusinessDirectories(string directoryPath)
+        {
+            DirectoryInfo[] directories;
+            try
+            {
+                directories = new DirectoryInfo(directoryPath).GetDirectories();
+            }
+            catch (IOException)
+            {
+                return Array.Empty<DirectoryInfo>();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Array.Empty<DirectoryInfo>();
+            }
+
+            return directories
+                .Where(IsBusinessDirectory)
+                .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static IEnumerable<FileInfo> EnumerateImmediateFiles(string directoryPath)
+        {
+            FileInfo[] files;
+            try
+            {
+                files = new DirectoryInfo(directoryPath).GetFiles();
+            }
+            catch (IOException)
+            {
+                return Array.Empty<FileInfo>();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Array.Empty<FileInfo>();
+            }
+
+            return files.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static bool IsBusinessDirectory(DirectoryInfo directory)
+        {
+            string name = directory.Name.Trim();
+            if (string.IsNullOrWhiteSpace(name)
+                || name.StartsWith(".", StringComparison.Ordinal)
+                || name.StartsWith("$", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            try
+            {
+                if (directory.Attributes.HasFlag(FileAttributes.Hidden)
+                    || directory.Attributes.HasFlag(FileAttributes.System))
+                {
+                    return false;
+                }
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private static (long Bytes, int FileCount) SummarizeDirectoryTree(string directoryPath)
+        {
+            long bytes = 0;
+            int fileCount = 0;
+            try
+            {
+                foreach (var filePath in Directory.EnumerateFiles(directoryPath, "*", SearchOption.AllDirectories))
+                {
+                    try
+                    {
+                        bytes += new FileInfo(filePath).Length;
+                        fileCount++;
+                    }
+                    catch (IOException)
+                    {
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                    }
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+
+            return (bytes, fileCount);
+        }
+
+        private static (DateTime? CreatedAt, DateTime? ModifiedAt) ResolveDirectoryTimes(
+            string directoryPath,
+            DirectoryInfo directoryInfo)
+        {
+            DateTime? latestModifiedAt = null;
+            DateTime? earliestCreatedAt = null;
+            try
+            {
+                foreach (var filePath in Directory.EnumerateFiles(directoryPath, "*", SearchOption.AllDirectories))
+                {
+                    try
+                    {
+                        var fileInfo = new FileInfo(filePath);
+                        if (latestModifiedAt == null || fileInfo.LastWriteTime > latestModifiedAt)
+                        {
+                            latestModifiedAt = fileInfo.LastWriteTime;
+                        }
+
+                        if (earliestCreatedAt == null || fileInfo.CreationTime < earliestCreatedAt)
+                        {
+                            earliestCreatedAt = fileInfo.CreationTime;
+                        }
+                    }
+                    catch (IOException)
+                    {
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                    }
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+
+            earliestCreatedAt ??= SafeDirectoryTime(() => directoryInfo.CreationTime);
+            latestModifiedAt ??= SafeDirectoryTime(() => directoryInfo.LastWriteTime);
+            return (earliestCreatedAt, latestModifiedAt);
+        }
+
+        private static DateTime? SafeDirectoryTime(Func<DateTime> readTime)
+        {
+            try
+            {
+                return readTime();
+            }
+            catch (IOException)
+            {
+                return null;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return null;
+            }
         }
 
         private static decimal BytesToMb(long bytes)

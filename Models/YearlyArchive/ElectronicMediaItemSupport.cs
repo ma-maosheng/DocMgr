@@ -14,30 +14,141 @@ namespace DocMgr.Models.YearlyArchive
         /// 登记申请存储目录格式说明。
         /// </summary>
         public const string RegistrationStoragePathFormatDescription =
-            "登记格式：\\目录\\子目录（不含盘符，层级用反斜杠分隔）";
+            "格式说明：\\年度\\项目\\资料名称\\资料子项名称";
 
         /// <summary>
         /// 登记申请存储目录规范性示例。
         /// </summary>
         public const string RegistrationStoragePathFormatExamples =
-            "格式说明：[\\年度\\项目\\子项名称\\]，示例：[\\2026\\基础测绘\\设计文件\\]";
+            "示例：\\2026\\基础测绘\\原始资料\\航摄影像";
 
         private static readonly Regex RegistrationStoragePathPattern =
             new(@"^\\[^\\]+(\\[^\\]+)*$", RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// 目录型：子项有统一根目录；根下可同时有文件与一级子目录，明细 <c>EntryKind</c> 允许混合。
+        /// </summary>
+        public static bool IsDirectoryOrganizationForm(string? dataOrganizationForm) =>
+            string.Equals(
+                dataOrganizationForm?.Trim(),
+                ArchiveRegisterDomainValues.ElectronicDataOrganizationFormDirectory,
+                StringComparison.Ordinal);
+
+        /// <summary>
+        /// 文件型：无统一根目录，仅登记散文件；全部明细必须为文件。
+        /// </summary>
+        public static bool IsFileOrganizationForm(string? dataOrganizationForm) =>
+            string.Equals(
+                dataOrganizationForm?.Trim(),
+                ArchiveRegisterDomainValues.ElectronicDataOrganizationFormFile,
+                StringComparison.Ordinal);
+
+        /// <summary>
+        /// 缺省条目类型提示值。目录型允许混合，不得用本方法强制覆盖已扫描的 <c>EntryKind</c>。
+        /// </summary>
         public static string ResolveEntryKind(string? dataOrganizationForm)
         {
-            if (string.Equals(dataOrganizationForm, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormDirectory, StringComparison.Ordinal))
+            if (IsDirectoryOrganizationForm(dataOrganizationForm))
             {
                 return ArchiveRegisterDomainValues.ElectronicEntryKindDirectory;
             }
 
-            if (string.Equals(dataOrganizationForm, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormFile, StringComparison.Ordinal))
+            if (IsFileOrganizationForm(dataOrganizationForm))
             {
                 return ArchiveRegisterDomainValues.ElectronicEntryKindFile;
             }
 
             return string.Empty;
         }
+
+        /// <summary>
+        /// 明细未填 <c>EntryKind</c> 时的补全：文件型补「文件」；目录型不猜测（允许目录/文件混合）。
+        /// </summary>
+        public static string ResolveMissingEntryKindFallback(string? dataOrganizationForm)
+        {
+            return IsFileOrganizationForm(dataOrganizationForm)
+                ? ArchiveRegisterDomainValues.ElectronicEntryKindFile
+                : string.Empty;
+        }
+
+        public static bool IsAllowedEntryKind(string? dataOrganizationForm, string? entryKind)
+        {
+            string kind = entryKind?.Trim() ?? string.Empty;
+            if (IsFileOrganizationForm(dataOrganizationForm))
+            {
+                return string.Equals(kind, ArchiveRegisterDomainValues.ElectronicEntryKindFile, StringComparison.Ordinal);
+            }
+
+            if (IsDirectoryOrganizationForm(dataOrganizationForm))
+            {
+                return string.Equals(kind, ArchiveRegisterDomainValues.ElectronicEntryKindDirectory, StringComparison.Ordinal)
+                    || string.Equals(kind, ArchiveRegisterDomainValues.ElectronicEntryKindFile, StringComparison.Ordinal);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 校验数据组织形式与目录/文件明细种类是否一致（建档、出入网、存量直办共用）。
+        /// </summary>
+        public static IReadOnlyList<string> CollectDataOrganizationEntryErrors(
+            string? dataOrganizationForm,
+            IEnumerable<YearlyArchiveRegisterElectronicMediaItemEntry>? entries,
+            string itemPrefix,
+            bool requireEntries)
+        {
+            var errors = new List<string>();
+            var list = entries?.ToList() ?? [];
+            string form = dataOrganizationForm?.Trim() ?? string.Empty;
+
+            if (requireEntries && list.Count == 0)
+            {
+                errors.Add($"{itemPrefix}至少需要一条目录/文件明细");
+                return errors;
+            }
+
+            if (list.Count == 0 || string.IsNullOrWhiteSpace(form))
+            {
+                return errors;
+            }
+
+            if (IsFileOrganizationForm(form))
+            {
+                if (list.Any(entry => !string.Equals(
+                        entry.EntryKind?.Trim(),
+                        ArchiveRegisterDomainValues.ElectronicEntryKindFile,
+                        StringComparison.Ordinal)))
+                {
+                    errors.Add($"{itemPrefix}文件型仅允许文件明细，不能包含目录");
+                }
+
+                return errors;
+            }
+
+            if (IsDirectoryOrganizationForm(form))
+            {
+                if (list.Any(entry => !IsAllowedEntryKind(form, entry.EntryKind)))
+                {
+                    errors.Add($"{itemPrefix}目录型明细只能是目录或文件");
+                }
+
+                return errors;
+            }
+
+            return errors;
+        }
+
+        public static int CountDirectoryEntries(IEnumerable<YearlyArchiveRegisterElectronicMediaItemEntry>? entries) =>
+            entries?.Count(entry => string.Equals(
+                entry.EntryKind?.Trim(),
+                ArchiveRegisterDomainValues.ElectronicEntryKindDirectory,
+                StringComparison.Ordinal)) ?? 0;
+
+        public static int CountFileEntries(IEnumerable<YearlyArchiveRegisterElectronicMediaItemEntry>? entries) =>
+            entries?.Count(entry => string.Equals(
+                entry.EntryKind?.Trim(),
+                ArchiveRegisterDomainValues.ElectronicEntryKindFile,
+                StringComparison.Ordinal)) ?? 0;
 
         public static string ResolveSubCategoryScope(string? materialCategory)
         {
@@ -449,17 +560,9 @@ namespace DocMgr.Models.YearlyArchive
             }
 
             int entryCount = detail.Entries?.Count ?? 0;
-            if (string.Equals(detail.DataOrganizationForm, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormDirectory, StringComparison.Ordinal))
+            if (entryCount > 0)
             {
-                parts.Add($"目录个数：{entryCount}");
-            }
-            else if (string.Equals(detail.DataOrganizationForm, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormFile, StringComparison.Ordinal))
-            {
-                parts.Add($"文件个数：{entryCount}");
-            }
-            else if (entryCount > 0)
-            {
-                parts.Add($"目录个数：{entryCount}");
+                parts.Add(BuildScannedEntryCountDisplay(detail.DataOrganizationForm, detail.Entries, treatAsUnknown: false));
             }
 
             return parts;
@@ -597,7 +700,9 @@ namespace DocMgr.Models.YearlyArchive
         public static string BuildContentScanSummary(
             string? dataOrganizationForm,
             int entryCount,
-            int fileCount,
+            int directoryEntryCount,
+            int fileEntryCount,
+            int nestedFileCount,
             decimal totalSizeMb)
         {
             if (entryCount <= 0)
@@ -606,19 +711,57 @@ namespace DocMgr.Models.YearlyArchive
             }
 
             string sizeText = FormatSizeMb(totalSizeMb);
-            if (string.Equals(dataOrganizationForm, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormDirectory, StringComparison.Ordinal))
-            {
-                return fileCount > 0
-                    ? $"已扫描 {entryCount} 个目录，包含 {fileCount} 个文件，合计 {sizeText}"
-                    : $"已扫描 {entryCount} 个目录，合计 {sizeText}";
-            }
-
-            if (string.Equals(dataOrganizationForm, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormFile, StringComparison.Ordinal))
+            if (IsFileOrganizationForm(dataOrganizationForm))
             {
                 return $"已扫描 {entryCount} 个文件，合计 {sizeText}";
             }
 
+            if (IsDirectoryOrganizationForm(dataOrganizationForm))
+            {
+                string nested = nestedFileCount > 0 ? $"，包含 {nestedFileCount} 个文件" : string.Empty;
+                return $"已扫描 {entryCount} 条明细（目录 {directoryEntryCount} / 文件 {fileEntryCount}）{nested}，合计 {sizeText}";
+            }
+
             return $"已加载 {entryCount} 条明细，合计 {sizeText}";
+        }
+
+        public static string BuildScannedEntryCountDisplay(
+            string? dataOrganizationForm,
+            IEnumerable<YearlyArchiveRegisterElectronicMediaItemEntry>? entries,
+            bool treatAsUnknown)
+        {
+            var list = entries?.ToList() ?? [];
+            if (treatAsUnknown && list.Count == 0)
+            {
+                return IsFileOrganizationForm(dataOrganizationForm) ? "文件个数：未知" : "明细个数：未知";
+            }
+
+            if (IsFileOrganizationForm(dataOrganizationForm))
+            {
+                return $"文件个数：{list.Count}";
+            }
+
+            int directoryCount = CountDirectoryEntries(list);
+            int fileCount = CountFileEntries(list);
+            if (IsDirectoryOrganizationForm(dataOrganizationForm))
+            {
+                return $"明细：目录 {directoryCount} / 文件 {fileCount}";
+            }
+
+            return $"明细个数：{list.Count}";
+        }
+
+        public static string BuildScannedEntryCountDisplayFromKinds(
+            string? dataOrganizationForm,
+            IEnumerable<string?> entryKinds,
+            bool treatAsUnknown)
+        {
+            var mapped = (entryKinds ?? Array.Empty<string?>())
+                .Select(kind => new YearlyArchiveRegisterElectronicMediaItemEntry
+                {
+                    EntryKind = kind?.Trim() ?? string.Empty
+                });
+            return BuildScannedEntryCountDisplay(dataOrganizationForm, mapped, treatAsUnknown);
         }
     }
 }

@@ -83,6 +83,21 @@ namespace DocMgr.Models.Cabinets
         /// <summary>是否为电子介质子项（展示规则简化）。</summary>
         public bool IsElectronicMedia { get; init; }
 
+        /// <summary>立档事实 ID（年度资料子项）。</summary>
+        public int FilingFactId { get; init; }
+
+        /// <summary>登记申请 ID（年度资料子项）。</summary>
+        public int RegisterRecordId { get; init; }
+
+        /// <summary>登记介质 ID（年度资料子项）。</summary>
+        public int RegisterMediaId { get; init; }
+
+        /// <summary>登记介质明细 ID（年度资料子项）。</summary>
+        public int MediaItemId { get; init; }
+
+        /// <summary>介质类别（模拟/电子）。</summary>
+        public string MediaKind { get; init; } = string.Empty;
+
         public int FiledCopyCount { get; init; }
 
         public int CurrentInArchiveCopyCount { get; init; }

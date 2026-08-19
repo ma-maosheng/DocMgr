@@ -84,6 +84,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public Visibility NewOnlyVisibility => IsNewMode ? Visibility.Visible : Visibility.Collapsed;
 
         public ObservableCollection<string> DiskTypeOptions { get; } = new();
+        public ObservableCollection<string> BrandOptions { get; } = new();
         public ObservableCollection<string> InterfaceTypeOptions { get; } = new();
         public ObservableCollection<string> CapacityUnitOptions { get; } = new(ElectronicMediaCapacitySupport.CapacityUnits);
         public ObservableCollection<string> StatusOptions { get; } = new();
@@ -388,11 +389,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private async Task LoadOptionsAsync()
         {
             var diskTypes = await _hardDiskMediaService.GetDomainOptionLabelsAsync(nameof(HardDiskMedium), nameof(HardDiskMedium.DiskType));
+            var brands = await _hardDiskMediaService.GetDomainOptionLabelsAsync(nameof(HardDiskMedium), nameof(HardDiskMedium.Brand));
             var interfaceTypes = await _hardDiskMediaService.GetDomainOptionLabelsAsync(nameof(HardDiskMedium), nameof(HardDiskMedium.InterfaceType));
             var statuses = await _hardDiskMediaService.GetDomainOptionLabelsAsync(nameof(HardDiskLedger), nameof(HardDiskLedger.MediaStatus));
             var natures = await _hardDiskMediaService.GetDomainOptionLabelsAsync(nameof(HardDiskLedger), nameof(HardDiskLedger.MediaNature));
 
             ResetOptions(DiskTypeOptions, diskTypes);
+            ResetOptions(BrandOptions, brands);
             ResetOptions(InterfaceTypeOptions, interfaceTypes);
             ResetOptions(StatusOptions, statuses);
             ResetOptions(NatureOptions, natures);
@@ -410,6 +413,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
             CapacityValue = capacityValue;
             CapacityUnit = capacityUnit;
             InterfaceType = !string.IsNullOrWhiteSpace(_sourceMedium.InterfaceType) ? _sourceMedium.InterfaceType : InterfaceTypeOptions.FirstOrDefault() ?? string.Empty;
+            EnsureOption(DiskTypeOptions, DiskType);
+            EnsureOption(BrandOptions, Brand);
+            EnsureOption(InterfaceTypeOptions, InterfaceType);
             RegisterPerson = !string.IsNullOrWhiteSpace(_sourceMedium.RegisterPerson) ? _sourceMedium.RegisterPerson : _userContextService.CurrentUser?.RealName ?? string.Empty;
             RegisterDate = _sourceMedium.RegisterDate == default ? DateTime.Today : _sourceMedium.RegisterDate;
             FactoryDate = _sourceMedium.FactoryDate;
@@ -477,6 +483,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 {
                     await _hardDiskMediaService.SaveMediumAsync(medium, _userContextService.CurrentUser);
                 }
+                else
+                {
+                    await _hardDiskMediaService.EnsureMediumIdentityDomainOptionsAsync(
+                        medium.DiskType,
+                        medium.Brand,
+                        medium.InterfaceType);
+                }
 
                 CopySavedMedium(medium);
                 HasCommittedChanges = true;
@@ -513,13 +526,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             if (string.IsNullOrWhiteSpace(DiskType))
             {
-                errorMessage = "请选择硬盘类型。";
+                errorMessage = "请选择或填写硬盘类型。";
                 return false;
             }
 
             if (string.IsNullOrWhiteSpace(Brand))
             {
-                errorMessage = "请输入品牌。";
+                errorMessage = "请选择或填写品牌。";
                 return false;
             }
 
@@ -531,7 +544,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             if (string.IsNullOrWhiteSpace(InterfaceType))
             {
-                errorMessage = $"序列号 [{SerialNumber.Trim()}] 对应的接口类型尚未选择，请补全后再保存。";
+                errorMessage = $"序列号 [{SerialNumber.Trim()}] 对应的接口类型尚未选择或填写，请补全后再保存。";
                 return false;
             }
 
@@ -552,6 +565,18 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 target.Add(value);
             }
+        }
+
+        private static void EnsureOption(ObservableCollection<string> target, string? value)
+        {
+            string trimmed = value?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(trimmed)
+                || target.Any(item => string.Equals(item, trimmed, StringComparison.Ordinal)))
+            {
+                return;
+            }
+
+            target.Insert(0, trimmed);
         }
 
         private async Task GenerateDiskCodeAsync()
@@ -643,6 +668,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 Brand = disk.Model.Trim();
             }
 
+            EnsureOption(BrandOptions, Brand);
+
             if (!string.IsNullOrWhiteSpace(disk.CapacityValue))
             {
                 CapacityValue = disk.CapacityValue;
@@ -652,7 +679,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
 
             DiskType = LocalPhysicalDiskHardwareSupport.MatchDomainOption(DiskTypeOptions, disk.DiskType);
+            EnsureOption(DiskTypeOptions, DiskType);
             InterfaceType = LocalPhysicalDiskHardwareSupport.MatchDomainOption(InterfaceTypeOptions, disk.InterfaceType);
+            EnsureOption(InterfaceTypeOptions, InterfaceType);
 
             if (disk.FactoryDate.HasValue)
             {

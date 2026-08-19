@@ -22,6 +22,16 @@ namespace DocMgr.Services.YearlyArchive
             _outboundRepository = outboundRepository;
         }
 
+        public async Task<IReadOnlyList<int>> GetExistingLedgerYearsAsync()
+        {
+            return await _filingFactRepository.GetDistinctLedgerArchiveYearsAsync();
+        }
+
+        public async Task<IReadOnlyList<FilingLedgerProjectFilterItem>> GetProjectOptionsForYearAsync(string? archiveYear)
+        {
+            return await _filingFactRepository.GetLedgerProjectsByArchiveYearAsync(archiveYear);
+        }
+
         public async Task<IReadOnlyList<FilingLedgerRow>> SearchAsync(FilingLedgerSearchCriteria criteria)
         {
             ArgumentNullException.ThrowIfNull(criteria);
@@ -115,7 +125,6 @@ namespace DocMgr.Services.YearlyArchive
                 string[] headers =
                 [
                     "立档事实编号",
-                    "立档年度",
                     "介质类型",
                     "表单号",
                     "资料名称",
@@ -165,7 +174,6 @@ namespace DocMgr.Services.YearlyArchive
                     var row = sheet.CreateRow(rowIndex + 1);
                     int col = 0;
                     row.CreateCell(col++).SetCellValue(item.FilingFactNo);
-                    row.CreateCell(col++).SetCellValue(item.FilingYear);
                     row.CreateCell(col++).SetCellValue(item.MediaKind);
                     row.CreateCell(col++).SetCellValue(item.FormNo);
                     row.CreateCell(col++).SetCellValue(item.MaterialName);

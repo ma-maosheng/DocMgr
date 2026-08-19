@@ -18,6 +18,7 @@ namespace DocMgr.Models.HardDiskMedia
         public const string InterfaceSas = "SAS";
         public const string InterfaceUsb = "USB";
         public const string InterfaceTypeC = "Type-C";
+        public const string InterfaceNvme = "NVMe";
         public const string InterfaceOther = "其他";
 
         /// <summary>
@@ -181,7 +182,7 @@ namespace DocMgr.Models.HardDiskMedia
                 return DiskTypeSsd;
             }
 
-            return DiskTypeOther;
+            return string.Empty;
         }
 
         /// <summary>
@@ -200,6 +201,12 @@ namespace DocMgr.Models.HardDiskMedia
                 return InterfaceSas;
             }
 
+            if (ContainsOrdinal(normalizedBus, "NVMe")
+                || ContainsOrdinal(win32InterfaceType, "NVMe"))
+            {
+                return InterfaceNvme;
+            }
+
             if (ContainsOrdinal(normalizedBus, "SATA")
                 || ContainsOrdinal(normalizedBus, "ATA")
                 || ContainsOrdinal(win32InterfaceType, "SATA")
@@ -210,37 +217,27 @@ namespace DocMgr.Models.HardDiskMedia
                 return InterfaceSata;
             }
 
-            return InterfaceOther;
+            return string.Empty;
         }
 
         /// <summary>
-        /// 将映射值对齐到已启用域选项；对不上则取「其他」或首项。
+        /// 将映射值对齐到已启用域选项；对不上则保留映射原文，供可输入下拉新增。
         /// </summary>
         public static string MatchDomainOption(IReadOnlyList<string> options, string? mappedValue)
         {
             ArgumentNullException.ThrowIfNull(options);
 
             string trimmed = mappedValue?.Trim() ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(trimmed))
+            if (string.IsNullOrWhiteSpace(trimmed)
+                || string.Equals(trimmed, DiskTypeOther, StringComparison.Ordinal)
+                || string.Equals(trimmed, InterfaceOther, StringComparison.Ordinal))
             {
-                string? exact = options.FirstOrDefault(item =>
-                    string.Equals(item?.Trim(), trimmed, StringComparison.Ordinal));
-                if (!string.IsNullOrWhiteSpace(exact))
-                {
-                    return exact;
-                }
+                return string.Empty;
             }
 
-            string? other = options.FirstOrDefault(item =>
-                string.Equals(item?.Trim(), DiskTypeOther, StringComparison.Ordinal)
-                || string.Equals(item?.Trim(), InterfaceOther, StringComparison.Ordinal));
-            if (!string.IsNullOrWhiteSpace(other))
-            {
-                return other;
-            }
-
-            return options.FirstOrDefault(item => !string.IsNullOrWhiteSpace(item))?.Trim()
-                ?? trimmed;
+            string? exact = options.FirstOrDefault(item =>
+                string.Equals(item?.Trim(), trimmed, StringComparison.Ordinal));
+            return string.IsNullOrWhiteSpace(exact) ? trimmed : exact;
         }
 
         public static bool IsUsbBus(string? busType)

@@ -640,10 +640,11 @@
                                                    Text="{Binding ScannedEntryCountDisplay}"/>
 
                                         <WrapPanel Grid.Column="10" VerticalAlignment="Center">
-                                            <Button Content="选择目录…"
-                                                    Width="84"
+                                            <Button Content="选择根目录…"
+                                                    Width="96"
                                                     Margin="0,0,4,0"
                                                     Padding="4,2"
+                                                    ToolTip="选择子项所在文件夹，扫描其下文件与一级子目录"
                                                     Command="{Binding DataContext.PickFolderAndScanElectronicContentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}"/>
                                             <Button Content="选择文件…"

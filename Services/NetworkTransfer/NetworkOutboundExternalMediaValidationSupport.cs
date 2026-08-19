@@ -173,14 +173,11 @@ internal static class NetworkOutboundExternalMediaValidationSupport
             errors.Add($"• {label}：请从离线介质补录有效的数据量（MB）");
         }
 
-        if (requireDataSize)
-        {
-            int entryCount = detail.Entries?.Count ?? 0;
-            if (entryCount <= 0)
-            {
-                errors.Add($"• {label}：请从离线介质补录目录或文件明细（文件/目录个数不能为 0）");
-            }
-        }
+        errors.AddRange(ElectronicMediaItemSupport.CollectDataOrganizationEntryErrors(
+            detail.DataOrganizationForm,
+            detail.Entries,
+            $"• {label}：",
+            requireEntries: requireDataSize));
     }
 
     private static void ValidateMediaItemHandoverSupplement(
@@ -202,10 +199,10 @@ internal static class NetworkOutboundExternalMediaValidationSupport
             errors.Add($"• {label}：请从离线介质补录有效的数据量（MB）");
         }
 
-        int entryCount = detail.Entries?.Count ?? 0;
-        if (entryCount <= 0)
-        {
-            errors.Add($"• {label}：请从离线介质补录目录或文件明细（文件/文件夹个数不能为 0）");
-        }
+        errors.AddRange(ElectronicMediaItemSupport.CollectDataOrganizationEntryErrors(
+            detail.DataOrganizationForm,
+            detail.Entries,
+            $"• {label}：",
+            requireEntries: true));
     }
 }

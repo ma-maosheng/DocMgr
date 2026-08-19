@@ -318,6 +318,11 @@ namespace DocMgr.Services.Interfaces
         Task<IReadOnlyList<string>> GetDomainOptionLabelsAsync(string entityName, string fieldName);
 
         /// <summary>
+        /// 将硬盘类型、品牌、接口类型写入字段域（不存在则新增），便于后续下拉自助维护。
+        /// </summary>
+        Task EnsureMediumIdentityDomainOptionsAsync(string? diskType, string? brand, string? interfaceType, bool saveChanges = true);
+
+        /// <summary>
         /// 判断序列号是否已被其他未删除硬盘占用。
         /// </summary>
         Task<bool> HasDuplicateSerialNumberAsync(int currentMediumId, string serialNumber);

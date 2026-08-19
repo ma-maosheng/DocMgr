@@ -507,7 +507,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     .Select((entry, entryIndex) => new YearlyArchiveRegisterElectronicMediaItemEntry
                     {
                         EntryKind = string.IsNullOrWhiteSpace(entry.EntryKind)
-                            ? ElectronicMediaItemSupport.ResolveEntryKind(item.DataOrganizationForm)
+                            ? ElectronicMediaItemSupport.ResolveMissingEntryKindFallback(item.DataOrganizationForm)
                             : entry.EntryKind,
                         EntryName = entry.EntryName?.Trim() ?? string.Empty,
                         RelativePath = entry.RelativePath?.Trim() ?? string.Empty,
@@ -855,7 +855,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             if (item.IsDirectoryOrganizationForm)
             {
                 return item.LastScannedDirectoryPaths.Count > 0
-                    || (item.HasScannedEntries && !string.IsNullOrWhiteSpace(item.StoragePath));
+                    || (!string.IsNullOrWhiteSpace(item.StorageRootFullPath)
+                        && Directory.Exists(item.StorageRootFullPath));
             }
 
             if (item.IsFileOrganizationForm)
@@ -873,14 +874,14 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            var folders = _dialogService.PickFolders("选择电子资料目录", multiselect: true);
+            var folders = _dialogService.PickFolders("选择子项根目录（扫描该目录下的文件与一级子目录）", multiselect: true);
             if (folders == null || folders.Count == 0)
             {
                 return;
             }
 
             if (item.HasScannedEntries
-                && !_dialogService.ShowConfirm("重新选择目录将覆盖当前已扫描的目录/文件明细，是否继续？"))
+                && !_dialogService.ShowConfirm("重新选择子项根目录将覆盖当前已扫描的目录/文件明细，是否继续？"))
             {
                 return;
             }
@@ -922,7 +923,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 var directories = ResolveScannedDirectoryPaths(item);
                 if (directories.Count == 0)
                 {
-                    _dialogService.ShowMessage("原扫描目录已不存在，请重新选择目录。");
+                    _dialogService.ShowMessage("原子项根目录已不存在，请重新选择目录。");
                     return;
                 }
 
@@ -982,16 +983,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                     .ToList();
             }
 
-            if (string.IsNullOrWhiteSpace(item.StoragePath) || item.ContentEntries.Count == 0)
+            if (!string.IsNullOrWhiteSpace(item.StorageRootFullPath) && Directory.Exists(item.StorageRootFullPath))
             {
-                return new List<string>();
+                return [item.StorageRootFullPath];
             }
 
-            return item.ContentEntries
-                .Select(entry => Path.GetFullPath(Path.Combine(item.StoragePath, entry.RelativePath)))
-                .Where(Directory.Exists)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            return new List<string>();
         }
 
         private async Task ScanFileContentAsync(MediaItemViewModel item, IReadOnlyList<string> files, string? storageRootDirectory = null)

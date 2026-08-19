@@ -7,6 +7,10 @@ namespace DocMgr.Services.Interfaces
     /// </summary>
     public interface IArchiveFilingLedgerService
     {
+        Task<IReadOnlyList<int>> GetExistingLedgerYearsAsync();
+
+        Task<IReadOnlyList<FilingLedgerProjectFilterItem>> GetProjectOptionsForYearAsync(string? archiveYear);
+
         Task<IReadOnlyList<FilingLedgerRow>> SearchAsync(FilingLedgerSearchCriteria criteria);
 
         Task<IReadOnlyList<FilingLedgerContentEntryInfo>> GetContentEntriesByMediaItemIdAsync(

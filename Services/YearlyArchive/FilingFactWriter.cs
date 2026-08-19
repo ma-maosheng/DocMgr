@@ -83,7 +83,8 @@ namespace DocMgr.Services.YearlyArchive
             YearlyElectronicArchiveUnit unit,
             IReadOnlyList<YearlyElectronicArchiveUnitMediaItemLink> links,
             DateTime filedAt,
-            string filedBy)
+            string filedBy,
+            int? numberingYear = null)
         {
             ArgumentNullException.ThrowIfNull(unit);
             ArgumentNullException.ThrowIfNull(links);
@@ -94,7 +95,7 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             var facts = new List<YearlyArchiveFilingFact>();
-            int year = filedAt.Year;
+            int year = numberingYear ?? filedAt.Year;
             int nextSequence = await GetNextSequenceAsync(ArchiveRegisterDomainValues.MediaKindElectronic, year);
 
             foreach (var link in links)

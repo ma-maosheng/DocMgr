@@ -135,6 +135,11 @@ public interface IHardDiskMediaRepository
 
     Task<List<string>> GetDomainOptionLabelsAsync(string entityName, string fieldName);
 
+    /// <summary>
+    /// 确保指定字段存在启用域值；无定义时创建并启用域。不调用 SaveChanges。
+    /// </summary>
+    Task EnsureEnabledDomainOptionAsync(string entityName, string fieldName, string displayName, string? optionValue);
+
     Task<List<CabinetHardDiskSlotCategoryAssignment>> GetDedicatedMagneticSlotsByCategoryAsync(string categoryName);
 
     Task<List<HardDiskMedium>> GetBlankInStockMediaNeedingLocationAssignmentAsync();

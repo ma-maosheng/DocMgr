@@ -91,15 +91,25 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             bool pathEditable = IsElectronicFilingStoragePathEditable;
             var pendingSources = EnumeratePendingElectronicMediaItemRows().ToList();
-            var sequenceByMediaItemId = ElectronicFilingStoragePathSupport.BuildSequenceByMediaItemId(
+            var occupiedFolderNamesByMaterial = existingRows
+                .GroupBy(row => row.MaterialName?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => (IReadOnlyCollection<string>)group
+                        .Select(row => ElectronicFilingStoragePathSupport.ExtractItemFolderName(row.FilingStoragePath))
+                        .Where(name => !string.IsNullOrWhiteSpace(name))
+                        .ToList(),
+                    StringComparer.OrdinalIgnoreCase);
+            var folderNameByMediaItemId = ElectronicFilingStoragePathSupport.BuildItemFolderNameByMediaItemId(
                 pendingSources.Select(source => new ElectronicFilingStoragePathSupport.PendingFilingStoragePathItem(
                     source.MediaItemId,
                     source.FormNo,
                     source.MaterialName,
-                    source.ItemName)));
+                    source.ItemName)),
+                occupiedFolderNamesByMaterial);
 
             var pendingRows = pendingSources
-                .Select(row => CreatePendingFilingDetailRow(row, mediumCode, pathEditable, sequenceByMediaItemId))
+                .Select(row => CreatePendingFilingDetailRow(row, mediumCode, pathEditable, folderNameByMediaItemId))
                 .ToList();
 
             await RunOnUiAsync(() =>
@@ -233,22 +243,21 @@ namespace DocMgr.ViewModels.YearlyArchive
             SelectableElectronicArchiveMediaViewModel source,
             string mediumCode,
             bool pathEditable,
-            IReadOnlyDictionary<int, int> sequenceByMediaItemId)
+            IReadOnlyDictionary<int, string> folderNameByMediaItemId)
         {
             string sourceStoragePath = source.StoragePath?.Trim() ?? string.Empty;
             string defaultFilingPath = sourceStoragePath;
             if (pathEditable
                 && SelectedElectronicSubmissionMode != ElectronicArchiveSubmissionMode.RetainedHardDiskDirectNew)
             {
-                int sequence = sequenceByMediaItemId.TryGetValue(source.MediaItemId, out int resolvedSequence)
-                    ? resolvedSequence
-                    : 1;
+                string itemFolderName = folderNameByMediaItemId.TryGetValue(source.MediaItemId, out string? resolvedFolder)
+                    ? resolvedFolder
+                    : ElectronicFilingStoragePathSupport.SanitizePathSegment(source.ItemName, "未命名子项");
                 defaultFilingPath = ElectronicFilingStoragePathSupport.BuildDefaultFilingStoragePath(
                     TargetYear,
                     TargetProject,
                     source.MaterialName,
-                    source.ItemName,
-                    sequence);
+                    itemFolderName);
             }
 
             if (!_pendingFilingStoragePaths.TryGetValue(source.MediaItemId, out string? storedPath)

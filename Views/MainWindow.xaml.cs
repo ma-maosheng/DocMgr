@@ -452,6 +452,7 @@ namespace DocMgr.Views
                 ArchiveRegisterApplicationPage => BtnArchiveRegisterApply,
                 ArchiveRegisterApprovalPage => BtnArchiveRegisterApprove,
                 ArchiveFilingPage => BtnArchiveFiling,
+                StockHardDiskDirectFilingPage => BtnStockHardDiskDirectFiling,
                 ArchiveFilingLedgerPage => BtnArchiveFilingLedger,
                 ArchiveSimulatedRelocationPage => BtnArchiveSimulatedRelocation,
                 ArchiveElectronicRelocationPage => BtnArchiveElectronicRelocation,
@@ -587,6 +588,7 @@ namespace DocMgr.Views
                 ArchiveDetailPage => "年度资料档案化管理（资料查看）",
                 ArchiveRegisterSimulationPage => "年度资料档案化管理（模拟测试·模拟登记_方式1）",
                 ArchiveFilingPage => "年度资料档案化管理（资料建档·资料立档）",
+                StockHardDiskDirectFilingPage => "年度资料档案化管理（资料建档·存量硬盘直办立档）",
                 ArchiveFilingLedgerPage => "年度资料档案化管理（资料建档·立档台账）",
                 ArchiveRelocationLedgerPage => "年度资料档案化管理（资料迁档·迁档台账）",
                 ArchiveCirculationLedgerPage => "年度资料档案化管理（资料流转·流转台账）",
@@ -796,6 +798,7 @@ namespace DocMgr.Views
             SetNavButton(BtnArchiveRegisterApply, canSubmitApplication);
             SetNavButton(BtnArchiveRegisterApprove, isArchiveAdmin);
             SetNavButton(BtnArchiveFiling, canFiling);
+            SetNavButton(BtnStockHardDiskDirectFiling, canFiling);
             SetNavButton(BtnArchiveFilingLedger, canFiling);
             SetNavButton(BtnArchiveRelocationLedger, canFiling);
             SetNavButton(BtnArchiveCirculationLedger, canFiling);
@@ -1185,6 +1188,35 @@ namespace DocMgr.Views
                 MessageBox.Show(
                     this,
                     "无法打开资料立档页面：\n\n" + ex.Message,
+                    "错误",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnStockHardDiskDirectFiling_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "年度资料档案化管理（资料建档·存量硬盘直办立档）";
+
+            if (!CanAccessArchiveFiling())
+            {
+                MessageBox.Show(
+                    "抱歉，您没有【存量硬盘直办立档】的操作权限（仅资料室资料管理员可操作）。",
+                    "权限提示",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                MainContentFrame.Navigate(new StockHardDiskDirectFilingPage());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    this,
+                    "无法打开存量硬盘直办立档页面：\n\n" + ex.Message,
                     "错误",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);

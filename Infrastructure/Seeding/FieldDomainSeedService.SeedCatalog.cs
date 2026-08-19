@@ -22,6 +22,7 @@ public static partial class FieldDomainSeedService
                         new(string.Empty, "内部", "内部", true, 10),
                         new(string.Empty, "外来", "外来", true, 20),
                         new(string.Empty, "出网转入", "出网转入", true, 30),
+                        new(string.Empty, ArchiveRegisterDomainValues.SourceTypeStockDirect, ArchiveRegisterDomainValues.SourceTypeStockDirect, true, 40),
                     }),
                 new(
                     "YearlyArchiveRegisterMedia",
@@ -86,7 +87,7 @@ public static partial class FieldDomainSeedService
                     nameof(YearlyArchiveRegisterElectronicMediaItemDetail),
                     nameof(YearlyArchiveRegisterElectronicMediaItemDetail.DataOrganizationForm),
                     "数据组织形式",
-                    "电子资料的数据组织形式选项。",
+                    "电子资料的数据组织形式：目录型表示子项有统一根目录（根下可同时有文件与子目录）；文件型表示无统一根目录、仅登记散文件。",
                     true,
                     21,
                     new List<FieldDomainOptionSeed>
@@ -222,21 +223,30 @@ public static partial class FieldDomainSeedService
                     "HardDiskMedium",
                     "DiskType",
                     "硬盘类型",
-                    "硬盘介质登记中的硬盘类型选项。",
+                    "硬盘介质登记中的硬盘类型选项，允许在登记时自助增补。",
                     true,
                     120,
                     new List<FieldDomainOptionSeed>
                     {
                         new(string.Empty, "机械硬盘", "机械硬盘", true, 10),
                         new(string.Empty, "固态硬盘", "固态硬盘", true, 20),
-                        new(string.Empty, "移动硬盘", "移动硬盘", true, 30),
-                        new(string.Empty, "其他", "其他", true, 40)
-                    }),
+                        new(string.Empty, "移动硬盘", "移动硬盘", true, 30)
+                    },
+                    PreserveUserOptions: true),
+                new(
+                    "HardDiskMedium",
+                    "Brand",
+                    "品牌",
+                    "硬盘介质登记中的品牌选项，允许在登记时自助增补。",
+                    true,
+                    125,
+                    BuildHardDiskBrandOptions(),
+                    PreserveUserOptions: true),
                 new(
                     "HardDiskMedium",
                     "InterfaceType",
                     "接口类型",
-                    "硬盘介质登记中的接口类型选项。",
+                    "硬盘介质登记中的接口类型选项，允许在登记时自助增补。",
                     true,
                     130,
                     new List<FieldDomainOptionSeed>
@@ -245,8 +255,9 @@ public static partial class FieldDomainSeedService
                         new(string.Empty, "SAS", "SAS", true, 20),
                         new(string.Empty, "USB", "USB", true, 30),
                         new(string.Empty, "Type-C", "Type-C", true, 40),
-                        new(string.Empty, "其他", "其他", true, 50)
-                    }),
+                        new(string.Empty, "NVMe", "NVMe", true, 50)
+                    },
+                    PreserveUserOptions: true),
                 new(
                     "HardDiskMedium",
                     "MediaNature",
@@ -367,6 +378,55 @@ public static partial class FieldDomainSeedService
                         new(string.Empty, HardDiskMediaTransaction.TypeRelocate, HardDiskMediaTransaction.TypeRelocate, true, 90)
                     })
             };
+    }
+
+    private static List<FieldDomainOptionSeed> BuildHardDiskBrandOptions()
+    {
+        string[] brands =
+        [
+            "Seagate",
+            "Western Digital",
+            "Toshiba",
+            "Samsung",
+            "Kioxia",
+            "Hitachi",
+            "HGST",
+            "Intel",
+            "Crucial",
+            "Micron",
+            "Kingston",
+            "SanDisk",
+            "SK hynix",
+            "ADATA",
+            "Transcend",
+            "Silicon Power",
+            "Lexar",
+            "LaCie",
+            "Lenovo",
+            "HP",
+            "华为",
+            "小米",
+            "爱国者",
+            "朗科",
+            "致钛",
+            "长江存储",
+            "海康威视",
+            "紫光",
+            "佰维",
+            "梵想",
+            "移速",
+            "七彩虹",
+            "ORICO"
+        ];
+
+        var options = new List<FieldDomainOptionSeed>(brands.Length);
+        for (int index = 0; index < brands.Length; index++)
+        {
+            string brand = brands[index];
+            options.Add(new(string.Empty, brand, brand, true, (index + 1) * 10));
+        }
+
+        return options;
     }
 
     private static List<FieldDomainOptionSeed> BuildArchiveBoxSpecificationOptions()

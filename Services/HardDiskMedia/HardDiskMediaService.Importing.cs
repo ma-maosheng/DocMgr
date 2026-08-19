@@ -74,6 +74,7 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             var diskTypeOptions = await GetDomainOptionLabelsAsync(nameof(HardDiskMedium), nameof(HardDiskMedium.DiskType));
+            var brandOptions = await GetDomainOptionLabelsAsync(nameof(HardDiskMedium), nameof(HardDiskMedium.Brand));
             var interfaceTypeOptions = await GetDomainOptionLabelsAsync(nameof(HardDiskMedium), nameof(HardDiskMedium.InterfaceType));
             var statusOptions = await GetDomainOptionLabelsAsync(nameof(HardDiskLedger), nameof(HardDiskLedger.MediaStatus));
             var natureOptions = await GetDomainOptionLabelsAsync(nameof(HardDiskLedger), nameof(HardDiskLedger.MediaNature));
@@ -82,7 +83,7 @@ namespace DocMgr.Services.HardDiskMedia
             {
                 using var workbook = new XSSFWorkbook();
                 BuildTemplateSheet(workbook);
-                BuildInstructionSheet(workbook, diskTypeOptions, interfaceTypeOptions, statusOptions, natureOptions);
+                BuildInstructionSheet(workbook, diskTypeOptions, brandOptions, interfaceTypeOptions, statusOptions, natureOptions);
 
                 using var outputStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
                 workbook.Write(outputStream, true);
@@ -139,6 +140,33 @@ namespace DocMgr.Services.HardDiskMedia
 
                 var importedItems = importedRows.Select(item => item.Medium).ToList();
                 await _hardDiskMediaRepository.AddMediaRangeAsync(importedItems);
+                foreach (string diskType in importedItems.Select(item => item.DiskType).Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    await _hardDiskMediaRepository.EnsureEnabledDomainOptionAsync(
+                        nameof(HardDiskMedium),
+                        nameof(HardDiskMedium.DiskType),
+                        "硬盘类型",
+                        diskType);
+                }
+
+                foreach (string brand in importedItems.Select(item => item.Brand).Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    await _hardDiskMediaRepository.EnsureEnabledDomainOptionAsync(
+                        nameof(HardDiskMedium),
+                        nameof(HardDiskMedium.Brand),
+                        "品牌",
+                        brand);
+                }
+
+                foreach (string interfaceType in importedItems.Select(item => item.InterfaceType).Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    await _hardDiskMediaRepository.EnsureEnabledDomainOptionAsync(
+                        nameof(HardDiskMedium),
+                        nameof(HardDiskMedium.InterfaceType),
+                        "接口类型",
+                        interfaceType);
+                }
+
                 await _hardDiskMediaRepository.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -444,28 +472,37 @@ namespace DocMgr.Services.HardDiskMedia
             }
         }
 
-        private void BuildInstructionSheet(XSSFWorkbook workbook, IReadOnlyList<string> diskTypeOptions, IReadOnlyList<string> interfaceTypeOptions, IReadOnlyList<string> statusOptions, IReadOnlyList<string> natureOptions)
+        private void BuildInstructionSheet(
+            XSSFWorkbook workbook,
+            IReadOnlyList<string> diskTypeOptions,
+            IReadOnlyList<string> brandOptions,
+            IReadOnlyList<string> interfaceTypeOptions,
+            IReadOnlyList<string> statusOptions,
+            IReadOnlyList<string> natureOptions)
         {
             var sheet = workbook.CreateSheet("字段说明");
             var row = sheet.CreateRow(0);
             row.CreateCell(0).SetCellValue("硬盘类型");
-            row.CreateCell(1).SetCellValue(string.Join("、", diskTypeOptions));
-            var row2 = sheet.CreateRow(1);
+            row.CreateCell(1).SetCellValue(string.Join("、", diskTypeOptions) + "（也可填写新值，导入后自动加入域值）");
+            var rowBrand = sheet.CreateRow(1);
+            rowBrand.CreateCell(0).SetCellValue("品牌");
+            rowBrand.CreateCell(1).SetCellValue(string.Join("、", brandOptions) + "（也可填写新值，导入后自动加入域值）");
+            var row2 = sheet.CreateRow(2);
             row2.CreateCell(0).SetCellValue("接口类型");
-            row2.CreateCell(1).SetCellValue(string.Join("、", interfaceTypeOptions));
-            var row3 = sheet.CreateRow(2);
+            row2.CreateCell(1).SetCellValue(string.Join("、", interfaceTypeOptions) + "（也可填写新值，导入后自动加入域值）");
+            var row3 = sheet.CreateRow(3);
             row3.CreateCell(0).SetCellValue("状态");
             row3.CreateCell(1).SetCellValue(string.Join("、", statusOptions));
-            var row4 = sheet.CreateRow(3);
+            var row4 = sheet.CreateRow(4);
             row4.CreateCell(0).SetCellValue("属性");
             row4.CreateCell(1).SetCellValue(string.Join("、", natureOptions));
-            var row5 = sheet.CreateRow(4);
+            var row5 = sheet.CreateRow(5);
             row5.CreateCell(0).SetCellValue("登记方式");
             row5.CreateCell(1).SetCellValue("系统自动写入：导入=文件导入登记；新增介质=手工录入登记；资料存档外来硬盘=资料存档登记");
-            var row6 = sheet.CreateRow(5);
+            var row6 = sheet.CreateRow(6);
             row6.CreateCell(0).SetCellValue("出厂日期");
             row6.CreateCell(1).SetCellValue("可选；格式 yyyy-MM-dd");
-            var row7 = sheet.CreateRow(6);
+            var row7 = sheet.CreateRow(7);
             row7.CreateCell(0).SetCellValue("当前存放位置");
             row7.CreateCell(1).SetCellValue("可选；留空时系统按空白专用档口用途与容量自动入位（10盘/档口）");
         }

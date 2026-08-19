@@ -41,7 +41,7 @@ namespace DocMgr.Services.YearlyArchive
                     .Select((entry, entryIndex) => new YearlyArchiveRegisterElectronicMediaItemEntry
                     {
                         EntryKind = string.IsNullOrWhiteSpace(entry.EntryKind)
-                            ? ElectronicMediaItemSupport.ResolveEntryKind(item.DataOrganizationForm)
+                            ? ElectronicMediaItemSupport.ResolveMissingEntryKindFallback(item.DataOrganizationForm)
                             : entry.EntryKind,
                         EntryName = entry.EntryName?.Trim() ?? string.Empty,
                         RelativePath = entry.RelativePath?.Trim() ?? string.Empty,

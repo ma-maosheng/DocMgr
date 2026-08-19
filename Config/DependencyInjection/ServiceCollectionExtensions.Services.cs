@@ -50,6 +50,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IArchiveFilingCursorTestService, ArchiveFilingCursorTestService>();
         services.AddScoped<IElectronicMediaContentScanService, ElectronicMediaContentScanService>();
         services.AddScoped<IArchiveFilingService, ArchiveFilingService>();
+        services.AddScoped<IStockHardDiskDirectFilingService, StockHardDiskDirectFilingService>();
         services.AddScoped<IFilingFactWriter, FilingFactWriter>();
         services.AddScoped<IArchiveFilingSearchService, ArchiveFilingSearchService>();
         services.AddScoped<IArchiveFilingLedgerService, ArchiveFilingLedgerService>();

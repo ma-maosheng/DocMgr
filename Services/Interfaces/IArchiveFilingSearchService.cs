@@ -18,7 +18,8 @@ namespace DocMgr.Services.Interfaces
             YearlyElectronicArchiveUnit unit,
             IReadOnlyList<YearlyElectronicArchiveUnitMediaItemLink> links,
             DateTime filedAt,
-            string filedBy);
+            string filedBy,
+            int? numberingYear = null);
 
         Task WriteBackupElectronicLinksAsync(
             YearlyElectronicArchiveUnit unit,

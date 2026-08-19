@@ -195,10 +195,10 @@ namespace DocMgr.Services.YearlyArchive
             record.FormNo = await GenerateFormNoByPurposeAsync(record.ArchivePurpose);
         }
 
-        private Task<string> GenerateFormNoByPurposeAsync(string? archivePurpose)
+        private Task<string> GenerateFormNoByPurposeAsync(string? archivePurpose, int? numberingYear = null)
         {
             BusinessNoCategory category = ResolveBusinessNoCategory(archivePurpose);
-            return _businessRuleService.GenerateBusinessNoAsync(category);
+            return _businessRuleService.GenerateBusinessNoAsync(category, numberingYear);
         }
 
         private static BusinessNoCategory ResolveBusinessNoCategory(string? archivePurpose)

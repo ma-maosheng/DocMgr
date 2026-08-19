@@ -363,7 +363,8 @@ namespace DocMgr.Services.YearlyArchive
             string mediumCode,
             HardDiskMediaReturnCandidate? borrowedHardDiskCandidate = null,
             User? currentUser = null,
-            PendingExternalHardDiskRegistration? pendingExternalHardDisk = null)
+            PendingExternalHardDiskRegistration? pendingExternalHardDisk = null,
+            int? autoNumberYear = null)
         {
             ArgumentNullException.ThrowIfNull(newUnit);
             ArgumentNullException.ThrowIfNull(mediaItems);
@@ -412,7 +413,8 @@ namespace DocMgr.Services.YearlyArchive
                 newUnit,
                 createdItemLinks,
                 archivedAt,
-                newUnit.ArchivedBy);
+                newUnit.ArchivedBy,
+                autoNumberYear);
 
             if (borrowedHardDiskCandidate == null || linkedMedia.Count > 0)
             {

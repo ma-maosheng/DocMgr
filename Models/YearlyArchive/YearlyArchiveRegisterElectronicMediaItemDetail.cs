@@ -22,7 +22,7 @@ namespace DocMgr.Models.YearlyArchive
         public string SubCategory { get; set; } = string.Empty;
 
         /// <summary>
-        /// 数据组织形式：目录型 / 文件型。
+        /// 数据组织形式：目录型（子项根目录，根下可混合文件与子目录） / 文件型（无统一根目录，仅散文件）。
         /// </summary>
         public string DataOrganizationForm { get; set; } = string.Empty;
 

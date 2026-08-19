@@ -281,10 +281,21 @@ namespace DocMgr.Models.YearlyArchive
     }
 
     /// <summary>
-    /// 立档台账查询条件（跨模拟/电子介质，按立档年度浏览）。
+    /// 立档台账项目筛选项（由立档事实汇总，非项目主数据表）。
+    /// </summary>
+    public sealed class FilingLedgerProjectFilterItem
+    {
+        public int? ProjectId { get; init; }
+
+        public string ProjectName { get; init; } = string.Empty;
+    }
+
+    /// <summary>
+    /// 立档台账查询条件（跨模拟/电子介质，按立档编号中的档案年度浏览）。
     /// </summary>
     public sealed class FilingLedgerSearchCriteria
     {
+        /// <summary>立档编号中的档案归属年度（四位数字）。</summary>
         public string? Year { get; set; }
 
         public int? ProjectId { get; set; }
@@ -428,8 +439,6 @@ namespace DocMgr.Models.YearlyArchive
         public int? PrimaryFilingFactId { get; init; }
 
         public string ArchiveCopyRole { get; init; } = FilingFactArchiveCopyRole.Original;
-
-        public string FilingYear => FiledAt.Year.ToString();
 
         public string FiledAtDisplay => FiledAt.ToString("yyyy-MM-dd HH:mm");
 

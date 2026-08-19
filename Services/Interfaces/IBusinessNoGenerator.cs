@@ -8,6 +8,9 @@ namespace DocMgr.Services.Interfaces
         /// <summary>
         /// 根据业务编号类别生成下一编号。
         /// </summary>
-        Task<string> GenerateNextNoAsync(BusinessNoCategory category, CancellationToken cancellationToken = default);
+        Task<string> GenerateNextNoAsync(
+            BusinessNoCategory category,
+            int? numberingYear = null,
+            CancellationToken cancellationToken = default);
     }
 }

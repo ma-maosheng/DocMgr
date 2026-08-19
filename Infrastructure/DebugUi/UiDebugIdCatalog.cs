@@ -62,6 +62,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<ArchiveRegisterApprovalPage>("YA-REG-APV", "建档审批");
             Add<ArchiveRegisterSimulationPage>("YA-REG-SIM", "模拟登记");
             Add<ArchiveFilingPage>("YA-FIL", "资料立档");
+            Add<StockHardDiskDirectFilingPage>("YA-FIL-STK", "存量硬盘直办立档");
             Add<ArchiveFilingSearchPage>("YA-FIL-SCH", "立档检索");
             Add<ArchiveFilingSearchPoolPage>("YA-FIL-POOL", "立档检索池");
             Add<ArchiveFilingLedgerPage>("YA-FIL-LDG", "立档台账");
@@ -88,6 +89,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<ArchiveReturnOutboundDetailWindow>("YA-RTN-OB-DTL", "归还-出库明细");
             Add<ArchiveReturnRehomeTargetPickDialog>("YA-RTN-RHOME", "归还目标盒选择");
             Add<ArchiveSearchResultSetPickDialog>("YA-SCH-PICK", "检索集选择");
+            Add<StockHardDiskYearProjectPickDialog>("YA-FIL-STK-PRJ", "年度已有项目");
             Add<ArchiveDetailWindow>("YA-DTL-WN", "资料详情窗口");
             Add<SimulatedArchiveInventoryRegisterEditDialog>("YA-INV-SIM-ED", "模拟盘库登记编辑");
             Add<ElectronicArchiveInventoryRegisterEditDialog>("YA-INV-ELC-ED", "电子盘库登记编辑");

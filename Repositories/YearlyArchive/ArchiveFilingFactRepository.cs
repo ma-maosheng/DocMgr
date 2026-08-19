@@ -226,9 +226,14 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
         if (!string.IsNullOrWhiteSpace(criteria.Year))
         {
             string year = criteria.Year.Trim();
-            if (int.TryParse(year, out int filingYear))
+            if (int.TryParse(year, out int archiveYear))
             {
-                query = query.Where(fact => fact.FiledAt.Year == filingYear);
+                string likePattern = FilingFactNoSupport.BuildArchiveYearLikePattern(archiveYear);
+                query = query.Where(fact =>
+                    EF.Functions.Like(
+                        fact.FilingFactNo,
+                        likePattern,
+                        SearchWildcardPatternSupport.EscapeCharacterString));
             }
         }
 
@@ -284,6 +289,71 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             .OrderByDescending(fact => fact.FiledAt)
             .ThenByDescending(fact => fact.Id)
             .ToListAsync();
+    }
+
+    public async Task<List<int>> GetDistinctLedgerArchiveYearsAsync()
+    {
+        var filingFactNos = await _dbContext.YearlyArchiveFilingFacts
+            .AsNoTracking()
+            .Where(fact => fact.FilingFactNo != string.Empty)
+            .Select(fact => fact.FilingFactNo)
+            .ToListAsync();
+
+        var years = filingFactNos
+            .Select(FilingFactNoSupport.TryParseArchiveYear)
+            .Where(year => year.HasValue)
+            .Select(year => year!.Value)
+            .Distinct()
+            .OrderByDescending(year => year)
+            .ToList();
+
+        int currentYear = DateTime.Now.Year;
+        if (!years.Contains(currentYear))
+        {
+            years.Insert(0, currentYear);
+            years = years.OrderByDescending(year => year).ToList();
+        }
+
+        return years;
+    }
+
+    public async Task<List<FilingLedgerProjectFilterItem>> GetLedgerProjectsByArchiveYearAsync(string? archiveYear)
+    {
+        IQueryable<YearlyArchiveFilingFact> query = _dbContext.YearlyArchiveFilingFacts.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(archiveYear)
+            && int.TryParse(archiveYear.Trim(), out int year))
+        {
+            string likePattern = FilingFactNoSupport.BuildArchiveYearLikePattern(year);
+            query = query.Where(fact =>
+                EF.Functions.Like(
+                    fact.FilingFactNo,
+                    likePattern,
+                    SearchWildcardPatternSupport.EscapeCharacterString));
+        }
+
+        var rows = await query
+            .Where(fact => fact.ProjectId > 0 || !string.IsNullOrWhiteSpace(fact.ProjectName))
+            .Select(fact => new { fact.ProjectId, fact.ProjectName })
+            .ToListAsync();
+
+        return rows
+            .Select(row => new
+            {
+                ProjectId = row.ProjectId > 0 ? row.ProjectId : (int?)null,
+                ProjectName = row.ProjectName?.Trim() ?? string.Empty
+            })
+            .Where(row => row.ProjectId.HasValue || !string.IsNullOrWhiteSpace(row.ProjectName))
+            .GroupBy(row => row.ProjectId.HasValue ? $"id:{row.ProjectId.Value}" : $"name:{row.ProjectName}")
+            .Select(group => group.First())
+            .OrderBy(row => row.ProjectName, StringComparer.Ordinal)
+            .ThenBy(row => row.ProjectId)
+            .Select(row => new FilingLedgerProjectFilterItem
+            {
+                ProjectId = row.ProjectId,
+                ProjectName = row.ProjectName
+            })
+            .ToList();
     }
 
     public Task<List<YearlyArchiveRegisterMediaItem>> GetRegisterMediaItemsWithSupplementsAsync(

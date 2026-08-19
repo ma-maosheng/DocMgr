@@ -42,13 +42,16 @@ namespace DocMgr.Services.Shared
         /// <summary>
         /// 根据业务编号类别生成下一编号。
         /// </summary>
-        public async Task<string> GenerateNextNoAsync(BusinessNoCategory category, CancellationToken cancellationToken = default)
+        public async Task<string> GenerateNextNoAsync(
+            BusinessNoCategory category,
+            int? numberingYear = null,
+            CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var rule = DefaultBusinessPolicyProvider.GetRule(category);
-            int currentYear = DateTime.Now.Year;
-            string prefix = $"{rule.Prefix}-{currentYear}-";
+            int yearSegment = numberingYear ?? DateTime.Now.Year;
+            string prefix = $"{rule.Prefix}-{yearSegment}-";
 
             string? lastNo = await GetLastBusinessNoByPrefixAsync(category, prefix).ConfigureAwait(false);
             int nextSequence = 1;

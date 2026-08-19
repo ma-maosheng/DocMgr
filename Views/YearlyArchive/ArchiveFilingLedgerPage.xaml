@@ -267,7 +267,7 @@
         <StackPanel Grid.Row="0" Margin="0,0,0,12">
             <TextBlock Text="立档台账" Style="{StaticResource PageTitleStyle}"/>
             <TextBlock Style="{StaticResource PageSubtitleStyle}"
-                       Text="按年度浏览已立档资料，支持多条件筛选、详情查看与台账导出（资料室管理员）。"/>
+                       Text="按立档编号中的档案年度浏览已立档资料，支持多条件筛选、详情查看与台账导出（资料室管理员）。"/>
         </StackPanel>
 
         <!-- 筛选区 -->
@@ -306,7 +306,7 @@
 
                     <TextBlock Grid.Column="0" Text="筛选条件" Style="{StaticResource SectionTitleStyle}" VerticalAlignment="Center" Margin="0"/>
 
-                    <TextBlock Grid.Column="2" Text="年度" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBlock Grid.Column="2" Text="档案年度" Style="{StaticResource FilterLabelStyle}"/>
                     <ComboBox Grid.Column="3" Style="{StaticResource FilterInputStyle}"
                               ItemsSource="{Binding Years}"
                               SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
@@ -410,7 +410,6 @@
                           SelectedItem="{Binding SelectedRow, Mode=TwoWay}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo, Mode=OneWay}" Width="130"/>
-                        <DataGridTextColumn Header="年度" Binding="{Binding FilingYear, Mode=OneWay}" Width="56"/>
                         <DataGridTextColumn Header="介质" Binding="{Binding MediaKind, Mode=OneWay}" Width="56"/>
                         <DataGridTextColumn Header="介质类型" Binding="{Binding RegisterMediaType, Mode=OneWay}" Width="72"/>
                         <DataGridTextColumn Header="资料类型" Binding="{Binding MaterialCategory, Mode=OneWay}" Width="72"/>

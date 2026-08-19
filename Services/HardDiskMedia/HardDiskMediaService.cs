@@ -633,6 +633,7 @@ namespace DocMgr.Services.HardDiskMedia
                 }
             }
 
+            await EnsureMediumIdentityDomainOptionsAsync(medium.DiskType, medium.Brand, medium.InterfaceType, saveChanges: false);
             await _hardDiskMediaRepository.SaveChangesAsync();
         }
 
@@ -1025,6 +1026,31 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             return await _hardDiskMediaRepository.GetDomainOptionLabelsAsync(entityName, fieldName);
+        }
+
+        /// <inheritdoc/>
+        public async Task EnsureMediumIdentityDomainOptionsAsync(string? diskType, string? brand, string? interfaceType, bool saveChanges = true)
+        {
+            await _hardDiskMediaRepository.EnsureEnabledDomainOptionAsync(
+                nameof(HardDiskMedium),
+                nameof(HardDiskMedium.DiskType),
+                "硬盘类型",
+                diskType);
+            await _hardDiskMediaRepository.EnsureEnabledDomainOptionAsync(
+                nameof(HardDiskMedium),
+                nameof(HardDiskMedium.Brand),
+                "品牌",
+                brand);
+            await _hardDiskMediaRepository.EnsureEnabledDomainOptionAsync(
+                nameof(HardDiskMedium),
+                nameof(HardDiskMedium.InterfaceType),
+                "接口类型",
+                interfaceType);
+
+            if (saveChanges)
+            {
+                await _hardDiskMediaRepository.SaveChangesAsync();
+            }
         }
 
         /// <inheritdoc/>

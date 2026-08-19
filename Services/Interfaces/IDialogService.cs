@@ -92,6 +92,11 @@ namespace DocMgr.Services.Interfaces
         /// </summary>
         void ShowArchiveOutboundApplicationViewDialog(YearlyArchiveOutboundRecord record);
         int? ShowSearchResultSetPickDialog(IEnumerable<int>? excludedResultSetIds = null);
+
+        /// <summary>
+        /// 查看指定年度已有项目；确认采用后返回所选项目，仅关闭时返回 null。
+        /// </summary>
+        ProjectInfo? ShowYearProjectPickDialog(string year, IReadOnlyList<ProjectInfo> projects);
         void ShowArchiveDetailWindow(ArchiveDetailOpenRequest request);
         bool ShowDeptEditDialog(Department? deptToEdit);
         bool ShowRoleEditDialog(Role? roleToEdit);

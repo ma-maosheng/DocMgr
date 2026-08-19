@@ -15,8 +15,6 @@ namespace DocMgr.ViewModels.YearlyArchive
     {
         private readonly IArchiveFilingLedgerService _ledgerService;
         private readonly IArchiveMaterialTransactionService _materialTransactionService;
-        private readonly IArchiveRegisterService _archiveRegisterService;
-        private readonly IProjectService _projectService;
         private readonly IDialogService _dialogService;
 
         private bool _isInitialized;
@@ -41,14 +39,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ArchiveFilingLedgerViewModel(
             IArchiveFilingLedgerService ledgerService,
             IArchiveMaterialTransactionService materialTransactionService,
-            IArchiveRegisterService archiveRegisterService,
-            IProjectService projectService,
             IDialogService dialogService)
         {
             _ledgerService = ledgerService;
             _materialTransactionService = materialTransactionService;
-            _archiveRegisterService = archiveRegisterService;
-            _projectService = projectService;
             _dialogService = dialogService;
 
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
@@ -83,7 +77,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 SelectedProjectId = null;
-                LoadProjectOptions();
+                _ = LoadProjectOptionsAsync();
             }
         }
 
@@ -265,7 +259,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             await LoadYearsAsync();
-            LoadProjectOptions();
+            await LoadProjectOptionsAsync();
             await SearchAsync();
             _isInitialized = true;
         }
@@ -296,13 +290,14 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 var target = rows[0];
-                string targetYear = target.FiledAt.Year.ToString();
+                string targetYear = FilingFactNoSupport.TryParseArchiveYear(target.FilingFactNo)?.ToString()
+                    ?? target.FiledAt.Year.ToString();
                 if (Years.Contains(targetYear))
                 {
                     SelectedYear = targetYear;
                 }
 
-                LoadProjectOptions();
+                await LoadProjectOptionsAsync();
                 await SearchAsync();
                 SelectedRow = LedgerRows.FirstOrDefault(row => row.FilingFactId == filingFactId)
                     ?? target;
@@ -317,7 +312,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
-                var yearsList = await _archiveRegisterService.GetExistingYearsAsync();
+                var yearsList = await _ledgerService.GetExistingLedgerYearsAsync();
                 Years.Clear();
                 foreach (int year in yearsList)
                 {
@@ -337,11 +332,27 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        private void LoadProjectOptions()
+        private async Task LoadProjectOptionsAsync()
         {
             try
             {
-                ProjectFilterOptionFactory.Reload(ProjectOptions, _projectService, SelectedYear);
+                ProjectOptions.Clear();
+                ProjectOptions.Add(new ProjectFilterOption { Id = null, Name = "全部项目" });
+
+                var projects = await _ledgerService.GetProjectOptionsForYearAsync(SelectedYear);
+                foreach (var project in projects)
+                {
+                    if (project.ProjectId is not > 0 && string.IsNullOrWhiteSpace(project.ProjectName))
+                    {
+                        continue;
+                    }
+
+                    ProjectOptions.Add(new ProjectFilterOption
+                    {
+                        Id = project.ProjectId,
+                        Name = project.ProjectName.Trim()
+                    });
+                }
             }
             catch (Exception ex)
             {

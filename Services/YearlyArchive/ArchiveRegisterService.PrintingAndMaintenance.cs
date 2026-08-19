@@ -288,9 +288,9 @@ namespace DocMgr.Services.YearlyArchive
             return await _archiveRegisterRepository.GetRecordsByYearAsync(year);
         }
 
-        public async Task<string> GenerateNextFormNoAsync()
+        public async Task<string> GenerateNextFormNoAsync(int? numberingYear = null)
         {
-            return await GenerateFormNoByPurposeAsync(null);
+            return await GenerateFormNoByPurposeAsync(null, numberingYear);
         }
 
         public async Task<List<int>> GetExistingYearsAsync()
@@ -490,23 +490,16 @@ namespace DocMgr.Services.YearlyArchive
                 errors.Add($"{prefix}【数据量】必须大于 0 MB");
             }
 
-            var expectedEntryKind = ElectronicMediaItemSupport.ResolveEntryKind(detail.DataOrganizationForm);
-            if (string.IsNullOrWhiteSpace(expectedEntryKind))
-            {
-                errors.Add($"{prefix}【数据组织形式】无效");
-                return errors;
-            }
+            errors.AddRange(ElectronicMediaItemSupport.CollectDataOrganizationEntryErrors(
+                detail.DataOrganizationForm,
+                detail.Entries,
+                prefix,
+                requireEntries: true));
 
             var entries = detail.Entries ?? new List<YearlyArchiveRegisterElectronicMediaItemEntry>();
             if (entries.Count == 0)
             {
-                errors.Add($"{prefix}至少需要一条目录/文件明细");
                 return errors;
-            }
-
-            if (entries.Any(entry => !string.Equals(entry.EntryKind, expectedEntryKind, StringComparison.Ordinal)))
-            {
-                errors.Add($"{prefix}目录/文件明细类型与【数据组织形式】不一致");
             }
 
             if (entries.Any(entry => string.IsNullOrWhiteSpace(entry.EntryName)))

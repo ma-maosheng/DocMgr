@@ -9,7 +9,8 @@ public static partial class FieldDomainSeedService
         string Description,
         bool IsDomainEnabled,
         int SortOrder,
-        List<FieldDomainOptionSeed> Options);
+        List<FieldDomainOptionSeed> Options,
+        bool PreserveUserOptions = false);
 
     private sealed record FieldDomainOptionSeed(
         string Scope,

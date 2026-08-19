@@ -112,6 +112,12 @@ internal static class NetworkInboundExternalMediaValidationSupport
         {
             errors.Add($"• {label}：{storagePathError}");
         }
+
+        errors.AddRange(ElectronicMediaItemSupport.CollectDataOrganizationEntryErrors(
+            detail.DataOrganizationForm,
+            detail.Entries,
+            $"• {label}：",
+            requireEntries: true));
     }
 
     private static void ValidateMediaDisposition(

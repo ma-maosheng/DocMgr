@@ -70,5 +70,10 @@ namespace DocMgr.Models.YearlyArchive
         /// 并档场景下的目标电子袋存放位置快照（用于执行逻辑报告提示）。
         /// </summary>
         public string AppendTargetStorageLocation { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 自动生成编号（如立档编号）时使用的年度；为空则按实际操作时间（filedAt）取年。
+        /// </summary>
+        public int? AutoNumberYear { get; init; }
     }
 }

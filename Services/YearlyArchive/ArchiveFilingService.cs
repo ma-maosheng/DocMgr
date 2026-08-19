@@ -165,7 +165,8 @@ namespace DocMgr.Services.YearlyArchive
                     ResolveSubmissionMediumCode(request),
                     borrowedHardDiskCandidate,
                     currentUser,
-                    request.PendingExternalHardDisk);
+                    request.PendingExternalHardDisk,
+                    request.AutoNumberYear);
                 var filingMediaEntryIds = mediaEntries.Select(entry => entry.Id).ToList();
                 await FinalizeRetainedHardDiskAfterSubmissionAsync(
                     request with { BorrowedHardDiskCandidate = borrowedHardDiskCandidate },

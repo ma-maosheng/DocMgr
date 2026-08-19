@@ -19,9 +19,12 @@ namespace DocMgr.Services.Shared
         /// <summary>
         /// 生成业务编号。
         /// </summary>
-        public Task<string> GenerateBusinessNoAsync(BusinessNoCategory category, CancellationToken cancellationToken = default)
+        public Task<string> GenerateBusinessNoAsync(
+            BusinessNoCategory category,
+            int? numberingYear = null,
+            CancellationToken cancellationToken = default)
         {
-            return _businessNoGenerator.GenerateNextNoAsync(category, cancellationToken);
+            return _businessNoGenerator.GenerateNextNoAsync(category, numberingYear, cancellationToken);
         }
 
         /// <summary>

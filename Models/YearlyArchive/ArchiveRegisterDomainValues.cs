@@ -4,6 +4,11 @@ namespace DocMgr.Models.YearlyArchive
     {
         public const string SourceTypeInternal = "内部";
         public const string SourceTypeExternal = "外来";
+        /// <summary>资料室管理员对过往年度在库硬盘直接登记并立档，无需申请审批。</summary>
+        public const string SourceTypeStockDirect = "存量直办";
+
+        /// <summary>存量直办提供单位，固定为资料室。</summary>
+        public const string ProvideUnitArchiveRoom = "资料室";
 
         public const string MediaKindElectronic = "电子";
         public const string MediaKindSimulated = "模拟";
@@ -55,9 +60,13 @@ namespace DocMgr.Models.YearlyArchive
 
         public const string ElectronicMaterialCategoryDocument = "文档类";
         public const string ElectronicMaterialCategoryData = "数据类";
+        /// <summary>存量直办默认资料子类（数据类域值）。</summary>
+        public const string DefaultStockDirectSubCategory = "最终成果数据";
         public const string ElectronicMaterialCategorySoftware = "软件类";
 
+        /// <summary>目录型：子项有统一根目录；根下明细可为目录、文件或二者混合。</summary>
         public const string ElectronicDataOrganizationFormDirectory = "目录型";
+        /// <summary>文件型：无统一根目录，全部明细必须为文件。</summary>
         public const string ElectronicDataOrganizationFormFile = "文件型";
 
         public const string ElectronicEntryKindDirectory = "目录";

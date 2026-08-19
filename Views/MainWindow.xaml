@@ -407,6 +407,7 @@
                                         <Button x:Name="BtnArchiveRegisterApply" Content="建档申请" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveRegisterApply_Click"/>
                                         <Button x:Name="BtnArchiveRegisterApprove" Content="申请审批" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveRegisterApprove_Click"/>
                                         <Button x:Name="BtnArchiveFiling" Content="资料立档" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveFiling_Click"/>
+                                        <Button x:Name="BtnStockHardDiskDirectFiling" Content="存量硬盘直办立档" Style="{StaticResource SubSubNavButton}" Click="BtnStockHardDiskDirectFiling_Click"/>
                                         <Button x:Name="BtnArchiveFilingLedger" Content="立档台账" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveFilingLedger_Click"/>
                                     </StackPanel>
                                 </Expander>

@@ -116,9 +116,21 @@ public static partial class FieldDomainSeedService
                 }
             }
 
-            var staleOptions = definition.Options
-                .Where(o => !seedOptionKeys.Contains(BuildOptionKey(o.Scope, o.OptionValue)))
-                .ToList();
+            List<FieldDomainOption> staleOptions;
+            if (seed.PreserveUserOptions)
+            {
+                // 开放域允许业务页自助增项；启动时只回收已从种子移除的「其他」兜底项。
+                staleOptions = definition.Options
+                    .Where(o => string.Equals((o.OptionValue ?? string.Empty).Trim(), RetiredCatchAllOptionValue, StringComparison.Ordinal)
+                        && !seedOptionKeys.Contains(BuildOptionKey(o.Scope, o.OptionValue)))
+                    .ToList();
+            }
+            else
+            {
+                staleOptions = definition.Options
+                    .Where(o => !seedOptionKeys.Contains(BuildOptionKey(o.Scope, o.OptionValue)))
+                    .ToList();
+            }
 
             if (staleOptions.Count > 0)
             {
@@ -194,6 +206,8 @@ public static partial class FieldDomainSeedService
             }
         }
     }
+
+    private const string RetiredCatchAllOptionValue = "其他";
 
     private static string BuildOptionKey(string? scope, string? optionValue)
     {

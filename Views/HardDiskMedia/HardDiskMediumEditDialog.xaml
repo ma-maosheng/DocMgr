@@ -76,11 +76,15 @@
 
         <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,10,14">
             <TextBlock Text="硬盘类型 *" Foreground="#666666" Margin="0,0,0,5"/>
-            <ComboBox ItemsSource="{Binding DiskTypeOptions}" SelectedItem="{Binding DiskType}"/>
+            <ComboBox ItemsSource="{Binding DiskTypeOptions}"
+                      IsEditable="True"
+                      Text="{Binding DiskType, UpdateSourceTrigger=PropertyChanged}"/>
         </StackPanel>
         <StackPanel Grid.Row="2" Grid.Column="1" Margin="10,0,0,14">
             <TextBlock Text="品牌 *" Foreground="#666666" Margin="0,0,0,5"/>
-            <TextBox Padding="6,0" Text="{Binding Brand, UpdateSourceTrigger=PropertyChanged}"/>
+            <ComboBox ItemsSource="{Binding BrandOptions}"
+                      IsEditable="True"
+                      Text="{Binding Brand, UpdateSourceTrigger=PropertyChanged}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,10,14">
@@ -105,7 +109,9 @@
         </StackPanel>
         <StackPanel Grid.Row="3" Grid.Column="1" Margin="10,0,0,14">
             <TextBlock Text="接口类型 *" Foreground="#666666" Margin="0,0,0,5"/>
-            <ComboBox ItemsSource="{Binding InterfaceTypeOptions}" SelectedItem="{Binding InterfaceType}"/>
+            <ComboBox ItemsSource="{Binding InterfaceTypeOptions}"
+                      IsEditable="True"
+                      Text="{Binding InterfaceType, UpdateSourceTrigger=PropertyChanged}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,10,14">
