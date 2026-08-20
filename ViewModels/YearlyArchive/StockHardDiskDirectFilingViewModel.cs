@@ -86,6 +86,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<string> BrandOptions { get; } = new();
         public ObservableCollection<string> InterfaceTypeOptions { get; } = new();
         public ObservableCollection<string> CapacityUnitOptions { get; } = new(ElectronicMediaCapacitySupport.CapacityUnits);
+        public ObservableCollection<string> YearOptions { get; } = new();
+        public ObservableCollection<string> ProjectNameOptions { get; } = new();
         public ObservableCollection<string> ArchivePurposeOptions { get; } = new();
         public ObservableCollection<string> ConfidentialLevelOptions { get; } = new();
         public ObservableCollection<string> MaterialCategoryOptions { get; } = new();
@@ -183,6 +185,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _year, value))
                 {
+                    EnsureOption(YearOptions, value);
+                    RefreshProjectNameOptions();
                     RefreshProjectHint();
                     RefreshYearProjectHint();
                     _ = RefreshPreviewElectronicArchiveNoAsync();
@@ -197,6 +201,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _projectName, value))
                 {
+                    EnsureOption(ProjectNameOptions, value);
+                    TryFillProjectCodeFromRegistered(value);
                     RefreshProjectHint();
                 }
             }
@@ -348,6 +354,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             Replace(ArchivePurposeOptions, options.ArchivePurposes, ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage);
             Replace(ConfidentialLevelOptions, options.ConfidentialLevels, "秘密");
             Replace(MaterialCategoryOptions, options.ElectronicMaterialCategories, ArchiveRegisterDomainValues.ElectronicMaterialCategoryData);
+            RefreshYearOptions();
+            RefreshProjectNameOptions();
 
             var diskTypes = await _hardDiskMediaService.GetDomainOptionLabelsAsync(nameof(HardDiskMedium), nameof(HardDiskMedium.DiskType));
             var interfaceTypes = await _hardDiskMediaService.GetDomainOptionLabelsAsync(nameof(HardDiskMedium), nameof(HardDiskMedium.InterfaceType));
@@ -375,6 +383,49 @@ namespace DocMgr.ViewModels.YearlyArchive
             RegistrationMethod = HardDiskMedium.RegistrationMethodArchive;
             await LoadSlotOptionsAsync();
             await RecommendSlotAsync();
+        }
+
+        private void RefreshYearOptions()
+        {
+            string current = Year?.Trim() ?? string.Empty;
+            YearOptions.Clear();
+            foreach (string year in _filingService.ListRegisteredYears())
+            {
+                YearOptions.Add(year);
+            }
+
+            EnsureOption(YearOptions, current);
+        }
+
+        private void RefreshProjectNameOptions()
+        {
+            string current = ProjectName?.Trim() ?? string.Empty;
+            ProjectNameOptions.Clear();
+            foreach (string name in _filingService.ListRegisteredProjectNames(Year))
+            {
+                ProjectNameOptions.Add(name);
+            }
+
+            EnsureOption(ProjectNameOptions, current);
+        }
+
+        private void TryFillProjectCodeFromRegistered(string? projectName)
+        {
+            string normalizedName = projectName?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedName) || string.IsNullOrWhiteSpace(Year))
+            {
+                return;
+            }
+
+            var match = _filingService.ListProjectsByYear(Year)
+                .FirstOrDefault(item =>
+                    string.Equals(item.ProjectName?.Trim(), normalizedName, StringComparison.Ordinal)
+                    && item.Id > 0
+                    && !string.IsNullOrWhiteSpace(item.ProjectCode));
+            if (match != null)
+            {
+                ProjectCode = match.ProjectCode.Trim();
+            }
         }
 
         private async Task PickDiskAsync()
@@ -463,6 +514,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 Year = result.Year;
                 ProjectName = result.ProjectName;
+                EnsureOption(YearOptions, Year);
+                RefreshProjectNameOptions();
+                EnsureOption(ProjectNameOptions, ProjectName);
                 PreviewRows.Clear();
                 foreach (var material in result.Materials)
                 {
@@ -552,6 +606,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             ProjectName = selected.ProjectName?.Trim() ?? string.Empty;
             ProjectCode = selected.ProjectCode?.Trim() ?? string.Empty;
+            EnsureOption(ProjectNameOptions, ProjectName);
             RefreshProjectHint();
             _ = RefreshExistingBagHintAsync();
         }
@@ -580,8 +635,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             IReadOnlyList<ProjectInfo> yearProjects = projects ?? _filingService.ListProjectsByYear(Year);
             YearProjectHint = yearProjects.Count == 0
-                ? $"库中尚无 {Year.Trim()} 年度项目，提交时将按当前名称新建。"
-                : $"{Year.Trim()} 年度库内已有 {yearProjects.Count} 个项目。同一项目请采用已有名称，勿另起别名。";
+                ? $"库中尚无 {Year.Trim()} 年度项目（含模拟盒/电子袋），提交时将按当前名称新建。"
+                : $"{Year.Trim()} 年度已登记 {yearProjects.Count} 个项目（项目信息 ∪ 模拟盒 ∪ 电子袋）。同一项目请采用已有名称，勿另起别名。";
         }
 
         private async Task RefreshExistingBagHintAsync()

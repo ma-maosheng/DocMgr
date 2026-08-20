@@ -407,7 +407,8 @@
                                         <Button x:Name="BtnArchiveRegisterApply" Content="建档申请" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveRegisterApply_Click"/>
                                         <Button x:Name="BtnArchiveRegisterApprove" Content="申请审批" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveRegisterApprove_Click"/>
                                         <Button x:Name="BtnArchiveFiling" Content="资料立档" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveFiling_Click"/>
-                                        <Button x:Name="BtnStockHardDiskDirectFiling" Content="存量硬盘直办立档" Style="{StaticResource SubSubNavButton}" Click="BtnStockHardDiskDirectFiling_Click"/>
+                                        <Button x:Name="BtnStockHardDiskDirectFiling" Content="存量硬盘资料直办立档" Style="{StaticResource SubSubNavButton}" Click="BtnStockHardDiskDirectFiling_Click"/>
+                                        <Button x:Name="BtnStockTextArchiveDirectFiling" Content="存档文本资料直办立档" Style="{StaticResource SubSubNavButton}" Click="BtnStockTextArchiveDirectFiling_Click"/>
                                         <Button x:Name="BtnArchiveFilingLedger" Content="立档台账" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveFilingLedger_Click"/>
                                     </StackPanel>
                                 </Expander>
@@ -465,10 +466,8 @@
                         <!-- 3. 历史存档资料管理 -->
                         <Expander x:Name="ExpHistoryArchive" Header="历史存档资料管理" Style="{StaticResource NavExpander}">
                             <StackPanel>
-                                <Button x:Name="BtnHistMap"       Content="地形图" Style="{StaticResource SubNavButton}" Click="BtnTopoMap_Click"/>
-                                <Button x:Name="BtnHistAerial"    Content="航摄影像" Style="{StaticResource SubNavButton}" Click="BtnAerialPhoto_Click"  />
-                                <Button x:Name="BtnHistSatellite" Content="卫星影像" Style="{StaticResource SubNavButton}" Click="BtnHistSatellite_Click"/>
-                                <Button x:Name="BtnHistDoc"       Content="文档资料" Style="{StaticResource SubNavButton}" Click="BtnHistDoc_Click"/>
+                                <Button x:Name="BtnHistMap"       Content="地形图图件" Style="{StaticResource SubNavButton}" Click="BtnTopoMap_Click"/>
+                                <Button x:Name="BtnHistAerial"    Content="航摄胶片、像片" Style="{StaticResource SubNavButton}" Click="BtnAerialPhoto_Click"  />
                                 <Button x:Name="BtnOtherData"     Content="其他资料" Style="{StaticResource SubNavButton}" Click="BtnOtherMap_Click"/>
                             </StackPanel>
                         </Expander>

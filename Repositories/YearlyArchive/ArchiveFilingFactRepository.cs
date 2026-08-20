@@ -285,6 +285,30 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
                 fact.BoxLocationCode.Contains(keyword));
         }
 
+        if (!string.IsNullOrWhiteSpace(criteria.ContentEntryKeyword))
+        {
+            if (string.Equals(
+                    criteria.MediaKind?.Trim(),
+                    ArchiveRegisterDomainValues.MediaKindSimulated,
+                    StringComparison.Ordinal))
+            {
+                query = query.Where(fact => false);
+            }
+            else
+            {
+                string likePattern = SearchWildcardPatternSupport.ToSqlLikePattern(criteria.ContentEntryKeyword);
+                query = query.Where(fact =>
+                    fact.MediaKind == ArchiveRegisterDomainValues.MediaKindElectronic
+                    && fact.MediaItemId > 0
+                    && _dbContext.YearlyArchiveRegisterElectronicMediaItemEntries.Any(entry =>
+                        entry.ElectronicMediaItemDetailId == fact.MediaItemId
+                        && EF.Functions.Like(
+                            entry.EntryName,
+                            likePattern,
+                            SearchWildcardPatternSupport.EscapeCharacterString)));
+            }
+        }
+
         return query
             .OrderByDescending(fact => fact.FiledAt)
             .ThenByDescending(fact => fact.Id)
@@ -369,6 +393,7 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             .Where(item => mediaItemIds.Contains(item.Id))
             .Include(item => item.MediaEntry)
             .Include(item => item.ElectronicDetail)
+            .Include(item => item.SimulatedDetail)
             .ToListAsync();
     }
 

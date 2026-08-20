@@ -98,8 +98,16 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             get
             {
-                string mediaType = ItemRows.FirstOrDefault()?.MediaType?.Trim() ?? string.Empty;
-                return string.IsNullOrWhiteSpace(mediaType) ? "—" : mediaType;
+                var first = ItemRows.FirstOrDefault();
+                if (first == null)
+                {
+                    return "—";
+                }
+
+                string summary = SimulatedMediaItemClassificationSupport.FormatSummary(
+                    MediaKind,
+                    first.MediaType);
+                return string.IsNullOrWhiteSpace(summary) ? "—" : summary;
             }
         }
 

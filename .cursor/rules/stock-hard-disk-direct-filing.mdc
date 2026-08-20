@@ -1,6 +1,6 @@
 ---
 description: 存量硬盘直办立档（资料室管理员跳过审批，读盘扫描后直接登记并电子立档）
-globs: "**/{StockHardDiskDirectFiling*,ElectronicFilingStoragePathSupport.cs,ArchiveRegisterDomainValues.cs}"
+globs: "**/{StockHardDiskDirectFiling*,StockDirectFilingYearProjectCatalog.cs,ArchiveRegisterDomainValues.cs}"
 alwaysApply: false
 ---
 
@@ -11,6 +11,8 @@ alwaysApply: false
 ## 目录与字段
 
 根目录必须为 `年度/项目/资料名称/子项/…`。一块硬盘只允许唯一「年度/项目」。第四层子项视为**目录型根目录**：根下文件与一级子目录一并记入明细（允许混合），不再拆业务字段。存量子项一律记「目录型」，不因「根下只有文件」改成文件型。
+
+实施年度、项目名称为**开放域**下拉：选项来自「项目信息 ∪ 模拟盒 ∪ 电子袋」并集；可选手输尚未登记的新年度/新项目。选中已有项目时可带回项目编号。
 
 ## 默认值（可改）
 

@@ -311,9 +311,9 @@ namespace DocMgr.Services.YearlyArchive
             return new FilingLedgerRegisterSupplement
             {
                 MediaType = mediaItem.MediaEntry?.MediaType?.Trim() ?? string.Empty,
-                MaterialCategory = detail?.MaterialCategory?.Trim() ?? string.Empty,
-                SubCategory = detail?.SubCategory?.Trim() ?? string.Empty,
-                DataOrganizationForm = detail?.DataOrganizationForm?.Trim() ?? string.Empty,
+                MaterialCategory = SimulatedMediaItemClassificationSupport.ResolveMaterialCategory(mediaItem),
+                SubCategory = SimulatedMediaItemClassificationSupport.ResolveSubCategory(mediaItem),
+                DataOrganizationForm = SimulatedMediaItemClassificationSupport.ResolveOrganizationFormDisplay(mediaItem),
             };
         }
 

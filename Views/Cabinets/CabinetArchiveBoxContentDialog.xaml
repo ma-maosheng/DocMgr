@@ -54,7 +54,8 @@
                           RowHeaderWidth="0">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="来源类型" Binding="{Binding SourceType}" Width="90"/>
-                        <DataGridTextColumn Header="载体/类别" Binding="{Binding CategoryText}" Width="100"/>
+                        <DataGridTextColumn Header="载体" Binding="{Binding CarrierTypeText}" Width="90"/>
+                        <DataGridTextColumn Header="类别" Binding="{Binding CategoryText}" Width="140"/>
                         <DataGridTextColumn Header="登记单号" Binding="{Binding IdentifierText}" Width="120"/>
                         <DataGridTextColumn Header="资料子项" Binding="{Binding TitleText}" Width="180"/>
                         <DataGridTextColumn Header="立档份数" Binding="{Binding FiledCopyCountDisplay}" Width="80"/>

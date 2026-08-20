@@ -144,23 +144,28 @@ public static class NetworkOutboundItemPrintSupport
     {
         string kind = string.IsNullOrWhiteSpace(media.MediaKind) ? "电子" : media.MediaKind.Trim();
         string type = media.MediaType?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(type))
+        string classification = SimulatedMediaItemClassificationSupport.FormatClassificationFromItem(
+            media.Items?.FirstOrDefault());
+        if (string.IsNullOrWhiteSpace(type) && string.IsNullOrWhiteSpace(classification))
         {
             return kind;
         }
 
         string count = media.MediaCount > 0 ? $"×{media.MediaCount}" : string.Empty;
-        return $"{kind}/{type}{count}";
+        return SimulatedMediaItemClassificationSupport.FormatSummary(kind, type, 
+            string.IsNullOrWhiteSpace(classification) ? null : classification) + count;
     }
 
     private static string BuildMediaItemLine(YearlyArchiveRegisterMediaItem mediaItem, int itemIndex)
     {
-        YearlyArchiveRegisterElectronicMediaItemDetail? detail = mediaItem.ElectronicDetail;
+        string classification = SimulatedMediaItemClassificationSupport.FormatClassificationFromItem(mediaItem);
         string assetKind = NetworkInboundOnNetAssetMappingSupport.ResolveAssetKind(
-            detail?.MaterialCategory,
-            detail?.SubCategory);
-        string subCategory = detail?.SubCategory?.Trim() ?? string.Empty;
-        string head = $"       {itemIndex}. [{Empty(assetKind)}] {Empty(mediaItem.ContentDesc)} / {Empty(subCategory)}";
+            SimulatedMediaItemClassificationSupport.ResolveMaterialCategory(mediaItem),
+            SimulatedMediaItemClassificationSupport.ResolveSubCategory(mediaItem));
+        string subCategory = SimulatedMediaItemClassificationSupport.ResolveSubCategory(mediaItem);
+        string head = string.IsNullOrWhiteSpace(classification)
+            ? $"       {itemIndex}. [{Empty(assetKind)}] {Empty(mediaItem.ContentDesc)} / {Empty(subCategory)}"
+            : $"       {itemIndex}. [{Empty(assetKind)}] {Empty(mediaItem.ContentDesc)} / {classification}";
 
         var segments = new List<string>();
         foreach (string extra in ElectronicMediaItemSupport.BuildElectronicItemPrintExtraParts(mediaItem))
@@ -187,10 +192,11 @@ public static class NetworkOutboundItemPrintSupport
         }
 
         AppendSegment(segments, "密级", mediaItem.ConfidentialLevel);
-        string dataSizeText = detail == null
+        var electronicDetail = mediaItem.ElectronicDetail;
+        string dataSizeText = electronicDetail == null
             ? string.Empty
             : NetworkInboundItemDisplaySupport.ComposeDataSizeText(
-                detail.DataSizeMb,
+                electronicDetail.DataSizeMb,
                 NetworkInboundItemDisplaySupport.DefaultDataSizeUnit);
         if (!segments.Any(segment => segment.StartsWith("数据量：", StringComparison.Ordinal)))
         {

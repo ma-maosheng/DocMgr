@@ -46,7 +46,9 @@ namespace DocMgr.Services.YearlyArchive
             string documentTitle = isApplicationPrintable
                 ? DocumentTitleSignedHandover
                 : DocumentTitleHandoverSheet;
-            return BuildReceiptPrintData(record, outbound, blankHandoverSignatures, documentTitle);
+            IReadOnlyDictionary<int, string> classificationByFilingFactId = await LoadClassificationByFilingFactIdsAsync(
+                record.Items.Select(item => item.FilingFactId));
+            return BuildReceiptPrintData(record, outbound, blankHandoverSignatures, documentTitle, classificationByFilingFactId);
         }
 
         public async Task RecordPrintAsync(int recordId)
@@ -64,7 +66,8 @@ namespace DocMgr.Services.YearlyArchive
             YearlyArchiveReturnRecord record,
             YearlyArchiveOutboundRecord? outbound,
             bool blankHandoverSignatures,
-            string documentTitle)
+            string documentTitle,
+            IReadOnlyDictionary<int, string> classificationByFilingFactId)
         {
             string returnDate = record.ReturnDate == default
                 ? string.Empty
@@ -91,7 +94,7 @@ namespace DocMgr.Services.YearlyArchive
                 RegisteredByName = record.RegisteredByName ?? string.Empty,
                 ExpectedReturnDateText = expectedReturnDate,
                 MaterialSummary = string.IsNullOrWhiteSpace(materialSummary) ? "(无)" : materialSummary,
-                ItemLines = ArchiveReturnItemDescription.BuildPrintDetailLines(record.Items).ToList(),
+                ItemLines = ArchiveReturnItemDescription.BuildPrintDetailLines(record.Items, classificationByFilingFactId).ToList(),
                 HandoverSignatureLines = BuildHandoverSignatureLines(record, blankHandoverSignatures, handoverDate),
                 ApprovalSignatureLines = BuildReturnFormApprovalSignatureLines(
                     record,
@@ -203,5 +206,26 @@ namespace DocMgr.Services.YearlyArchive
 
         private static string FormatDate(DateTime? value) =>
             value.HasValue ? value.Value.ToString("yyyy-MM-dd") : BlankDateText;
+
+        private async Task<IReadOnlyDictionary<int, string>> LoadClassificationByFilingFactIdsAsync(
+            IEnumerable<int> filingFactIds)
+        {
+            var ids = filingFactIds.Where(id => id > 0).Distinct().ToList();
+            if (ids.Count == 0)
+            {
+                return new Dictionary<int, string>();
+            }
+
+            var factsById = await _outboundRepository.GetFilingFactsByIdsForUpdateAsync(ids);
+            var mediaItemIds = factsById.Values
+                .Select(fact => fact.MediaItemId)
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+            var mediaItems = await _filingFactRepository.GetRegisterMediaItemsWithSupplementsAsync(mediaItemIds);
+            return SimulatedMediaItemClassificationSupport.MapClassificationByFilingFactId(
+                factsById.Values,
+                mediaItems.ToDictionary(item => item.Id));
+        }
     }
 }

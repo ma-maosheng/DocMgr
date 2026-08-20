@@ -417,6 +417,14 @@ namespace DocMgr.Services.Cabinets
             string identifier = string.IsNullOrWhiteSpace(fact.FormNo) ? fact.FilingFactNo : fact.FormNo;
 
             string carrierTypeText = CabinetArchiveBoxContentDisplaySupport.ResolveCarrierTypeText(fact, supplement);
+            string categoryText = SimulatedMediaItemClassificationSupport.FormatClassification(
+                supplement.MaterialCategory,
+                supplement.SubCategory,
+                supplement.DataOrganizationForm);
+            if (string.IsNullOrWhiteSpace(categoryText))
+            {
+                categoryText = carrierTypeText;
+            }
 
             decimal dataSizeMb = fact.DataSizeMb > 0 ? fact.DataSizeMb : supplement.DataSizeMb;
 
@@ -440,7 +448,7 @@ namespace DocMgr.Services.Cabinets
 
                 SourceType = "年度资料",
 
-                CategoryText = carrierTypeText,
+                CategoryText = categoryText,
 
                 IdentifierText = identifier,
 

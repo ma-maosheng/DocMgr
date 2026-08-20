@@ -453,6 +453,7 @@ namespace DocMgr.Views
                 ArchiveRegisterApprovalPage => BtnArchiveRegisterApprove,
                 ArchiveFilingPage => BtnArchiveFiling,
                 StockHardDiskDirectFilingPage => BtnStockHardDiskDirectFiling,
+                StockTextArchiveDirectFilingPage => BtnStockTextArchiveDirectFiling,
                 ArchiveFilingLedgerPage => BtnArchiveFilingLedger,
                 ArchiveSimulatedRelocationPage => BtnArchiveSimulatedRelocation,
                 ArchiveElectronicRelocationPage => BtnArchiveElectronicRelocation,
@@ -589,6 +590,7 @@ namespace DocMgr.Views
                 ArchiveRegisterSimulationPage => "年度资料档案化管理（模拟测试·模拟登记_方式1）",
                 ArchiveFilingPage => "年度资料档案化管理（资料建档·资料立档）",
                 StockHardDiskDirectFilingPage => "年度资料档案化管理（资料建档·存量硬盘直办立档）",
+                StockTextArchiveDirectFilingPage => "年度资料档案化管理（资料建档·存档文本直办立档）",
                 ArchiveFilingLedgerPage => "年度资料档案化管理（资料建档·立档台账）",
                 ArchiveRelocationLedgerPage => "年度资料档案化管理（资料迁档·迁档台账）",
                 ArchiveCirculationLedgerPage => "年度资料档案化管理（资料流转·流转台账）",
@@ -799,6 +801,7 @@ namespace DocMgr.Views
             SetNavButton(BtnArchiveRegisterApprove, isArchiveAdmin);
             SetNavButton(BtnArchiveFiling, canFiling);
             SetNavButton(BtnStockHardDiskDirectFiling, canFiling);
+            SetNavButton(BtnStockTextArchiveDirectFiling, canFiling);
             SetNavButton(BtnArchiveFilingLedger, canFiling);
             SetNavButton(BtnArchiveRelocationLedger, canFiling);
             SetNavButton(BtnArchiveCirculationLedger, canFiling);
@@ -826,8 +829,6 @@ namespace DocMgr.Views
 
             SetNavButton(BtnHistMap, true);
             SetNavButton(BtnHistAerial, true);
-            SetNavButton(BtnHistSatellite, true);
-            SetNavButton(BtnHistDoc, true);
             SetNavButton(BtnOtherData, true);
 
             SetNavButton(BtnCabRegister, true);
@@ -1002,16 +1003,6 @@ namespace DocMgr.Views
         {
             TxtPageTitle.Text = "历史存档资料管理（航摄影像）";
             MainContentFrame.Navigate(new AerialPhotoPage());
-        }
-
-        private void BtnHistSatellite_Click(object sender, RoutedEventArgs e)
-        {
-            ShowMenuNotReady("历史存档资料管理（卫星影像）");
-        }
-
-        private void BtnHistDoc_Click(object sender, RoutedEventArgs e)
-        {
-            ShowMenuNotReady("历史存档资料管理（文档资料）");
         }
 
         private void BtnProjectSetting_Click(object sender, RoutedEventArgs e)
@@ -1217,6 +1208,35 @@ namespace DocMgr.Views
                 MessageBox.Show(
                     this,
                     "无法打开存量硬盘直办立档页面：\n\n" + ex.Message,
+                    "错误",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnStockTextArchiveDirectFiling_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "年度资料档案化管理（资料建档·存档文本直办立档）";
+
+            if (!CanAccessArchiveFiling())
+            {
+                MessageBox.Show(
+                    "抱歉，您没有【存档文本直办立档】的操作权限（仅资料室资料管理员可操作）。",
+                    "权限提示",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                MainContentFrame.Navigate(new StockTextArchiveDirectFilingPage());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    this,
+                    "无法打开存档文本直办立档页面：\n\n" + ex.Message,
                     "错误",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);

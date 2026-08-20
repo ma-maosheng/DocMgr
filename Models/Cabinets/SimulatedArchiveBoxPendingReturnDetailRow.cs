@@ -33,6 +33,8 @@ namespace DocMgr.Models.Cabinets
 
         public string MediaType { get; init; } = string.Empty;
 
+        public string ClassificationText { get; init; } = string.Empty;
+
         public int PendingReturnCopyCount { get; init; }
 
         public DateTime? ExpectedReturnDate { get; init; }

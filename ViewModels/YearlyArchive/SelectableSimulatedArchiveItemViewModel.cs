@@ -19,6 +19,12 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string MediaType { get; init; } = string.Empty;
 
+        public string MaterialCategory { get; init; } = string.Empty;
+
+        public string SubCategory { get; init; } = string.Empty;
+
+        public string DataOrganizationForm { get; init; } = string.Empty;
+
         public string ItemType { get; init; } = string.Empty;
 
         public string ContentDesc { get; init; } = string.Empty;

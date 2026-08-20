@@ -80,6 +80,18 @@ namespace DocMgr.Models.YearlyArchive
         /// </summary>
         public IReadOnlyList<string> ElectronicDataOrganizationForms { get; init; } = Array.Empty<string>();
 
+        /// <summary>模拟资料类型。</summary>
+        public IReadOnlyList<string> SimulatedMaterialCategories { get; init; } = Array.Empty<string>();
+
+        /// <summary>模拟文本所属子类。</summary>
+        public IReadOnlyList<string> SimulatedTextSubCategories { get; init; } = Array.Empty<string>();
+
+        /// <summary>模拟图件所属子类。</summary>
+        public IReadOnlyList<string> SimulatedMapSubCategories { get; init; } = Array.Empty<string>();
+
+        /// <summary>模拟资料组织形式。</summary>
+        public IReadOnlyList<string> SimulatedOrganizationForms { get; init; } = Array.Empty<string>();
+
         /// <summary>
         /// 资料子项密级选项。
         /// </summary>

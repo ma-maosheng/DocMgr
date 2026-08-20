@@ -21,8 +21,11 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly List<string> _electronicDocumentSubCategoryOptions = new();
         private readonly List<string> _electronicDataSubCategoryOptions = new();
         private readonly List<string> _electronicSoftwareSubCategoryOptions = new();
+        private readonly List<string> _simulatedTextSubCategoryOptions = new();
+        private readonly List<string> _simulatedMapSubCategoryOptions = new();
 
         private bool _isSyncingElectronicMediaSettings;
+        private bool _isSyncingSimulatedMediaSettings;
 
         /// <summary>
         /// 防止 RefreshUserBorrowedHardDiskCodesAsync 与绑定/介质同步互相触发造成栈溢出。
@@ -74,6 +77,21 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public int DataElectronicMediaCount => MediaEntries.Count(m => IsDataElectronic(m));
 
+        public int DataSimulatedMediaCount => MediaEntries.Count(m => IsDataSimulated(m));
+
+        private string _selectedSimulatedMediaType = string.Empty;
+        public string SelectedSimulatedMediaType
+        {
+            get => _selectedSimulatedMediaType;
+            set
+            {
+                if (SetProperty(ref _selectedSimulatedMediaType, value))
+                {
+                    ApplySelectedSimulatedMediaSettingsToEntries();
+                }
+            }
+        }
+
         private void InitializeMediaViews()
         {
             DataElectronicMediaView = new ListCollectionView(MediaEntries) { Filter = m => IsDataElectronic(m as MediaEntryViewModel) };
@@ -96,6 +114,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 RefreshMediaViews();
                 SyncElectronicMediaSettingsFromEntries();
+                SyncSimulatedMediaSettingsFromEntries();
                 OnPropertyChanged(nameof(IsBorrowedHardDiskRegistrationVisible));
                 OnPropertyChanged(nameof(IsBorrowedHardDiskCodeRequired));
             }
@@ -132,7 +151,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             media.Items.CollectionChanged += MediaItems_CollectionChanged;
             foreach (var item in media.Items)
             {
-                ConfigureElectronicMediaItem(item);
+                ConfigureMediaItem(media, item);
                 item.PropertyChanged += MediaItem_PropertyChanged;
             }
 
@@ -163,18 +182,22 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
         private void MediaItems_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
+            var media = FindMediaEntryByItemsCollection(sender);
             if (e.NewItems != null)
             {
                 foreach (MediaItemViewModel item in e.NewItems)
                 {
-                    ConfigureElectronicMediaItem(item);
+                    if (media != null)
+                    {
+                        ConfigureMediaItem(media, item);
+                    }
+
                     item.PropertyChanged += MediaItem_PropertyChanged;
                 }
             }
 
             if (e.OldItems != null) foreach (MediaItemViewModel item in e.OldItems) item.PropertyChanged -= MediaItem_PropertyChanged;
 
-            var media = FindMediaEntryByItemsCollection(sender);
             if (media != null)
             {
                 RecalculateQuantities(media);
@@ -192,6 +215,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             DataElectronicMediaView.Refresh();
             DataSimulatedMediaView.Refresh();
             OnPropertyChanged(nameof(DataElectronicMediaCount));
+            OnPropertyChanged(nameof(DataSimulatedMediaCount));
         }
 
         private MediaEntryViewModel? FindMediaEntryByItemsCollection(object? sender)
@@ -257,25 +281,36 @@ namespace DocMgr.ViewModels.YearlyArchive
             EnsureElectronicMediaSelections();
             AddMediaEntry(ArchiveRegisterDomainValues.MediaKindElectronic, ArchiveRegisterDomainValues.ItemTypeData);
         }
-        private void AddDataSimulatedMediaEntry() => AddMediaEntry(ArchiveRegisterDomainValues.MediaKindSimulated, ArchiveRegisterDomainValues.ItemTypeData);
+        private void AddDataSimulatedMediaEntry()
+        {
+            EnsureSimulatedMediaSelections();
+            AddMediaEntry(ArchiveRegisterDomainValues.MediaKindSimulated, ArchiveRegisterDomainValues.ItemTypeData);
+        }
+
         private void AddMediaEntry(string kind, string itemType)
         {
             bool isElectronic = string.Equals(kind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal);
             var entry = new MediaEntryViewModel
             {
                 MediaKind = kind,
-                MediaType = isElectronic ? ResolveSelectedElectronicMediaType() : ResolveDefaultMediaType(kind, itemType),
+                MediaType = isElectronic ? ResolveSelectedElectronicMediaType() : ResolveSelectedSimulatedMediaType(),
                 Disposition = isElectronic ? ResolveSelectedElectronicDisposition() : ResolveDefaultDisposition(kind),
                 IsBorrowedHardDisk = false,
                 BorrowedHardDiskCode = string.Empty
             };
-            entry.Items.Add(CreateDefaultElectronicMediaItem(itemType));
+            entry.Items.Add(isElectronic
+                ? CreateDefaultElectronicMediaItem(itemType)
+                : CreateDefaultSimulatedMediaItem(itemType));
             MediaEntries.Add(entry);
             RecalculateQuantities(entry);
 
             if (isElectronic)
             {
                 ApplySelectedElectronicMediaSettingsToEntries();
+            }
+            else
+            {
+                ApplySelectedSimulatedMediaSettingsToEntries();
             }
         }
         private void RemoveMediaEntry(MediaEntryViewModel? m) { if (m != null) MediaEntries.Remove(m); }
@@ -288,11 +323,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             m.Items.Add(IsDataElectronic(m)
                 ? CreateDefaultElectronicMediaItem(ArchiveRegisterDomainValues.ItemTypeData)
-                : new MediaItemViewModel
-                {
-                    ItemType = ArchiveRegisterDomainValues.ItemTypeData,
-                    ConfidentialLevel = ConfidentialLevelOptions.FirstOrDefault() ?? ArchiveRegisterDomainValues.ConfidentialLevelNone
-                });
+                : CreateDefaultSimulatedMediaItem(ArchiveRegisterDomainValues.ItemTypeData));
         }
         private void RemoveMediaItem(MediaItemViewModel? i) { if (i == null) return; var p = MediaEntries.FirstOrDefault(m => m.Items.Contains(i)); p?.Items.Remove(i); }
 
@@ -310,6 +341,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             SyncProofMaterialSelectionFromRecord();
             SyncElectronicMediaSettingsFromEntries();
+            SyncSimulatedMediaSettingsFromEntries();
             RecalculateAllQuantities();
             EnsureUserBorrowedHardDiskListIncludesSelected();
         }
@@ -427,10 +459,11 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                     if (item.ElectronicDetail != null)
                     {
-                        itemVm.MaterialCategory = item.ElectronicDetail.MaterialCategory;
-                        itemVm.SubCategory = item.ElectronicDetail.SubCategory;
-                        itemVm.DataOrganizationForm = item.ElectronicDetail.DataOrganizationForm;
-                        itemVm.DataSizeMb = item.ElectronicDetail.DataSizeMb;
+                        itemVm.LoadElectronicDetail(
+                            item.ElectronicDetail.MaterialCategory,
+                            item.ElectronicDetail.SubCategory,
+                            item.ElectronicDetail.DataOrganizationForm,
+                            item.ElectronicDetail.DataSizeMb);
 
                         foreach (var entry in item.ElectronicDetail.Entries.OrderBy(e => e.SortOrder))
                         {
@@ -444,9 +477,22 @@ namespace DocMgr.ViewModels.YearlyArchive
                                 ModifiedAt = entry.ModifiedAt
                             });
                         }
-                    }
 
-                    ConfigureElectronicMediaItem(itemVm);
+                        ConfigureElectronicMediaItem(itemVm);
+                    }
+                    else if (item.SimulatedDetail != null
+                             || string.Equals(media.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
+                    {
+                        itemVm.LoadSimulatedDetail(
+                            item.SimulatedDetail?.MaterialCategory,
+                            item.SimulatedDetail?.SubCategory,
+                            item.SimulatedDetail?.OrganizationForm);
+                        ConfigureSimulatedMediaItem(itemVm);
+                    }
+                    else
+                    {
+                        ConfigureElectronicMediaItem(itemVm);
+                    }
                     itemVm.RefreshContentScanSummary();
                     vm.Items.Add(itemVm);
                 }
@@ -467,7 +513,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 .Select(m => new YearlyArchiveRegisterMedia
                 {
                 MediaKind = m.MediaKind,
-                MediaType = IsDataElectronic(m) ? ResolveSelectedElectronicMediaType() : m.MediaType,
+                MediaType = IsDataElectronic(m) ? ResolveSelectedElectronicMediaType() : ResolveSelectedSimulatedMediaType(),
                 MediaCount = IsDataElectronic(m) ? 1 : m.MediaCount,
                 Disposition = IsDataElectronic(m)
                     ? ResolveSelectedElectronicDisposition()
@@ -494,6 +540,10 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             if (!isElectronic)
             {
+                entity.SimulatedDetail = SimulatedMediaItemClassificationSupport.CreateDetail(
+                    item.MaterialCategory,
+                    item.SubCategory,
+                    item.OrganizationForm);
                 return entity;
             }
 
@@ -554,12 +604,32 @@ namespace DocMgr.ViewModels.YearlyArchive
             _allElectronicDispositionOptions.AddRange(domainOptions.DataElectronicDispositions);
             ApplyOptions(ElectronicMaterialCategoryOptions, domainOptions.ElectronicMaterialCategories);
             ApplyOptions(ElectronicDataOrganizationFormOptions, domainOptions.ElectronicDataOrganizationForms);
+            ApplyOptions(
+                SimulatedMaterialCategoryOptions,
+                domainOptions.SimulatedMaterialCategories.Count > 0
+                    ? domainOptions.SimulatedMaterialCategories
+                    : ArchiveRegisterDomainValues.SimulatedMaterialCategories);
+            ApplyOptions(
+                SimulatedOrganizationFormOptions,
+                domainOptions.SimulatedOrganizationForms.Count > 0
+                    ? domainOptions.SimulatedOrganizationForms
+                    : ArchiveRegisterDomainValues.SimulatedOrganizationForms);
             _electronicDocumentSubCategoryOptions.Clear();
             _electronicDocumentSubCategoryOptions.AddRange(domainOptions.ElectronicDocumentSubCategories);
             _electronicDataSubCategoryOptions.Clear();
             _electronicDataSubCategoryOptions.AddRange(domainOptions.ElectronicDataSubCategories);
             _electronicSoftwareSubCategoryOptions.Clear();
             _electronicSoftwareSubCategoryOptions.AddRange(domainOptions.ElectronicSoftwareSubCategories);
+            _simulatedTextSubCategoryOptions.Clear();
+            _simulatedTextSubCategoryOptions.AddRange(
+                domainOptions.SimulatedTextSubCategories.Count > 0
+                    ? domainOptions.SimulatedTextSubCategories
+                    : ArchiveRegisterDomainValues.SimulatedTextSubCategories);
+            _simulatedMapSubCategoryOptions.Clear();
+            _simulatedMapSubCategoryOptions.AddRange(
+                domainOptions.SimulatedMapSubCategories.Count > 0
+                    ? domainOptions.SimulatedMapSubCategories
+                    : ArchiveRegisterDomainValues.SimulatedMapSubCategories);
             ApplyOptions(DataSimulatedDispositionOptions, domainOptions.DataSimulatedDispositions);
             ApplyOptions(ConfidentialLevelOptions, domainOptions.ConfidentialLevels);
             ApplyOptions(ProdOpinionOptions, domainOptions.ProdOpinionOptions);
@@ -568,11 +638,30 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             RefreshElectronicDispositionOptions();
             EnsureElectronicMediaSelections();
+            EnsureSimulatedMediaSelections();
             foreach (var item in MediaEntries.SelectMany(entry => entry.Items))
             {
-                RefreshElectronicSubCategoryOptions(item);
+                if (string.Equals(item.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var owner = MediaEntries.FirstOrDefault(entry => entry.Items.Contains(item));
+                if (owner != null && IsDataSimulated(owner))
+                {
+                    RefreshSimulatedSubCategoryOptions(item);
+                }
+                else if (owner != null && IsDataElectronic(owner))
+                {
+                    RefreshElectronicSubCategoryOptions(item);
+                }
+                else
+                {
+                    item.SubCategoryOptionsRefreshHandler?.Invoke(item);
+                }
             }
             SyncElectronicMediaSettingsFromEntries();
+            SyncSimulatedMediaSettingsFromEntries();
             ApplySourceTypeSelection();
             ApplyArchivePurposeSelection();
         }
@@ -738,6 +827,78 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private readonly Dictionary<MediaItemViewModel, NotifyCollectionChangedEventHandler> _contentEntryQuantityHandlers = new();
 
+        private void EnsureSimulatedMediaSelections()
+        {
+            _isSyncingSimulatedMediaSettings = true;
+            try
+            {
+                if (string.IsNullOrWhiteSpace(SelectedSimulatedMediaType)
+                    || !DataSimulatedMediaTypeOptions.Contains(SelectedSimulatedMediaType))
+                {
+                    SelectedSimulatedMediaType = DataSimulatedMediaTypeOptions.FirstOrDefault() ?? string.Empty;
+                }
+            }
+            finally
+            {
+                _isSyncingSimulatedMediaSettings = false;
+            }
+        }
+
+        private void SyncSimulatedMediaSettingsFromEntries()
+        {
+            var firstSimulated = MediaEntries.FirstOrDefault(m => IsDataSimulated(m));
+            _isSyncingSimulatedMediaSettings = true;
+            try
+            {
+                string rawMediaType = firstSimulated?.MediaType?.Trim() ?? string.Empty;
+                if (ArchiveRegisterDomainValues.IsSimulatedDataMediaType(rawMediaType))
+                {
+                    SelectedSimulatedMediaType = DataSimulatedMediaTypeOptions.FirstOrDefault(o =>
+                        string.Equals(o, rawMediaType, StringComparison.Ordinal))
+                        ?? rawMediaType;
+                }
+                else if (!string.IsNullOrWhiteSpace(rawMediaType))
+                {
+                    SelectedSimulatedMediaType = SimulatedMediaItemClassificationSupport.MapLegacyMediaType(rawMediaType).MediaType;
+                }
+                else
+                {
+                    SelectedSimulatedMediaType = DataSimulatedMediaTypeOptions.FirstOrDefault() ?? string.Empty;
+                }
+            }
+            finally
+            {
+                _isSyncingSimulatedMediaSettings = false;
+            }
+
+            ApplySelectedSimulatedMediaSettingsToEntries();
+        }
+
+        private void ApplySelectedSimulatedMediaSettingsToEntries()
+        {
+            if (_isSyncingSimulatedMediaSettings)
+            {
+                return;
+            }
+
+            string mediaType = ResolveSelectedSimulatedMediaType();
+            foreach (var media in MediaEntries.Where(m => IsDataSimulated(m)))
+            {
+                media.MediaKind = ArchiveRegisterDomainValues.MediaKindSimulated;
+                media.MediaType = mediaType;
+                media.Disposition = ArchiveRegisterDomainValues.SimulatedDispositionRetain;
+            }
+
+            OnPropertyChanged(nameof(DataSimulatedMediaCount));
+        }
+
+        private string ResolveSelectedSimulatedMediaType()
+        {
+            return string.IsNullOrWhiteSpace(SelectedSimulatedMediaType)
+                ? (DataSimulatedMediaTypeOptions.FirstOrDefault() ?? string.Empty)
+                : SelectedSimulatedMediaType;
+        }
+
         private MediaItemViewModel CreateDefaultElectronicMediaItem(string itemType)
         {
             var item = new MediaItemViewModel
@@ -752,11 +913,45 @@ namespace DocMgr.ViewModels.YearlyArchive
             return item;
         }
 
+        private MediaItemViewModel CreateDefaultSimulatedMediaItem(string itemType)
+        {
+            var item = new MediaItemViewModel
+            {
+                ItemType = itemType,
+                MaterialCategory = SimulatedMaterialCategoryOptions.FirstOrDefault()
+                    ?? ArchiveRegisterDomainValues.SimulatedMaterialCategoryText,
+                OrganizationForm = SimulatedOrganizationFormOptions.Contains(ArchiveRegisterDomainValues.SimulatedOrganizationFormBound)
+                    ? ArchiveRegisterDomainValues.SimulatedOrganizationFormBound
+                    : (SimulatedOrganizationFormOptions.FirstOrDefault() ?? ArchiveRegisterDomainValues.SimulatedOrganizationFormBound),
+                ConfidentialLevel = ConfidentialLevelOptions.FirstOrDefault() ?? ArchiveRegisterDomainValues.ConfidentialLevelNone
+            };
+
+            ConfigureSimulatedMediaItem(item);
+            return item;
+        }
+
+        private void ConfigureMediaItem(MediaEntryViewModel media, MediaItemViewModel item)
+        {
+            if (IsDataSimulated(media))
+            {
+                ConfigureSimulatedMediaItem(item);
+                return;
+            }
+
+            ConfigureElectronicMediaItem(item);
+        }
+
         private void ConfigureElectronicMediaItem(MediaItemViewModel item)
         {
             item.SubCategoryOptionsRefreshHandler = RefreshElectronicSubCategoryOptions;
             RefreshElectronicSubCategoryOptions(item);
             AttachContentEntryQuantityHandler(item);
+        }
+
+        private void ConfigureSimulatedMediaItem(MediaItemViewModel item)
+        {
+            item.SubCategoryOptionsRefreshHandler = RefreshSimulatedSubCategoryOptions;
+            RefreshSimulatedSubCategoryOptions(item);
         }
 
         private void AttachContentEntryQuantityHandler(MediaItemViewModel item)
@@ -803,6 +998,44 @@ namespace DocMgr.ViewModels.YearlyArchive
                 && !options.Any(option => string.Equals(option, item.SubCategory, StringComparison.OrdinalIgnoreCase)))
             {
                 item.SubCategory = string.Empty;
+            }
+        }
+
+        private void RefreshSimulatedSubCategoryOptions(MediaItemViewModel item)
+        {
+            string category = item.MaterialCategory?.Trim() ?? string.Empty;
+            bool isMap = string.Equals(
+                category,
+                ArchiveRegisterDomainValues.SimulatedMaterialCategoryMap,
+                StringComparison.Ordinal);
+            bool isText = string.Equals(
+                category,
+                ArchiveRegisterDomainValues.SimulatedMaterialCategoryText,
+                StringComparison.Ordinal);
+            if (!isMap && !isText)
+            {
+                category = ArchiveRegisterDomainValues.SimulatedMaterialCategoryText;
+                isText = true;
+                item.AssignSimulatedMaterialCategoryWithoutRefresh(category);
+            }
+
+            IReadOnlyList<string> domainOptions = isMap
+                ? _simulatedMapSubCategoryOptions
+                : _simulatedTextSubCategoryOptions;
+            IReadOnlyList<string> options = domainOptions.Count > 0
+                ? domainOptions
+                : ArchiveRegisterDomainValues.GetSimulatedSubCategories(category);
+
+            item.AvailableSubCategories.Clear();
+            foreach (var option in options)
+            {
+                item.AvailableSubCategories.Add(option);
+            }
+
+            if (string.IsNullOrWhiteSpace(item.SubCategory)
+                || !options.Any(option => string.Equals(option, item.SubCategory, StringComparison.Ordinal)))
+            {
+                item.SubCategory = options.FirstOrDefault() ?? string.Empty;
             }
         }
 

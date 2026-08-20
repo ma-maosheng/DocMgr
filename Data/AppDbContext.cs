@@ -54,6 +54,7 @@ namespace DocMgr.Data
         public DbSet<YearlyArchiveRegisterMediaItem> YearlyArchiveRegisterMediaItems { get; set; }
         public DbSet<YearlyArchiveRegisterElectronicMediaItemDetail> YearlyArchiveRegisterElectronicMediaItemDetails { get; set; }
         public DbSet<YearlyArchiveRegisterElectronicMediaItemEntry> YearlyArchiveRegisterElectronicMediaItemEntries { get; set; }
+        public DbSet<YearlyArchiveRegisterSimulatedMediaItemDetail> YearlyArchiveRegisterSimulatedMediaItemDetails { get; set; }
 
         // 年度资料档案盒
         public DbSet<YearlyArchiveBox> YearlyArchiveBoxes { get; set; }

@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-08-17T08:45:25Z
+> 生成时间（UTC）：2026-08-20T04:29:54Z
 
 ## 表索引
 
@@ -83,6 +83,7 @@ alwaysApply: true
 | 登记介质明细 | `YearlyArchiveRegisterMediaItem` | `YearlyArchiveRegisterMediaItems` | 表 |
 | 年度资料登记申请 | `YearlyArchiveRegisterRecord` | `YearlyArchiveRegisterRecords` | 表 |
 | 登记申请-电子立档单元关联 | `YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit` | `YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit` | 表 |
+| 模拟介质明细扩展 | `YearlyArchiveRegisterSimulatedMediaItemDetail` | `YearlyArchiveRegisterSimulatedMediaItemDetails` | 表 |
 | 资料移库明细 | `YearlyArchiveRelocationItem` | `YearlyArchiveRelocationItems` | 表 |
 | 资料移库单 | `YearlyArchiveRelocationRecord` | `YearlyArchiveRelocationRecords` | 表 |
 | 资料归还明细 | `YearlyArchiveReturnItem` | `YearlyArchiveReturnItems` | 表 |
@@ -667,6 +668,10 @@ alwaysApply: true
 | 未映射字段 | `ApprovedBy` | `String` | 是 |
 | 未映射字段 | `ApprovedTime` | `DateTime?` | 是 |
 | 未映射字段 | `ApprovalOpinion` | `String` | 是 |
+| 资料室负责人 | `ArchiveRoomHead` | `String` | 否 |
+| 资料室负责人日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
+| 分管资料副院长 | `ArchiveDeputyPresident` | `String` | 否 |
+| 分管资料副院长日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
 | 未映射字段 | `ConfirmedBy` | `String` | 是 |
 | 未映射字段 | `ConfirmedTime` | `DateTime?` | 是 |
 | 未映射字段 | `SignedAttachmentUploaded` | `Boolean` | 是 |
@@ -1400,6 +1405,15 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | 电子立档单元ID | `ElectronicArchiveUnitsId` | `Int32` | 否 |
 | 登记申请ID | `RegisterRecordsId` | `Int32` | 否 |
+
+### YearlyArchiveRegisterSimulatedMediaItemDetail（模拟介质明细扩展）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| 明细ID | `MediaItemId` | `Int32` | 否 |
+| 资料类型 | `MaterialCategory` | `String` | 否 |
+| 所属子类 | `SubCategory` | `String` | 否 |
+| 组织形式 | `OrganizationForm` | `String` | 否 |
 
 ### YearlyArchiveRelocationItem（资料移库明细）
 

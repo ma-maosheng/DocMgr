@@ -23,6 +23,48 @@ namespace DocMgr.Models.YearlyArchive
         public const string ElectronicMediaTypeHardDisk = "硬盘";
         public const string ElectronicMediaTypeInnerNetwork = "内网";
 
+        /// <summary>历史模拟介质类型：装订文本（迁移后拆为载体+分类）。</summary>
+        public const string LegacySimulatedMediaTypeBoundText = "装订文本";
+
+        /// <summary>历史模拟介质类型：散页文本。</summary>
+        public const string LegacySimulatedMediaTypeLooseText = "散页文本";
+
+        /// <summary>历史模拟介质类型：散页图件。</summary>
+        public const string LegacySimulatedMediaTypeLooseMap = "散页图件";
+
+        /// <summary>历史模拟介质类型：大幅图件。</summary>
+        public const string LegacySimulatedMediaTypeLargeMap = "大幅图件";
+
+        /// <summary>历史模拟介质类型：其他。</summary>
+        public const string LegacySimulatedMediaTypeOther = "其他";
+
+        public const string SimulatedMediaTypePrintingPaper = "打印纸";
+        public const string SimulatedMediaTypeDrawingPaper = "绘图纸";
+        public const string SimulatedMediaTypePhotoPaper = "打印相纸";
+        public const string SimulatedMediaTypePhotosensitiveFilm = "感光胶片";
+        public const string SimulatedMediaTypePhotosensitivePaper = "感光相纸";
+
+        public const string SimulatedMaterialCategoryText = "文本";
+        public const string SimulatedMaterialCategoryMap = "图件";
+
+        public const string SimulatedOrganizationFormLoose = "散页";
+        public const string SimulatedOrganizationFormBound = "装订";
+
+        public const string SimulatedSubCategoryExternalMaterial = "外来资料类";
+        public const string SimulatedSubCategoryPlanningDesign = "策划设计类";
+        public const string SimulatedSubCategoryInspectionRecord = "检查记录类";
+        public const string SimulatedSubCategorySummaryReport = "总结报告类";
+        public const string SimulatedSubCategoryOther = "其他";
+        public const string SimulatedSubCategoryExternalMap = "外来图件类";
+        public const string SimulatedSubCategoryProcessMap = "过程图件类";
+        public const string SimulatedSubCategoryResultMap = "成果图件类";
+        public const string SimulatedSubCategoryOtherMap = "其他";
+
+        public const string SimulatedMaterialCategoryTextScope =
+            "MaterialCategory=" + SimulatedMaterialCategoryText;
+        public const string SimulatedMaterialCategoryMapScope =
+            "MaterialCategory=" + SimulatedMaterialCategoryMap;
+
         public const string ElectronicDispositionReturn = "介质带回";
         public const string ElectronicDispositionRetain = "介质留存";
         public const string ElectronicDispositionNone = "无需处置";
@@ -94,6 +136,63 @@ namespace DocMgr.Models.YearlyArchive
         public static IReadOnlyList<string> SimulatedMediaKinds { get; } = [MediaKindSimulated];
         public static IReadOnlyList<string> DataItemTypes { get; } = [ItemTypeData];
         public static IReadOnlyList<string> ProofItemTypes { get; } = [ItemTypeProof];
+
+        /// <summary>模拟资料载体类型（纸基/胶片）。</summary>
+        public static IReadOnlyList<string> SimulatedDataMediaTypes { get; } =
+        [
+            SimulatedMediaTypePrintingPaper,
+            SimulatedMediaTypeDrawingPaper,
+            SimulatedMediaTypePhotoPaper,
+            SimulatedMediaTypePhotosensitiveFilm,
+            SimulatedMediaTypePhotosensitivePaper
+        ];
+
+        /// <summary>存档文本直办与建档申请共用模拟资料载体类型。</summary>
+        public static IReadOnlyList<string> StockTextArchiveMediaTypes => SimulatedDataMediaTypes;
+
+        public static IReadOnlyList<string> SimulatedMaterialCategories { get; } =
+            [SimulatedMaterialCategoryText, SimulatedMaterialCategoryMap];
+
+        public static IReadOnlyList<string> SimulatedTextSubCategories { get; } =
+        [
+            SimulatedSubCategoryExternalMaterial,
+            SimulatedSubCategoryPlanningDesign,
+            SimulatedSubCategoryInspectionRecord,
+            SimulatedSubCategorySummaryReport,
+            SimulatedSubCategoryOther
+        ];
+
+        public static IReadOnlyList<string> SimulatedMapSubCategories { get; } =
+        [
+            SimulatedSubCategoryExternalMap,
+            SimulatedSubCategoryProcessMap,
+            SimulatedSubCategoryResultMap,
+            SimulatedSubCategoryOtherMap
+        ];
+
+        public static IReadOnlyList<string> SimulatedOrganizationForms { get; } =
+            [SimulatedOrganizationFormLoose, SimulatedOrganizationFormBound];
+
+        /// <summary>是否为模拟资料允许的载体类型。</summary>
+        public static bool IsSimulatedDataMediaType(string? mediaType)
+        {
+            string normalized = mediaType?.Trim() ?? string.Empty;
+            return SimulatedDataMediaTypes.Any(item =>
+                string.Equals(item, normalized, StringComparison.Ordinal));
+        }
+
+        /// <summary>是否为存档文本直办允许的模拟介质类型。</summary>
+        public static bool IsStockTextArchiveMediaType(string? mediaType) =>
+            IsSimulatedDataMediaType(mediaType);
+
+        public static IReadOnlyList<string> GetSimulatedSubCategories(string? materialCategory)
+        {
+            return string.Equals(materialCategory?.Trim(), SimulatedMaterialCategoryMap, StringComparison.Ordinal)
+                ? SimulatedMapSubCategories
+                : string.Equals(materialCategory?.Trim(), SimulatedMaterialCategoryText, StringComparison.Ordinal)
+                    ? SimulatedTextSubCategories
+                    : Array.Empty<string>();
+        }
 
         /// <summary>申请人是否声明附有证明材料（<see cref="YearlyArchiveRegisterRecord.ProofMaterialNote"/> 不为「无」）。</summary>
         public static bool HasProofMaterial(string? proofMaterialNote)

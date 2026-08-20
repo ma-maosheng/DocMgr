@@ -323,6 +323,12 @@ public static partial class FieldDomainSeedService
         ["YearlyArchiveRegisterElectronicMediaItemDetail.DataOrganizationForm"] = "数据组织形式",
         ["YearlyArchiveRegisterElectronicMediaItemDetail.DataSizeMb"] = "数据量(MB)",
 
+        ["YearlyArchiveRegisterSimulatedMediaItemDetail.MediaItemId"] = "明细ID",
+        ["YearlyArchiveRegisterSimulatedMediaItemDetail.MaterialCategory"] = "资料类型",
+        ["YearlyArchiveRegisterSimulatedMediaItemDetail.SubCategory"] = "所属子类",
+        ["YearlyArchiveRegisterSimulatedMediaItemDetail.OrganizationForm"] = "组织形式",
+
+
         ["YearlyArchiveRegisterElectronicMediaItemEntry.Id"] = "ID",
         ["YearlyArchiveRegisterElectronicMediaItemEntry.ElectronicMediaItemDetailId"] = "电子明细ID",
         ["YearlyArchiveRegisterElectronicMediaItemEntry.EntryKind"] = "条目类型",

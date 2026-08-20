@@ -146,14 +146,19 @@ namespace DocMgr.Services.SystemSettings
                 "可维护。删除前需先处理下级 MediaItems 及电子档案关联。"),
 
             [nameof(YearlyArchiveRegisterMediaItem)] = new(
-                "登记介质条目下的资料子项（含密级）；电子资料含扩展明细（资料类型、所属子类、目录/文件清单等）。",
-                "→ 引用 YearlyArchiveRegisterMedias（YearlyArchiveRegisterMediaId）；← 被 YearlyArchiveBoxMediaItemLinks 引用；电子子项可关联 YearlyArchiveRegisterElectronicMediaItemDetails。",
+                "登记介质条目下的资料子项（含密级）；电子资料含扩展明细（资料类型、所属子类、目录/文件清单等）；模拟资料含分类扩展（资料类型、所属子类、组织形式）。",
+                "→ 引用 YearlyArchiveRegisterMedias（YearlyArchiveRegisterMediaId）；← 被 YearlyArchiveBoxMediaItemLinks 引用；电子子项可关联 YearlyArchiveRegisterElectronicMediaItemDetails；模拟子项可关联 YearlyArchiveRegisterSimulatedMediaItemDetails。",
                 "可维护。删除前需确认档案盒关联；电子子项删除会级联删除扩展头表与目录/文件明细。"),
 
             [nameof(YearlyArchiveRegisterElectronicMediaItemDetail)] = new(
                 "电子登记介质子项的扩展头信息：资料类型、所属子类、数据组织形式、数据量等。",
                 "→ 引用 YearlyArchiveRegisterMediaItems（MediaItemId，1:1）；← 被 YearlyArchiveRegisterElectronicMediaItemEntries 引用。",
                 "只读浏览。通常随登记流程写入。"),
+
+            [nameof(YearlyArchiveRegisterSimulatedMediaItemDetail)] = new(
+                "模拟登记介质子项的扩展头信息：资料类型、所属子类、组织形式（散页/装订）。",
+                "→ 引用 YearlyArchiveRegisterMediaItems（MediaItemId，1:1）。",
+                "只读浏览。通常随建档或存档文本直办写入。"),
 
             [nameof(YearlyArchiveRegisterElectronicMediaItemEntry)] = new(
                 "电子资料子项下的目录或文件清单。",

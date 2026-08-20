@@ -63,6 +63,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<ArchiveRegisterSimulationPage>("YA-REG-SIM", "模拟登记");
             Add<ArchiveFilingPage>("YA-FIL", "资料立档");
             Add<StockHardDiskDirectFilingPage>("YA-FIL-STK", "存量硬盘直办立档");
+            Add<StockTextArchiveDirectFilingPage>("YA-FIL-STT", "存档文本直办立档");
             Add<ArchiveFilingSearchPage>("YA-FIL-SCH", "立档检索");
             Add<ArchiveFilingSearchPoolPage>("YA-FIL-POOL", "立档检索池");
             Add<ArchiveFilingLedgerPage>("YA-FIL-LDG", "立档台账");

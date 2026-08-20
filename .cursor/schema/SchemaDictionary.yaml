@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-08-17T08:45:25Z
+generatedAt: 2026-08-20T04:29:54Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -3975,6 +3975,38 @@ tables:
         chineseName: 数据量(MB)
         description: ''
         clrType: Decimal
+        needsReview: false
+        aliases: []
+  YearlyArchiveRegisterSimulatedMediaItemDetail:
+    tableName: YearlyArchiveRegisterSimulatedMediaItemDetails
+    chineseName: 模拟介质明细扩展
+    description: 模拟登记介质子项的扩展头信息：资料类型、所属子类、组织形式（散页/装订）。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      MediaItemId:
+        chineseName: 明细ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      MaterialCategory:
+        chineseName: 资料类型
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      SubCategory:
+        chineseName: 所属子类
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      OrganizationForm:
+        chineseName: 组织形式
+        description: ''
+        clrType: String
         needsReview: false
         aliases: []
   YearlyArchiveRegisterElectronicMediaItemEntry:

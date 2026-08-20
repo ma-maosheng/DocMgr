@@ -866,7 +866,6 @@ namespace DocMgr.Services.YearlyArchive
             YearlyArchiveRegisterMediaItem mediaItem,
             IReadOnlyDictionary<int, string> mediaTypeByRegisterMediaId)
         {
-            var detail = mediaItem.ElectronicDetail;
             string registerMediaType = !string.IsNullOrWhiteSpace(mediaItem.MediaEntry?.MediaType)
                 ? mediaItem.MediaEntry.MediaType.Trim()
                 : mediaTypeByRegisterMediaId.TryGetValue(mediaItem.YearlyArchiveRegisterMediaId, out string? mediaType)
@@ -875,9 +874,9 @@ namespace DocMgr.Services.YearlyArchive
 
             return new RegisterSearchSupplement(
                 registerMediaType,
-                detail?.MaterialCategory?.Trim() ?? string.Empty,
-                detail?.SubCategory?.Trim() ?? string.Empty,
-                detail?.DataOrganizationForm?.Trim() ?? string.Empty);
+                SimulatedMediaItemClassificationSupport.ResolveMaterialCategory(mediaItem),
+                SimulatedMediaItemClassificationSupport.ResolveSubCategory(mediaItem),
+                SimulatedMediaItemClassificationSupport.ResolveOrganizationFormDisplay(mediaItem));
         }
 
         private readonly record struct RegisterSearchSupplement(

@@ -5,6 +5,25 @@ using System.Windows.Data;
 
 namespace DocMgr.Views.YearlyArchive
 {
+    /// <summary>
+    /// 将页面 DataContext 桥接到不在可视树中的对象（如 <see cref="System.Windows.Controls.DataGridColumn"/>）以便绑定。
+    /// </summary>
+    public sealed class BindingProxy : Freezable
+    {
+        public static readonly DependencyProperty DataProperty = DependencyProperty.Register(
+            nameof(Data),
+            typeof(object),
+            typeof(BindingProxy));
+
+        public object? Data
+        {
+            get => GetValue(DataProperty);
+            set => SetValue(DataProperty, value);
+        }
+
+        protected override Freezable CreateInstanceCore() => new BindingProxy();
+    }
+
     public class BoolToVisConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)

@@ -31,7 +31,8 @@ namespace DocMgr.Services.YearlyArchive
 
         public static IReadOnlyList<string> BuildPrintDetailLines(
             IReadOnlyCollection<YearlyArchiveOutboundItem> items,
-            IReadOnlySet<int>? depletedFilingFactIds = null)
+            IReadOnlySet<int>? depletedFilingFactIds = null,
+            IReadOnlyDictionary<int, string>? classificationByFilingFactId = null)
         {
             var lines = items
                 .OrderBy(item => item.SortOrder)
@@ -39,7 +40,8 @@ namespace DocMgr.Services.YearlyArchive
                     item,
                     index + 1,
                     forApplicationPrint: true,
-                    depletedFilingFactIds: depletedFilingFactIds))
+                    depletedFilingFactIds: depletedFilingFactIds,
+                    classificationByFilingFactId: classificationByFilingFactId))
                 .Where(line => !string.IsNullOrWhiteSpace(line))
                 .ToList();
 
@@ -51,14 +53,20 @@ namespace DocMgr.Services.YearlyArchive
         /// </summary>
         public static IReadOnlyList<string> BuildHandoverPrintDetailLines(
             IReadOnlyCollection<YearlyArchiveOutboundItem> items,
-            IReadOnlyDictionary<int, YearlyArchiveFilingFact> factsById)
+            IReadOnlyDictionary<int, YearlyArchiveFilingFact> factsById,
+            IReadOnlyDictionary<int, string>? classificationByFilingFactId = null)
         {
             var lines = items
                 .OrderBy(item => item.SortOrder)
                 .Select((item, index) =>
                 {
                     factsById.TryGetValue(item.FilingFactId, out var fact);
-                    return FormatPrintDetailLine(item, index + 1, forHandover: true, fact: fact);
+                    return FormatPrintDetailLine(
+                        item,
+                        index + 1,
+                        forHandover: true,
+                        fact: fact,
+                        classificationByFilingFactId: classificationByFilingFactId);
                 })
                 .Where(line => !string.IsNullOrWhiteSpace(line))
                 .ToList();
@@ -94,7 +102,8 @@ namespace DocMgr.Services.YearlyArchive
             bool forHandover = false,
             bool forApplicationPrint = false,
             YearlyArchiveFilingFact? fact = null,
-            IReadOnlySet<int>? depletedFilingFactIds = null)
+            IReadOnlySet<int>? depletedFilingFactIds = null,
+            IReadOnlyDictionary<int, string>? classificationByFilingFactId = null)
         {
             var segments = new List<string>();
 
@@ -123,6 +132,14 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             AppendSegment(segments, item.MediaType);
+
+            if (classificationByFilingFactId != null
+                && item.FilingFactId > 0
+                && classificationByFilingFactId.TryGetValue(item.FilingFactId, out string? classification)
+                && !string.IsNullOrWhiteSpace(classification))
+            {
+                AppendSegment(segments, classification);
+            }
 
             string materialDisplay = BuildSummaryLabel(item);
             if (!string.IsNullOrWhiteSpace(materialDisplay))

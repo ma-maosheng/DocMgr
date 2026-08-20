@@ -59,8 +59,12 @@ namespace DocMgr.Services.YearlyArchive
 
 
         public static IReadOnlyList<string> BuildPrintDetailLines(IReadOnlyCollection<YearlyArchiveReturnItem> items) =>
-
             BuildPrintDetailLines(items, includeCopyCountSummary: true);
+
+        public static IReadOnlyList<string> BuildPrintDetailLines(
+            IReadOnlyCollection<YearlyArchiveReturnItem> items,
+            IReadOnlyDictionary<int, string>? classificationByFilingFactId) =>
+            BuildPrintDetailLines(items, includeCopyCountSummary: true, classificationByFilingFactId: classificationByFilingFactId);
 
 
 
@@ -104,7 +108,8 @@ namespace DocMgr.Services.YearlyArchive
 
             bool intactOnly = false,
 
-            bool lossOnly = false)
+            bool lossOnly = false,
+            IReadOnlyDictionary<int, string>? classificationByFilingFactId = null)
 
         {
 
@@ -112,7 +117,7 @@ namespace DocMgr.Services.YearlyArchive
 
                 .OrderBy(item => item.SortOrder)
 
-                .Select((item, index) => FormatPrintDetailLine(item, index + 1, includeCopyCountSummary, borrowedOnly, intactOnly, lossOnly))
+                .Select((item, index) => FormatPrintDetailLine(item, index + 1, includeCopyCountSummary, borrowedOnly, intactOnly, lossOnly, classificationByFilingFactId))
 
                 .Where(line => !string.IsNullOrWhiteSpace(line))
 
@@ -166,7 +171,8 @@ namespace DocMgr.Services.YearlyArchive
 
             bool intactOnly,
 
-            bool lossOnly)
+            bool lossOnly,
+            IReadOnlyDictionary<int, string>? classificationByFilingFactId = null)
 
         {
 
@@ -207,11 +213,16 @@ namespace DocMgr.Services.YearlyArchive
 
 
             if (!string.IsNullOrWhiteSpace(item.MediaType))
-
             {
-
                 segments.Add(item.MediaType.Trim());
+            }
 
+            if (classificationByFilingFactId != null
+                && item.FilingFactId > 0
+                && classificationByFilingFactId.TryGetValue(item.FilingFactId, out string? classification)
+                && !string.IsNullOrWhiteSpace(classification))
+            {
+                segments.Add(classification.Trim());
             }
 
 

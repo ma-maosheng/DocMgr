@@ -707,52 +707,6 @@
                 </DockPanel>
             </GroupBox.Header>
             <StackPanel>
-                <Grid Margin="0,2,0,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="40"/>
-                        <ColumnDefinition Width="72"/>
-                        <ColumnDefinition Width="40"/>
-                        <ColumnDefinition Width="100"/>
-                        <ColumnDefinition Width="40"/>
-                        <ColumnDefinition Width="80"/>
-                        <ColumnDefinition Width="40"/>
-                        <ColumnDefinition Width="56"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Column="0" Text="介质：" Style="{StaticResource ArchiveRegisterFormLabelStyle}" HorizontalAlignment="Left"/>
-                    <ComboBox Grid.Column="1"
-                              Style="{StaticResource ArchiveRegisterCompactComboBoxStyle}"
-                              ItemsSource="{Binding DataContext.SimulatedMediaKindOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                              SelectedItem="{Binding MediaKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-
-                    <TextBlock Grid.Column="2" Text="类型：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
-                    <ComboBox Grid.Column="3"
-                              Style="{StaticResource ArchiveRegisterCompactComboBoxStyle}"
-                              ItemsSource="{Binding DataContext.DataSimulatedMediaTypeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                              SelectedItem="{Binding MediaType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-
-                    <TextBlock Grid.Column="4" Text="其他：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
-                    <TextBox Grid.Column="5" Text="{Binding OtherDesc}">
-                        <TextBox.Style>
-                            <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterCompactTextBoxStyle}">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding MediaType}" Value="其他">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBox.Style>
-                    </TextBox>
-
-                    <TextBlock Grid.Column="6" Text="数量：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
-                    <TextBox Grid.Column="7"
-                             Text="{Binding MediaCount, Mode=OneWay}"
-                             Style="{StaticResource ArchiveRegisterReadOnlyTextBoxStyle}"
-                             ToolTip="系统按资料子项数量自动计算"/>
-                </Grid>
-
                 <DockPanel Margin="0,0,0,4" LastChildFill="True">
                     <Button DockPanel.Dock="Right"
                             Style="{StaticResource ArchiveRegisterAddSubItemButtonStyle}"
@@ -766,43 +720,68 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Style="{StaticResource ArchiveRegisterMediaItemBorderStyle}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="80"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="40"/>
-                                        <ColumnDefinition Width="72"/>
-                                        <ColumnDefinition Width="40"/>
-                                        <ColumnDefinition Width="48"/>
-                                        <ColumnDefinition Width="40"/>
-                                        <ColumnDefinition Width="200"/>
-                                        <ColumnDefinition Width="40"/>
-                                    </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="40"/>
+                                            <ColumnDefinition Width="72"/>
+                                            <ColumnDefinition Width="40"/>
+                                            <ColumnDefinition Width="48"/>
+                                            <ColumnDefinition Width="40"/>
+                                        </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Column="0" Text="子项名称：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
-                                    <TextBox Grid.Column="1" Text="{Binding ContentDesc}" Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}" ToolTip="资料子项名称或内容"/>
+                                        <TextBlock Grid.Column="0" Text="子项名称：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
+                                        <TextBox Grid.Column="1" Text="{Binding ContentDesc}" Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}" ToolTip="资料子项名称或内容"/>
 
-                                    <TextBlock Grid.Column="2" Text="密级：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
-                                    <ComboBox Grid.Column="3"
-                                              Style="{StaticResource ArchiveRegisterConfidentialLevelComboBoxStyle}"
-                                              ItemsSource="{Binding DataContext.ConfidentialLevelOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                              SelectedItem="{Binding ConfidentialLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                    <TextBlock Grid.Column="4" Text="份数：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
-                                    <TextBox Grid.Column="5"
-                                             Text="{Binding ContentCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}"
-                                             ToolTip="资料子项份数，默认为 1"/>
-
-                                    <TextBlock Grid.Column="6" Text="备注：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
-                                    <TextBox Grid.Column="7" Text="{Binding Note}" Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}" ToolTip="备注"/>
-
-                                    <Button Grid.Column="8"
-                                            Style="{StaticResource ArchiveRegisterRemoveMediaItemButtonStyle}"
-                                            Content="×"
-                                            ToolTip="删除本子项"
-                                            Command="{Binding DataContext.RemoveMediaItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"/>
-                                </Grid>
+                                        <TextBlock Grid.Column="2" Text="密级：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
+                                        <ComboBox Grid.Column="3"
+                                                  Style="{StaticResource ArchiveRegisterConfidentialLevelComboBoxStyle}"
+                                                  ItemsSource="{Binding DataContext.ConfidentialLevelOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                  SelectedItem="{Binding ConfidentialLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Grid.Column="4" Text="份数：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
+                                        <TextBox Grid.Column="5"
+                                                 Text="{Binding ContentCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}"
+                                                 ToolTip="资料子项份数，默认为 1"/>
+                                        <Button Grid.Column="6"
+                                                Style="{StaticResource ArchiveRegisterRemoveMediaItemButtonStyle}"
+                                                Content="×"
+                                                ToolTip="删除本子项"
+                                                Command="{Binding DataContext.RemoveMediaItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"/>
+                                    </Grid>
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="40"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="资料类型：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
+                                        <ComboBox Grid.Column="1"
+                                                  Style="{StaticResource ArchiveRegisterCompactComboBoxStyle}"
+                                                  ItemsSource="{Binding DataContext.SimulatedMaterialCategoryOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                  SelectedItem="{Binding MaterialCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Grid.Column="2" Text="所属子类：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
+                                        <ComboBox Grid.Column="3"
+                                                  Style="{StaticResource ArchiveRegisterCompactComboBoxStyle}"
+                                                  ItemsSource="{Binding AvailableSubCategories}"
+                                                  SelectedItem="{Binding SubCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Grid.Column="4" Text="组织形式：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
+                                        <ComboBox Grid.Column="5"
+                                                  Style="{StaticResource ArchiveRegisterCompactComboBoxStyle}"
+                                                  ItemsSource="{Binding DataContext.SimulatedOrganizationFormOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                  SelectedItem="{Binding OrganizationForm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Grid.Column="6" Text="备注：" Style="{StaticResource ArchiveRegisterFormLabelStyle}"/>
+                                        <TextBox Grid.Column="7" Text="{Binding Note}" Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}" ToolTip="备注"/>
+                                    </Grid>
+                                </StackPanel>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -1050,35 +1029,56 @@
 
     <DataTemplate x:Key="MediaItemReadOnlyTemplate_Simulated">
         <Border Style="{StaticResource ArchiveRegisterApprovalSubItemCardStyle}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2.2*"/>
-                    <ColumnDefinition Width="120"/>
-                    <ColumnDefinition Width="72"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}" Margin="0,0,12,0">
-                    <TextBlock Text="子项名称" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                    <TextBlock Text="{Binding ContentDesc, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" FontWeight="SemiBold"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}" Margin="0,0,12,0">
-                    <TextBlock Text="密级" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                    <ComboBox Margin="0,4,0,0"
-                              MinWidth="96"
-                              HorizontalAlignment="Left"
-                              Style="{StaticResource ArchiveRegisterConfidentialLevelComboBoxStyle}"
-                              ItemsSource="{Binding DataContext.ConfidentialLevelOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                              SelectedItem="{Binding ConfidentialLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                </StackPanel>
-                <StackPanel Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}" Margin="0,0,12,0">
-                    <TextBlock Text="份数" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                    <TextBlock Text="{Binding ContentCount}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
-                </StackPanel>
-                <StackPanel Grid.Column="3" Margin="0,0,0,0">
-                    <TextBlock Text="备注" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                    <TextBlock Text="{Binding Note, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
-                </StackPanel>
-            </Grid>
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="72"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}" Margin="0,0,12,0">
+                        <TextBlock Text="子项名称" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding ContentDesc, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" FontWeight="SemiBold"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}" Margin="0,0,12,0">
+                        <TextBlock Text="密级" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <ComboBox Margin="0,4,0,0"
+                                  MinWidth="96"
+                                  HorizontalAlignment="Left"
+                                  Style="{StaticResource ArchiveRegisterConfidentialLevelComboBoxStyle}"
+                                  ItemsSource="{Binding DataContext.ConfidentialLevelOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  SelectedItem="{Binding ConfidentialLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}" Margin="0,0,12,0">
+                        <TextBlock Text="份数" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding ContentCount}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" Margin="0,0,0,0">
+                        <TextBlock Text="备注" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding Note, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                    </StackPanel>
+                </Grid>
+                <Grid Margin="0,4,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
+                        <TextBlock Text="资料类型" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding MaterialCategory, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
+                        <TextBlock Text="所属子类" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding SubCategory, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="0,0,0,0">
+                        <TextBlock Text="组织形式" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding OrganizationForm, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
         </Border>
     </DataTemplate>
 

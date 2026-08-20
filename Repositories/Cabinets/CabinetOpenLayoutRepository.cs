@@ -7,6 +7,7 @@ using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Repositories.YearlyArchive;
+using DocMgr.Services.YearlyArchive;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocMgr.Repositories.Cabinets;
@@ -493,6 +494,7 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
             .Where(item => mediaItemIds.Contains(item.Id))
             .Include(item => item.ElectronicDetail!)
                 .ThenInclude(detail => detail.Entries)
+            .Include(item => item.SimulatedDetail)
             .Include(item => item.MediaEntry)
             .AsSplitQuery()
             .ToList()
@@ -512,9 +514,9 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
             StoragePath = mediaItem.StoragePath?.Trim() ?? string.Empty,
             MediaType = mediaItem.MediaEntry?.MediaType?.Trim() ?? string.Empty,
             Disposition = mediaItem.MediaEntry?.Disposition?.Trim() ?? string.Empty,
-            MaterialCategory = detail?.MaterialCategory?.Trim() ?? string.Empty,
-            SubCategory = detail?.SubCategory?.Trim() ?? string.Empty,
-            DataOrganizationForm = detail?.DataOrganizationForm?.Trim() ?? string.Empty,
+            MaterialCategory = SimulatedMediaItemClassificationSupport.ResolveMaterialCategory(mediaItem),
+            SubCategory = SimulatedMediaItemClassificationSupport.ResolveSubCategory(mediaItem),
+            DataOrganizationForm = SimulatedMediaItemClassificationSupport.ResolveOrganizationFormDisplay(mediaItem),
             DataSizeMb = detail?.DataSizeMb ?? 0m,
             ContentEntryBreakdownText = ElectronicContentEntryStatsSupport.FormatBreakdownFromEntries(entryKinds),
         };
@@ -923,6 +925,16 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
             return Array.Empty<SimulatedArchiveBoxPendingReturnDetailRow>();
         }
 
+        var classificationByFactId = mediaItemRows
+            .Where(row => row.Fact.Id > 0)
+            .GroupBy(row => row.Fact.Id)
+            .ToDictionary(
+                group => group.Key,
+                group => SimulatedMediaItemClassificationSupport.FormatClassification(
+                    group.First().Supplement.MaterialCategory,
+                    group.First().Supplement.SubCategory,
+                    group.First().Supplement.DataOrganizationForm));
+
         var filingFactNoById = mediaItemRows
             .Where(row => row.Fact.Id > 0)
             .GroupBy(row => row.Fact.Id)
@@ -966,6 +978,7 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
                     MaterialName = row.item.MaterialName?.Trim() ?? string.Empty,
                     ItemName = row.item.ItemName?.Trim() ?? string.Empty,
                     MediaType = row.item.MediaType?.Trim() ?? string.Empty,
+                    ClassificationText = classificationByFactId.GetValueOrDefault(row.item.FilingFactId) ?? string.Empty,
                     PendingReturnCopyCount = pendingReturnCopyCount,
                     ExpectedReturnDate = expectedReturnDate,
                     ArchivePurpose = row.item.ArchivePurpose?.Trim() ?? string.Empty,

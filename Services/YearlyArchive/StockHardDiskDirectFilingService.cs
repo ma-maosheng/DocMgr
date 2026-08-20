@@ -23,19 +23,22 @@ namespace DocMgr.Services.YearlyArchive
         private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly IArchiveRegisterRepository _archiveRegisterRepository;
         private readonly IArchiveFilingService _archiveFilingService;
+        private readonly IStockDirectFilingYearProjectCatalog _yearProjectCatalog;
 
         public StockHardDiskDirectFilingService(
             IProjectService projectService,
             IHardDiskMediaService hardDiskMediaService,
             IArchiveRegisterService archiveRegisterService,
             IArchiveRegisterRepository archiveRegisterRepository,
-            IArchiveFilingService archiveFilingService)
+            IArchiveFilingService archiveFilingService,
+            IStockDirectFilingYearProjectCatalog yearProjectCatalog)
         {
             _projectService = projectService;
             _hardDiskMediaService = hardDiskMediaService;
             _archiveRegisterService = archiveRegisterService;
             _archiveRegisterRepository = archiveRegisterRepository;
             _archiveFilingService = archiveFilingService;
+            _yearProjectCatalog = yearProjectCatalog;
         }
 
         /// <inheritdoc/>
@@ -59,20 +62,16 @@ namespace DocMgr.Services.YearlyArchive
         }
 
         /// <inheritdoc/>
-        public IReadOnlyList<ProjectInfo> ListProjectsByYear(string year)
-        {
-            string normalizedYear = year?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(normalizedYear))
-            {
-                return Array.Empty<ProjectInfo>();
-            }
+        public IReadOnlyList<string> ListRegisteredYears()
+            => _yearProjectCatalog.ListRegisteredYears();
 
-            return _projectService.SearchProjects(normalizedYear, keyword: null)
-                .Where(item => string.Equals(item.ImplementYear?.Trim(), normalizedYear, StringComparison.Ordinal))
-                .OrderBy(item => item.ProjectName, StringComparer.Ordinal)
-                .ThenBy(item => item.ProjectCode, StringComparer.Ordinal)
-                .ToList();
-        }
+        /// <inheritdoc/>
+        public IReadOnlyList<string> ListRegisteredProjectNames(string year)
+            => _yearProjectCatalog.ListRegisteredProjectNames(year);
+
+        /// <inheritdoc/>
+        public IReadOnlyList<ProjectInfo> ListProjectsByYear(string year)
+            => _yearProjectCatalog.ListRegisteredProjects(year);
 
         /// <inheritdoc/>
         public async Task<int> CountExistingHardDiskBagsAsync(string projectName, string year)

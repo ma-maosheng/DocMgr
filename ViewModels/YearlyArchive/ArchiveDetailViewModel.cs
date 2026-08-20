@@ -2,6 +2,7 @@ using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using Microsoft.Win32;
 using System;
@@ -515,9 +516,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                 NormalizeText(item.StoragePath),
                 NormalizeConfidentialLevel(item.ConfidentialLevel),
                 NormalizeText(item.MediaEntry?.MediaType),
-                NormalizeText(detail?.MaterialCategory),
-                NormalizeText(detail?.SubCategory),
-                NormalizeText(detail?.DataOrganizationForm),
+                NormalizeText(SimulatedMediaItemClassificationSupport.ResolveMaterialCategory(item)),
+                NormalizeText(SimulatedMediaItemClassificationSupport.ResolveSubCategory(item)),
+                NormalizeText(SimulatedMediaItemClassificationSupport.ResolveOrganizationFormDisplay(item)),
                 detail == null ? string.Empty : $"{detail.DataSizeMb:0.##} MB",
                 NormalizeText(item.Note),
                 contentEntries);

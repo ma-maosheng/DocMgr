@@ -568,6 +568,49 @@ namespace DocMgr.ViewModels.YearlyArchive
             SubCategoryOptionsRefreshHandler?.Invoke(this);
         }
 
+        private string _organizationForm = string.Empty;
+        public string OrganizationForm
+        {
+            get => _organizationForm;
+            set => SetProperty(ref _organizationForm, value);
+        }
+
+        /// <summary>
+        /// 从已持久化的模拟扩展信息回填。
+        /// </summary>
+        internal void LoadSimulatedDetail(string? materialCategory, string? subCategory, string? organizationForm)
+        {
+            _suppressElectronicDetailSideEffects = true;
+            try
+            {
+                MaterialCategory = materialCategory?.Trim() ?? string.Empty;
+                SubCategory = subCategory?.Trim() ?? string.Empty;
+                OrganizationForm = organizationForm?.Trim() ?? string.Empty;
+            }
+            finally
+            {
+                _suppressElectronicDetailSideEffects = false;
+            }
+
+            SubCategoryOptionsRefreshHandler?.Invoke(this);
+        }
+
+        /// <summary>
+        /// 写入模拟资料类型且不触发子类刷新（由调用方随后统一刷新选项）。
+        /// </summary>
+        internal void AssignSimulatedMaterialCategoryWithoutRefresh(string materialCategory)
+        {
+            _suppressElectronicDetailSideEffects = true;
+            try
+            {
+                MaterialCategory = materialCategory?.Trim() ?? string.Empty;
+            }
+            finally
+            {
+                _suppressElectronicDetailSideEffects = false;
+            }
+        }
+
         public ObservableCollection<string> AvailableSubCategories { get; } = new();
 
         public ObservableCollection<ElectronicMediaItemEntryViewModel> ContentEntries { get; } = new();

@@ -19,6 +19,13 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
         nameof(YearlyArchiveRegisterElectronicMediaItemDetail.DataOrganizationForm),
     ];
 
+    private static readonly string[] RegisterSimulatedDetailDomainFields =
+    [
+        nameof(YearlyArchiveRegisterSimulatedMediaItemDetail.MaterialCategory),
+        nameof(YearlyArchiveRegisterSimulatedMediaItemDetail.SubCategory),
+        nameof(YearlyArchiveRegisterSimulatedMediaItemDetail.OrganizationForm),
+    ];
+
     public ArchiveRegisterRepository(AppDbContext dbContext)
     {
         _dbContext = dbContext;
@@ -33,6 +40,9 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                         .ThenInclude(detail => detail.Entries)
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
+                    .ThenInclude(item => item.SimulatedDetail!)
+            .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ArchiveBoxLinks)
                         .ThenInclude(link => link.ArchiveBox)
             .Include(record => record.MediaEntries)
@@ -47,6 +57,10 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                     .ThenInclude(link => link.MediaItem)
                         .ThenInclude(item => item!.ElectronicDetail!)
                             .ThenInclude(detail => detail.Entries)
+            .Include(record => record.ArchiveBoxes)
+                .ThenInclude(box => box.MediaItemLinks)
+                    .ThenInclude(link => link.MediaItem)
+                        .ThenInclude(item => item!.SimulatedDetail!)
             .Include(record => record.ElectronicArchiveUnits)
                 .ThenInclude(unit => unit.MediaItemLinks)
                     .ThenInclude(link => link.MediaItem)
@@ -56,6 +70,10 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                     .ThenInclude(link => link.MediaItem)
                         .ThenInclude(item => item!.ElectronicDetail!)
                             .ThenInclude(detail => detail.Entries)
+            .Include(record => record.ElectronicArchiveUnits)
+                .ThenInclude(unit => unit.MediaItemLinks)
+                    .ThenInclude(link => link.MediaItem)
+                        .ThenInclude(item => item!.SimulatedDetail!)
             .FirstOrDefaultAsync(record => record.FormNo == formNo);
     }
 
@@ -68,6 +86,9 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                         .ThenInclude(detail => detail.Entries)
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
+                    .ThenInclude(item => item.SimulatedDetail!)
+            .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ArchiveBoxLinks)
                         .ThenInclude(link => link.ArchiveBox)
             .Include(record => record.MediaEntries)
@@ -82,6 +103,10 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                     .ThenInclude(link => link.MediaItem)
                         .ThenInclude(item => item!.ElectronicDetail!)
                             .ThenInclude(detail => detail.Entries)
+            .Include(record => record.ArchiveBoxes)
+                .ThenInclude(box => box.MediaItemLinks)
+                    .ThenInclude(link => link.MediaItem)
+                        .ThenInclude(item => item!.SimulatedDetail!)
             .Include(record => record.ElectronicArchiveUnits)
                 .ThenInclude(unit => unit.MediaItemLinks)
                     .ThenInclude(link => link.MediaItem)
@@ -91,6 +116,10 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                     .ThenInclude(link => link.MediaItem)
                         .ThenInclude(item => item!.ElectronicDetail!)
                             .ThenInclude(detail => detail.Entries)
+            .Include(record => record.ElectronicArchiveUnits)
+                .ThenInclude(unit => unit.MediaItemLinks)
+                    .ThenInclude(link => link.MediaItem)
+                        .ThenInclude(item => item!.SimulatedDetail!)
             .FirstOrDefaultAsync(record => record.Id == id);
     }
 
@@ -157,6 +186,9 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                 .ThenInclude(media => media.Items)
                     .ThenInclude(mediaItem => mediaItem.ElectronicDetail!)
                         .ThenInclude(detail => detail.Entries)
+            .Include(item => item.MediaEntries)
+                .ThenInclude(media => media.Items)
+                    .ThenInclude(mediaItem => mediaItem.SimulatedDetail!)
             .Include(item => item.ArchiveBoxes)
             .FirstOrDefaultAsync(item => item.Id == record.Id || (record.Id == 0 && item.FormNo == record.FormNo));
 
@@ -185,6 +217,11 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                                     entry.Id = 0;
                                     entry.ElectronicMediaItemDetailId = 0;
                                 }
+                            }
+
+                            if (item.SimulatedDetail != null)
+                            {
+                                item.SimulatedDetail.MediaItemId = 0;
                             }
                         }
                     }
@@ -434,7 +471,9 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                     || (definition.EntityName == registerMediaEntityName && registerMediaFields.Contains(definition.FieldName))
                     || (definition.EntityName == registerMediaItemEntityName && registerMediaItemFields.Contains(definition.FieldName))
                     || (definition.EntityName == nameof(YearlyArchiveRegisterElectronicMediaItemDetail)
-                        && RegisterElectronicDetailDomainFields.Contains(definition.FieldName))))
+                        && RegisterElectronicDetailDomainFields.Contains(definition.FieldName))
+                    || (definition.EntityName == nameof(YearlyArchiveRegisterSimulatedMediaItemDetail)
+                        && RegisterSimulatedDetailDomainFields.Contains(definition.FieldName))))
             .ToListAsync();
     }
 
@@ -454,7 +493,9 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                     || (definition.EntityName == registerMediaEntityName && registerMediaFields.Contains(definition.FieldName))
                     || (definition.EntityName == registerMediaItemEntityName && registerMediaItemFields.Contains(definition.FieldName))
                     || (definition.EntityName == nameof(YearlyArchiveRegisterElectronicMediaItemDetail)
-                        && RegisterElectronicDetailDomainFields.Contains(definition.FieldName))))
+                        && RegisterElectronicDetailDomainFields.Contains(definition.FieldName))
+                    || (definition.EntityName == nameof(YearlyArchiveRegisterSimulatedMediaItemDetail)
+                        && RegisterSimulatedDetailDomainFields.Contains(definition.FieldName))))
             .ToList();
     }
 
@@ -554,6 +595,17 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
         if (!string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.OrdinalIgnoreCase)
             || source.ElectronicDetail == null)
         {
+            if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.OrdinalIgnoreCase)
+                && source.SimulatedDetail != null)
+            {
+                mapped.SimulatedDetail = new YearlyArchiveRegisterSimulatedMediaItemDetail
+                {
+                    MaterialCategory = source.SimulatedDetail.MaterialCategory,
+                    SubCategory = source.SimulatedDetail.SubCategory,
+                    OrganizationForm = source.SimulatedDetail.OrganizationForm
+                };
+            }
+
             return mapped;
         }
 

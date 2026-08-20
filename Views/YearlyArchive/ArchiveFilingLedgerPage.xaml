@@ -14,6 +14,8 @@
     <Page.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <local:InverseBoolToVisConverter x:Key="InverseBoolToVisConverter"/>
+        <!-- DataGridColumn 不在可视树，需经 BindingProxy 才能读到页面 DataContext -->
+        <local:BindingProxy x:Key="FilingLedgerVmProxy" Data="{Binding}"/>
 
         <Style x:Key="PageTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="18"/>
@@ -251,6 +253,23 @@
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
+
+        <Style x:Key="LedgerFilterLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource ToolbarFilterLabelStyle}">
+            <Setter Property="Margin" Value="0,0,6,0"/>
+        </Style>
+
+        <Style x:Key="FilterRowLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource LedgerFilterLabelStyle}">
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="FilterCardHintStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#9CA3AF"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
     </Page.Resources>
 
     <Grid Margin="15">
@@ -272,98 +291,132 @@
 
         <!-- 筛选区 -->
         <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Padding="10,8" Margin="0,0,0,8">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                <Grid MinHeight="28">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="6"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="68"/>
-                        <ColumnDefinition Width="6"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="128"/>
-                        <ColumnDefinition Width="6"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="68"/>
-                        <ColumnDefinition Width="6"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="68"/>
-                        <ColumnDefinition Width="6"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="60"/>
-                        <ColumnDefinition Width="6"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="108"/>
-                        <ColumnDefinition Width="6"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="108"/>
-                        <ColumnDefinition Width="6"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="140" MinWidth="100"/>
-                        <ColumnDefinition Width="8"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+            <Grid Grid.IsSharedSizeScope="True">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="筛选条件" Style="{StaticResource SectionTitleStyle}" VerticalAlignment="Center" Margin="0"/>
+                <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <Grid MinHeight="32">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="FilingLedgerFilterLabel"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="96"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="176"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="96"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="88"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="112"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="112"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="2" Text="档案年度" Style="{StaticResource FilterLabelStyle}"/>
-                    <ComboBox Grid.Column="3" Style="{StaticResource FilterInputStyle}"
-                              ItemsSource="{Binding Years}"
-                              SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Grid.Column="0" Text="筛选条件" Style="{StaticResource FilterRowLabelStyle}"
+                                   FontWeight="SemiBold" Foreground="#37474F"/>
 
-                    <TextBlock Grid.Column="5" Text="项目" Style="{StaticResource FilterLabelStyle}"/>
-                    <ComboBox Grid.Column="6" Style="{StaticResource FilterInputStyle}"
-                              ItemsSource="{Binding ProjectOptions}"
-                              DisplayMemberPath="Name"
-                              SelectedValuePath="Id"
-                              SelectedValue="{Binding SelectedProjectId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Grid.Column="2" Text="档案年度" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="3" Style="{StaticResource FilterInputStyle}"
+                                  ItemsSource="{Binding Years}"
+                                  SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                    <TextBlock Grid.Column="8" Text="介质" Style="{StaticResource FilterLabelStyle}"/>
-                    <ComboBox Grid.Column="9" Style="{StaticResource FilterInputStyle}"
-                              ItemsSource="{Binding MediaKindOptions}"
-                              DisplayMemberPath="Label"
-                              SelectedValuePath="Value"
-                              SelectedValue="{Binding SelectedMediaKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Grid.Column="5" Text="项目" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="6" Style="{StaticResource FilterInputStyle}"
+                                  ItemsSource="{Binding ProjectOptions}"
+                                  DisplayMemberPath="Name"
+                                  SelectedValuePath="Id"
+                                  SelectedValue="{Binding SelectedProjectId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                    <TextBlock Grid.Column="11" Text="状态" Style="{StaticResource FilterLabelStyle}"/>
-                    <ComboBox Grid.Column="12" Style="{StaticResource FilterInputStyle}"
-                              ItemsSource="{Binding LifecycleStatusOptions}"
-                              DisplayMemberPath="Label"
-                              SelectedValuePath="Value"
-                              SelectedValue="{Binding SelectedLifecycleStatus, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Grid.Column="8" Text="介质" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="9" Style="{StaticResource FilterInputStyle}"
+                                  ItemsSource="{Binding MediaKindOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedValuePath="Value"
+                                  SelectedValue="{Binding SelectedMediaKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                    <TextBlock Grid.Column="14" Text="副本" Style="{StaticResource FilterLabelStyle}"/>
-                    <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
-                              ItemsSource="{Binding ArchiveCopyRoleOptions}"
-                              DisplayMemberPath="Label"
-                              SelectedValuePath="Value"
-                              SelectedValue="{Binding SelectedArchiveCopyRole, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Grid.Column="11" Text="状态" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="12" Style="{StaticResource FilterInputStyle}"
+                                  ItemsSource="{Binding LifecycleStatusOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedValuePath="Value"
+                                  SelectedValue="{Binding SelectedLifecycleStatus, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                    <TextBlock Grid.Column="17" Text="立档自" Style="{StaticResource FilterLabelStyle}"/>
-                    <DatePicker Grid.Column="18" Style="{StaticResource FilterDatePickerStyle}"
-                                SelectedDate="{Binding FiledFrom, Mode=TwoWay}"/>
+                        <TextBlock Grid.Column="14" Text="副本" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
+                                  ItemsSource="{Binding ArchiveCopyRoleOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedValuePath="Value"
+                                  SelectedValue="{Binding SelectedArchiveCopyRole, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                    <TextBlock Grid.Column="20" Text="立档至" Style="{StaticResource FilterLabelStyle}"/>
-                    <DatePicker Grid.Column="21" Style="{StaticResource FilterDatePickerStyle}"
-                                SelectedDate="{Binding FiledTo, Mode=TwoWay}"/>
+                        <TextBlock Grid.Column="17" Text="立档自" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <DatePicker Grid.Column="18" Style="{StaticResource FilterDatePickerStyle}"
+                                    SelectedDate="{Binding FiledFrom, Mode=TwoWay}"/>
 
-                    <TextBlock Grid.Column="23" Text="关键词" Style="{StaticResource FilterLabelStyle}"/>
-                    <TextBox Grid.Column="24" Style="{StaticResource SearchTextBoxStyle}"
-                             Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="立档编号、表单号、资料/子项名称、容器编号、位置、介质编号等">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
-                        </TextBox.InputBindings>
-                    </TextBox>
+                        <TextBlock Grid.Column="20" Text="立档至" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <DatePicker Grid.Column="21" Style="{StaticResource FilterDatePickerStyle}"
+                                    SelectedDate="{Binding FiledTo, Mode=TwoWay}"/>
 
-                    <StackPanel Grid.Column="26" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="查询" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding SearchCommand}"/>
-                        <Button Content="重置" Margin="4,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding ResetCommand}"/>
-                        <Button Content="导出" Margin="6,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding ExportCommand}" ToolTip="导出台账"/>
-                        <Button Content="刷新" Margin="4,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding RefreshCommand}"/>
-                    </StackPanel>
-                </Grid>
-            </ScrollViewer>
+                        <StackPanel Grid.Column="23" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="查询" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding SearchCommand}"/>
+                            <Button Content="重置" Margin="4,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding ResetCommand}"/>
+                            <Button Content="导出" Margin="6,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding ExportCommand}" ToolTip="导出台账"/>
+                            <Button Content="刷新" Margin="4,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding RefreshCommand}"/>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+
+                <ScrollViewer Grid.Row="1" Margin="0,8,0,0"
+                              HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <Grid MinHeight="32">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="FilingLedgerFilterLabel"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="248"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="FilingLedgerFilterLabel"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="248"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="关键词" Style="{StaticResource FilterRowLabelStyle}"/>
+                        <TextBox Grid.Column="2" Style="{StaticResource SearchTextBoxStyle}"
+                                 Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="模糊匹配立档事实：立档编号、表单号、资料/子项名称、密级、项目、提供单位、申请人、容器编号、存放位置、介质编号、立档路径、柜体名称、盒位编码等">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
+                            </TextBox.InputBindings>
+                        </TextBox>
+
+                        <TextBlock Grid.Column="4" Text="目录/文件" Style="{StaticResource FilterRowLabelStyle}"/>
+                        <TextBox Grid.Column="6" Style="{StaticResource SearchTextBoxStyle}"
+                                 Text="{Binding ContentEntryKeyword, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="按电子介质目录/文件名称检索立档记录。支持通配符：* 任意字符，? 单字符；不含通配符时为包含匹配；\ 可转义 * ?。筛选「模拟」介质时无效。">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
+                            </TextBox.InputBindings>
+                        </TextBox>
+
+                        <TextBlock Grid.Column="8" Style="{StaticResource FilterCardHintStyle}"
+                                   Text="目录/文件仅匹配电子介质；两项检索可同时使用"/>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
         </Border>
 
         <!-- 统计摘要 -->
@@ -387,7 +440,8 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="立档记录列表" Style="{StaticResource SectionTitleStyle}"/>
-                            <TextBlock Text="点击行可在下方查看完整立档信息" Style="{StaticResource SectionHintStyle}"/>
+                            <TextBlock Text="点击行可在下方查看完整立档信息；专属列随上方「介质」筛选显示（全部时仅共用列）"
+                                       Style="{StaticResource SectionHintStyle}"/>
                         </StackPanel>
                         <Button Grid.Column="1" Content="查看建档详情" Padding="12,5"
                                 Style="{StaticResource ButtonNormalStyle}"
@@ -411,10 +465,34 @@
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo, Mode=OneWay}" Width="130"/>
                         <DataGridTextColumn Header="介质" Binding="{Binding MediaKind, Mode=OneWay}" Width="56"/>
-                        <DataGridTextColumn Header="介质类型" Binding="{Binding RegisterMediaType, Mode=OneWay}" Width="72"/>
-                        <DataGridTextColumn Header="资料类型" Binding="{Binding MaterialCategory, Mode=OneWay}" Width="72"/>
-                        <DataGridTextColumn Header="所属子类" Binding="{Binding SubCategory, Mode=OneWay}" Width="80"/>
-                        <DataGridTextColumn Header="组织形式" Binding="{Binding DataOrganizationForm, Mode=OneWay}" Width="72"/>
+                        <DataGridTextColumn Header="介质类型" Binding="{Binding RegisterMediaType, Mode=OneWay}" Width="72">
+                            <DataGridTextColumn.Visibility>
+                                <Binding Path="Data.ShowSimulatedOnlyColumns"
+                                         Source="{StaticResource FilingLedgerVmProxy}"
+                                         Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                            </DataGridTextColumn.Visibility>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="资料类型" Binding="{Binding MaterialCategory, Mode=OneWay}" Width="72">
+                            <DataGridTextColumn.Visibility>
+                                <Binding Path="Data.ShowClassificationColumns"
+                                         Source="{StaticResource FilingLedgerVmProxy}"
+                                         Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                            </DataGridTextColumn.Visibility>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="所属子类" Binding="{Binding SubCategory, Mode=OneWay}" Width="80">
+                            <DataGridTextColumn.Visibility>
+                                <Binding Path="Data.ShowClassificationColumns"
+                                         Source="{StaticResource FilingLedgerVmProxy}"
+                                         Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                            </DataGridTextColumn.Visibility>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="组织形式" Binding="{Binding DataOrganizationForm, Mode=OneWay}" Width="72">
+                            <DataGridTextColumn.Visibility>
+                                <Binding Path="Data.ShowClassificationColumns"
+                                         Source="{StaticResource FilingLedgerVmProxy}"
+                                         Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                            </DataGridTextColumn.Visibility>
+                        </DataGridTextColumn>
                         <DataGridTextColumn Header="表单号" Binding="{Binding FormNo, Mode=OneWay}" Width="118"/>
                         <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="150"/>
                         <DataGridTextColumn Header="库管模式" Binding="{Binding ArchivePurpose, Mode=OneWay}" Width="80"/>
@@ -423,7 +501,13 @@
                         <DataGridTextColumn Header="容器编号" Binding="{Binding CurrentContainerCode, Mode=OneWay}" Width="125"/>
                         <DataGridTextColumn Header="当前位置" Binding="{Binding CurrentStorageLocation, Mode=OneWay}" Width="110"/>
                         <DataGridTextColumn Header="立档时间" Binding="{Binding FiledAtDisplay, Mode=OneWay}" Width="128"/>
-                        <DataGridTextColumn Header="份数" Binding="{Binding CopyCountStatusDisplay, Mode=OneWay}" Width="90"/>
+                        <DataGridTextColumn Header="份数" Binding="{Binding CopyCountStatusDisplay, Mode=OneWay}" Width="90">
+                            <DataGridTextColumn.Visibility>
+                                <Binding Path="Data.ShowSimulatedOnlyColumns"
+                                         Source="{StaticResource FilingLedgerVmProxy}"
+                                         Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                            </DataGridTextColumn.Visibility>
+                        </DataGridTextColumn>
                         <DataGridTextColumn Header="状态" Binding="{Binding LifecycleStatusDisplay, Mode=OneWay}" Width="68"/>
                         <DataGridTextColumn Header="副本" Binding="{Binding ArchiveCopyRoleDisplay, Mode=OneWay}" Width="56"/>
                         <DataGridTextColumn Header="提供单位" Binding="{Binding ProvideUnit, Mode=OneWay}" Width="100"/>
@@ -536,13 +620,11 @@
                                     <TextBlock Style="{StaticResource FieldLabelStyle}" Text="介质类型"/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding RegisterMediaType, Mode=OneWay}"/>
                                 </StackPanel>
-                                <StackPanel Grid.Row="3" Grid.Column="2"
-                                            Visibility="{Binding IsElectronicMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel Grid.Row="4" Grid.Column="0">
                                     <TextBlock Style="{StaticResource FieldLabelStyle}" Text="资料类型"/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding MaterialCategory, Mode=OneWay}"/>
                                 </StackPanel>
-                                <StackPanel Grid.Row="4" Grid.Column="0"
-                                            Visibility="{Binding IsElectronicMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel Grid.Row="4" Grid.Column="1">
                                     <TextBlock Style="{StaticResource FieldLabelStyle}" Text="所属子类 / 组织形式"/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" TextWrapping="Wrap">
                                         <Run Text="{Binding SubCategory, Mode=OneWay}"/>

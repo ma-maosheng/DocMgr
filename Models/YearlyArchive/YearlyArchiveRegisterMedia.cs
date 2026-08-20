@@ -70,6 +70,7 @@ namespace DocMgr.Models.YearlyArchive
         public string ConfidentialLevel { get; set; } = ArchiveRegisterDomainValues.ConfidentialLevelNone;
         public virtual YearlyArchiveRegisterMedia? MediaEntry { get; set; }
         public virtual YearlyArchiveRegisterElectronicMediaItemDetail? ElectronicDetail { get; set; }
+        public virtual YearlyArchiveRegisterSimulatedMediaItemDetail? SimulatedDetail { get; set; }
         public virtual List<YearlyArchiveBoxMediaItemLink> ArchiveBoxLinks { get; set; } = new();
         public virtual List<YearlyElectronicArchiveUnitMediaItemLink> ElectronicArchiveUnitMediaItemLinks { get; set; } = new();
     }

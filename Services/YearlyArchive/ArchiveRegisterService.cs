@@ -15,6 +15,7 @@ namespace DocMgr.Services.YearlyArchive
         private const string RegisterMediaEntityName = nameof(YearlyArchiveRegisterMedia);
         private const string RegisterMediaItemEntityName = nameof(YearlyArchiveRegisterMediaItem);
         private const string RegisterElectronicDetailEntityName = nameof(YearlyArchiveRegisterElectronicMediaItemDetail);
+        private const string RegisterSimulatedDetailEntityName = nameof(YearlyArchiveRegisterSimulatedMediaItemDetail);
         private const string EmptyScope = "";
         private const string SimulatedMediaKindScope = "Template=Simulated";
         private const string DataItemTypeScope = "Template=Data";
@@ -1235,6 +1236,15 @@ namespace DocMgr.Services.YearlyArchive
 
                     if (!string.IsNullOrWhiteSpace(media.Disposition) && !IsAllowedDomainValue(media.Disposition, dataSimulatedDispositionOptions))
                         errors.Add($"• 第{seq}条模拟处置方式不在域值定义中（允许值：{string.Join("、", dataSimulatedDispositionOptions)}）");
+
+                    for (int itemIndex = 0; itemIndex < media.Items.Count; itemIndex++)
+                    {
+                        errors.AddRange(SimulatedMediaItemClassificationSupport.CollectValidationErrors(
+                            media.Items[itemIndex],
+                            seq,
+                            itemIndex + 1,
+                            pageDomainOptions));
+                    }
                 }
 
                 var electronicEntries = entries
@@ -1262,6 +1272,19 @@ namespace DocMgr.Services.YearlyArchive
                 var simulatedEntries = entries
                     .Where(m => string.Equals(m.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.OrdinalIgnoreCase))
                     .ToList();
+
+                var simulatedDataEntries = simulatedEntries
+                    .Where(m => m.Items.All(x => !string.Equals(x.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+
+                var simulatedMediaTypes = simulatedDataEntries
+                    .Select(m => m.MediaType?.Trim())
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (simulatedMediaTypes.Count > 1)
+                    errors.Add("• 模拟资料只能使用同一种载体类型");
 
                 foreach (var simulatedEntry in simulatedEntries)
                 {

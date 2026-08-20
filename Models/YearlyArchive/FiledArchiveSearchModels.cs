@@ -305,6 +305,12 @@ namespace DocMgr.Models.YearlyArchive
 
         public string Keyword { get; set; } = string.Empty;
 
+        /// <summary>
+        /// 目录/文件名称关键词（仅电子介质立档记录）。
+        /// 支持通配符：<c>*</c> 任意字符、<c>?</c> 单字符；不含通配符时为包含匹配。
+        /// </summary>
+        public string ContentEntryKeyword { get; set; } = string.Empty;
+
         public string? LifecycleStatus { get; set; }
 
         /// <summary>空表示全部；<see cref="FilingFactArchiveCopyRole.Original"/> 或 <see cref="FilingFactArchiveCopyRole.Backup"/>。</summary>

@@ -13,17 +13,20 @@ namespace DocMgr.ViewModels.YearlyArchive
     /// </summary>
     public sealed class ArchiveFilingLedgerViewModel : ViewModelBase
     {
+        private const string AllYearsOption = "全部年度";
+
         private readonly IArchiveFilingLedgerService _ledgerService;
         private readonly IArchiveMaterialTransactionService _materialTransactionService;
         private readonly IDialogService _dialogService;
 
         private bool _isInitialized;
-        private string _selectedYear = string.Empty;
+        private string _selectedYear = AllYearsOption;
         private int? _selectedProjectId;
         private string _selectedMediaKind = string.Empty;
         private string _selectedLifecycleStatus = string.Empty;
         private string _selectedArchiveCopyRole = string.Empty;
         private string _keyword = string.Empty;
+        private string _contentEntryKeyword = string.Empty;
         private DateTime? _filedFrom;
         private DateTime? _filedTo;
         private FilingLedgerRow? _selectedRow;
@@ -99,8 +102,36 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string SelectedMediaKind
         {
             get => _selectedMediaKind;
-            set => SetProperty(ref _selectedMediaKind, value);
+            set
+            {
+                if (!SetProperty(ref _selectedMediaKind, value))
+                {
+                    return;
+                }
+
+                OnPropertyChanged(nameof(ShowSimulatedOnlyColumns));
+                OnPropertyChanged(nameof(ShowElectronicOnlyColumns));
+                OnPropertyChanged(nameof(ShowClassificationColumns));
+            }
         }
+
+        /// <summary>介质筛为「模拟」时显示专属列（介质类型、份数等）。</summary>
+        public bool ShowSimulatedOnlyColumns => string.Equals(
+            SelectedMediaKind,
+            ArchiveRegisterDomainValues.MediaKindSimulated,
+            StringComparison.Ordinal);
+
+        /// <summary>介质筛为「电子」时显示专属列（目录、数据量等）。</summary>
+        public bool ShowElectronicOnlyColumns => string.Equals(
+            SelectedMediaKind,
+            ArchiveRegisterDomainValues.MediaKindElectronic,
+            StringComparison.Ordinal);
+
+        /// <summary>模拟与电子均展示资料类型 / 所属子类 / 组织形式。</summary>
+        public bool ShowClassificationColumns =>
+            string.IsNullOrWhiteSpace(SelectedMediaKind)
+            || ShowSimulatedOnlyColumns
+            || ShowElectronicOnlyColumns;
 
         public ObservableCollection<FilterOption> LifecycleStatusOptions { get; } =
         [
@@ -135,6 +166,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             get => _keyword;
             set => SetProperty(ref _keyword, value);
+        }
+
+        public string ContentEntryKeyword
+        {
+            get => _contentEntryKeyword;
+            set => SetProperty(ref _contentEntryKeyword, value);
         }
 
         public DateTime? FiledFrom
@@ -314,20 +351,24 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 var yearsList = await _ledgerService.GetExistingLedgerYearsAsync();
                 Years.Clear();
+                Years.Add(AllYearsOption);
                 foreach (int year in yearsList)
                 {
                     Years.Add(year.ToString());
                 }
 
-                SelectedYear = Years.FirstOrDefault() ?? DateTime.Now.Year.ToString();
+                if (!Years.Contains(_selectedYear))
+                {
+                    SelectedYear = AllYearsOption;
+                }
             }
             catch (Exception ex)
             {
                 _dialogService.ShowError($"加载年份失败：{ex.Message}");
                 if (Years.Count == 0)
                 {
-                    Years.Add(DateTime.Now.Year.ToString());
-                    SelectedYear = Years[0];
+                    Years.Add(AllYearsOption);
+                    SelectedYear = AllYearsOption;
                 }
             }
         }
@@ -339,7 +380,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ProjectOptions.Clear();
                 ProjectOptions.Add(new ProjectFilterOption { Id = null, Name = "全部项目" });
 
-                var projects = await _ledgerService.GetProjectOptionsForYearAsync(SelectedYear);
+                var projects = await _ledgerService.GetProjectOptionsForYearAsync(ResolveSelectedArchiveYear());
                 foreach (var project in projects)
                 {
                     if (project.ProjectId is not > 0 && string.IsNullOrWhiteSpace(project.ProjectName))
@@ -391,10 +432,11 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             return new FilingLedgerSearchCriteria
             {
-                Year = string.IsNullOrWhiteSpace(SelectedYear) ? null : SelectedYear.Trim(),
+                Year = ResolveSelectedArchiveYear(),
                 ProjectId = SelectedProjectId,
                 MediaKind = SelectedMediaKind?.Trim() ?? string.Empty,
                 Keyword = Keyword?.Trim() ?? string.Empty,
+                ContentEntryKeyword = ContentEntryKeyword?.Trim() ?? string.Empty,
                 LifecycleStatus = string.IsNullOrWhiteSpace(SelectedLifecycleStatus)
                     ? null
                     : SelectedLifecycleStatus,
@@ -508,12 +550,13 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void ResetCriteria()
         {
-            SelectedYear = Years.FirstOrDefault() ?? DateTime.Now.Year.ToString();
+            SelectedYear = AllYearsOption;
             SelectedProjectId = null;
             SelectedMediaKind = string.Empty;
             SelectedLifecycleStatus = string.Empty;
             SelectedArchiveCopyRole = string.Empty;
             Keyword = string.Empty;
+            ContentEntryKeyword = string.Empty;
             FiledFrom = null;
             FiledTo = null;
             LedgerRows.Clear();
@@ -547,7 +590,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task ExportAsync()
         {
-            string yearLabel = string.IsNullOrWhiteSpace(SelectedYear) ? "全部年度" : SelectedYear;
+            string yearLabel = string.Equals(SelectedYear, AllYearsOption, StringComparison.Ordinal)
+                ? AllYearsOption
+                : SelectedYear;
             string defaultFileName = $"立档台账_{yearLabel}_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
             string? filePath = _dialogService.SaveFileDialog("Excel Files|*.xlsx", "导出立档台账", defaultFileName);
             if (string.IsNullOrWhiteSpace(filePath))
@@ -595,6 +640,14 @@ namespace DocMgr.ViewModels.YearlyArchive
                 null,
                 SelectedRow.MediaKind,
                 SelectedRow.FilingFactId));
+        }
+
+        private string? ResolveSelectedArchiveYear()
+        {
+            return string.Equals(SelectedYear, AllYearsOption, StringComparison.Ordinal)
+                || string.IsNullOrWhiteSpace(SelectedYear)
+                ? null
+                : SelectedYear.Trim();
         }
 
         public sealed class FilterOption

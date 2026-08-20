@@ -978,7 +978,7 @@ namespace DocMgr.Services.YearlyArchive
             string hardDiskType = PickByKeywordOrFallback(domainOptions.DataElectronicMediaTypes, new[] { "硬盘" }, "硬盘");
             string opticalDiskType = PickByKeywordOrFallback(domainOptions.DataElectronicMediaTypes, new[] { "光盘", "DVD", "蓝光" }, "光盘");
             string usbDiskType = PickByKeywordOrFallback(domainOptions.DataElectronicMediaTypes, new[] { "U盘", "移动" }, "U盘");
-            string simulatedDataType = PickFirstNonEmpty(domainOptions.DataSimulatedMediaTypes, "档案盒");
+            string simulatedDataType = PickFirstNonEmpty(domainOptions.DataSimulatedMediaTypes, ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper);
 
             var internalProject = projects.FirstOrDefault();
             string internalProvideUnit = !string.IsNullOrWhiteSpace(internalProject?.CapitalMgrDept)
@@ -997,7 +997,7 @@ namespace DocMgr.Services.YearlyArchive
                     "模拟生成：单一模拟介质，适合测试模拟立档。",
                     [
                         CreateSimulatedMedia(simulatedDataType, 2, simulatedDisposition,
-                            CreateItem(ArchiveRegisterDomainValues.ItemTypeData, "1:10000 地形图 12 幅", 12, note: "标准纸质成果"))
+                            CreateSimulatedItem("1:10000 地形图 12 幅", 12, domainOptions, note: "标准纸质成果"))
                     ]),
                 new(
                     internalProject?.Id,
@@ -1050,7 +1050,7 @@ namespace DocMgr.Services.YearlyArchive
                             CreateElectronicItem("空三加密成果", 2, "/archive/2026/complex/harddisk-05/at", "空三报告与质量检查", domainOptions),
                             CreateElectronicItem("数据库发布包", 1, "/archive/2026/complex/harddisk-05/release", "含发布脚本", domainOptions)),
                         CreateSimulatedMedia(simulatedDataType, 3, simulatedDisposition,
-                            CreateItem(ArchiveRegisterDomainValues.ItemTypeData, "纸质成图及索引", 18, note: "含分幅索引与装订图册"))
+                            CreateSimulatedItem("纸质成图及索引", 18, domainOptions, note: "含分幅索引与装订图册"))
                     ],
                     "验收会签材料")
             };
@@ -1096,7 +1096,7 @@ namespace DocMgr.Services.YearlyArchive
             string returnDisposition = PickByKeywordOrFallback(domainOptions.DataElectronicDispositions, new[] { "带回" }, "介质带回");
             string noneDisposition = PickByKeywordOrFallback(domainOptions.DataElectronicDispositions, new[] { "无需", "不处置", "免处置" }, ArchiveRegisterDomainValues.ElectronicDispositionNone);
             string simulatedDisposition = ArchiveRegisterDomainValues.SimulatedDispositionRetain;
-            string simulatedDataType = PickFirstNonEmpty(domainOptions.DataSimulatedMediaTypes, "档案盒");
+            string simulatedDataType = PickFirstNonEmpty(domainOptions.DataSimulatedMediaTypes, ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper);
 
             var templates = new List<SimulationTemplate>(DefaultComplexElectronicSimulationCount);
 
@@ -1199,7 +1199,7 @@ namespace DocMgr.Services.YearlyArchive
                         if (sequence % 3 == 0)
                         {
                             mediaEntries.Add(CreateSimulatedMedia(simulatedDataType, 1 + sequence % 2, simulatedDisposition,
-                                CreateItem(ArchiveRegisterDomainValues.ItemTypeData, $"配套纸质成果清单 {sequence:D2}", 6 + sequence % 4, "电子-纸质联动立档")));
+                                CreateSimulatedItem($"配套纸质成果清单 {sequence:D2}", 6 + sequence % 4, domainOptions, "电子-纸质联动立档")));
                         }
 
                         if (sequence % 4 == 0)
@@ -1258,6 +1258,33 @@ namespace DocMgr.Services.YearlyArchive
                 Disposition = disposition,
                 Items = items.ToList()
             };
+
+        private static YearlyArchiveRegisterMediaItem CreateSimulatedItem(
+            string contentDesc,
+            int contentCount,
+            ArchiveRegisterPageDomainOptions domainOptions,
+            string? note = null,
+            string? confidentialLevel = null)
+        {
+            var item = CreateItem(
+                ArchiveRegisterDomainValues.ItemTypeData,
+                contentDesc,
+                contentCount,
+                note,
+                confidentialLevel);
+            string materialCategory = domainOptions.SimulatedMaterialCategories.FirstOrDefault()
+                ?? ArchiveRegisterDomainValues.SimulatedMaterialCategoryText;
+            string subCategory = string.Equals(materialCategory, ArchiveRegisterDomainValues.SimulatedMaterialCategoryMap, StringComparison.Ordinal)
+                ? domainOptions.SimulatedMapSubCategories.FirstOrDefault() ?? ArchiveRegisterDomainValues.SimulatedSubCategoryOtherMap
+                : domainOptions.SimulatedTextSubCategories.FirstOrDefault() ?? ArchiveRegisterDomainValues.SimulatedSubCategoryOther;
+            string organizationForm = domainOptions.SimulatedOrganizationForms.FirstOrDefault()
+                ?? ArchiveRegisterDomainValues.SimulatedOrganizationFormBound;
+            item.SimulatedDetail = SimulatedMediaItemClassificationSupport.CreateDetail(
+                materialCategory,
+                subCategory,
+                organizationForm);
+            return item;
+        }
 
         private static YearlyArchiveRegisterMediaItem CreateItem(
             string itemType,

@@ -190,6 +190,14 @@ namespace DocMgr.Services.YearlyArchive
                     var countLabel = item.ContentCount > 0 ? $"{item.ContentCount}份" : string.Empty;
                     var extras = new List<string>();
                     extras.AddRange(ElectronicMediaItemSupport.BuildElectronicItemPrintExtraParts(item));
+                    string simulatedClassification = SimulatedMediaItemClassificationSupport.FormatClassification(
+                        item.SimulatedDetail?.MaterialCategory,
+                        item.SimulatedDetail?.SubCategory,
+                        item.SimulatedDetail?.OrganizationForm);
+                    if (!string.IsNullOrWhiteSpace(simulatedClassification))
+                    {
+                        extras.Add(simulatedClassification);
+                    }
                     if (!string.IsNullOrWhiteSpace(item.StoragePath)) extras.Add($"目录：{item.StoragePath}");
                     if (!string.IsNullOrWhiteSpace(item.Note)) extras.Add($"备注：{item.Note}");
                     var normalizedLevel = ArchiveRegisterBusinessRules.NormalizeConfidentialLevel(item.ConfidentialLevel);
@@ -370,6 +378,10 @@ namespace DocMgr.Services.YearlyArchive
                 ElectronicDataSubCategories = GetDomainOptionValues(definitions, RegisterElectronicDetailEntityName, nameof(YearlyArchiveRegisterElectronicMediaItemDetail.SubCategory), ArchiveRegisterDomainValues.ElectronicMaterialCategoryDataScope),
                 ElectronicSoftwareSubCategories = GetDomainOptionValues(definitions, RegisterElectronicDetailEntityName, nameof(YearlyArchiveRegisterElectronicMediaItemDetail.SubCategory), ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftwareScope),
                 ElectronicDataOrganizationForms = GetDomainOptionValues(definitions, RegisterElectronicDetailEntityName, nameof(YearlyArchiveRegisterElectronicMediaItemDetail.DataOrganizationForm), EmptyScope),
+                SimulatedMaterialCategories = GetDomainOptionValues(definitions, RegisterSimulatedDetailEntityName, nameof(YearlyArchiveRegisterSimulatedMediaItemDetail.MaterialCategory), EmptyScope),
+                SimulatedTextSubCategories = GetDomainOptionValues(definitions, RegisterSimulatedDetailEntityName, nameof(YearlyArchiveRegisterSimulatedMediaItemDetail.SubCategory), ArchiveRegisterDomainValues.SimulatedMaterialCategoryTextScope),
+                SimulatedMapSubCategories = GetDomainOptionValues(definitions, RegisterSimulatedDetailEntityName, nameof(YearlyArchiveRegisterSimulatedMediaItemDetail.SubCategory), ArchiveRegisterDomainValues.SimulatedMaterialCategoryMapScope),
+                SimulatedOrganizationForms = GetDomainOptionValues(definitions, RegisterSimulatedDetailEntityName, nameof(YearlyArchiveRegisterSimulatedMediaItemDetail.OrganizationForm), EmptyScope),
                 ConfidentialLevels = GetDomainOptionValues(definitions, RegisterMediaItemEntityName, nameof(YearlyArchiveRegisterMediaItem.ConfidentialLevel), EmptyScope),
                 ProdOpinionOptions = GetDomainOptionValues(definitions, RegisterRecordEntityName, nameof(YearlyArchiveRegisterRecord.ProdDeptOpinion), EmptyScope),
                 RndOpinionOptions = GetDomainOptionValues(definitions, RegisterRecordEntityName, nameof(YearlyArchiveRegisterRecord.RndDeptOpinion), EmptyScope),
@@ -418,6 +430,10 @@ namespace DocMgr.Services.YearlyArchive
                 && options.ElectronicDataSubCategories.Count > 0
                 && options.ElectronicSoftwareSubCategories.Count > 0
                 && options.ElectronicDataOrganizationForms.Count > 0
+                && options.SimulatedMaterialCategories.Count > 0
+                && options.SimulatedTextSubCategories.Count > 0
+                && options.SimulatedMapSubCategories.Count > 0
+                && options.SimulatedOrganizationForms.Count > 0
                 && options.ConfidentialLevels.Count > 0
                 && options.ProdOpinionOptions.Count > 0
                 && options.RndOpinionOptions.Count > 0

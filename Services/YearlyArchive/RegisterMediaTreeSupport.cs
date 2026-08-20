@@ -28,6 +28,10 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!isElectronic)
             {
+                entity.SimulatedDetail = SimulatedMediaItemClassificationSupport.CreateDetail(
+                    item.MaterialCategory,
+                    item.SubCategory,
+                    item.OrganizationForm);
                 return entity;
             }
 
@@ -115,6 +119,13 @@ namespace DocMgr.Services.YearlyArchive
                             ModifiedAt = entry.ModifiedAt
                         });
                     }
+                }
+                else if (item.SimulatedDetail != null)
+                {
+                    itemVm.LoadSimulatedDetail(
+                        item.SimulatedDetail.MaterialCategory,
+                        item.SimulatedDetail.SubCategory,
+                        item.SimulatedDetail.OrganizationForm);
                 }
 
                 configureElectronicMediaItem?.Invoke(itemVm);

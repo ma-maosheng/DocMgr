@@ -23,7 +23,17 @@ namespace DocMgr.Services.Interfaces
         ProjectInfo? FindProject(string year, string projectName);
 
         /// <summary>
-        /// 列出指定实施年度的已有项目，供直办立档核对名称。
+        /// 列出已登记实施年度并集（项目信息 ∪ 模拟盒 ∪ 电子袋），供开放域下拉。
+        /// </summary>
+        IReadOnlyList<string> ListRegisteredYears();
+
+        /// <summary>
+        /// 列出指定年度下已登记项目名称并集，供开放域下拉。
+        /// </summary>
+        IReadOnlyList<string> ListRegisteredProjectNames(string year);
+
+        /// <summary>
+        /// 列出指定实施年度的已有项目（并集；含仅出现在立档容器中的名称）。
         /// </summary>
         IReadOnlyList<ProjectInfo> ListProjectsByYear(string year);
 

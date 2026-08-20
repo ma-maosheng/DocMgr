@@ -49,6 +49,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<TestPreparationPageViewModel>();
         services.AddTransient<ArchiveFilingViewModel>();
         services.AddTransient<StockHardDiskDirectFilingViewModel>();
+        services.AddTransient<StockTextArchiveDirectFilingViewModel>();
         services.AddTransient<ArchiveFilingLedgerViewModel>();
         services.AddTransient<ArchiveRelocationLedgerViewModel>();
         services.AddTransient<ArchiveCirculationLedgerViewModel>();

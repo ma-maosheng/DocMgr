@@ -31,7 +31,9 @@ namespace DocMgr.Services.YearlyArchive
 
             await FillMissingOutboundItemArchivePurposesAsync(record.Items);
             var depletedFilingFactIds = await ResolveDepletedFilingFactIdsForPrintAsync(record);
-            return BuildPrintData(record, blankApprovalSignatures, depletedFilingFactIds);
+            var classificationByFilingFactId = await LoadClassificationByFilingFactIdsAsync(
+                record.Items.Select(item => item.FilingFactId));
+            return BuildPrintData(record, blankApprovalSignatures, depletedFilingFactIds, classificationByFilingFactId);
         }
 
         public async Task RecordPrintAsync(int recordId)
@@ -74,14 +76,16 @@ namespace DocMgr.Services.YearlyArchive
                 .Distinct()
                 .ToList();
             var factsById = await _outboundRepository.GetFilingFactsByIdsForUpdateAsync(factIds);
-            return BuildHandoverPrintData(record, handoverRemark, blankHandoverSignatures, factsById);
+            var classificationByFilingFactId = await LoadClassificationByFilingFactIdsAsync(factIds);
+            return BuildHandoverPrintData(record, handoverRemark, blankHandoverSignatures, factsById, classificationByFilingFactId);
         }
 
         private static ArchiveOutboundHandoverPrintData BuildHandoverPrintData(
             YearlyArchiveOutboundRecord record,
             string? handoverRemark,
             bool blankHandoverSignatures,
-            IReadOnlyDictionary<int, YearlyArchiveFilingFact> factsById)
+            IReadOnlyDictionary<int, YearlyArchiveFilingFact> factsById,
+            IReadOnlyDictionary<int, string> classificationByFilingFactId)
         {
             string remark = string.IsNullOrWhiteSpace(handoverRemark)
                 ? record.HandoverRemark?.Trim() ?? string.Empty
@@ -96,7 +100,9 @@ namespace DocMgr.Services.YearlyArchive
                 ApplicantDept = record.ApplicantDept,
                 ApplicantName = record.ApplicantName ?? string.Empty,
                 MaterialSummary = string.IsNullOrWhiteSpace(record.MaterialSummary) ? "(无)" : record.MaterialSummary,
-                ItemLines = ArchiveOutboundItemDescription.BuildHandoverPrintDetailLines(record.Items, factsById).ToList(),
+                ItemLines = ArchiveOutboundItemDescription
+                    .BuildHandoverPrintDetailLines(record.Items, factsById, classificationByFilingFactId)
+                    .ToList(),
                 HandoverSignatureBlock = blankHandoverSignatures
                     ? BuildBlankHandoverSignatureBlock()
                     : BuildFilledHandoverSignatureBlock(record),
@@ -124,7 +130,8 @@ namespace DocMgr.Services.YearlyArchive
         private static ArchiveOutboundPrintData BuildPrintData(
             YearlyArchiveOutboundRecord record,
             bool blankApprovalSignatures,
-            IReadOnlySet<int> depletedFilingFactIds)
+            IReadOnlySet<int> depletedFilingFactIds,
+            IReadOnlyDictionary<int, string> classificationByFilingFactId)
         {
             string applyDate = record.ApplyDate == default
                 ? string.Empty
@@ -158,7 +165,7 @@ namespace DocMgr.Services.YearlyArchive
                 MaterialSummary = string.IsNullOrWhiteSpace(record.MaterialSummary) ? "(无)" : record.MaterialSummary,
                 ExpectedReturnDateText = FormatExpectedReturnDate(record),
                 ItemLines = ArchiveOutboundItemDescription
-                    .BuildPrintDetailLines(record.Items, depletedFilingFactIds)
+                    .BuildPrintDetailLines(record.Items, depletedFilingFactIds, classificationByFilingFactId)
                     .ToList(),
                 DeptAuditBlock = BuildApprovalBlock(
                     opinions[0],
@@ -219,6 +226,27 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return record.ExpectedReturnDate?.ToString("yyyy-MM-dd") ?? "无";
+        }
+
+        private async Task<IReadOnlyDictionary<int, string>> LoadClassificationByFilingFactIdsAsync(
+            IEnumerable<int> filingFactIds)
+        {
+            var ids = filingFactIds.Where(id => id > 0).Distinct().ToList();
+            if (ids.Count == 0)
+            {
+                return new Dictionary<int, string>();
+            }
+
+            var factsById = await _outboundRepository.GetFilingFactsByIdsForUpdateAsync(ids);
+            var mediaItemIds = factsById.Values
+                .Select(fact => fact.MediaItemId)
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+            var mediaItems = await _filingFactRepository.GetRegisterMediaItemsWithSupplementsAsync(mediaItemIds);
+            return SimulatedMediaItemClassificationSupport.MapClassificationByFilingFactId(
+                factsById.Values,
+                mediaItems.ToDictionary(item => item.Id));
         }
 
         private const string ConfidentialDispositionInstructionText =

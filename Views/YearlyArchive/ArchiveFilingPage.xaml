@@ -227,6 +227,9 @@
                                                     <DataGridTextColumn Header="表单编号" Binding="{Binding FormNo}" Width="110" IsReadOnly="True"/>
                                                     <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="160" IsReadOnly="True"/>
                                                     <DataGridTextColumn Header="介质类型" Binding="{Binding MediaType}" Width="100" IsReadOnly="True"/>
+                                                    <DataGridTextColumn Header="资料类型" Binding="{Binding MaterialCategory}" Width="80" IsReadOnly="True"/>
+                                                    <DataGridTextColumn Header="所属子类" Binding="{Binding SubCategory}" Width="90" IsReadOnly="True"/>
+                                                    <DataGridTextColumn Header="组织形式" Binding="{Binding DataOrganizationForm}" Width="80" IsReadOnly="True"/>
                                                     <DataGridTextColumn Header="子项类型" Binding="{Binding ItemType}" Width="80" IsReadOnly="True"/>
                                                     <DataGridTextColumn Header="内容说明" Binding="{Binding ContentDesc}" Width="*" IsReadOnly="True"/>
                                                     <DataGridTextColumn Header="数量" Binding="{Binding ContentCount}" Width="70" IsReadOnly="True"/>

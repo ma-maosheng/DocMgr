@@ -145,11 +145,19 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="年度" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="1" Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}"
-                                     Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"/>
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding YearOptions}"
+                                      IsEditable="True"
+                                      Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
+                                      ToolTip="开放域：列出项目信息、模拟盒、电子袋中已有年度；也可手输新年度"/>
                             <TextBlock Grid.Column="2" Text="项目" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="3" Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"
-                                     Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"/>
+                            <ComboBox Grid.Column="3"
+                                      ItemsSource="{Binding ProjectNameOptions}"
+                                      IsEditable="True"
+                                      Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
+                                      ToolTip="开放域：列出当前年度下已登记项目名称（含模拟/电子立档）；也可手输新项目"/>
                             <TextBlock Grid.Column="4" Text="项目编号" Style="{StaticResource LabelStyle}"/>
                             <TextBox Grid.Column="5" Text="{Binding ProjectCode, UpdateSourceTrigger=PropertyChanged}"
                                      Height="{StaticResource FormControlHeight}"/>

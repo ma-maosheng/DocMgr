@@ -309,6 +309,7 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
             .Include(item => item.MediaEntry)
                 .ThenInclude(media => media!.RegisterRecord)
             .Include(item => item.ArchiveBoxLinks)
+            .Include(item => item.SimulatedDetail)
             .Where(item => idList.Contains(item.Id))
             .ToListAsync();
 
@@ -1019,6 +1020,9 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ElectronicDetail!)
                         .ThenInclude(detail => detail.Entries)
+            .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.Items)
+                    .ThenInclude(item => item.SimulatedDetail!)
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ElectronicArchiveUnitMediaItemLinks)

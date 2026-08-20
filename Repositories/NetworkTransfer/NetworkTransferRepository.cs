@@ -100,6 +100,9 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
                     .ThenInclude(media => media.Items)
                         .ThenInclude(mediaItem => mediaItem.ElectronicDetail)
                             .ThenInclude(detail => detail!.Entries)
+                .Include(item => item.MediaEntries)
+                    .ThenInclude(media => media.Items)
+                        .ThenInclude(mediaItem => mediaItem.SimulatedDetail)
                 .Include(item => item.ReturnHardDiskItems)
                 .Include(item => item.BusinessChain)
                     .ThenInclude(chain => chain!.Tasks)
@@ -109,6 +112,9 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
                     .ThenInclude(media => media.Items)
                         .ThenInclude(mediaItem => mediaItem.ElectronicDetail)
                             .ThenInclude(detail => detail!.Entries)
+                .Include(item => item.MediaEntries)
+                    .ThenInclude(media => media.Items)
+                        .ThenInclude(mediaItem => mediaItem.SimulatedDetail)
                 .Include(item => item.ReturnHardDiskItems)
                 .Include(item => item.BusinessChain)
                     .ThenInclude(chain => chain!.Tasks);
@@ -191,6 +197,9 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
                     .ThenInclude(media => media.Items)
                         .ThenInclude(mediaItem => mediaItem.ElectronicDetail)
                             .ThenInclude(detail => detail!.Entries)
+                .Include(item => item.MediaEntries)
+                    .ThenInclude(media => media.Items)
+                        .ThenInclude(mediaItem => mediaItem.SimulatedDetail)
                 .Include(item => item.BusinessChain)
                     .ThenInclude(chain => chain!.Tasks)
             : _dbContext.NetworkOutboundRecords
@@ -200,6 +209,9 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
                     .ThenInclude(media => media.Items)
                         .ThenInclude(mediaItem => mediaItem.ElectronicDetail)
                             .ThenInclude(detail => detail!.Entries)
+                .Include(item => item.MediaEntries)
+                    .ThenInclude(media => media.Items)
+                        .ThenInclude(mediaItem => mediaItem.SimulatedDetail)
                 .Include(item => item.BusinessChain)
                     .ThenInclude(chain => chain!.Tasks);
         return query.FirstOrDefaultAsync(item => item.Id == recordId);

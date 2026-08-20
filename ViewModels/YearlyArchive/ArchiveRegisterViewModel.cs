@@ -62,6 +62,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<string> DataSimulatedDispositionOptions { get; } = new();
         public ObservableCollection<string> ElectronicMaterialCategoryOptions { get; } = new();
         public ObservableCollection<string> ElectronicDataOrganizationFormOptions { get; } = new();
+        public ObservableCollection<string> SimulatedMaterialCategoryOptions { get; } = new();
+        public ObservableCollection<string> SimulatedOrganizationFormOptions { get; } = new();
         public ObservableCollection<string> ConfidentialLevelOptions { get; } = new();
         public ObservableCollection<string> ProdOpinionOptions { get; } = new();
         public ObservableCollection<string> RndOpinionOptions { get; } = new();

@@ -18,6 +18,8 @@ internal static class NetworkOutboundRegisterMediaPersistenceSupport
             .Include(media => media.Items)
                 .ThenInclude(item => item.ElectronicDetail)
                     .ThenInclude(detail => detail!.Entries)
+            .Include(media => media.Items)
+                .ThenInclude(item => item.SimulatedDetail)
             .Where(media => media.NetworkOutboundRecordId == outboundRecordId)
             .ToListAsync();
 
@@ -67,6 +69,11 @@ internal static class NetworkOutboundRegisterMediaPersistenceSupport
                             entry.Id = 0;
                             entry.ElectronicMediaItemDetailId = 0;
                         }
+                    }
+
+                    if (item.SimulatedDetail != null)
+                    {
+                        item.SimulatedDetail.MediaItemId = 0;
                     }
                 }
             }
