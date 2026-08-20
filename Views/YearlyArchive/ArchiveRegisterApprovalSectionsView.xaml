@@ -10,13 +10,13 @@
         </ResourceDictionary>
     </UserControl.Resources>
     <StackPanel>
-        <GroupBox Header="4. 审批流程" Style="{StaticResource Level1GroupBoxStyle}" Padding="8">
+        <GroupBox Header="4. 审批流程" Style="{StaticResource Level1GroupBoxStyle}" Padding="6">
             <StackPanel>
                 <TextBlock Text="各节点仅需签字人与日期，无需签署具体意见。"
                            Foreground="#64748B"
                            FontSize="11"
                            TextWrapping="Wrap"
-                           Margin="0,0,0,6"/>
+                           Margin="0,0,0,4"/>
 
                 <!-- 双列紧凑：4 个审批节点约占原纵向一半 -->
                 <Grid>
@@ -129,10 +129,10 @@
             </StackPanel>
         </GroupBox>
 
-        <GroupBox Header="附件材料" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
+        <GroupBox Header="附件材料" Style="{StaticResource Level1GroupBoxStyle}" Padding="8">
             <StackPanel>
                 <TextBlock Text="格式限 PDF / 常见图像；签批交接单、资料照片必传，证明材料按申请声明，其他附件可选，各上传附件的命名应清晰明确。"
-                           Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                           Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6"/>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -145,7 +145,7 @@
                     </Grid.RowDefinitions>
 
                     <!-- 签批交接单 -->
-                    <Border Grid.Row="0" Grid.Column="0" Margin="0,0,0,8" Padding="8,6"
+                    <Border Grid.Row="0" Grid.Column="0" Margin="0,0,0,6" Padding="6,5"
                             Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
                         <DockPanel LastChildFill="True">
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
@@ -182,7 +182,7 @@
                     </Border>
 
                     <!-- 资料照片 -->
-                    <Border Grid.Row="0" Grid.Column="2" Margin="0,0,0,8" Padding="8,6"
+                    <Border Grid.Row="0" Grid.Column="2" Margin="0,0,0,6" Padding="6,5"
                             Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
                         <DockPanel LastChildFill="True">
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
@@ -219,7 +219,7 @@
                     </Border>
 
                     <!-- 证明材料 -->
-                    <Border Grid.Row="1" Grid.Column="0" Margin="0,0,0,0" Padding="8,6"
+                    <Border Grid.Row="1" Grid.Column="0" Margin="0,0,0,0" Padding="6,5"
                             Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
                         <DockPanel LastChildFill="True">
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
@@ -258,7 +258,7 @@
                     </Border>
 
                     <!-- 其他附件 -->
-                    <Border Grid.Row="1" Grid.Column="2" Margin="0,0,0,0" Padding="8,6"
+                    <Border Grid.Row="1" Grid.Column="2" Margin="0,0,0,0" Padding="6,5"
                             Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
                         <DockPanel LastChildFill="True">
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">

@@ -4,9 +4,30 @@
       Title="存档文本资料直办立档"
       Background="#F0F2F5">
     <Page.Resources>
+        <!-- 主表单标签：固定宽度右对齐，保证各卡片左缘齐整 -->
         <Style x:Key="LabelStyle" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="TextAlignment" Value="Right"/>
             <Setter Property="Width" Value="72"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Foreground" Value="#37474F"/>
+        </Style>
+        <!-- 介质工具栏短标签（介质/类型/数量） -->
+        <Style x:Key="ToolbarLabelStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Foreground" Value="#37474F"/>
+        </Style>
+        <!-- 资料子项标签：容纳「子项名称/资料类型/所属子类/组织形式」 -->
+        <Style x:Key="ItemLabelStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="Width" Value="76"/>
             <Setter Property="Margin" Value="0,0,6,0"/>
             <Setter Property="Foreground" Value="#37474F"/>
         </Style>
@@ -57,8 +78,10 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="12"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="140"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -68,19 +91,19 @@
                                       ItemsSource="{Binding YearOptions}"
                                       IsEditable="True"
                                       Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}"
-                                      Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
+                                      Height="{StaticResource FormControlHeight}"
                                       ToolTip="开放域：列出项目信息、模拟盒、电子袋中已有年度；也可手输新年度"/>
-                            <TextBlock Grid.Column="2" Text="项目名称" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Column="3"
+                            <TextBlock Grid.Column="3" Text="项目名称" Style="{StaticResource LabelStyle}"/>
+                            <ComboBox Grid.Column="4"
                                       ItemsSource="{Binding ProjectNameOptions}"
                                       IsEditable="True"
                                       Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"
-                                      Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
+                                      Height="{StaticResource FormControlHeight}"
                                       ToolTip="开放域：列出当前年度下已登记项目名称（含模拟/电子立档）；也可手输新项目"/>
-                            <TextBlock Grid.Column="4" Text="项目编号" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="5" Text="{Binding ProjectCode, UpdateSourceTrigger=PropertyChanged}"
+                            <TextBlock Grid.Column="6" Text="项目编号" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Column="7" Text="{Binding ProjectCode, UpdateSourceTrigger=PropertyChanged}"
                                      Height="{StaticResource FormControlHeight}"/>
-                            <Button Grid.Column="6" Content="查看年度已有项目" Command="{Binding ViewYearProjectsCommand}"
+                            <Button Grid.Column="8" Content="查看年度已有项目" Command="{Binding ViewYearProjectsCommand}"
                                     Style="{StaticResource InlineActionButtonStyle}"
                                     ToolTip="{Binding YearProjectHint, Mode=OneWay}"/>
                         </Grid>
@@ -96,42 +119,44 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="资料名称" Style="{StaticResource LabelStyle}"/>
                             <TextBox Grid.Column="1" Text="{Binding MaterialName, UpdateSourceTrigger=PropertyChanged}"
-                                     Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"/>
-                            <TextBlock Grid.Column="2" Text="来源" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="3" Text="{Binding SourceType, Mode=OneWay}" IsReadOnly="True"
-                                     Height="{StaticResource FormControlHeight}" Margin="0,0,12,0" Background="#F9F9F9"/>
-                            <TextBlock Grid.Column="4" Text="提供单位" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="5" Text="{Binding ProvideUnit, Mode=OneWay}" IsReadOnly="True"
+                                     Height="{StaticResource FormControlHeight}"/>
+                            <TextBlock Grid.Column="3" Text="来源" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Column="4" Text="{Binding SourceType, Mode=OneWay}" IsReadOnly="True"
+                                     Height="{StaticResource FormControlHeight}" Background="#F9F9F9"/>
+                            <TextBlock Grid.Column="6" Text="提供单位" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Column="7" Text="{Binding ProvideUnit, Mode=OneWay}" IsReadOnly="True"
                                      Height="{StaticResource FormControlHeight}" Background="#F9F9F9"/>
                         </Grid>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="库管模式" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="1" ItemsSource="{Binding ArchivePurposeOptions}" SelectedItem="{Binding ArchivePurpose}"
-                                      Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"/>
-                            <TextBlock Grid.Column="2" Text="默认密级" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Column="3" ItemsSource="{Binding ConfidentialLevelOptions}" SelectedItem="{Binding ConfidentialLevel}"
-                                      Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
-                                      ToolTip="新建资料子项时带入，子项仍可单独修改"/>
+                                      Height="{StaticResource FormControlHeight}"/>
                         </Grid>
                     </StackPanel>
                 </GroupBox>
 
                 <!-- 3. 资料介质（模拟） -->
-                <GroupBox Header="3. 资料介质（模拟）*" Padding="8,5" Margin="0,0,0,4">
+                <GroupBox Header="3. 资料介质（模拟）*" Padding="8,5" Margin="0,0,0,4"
+                          Grid.IsSharedSizeScope="True">
                     <DockPanel>
                         <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="0,0,0,6">
                             <Button DockPanel.Dock="Right"
@@ -140,26 +165,29 @@
                                     Style="{StaticResource InlineActionButtonStyle}"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="72"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="120"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="56"/>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="SttMediaTbLabel"/>
+                                    <ColumnDefinition Width="72" SharedSizeGroup="SttMediaTbKind"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="SttMediaTbLabel"/>
+                                    <ColumnDefinition Width="120" SharedSizeGroup="SttMediaTbType"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="SttMediaTbLabel"/>
+                                    <ColumnDefinition Width="56" SharedSizeGroup="SttMediaTbCount"/>
+                                    <ColumnDefinition Width="12"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="介质：" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="介质：" Style="{StaticResource ToolbarLabelStyle}"/>
                                 <TextBox Grid.Column="1" Text="模拟" IsReadOnly="True" IsTabStop="False"
-                                         Height="{StaticResource FormControlHeight}" Background="#F9F9F9" Margin="0,0,8,0"/>
-                                <TextBlock Grid.Column="2" Text="类型：" VerticalAlignment="Center"/>
-                                <ComboBox Grid.Column="3"
+                                         Height="{StaticResource FormControlHeight}" Background="#F9F9F9"/>
+                                <TextBlock Grid.Column="3" Text="类型：" Style="{StaticResource ToolbarLabelStyle}"/>
+                                <ComboBox Grid.Column="4"
                                           ItemsSource="{Binding MediaTypeOptions}"
                                           SelectedItem="{Binding SelectedSimulatedMediaType}"
-                                          Height="{StaticResource FormControlHeight}" Margin="0,0,8,0"/>
-                                <TextBlock Grid.Column="4" Text="数量：" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="5" Text="{Binding DataSimulatedMediaCount, Mode=OneWay}" IsReadOnly="True"
-                                         Height="{StaticResource FormControlHeight}" Background="#F9F9F9" Margin="0,0,8,0"/>
-                                <TextBlock Grid.Column="6" Text="{Binding MediaSummary, Mode=OneWay}"
+                                          Height="{StaticResource FormControlHeight}"/>
+                                <TextBlock Grid.Column="6" Text="数量：" Style="{StaticResource ToolbarLabelStyle}"/>
+                                <TextBox Grid.Column="7" Text="{Binding DataSimulatedMediaCount, Mode=OneWay}" IsReadOnly="True"
+                                         Height="{StaticResource FormControlHeight}" Background="#F9F9F9"/>
+                                <TextBlock Grid.Column="9" Text="{Binding MediaSummary, Mode=OneWay}"
                                            VerticalAlignment="Center" FontSize="12" Foreground="#546E7A"/>
                             </Grid>
                         </DockPanel>
@@ -181,17 +209,18 @@
                                         <StackPanel>
                                             <Grid Margin="0,2,0,4">
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="40"/>
-                                                    <ColumnDefinition Width="72"/>
-                                                    <ColumnDefinition Width="40"/>
-                                                    <ColumnDefinition Width="56"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="SttMediaTbLabel"/>
+                                                    <ColumnDefinition Width="72" SharedSizeGroup="SttMediaTbKind"/>
+                                                    <ColumnDefinition Width="12"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="SttMediaTbLabel"/>
+                                                    <ColumnDefinition Width="56" SharedSizeGroup="SttMediaTbCount"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="介质：" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="0" Text="介质：" Style="{StaticResource ToolbarLabelStyle}"/>
                                                 <TextBox Grid.Column="1" Text="{Binding MediaKind, Mode=OneWay}" IsReadOnly="True"
-                                                         Height="{StaticResource FormControlHeight}" Background="#F9F9F9" Margin="0,0,8,0"/>
-                                                <TextBlock Grid.Column="2" Text="数量：" VerticalAlignment="Center"/>
-                                                <TextBox Grid.Column="3" Text="{Binding MediaCount, Mode=OneWay}" IsReadOnly="True"
+                                                         Height="{StaticResource FormControlHeight}" Background="#F9F9F9"/>
+                                                <TextBlock Grid.Column="3" Text="数量：" Style="{StaticResource ToolbarLabelStyle}"/>
+                                                <TextBox Grid.Column="4" Text="{Binding MediaCount, Mode=OneWay}" IsReadOnly="True"
                                                          Height="{StaticResource FormControlHeight}" Background="#F9F9F9"
                                                          ToolTip="系统按资料子项数量自动计算"/>
                                             </Grid>
@@ -206,65 +235,66 @@
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
                                                         <Border BorderBrush="#EEEEEE" BorderThickness="1" Padding="6" Margin="0,0,0,4" Background="#FAFAFA">
-                                                            <StackPanel>
-                                                                <Grid>
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="72"/>
-                                                                        <ColumnDefinition Width="*"/>
-                                                                        <ColumnDefinition Width="40"/>
-                                                                        <ColumnDefinition Width="80"/>
-                                                                        <ColumnDefinition Width="40"/>
-                                                                        <ColumnDefinition Width="48"/>
-                                                                        <ColumnDefinition Width="36"/>
-                                                                    </Grid.ColumnDefinitions>
-                                                                    <TextBlock Grid.Column="0" Text="子项名称：" VerticalAlignment="Center"/>
-                                                                    <TextBox Grid.Column="1" Text="{Binding ContentDesc, UpdateSourceTrigger=PropertyChanged}"
-                                                                             Height="{StaticResource FormControlHeight}" Margin="0,0,6,0"/>
-                                                                    <TextBlock Grid.Column="2" Text="密级：" VerticalAlignment="Center"/>
-                                                                    <ComboBox Grid.Column="3"
-                                                                              ItemsSource="{Binding Owner.ConfidentialLevelOptions}"
-                                                                              SelectedItem="{Binding ConfidentialLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                              Height="{StaticResource FormControlHeight}" Margin="0,0,6,0"/>
-                                                                    <TextBlock Grid.Column="4" Text="份数：" VerticalAlignment="Center"/>
-                                                                    <TextBox Grid.Column="5" Text="{Binding ContentCount, UpdateSourceTrigger=PropertyChanged}"
-                                                                             Height="{StaticResource FormControlHeight}" Margin="0,0,6,0"/>
-                                                                    <Button Grid.Column="6" Content="×"
-                                                                            Command="{Binding DataContext.RemoveMediaItemCommand, RelativeSource={RelativeSource AncestorType=Page}}"
-                                                                            CommandParameter="{Binding}"
-                                                                            ToolTip="删除本子项"
-                                                                            MinWidth="28" MinHeight="28"/>
-                                                                </Grid>
-                                                                <Grid Margin="0,4,0,0">
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="72"/>
-                                                                        <ColumnDefinition Width="110"/>
-                                                                        <ColumnDefinition Width="72"/>
-                                                                        <ColumnDefinition Width="150"/>
-                                                                        <ColumnDefinition Width="72"/>
-                                                                        <ColumnDefinition Width="90"/>
-                                                                        <ColumnDefinition Width="40"/>
-                                                                        <ColumnDefinition Width="*"/>
-                                                                    </Grid.ColumnDefinitions>
-                                                                    <TextBlock Grid.Column="0" Text="资料类型：" VerticalAlignment="Center"/>
-                                                                    <ComboBox Grid.Column="1"
-                                                                              ItemsSource="{Binding Owner.MaterialCategoryOptions}"
-                                                                              SelectedItem="{Binding MaterialCategory}"
-                                                                              Height="{StaticResource FormControlHeight}" Margin="0,0,6,0"/>
-                                                                    <TextBlock Grid.Column="2" Text="所属子类：" VerticalAlignment="Center"/>
-                                                                    <ComboBox Grid.Column="3"
-                                                                              ItemsSource="{Binding AvailableSubCategories}"
-                                                                              SelectedItem="{Binding SubCategory}"
-                                                                              Height="{StaticResource FormControlHeight}" Margin="0,0,6,0"/>
-                                                                    <TextBlock Grid.Column="4" Text="组织形式：" VerticalAlignment="Center"/>
-                                                                    <ComboBox Grid.Column="5"
-                                                                              ItemsSource="{Binding Owner.OrganizationFormOptions}"
-                                                                              SelectedItem="{Binding OrganizationForm}"
-                                                                              Height="{StaticResource FormControlHeight}" Margin="0,0,6,0"/>
-                                                                    <TextBlock Grid.Column="6" Text="备注：" VerticalAlignment="Center"/>
-                                                                    <TextBox Grid.Column="7" Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}"
-                                                                             Height="{StaticResource FormControlHeight}"/>
-                                                                </Grid>
-                                                            </StackPanel>
+                                                            <Grid>
+                                                                <Grid.RowDefinitions>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                </Grid.RowDefinitions>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="12"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="120"/>
+                                                                    <ColumnDefinition Width="12"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="90"/>
+                                                                    <ColumnDefinition Width="8"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="子项名称：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <TextBox Grid.Row="0" Grid.Column="1"
+                                                                         Text="{Binding ContentDesc, UpdateSourceTrigger=PropertyChanged}"
+                                                                         Height="{StaticResource FormControlHeight}" Margin="0,0,0,4"/>
+                                                                <TextBlock Grid.Row="0" Grid.Column="3" Text="密级：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <ComboBox Grid.Row="0" Grid.Column="4"
+                                                                          ItemsSource="{Binding Owner.ConfidentialLevelOptions}"
+                                                                          SelectedItem="{Binding ConfidentialLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                          Height="{StaticResource FormControlHeight}" Margin="0,0,0,4"/>
+                                                                <TextBlock Grid.Row="0" Grid.Column="6" Text="份数：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <TextBox Grid.Row="0" Grid.Column="7"
+                                                                         Text="{Binding ContentCount, UpdateSourceTrigger=PropertyChanged}"
+                                                                         Height="{StaticResource FormControlHeight}" Margin="0,0,0,4"/>
+                                                                <Button Grid.Row="0" Grid.Column="9" Content="×"
+                                                                        Command="{Binding DataContext.RemoveMediaItemCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        ToolTip="删除本子项"
+                                                                        MinWidth="28" MinHeight="28" Margin="0,0,0,4"
+                                                                        VerticalAlignment="Center"/>
+
+                                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="资料类型：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <ComboBox Grid.Row="1" Grid.Column="1"
+                                                                          ItemsSource="{Binding Owner.MaterialCategoryOptions}"
+                                                                          SelectedItem="{Binding MaterialCategory}"
+                                                                          Height="{StaticResource FormControlHeight}" Margin="0,0,0,4"/>
+                                                                <TextBlock Grid.Row="1" Grid.Column="3" Text="所属子类：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <ComboBox Grid.Row="1" Grid.Column="4"
+                                                                          ItemsSource="{Binding AvailableSubCategories}"
+                                                                          SelectedItem="{Binding SubCategory}"
+                                                                          Height="{StaticResource FormControlHeight}" Margin="0,0,0,4"/>
+                                                                <TextBlock Grid.Row="1" Grid.Column="6" Text="组织形式：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <ComboBox Grid.Row="1" Grid.Column="7" Grid.ColumnSpan="3"
+                                                                          ItemsSource="{Binding Owner.OrganizationFormOptions}"
+                                                                          SelectedItem="{Binding OrganizationForm}"
+                                                                          Height="{StaticResource FormControlHeight}" Margin="0,0,0,4"/>
+
+                                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="备注：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="9"
+                                                                         Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}"
+                                                                         Height="{StaticResource FormControlHeight}"/>
+                                                            </Grid>
                                                         </Border>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
@@ -284,16 +314,17 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="180"/>
+                                <ColumnDefinition Width="12"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="140"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="档案盒编号" Style="{StaticResource LabelStyle}"/>
                             <TextBox Grid.Column="1" Text="{Binding PreviewArchiveSequenceNo, Mode=OneWay}" IsReadOnly="True"
-                                     Height="{StaticResource FormControlHeight}" Margin="0,0,12,0" Background="#F9F9F9"
+                                     Height="{StaticResource FormControlHeight}" Background="#F9F9F9"
                                      ToolTip="确认写入前预览，不占用号段"/>
-                            <TextBlock Grid.Column="2" Text="盒规格" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Column="3" ItemsSource="{Binding Specs}" SelectedItem="{Binding SelectedSpec}"
+                            <TextBlock Grid.Column="3" Text="盒规格" Style="{StaticResource LabelStyle}"/>
+                            <ComboBox Grid.Column="4" ItemsSource="{Binding Specs}" SelectedItem="{Binding SelectedSpec}"
                                       Height="{StaticResource FormControlHeight}"/>
                         </Grid>
                         <Grid Margin="0,0,0,4">

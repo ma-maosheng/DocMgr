@@ -38,7 +38,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         private int _archiveNoPreviewToken;
         private readonly string _sourceType = ArchiveRegisterDomainValues.SourceTypeStockDirect;
         private string _archivePurpose = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
-        private string _confidentialLevel = "秘密";
         private readonly string _provideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
         private string _selectedSpec = "标准(5cm)";
         private ArchiveBoxTargetLocationOption? _selectedSlotOption;
@@ -216,12 +215,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             set => SetProperty(ref _archivePurpose, value);
         }
 
-        public string ConfidentialLevel
-        {
-            get => _confidentialLevel;
-            set => SetProperty(ref _confidentialLevel, value);
-        }
-
         public string SelectedSimulatedMediaType
         {
             get => _selectedSimulatedMediaType;
@@ -328,13 +321,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ArchivePurpose = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
             }
 
-            if (string.IsNullOrWhiteSpace(ConfidentialLevel) || !ConfidentialLevelOptions.Contains(ConfidentialLevel))
-            {
-                ConfidentialLevel = ConfidentialLevelOptions.Contains("秘密")
-                    ? "秘密"
-                    : ConfidentialLevelOptions.FirstOrDefault() ?? "秘密";
-            }
-
             if (MediaGroups.Count == 0)
             {
                 AddMediaGroup();
@@ -408,12 +394,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             var group = new StockTextArchiveMediaGroupViewModel(
                 SelectedSimulatedMediaType,
                 ConfidentialLevelOptions,
-                ConfidentialLevel,
                 MaterialCategoryOptions,
                 OrganizationFormOptions,
                 _textSubCategories,
                 _mapSubCategories);
-            group.AddItem(ConfidentialLevel);
+            group.AddItem();
             AttachMediaGroup(group);
             MediaGroups.Add(group);
             RaiseMediaSummaryChanged();
@@ -439,7 +424,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void AddMediaItem(StockTextArchiveMediaGroupViewModel? group)
         {
-            group?.AddItem(ConfidentialLevel);
+            group?.AddItem();
             RaiseMediaSummaryChanged();
         }
 
@@ -823,7 +808,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 MaterialName = MaterialName?.Trim() ?? string.Empty,
                 SourceType = SourceType,
                 ArchivePurpose = ArchivePurpose?.Trim() ?? string.Empty,
-                ConfidentialLevel = ConfidentialLevel?.Trim() ?? string.Empty,
                 ProvideUnit = ProvideUnit,
                 BoxSpecification = SelectedSpec?.Trim() ?? string.Empty,
                 CabinetName = SelectedSlotOption?.CabinetName?.Trim() ?? string.Empty,
@@ -916,7 +900,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         public StockTextArchiveMediaGroupViewModel(
             string mediaType,
             ObservableCollection<string> confidentialLevelOptions,
-            string defaultConfidentialLevel,
             ObservableCollection<string> materialCategoryOptions,
             ObservableCollection<string> organizationFormOptions,
             IReadOnlyList<string> textSubCategories,
@@ -924,7 +907,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             _mediaType = mediaType;
             ConfidentialLevelOptions = confidentialLevelOptions;
-            DefaultConfidentialLevel = defaultConfidentialLevel;
             MaterialCategoryOptions = materialCategoryOptions;
             OrganizationFormOptions = organizationFormOptions;
             TextSubCategories = textSubCategories;
@@ -943,8 +925,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public IReadOnlyList<string> MapSubCategories { get; }
 
-        public string DefaultConfidentialLevel { get; set; }
-
         public ObservableCollection<StockTextArchiveMediaItemViewModel> Items { get; }
 
         public string MediaKind => ArchiveRegisterDomainValues.MediaKindSimulated;
@@ -957,11 +937,11 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public int MediaCount => Items.Count;
 
-        public void AddItem(string? confidentialLevel)
+        public void AddItem()
         {
-            string level = string.IsNullOrWhiteSpace(confidentialLevel)
-                ? DefaultConfidentialLevel
-                : confidentialLevel.Trim();
+            string level = ConfidentialLevelOptions.Contains("秘密")
+                ? "秘密"
+                : ConfidentialLevelOptions.FirstOrDefault() ?? "秘密";
             Items.Add(new StockTextArchiveMediaItemViewModel(this)
             {
                 ConfidentialLevel = level,

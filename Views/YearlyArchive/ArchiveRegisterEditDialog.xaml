@@ -14,28 +14,29 @@
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
             <DataTemplate x:Key="ApplicantSectionsTemplate">
                 <UserControl>
-                <StackPanel Orientation="Vertical" Cursor="">
-                    <GroupBox Header="1. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
-                        <StackPanel Orientation="Vertical">
-                            <StackPanel Orientation="Horizontal" Margin="0,4">
-                                <Label Width="110" VerticalAlignment="Center">资料名称 *：</Label>
-                                <TextBox Text="{Binding CurrentRecord.MaterialName, UpdateSourceTrigger=PropertyChanged}" Width="500" Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
-                            </StackPanel>
+                <StackPanel Orientation="Vertical">
+                    <GroupBox Header="1. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="8">
+                        <StackPanel Orientation="Vertical" Grid.IsSharedSizeScope="True">
+                            <DockPanel Margin="0,2" LastChildFill="True">
+                                <Label DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelStyle}" Content="资料名称 *："/>
+                                <TextBox Text="{Binding CurrentRecord.MaterialName, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
+                            </DockPanel>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,4">
-                                <Label Width="110" VerticalAlignment="Center">所属项目 *：</Label>
-                                <ComboBox Width="100" Style="{StaticResource ArchiveRegisterFormComboBoxStyle}" Margin="0,0,5,0"
+                            <DockPanel Margin="0,2" LastChildFill="True">
+                                <Label DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelStyle}" Content="所属项目 *："/>
+                                <ComboBox DockPanel.Dock="Left" Width="100" Style="{StaticResource ArchiveRegisterFormComboBoxStyle}" Margin="0,0,6,0"
                                           ItemsSource="{Binding ProjectYears}"
                                           SelectedItem="{Binding SelectedProjectYear}"/>
-                                <ComboBox Width="395" Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                                <ComboBox Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
                                           ItemsSource="{Binding Projects}"
                                           DisplayMemberPath="ProjectName"
                                           SelectedItem="{Binding SelectedProject}"/>
-                            </StackPanel>
+                            </DockPanel>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,4" VerticalAlignment="Center">
-                                <Label Width="110" VerticalAlignment="Center">资料来源 *：</Label>
-                                <ComboBox Width="98"
+                            <DockPanel Margin="0,2" LastChildFill="True">
+                                <Label DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelStyle}" Content="资料来源 *："/>
+                                <ComboBox DockPanel.Dock="Left" Width="100" Margin="0,0,12,0"
                                           ItemsSource="{Binding SourceTypeOptions}" SelectedItem="{Binding SelectedSourceType}">
                                     <ComboBox.Style>
                                         <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
@@ -48,8 +49,9 @@
                                         </Style>
                                     </ComboBox.Style>
                                 </ComboBox>
-                                <TextBox Width="98" Text="{Binding SelectedSourceType, Mode=OneWay}" IsReadOnly="True"
-                                         Background="#F5F5F5" VerticalContentAlignment="Center">
+                                <TextBox DockPanel.Dock="Left" Width="100" Margin="0,0,12,0"
+                                         Text="{Binding SelectedSourceType, Mode=OneWay}" IsReadOnly="True"
+                                         Background="#F5F5F5">
                                     <TextBox.Style>
                                         <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -61,9 +63,9 @@
                                         </Style>
                                     </TextBox.Style>
                                 </TextBox>
-                                <Label Width="140" VerticalAlignment="Center" Content="        提供部门(单位) *："/>
-                                <ComboBox Width="260"
-                                          ItemsSource="{Binding Departments}" DisplayMemberPath="Name" SelectedValuePath="Name"
+                                <Label DockPanel.Dock="Left" Width="120" Style="{StaticResource FormLabelStyle}"
+                                       Content="提供部门(单位) *：" Margin="0,0,6,0"/>
+                                <ComboBox ItemsSource="{Binding Departments}" DisplayMemberPath="Name" SelectedValuePath="Name"
                                           SelectedValue="{Binding CurrentRecord.ProvideUnit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <ComboBox.Style>
                                         <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
@@ -76,8 +78,7 @@
                                         </Style>
                                     </ComboBox.Style>
                                 </ComboBox>
-                                <TextBox Width="500"
-                                         Text="{Binding CurrentRecord.ProvideUnit, UpdateSourceTrigger=PropertyChanged}">
+                                <TextBox Text="{Binding CurrentRecord.ProvideUnit, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Style>
                                         <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -89,26 +90,30 @@
                                         </Style>
                                     </TextBox.Style>
                                 </TextBox>
-                            </StackPanel>
+                            </DockPanel>
 
-                            <GroupBox Header="资料介质（电子） *" Margin="0,8,0,0" BorderBrush="#DDD" Padding="6">
-                                <StackPanel Margin="4">
+                            <GroupBox Header="资料介质（电子） *" Margin="0,6,0,0" BorderBrush="#DDD" Padding="6">
+                                <StackPanel>
                                     <Grid Margin="0,0,0,4">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="40"/>
-                                            <ColumnDefinition Width="72"/>
-                                            <ColumnDefinition Width="40"/>
-                                            <ColumnDefinition Width="120"/>
-                                            <ColumnDefinition Width="40"/>
-                                            <ColumnDefinition Width="56"/>
-                                            <ColumnDefinition Width="64"/>
-                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="72" SharedSizeGroup="YaRegMediaTbKind"/>
+                                            <ColumnDefinition Width="12"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="120" SharedSizeGroup="YaRegMediaTbType"/>
+                                            <ColumnDefinition Width="12"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="56" SharedSizeGroup="YaRegMediaTbCount"/>
+                                            <ColumnDefinition Width="12"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="120" SharedSizeGroup="YaRegMediaTbDisp"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="介质：" VerticalAlignment="Center"/>
-                                        <TextBox Grid.Column="1" Text="电子" Height="26" Margin="2,0" VerticalContentAlignment="Center" IsReadOnly="True" Background="#F5F5F5"/>
-                                        <TextBlock Grid.Column="2" Text="类型：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
-                                        <ComboBox Grid.Column="3" Margin="2,0" VerticalContentAlignment="Center"
+                                        <TextBlock Grid.Column="0" Text="介质：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
+                                        <TextBox Grid.Column="1" Text="电子" IsReadOnly="True" Background="#F5F5F5"
+                                                 Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
+                                        <TextBlock Grid.Column="3" Text="类型：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
+                                        <ComboBox Grid.Column="4"
                                                   ItemsSource="{Binding DataElectronicMediaTypeOptions}"
                                                   SelectedItem="{Binding SelectedElectronicMediaType}">
                                             <ComboBox.Style>
@@ -122,7 +127,7 @@
                                                 </Style>
                                             </ComboBox.Style>
                                         </ComboBox>
-                                        <TextBox Grid.Column="3" Margin="2,0" Height="26" VerticalContentAlignment="Center"
+                                        <TextBox Grid.Column="4"
                                                  Text="{Binding SelectedElectronicMediaType, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5">
                                             <TextBox.Style>
                                                 <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
@@ -135,10 +140,11 @@
                                                 </Style>
                                             </TextBox.Style>
                                         </TextBox>
-                                        <TextBlock Grid.Column="4" Text="数量：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
-                                        <TextBox Grid.Column="5" Text="{Binding DataElectronicMediaCount, Mode=OneWay}" Height="26" Margin="2,0" VerticalContentAlignment="Center" IsReadOnly="True" Background="#F5F5F5"/>
-                                        <TextBlock Grid.Column="6" Text="处置：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
-                                        <ComboBox Grid.Column="7" Margin="2,0" VerticalContentAlignment="Center"
+                                        <TextBlock Grid.Column="6" Text="数量：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
+                                        <TextBox Grid.Column="7" Text="{Binding DataElectronicMediaCount, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"
+                                                 Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
+                                        <TextBlock Grid.Column="9" Text="处置：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
+                                        <ComboBox Grid.Column="10"
                                                   ItemsSource="{Binding DataElectronicDispositionOptions}"
                                                   SelectedItem="{Binding SelectedElectronicDisposition}">
                                             <ComboBox.Style>
@@ -152,7 +158,7 @@
                                                 </Style>
                                             </ComboBox.Style>
                                         </ComboBox>
-                                        <TextBox Grid.Column="7" Margin="2,0" Height="26" VerticalContentAlignment="Center"
+                                        <TextBox Grid.Column="10"
                                                  Text="{Binding SelectedElectronicDisposition, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5">
                                             <TextBox.Style>
                                                 <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
@@ -165,10 +171,13 @@
                                                 </Style>
                                             </TextBox.Style>
                                         </TextBox>
-                                        <Button Grid.Column="8"
+                                        <Button Grid.Column="11"
                                                 Content="+ 添加资料介质（电子）"
                                                 Command="{Binding AddDataElectronicMediaEntryCommand}"
-                                                Padding="8,2"/>
+                                                Padding="8,2"
+                                                Margin="12,0,0,0"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"/>
                                     </Grid>
                                     <TextBlock Margin="2,0,0,4" Foreground="#00695C" TextWrapping="Wrap"
                                                Text="{Binding NetworkOutboundTransferHint, Mode=OneWay}">
@@ -187,32 +196,41 @@
                                 </StackPanel>
                             </GroupBox>
 
-                            <GroupBox Header="资料介质（模拟） *" Margin="0,8,0,0" BorderBrush="#DDD" Padding="6">
-                                <StackPanel Margin="4">
+                            <GroupBox Header="资料介质（模拟） *" Margin="0,6,0,0" BorderBrush="#DDD" Padding="6">
+                                <StackPanel>
                                     <Grid Margin="0,0,0,4">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="40"/>
-                                            <ColumnDefinition Width="72"/>
-                                            <ColumnDefinition Width="40"/>
-                                            <ColumnDefinition Width="120"/>
-                                            <ColumnDefinition Width="40"/>
-                                            <ColumnDefinition Width="56"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="72" SharedSizeGroup="YaRegMediaTbKind"/>
+                                            <ColumnDefinition Width="12"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="120" SharedSizeGroup="YaRegMediaTbType"/>
+                                            <ColumnDefinition Width="12"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="56" SharedSizeGroup="YaRegMediaTbCount"/>
+                                            <ColumnDefinition Width="12"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="120" SharedSizeGroup="YaRegMediaTbDisp"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="介质：" VerticalAlignment="Center"/>
-                                        <TextBox Grid.Column="1" Text="模拟" Height="26" Margin="2,0" VerticalContentAlignment="Center" IsReadOnly="True" Background="#F5F5F5"/>
-                                        <TextBlock Grid.Column="2" Text="类型：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
-                                        <ComboBox Grid.Column="3" Margin="2,0" VerticalContentAlignment="Center"
+                                        <TextBlock Grid.Column="0" Text="介质：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
+                                        <TextBox Grid.Column="1" Text="模拟" IsReadOnly="True" Background="#F5F5F5"
+                                                 Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
+                                        <TextBlock Grid.Column="3" Text="类型：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
+                                        <ComboBox Grid.Column="4"
                                                   Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
                                                   ItemsSource="{Binding DataSimulatedMediaTypeOptions}"
                                                   SelectedItem="{Binding SelectedSimulatedMediaType}"/>
-                                        <TextBlock Grid.Column="4" Text="数量：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
-                                        <TextBox Grid.Column="5" Text="{Binding DataSimulatedMediaCount, Mode=OneWay}" Height="26" Margin="2,0" VerticalContentAlignment="Center" IsReadOnly="True" Background="#F5F5F5"/>
-                                        <Button Grid.Column="6"
+                                        <TextBlock Grid.Column="6" Text="数量：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
+                                        <TextBox Grid.Column="7" Text="{Binding DataSimulatedMediaCount, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"
+                                                 Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
+                                        <Button Grid.Column="11"
                                                 Content="+ 添加资料介质（模拟）"
                                                 Command="{Binding AddDataSimulatedMediaEntryCommand}"
                                                 Padding="8,2"
-                                                HorizontalAlignment="Right"/>
+                                                Margin="12,0,0,0"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"/>
                                     </Grid>
                                     <ItemsControl ItemsSource="{Binding DataSimulatedMediaView}" ItemTemplate="{StaticResource MediaEntryTemplate_DataSimulated}"/>
                                 </StackPanel>
@@ -220,7 +238,7 @@
                         </StackPanel>
                     </GroupBox>
 
-                    <GroupBox Header="2. 申请信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
+                    <GroupBox Header="2. 申请信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="8">
                         <StackPanel>
                             <!-- 归档目的：左标签列宽统一 110；「其他」时横排补充说明 -->
                             <DockPanel Margin="0,2" LastChildFill="True">
@@ -382,29 +400,30 @@
             </DataTemplate>
         </ResourceDictionary>
     </Window.Resources>
-    <Grid Margin="16">
+    <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+        <StackPanel Grid.Row="0" Margin="0,0,0,8">
             <TextBlock Text="{Binding WindowTitle}" FontSize="18" FontWeight="Bold"/>
             <TextBlock Text="{Binding RegisterWorkspaceBannerText}"
-                       Margin="0,6,0,0" Foreground="#666" TextWrapping="Wrap"/>
+                       Margin="0,4,0,0" Foreground="#666" TextWrapping="Wrap" FontSize="12"/>
         </StackPanel>
 
         <Border Grid.Row="1" BorderBrush="#D8E2EC" BorderThickness="1" CornerRadius="4" Background="White">
-            <ScrollViewer x:Name="FormScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="10">
-                <StackPanel Margin="12" Orientation="Vertical">
+            <ScrollViewer x:Name="FormScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="8">
+                <StackPanel Margin="8" Orientation="Vertical">
                     <ContentControl Content="{Binding}">
                         <ContentControl.Style>
                             <Style TargetType="ContentControl">
                                 <Setter Property="ContentTemplate" Value="{StaticResource ApplicantSectionsTemplate}"/>
                                 <Style.Triggers>
+                                    <!-- 审批态改用只读分区；隐藏本控件，避免 ContentTemplate 为空时显示 ViewModel 类型名 -->
                                     <DataTrigger Binding="{Binding ShowApprovalWorkflowPanel}" Value="True">
-                                        <Setter Property="ContentTemplate" Value="{x:Null}"/>
+                                        <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -439,7 +458,7 @@
             </ScrollViewer>
         </Border>
 
-        <Border Grid.Row="2" Margin="0,12,0,0" Padding="12,10,0,0" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Background="#FAFBFC">
+        <Border Grid.Row="2" Margin="0,8,0,0" Padding="10,8,0,0" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Background="#FAFBFC">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>

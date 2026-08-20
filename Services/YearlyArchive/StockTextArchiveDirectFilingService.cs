@@ -196,8 +196,7 @@ namespace DocMgr.Services.YearlyArchive
                             errors.Add($"{prefix}：份数须不少于 1。");
                         }
 
-                        if (string.IsNullOrWhiteSpace(item.ConfidentialLevel)
-                            && string.IsNullOrWhiteSpace(request.ConfidentialLevel))
+                        if (string.IsNullOrWhiteSpace(item.ConfidentialLevel))
                         {
                             errors.Add($"{prefix}：密级不能为空。");
                         }
@@ -340,11 +339,6 @@ namespace DocMgr.Services.YearlyArchive
             DateTime archiveYearDate = ResolveArchiveYearDate(request.Year);
             string formNo = await _archiveRegisterService.GenerateNextFormNoAsync(numberingYear);
             string operatorName = currentUser?.RealName?.Trim() ?? string.Empty;
-            string defaultConfidential = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(request.ConfidentialLevel);
-            if (string.IsNullOrWhiteSpace(defaultConfidential))
-            {
-                defaultConfidential = "秘密";
-            }
 
             var mediaEntries = new List<YearlyArchiveRegisterMedia>();
             foreach (var group in request.MediaGroups)
@@ -362,7 +356,7 @@ namespace DocMgr.Services.YearlyArchive
                     string confidential = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(item.ConfidentialLevel);
                     if (string.IsNullOrWhiteSpace(confidential))
                     {
-                        confidential = defaultConfidential;
+                        confidential = "秘密";
                     }
 
                     media.Items.Add(new YearlyArchiveRegisterMediaItem

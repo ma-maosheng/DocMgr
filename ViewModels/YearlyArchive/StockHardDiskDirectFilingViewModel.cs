@@ -808,6 +808,43 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// </summary>
         private async Task ResetForNextFilingAsync()
         {
+            // 取消进行中的袋号预览，避免异步回调把上一盘编号写回标题。
+            _archiveNoPreviewToken++;
+
+            ClearUserInputsForNextRound();
+            ArchivePurpose = string.Empty;
+            ConfidentialLevel = string.Empty;
+            MaterialCategory = string.Empty;
+            SubCategory = string.Empty;
+
+            _suppressSlotResolve = true;
+            try
+            {
+                SelectedSlotOption = null;
+            }
+            finally
+            {
+                _suppressSlotResolve = false;
+            }
+
+            StorageLocation = string.Empty;
+            SlotOptions.Clear();
+
+            await InitializeAsync();
+
+            // WPF 可编辑 ComboBox：ItemsSource Clear/Replace 时常把旧 Text 写回绑定，
+            // 导致年度/项目/类型等在初始化后仍残留上一盘内容，须再清一次。
+            ClearUserInputsForNextRound();
+            ForceNotifyEditableComboTexts();
+
+            await GenerateDiskCodeAsync();
+        }
+
+        /// <summary>
+        /// 清空本轮用户录入与扫描结果（保留/交由 Initialize 恢复的库管默认值与推荐档口）。
+        /// </summary>
+        private void ClearUserInputsForNextRound()
+        {
             DiskCode = string.Empty;
             SerialNumber = string.Empty;
             DiskType = string.Empty;
@@ -827,26 +864,20 @@ namespace DocMgr.ViewModels.YearlyArchive
             YearProjectHint = "填写年度或扫描目录后，可查看该年已有项目。";
             BusinessNumberHint = "确认立档后：每份资料生成一条建档单号，整盘生成一个电子袋号。";
             PreviewElectronicArchiveNo = string.Empty;
-            ArchivePurpose = string.Empty;
-            ConfidentialLevel = string.Empty;
-            MaterialCategory = string.Empty;
-            SubCategory = string.Empty;
-
-            _suppressSlotResolve = true;
-            try
-            {
-                SelectedSlotOption = null;
-            }
-            finally
-            {
-                _suppressSlotResolve = false;
-            }
-
-            StorageLocation = string.Empty;
             OnPropertyChanged(nameof(PreviewSummary));
+            OnPropertyChanged(nameof(PageTitle));
+        }
 
-            await InitializeAsync();
-            await GenerateDiskCodeAsync();
+        /// <summary>
+        /// 强制刷新可编辑 ComboBox 的 Text 绑定（绕过 SetProperty 相等短路）。
+        /// </summary>
+        private void ForceNotifyEditableComboTexts()
+        {
+            OnPropertyChanged(nameof(DiskType));
+            OnPropertyChanged(nameof(Brand));
+            OnPropertyChanged(nameof(InterfaceType));
+            OnPropertyChanged(nameof(Year));
+            OnPropertyChanged(nameof(ProjectName));
         }
 
         private static void Replace(ObservableCollection<string> target, IReadOnlyList<string> values, string preferred)

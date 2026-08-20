@@ -20,8 +20,6 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ArchivePurpose { get; init; } = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
 
-        public string ConfidentialLevel { get; init; } = "秘密";
-
         public string ProvideUnit { get; init; } = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
 
         public string BoxSpecification { get; init; } = "标准(5cm)";

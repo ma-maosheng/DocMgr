@@ -326,8 +326,9 @@
                             <Style TargetType="ContentControl">
                                 <Setter Property="ContentTemplate" Value="{StaticResource ApplicantSectionsTemplate}"/>
                                 <Style.Triggers>
+                                    <!-- 审批态改用只读分区；隐藏本控件，避免 ContentTemplate 为空时显示 ViewModel 类型名 -->
                                     <DataTrigger Binding="{Binding ShowApprovalWorkflowPanel}" Value="True">
-                                        <Setter Property="ContentTemplate" Value="{x:Null}"/>
+                                        <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
