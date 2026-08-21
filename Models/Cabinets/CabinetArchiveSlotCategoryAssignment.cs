@@ -28,6 +28,11 @@ namespace DocMgr.Models.Cabinets
         public const string CategoryHistoricalMaterials = "历史资料专用档口";
 
         /// <summary>
+        /// 混用档口（年度资料与历史资料均可存放）。
+        /// </summary>
+        public const string CategoryMixed = "混用档口";
+
+        /// <summary>
         /// 主键。
         /// </summary>
         public int Id { get; set; }
@@ -109,7 +114,8 @@ namespace DocMgr.Models.Cabinets
         {
             string normalized = NormalizeCategoryName(categoryName);
             return MatchesCategory(normalized, CategoryYearlyMaterials)
-                || MatchesCategory(normalized, CategoryHistoricalMaterials);
+                || MatchesCategory(normalized, CategoryHistoricalMaterials)
+                || MatchesCategory(normalized, CategoryMixed);
         }
 
         /// <summary>
@@ -120,7 +126,8 @@ namespace DocMgr.Models.Cabinets
             string normalized = NormalizeCategoryName(categoryName);
             return MatchesCategory(normalized, CategoryUnset)
                 || MatchesCategory(normalized, CategoryYearlyMaterials)
-                || MatchesCategory(normalized, CategoryHistoricalMaterials);
+                || MatchesCategory(normalized, CategoryHistoricalMaterials)
+                || MatchesCategory(normalized, CategoryMixed);
         }
     }
 }

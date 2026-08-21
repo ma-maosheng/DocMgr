@@ -33,6 +33,11 @@ namespace DocMgr.Services.Interfaces
 
         void SetBusyState(bool isBusy);
 
+        /// <summary>
+        /// 在调用方父窗口上覆盖进度条（Excel 导入等）。须在 using 中使用，结束时自动移除。
+        /// </summary>
+        IOperationProgressSession ShowOperationProgress(string title, string initialStatus);
+
         bool ShowUserEditDialog(User? userToEdit);
         bool ShowCabinetEditDialog(Cabinet cabinetToEdit);
         CabinetArchiveBoxPlacementMode? ShowCabinetArchiveBoxPlacementEditDialog(string title, string summary, CabinetArchiveBoxPlacementMode initialMode);
@@ -100,6 +105,11 @@ namespace DocMgr.Services.Interfaces
         void ShowArchiveDetailWindow(ArchiveDetailOpenRequest request);
         bool ShowDeptEditDialog(Department? deptToEdit);
         bool ShowRoleEditDialog(Role? roleToEdit);
+        /// <summary>
+        /// 存档文本直办 Excel 导入预览；成功导入至少一盒时返回 true。
+        /// </summary>
+        bool ShowStockTextArchiveExcelImportDialog(IReadOnlyList<StockTextArchiveExcelBoxDraft> boxes);
+
         bool ShowServerPathSettingEditDialog(ServerPathSetting? settingToEdit);
         bool ShowHardDiskMediaApprovalEditDialog(HardDiskMediaApplication application, User? currentUser, out HardDiskMediaApprovalInput? approvalInput);
 

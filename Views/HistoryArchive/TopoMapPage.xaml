@@ -7,10 +7,16 @@
       d:DesignHeight="450" d:DesignWidth="800"
       Title="TopoMapPage">
 
+    <Page.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </Page.Resources>
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- 工具栏 -->
@@ -19,6 +25,20 @@
                 <StackPanel Orientation="Horizontal">
                     <Button Content="📥 导入" Command="{Binding ImportCommand}" Width="90" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
                     <Button Content="🔍 浏览数据" Command="{Binding BrowseCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+
+                    <Separator Style="{StaticResource VerticalSeparatorStyle}" />
+
+                    <TextBlock Text="浏览方式" VerticalAlignment="Center" Margin="10,0,8,0" FontWeight="Bold"/>
+                    <RadioButton Content="分页浏览"
+                                 GroupName="TopoMapBrowseMode"
+                                 IsChecked="{Binding IsPagedBrowse, Mode=TwoWay}"
+                                 Style="{StaticResource FormRadioButtonStyle}"
+                                 Margin="0,0,8,0"/>
+                    <RadioButton Content="全局浏览"
+                                 GroupName="TopoMapBrowseMode"
+                                 IsChecked="{Binding IsGlobalBrowse, Mode=TwoWay}"
+                                 Style="{StaticResource FormRadioButtonStyle}"
+                                 Margin="0,0,10,0"/>
 
                     <Separator Style="{StaticResource VerticalSeparatorStyle}" />
 
@@ -32,16 +52,44 @@
             </ScrollViewer>
         </Border>
 
+        <Border Grid.Row="1"
+                Background="#EEF3F8"
+                BorderBrush="#D0D7DE"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="12,6"
+                Margin="0,0,0,8">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Left"
+                           Text="当前浏览"
+                           FontWeight="Bold"
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0"/>
+                <TextBlock Text="{Binding CurrentBrowseCaption, Mode=OneWay}"
+                           VerticalAlignment="Center"
+                           FontSize="13"
+                           Foreground="#1F4E79"
+                           TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
+        </Border>
+
         <!-- 数据展示区 -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="2">
             <DataGrid x:Name="DgTopoMaps" 
                       ItemsSource="{Binding TopoMaps}"
+                      SelectedItem="{Binding SelectedTopoMap, Mode=TwoWay}"
                       LoadingRow="DgTopoMaps_LoadingRow"
                       AutoGenerateColumns="False" 
                       IsReadOnly="True"
                       GridLinesVisibility="Horizontal"
                       HeadersVisibility="All"
-                      CanUserAddRows="False">
+                      CanUserAddRows="False"
+                      EnableRowVirtualization="True"
+                      EnableColumnVirtualization="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      VirtualizingPanel.ScrollUnit="Item"
+                      ScrollViewer.CanContentScroll="True">
                 <DataGrid.Columns>
                     <!-- 序号列由 LoadingRow 事件处理，直接显示Header -->
                     
@@ -67,15 +115,60 @@
             <!-- 无数据提示 -->
             <StackPanel x:Name="TxtNoDataHint" 
                         Visibility="{Binding NoDataHintVisibility}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.5">
+                        HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.5"
+                        IsHitTestVisible="False">
                 <TextBlock Text="📭" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
                 <TextBlock Text="暂无数据，请先导入或选择数据表" FontSize="16"/>
             </StackPanel>
-
-            <!-- 当前表名显示 (右下角或顶部，视你原设计而定) -->
-            <TextBlock Text="{Binding CurrentTableName, StringFormat='当前表: {0}'}" 
-                       HorizontalAlignment="Right" VerticalAlignment="Top" 
-                       Margin="0,-35,10,0" Foreground="Gray"/>
         </Grid>
+
+        <Border Grid.Row="3"
+                Background="#FAFAFA"
+                BorderBrush="#E0E0E0"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="12,8"
+                Margin="0,10,0,0"
+                Visibility="{Binding ShowPaginationBar, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <DockPanel LastChildFill="False">
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="每页条数：" VerticalAlignment="Center" FontWeight="Bold"/>
+                    <ComboBox Width="80"
+                              Height="28"
+                              Margin="8,0,16,0"
+                              ItemsSource="{Binding PageSizeOptions}"
+                              SelectedItem="{Binding PageSize, Mode=TwoWay}"/>
+                    <TextBlock VerticalAlignment="Center"
+                               Foreground="#546E7A"
+                               Text="{Binding PageInfo, Mode=OneWay}"/>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="首页"
+                            Width="64"
+                            Margin="0,0,6,0"
+                            Padding="8,2"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Command="{Binding FirstPageCommand}"/>
+                    <Button Content="上一页"
+                            Width="72"
+                            Margin="0,0,6,0"
+                            Padding="8,2"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Command="{Binding PreviousPageCommand}"/>
+                    <Button Content="下一页"
+                            Width="72"
+                            Margin="0,0,6,0"
+                            Padding="8,2"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Command="{Binding NextPageCommand}"/>
+                    <Button Content="末页"
+                            Width="64"
+                            Padding="8,2"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Command="{Binding LastPageCommand}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
     </Grid>
 </Page>

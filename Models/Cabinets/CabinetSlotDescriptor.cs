@@ -66,6 +66,8 @@ namespace DocMgr.Models.Cabinets
 
         public bool IsHistoricalMaterialsDedicatedSlot { get; init; }
 
+        public bool IsMixedUseArchiveSlot { get; init; }
+
         public string DedicatedSlotCategoryName { get; init; } = string.Empty;
     }
 }

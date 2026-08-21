@@ -6,12 +6,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
-// Project
-
 using DocMgr.ViewModels.Base;
-using DocMgr.Views.Shared;
 
 namespace DocMgr.ViewModels.HistoryArchive
 {
@@ -19,32 +17,28 @@ namespace DocMgr.ViewModels.HistoryArchive
     {
         private readonly IAerialPhotoService _aerialPhotoService;
         private readonly IDialogService _dialogService;
-        // [新增] 注入用户上下文服务
         private readonly IUserContextService _userContextService;
 
-        // === Properties ===
+        private const int DefaultPageSize = 100;
+        private const string UnselectedTableName = "（未选择）";
+        private const string GlobalBrowseTableName = "全部航摄影像";
+
         private ObservableCollection<AerialPhoto> _aerialPhotos = new ObservableCollection<AerialPhoto>();
+        private List<AerialPhoto> _allAerialPhotos = new List<AerialPhoto>();
+        private List<AerialPhoto> _filteredAerialPhotos = new List<AerialPhoto>();
+        private List<AerialPhoto> _cachedAllPhotos = new List<AerialPhoto>();
+        private bool _hasFullCache;
+        private string _lastPagedTableName = UnselectedTableName;
+        private bool _isGlobalBrowse;
+        private int _currentPage = 1;
+        private int _pageSize = DefaultPageSize;
+        private bool _isSwitchingBrowseMode;
+
         public ObservableCollection<AerialPhoto> AerialPhotos
         {
             get => _aerialPhotos;
             set => SetProperty(ref _aerialPhotos, value);
         }
-
-        private string _currentTableName = "（未选择）";
-        public string CurrentTableName
-        {
-            get => _currentTableName;
-            set => SetProperty(ref _currentTableName, value);
-        }
-
-        private Visibility _noDataHintVisibility = Visibility.Visible;
-        public Visibility NoDataHintVisibility
-        {
-            get => _noDataHintVisibility;
-            set => SetProperty(ref _noDataHintVisibility, value);
-        }
-
-        private List<AerialPhoto> _allAerialPhotos = new List<AerialPhoto>();
 
         private AerialPhoto? _selectedAerialPhoto;
         public AerialPhoto? SelectedAerialPhoto
@@ -66,7 +60,127 @@ namespace DocMgr.ViewModels.HistoryArchive
             set => SetProperty(ref _searchKeyword, value);
         }
 
-        // === Commands ===
+        private string _currentTableName = UnselectedTableName;
+        public string CurrentTableName
+        {
+            get => _currentTableName;
+            set
+            {
+                if (SetProperty(ref _currentTableName, value))
+                {
+                    OnPropertyChanged(nameof(CurrentBrowseCaption));
+                }
+            }
+        }
+
+        /// <summary>当前浏览范围与数据名称，供页面状态条显示。</summary>
+        public string CurrentBrowseCaption
+        {
+            get
+            {
+                string modeName = IsGlobalBrowse ? "全局浏览" : "分页浏览";
+                string dataName = string.IsNullOrWhiteSpace(CurrentTableName)
+                    ? UnselectedTableName
+                    : CurrentTableName;
+
+                if (_allAerialPhotos.Count == 0)
+                {
+                    return $"{modeName}  ·  {dataName}";
+                }
+
+                if (IsPagedBrowse)
+                {
+                    return $"{modeName}  ·  {dataName}  ·  {PageInfo}";
+                }
+
+                return $"{modeName}  ·  {dataName}  ·  共 {TotalCount} 条";
+            }
+        }
+
+        /// <summary>分页浏览：按分类表加载，并按页展示。</summary>
+        public bool IsPagedBrowse
+        {
+            get => !_isGlobalBrowse;
+            set
+            {
+                if (value)
+                {
+                    _ = SwitchBrowseModeAsync(false);
+                }
+            }
+        }
+
+        /// <summary>全局浏览：一次加载全部航摄影像，列表不分页。</summary>
+        public bool IsGlobalBrowse
+        {
+            get => _isGlobalBrowse;
+            set
+            {
+                if (value)
+                {
+                    _ = SwitchBrowseModeAsync(true);
+                }
+            }
+        }
+
+        public IReadOnlyList<int> PageSizeOptions { get; } = new[] { 50, 100, 200, 500 };
+
+        public int PageSize
+        {
+            get => _pageSize;
+            set
+            {
+                if (value <= 0 || _pageSize == value)
+                {
+                    return;
+                }
+
+                _pageSize = value;
+                OnPropertyChanged();
+                CurrentPage = 1;
+                RefreshDisplayedPhotos();
+            }
+        }
+
+        public int CurrentPage
+        {
+            get => _currentPage;
+            private set
+            {
+                if (SetProperty(ref _currentPage, value))
+                {
+                    OnPropertyChanged(nameof(PageInfo));
+                    OnPropertyChanged(nameof(CanGoPrevious));
+                    OnPropertyChanged(nameof(CanGoNext));
+                    OnPropertyChanged(nameof(PageStartIndex));
+                }
+            }
+        }
+
+        public int TotalCount => _filteredAerialPhotos.Count;
+
+        public int TotalPages => TotalCount == 0 ? 1 : (int)Math.Ceiling(TotalCount / (double)PageSize);
+
+        public string PageInfo => TotalCount == 0
+            ? "暂无记录"
+            : $"第 {CurrentPage} / {TotalPages} 页，本页 {AerialPhotos.Count} 条，共 {TotalCount} 条";
+
+        public bool CanGoPrevious => IsPagedBrowse && CurrentPage > 1;
+
+        public bool CanGoNext => IsPagedBrowse && CurrentPage < TotalPages;
+
+        public bool ShowPaginationBar => IsPagedBrowse && _allAerialPhotos.Count > 0;
+
+        /// <summary>当前页起始序号（0 基），供行号列使用。</summary>
+        public int PageStartIndex => IsPagedBrowse ? (CurrentPage - 1) * PageSize : 0;
+
+        private Visibility _noDataHintVisibility = Visibility.Visible;
+        public Visibility NoDataHintVisibility
+        {
+            get => _noDataHintVisibility;
+            set => SetProperty(ref _noDataHintVisibility, value);
+        }
+
         public RelayCommand ImportCommand { get; }
         public RelayCommand BrowseCommand { get; }
         public RelayCommand DeleteTableCommand { get; }
@@ -74,15 +188,19 @@ namespace DocMgr.ViewModels.HistoryArchive
         public RelayCommand SearchCommand { get; }
         public RelayCommand ResetSearchCommand { get; }
         public RelayCommand ExportCommand { get; }
+        public RelayCommand FirstPageCommand { get; }
+        public RelayCommand PreviousPageCommand { get; }
+        public RelayCommand NextPageCommand { get; }
+        public RelayCommand LastPageCommand { get; }
 
         public AerialPhotoViewModel(
             IAerialPhotoService aerialPhotoService,
             IDialogService dialogService,
-            IUserContextService userContextService) // [修改] 注入参数
+            IUserContextService userContextService)
         {
             _aerialPhotoService = aerialPhotoService;
             _dialogService = dialogService;
-            _userContextService = userContextService; // [修改] 赋值
+            _userContextService = userContextService;
 
             ImportCommand = new RelayCommand(async _ => await ImportAsync());
             BrowseCommand = new RelayCommand(async _ => await BrowseAsync());
@@ -91,39 +209,134 @@ namespace DocMgr.ViewModels.HistoryArchive
             EditCommand = new RelayCommand(async _ => await EditAsync(), _ => SelectedAerialPhoto != null);
             SearchCommand = new RelayCommand(_ => ApplySearchFilter());
             ResetSearchCommand = new RelayCommand(_ => ResetSearch());
-            ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => _allAerialPhotos.Count > 0);
+            ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => _filteredAerialPhotos.Count > 0);
+            FirstPageCommand = new RelayCommand(_ => GoToPage(1), _ => CanGoPrevious);
+            PreviousPageCommand = new RelayCommand(_ => GoToPage(CurrentPage - 1), _ => CanGoPrevious);
+            NextPageCommand = new RelayCommand(_ => GoToPage(CurrentPage + 1), _ => CanGoNext);
+            LastPageCommand = new RelayCommand(_ => GoToPage(TotalPages), _ => CanGoNext);
         }
 
         private async Task BrowseAsync()
         {
             try
             {
-                var tables = await Task.Run(() => _aerialPhotoService.GetAerialPhotoTables());
-                if (tables.Count == 0)
+                if (IsGlobalBrowse)
                 {
-                    _dialogService.ShowMessage("当前没有存档数据表，请先导入。");
+                    await LoadAllDataAsync();
+                    if (_allAerialPhotos.Count == 0)
+                    {
+                        _dialogService.ShowMessage("当前没有航摄影像数据，请先导入。");
+                    }
+                    else
+                    {
+                        _dialogService.ShowMessage($"已加载全部航摄影像，共 {_allAerialPhotos.Count} 条。", "完成");
+                    }
+
                     return;
                 }
 
-                if (tables.Count == 1)
+                var tables = await Task.Run(() => _aerialPhotoService.GetAerialPhotoTables());
+                if (tables.Count == 0)
                 {
-                    string tableName = tables[0];
-                    await LoadDataAsync(tableName);
-                    _dialogService.ShowMessage($"已自动加载唯一数据表 [{tableName}]。", "提示");
+                    _dialogService.ShowMessage("当前数据库中没有找到任何存档数据表，请先进行导入。");
+                    return;
                 }
-                else
+
+                string? selectedTable = _dialogService.ShowSheetSelectionDialog(tables, "选择存档数据表");
+                if (!string.IsNullOrEmpty(selectedTable))
                 {
-                    string? selectedTable = _dialogService.ShowSheetSelectionDialog(tables, "选择存档数据表");
-                    if (!string.IsNullOrEmpty(selectedTable))
-                    {
-                        await LoadDataAsync(selectedTable);
-                    }
+                    await LoadDataAsync(selectedTable);
+                    _dialogService.ShowMessage($"已加载表 [{selectedTable}]。", "完成");
                 }
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"浏览失败: {ex.Message}");
+                _dialogService.ShowError($"浏览数据失败: {ex.Message}");
             }
+        }
+
+        private async Task SwitchBrowseModeAsync(bool isGlobal)
+        {
+            if (_isSwitchingBrowseMode || _isGlobalBrowse == isGlobal)
+            {
+                return;
+            }
+
+            _isSwitchingBrowseMode = true;
+            try
+            {
+                _isGlobalBrowse = isGlobal;
+                OnPropertyChanged(nameof(IsGlobalBrowse));
+                OnPropertyChanged(nameof(IsPagedBrowse));
+                OnPropertyChanged(nameof(ShowPaginationBar));
+                OnPropertyChanged(nameof(PageStartIndex));
+                OnPropertyChanged(nameof(CurrentBrowseCaption));
+
+                await YieldUiAsync();
+
+                if (isGlobal)
+                {
+                    if (_hasFullCache)
+                    {
+                        _allAerialPhotos = _cachedAllPhotos;
+                        CurrentTableName = _allAerialPhotos.Count > 0 ? GlobalBrowseTableName : UnselectedTableName;
+                        ApplySearchFilter();
+                    }
+                    else
+                    {
+                        await LoadAllDataAsync();
+                    }
+
+                    return;
+                }
+
+                await ApplyPagedScopeFromCacheOrKeepCurrentAsync();
+            }
+            finally
+            {
+                _isSwitchingBrowseMode = false;
+            }
+        }
+
+        private async Task ApplyPagedScopeFromCacheOrKeepCurrentAsync()
+        {
+            if (!IsUsablePagedTableName(_lastPagedTableName))
+            {
+                CurrentPage = 1;
+                ApplySearchFilter();
+                return;
+            }
+
+            if (_hasFullCache)
+            {
+                _allAerialPhotos = _cachedAllPhotos
+                    .Where(item => string.Equals(item.Category?.Trim(), _lastPagedTableName, StringComparison.Ordinal))
+                    .ToList();
+                CurrentTableName = _lastPagedTableName;
+                ApplySearchFilter();
+                return;
+            }
+
+            await LoadDataAsync(_lastPagedTableName);
+        }
+
+        private static bool IsUsablePagedTableName(string tableName)
+        {
+            return !string.IsNullOrWhiteSpace(tableName)
+                && tableName != UnselectedTableName
+                && tableName != GlobalBrowseTableName;
+        }
+
+        private static async Task YieldUiAsync()
+        {
+            Dispatcher dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+            await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+        }
+
+        private void InvalidateFullCache()
+        {
+            _hasFullCache = false;
+            _cachedAllPhotos = new List<AerialPhoto>();
         }
 
         private async Task ImportAsync()
@@ -144,15 +357,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames);
                 if (string.IsNullOrEmpty(selectedSheet)) return;
 
-                _dialogService.SetBusyState(true);
-                try
-                {
-                    await ProcessImportLogicAsync(filePath, selectedSheet);
-                }
-                finally
-                {
-                    _dialogService.SetBusyState(false);
-                }
+                await ProcessImportLogicAsync(filePath, selectedSheet);
             }
             catch (Exception ex)
             {
@@ -162,7 +367,6 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private async Task ProcessImportLogicAsync(string filePath, string sheetName)
         {
-            // [优化] 使用 Service 获取当前用户 (彻底去除了 Application.Current.MainWindow 依赖)
             string currentUser = _userContextService.CurrentUser?.RealName ?? "Unknown";
 
             string nowStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -170,23 +374,27 @@ namespace DocMgr.ViewModels.HistoryArchive
 
             List<AerialPhoto> dataList = new List<AerialPhoto>();
 
-            await Task.Run(() =>
+            using (var progress = _dialogService.ShowOperationProgress("航摄影像 Excel 导入", "正在读取工作表…"))
             {
-                using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                await Task.Run(() =>
                 {
-                    var workbook = WorkbookFactory.Create(fs);
-                    var sheet = workbook.GetSheet(sheetName);
-                    if (sheet == null || sheet.LastRowNum <= 0) return;
-
-                    var headerMap = ParseHeader(sheet.GetRow(0));
-                    string lastBoxNum = "";
-                    string lastScale = "";
-                    string lastBoxSpecification = "";
-
-                    for (int i = 1; i <= sheet.LastRowNum; i++)
+                    using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                     {
-                        var row = sheet.GetRow(i);
-                        if (row == null) continue;
+                        var workbook = WorkbookFactory.Create(fs);
+                        var sheet = workbook.GetSheet(sheetName);
+                        if (sheet == null || sheet.LastRowNum <= 0) return;
+
+                        var headerMap = ParseHeader(sheet.GetRow(0));
+                        string lastBoxNum = "";
+                        string lastScale = "";
+                        string lastBoxSpecification = "";
+                        int lastRow = sheet.LastRowNum;
+
+                        for (int i = 1; i <= lastRow; i++)
+                        {
+                            ExcelImportProgressSupport.ReportReadRow(progress, i, lastRow);
+                            var row = sheet.GetRow(i);
+                            if (row == null) continue;
 
                         string boxNum = GetCellValue(row, headerMap, "档案盒编号");
                         if (string.IsNullOrWhiteSpace(boxNum)) boxNum = lastBoxNum; else lastBoxNum = boxNum;
@@ -204,11 +412,8 @@ namespace DocMgr.ViewModels.HistoryArchive
                             SurveyArea = surveyArea,
                             BoxContents = GetCellValue(row, headerMap, "档案盒内物品"),
                             Remark = GetCellValue(row, headerMap, "备注"),
-
-                            // 使用上方获取的变量
                             Registrant = currentUser,
                             RegistrationDate = nowStr
-                            // 注意：Modifier 等字段由 Model 默认值 "" 处理，无需手动赋值
                         };
 
                         string scale = GetCellValue(row, headerMap, "航摄比例尺");
@@ -227,7 +432,8 @@ namespace DocMgr.ViewModels.HistoryArchive
                         dataList.Add(item);
                     }
                 }
-            });
+                });
+            }
 
             if (dataList.Count == 0)
             {
@@ -246,11 +452,32 @@ namespace DocMgr.ViewModels.HistoryArchive
                 isRecreate = (mode == ImportMode.Recreate);
             }
 
-            await Task.Run(() => _aerialPhotoService.ImportAerialPhotos(dataList, sheetName, isRecreate));
+            try
+            {
+                using (_dialogService.ShowOperationProgress(
+                    "航摄影像 Excel 导入",
+                    $"正在核验档口并写入 {dataList.Count} 条…"))
+                {
+                    await _aerialPhotoService.ImportAerialPhotosAsync(dataList, sheetName, isRecreate);
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                _dialogService.ShowError(ex.Message);
+                return;
+            }
 
             _dialogService.ShowMessage($"成功导入 {dataList.Count} 条数据到表 [{targetTableName}]！");
 
-            await LoadDataAsync(targetTableName);
+            InvalidateFullCache();
+            if (IsGlobalBrowse)
+            {
+                await LoadAllDataAsync();
+            }
+            else
+            {
+                await LoadDataAsync(targetTableName);
+            }
         }
 
         private async Task DeleteTableAsync()
@@ -264,16 +491,25 @@ namespace DocMgr.ViewModels.HistoryArchive
             if (_dialogService.ShowConfirm($"确定要永久删除数据表 [{selected}] 吗？\n\n此操作不可恢复！", "危险操作确认"))
             {
                 await Task.Run(() => _aerialPhotoService.DropTable(selected));
+                InvalidateFullCache();
                 _dialogService.ShowMessage($"数据表 [{selected}] 已成功删除。");
 
-                if (CurrentTableName == selected)
+                if (IsGlobalBrowse)
+                {
+                    await LoadAllDataAsync();
+                }
+                else if (CurrentTableName == selected)
                 {
                     _allAerialPhotos.Clear();
+                    _filteredAerialPhotos.Clear();
                     AerialPhotos.Clear();
                     SearchKeyword = string.Empty;
                     SelectedAerialPhoto = null;
-                    CurrentTableName = "（未选择）";
+                    CurrentTableName = UnselectedTableName;
+                    _lastPagedTableName = UnselectedTableName;
+                    CurrentPage = 1;
                     NoDataHintVisibility = Visibility.Visible;
+                    NotifyPaginationChanged();
                 }
             }
         }
@@ -287,16 +523,25 @@ namespace DocMgr.ViewModels.HistoryArchive
             }
 
             bool result = _dialogService.ShowAerialPhotoEditDialog(SelectedAerialPhoto);
-            if (result && !string.IsNullOrWhiteSpace(CurrentTableName) && CurrentTableName != "（未选择）")
+            if (result && !string.IsNullOrWhiteSpace(CurrentTableName) && CurrentTableName != UnselectedTableName)
             {
-                await LoadDataAsync(CurrentTableName);
+                InvalidateFullCache();
+                if (IsGlobalBrowse)
+                {
+                    await LoadAllDataAsync();
+                }
+                else
+                {
+                    await LoadDataAsync(CurrentTableName);
+                }
+
                 _dialogService.ShowMessage("记录已更新。", "完成");
             }
         }
 
         private async Task ExportAsync()
         {
-            if (AerialPhotos.Count == 0)
+            if (_filteredAerialPhotos.Count == 0)
             {
                 _dialogService.ShowMessage("当前没有可导出的记录。");
                 return;
@@ -311,7 +556,7 @@ namespace DocMgr.ViewModels.HistoryArchive
 
             try
             {
-                await Task.Run(() => ExportToExcel(filePath, AerialPhotos.ToList()));
+                await Task.Run(() => ExportToExcel(filePath, _filteredAerialPhotos.ToList()));
                 _dialogService.ShowMessage($"导出完成：{filePath}", "完成");
             }
             catch (IOException ex)
@@ -324,6 +569,25 @@ namespace DocMgr.ViewModels.HistoryArchive
             }
         }
 
+        private async Task LoadAllDataAsync()
+        {
+            _dialogService.SetBusyState(true);
+            try
+            {
+                var list = await Task.Run(() => _aerialPhotoService.GetAllAerialPhotos());
+                _cachedAllPhotos = list;
+                _hasFullCache = true;
+                _allAerialPhotos = list;
+                CurrentTableName = list.Count > 0 ? GlobalBrowseTableName : UnselectedTableName;
+                SelectedAerialPhoto = null;
+                ApplySearchFilter();
+            }
+            finally
+            {
+                _dialogService.SetBusyState(false);
+            }
+        }
+
         private async Task LoadDataAsync(string tableName)
         {
             _dialogService.SetBusyState(true);
@@ -332,6 +596,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 var data = await Task.Run(() => _aerialPhotoService.GetAerialPhotosByTable(tableName));
                 _allAerialPhotos = data;
                 CurrentTableName = tableName;
+                _lastPagedTableName = tableName;
                 SelectedAerialPhoto = null;
                 ApplySearchFilter();
             }
@@ -357,10 +622,50 @@ namespace DocMgr.ViewModels.HistoryArchive
                     Contains(x.Remark, keyword));
             }
 
-            var list = query.ToList();
+            _filteredAerialPhotos = query.ToList();
+            CurrentPage = 1;
+            RefreshDisplayedPhotos();
+        }
+
+        private void RefreshDisplayedPhotos()
+        {
+            IEnumerable<AerialPhoto> displayQuery = _filteredAerialPhotos;
+            if (IsPagedBrowse && _filteredAerialPhotos.Count > 0)
+            {
+                int clampedPage = Math.Clamp(CurrentPage, 1, TotalPages);
+                if (clampedPage != CurrentPage)
+                {
+                    CurrentPage = clampedPage;
+                }
+
+                displayQuery = _filteredAerialPhotos
+                    .Skip((CurrentPage - 1) * PageSize)
+                    .Take(PageSize);
+            }
+
+            var list = displayQuery.ToList();
             AerialPhotos = new ObservableCollection<AerialPhoto>(list);
-            NoDataHintVisibility = list.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
+            NoDataHintVisibility = _filteredAerialPhotos.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
+            NotifyPaginationChanged();
             CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void GoToPage(int page)
+        {
+            CurrentPage = Math.Clamp(page, 1, TotalPages);
+            RefreshDisplayedPhotos();
+        }
+
+        private void NotifyPaginationChanged()
+        {
+            OnPropertyChanged(nameof(TotalCount));
+            OnPropertyChanged(nameof(TotalPages));
+            OnPropertyChanged(nameof(PageInfo));
+            OnPropertyChanged(nameof(CanGoPrevious));
+            OnPropertyChanged(nameof(CanGoNext));
+            OnPropertyChanged(nameof(ShowPaginationBar));
+            OnPropertyChanged(nameof(PageStartIndex));
+            OnPropertyChanged(nameof(CurrentBrowseCaption));
         }
 
         private void ResetSearch()
@@ -376,7 +681,7 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private string BuildDefaultExportFileName()
         {
-            string baseName = string.IsNullOrWhiteSpace(CurrentTableName) || CurrentTableName == "（未选择）"
+            string baseName = string.IsNullOrWhiteSpace(CurrentTableName) || CurrentTableName == UnselectedTableName
                 ? "航摄影像导出"
                 : CurrentTableName;
 
@@ -392,7 +697,7 @@ namespace DocMgr.ViewModels.HistoryArchive
         {
             using var workbook = new XSSFWorkbook();
             string sheetName = CurrentTableName;
-            if (string.IsNullOrWhiteSpace(sheetName) || sheetName == "（未选择）")
+            if (string.IsNullOrWhiteSpace(sheetName) || sheetName == UnselectedTableName)
             {
                 sheetName = "航摄影像";
             }
@@ -432,7 +737,6 @@ namespace DocMgr.ViewModels.HistoryArchive
             workbook.Write(fs, leaveOpen: false);
         }
 
-        // --- Helpers 保持不变 ---
         private string ParseDate(string input)
         {
             if (DateTime.TryParse(input, out DateTime dt)) return dt.ToString("yyyy-MM-dd");

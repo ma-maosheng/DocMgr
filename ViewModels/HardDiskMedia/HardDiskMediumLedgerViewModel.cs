@@ -217,27 +217,23 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     importMode = selectedMode.Value;
                 }
 
-                _dialogService.SetBusyState(true);
-                try
+                HardDiskMediaImportResult result;
+                using (var progress = _dialogService.ShowOperationProgress("硬盘初始登记导入", "正在解析并写入硬盘介质…"))
                 {
-                    var result = await _hardDiskMediaService.ImportMediaAsync(filePath, selectedSheet, importMode, _userContextService.CurrentUser);
+                    result = await _hardDiskMediaService.ImportMediaAsync(filePath, selectedSheet, importMode, _userContextService.CurrentUser);
                     await SearchAsync();
-
-                    string modeSummary = result.Mode == ImportMode.Recreate
-                        ? $"覆盖导入完成。\n已清理 {result.ClearedCount} 条旧记录，导入 {result.ImportedCount} 条新记录。"
-                        : $"追加导入完成。\n成功导入 {result.ImportedCount} 条记录。";
-
-                    string slotSummary = result.AssignedSlotCount > 0
-                        ? $"\n\n已为 {result.AssignedSlotCount} 块无存放位置的空白硬盘，按防磁磁盘柜空白专用档口用途与容量自动入位。"
-                        : string.Empty;
-
-                    string ledgerReminder = "\n\n请资料室管理员前往【硬盘台账】核对存放位置，并按入库后台账完成后续业务操作。";
-                    _dialogService.ShowMessage(modeSummary + slotSummary + ledgerReminder, "完成");
                 }
-                finally
-                {
-                    _dialogService.SetBusyState(false);
-                }
+
+                string modeSummary = result.Mode == ImportMode.Recreate
+                    ? $"覆盖导入完成。\n已清理 {result.ClearedCount} 条旧记录，导入 {result.ImportedCount} 条新记录。"
+                    : $"追加导入完成。\n成功导入 {result.ImportedCount} 条记录。";
+
+                string slotSummary = result.AssignedSlotCount > 0
+                    ? $"\n\n已为 {result.AssignedSlotCount} 块无存放位置的空白硬盘，按防磁磁盘柜空白专用档口用途与容量自动入位。"
+                    : string.Empty;
+
+                string ledgerReminder = "\n\n请资料室管理员前往【硬盘台账】核对存放位置，并按入库后台账完成后续业务操作。";
+                _dialogService.ShowMessage(modeSummary + slotSummary + ledgerReminder, "完成");
             }
             catch (HardDiskMediaImportException ex)
             {

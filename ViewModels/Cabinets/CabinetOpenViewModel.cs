@@ -162,6 +162,9 @@ namespace DocMgr.ViewModels.Cabinets
             SetArchiveSlotHistoricalCategoryCommand = new RelayCommand<CabinetSlotViewModel>(
                 slot => SetArchiveSlotCategory(slot, CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials),
                 CanChangeArchiveSlotDedicatedCategory);
+            SetArchiveSlotMixedCategoryCommand = new RelayCommand<CabinetSlotViewModel>(
+                slot => SetArchiveSlotCategory(slot, CabinetArchiveSlotCategoryAssignment.CategoryMixed),
+                CanChangeArchiveSlotDedicatedCategory);
             ShowArchiveContentCommand = new RelayCommand<ArchiveBoxItemViewModel>(ShowArchiveContent);
             ShowPendingReturnDetailCommand = new RelayCommand<ArchiveBoxItemViewModel>(ShowPendingReturnDetail, CanShowPendingReturnDetail);
             EditArchiveBoxPlacementModeCommand = new RelayCommand<ArchiveBoxItemViewModel>(EditArchiveBoxPlacementMode);
@@ -177,6 +180,9 @@ namespace DocMgr.ViewModels.Cabinets
                 _ => CanApplySelectedSlotsArchivePurpose);
             ApplySelectedSlotsArchiveHistoricalCategoryCommand = new RelayCommand(
                 _ => ApplySelectedSlotsArchiveCategory(CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials),
+                _ => CanApplySelectedSlotsArchivePurpose);
+            ApplySelectedSlotsArchiveMixedCategoryCommand = new RelayCommand(
+                _ => ApplySelectedSlotsArchiveCategory(CabinetArchiveSlotCategoryAssignment.CategoryMixed),
                 _ => CanApplySelectedSlotsArchivePurpose);
             ApplySelectedSlotsHardDiskGeneralCategoryCommand = new RelayCommand(
                 _ => ApplySelectedSlotsHardDiskCategory(categoryName: null, showReturnHint: false),
@@ -483,6 +489,9 @@ namespace DocMgr.ViewModels.Cabinets
         public bool IsSelectedSlotsArchiveHistoricalCategory =>
             IsSharedSelectedArchiveCategory(CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials);
 
+        public bool IsSelectedSlotsArchiveMixedCategory =>
+            IsSharedSelectedArchiveCategory(CabinetArchiveSlotCategoryAssignment.CategoryMixed);
+
         public bool IsSelectedSlotsHardDiskGeneralCategory =>
             TryGetSharedSelectedSlotCategory(out string? shared)
             && Request.CabinetType == CabinetType.MagneticDisk
@@ -583,6 +592,8 @@ namespace DocMgr.ViewModels.Cabinets
 
         public RelayCommand<CabinetSlotViewModel> SetArchiveSlotHistoricalCategoryCommand { get; }
 
+        public RelayCommand<CabinetSlotViewModel> SetArchiveSlotMixedCategoryCommand { get; }
+
         public RelayCommand<ArchiveBoxItemViewModel> ShowArchiveContentCommand { get; }
 
         public RelayCommand<ArchiveBoxItemViewModel> ShowPendingReturnDetailCommand { get; }
@@ -604,6 +615,8 @@ namespace DocMgr.ViewModels.Cabinets
         public RelayCommand ApplySelectedSlotsArchiveYearlyCategoryCommand { get; }
 
         public RelayCommand ApplySelectedSlotsArchiveHistoricalCategoryCommand { get; }
+
+        public RelayCommand ApplySelectedSlotsArchiveMixedCategoryCommand { get; }
 
         public RelayCommand ApplySelectedSlotsHardDiskGeneralCategoryCommand { get; }
 
@@ -3723,6 +3736,7 @@ namespace DocMgr.ViewModels.Cabinets
             OnPropertyChanged(nameof(IsSelectedSlotsArchiveUnsetCategory));
             OnPropertyChanged(nameof(IsSelectedSlotsArchiveYearlyCategory));
             OnPropertyChanged(nameof(IsSelectedSlotsArchiveHistoricalCategory));
+            OnPropertyChanged(nameof(IsSelectedSlotsArchiveMixedCategory));
             OnPropertyChanged(nameof(IsSelectedSlotsHardDiskGeneralCategory));
             OnPropertyChanged(nameof(IsSelectedSlotsHardDiskDamagedCategory));
             OnPropertyChanged(nameof(IsSelectedSlotsHardDiskDamagedOpticalDiscCategory));

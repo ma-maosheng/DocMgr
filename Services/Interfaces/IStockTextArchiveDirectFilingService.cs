@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using DocMgr.Models.Projects;
@@ -65,5 +66,31 @@ namespace DocMgr.Services.Interfaces
         Task<StockTextArchiveDirectFilingResult> CommitAsync(
             StockTextArchiveDirectFilingRequest request,
             User? currentUser);
+
+        /// <summary>
+        /// 列出 Excel 工作表名称，供导入前选择。
+        /// </summary>
+        IReadOnlyList<string> ListExcelSheetNames(string filePath);
+
+        /// <summary>
+        /// 解析指定工作表，按档案盒编号分组。
+        /// </summary>
+        StockTextArchiveExcelParseResult ParseExcel(string filePath, string sheetName);
+
+        /// <summary>
+        /// 校验 Excel 解析出的各盒（档口用途、规格、占用、建档字段）。
+        /// </summary>
+        Task<IReadOnlyList<StockTextArchiveExcelBoxValidation>> ValidateExcelImportAsync(
+            IReadOnlyList<StockTextArchiveExcelBoxDraft> boxes,
+            User? currentUser,
+            IProgress<(int Current, int Total, string Status)>? progress = null);
+
+        /// <summary>
+        /// 按盒循环提交；失败盒不阻断后续盒。
+        /// </summary>
+        Task<StockTextArchiveExcelImportCommitResult> CommitExcelImportAsync(
+            IReadOnlyList<StockTextArchiveExcelBoxDraft> boxes,
+            User? currentUser,
+            IProgress<(int Current, int Total, string Status)>? progress = null);
     }
 }

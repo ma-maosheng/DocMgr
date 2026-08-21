@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DocMgr.Services.Interfaces
 {
@@ -13,12 +14,12 @@ namespace DocMgr.Services.Interfaces
         bool IsTableExist(string tableName);
 
         /// <summary>
-        /// 将航摄影像数据导入到数据库
+        /// 将航摄影像数据导入到数据库（先核验落档档口用途）。
         /// </summary>
         /// <param name="list">要导入的数据列表</param>
         /// <param name="sheetName">Sheet名称（用于生成表名后缀）</param>
         /// <param name="isRecreate">是否重建表（即覆盖旧数据）</param>
-        void ImportAerialPhotos(List<AerialPhoto> list, string sheetName, bool isRecreate = false);
+        Task ImportAerialPhotosAsync(List<AerialPhoto> list, string sheetName, bool isRecreate = false);
 
         /// <summary>
         /// 删除指定名称的数据表
@@ -34,6 +35,11 @@ namespace DocMgr.Services.Interfaces
         /// 查询指定表中的所有航摄影像记录
         /// </summary>
         List<AerialPhoto> GetAerialPhotosByTable(string tableName);
+
+        /// <summary>
+        /// 获取全部航摄影像记录（跨分类表）。
+        /// </summary>
+        List<AerialPhoto> GetAllAerialPhotos();
 
         /// <summary>
         /// 更新航摄影像记录

@@ -50,6 +50,18 @@ namespace DocMgr.Services.YearlyArchive
         }
 
         /// <summary>
+        /// 年度或历史资料落位：匹配期望专用用途，或已是「混用档口」。
+        /// </summary>
+        internal static bool MatchesCompatibleLandingCategory(string? storedCategoryName, string expectedCategory)
+        {
+            string normalized = CabinetArchiveSlotCategoryAssignment.NormalizeCategoryName(storedCategoryName);
+            return MatchesExpectedCategory(normalized, expectedCategory)
+                || CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                    normalized,
+                    CabinetArchiveSlotCategoryAssignment.CategoryMixed);
+        }
+
+        /// <summary>
         /// 校验标准滑道式档案柜档口用途；非 Standard 柜型不做用途限制（返回 null 表示通过）。
         /// </summary>
         /// <returns>错误信息；通过时为 null。</returns>
@@ -84,7 +96,7 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             string normalized = CabinetArchiveSlotCategoryAssignment.NormalizeCategoryName(storedCategoryName);
-            if (MatchesExpectedCategory(normalized, expectedCategory))
+            if (MatchesCompatibleLandingCategory(normalized, expectedCategory))
             {
                 return null;
             }

@@ -1,4 +1,6 @@
-﻿using DocMgr.Repositories.Interfaces;
+﻿using System.Linq;
+using System.Threading.Tasks;
+using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
 
 namespace DocMgr.Services.HistoryArchive
@@ -6,10 +8,14 @@ namespace DocMgr.Services.HistoryArchive
     public class AerialPhotoService : IAerialPhotoService
     {
         private readonly IAerialPhotoRepository _aerialPhotoRepository;
+        private readonly HistoryArchiveImportSlotGuard _importSlotGuard;
 
-        public AerialPhotoService(IAerialPhotoRepository aerialPhotoRepository)
+        public AerialPhotoService(
+            IAerialPhotoRepository aerialPhotoRepository,
+            HistoryArchiveImportSlotGuard importSlotGuard)
         {
             _aerialPhotoRepository = aerialPhotoRepository;
+            _importSlotGuard = importSlotGuard;
         }
 
         public bool IsTableExist(string tableName)
@@ -27,8 +33,15 @@ namespace DocMgr.Services.HistoryArchive
             return _aerialPhotoRepository.GetByCategory(tableName);
         }
 
-        public void ImportAerialPhotos(List<AerialPhoto> list, string sheetName, bool isRecreate = false)
+        public List<AerialPhoto> GetAllAerialPhotos()
         {
+            return _aerialPhotoRepository.GetAll();
+        }
+
+        public async Task ImportAerialPhotosAsync(List<AerialPhoto> list, string sheetName, bool isRecreate = false)
+        {
+            ArgumentNullException.ThrowIfNull(list);
+            await _importSlotGuard.EnsureSlotsReadyForHistoryImportAsync(list.Select(item => item.BoxNumber));
             string categoryName = $"历史存档航摄影像{sheetName}";
             _aerialPhotoRepository.Import(categoryName, list, isRecreate);
         }

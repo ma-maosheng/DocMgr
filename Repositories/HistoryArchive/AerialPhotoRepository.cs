@@ -35,6 +35,16 @@ public class AerialPhotoRepository : IAerialPhotoRepository
             .ToList();
     }
 
+    public List<AerialPhoto> GetAll()
+    {
+        return _dbContext.AerialPhotos
+            .OrderBy(item => item.Category)
+            .ThenBy(item => item.BoxNumber)
+            .ThenBy(item => item.SurveyArea)
+            .ThenBy(item => item.Id)
+            .ToList();
+    }
+
     public void Import(string categoryName, List<AerialPhoto> items, bool isRecreate)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(categoryName);

@@ -92,6 +92,9 @@ namespace DocMgr.Services.Cabinets
                     bool isHistoricalMaterialsSlot = CabinetArchiveSlotCategoryAssignment.MatchesCategory(
                         dedicatedSlotCategoryName,
                         CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials);
+                    bool isMixedUseArchiveSlot = CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                        dedicatedSlotCategoryName,
+                        CabinetArchiveSlotCategoryAssignment.CategoryMixed);
 
                     slots.Add(new CabinetSlotDescriptor
                     {
@@ -115,6 +118,7 @@ namespace DocMgr.Services.Cabinets
                         SpecialRuleText = metrics?.SpecialRuleText ?? string.Empty,
                         IsYearlyMaterialsDedicatedSlot = isYearlyMaterialsSlot,
                         IsHistoricalMaterialsDedicatedSlot = isHistoricalMaterialsSlot,
+                        IsMixedUseArchiveSlot = isMixedUseArchiveSlot,
                         DedicatedSlotCategoryName = dedicatedSlotCategoryName
                     });
                 }

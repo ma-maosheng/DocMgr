@@ -1,4 +1,4 @@
-﻿using DocMgr.Models.ArchiveContainers;
+using DocMgr.Models.ArchiveContainers;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.HistoryArchive;
 using DocMgr.Models.OpticalDiscMedia;
@@ -629,7 +629,7 @@ namespace DocMgr.Services.YearlyArchive
             IReadOnlyList<ArchiveBoxLocationCandidate> AllCandidates,
             IReadOnlyList<ArchiveBoxLocationCandidate> CapacityCandidates);
 
-        public async Task CreateArchiveBoxAsync(YearlyArchiveBox newBox, List<int> mediaItemIds)
+        public async Task CreateArchiveBoxAsync(YearlyArchiveBox newBox, List<int> mediaItemIds, int? numberingYear = null)
         {
             await using var transaction = await _archiveFilingRepository.BeginTransactionAsync();
             try
@@ -657,7 +657,8 @@ namespace DocMgr.Services.YearlyArchive
                     createdLinks,
                     mediaItems,
                     archivedAt,
-                    newBox.ArchivedBy);
+                    newBox.ArchivedBy,
+                    numberingYear);
 
                 await UpdateSimulatedArchiveStatusesAsync(records.Select(item => item.Id), archivedAt);
 
@@ -1016,7 +1017,7 @@ namespace DocMgr.Services.YearlyArchive
         }
 
         /// <summary>
-        /// 校验年度模拟档案盒落位：标准滑道式档案柜须为「年度资料专用档口」。
+        /// 校验年度模拟档案盒落位：标准滑道式档案柜须为「年度资料专用档口」或「混用档口」。
         /// </summary>
         private async Task ValidateYearlyArchiveBoxStorageLocationSlotCategoryAsync(YearlyArchiveBox box)
         {
@@ -1144,7 +1145,7 @@ namespace DocMgr.Services.YearlyArchive
                 faceCode,
                 ArchiveStorageSlotCategorySupport.BuildSlotCode(row, column));
             archiveCategoryLookup.TryGetValue(key, out string? storedCategory);
-            return ArchiveStorageSlotCategorySupport.MatchesExpectedCategory(
+            return ArchiveStorageSlotCategorySupport.MatchesCompatibleLandingCategory(
                 storedCategory,
                 ArchiveStorageSlotCategorySupport.ExpectedYearlyMaterialsCategory);
         }

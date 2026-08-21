@@ -13,6 +13,11 @@ public interface ITopoMapRepository
 
     List<TopoMap> GetByScale(string scale);
 
+    /// <summary>
+    /// 获取全部地形图记录。
+    /// </summary>
+    List<TopoMap> GetAll();
+
     void Import(List<TopoMap> maps, bool isRecreate);
 
     void DeleteByScale(string scale);

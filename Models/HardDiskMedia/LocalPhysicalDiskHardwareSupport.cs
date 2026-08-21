@@ -158,13 +158,57 @@ namespace DocMgr.Models.HardDiskMedia
         }
 
         /// <summary>
-        /// 按总线与介质类型映射硬盘类型域值。USB 外置优先归为移动硬盘。
+        /// USB 桥接且未能确认盘体 Identify 时，不采用主机上报的序列号/品牌/接口。
         /// </summary>
-        public static string ResolveDiskType(string? busType, int mediaType, string? model, string? win32MediaType)
+        public static bool IsTrustedInnerDiskIdentity(LocalPhysicalDiskIdentifySnapshot? identify)
         {
-            if (IsUsbBus(busType))
+            if (identify == null
+                || string.IsNullOrWhiteSpace(identify.SerialNumber)
+                || string.IsNullOrWhiteSpace(identify.Model)
+                || LooksLikeUsbBridgeIdentity(identify.Model))
             {
-                return DiskTypePortable;
+                return false;
+            }
+
+            string brand = ResolveBrand(identify.Model, null);
+            return !string.IsNullOrWhiteSpace(brand) && !LooksLikeUsbBridgeIdentity(brand);
+        }
+
+        /// <summary>
+        /// 主机侧是否为 USB 连接（含 UASP 在 Win32 上报 SCSI 的情况）。
+        /// </summary>
+        public static bool IsUsbAttachedDisk(string? msftBusTypeName, string? win32InterfaceType, string? pnpDeviceId)
+        {
+            if (IsUsbBus(msftBusTypeName) || IsUsbBus(win32InterfaceType) || ContainsOrdinal(win32InterfaceType, "USB"))
+            {
+                return true;
+            }
+
+            if (string.IsNullOrWhiteSpace(pnpDeviceId))
+            {
+                return false;
+            }
+
+            string pnp = pnpDeviceId.Trim();
+            return pnp.StartsWith("USB", StringComparison.OrdinalIgnoreCase)
+                || pnp.Contains("USBSTOR", StringComparison.OrdinalIgnoreCase)
+                || pnp.Contains(@"\USB\", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 按总线与介质类型映射硬盘类型域值。
+        /// 已确认盘体 Identify 时优先用盘体类型；USB 外置在未确认盘体时不映射为移动硬盘。
+        /// </summary>
+        public static string ResolveDiskType(
+            string? busType,
+            int mediaType,
+            string? model,
+            string? win32MediaType,
+            string? identifyDiskType = null)
+        {
+            if (!string.IsNullOrWhiteSpace(identifyDiskType))
+            {
+                return identifyDiskType.Trim();
             }
 
             if (mediaType == 4 || ContainsSsdHint(model, win32MediaType))
@@ -187,29 +231,37 @@ namespace DocMgr.Models.HardDiskMedia
 
         /// <summary>
         /// 按总线类型映射接口类型域值。
+        /// 盘体 Identify 给出的 SATA/NVMe/SAS 优先于 USB 桥的 Win32 接口。
         /// </summary>
         public static string ResolveInterfaceType(string? busType, string? win32InterfaceType)
         {
             string normalizedBus = (busType ?? string.Empty).Trim();
-            if (IsUsbBus(normalizedBus) || ContainsOrdinal(win32InterfaceType, "USB"))
-            {
-                return InterfaceUsb;
-            }
-
-            if (ContainsOrdinal(normalizedBus, "SAS") || ContainsOrdinal(win32InterfaceType, "SAS"))
-            {
-                return InterfaceSas;
-            }
-
-            if (ContainsOrdinal(normalizedBus, "NVMe")
-                || ContainsOrdinal(win32InterfaceType, "NVMe"))
+            if (ContainsOrdinal(normalizedBus, "NVMe"))
             {
                 return InterfaceNvme;
             }
 
-            if (ContainsOrdinal(normalizedBus, "SATA")
-                || ContainsOrdinal(normalizedBus, "ATA")
-                || ContainsOrdinal(win32InterfaceType, "SATA")
+            if (ContainsOrdinal(normalizedBus, "SAS"))
+            {
+                return InterfaceSas;
+            }
+
+            if (ContainsOrdinal(normalizedBus, "SATA") || ContainsOrdinal(normalizedBus, "ATA"))
+            {
+                return InterfaceSata;
+            }
+
+            if (ContainsOrdinal(win32InterfaceType, "SAS"))
+            {
+                return InterfaceSas;
+            }
+
+            if (ContainsOrdinal(win32InterfaceType, "NVMe"))
+            {
+                return InterfaceNvme;
+            }
+
+            if (ContainsOrdinal(win32InterfaceType, "SATA")
                 || ContainsOrdinal(win32InterfaceType, "IDE")
                 || ContainsOrdinal(win32InterfaceType, "SCSI")
                 || ContainsOrdinal(win32InterfaceType, "HDC"))
@@ -218,6 +270,68 @@ namespace DocMgr.Models.HardDiskMedia
             }
 
             return string.Empty;
+        }
+
+        /// <summary>
+        /// 解析 ATA IDENTIFY DEVICE 512 字节缓冲。无效数据返回 null。
+        /// </summary>
+        public static LocalPhysicalDiskIdentifySnapshot? TryParseAtaIdentify(byte[]? identify)
+        {
+            if (identify == null || identify.Length < 512)
+            {
+                return null;
+            }
+
+            if (IsBufferEmpty(identify, 512))
+            {
+                return null;
+            }
+
+            string serial = NormalizeSerialNumber(ReadAtaString(identify, 10, 10));
+            string firmware = NormalizeSerialNumber(ReadAtaString(identify, 23, 4));
+            string model = ReadAtaString(identify, 27, 20).Trim();
+            if (!LooksLikeDriveIdentity(serial, model))
+            {
+                return null;
+            }
+
+            string diskType = ResolveDiskTypeFromAtaIdentify(identify, model);
+            return new LocalPhysicalDiskIdentifySnapshot
+            {
+                SerialNumber = serial,
+                Model = model,
+                Firmware = firmware,
+                BusTypeName = "SATA",
+                DiskType = diskType
+            };
+        }
+
+        /// <summary>
+        /// 解析 NVMe Identify Controller 4096 字节缓冲。无效数据返回 null。
+        /// </summary>
+        public static LocalPhysicalDiskIdentifySnapshot? TryParseNvmeIdentifyController(byte[]? identify)
+        {
+            if (identify == null || identify.Length < 72)
+            {
+                return null;
+            }
+
+            string serial = NormalizeSerialNumber(ReadAsciiFixed(identify, 4, 20));
+            string model = ReadAsciiFixed(identify, 24, 40).Trim();
+            string firmware = NormalizeSerialNumber(ReadAsciiFixed(identify, 64, 8));
+            if (!LooksLikeDriveIdentity(serial, model))
+            {
+                return null;
+            }
+
+            return new LocalPhysicalDiskIdentifySnapshot
+            {
+                SerialNumber = serial,
+                Model = model,
+                Firmware = firmware,
+                BusTypeName = "NVMe",
+                DiskType = DiskTypeSsd
+            };
         }
 
         /// <summary>
@@ -238,6 +352,28 @@ namespace DocMgr.Models.HardDiskMedia
             string? exact = options.FirstOrDefault(item =>
                 string.Equals(item?.Trim(), trimmed, StringComparison.Ordinal));
             return string.IsNullOrWhiteSpace(exact) ? trimmed : exact;
+        }
+
+        private static bool LooksLikeUsbBridgeIdentity(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return false;
+            }
+
+            string upper = text.Trim().ToUpperInvariant();
+            return upper.Contains("USB", StringComparison.Ordinal)
+                || upper.Contains("JMICRON", StringComparison.Ordinal)
+                || upper.Contains("JMS", StringComparison.Ordinal)
+                || upper.Contains("ASMEDIA", StringComparison.Ordinal)
+                || upper.Contains("ASM1", StringComparison.Ordinal)
+                || upper.Contains("ASM2", StringComparison.Ordinal)
+                || upper.Contains("REALTEK", StringComparison.Ordinal)
+                || upper.Contains("INITIO", StringComparison.Ordinal)
+                || upper.Contains("INIC", StringComparison.Ordinal)
+                || upper.Contains("VIA LABS", StringComparison.Ordinal)
+                || upper.Contains("VL81", StringComparison.Ordinal)
+                || upper.Contains("GENERIC", StringComparison.Ordinal);
         }
 
         public static bool IsUsbBus(string? busType)
@@ -455,6 +591,94 @@ namespace DocMgr.Models.HardDiskMedia
                 18 => "FileBackedVirtual",
                 _ => busType.ToString(CultureInfo.InvariantCulture)
             };
+        }
+
+        private static string ResolveDiskTypeFromAtaIdentify(byte[] identify, string model)
+        {
+            ushort rotationRate = ReadAtaWord(identify, 217);
+            if (rotationRate == 1 || ContainsSsdHint(model, null))
+            {
+                return DiskTypeSsd;
+            }
+
+            if (rotationRate >= 0x0401)
+            {
+                return DiskTypeHdd;
+            }
+
+            if (ContainsHddHint(model, null))
+            {
+                return DiskTypeHdd;
+            }
+
+            return string.Empty;
+        }
+
+        private static bool LooksLikeDriveIdentity(string serial, string model)
+        {
+            if (string.IsNullOrWhiteSpace(model) && string.IsNullOrWhiteSpace(serial))
+            {
+                return false;
+            }
+
+            string identity = $"{model} {serial}";
+            int printable = identity.Count(ch => ch is >= (char)0x20 and <= (char)0x7E);
+            return printable >= 6;
+        }
+
+        private static bool IsBufferEmpty(byte[] buffer, int length)
+        {
+            int limit = Math.Min(buffer.Length, length);
+            for (int i = 0; i < limit; i++)
+            {
+                if (buffer[i] != 0)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static ushort ReadAtaWord(byte[] identify, int wordIndex)
+        {
+            int offset = wordIndex * 2;
+            if (offset + 1 >= identify.Length)
+            {
+                return 0;
+            }
+
+            return (ushort)(identify[offset] | (identify[offset + 1] << 8));
+        }
+
+        private static string ReadAtaString(byte[] identify, int wordOffset, int wordCount)
+        {
+            int byteCount = wordCount * 2;
+            int start = wordOffset * 2;
+            if (start + byteCount > identify.Length)
+            {
+                return string.Empty;
+            }
+
+            var chars = new char[byteCount];
+            int written = 0;
+            for (int i = 0; i < byteCount; i += 2)
+            {
+                chars[written++] = (char)identify[start + i + 1];
+                chars[written++] = (char)identify[start + i];
+            }
+
+            return new string(chars).Trim('\0', ' ', '\t');
+        }
+
+        private static string ReadAsciiFixed(byte[] buffer, int offset, int length)
+        {
+            if (offset < 0 || length <= 0 || offset + length > buffer.Length)
+            {
+                return string.Empty;
+            }
+
+            return System.Text.Encoding.ASCII.GetString(buffer, offset, length).Trim('\0', ' ', '\t');
         }
 
         private static bool ContainsSsdHint(string? model, string? mediaType)

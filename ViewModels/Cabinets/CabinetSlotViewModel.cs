@@ -60,6 +60,7 @@ namespace DocMgr.ViewModels.Cabinets
             IsBlankDiskDedicatedSlot = descriptor.IsBlankDiskDedicatedSlot;
             IsYearlyMaterialsDedicatedSlot = descriptor.IsYearlyMaterialsDedicatedSlot;
             IsHistoricalMaterialsDedicatedSlot = descriptor.IsHistoricalMaterialsDedicatedSlot;
+            IsMixedUseArchiveSlot = descriptor.IsMixedUseArchiveSlot;
             DedicatedSlotCategoryName = descriptor.DedicatedSlotCategoryName;
         }
 
@@ -173,6 +174,8 @@ namespace DocMgr.ViewModels.Cabinets
         public bool IsYearlyMaterialsDedicatedSlot { get; }
 
         public bool IsHistoricalMaterialsDedicatedSlot { get; }
+
+        public bool IsMixedUseArchiveSlot { get; }
 
         public string DedicatedSlotCategoryName { get; }
 
@@ -295,6 +298,8 @@ namespace DocMgr.ViewModels.Cabinets
         public Visibility YearlyMaterialsSlotVisibility => IsYearlyMaterialsDedicatedSlot ? Visibility.Visible : Visibility.Collapsed;
 
         public Visibility HistoricalMaterialsSlotVisibility => IsHistoricalMaterialsDedicatedSlot ? Visibility.Visible : Visibility.Collapsed;
+
+        public Visibility MixedUseArchiveSlotVisibility => IsMixedUseArchiveSlot ? Visibility.Visible : Visibility.Collapsed;
 
         public bool IsUnsetArchiveSlotCategory =>
             !IsMagneticDiskSlot
@@ -567,8 +572,8 @@ namespace DocMgr.ViewModels.Cabinets
                 return false;
             }
 
-            // 年度模拟档案盒：标准滑道式须为年度资料专用档口；立式/卧式不限制用途标记。
-            if (IsYearlyMaterialsDedicatedSlot)
+            // 年度模拟档案盒：标准滑道式须为年度资料专用或混用档口；立式/卧式不限制用途标记。
+            if (IsYearlyMaterialsDedicatedSlot || IsMixedUseArchiveSlot)
             {
                 return true;
             }
@@ -722,6 +727,11 @@ namespace DocMgr.ViewModels.Cabinets
                 return "#F5F3FF";
             }
 
+            if (IsMixedUseArchiveSlot)
+            {
+                return "#ECFDF5";
+            }
+
             return null;
         }
 
@@ -770,6 +780,11 @@ namespace DocMgr.ViewModels.Cabinets
             if (IsHistoricalMaterialsDedicatedSlot)
             {
                 return "#C4B5FD";
+            }
+
+            if (IsMixedUseArchiveSlot)
+            {
+                return "#6EE7B7";
             }
 
             return null;
@@ -822,6 +837,11 @@ namespace DocMgr.ViewModels.Cabinets
                 return "#EDE9FE";
             }
 
+            if (IsMixedUseArchiveSlot)
+            {
+                return "#D1FAE5";
+            }
+
             return null;
         }
 
@@ -872,6 +892,11 @@ namespace DocMgr.ViewModels.Cabinets
                 return "#DDD6FE";
             }
 
+            if (IsMixedUseArchiveSlot)
+            {
+                return "#A7F3D0";
+            }
+
             return null;
         }
 
@@ -920,6 +945,11 @@ namespace DocMgr.ViewModels.Cabinets
             if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(categoryName, CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials))
             {
                 return "历史资料";
+            }
+
+            if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(categoryName, CabinetArchiveSlotCategoryAssignment.CategoryMixed))
+            {
+                return "混用档口";
             }
 
             if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(categoryName, CabinetArchiveSlotCategoryAssignment.CategoryUnset))

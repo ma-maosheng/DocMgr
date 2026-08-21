@@ -28,7 +28,13 @@ namespace DocMgr.Views.HistoryArchive
         // 纯 UI 逻辑：DataGrid 自动生成行号
         private void DgData_LoadingRow(object sender, DataGridRowEventArgs e)
         {
-            e.Row.Header = (e.Row.GetIndex() + 1).ToString();
+            int pageStartIndex = 0;
+            if (DataContext is AerialPhotoViewModel viewModel)
+            {
+                pageStartIndex = viewModel.PageStartIndex;
+            }
+
+            e.Row.Header = (pageStartIndex + e.Row.GetIndex() + 1).ToString();
         }
     }
 

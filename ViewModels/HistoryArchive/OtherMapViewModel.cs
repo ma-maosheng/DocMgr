@@ -137,15 +137,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                     return;
                 }
 
-                _dialogService.SetBusyState(true);
-                try
-                {
-                    await ProcessImportLogicAsync(filePath, selectedSheet);
-                }
-                finally
-                {
-                    _dialogService.SetBusyState(false);
-                }
+                await ProcessImportLogicAsync(filePath, selectedSheet);
             }
             catch (Exception ex)
             {
@@ -161,25 +153,29 @@ namespace DocMgr.ViewModels.HistoryArchive
 
             List<OtherMap> dataList = new List<OtherMap>();
 
-            await Task.Run(() =>
+            using (var progress = _dialogService.ShowOperationProgress("其他图件 Excel 导入", "正在读取工作表…"))
             {
-                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                var workbook = WorkbookFactory.Create(fs);
-                var sheet = workbook.GetSheet(sheetName);
-                if (sheet == null || sheet.LastRowNum <= 0)
+                await Task.Run(() =>
                 {
-                    return;
-                }
+                    using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    var workbook = WorkbookFactory.Create(fs);
+                    var sheet = workbook.GetSheet(sheetName);
+                    if (sheet == null || sheet.LastRowNum <= 0)
+                    {
+                        return;
+                    }
 
-                var headerMap = ParseHeader(sheet.GetRow(0));
-                string lastSequenceNumber = string.Empty;
-                string lastScale = string.Empty;
-                string lastBoxNumber = string.Empty;
-                string lastBoxSpecification = string.Empty;
+                    var headerMap = ParseHeader(sheet.GetRow(0));
+                    string lastSequenceNumber = string.Empty;
+                    string lastScale = string.Empty;
+                    string lastBoxNumber = string.Empty;
+                    string lastBoxSpecification = string.Empty;
+                    int lastRow = sheet.LastRowNum;
 
-                for (int i = 1; i <= sheet.LastRowNum; i++)
-                {
-                    var row = sheet.GetRow(i);
+                    for (int i = 1; i <= lastRow; i++)
+                    {
+                        ExcelImportProgressSupport.ReportReadRow(progress, i, lastRow);
+                        var row = sheet.GetRow(i);
                     if (row == null)
                     {
                         continue;
@@ -251,7 +247,8 @@ namespace DocMgr.ViewModels.HistoryArchive
 
                     dataList.Add(item);
                 }
-            });
+                });
+            }
 
             if (dataList.Count == 0)
             {
@@ -272,7 +269,20 @@ namespace DocMgr.ViewModels.HistoryArchive
                 isRecreate = mode == ImportMode.Recreate;
             }
 
-            await Task.Run(() => _otherMapService.ImportOtherMaps(dataList, sheetName, isRecreate));
+            try
+            {
+                using (_dialogService.ShowOperationProgress(
+                    "其他图件 Excel 导入",
+                    $"正在核验档口并写入 {dataList.Count} 条…"))
+                {
+                    await _otherMapService.ImportOtherMapsAsync(dataList, sheetName, isRecreate);
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                _dialogService.ShowError(ex.Message);
+                return;
+            }
 
             _dialogService.ShowMessage($"成功导入 {dataList.Count} 条数据到表 [{targetTableName}]！");
             await LoadDataAsync(targetTableName);

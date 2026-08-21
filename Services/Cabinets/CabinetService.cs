@@ -163,13 +163,9 @@ namespace DocMgr.Services.Cabinets
 
         /// <inheritdoc/>
         public void EnsureAllMagneticDiskSlotsUseBlankCategoryOnStartup()
-            => ApplyMagneticDiskSlotBlankCategoryDefaults(overwriteExistingAssignments: false);
+            => ApplyMagneticDiskSlotBlankCategoryDefaults();
 
-        /// <inheritdoc/>
-        public void ResetAllMagneticDiskSlotsToBlankCategory()
-            => ApplyMagneticDiskSlotBlankCategoryDefaults(overwriteExistingAssignments: true);
-
-        private void ApplyMagneticDiskSlotBlankCategoryDefaults(bool overwriteExistingAssignments)
+        private void ApplyMagneticDiskSlotBlankCategoryDefaults()
         {
             EnsureDefaultCabinets();
 
@@ -204,17 +200,8 @@ namespace DocMgr.Services.Cabinets
                         {
                             string slotCode = $"{layer}-{column}";
                             string key = BuildSlotCategoryKey(faceCode, slotCode);
-                            if (assignmentLookup.TryGetValue(key, out var existing))
+                            if (assignmentLookup.ContainsKey(key))
                             {
-                                if (!overwriteExistingAssignments
-                                    || CabinetHardDiskSlotCategoryAssignment.MatchesCategory(existing.CategoryName, blankCategory))
-                                {
-                                    continue;
-                                }
-
-                                existing.CategoryName = blankCategory;
-                                existing.UpdatedTime = now;
-                                changed = true;
                                 continue;
                             }
 
@@ -279,6 +266,144 @@ namespace DocMgr.Services.Cabinets
             EnsureStandardArchiveSlotIsEmptyForCategoryChange(target, trimmedFaceCode, trimmedSlotCode);
             UpsertArchiveSlotCategoryAssignment(cabinetId, trimmedFaceCode, trimmedSlotCode, trimmedCategoryName);
             _cabinetRepository.SaveChanges();
+        }
+
+        /// <inheritdoc/>
+        public void PromoteUnsetArchiveSlotToHistoricalMaterials(int cabinetId, string faceCode, string slotCode)
+        {
+            if (string.IsNullOrWhiteSpace(faceCode))
+            {
+                throw new ArgumentException("门别不能为空。", nameof(faceCode));
+            }
+
+            if (string.IsNullOrWhiteSpace(slotCode))
+            {
+                throw new ArgumentException("档口编号不能为空。", nameof(slotCode));
+            }
+
+            var target = _cabinetRepository.GetById(cabinetId);
+            if (target == null)
+            {
+                throw new InvalidOperationException("未找到要设置的标准滑道式档案柜。");
+            }
+
+            if (target.Type != CabinetType.Standard)
+            {
+                throw new InvalidOperationException("仅标准滑道式档案柜支持设置档案盒档口用途。");
+            }
+
+            string trimmedFaceCode = faceCode.Trim();
+            string trimmedSlotCode = slotCode.Trim();
+            var existing = _cabinetRepository.GetArchiveSlotCategoryAssignment(cabinetId, trimmedFaceCode, trimmedSlotCode);
+            string normalized = CabinetArchiveSlotCategoryAssignment.NormalizeCategoryName(existing?.CategoryName);
+            if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                    normalized,
+                    CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials)
+                || CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                    normalized,
+                    CabinetArchiveSlotCategoryAssignment.CategoryMixed))
+            {
+                return;
+            }
+
+            if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                    normalized,
+                    CabinetArchiveSlotCategoryAssignment.CategoryYearlyMaterials))
+            {
+                throw new InvalidOperationException(
+                    $"档口 {trimmedFaceCode} {trimmedSlotCode} 为年度资料专用档口，不能改为历史资料专用档口。");
+            }
+
+            UpsertArchiveSlotCategoryAssignment(
+                cabinetId,
+                trimmedFaceCode,
+                trimmedSlotCode,
+                CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials);
+            _cabinetRepository.SaveChanges();
+        }
+
+        /// <inheritdoc/>
+        public void PromoteUnsetArchiveSlotToYearlyMaterials(int cabinetId, string faceCode, string slotCode)
+        {
+            var (target, trimmedFaceCode, trimmedSlotCode) = RequireStandardArchiveSlot(cabinetId, faceCode, slotCode);
+            _ = target;
+            var existing = _cabinetRepository.GetArchiveSlotCategoryAssignment(cabinetId, trimmedFaceCode, trimmedSlotCode);
+            string normalized = CabinetArchiveSlotCategoryAssignment.NormalizeCategoryName(existing?.CategoryName);
+            if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                    normalized,
+                    CabinetArchiveSlotCategoryAssignment.CategoryYearlyMaterials)
+                || CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                    normalized,
+                    CabinetArchiveSlotCategoryAssignment.CategoryMixed))
+            {
+                return;
+            }
+
+            if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                    normalized,
+                    CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials))
+            {
+                throw new InvalidOperationException(
+                    $"档口 {trimmedFaceCode} {trimmedSlotCode} 为历史资料专用档口，不能改为年度资料专用档口。");
+            }
+
+            UpsertArchiveSlotCategoryAssignment(
+                cabinetId,
+                trimmedFaceCode,
+                trimmedSlotCode,
+                CabinetArchiveSlotCategoryAssignment.CategoryYearlyMaterials);
+            _cabinetRepository.SaveChanges();
+        }
+
+        /// <inheritdoc/>
+        public void PromoteArchiveSlotToMixedUse(int cabinetId, string faceCode, string slotCode)
+        {
+            var (target, trimmedFaceCode, trimmedSlotCode) = RequireStandardArchiveSlot(cabinetId, faceCode, slotCode);
+            _ = target;
+            var existing = _cabinetRepository.GetArchiveSlotCategoryAssignment(cabinetId, trimmedFaceCode, trimmedSlotCode);
+            string normalized = CabinetArchiveSlotCategoryAssignment.NormalizeCategoryName(existing?.CategoryName);
+            if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                    normalized,
+                    CabinetArchiveSlotCategoryAssignment.CategoryMixed))
+            {
+                return;
+            }
+
+            UpsertArchiveSlotCategoryAssignment(
+                cabinetId,
+                trimmedFaceCode,
+                trimmedSlotCode,
+                CabinetArchiveSlotCategoryAssignment.CategoryMixed);
+            _cabinetRepository.SaveChanges();
+        }
+
+        private (Cabinet Cabinet, string FaceCode, string SlotCode) RequireStandardArchiveSlot(
+            int cabinetId,
+            string faceCode,
+            string slotCode)
+        {
+            if (string.IsNullOrWhiteSpace(faceCode))
+            {
+                throw new ArgumentException("门别不能为空。", nameof(faceCode));
+            }
+
+            if (string.IsNullOrWhiteSpace(slotCode))
+            {
+                throw new ArgumentException("档口编号不能为空。", nameof(slotCode));
+            }
+
+            var target = _cabinetRepository.GetById(cabinetId);
+            if (target == null)
+            {
+                throw new InvalidOperationException("未找到要设置的标准滑道式档案柜。");
+            }
+
+            if (target.Type != CabinetType.Standard)
+            {
+                throw new InvalidOperationException("仅标准滑道式档案柜支持设置档案盒档口用途。");
+            }
+
+            return (target, faceCode.Trim(), slotCode.Trim());
         }
 
         /// <inheritdoc/>
@@ -348,13 +473,9 @@ namespace DocMgr.Services.Cabinets
 
         /// <inheritdoc/>
         public void EnsureAllStandardArchiveSlotsUseUnsetCategoryOnStartup()
-            => ApplyStandardArchiveSlotUnsetCategoryDefaults(overwriteExistingAssignments: false);
+            => ApplyStandardArchiveSlotUnsetCategoryDefaults();
 
-        /// <inheritdoc/>
-        public void ResetAllStandardArchiveSlotsToUnsetCategory()
-            => ApplyStandardArchiveSlotUnsetCategoryDefaults(overwriteExistingAssignments: true);
-
-        private void ApplyStandardArchiveSlotUnsetCategoryDefaults(bool overwriteExistingAssignments)
+        private void ApplyStandardArchiveSlotUnsetCategoryDefaults()
         {
             EnsureDefaultCabinets();
 
@@ -389,17 +510,8 @@ namespace DocMgr.Services.Cabinets
                         {
                             string slotCode = $"{layer}-{column}";
                             string key = BuildSlotCategoryKey(faceCode, slotCode);
-                            if (assignmentLookup.TryGetValue(key, out var existing))
+                            if (assignmentLookup.ContainsKey(key))
                             {
-                                if (!overwriteExistingAssignments
-                                    || CabinetArchiveSlotCategoryAssignment.MatchesCategory(existing.CategoryName, unsetCategory))
-                                {
-                                    continue;
-                                }
-
-                                existing.CategoryName = unsetCategory;
-                                existing.UpdatedTime = now;
-                                changed = true;
                                 continue;
                             }
 

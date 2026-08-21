@@ -32,6 +32,16 @@ namespace DocMgr.Models.YearlyArchive
 
         public int Column { get; init; }
 
+        /// <summary>
+        /// 指定盒内序号。有值时按该序号生成物理位置；空则取格口最小可用序号。
+        /// </summary>
+        public int? SpecifiedBoxIndex { get; init; }
+
+        /// <summary>
+        /// Excel 导入：提交前按档口当前用途同步为年度资料专用或混用档口。
+        /// </summary>
+        public bool SyncUnsetSlotCategoryOnCommit { get; init; }
+
         public string Remarks { get; init; } = string.Empty;
 
         public IReadOnlyList<StockTextArchiveMediaGroupDraft> MediaGroups { get; init; }

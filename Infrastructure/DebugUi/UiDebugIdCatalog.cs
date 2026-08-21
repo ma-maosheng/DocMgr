@@ -60,10 +60,10 @@ namespace DocMgr.Infrastructure.DebugUi
             // YA Pages
             Add<ArchiveRegisterApplicationPage>("YA-REG-APP", "建档申请");
             Add<ArchiveRegisterApprovalPage>("YA-REG-APV", "建档审批");
-            Add<ArchiveRegisterSimulationPage>("YA-REG-SIM", "模拟登记");
             Add<ArchiveFilingPage>("YA-FIL", "资料立档");
             Add<StockHardDiskDirectFilingPage>("YA-FIL-STK", "存量硬盘直办立档");
             Add<StockTextArchiveDirectFilingPage>("YA-FIL-STT", "存档文本直办立档");
+            Add<StockTextArchiveExcelImportDialog>("YA-FIL-STT-IMP", "存档文本直办 Excel 导入");
             Add<ArchiveFilingSearchPage>("YA-FIL-SCH", "立档检索");
             Add<ArchiveFilingSearchPoolPage>("YA-FIL-POOL", "立档检索池");
             Add<ArchiveFilingLedgerPage>("YA-FIL-LDG", "立档台账");
@@ -161,7 +161,6 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<BusinessLogicSettingsPage>("SS-BIZ", "业务逻辑设置");
             Add<AdvancedDataPage>("SS-ADV", "高级数据管理");
             Add<DbOperationLogPage>("SS-DBLOG", "数据库操作日志");
-            Add<TestPreparationPage>("SS-TEST", "测试准备");
             Add<UserEditDialog>("SS-USER-ED", "用户编辑");
             Add<RoleEditDialog>("SS-ROLE-ED", "角色编辑");
             Add<ServerPathSettingEditDialog>("SS-SRVPATH-ED", "服务器路径编辑");
@@ -179,6 +178,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<TextDetailDialog>("SH-TXT", "文本详情");
             Add<SheetSelectionDialog>("SH-SHEET", "工作表选择");
             Add<ImportOptionDialog>("SH-IMP", "导入选项");
+            Add<OperationProgressOverlay>("SH-PROG", "操作进度");
 
             return map;
         }

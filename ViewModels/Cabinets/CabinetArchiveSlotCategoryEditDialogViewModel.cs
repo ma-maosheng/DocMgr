@@ -60,7 +60,10 @@ namespace DocMgr.ViewModels.Cabinets
                     "年度资料专用档口"),
                 new CabinetArchiveSlotCategoryOption(
                     CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials,
-                    "历史资料专用档口")
+                    "历史资料专用档口"),
+                new CabinetArchiveSlotCategoryOption(
+                    CabinetArchiveSlotCategoryAssignment.CategoryMixed,
+                    "混用档口")
             ];
         }
 

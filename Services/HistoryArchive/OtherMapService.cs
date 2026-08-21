@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
 
@@ -7,10 +9,12 @@ namespace DocMgr.Services.HistoryArchive
     public class OtherMapService : IOtherMapService
     {
         private readonly IOtherMapRepository _otherMapRepository;
+        private readonly HistoryArchiveImportSlotGuard _importSlotGuard;
 
-        public OtherMapService(IOtherMapRepository otherMapRepository)
+        public OtherMapService(IOtherMapRepository otherMapRepository, HistoryArchiveImportSlotGuard importSlotGuard)
         {
             _otherMapRepository = otherMapRepository;
+            _importSlotGuard = importSlotGuard;
         }
 
         public bool IsTableExist(string tableName)
@@ -28,8 +32,10 @@ namespace DocMgr.Services.HistoryArchive
             return _otherMapRepository.GetByCategory(tableName);
         }
 
-        public void ImportOtherMaps(List<OtherMap> list, string sheetName, bool isRecreate = false)
+        public async Task ImportOtherMapsAsync(List<OtherMap> list, string sheetName, bool isRecreate = false)
         {
+            ArgumentNullException.ThrowIfNull(list);
+            await _importSlotGuard.EnsureSlotsReadyForHistoryImportAsync(list.Select(item => item.BoxNumber));
             string categoryName = $"历史存档其他图件{sheetName}";
             _otherMapRepository.Import(categoryName, list, isRecreate);
         }

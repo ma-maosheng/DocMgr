@@ -1,6 +1,6 @@
 ---
 description: 标准滑道式档案柜档口用途配置、启动行为与立档/归还落位校验
-globs: Services/Cabinets/**,Services/YearlyArchive/**,App.xaml.cs,ViewModels/Cabinets/**,Services/SystemSettings/TestPreparationService.cs
+globs: Services/Cabinets/**,Services/YearlyArchive/**,Services/HistoryArchive/**,App.xaml.cs,ViewModels/Cabinets/**,ViewModels/HistoryArchive/**
 alwaysApply: false
 ---
 
@@ -9,18 +9,19 @@ alwaysApply: false
 ## 语义
 
 - 标准滑道式档案柜档口用于存放**档案盒内的模拟介质资料**（资料先入盒，再入档口）。
-- 用途分类：`未设置`（默认，兼容「未定义」）、`年度资料专用档口`、`历史资料专用档口`。
+- 用途分类：`未设置`（默认，兼容「未定义」）、`年度资料专用档口`、`历史资料专用档口`、`混用档口`。
+- `混用档口`：年度资料与历史资料均可落位。
 
 ## 用户配置
 
 - 开柜界面通过 `ICabinetService.SetArchiveDedicatedSlotCategory` / `ClearArchiveDedicatedSlotCategory` 写入 `CabinetArchiveSlotCategoryAssignments`。
 - **不得**在普通业务或应用启动时覆盖用户已保存的 `CategoryName`。
-- 仅空档口（无档案盒占用）可变更用途。
+- 仅空档口（无档案盒占用）可变更用途（Excel 导入自动改用途除外）。
 
 ## 启动时（`EnsureAllStandardArchiveSlotsUseUnsetCategoryOnStartup`）
 
 - 仅为**尚未存在**用途记录的格口补默认「未设置」。
-- **不**将已设为年度/历史资料专用的格口改回未设置。
+- **不**将已设为年度/历史专用或混用的格口改回未设置。
 
 ## 立档 / 归还 / 迁档落位校验
 
@@ -28,14 +29,19 @@ alwaysApply: false
 
 | 业务 | 期望档口用途 | 钩子 |
 |---|---|---|
-| 年度模拟立档新建盒 | `年度资料专用档口` | `CreateArchiveBoxAsync` 硬校验；`SuggestArchiveBoxLocationAsync` 过滤候选 |
-| 归还新建空盒 / 指定目标盒 / 办结归位 | `年度资料专用档口` | `CreateEmptyRehomeBoxAndAssignAsync`、`AssignRehomeTargetBoxAsync`、`GetRehomeTargetOptionsAsync`、办结改挂 |
-| 年度模拟单件/批量迁档目标 | `年度资料专用档口` | `ValidateInteractiveSimulatedTargetAsync`、`ValidateTargetSlotForBatchMoveAsync` |
+| 年度模拟立档新建盒 | `年度资料专用档口` 或 `混用档口` | `CreateArchiveBoxAsync` 硬校验；`SuggestArchiveBoxLocationAsync` 过滤候选 |
+| 归还新建空盒 / 指定目标盒 / 办结归位 | 同上 | `CreateEmptyRehomeBoxAndAssignAsync`、`AssignRehomeTargetBoxAsync`、`GetRehomeTargetOptionsAsync`、办结改挂 |
+| 年度模拟单件/批量迁档目标 | 同上 | `ValidateInteractiveSimulatedTargetAsync`、`ValidateTargetSlotForBatchMoveAsync` |
+| 历史存档 Excel 导入（地形图 / 航摄 / 其他图件） | `历史资料专用档口` 或 `混用档口` | `HistoryArchiveImportSlotGuard`：写入前核验与同步 |
 
-- **不**允许落在「未设置」或「历史资料专用档口」。
-- 历史存档台账启动同步（`SyncHistoryArchivePlacements`）**不**因用途硬拦，避免历史存量数据阻断启动；历史资料应逐步迁入「历史资料专用档口」。
-
-## 测试数据准备
-
-- 需要全量重设时可调用 `ResetAllStandardArchiveSlotsToUnsetCategory`（仅测试场景）。
----
+- 年度业务**不**允许落在「未设置」或「历史资料专用档口」。
+- **例外（仅存档文本 Excel 导入）**：
+  - 「未设置/未定义」且格内无历史占用 → 同步为「年度资料专用档口」；
+  - 已是「历史资料专用档口」，或未设置但格内已有历史资料 → 同步为「混用档口」；
+  - 已是「年度资料专用档口」或「混用档口」→ 不改。
+- **例外（历史存档 Excel 导入）**：
+  - 「未设置/未定义」且格内无在用年度盒 → 同步为「历史资料专用档口」；
+  - 已是「年度资料专用档口」，或未设置但格内已有年度盒 → 同步为「混用档口」；
+  - 已是「历史资料专用档口」或「混用档口」→ 不改。
+- Excel 导入改用途走 `PromoteUnsetArchiveSlotToYearlyMaterials` / `PromoteUnsetArchiveSlotToHistoricalMaterials` / `PromoteArchiveSlotToMixedUse`，不要求空档口。
+- 历史存档台账启动同步（`SyncHistoryArchivePlacements`）**不**因用途硬拦，避免历史存量数据阻断启动；历史资料应逐步迁入「历史资料专用档口」或「混用档口」。

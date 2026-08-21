@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace DocMgr.Services.Interfaces
 {
@@ -28,11 +28,6 @@ namespace DocMgr.Services.Interfaces
         void EnsureAllMagneticDiskSlotsUseBlankCategoryOnStartup();
 
         /// <summary>
-        /// 将全部防磁磁盘柜格口用途重置为空白硬盘专用档口（仅测试数据准备等场景使用）。
-        /// </summary>
-        void ResetAllMagneticDiskSlotsToBlankCategory();
-
-        /// <summary>
         /// 设置标准滑道式档案柜档口用途。
         /// </summary>
         void SetArchiveDedicatedSlotCategory(int cabinetId, string faceCode, string slotCode, string categoryName);
@@ -48,9 +43,21 @@ namespace DocMgr.Services.Interfaces
         void EnsureAllStandardArchiveSlotsUseUnsetCategoryOnStartup();
 
         /// <summary>
-        /// 将全部标准滑道式档案柜格口用途重置为「未设置」（仅测试数据准备等场景使用）。
+        /// 历史存档导入：将「未设置/未定义」档口同步为「历史资料专用档口」。
+        /// 已是历史资料专用或混用时忽略；已是年度资料专用时拒绝（导入冲突应改走混用）。
         /// </summary>
-        void ResetAllStandardArchiveSlotsToUnsetCategory();
+        void PromoteUnsetArchiveSlotToHistoricalMaterials(int cabinetId, string faceCode, string slotCode);
+
+        /// <summary>
+        /// 存档文本 Excel 导入：将「未设置/未定义」档口同步为「年度资料专用档口」。
+        /// 已是年度资料专用或混用时忽略；已是历史资料专用时拒绝（导入冲突应改走混用）。
+        /// </summary>
+        void PromoteUnsetArchiveSlotToYearlyMaterials(int cabinetId, string faceCode, string slotCode);
+
+        /// <summary>
+        /// Excel 导入遇用途冲突时：将档口改为「混用档口」（不要求空档口）。
+        /// </summary>
+        void PromoteArchiveSlotToMixedUse(int cabinetId, string faceCode, string slotCode);
 
         void DeleteCabinet(int cabinetId);
         Task<List<Cabinet>> GetAllCabinetsAsync();

@@ -59,6 +59,7 @@ namespace DocMgr.Views
 
             ApplyPermissions();
             UpdateMenuVisibility();
+            InitializeNavMenuBehavior();
 
             Loaded += MainWindow_Loaded;
             Closed += MainWindow_Closed;
@@ -78,6 +79,7 @@ namespace DocMgr.Views
             _operationLogContextService = _windowScope.ServiceProvider.GetRequiredService<IDbOperationLogContextService>();
             _scopeFactory = _windowScope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
             _toDoNotificationPresenter = _windowScope.ServiceProvider.GetRequiredService<IToDoNotificationPresenter>();
+            InitializeNavMenuBehavior();
             Closed += MainWindow_Closed;
             Activated += MainWindow_Activated;
             MainContentFrame.Navigated += MainContentFrame_Navigated;
@@ -439,6 +441,103 @@ namespace DocMgr.Views
             if (button != null)
             {
                 button.Tag = "Active";
+                EnsureNavPathExpanded(button);
+            }
+        }
+
+        /// <summary>
+        /// 侧栏同级菜单手风琴：展开一项时收起其它同级项，减少纵向撑开。
+        /// </summary>
+        private void InitializeNavMenuBehavior()
+        {
+            foreach (var expander in EnumerateLogicalExpanders(NavMenuPanel))
+            {
+                expander.Expanded += NavExpander_Expanded;
+            }
+        }
+
+        private void NavExpander_Expanded(object sender, RoutedEventArgs e)
+        {
+            if (!ReferenceEquals(e.OriginalSource, sender) || sender is not Expander expanded)
+            {
+                return;
+            }
+
+            CollapseSiblingExpanders(expanded);
+        }
+
+        /// <summary>
+        /// 打开当前页对应菜单路径，并收起同级其它分组。
+        /// </summary>
+        private static void EnsureNavPathExpanded(DependencyObject start)
+        {
+            var chain = new List<Expander>();
+            for (var current = start; current != null; current = LogicalTreeHelper.GetParent(current))
+            {
+                if (current is Expander expander)
+                {
+                    chain.Add(expander);
+                }
+            }
+
+            chain.Reverse();
+            foreach (var expander in chain)
+            {
+                CollapseSiblingExpanders(expander);
+                expander.IsExpanded = true;
+            }
+        }
+
+        private static void CollapseSiblingExpanders(Expander expanded)
+        {
+            if (expanded.Parent is not Panel panel)
+            {
+                return;
+            }
+
+            foreach (var sibling in panel.Children.OfType<Expander>())
+            {
+                if (ReferenceEquals(sibling, expanded))
+                {
+                    continue;
+                }
+
+                CollapseExpanderTree(sibling);
+            }
+        }
+
+        private static void CollapseExpanderTree(Expander expander)
+        {
+            expander.IsExpanded = false;
+            if (expander.Content is not Panel panel)
+            {
+                return;
+            }
+
+            foreach (var child in panel.Children.OfType<Expander>())
+            {
+                CollapseExpanderTree(child);
+            }
+        }
+
+        private static IEnumerable<Expander> EnumerateLogicalExpanders(DependencyObject root)
+        {
+            foreach (var child in LogicalTreeHelper.GetChildren(root))
+            {
+                if (child is not DependencyObject childObject)
+                {
+                    continue;
+                }
+
+                if (childObject is Expander expander)
+                {
+                    yield return expander;
+                }
+
+                foreach (var nested in EnumerateLogicalExpanders(childObject))
+                {
+                    yield return nested;
+                }
             }
         }
 
@@ -448,7 +547,6 @@ namespace DocMgr.Views
             {
                 null => null,
                 ProjectSettingPage => BtnProjectInfo,
-                ArchiveRegisterSimulationPage => BtnArchiveSimulation,
                 ArchiveRegisterApplicationPage => BtnArchiveRegisterApply,
                 ArchiveRegisterApprovalPage => BtnArchiveRegisterApprove,
                 ArchiveFilingPage => BtnArchiveFiling,
@@ -492,7 +590,6 @@ namespace DocMgr.Views
                 DeptSettingPage => BtnDeptMgr,
                 RoleSettingPage => BtnRoleMgr,
                 ServerPathSettingPage => BtnServerPathMgr,
-                TestPreparationPage => BtnTestPreparation,
                 AdvancedDataPage => BtnAdvancedData,
                 BusinessLogicSettingsPage => BtnBusinessLogicSettings,
                 UserPreferencePage => BtnUserPreference,
@@ -587,7 +684,6 @@ namespace DocMgr.Views
                 ArchiveRegisterApplicationPage => "年度资料档案化管理（资料建档·建档申请）",
                 ArchiveRegisterApprovalPage => "年度资料档案化管理（资料建档·申请审批）",
                 ArchiveDetailPage => "年度资料档案化管理（资料查看）",
-                ArchiveRegisterSimulationPage => "年度资料档案化管理（模拟测试·模拟登记_方式1）",
                 ArchiveFilingPage => "年度资料档案化管理（资料建档·资料立档）",
                 StockHardDiskDirectFilingPage => "年度资料档案化管理（资料建档·存量硬盘直办立档）",
                 StockTextArchiveDirectFilingPage => "年度资料档案化管理（资料建档·存档文本直办立档）",
@@ -642,7 +738,6 @@ namespace DocMgr.Views
                 DeptSettingPage => "系统设置（部门设置）",
                 RoleSettingPage => "系统设置（角色设置）",
                 ServerPathSettingPage => "系统设置（服务器路径设置）",
-                TestPreparationPage => "系统设置（测试准备）",
                 UserPreferencePage => "系统设置（个人设置）",
                 BusinessLogicSettingsPage => "系统设置（业务逻辑设置）",
                 DbOperationLogPage => "系统设置（数据库操作日志）",
@@ -787,7 +882,6 @@ namespace DocMgr.Views
             SetNavButton(BtnDeptMgr, isSystemAdmin);
             SetNavButton(BtnRoleMgr, isSystemAdmin);
             SetNavButton(BtnServerPathMgr, isSystemAdmin);
-            SetNavButton(BtnTestPreparation, isSystemAdmin);
             SetNavButton(BtnAdvancedData, isSystemAdmin);
             SetNavButton(BtnBusinessLogicSettings, isSystemAdmin);
             SetNavButton(BtnUserPreference, true);
@@ -795,7 +889,6 @@ namespace DocMgr.Views
 
             SetNavButton(BtnProjectInfo, true);
 
-            SetNavButton(BtnArchiveSimulation, true);
             // 申请：部门资料管理员；审批及后续办理：资料室资料管理员。
             SetNavButton(BtnArchiveRegisterApply, canSubmitApplication);
             SetNavButton(BtnArchiveRegisterApprove, isArchiveAdmin);
@@ -943,12 +1036,6 @@ namespace DocMgr.Views
             MainContentFrame.Navigate(new UserManagementPage());
         }
 
-        private void BtnTestPreparation_Click(object sender, RoutedEventArgs e)
-        {
-            TxtPageTitle.Text = "系统设置（测试准备）";
-            MainContentFrame.Navigate(new TestPreparationPage());
-        }
-
         private void BtnLogout_Click(object sender, RoutedEventArgs e)
         {
             if (MessageBox.Show("确定要注销当前用户并切换账号吗？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
@@ -1019,12 +1106,6 @@ namespace DocMgr.Views
         private void BtnArchiveRegisterApprove_Click(object sender, RoutedEventArgs e)
         {
             NavigateToArchiveRegisterPage(null, ArchiveRegisterWorkspaceMode.Approval);
-        }
-
-        private void BtnArchiveSimulation_Click(object sender, RoutedEventArgs e)
-        {
-            TxtPageTitle.Text = "年度资料档案化管理（模拟测试·模拟登记_方式1）";
-            MainContentFrame.Navigate(new ArchiveRegisterSimulationPage());
         }
 
         private void BtnAdvancedData_Click(object sender, RoutedEventArgs e)

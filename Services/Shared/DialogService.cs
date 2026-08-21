@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.HistoryArchive;
@@ -233,13 +234,14 @@ namespace DocMgr.Services.Shared
         {
             var dialog = new SheetSelectionDialog
             {
-                Owner = GetOwnerWindow()
+                Owner = GetOwnerWindow(),
+                Title = string.IsNullOrWhiteSpace(title) ? "选择Sheet" : title.Trim()
             };
             var (scope, viewModel) = CreateScopedViewModel<SheetSelectionDialogViewModel>(sheetNames, this);
 
             dialog.DataContext = viewModel;
 
-            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            void HandleRequestClose(bool? result) => SetModalDialogResult(dialog, result);
             viewModel.RequestClose += HandleRequestClose;
 
             try
@@ -308,6 +310,33 @@ namespace DocMgr.Services.Shared
         public void SetBusyState(bool isBusy)
         {
             Mouse.OverrideCursor = isBusy ? Cursors.Wait : null;
+        }
+
+        /// <inheritdoc/>
+        public IOperationProgressSession ShowOperationProgress(string title, string initialStatus)
+        {
+            var viewModel = new OperationProgressDialogViewModel
+            {
+                Title = string.IsNullOrWhiteSpace(title) ? "处理中" : title.Trim()
+            };
+            viewModel.ApplyIndeterminate(
+                string.IsNullOrWhiteSpace(initialStatus) ? "请稍候…" : initialStatus.Trim());
+
+            Window host = ResolveProgressHostWindow();
+            return OperationProgressSession.Attach(host, viewModel);
+        }
+
+        private static Window ResolveProgressHostWindow()
+        {
+            Window? owner = GetOwnerWindow();
+            if (owner is SheetSelectionDialog)
+            {
+                owner = owner.Owner;
+            }
+
+            return owner
+                ?? Application.Current?.MainWindow
+                ?? throw new InvalidOperationException("没有可显示进度条的父窗口。");
         }
 
         public bool ShowUserEditDialog(User? userToEdit)
@@ -1209,6 +1238,31 @@ namespace DocMgr.Services.Shared
             try
             {
                 return dialog.ShowDialog() == true ? viewModel.SelectedResultSetId : null;
+            }
+            finally
+            {
+                viewModel.RequestClose -= HandleRequestClose;
+                scope.Dispose();
+            }
+        }
+
+        public bool ShowStockTextArchiveExcelImportDialog(IReadOnlyList<StockTextArchiveExcelBoxDraft> boxes)
+        {
+            var dialog = new StockTextArchiveExcelImportDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+            var (scope, viewModel) = CreateScopedViewModel<StockTextArchiveExcelImportDialogViewModel>(
+                new[] { typeof(IReadOnlyList<StockTextArchiveExcelBoxDraft>) },
+                boxes ?? Array.Empty<StockTextArchiveExcelBoxDraft>());
+            dialog.DataContext = viewModel;
+
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            viewModel.RequestClose += HandleRequestClose;
+
+            try
+            {
+                return dialog.ShowDialog() == true && viewModel.Imported;
             }
             finally
             {

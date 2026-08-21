@@ -623,9 +623,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             ApplyLocalDisk(selectedDisk);
 
-            if (string.IsNullOrWhiteSpace(selectedDisk.SerialNumber))
+            bool identityFilled = !string.IsNullOrWhiteSpace(selectedDisk.SerialNumber)
+                && !string.IsNullOrWhiteSpace(selectedDisk.Brand)
+                && !string.IsNullOrWhiteSpace(selectedDisk.InterfaceType);
+            if (!identityFilled)
             {
-                _dialogService.ShowMessage("已回填可识别字段，但该硬盘未读到序列号，请手工补录后再保存。");
+                _dialogService.ShowMessage("容量已回填。序列号、品牌、硬盘类型、接口和出厂日期请按盘标手工填写后保存。");
                 return;
             }
 
@@ -654,20 +657,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private void ApplyLocalDisk(LocalPhysicalDiskInfo disk)
         {
-            if (!string.IsNullOrWhiteSpace(disk.SerialNumber))
-            {
-                SerialNumber = disk.SerialNumber;
-            }
-
-            if (!string.IsNullOrWhiteSpace(disk.Brand))
-            {
-                Brand = disk.Brand;
-            }
-            else if (!string.IsNullOrWhiteSpace(disk.Model) && string.IsNullOrWhiteSpace(Brand))
-            {
-                Brand = disk.Model.Trim();
-            }
-
+            SerialNumber = disk.SerialNumber?.Trim() ?? string.Empty;
+            Brand = disk.Brand?.Trim() ?? string.Empty;
             EnsureOption(BrandOptions, Brand);
 
             if (!string.IsNullOrWhiteSpace(disk.CapacityValue))
@@ -682,11 +673,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             EnsureOption(DiskTypeOptions, DiskType);
             InterfaceType = LocalPhysicalDiskHardwareSupport.MatchDomainOption(InterfaceTypeOptions, disk.InterfaceType);
             EnsureOption(InterfaceTypeOptions, InterfaceType);
-
-            if (disk.FactoryDate.HasValue)
-            {
-                FactoryDate = disk.FactoryDate;
-            }
+            FactoryDate = disk.FactoryDate;
         }
 
         private void CopySavedMedium(HardDiskMedium medium)

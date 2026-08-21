@@ -49,6 +49,15 @@
             <Setter Property="MinHeight" Value="28"/>
         </Style>
 
+        <Style x:Key="LedgerFoldButtonStyle" TargetType="Button" BasedOn="{StaticResource CompactToolbarButtonStyle}">
+            <Setter Property="Padding" Value="6,1"/>
+            <Setter Property="MinHeight" Value="22"/>
+            <Setter Property="MinWidth" Value="40"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
         <Style x:Key="ContentCardStyle" TargetType="Border">
             <Setter Property="Background" Value="White"/>
             <Setter Property="CornerRadius" Value="4"/>
@@ -272,7 +281,8 @@
         </Style>
     </Page.Resources>
 
-    <Grid Margin="15">
+    <Grid>
+        <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -440,7 +450,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="立档记录列表" Style="{StaticResource SectionTitleStyle}"/>
-                            <TextBlock Text="点击行可在下方查看完整立档信息；专属列随上方「介质」筛选显示（全部时仅共用列）"
+                            <TextBlock Text="点击行可在下方查看完整立档信息；专属列随上方「介质」筛选显示（全部时仅共用列）。同建档表单号默认折叠，只显示第一行。"
                                        Style="{StaticResource SectionHintStyle}"/>
                         </StackPanel>
                         <Button Grid.Column="1" Content="查看建档详情" Padding="12,5"
@@ -463,7 +473,32 @@
                           ItemsSource="{Binding LedgerRows}"
                           SelectedItem="{Binding SelectedRow, Mode=TwoWay}">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo, Mode=OneWay}" Width="130"/>
+                        <DataGridTemplateColumn Width="188" IsReadOnly="True">
+                            <DataGridTemplateColumn.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="立档编号" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <Button Content="{Binding Data.FoldAllButtonText, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
+                                            ToolTip="{Binding Data.FoldAllButtonToolTip, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
+                                            Style="{StaticResource LedgerFoldButtonStyle}"
+                                            Margin="0"
+                                            Command="{Binding Data.ToggleFoldAllCommand, Source={StaticResource FilingLedgerVmProxy}}"/>
+                                </StackPanel>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="{Binding FoldButtonText, Mode=OneWay}"
+                                                Style="{StaticResource LedgerFoldButtonStyle}"
+                                                Visibility="{Binding ShowFoldButton, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                ToolTip="按建档表单号折叠/展开同单其余子项"
+                                                Command="{Binding Data.ToggleFoldGroupCommand, Source={StaticResource FilingLedgerVmProxy}}"
+                                                CommandParameter="{Binding}"
+                                                PreviewMouseLeftButtonDown="FoldButton_PreviewMouseLeftButtonDown"/>
+                                        <TextBlock Text="{Binding FilingFactNo, Mode=OneWay}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="介质" Binding="{Binding MediaKind, Mode=OneWay}" Width="56"/>
                         <DataGridTextColumn Header="介质类型" Binding="{Binding RegisterMediaType, Mode=OneWay}" Width="72">
                             <DataGridTextColumn.Visibility>
@@ -898,6 +933,37 @@
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
+        </Border>
+        </Grid>
+
+        <Border x:Name="BusyOverlay"
+                Background="#CCF0F2F5"
+                IsHitTestVisible="{Binding IsBusy}"
+                Panel.ZIndex="100">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Hidden"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <ProgressBar x:Name="LedgerBusyProgress"
+                             Width="320"
+                             Height="16"
+                             Minimum="0"
+                             Maximum="100"
+                             IsIndeterminate="True"
+                             IsVisibleChanged="LedgerBusyProgress_IsVisibleChanged"/>
+                <TextBlock Text="{Binding BusyStatus, Mode=OneWay}"
+                           Margin="0,12,0,0"
+                           HorizontalAlignment="Center"
+                           FontSize="13"
+                           Foreground="#37474F"/>
+            </StackPanel>
         </Border>
     </Grid>
 </Page>

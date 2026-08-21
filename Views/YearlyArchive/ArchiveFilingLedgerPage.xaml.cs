@@ -1,7 +1,10 @@
 using DocMgr.ViewModels.YearlyArchive;
 using Microsoft.Extensions.DependencyInjection;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace DocMgr.Views.YearlyArchive
 {
@@ -20,6 +23,7 @@ namespace DocMgr.Views.YearlyArchive
             DataContext = _viewModel;
 
             _viewModel.ViewRegisterDetailRequested += ViewModel_ViewRegisterDetailRequested;
+            _viewModel.PropertyChanged += ViewModel_PropertyChanged;
 
             Loaded += ArchiveFilingLedgerPage_Loaded;
             Unloaded += ArchiveFilingLedgerPage_Unloaded;
@@ -27,6 +31,8 @@ namespace DocMgr.Views.YearlyArchive
 
         private async void ArchiveFilingLedgerPage_Loaded(object sender, RoutedEventArgs e)
         {
+            RestartBusyProgress();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
             await _viewModel.InitializeAsync();
             await _viewModel.ApplyPendingNavigationFocusAsync();
         }
@@ -42,6 +48,7 @@ namespace DocMgr.Views.YearlyArchive
             Loaded -= ArchiveFilingLedgerPage_Loaded;
             Unloaded -= ArchiveFilingLedgerPage_Unloaded;
             _viewModel.ViewRegisterDetailRequested -= ViewModel_ViewRegisterDetailRequested;
+            _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
             _pageScope.Dispose();
         }
 
@@ -59,6 +66,47 @@ namespace DocMgr.Views.YearlyArchive
             }
 
             MessageBox.Show("当前无法打开资料查看页。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ArchiveFilingLedgerViewModel.IsBusy) && _viewModel.IsBusy)
+            {
+                RestartBusyProgress();
+            }
+        }
+
+        private void LedgerBusyProgress_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (e.NewValue is true)
+            {
+                RestartBusyProgress();
+            }
+        }
+
+        private void RestartBusyProgress()
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                LedgerBusyProgress.IsIndeterminate = false;
+                LedgerBusyProgress.UpdateLayout();
+                LedgerBusyProgress.IsIndeterminate = true;
+            }, DispatcherPriority.Loaded);
+        }
+
+        private void FoldButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not Button button)
+            {
+                return;
+            }
+
+            if (button.Command != null && button.Command.CanExecute(button.CommandParameter))
+            {
+                button.Command.Execute(button.CommandParameter);
+            }
+
+            e.Handled = true;
         }
     }
 }

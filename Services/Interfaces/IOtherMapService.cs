@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DocMgr.Services.Interfaces
 {
@@ -13,9 +14,9 @@ namespace DocMgr.Services.Interfaces
         bool IsTableExist(string tableName);
 
         /// <summary>
-        /// 将其他图件数据导入到数据库。
+        /// 将其他图件数据导入到数据库（先核验落档档口用途）。
         /// </summary>
-        void ImportOtherMaps(List<OtherMap> list, string sheetName, bool isRecreate = false);
+        Task ImportOtherMapsAsync(List<OtherMap> list, string sheetName, bool isRecreate = false);
 
         /// <summary>
         /// 删除指定名称的数据表。

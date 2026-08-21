@@ -81,6 +81,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ShowSlotSnapshotCommand = new RelayCommand(async _ => await ShowSlotSnapshotAsync(), _ => !IsBusy && CanShowSlotSnapshot);
             ConfirmCommand = new RelayCommand(async _ => await ConfirmAsync(), _ => !IsBusy);
             RefreshSlotOptionsCommand = new RelayCommand(async _ => await LoadSlotOptionsAsync(), _ => !IsBusy);
+            ImportExcelCommand = new RelayCommand(async _ => await ImportExcelAsync(), _ => !IsBusy);
         }
 
         public ObservableCollection<string> ArchivePurposeOptions { get; } = new();
@@ -106,6 +107,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ICommand ShowSlotSnapshotCommand { get; }
         public ICommand ConfirmCommand { get; }
         public ICommand RefreshSlotOptionsCommand { get; }
+
+        public ICommand ImportExcelCommand { get; }
 
         public bool IsBusy
         {
@@ -729,7 +732,83 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ? "年度模拟-????-???"
                 : PreviewArchiveSequenceNo;
             BusinessNumberHint =
-                $"确认立档后将生成 1 条建档单号，档案盒号预计为 [{previewBoxNo}]（确认写入时按当时库内最大号顺延；建档单号与盒号年度均取自项目实施年度）。{MediaSummary}";
+                $"确认立档后将生成 1 条建档单号，档案盒号预计为 [{previewBoxNo}]（确认写入时按当时库内最大号顺延；建档单号、盒号、立档编号的年度均取自项目实施年度）。{MediaSummary}";
+        }
+
+        private async Task ImportExcelAsync()
+        {
+            if (!_archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser))
+            {
+                _dialogService.ShowMessage("仅资料室资料管理员可执行存档文本直办立档。");
+                return;
+            }
+
+            string? filePath = _dialogService.OpenFileDialog("Excel Files|*.xlsx;*.xls", "选择存档文本资料登记表");
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return;
+            }
+
+            IReadOnlyList<string> sheetNames;
+            try
+            {
+                sheetNames = await Task.Run(() => _filingService.ListExcelSheetNames(filePath));
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError("读取 Excel 失败：" + ex.Message);
+                return;
+            }
+
+            if (sheetNames.Count == 0)
+            {
+                _dialogService.ShowMessage("所选文件未找到可导入的工作表。");
+                return;
+            }
+
+            string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames.ToList(), "选择要导入的工作表");
+            if (string.IsNullOrWhiteSpace(selectedSheet))
+            {
+                return;
+            }
+
+            IsBusy = true;
+            StockTextArchiveExcelParseResult? parsed = null;
+            try
+            {
+                using (_dialogService.ShowOperationProgress("存档文本 Excel 导入", "正在解析工作表…"))
+                {
+                    parsed = await Task.Run(() => _filingService.ParseExcel(filePath, selectedSheet));
+                }
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError("读取 Excel 失败：" + ex.Message);
+                return;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+
+            if (parsed == null)
+            {
+                return;
+            }
+
+            if (parsed.HasFileErrors)
+            {
+                _dialogService.ShowError(string.Join(Environment.NewLine, parsed.FileErrors));
+                return;
+            }
+
+            if (parsed.Boxes.Count == 0)
+            {
+                _dialogService.ShowMessage("未解析到档案盒。");
+                return;
+            }
+
+            _dialogService.ShowStockTextArchiveExcelImportDialog(parsed.Boxes);
         }
 
         private async Task ConfirmAsync()

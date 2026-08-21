@@ -46,7 +46,6 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<DeptSettingViewModel>();
         services.AddTransient<RoleSettingViewModel>();
         services.AddTransient<ServerPathSettingViewModel>();
-        services.AddTransient<TestPreparationPageViewModel>();
         services.AddTransient<ArchiveFilingViewModel>();
         services.AddTransient<StockHardDiskDirectFilingViewModel>();
         services.AddTransient<StockTextArchiveDirectFilingViewModel>();
@@ -70,7 +69,6 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<Func<ArchiveOutboundWorkspaceMode, int, ArchiveOutboundWorkbenchPageViewModel>>(sp =>
             (mode, initialRecordId) => ActivatorUtilities.CreateInstance<ArchiveOutboundWorkbenchPageViewModel>(
                 sp, mode, initialRecordId));
-        services.AddTransient<ArchiveRegisterSimulationViewModel>();
         services.AddTransient<AdvancedDataPageViewModel>();
         services.AddTransient<LoginWindowViewModel>();
         services.AddTransient<UserPreferenceViewModel>();

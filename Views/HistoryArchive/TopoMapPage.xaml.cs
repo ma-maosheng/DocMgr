@@ -28,7 +28,13 @@ namespace DocMgr.Views.HistoryArchive
         // 这属于视图层的表现逻辑，不属于业务逻辑，保留在 View 中是合理的
         private void DgTopoMaps_LoadingRow(object sender, DataGridRowEventArgs e)
         {
-            e.Row.Header = (e.Row.GetIndex() + 1).ToString();
+            int pageStartIndex = 0;
+            if (DataContext is TopoMapViewModel viewModel)
+            {
+                pageStartIndex = viewModel.PageStartIndex;
+            }
+
+            e.Row.Header = (pageStartIndex + e.Row.GetIndex() + 1).ToString();
         }
     }
 }

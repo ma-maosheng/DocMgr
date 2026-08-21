@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
 
@@ -8,10 +9,12 @@ namespace DocMgr.Services.HistoryArchive
     public class TopoMapService : ITopoMapService
     {
         private readonly ITopoMapRepository _topoMapRepository;
+        private readonly HistoryArchiveImportSlotGuard _importSlotGuard;
 
-        public TopoMapService(ITopoMapRepository topoMapRepository)
+        public TopoMapService(ITopoMapRepository topoMapRepository, HistoryArchiveImportSlotGuard importSlotGuard)
         {
             _topoMapRepository = topoMapRepository;
+            _importSlotGuard = importSlotGuard;
         }
 
         public bool IsTableExist(string tableName)
@@ -33,8 +36,15 @@ namespace DocMgr.Services.HistoryArchive
             return _topoMapRepository.GetByScale(scale);
         }
 
-        public void ImportTopoMaps(List<TopoMap> maps, bool isRecreate = false)
+        public List<TopoMap> GetAllTopoMaps()
         {
+            return _topoMapRepository.GetAll();
+        }
+
+        public async Task ImportTopoMapsAsync(List<TopoMap> maps, bool isRecreate = false)
+        {
+            ArgumentNullException.ThrowIfNull(maps);
+            await _importSlotGuard.EnsureSlotsReadyForHistoryImportAsync(maps.Select(item => item.BoxNumber));
             _topoMapRepository.Import(maps, isRecreate);
         }
 

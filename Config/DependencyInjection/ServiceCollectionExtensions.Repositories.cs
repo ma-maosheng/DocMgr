@@ -33,7 +33,6 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IAerialPhotoRepository, AerialPhotoRepository>();
         services.AddScoped<IOtherMapRepository, OtherMapRepository>();
         services.AddScoped<IArchiveRegisterRepository, ArchiveRegisterRepository>();
-        services.AddScoped<IArchiveRegisterSimulationRepository, ArchiveRegisterSimulationRepository>();
         services.AddScoped<IArchiveFilingRepository, ArchiveFilingRepository>();
         services.AddScoped<IArchiveFilingFactRepository, ArchiveFilingFactRepository>();
         services.AddScoped<IArchiveRelocationRepository, ArchiveRelocationRepository>();

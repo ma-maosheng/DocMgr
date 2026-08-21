@@ -1,6 +1,6 @@
 ---
 description: 防磁磁盘柜档口用途（专用类别）配置与启动行为
-globs: Services/Cabinets/**,App.xaml.cs,ViewModels/Cabinets/**,Services/SystemSettings/TestPreparationService.cs
+globs: Services/Cabinets/**,App.xaml.cs,ViewModels/Cabinets/**
 alwaysApply: false
 ---
 
@@ -15,10 +15,6 @@ alwaysApply: false
 
 - 仅为**尚未存在**专用类别记录的格口补默认「空白硬盘专用档口」。
 - **不**将已设为年度数据硬盘/光盘、损坏硬盘等用途的格口改回空白。
-
-## 测试数据准备
-
-- `TestPreparationService` 导入无数据硬盘前可调用 `ResetAllMagneticDiskSlotsToBlankCategory`，**有意**将全部格口重置为空白专用（仅测试场景）。
 
 ## 其它
 

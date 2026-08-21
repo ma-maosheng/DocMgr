@@ -436,10 +436,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            SerialNumber = disk.SerialNumber;
+            SerialNumber = disk.SerialNumber?.Trim() ?? string.Empty;
             DiskType = LocalPhysicalDiskHardwareSupport.MatchDomainOption(DiskTypeOptions, disk.DiskType);
             EnsureOption(DiskTypeOptions, DiskType);
-            Brand = string.IsNullOrWhiteSpace(disk.Brand) ? disk.Model?.Trim() ?? string.Empty : disk.Brand.Trim();
+            Brand = disk.Brand?.Trim() ?? string.Empty;
             EnsureOption(BrandOptions, Brand);
             if (ElectronicMediaCapacitySupport.TrySplitCapacityText(disk.CapacityText, out string capacityValue, out string capacityUnit)
                 || (!string.IsNullOrWhiteSpace(disk.CapacityValue) && !string.IsNullOrWhiteSpace(disk.CapacityUnit)))

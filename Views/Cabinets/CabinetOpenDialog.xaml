@@ -114,6 +114,10 @@
                                       IsCheckable="True"
                                       IsChecked="{Binding PlacementTarget.Tag.IsSelectedSlotsArchiveHistoricalCategory, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
                                       Command="{Binding PlacementTarget.Tag.ApplySelectedSlotsArchiveHistoricalCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                            <MenuItem Header="混用档口"
+                                      IsCheckable="True"
+                                      IsChecked="{Binding PlacementTarget.Tag.IsSelectedSlotsArchiveMixedCategory, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
+                                      Command="{Binding PlacementTarget.Tag.ApplySelectedSlotsArchiveMixedCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                         </MenuItem>
                         <MenuItem Header="{Binding PlacementTarget.Tag.BatchApplyPurposeMenuText, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   Visibility="{Binding PlacementTarget.Tag.CompactBatchHardDiskPurposeMenuVisibility, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
@@ -209,6 +213,11 @@
                                       IsCheckable="True"
                                       IsChecked="{Binding PlacementTarget.DataContext.IsHistoricalMaterialsDedicatedSlot, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
                                       Command="{Binding PlacementTarget.Tag.SetArchiveSlotHistoricalCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                            <MenuItem Header="混用档口"
+                                      IsCheckable="True"
+                                      IsChecked="{Binding PlacementTarget.DataContext.IsMixedUseArchiveSlot, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
+                                      Command="{Binding PlacementTarget.Tag.SetArchiveSlotMixedCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                         </MenuItem>
                         <MenuItem Header="刷新格口"
@@ -447,6 +456,10 @@
                                                           IsCheckable="True"
                                                           IsChecked="{Binding PlacementTarget.Tag.IsSelectedSlotsArchiveHistoricalCategory, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
                                                           Command="{Binding PlacementTarget.Tag.ApplySelectedSlotsArchiveHistoricalCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                <MenuItem Header="混用档口"
+                                                          IsCheckable="True"
+                                                          IsChecked="{Binding PlacementTarget.Tag.IsSelectedSlotsArchiveMixedCategory, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
+                                                          Command="{Binding PlacementTarget.Tag.ApplySelectedSlotsArchiveMixedCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                             </MenuItem>
                                             <MenuItem Header="{Binding PlacementTarget.Tag.BatchApplyPurposeMenuText, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       Visibility="{Binding PlacementTarget.Tag.CompactBatchHardDiskPurposeMenuVisibility, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
@@ -499,6 +512,11 @@
                                                           IsCheckable="True"
                                                           IsChecked="{Binding PlacementTarget.DataContext.IsHistoricalMaterialsDedicatedSlot, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
                                                           Command="{Binding PlacementTarget.Tag.SetArchiveSlotHistoricalCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                <MenuItem Header="混用档口"
+                                                          IsCheckable="True"
+                                                          IsChecked="{Binding PlacementTarget.DataContext.IsMixedUseArchiveSlot, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
+                                                          Command="{Binding PlacementTarget.Tag.SetArchiveSlotMixedCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                             </MenuItem>
                                             <MenuItem Header="设置档口用途"
@@ -629,6 +647,15 @@
                                                         CornerRadius="10"
                                                         Visibility="{Binding HistoricalMaterialsSlotVisibility}">
                                                     <TextBlock Text="历史资料" Style="{StaticResource SnapFs11}" FontWeight="SemiBold" Foreground="#6D28D9"/>
+                                                </Border>
+                                                <Border Margin="0,6,0,0"
+                                                        Padding="8,3"
+                                                        Background="#D1FAE5"
+                                                        BorderBrush="#6EE7B7"
+                                                        BorderThickness="1"
+                                                        CornerRadius="10"
+                                                        Visibility="{Binding MixedUseArchiveSlotVisibility}">
+                                                    <TextBlock Text="混用档口" Style="{StaticResource SnapFs11}" FontWeight="SemiBold" Foreground="#047857"/>
                                                 </Border>
                                                 <Border Margin="0,6,0,0"
                                                         Padding="8,3"

@@ -88,45 +88,94 @@ namespace DocMgr.Services.HardDiskMedia
             ulong size = GetUInt64(disk, "Size");
 
             msftDisks.TryGetValue(index, out MsftPhysicalDiskSnapshot? msft);
-            string serialNumber = !string.IsNullOrWhiteSpace(msft?.SerialNumber)
-                ? msft!.SerialNumber
-                : win32Serial;
-            if (string.IsNullOrWhiteSpace(serialNumber))
+            LocalPhysicalDiskIdentifySnapshot? identify = LocalPhysicalDiskIdentifyReader.TryRead(index);
+            string pnpDeviceId = GetString(disk, "PNPDeviceID");
+            bool hostIsUsb = LocalPhysicalDiskHardwareSupport.IsUsbAttachedDisk(
+                msft?.BusTypeName,
+                win32Interface,
+                pnpDeviceId);
+            bool trustedIdentify = LocalPhysicalDiskHardwareSupport.IsTrustedInnerDiskIdentity(identify);
+
+            string serialNumber;
+            string brand;
+            string diskType;
+            string interfaceType;
+            DateTime? factoryDate;
+            if (hostIsUsb && !trustedIdentify)
             {
-                serialNumber = LocalPhysicalDiskHardwareSupport.NormalizeSerialNumber(msft?.SerialNumber);
+                serialNumber = string.Empty;
+                brand = string.Empty;
+                diskType = string.Empty;
+                interfaceType = string.Empty;
+                factoryDate = null;
+            }
+            else
+            {
+                serialNumber = FirstNonEmpty(
+                    trustedIdentify ? identify?.SerialNumber : null,
+                    hostIsUsb ? null : msft?.SerialNumber,
+                    hostIsUsb ? null : win32Serial);
+                if (string.IsNullOrWhiteSpace(serialNumber) && !hostIsUsb)
+                {
+                    serialNumber = LocalPhysicalDiskHardwareSupport.NormalizeSerialNumber(msft?.SerialNumber);
+                }
+
+                string busType = FirstNonEmpty(
+                    trustedIdentify ? identify?.BusTypeName : null,
+                    hostIsUsb ? null : msft?.BusTypeName,
+                    hostIsUsb ? null : (LocalPhysicalDiskHardwareSupport.IsUsbBus(win32Interface) ? "USB" : win32Interface));
+
+                if (trustedIdentify && !string.IsNullOrWhiteSpace(identify?.Model))
+                {
+                    model = identify!.Model;
+                }
+                else if (!hostIsUsb && !string.IsNullOrWhiteSpace(msft?.Model) && string.IsNullOrWhiteSpace(model))
+                {
+                    model = msft!.Model;
+                }
+
+                if (trustedIdentify && !string.IsNullOrWhiteSpace(identify?.Firmware))
+                {
+                    firmwareRevision = identify!.Firmware;
+                }
+                else if (!hostIsUsb && string.IsNullOrWhiteSpace(firmwareRevision) && !string.IsNullOrWhiteSpace(msft?.FirmwareVersion))
+                {
+                    firmwareRevision = msft!.FirmwareVersion;
+                }
+
+                string brandManufacturer = string.IsNullOrWhiteSpace(msft?.Manufacturer) ? manufacturer : msft!.Manufacturer;
+                brand = LocalPhysicalDiskHardwareSupport.ResolveBrand(model, hostIsUsb ? null : brandManufacturer);
+                int mediaType = msft?.MediaType ?? 0;
+                diskType = LocalPhysicalDiskHardwareSupport.ResolveDiskType(
+                    busType,
+                    hostIsUsb ? 0 : mediaType,
+                    model,
+                    hostIsUsb ? null : win32MediaType,
+                    trustedIdentify ? identify?.DiskType : null);
+                interfaceType = LocalPhysicalDiskHardwareSupport.ResolveInterfaceType(
+                    busType,
+                    hostIsUsb ? null : win32Interface);
+
+                DateTime? hardwareManufactureDate = !hostIsUsb && manufactureDatesByIndex.TryGetValue(index, out DateTime manufactureDate)
+                    ? manufactureDate
+                    : null;
+                factoryDate = LocalPhysicalDiskHardwareSupport.ResolveFactoryDate(
+                    hardwareManufactureDate,
+                    serialNumber,
+                    firmwareRevision);
             }
 
-            string busType = msft?.BusTypeName
-                ?? (LocalPhysicalDiskHardwareSupport.IsUsbBus(win32Interface) ? "USB" : win32Interface);
-            int mediaType = msft?.MediaType ?? 0;
             if (size == 0 && msft?.Size > 0)
             {
                 size = msft.Size;
             }
 
-            if (!string.IsNullOrWhiteSpace(msft?.Model) && string.IsNullOrWhiteSpace(model))
-            {
-                model = msft!.Model;
-            }
-
-            if (string.IsNullOrWhiteSpace(firmwareRevision) && !string.IsNullOrWhiteSpace(msft?.FirmwareVersion))
-            {
-                firmwareRevision = msft!.FirmwareVersion;
-            }
-
-            string brand = LocalPhysicalDiskHardwareSupport.ResolveBrand(model, string.IsNullOrWhiteSpace(msft?.Manufacturer) ? manufacturer : msft!.Manufacturer);
             LocalPhysicalDiskHardwareSupport.FormatCapacity(size, out string capacityValue, out string capacityUnit, out string capacityText);
 
+            string statusBus = hostIsUsb ? "USB" : (msft?.BusTypeName ?? win32Interface);
             bool isSystemDisk = systemDiskIndexes.Contains(index);
-            bool isVirtualDisk = LocalPhysicalDiskHardwareSupport.IsVirtualBus(busType);
-            DateTime? hardwareManufactureDate = manufactureDatesByIndex.TryGetValue(index, out DateTime manufactureDate)
-                ? manufactureDate
-                : null;
-            DateTime? factoryDate = LocalPhysicalDiskHardwareSupport.ResolveFactoryDate(
-                hardwareManufactureDate,
-                serialNumber,
-                firmwareRevision);
-            string statusHint = BuildStatusHint(isSystemDisk, isVirtualDisk, serialNumber);
+            bool isVirtualDisk = LocalPhysicalDiskHardwareSupport.IsVirtualBus(statusBus);
+            string statusHint = BuildStatusHint(isSystemDisk, isVirtualDisk);
 
             driveLettersByIndex.TryGetValue(index, out string? driveLetters);
 
@@ -140,8 +189,8 @@ namespace DocMgr.Services.HardDiskMedia
                 CapacityValue = capacityValue,
                 CapacityUnit = capacityUnit,
                 CapacityText = capacityText,
-                DiskType = LocalPhysicalDiskHardwareSupport.ResolveDiskType(busType, mediaType, model, win32MediaType),
-                InterfaceType = LocalPhysicalDiskHardwareSupport.ResolveInterfaceType(busType, win32Interface),
+                DiskType = diskType,
+                InterfaceType = interfaceType,
                 DriveLetters = driveLetters ?? string.Empty,
                 FactoryDate = factoryDate,
                 IsSystemDisk = isSystemDisk,
@@ -150,7 +199,20 @@ namespace DocMgr.Services.HardDiskMedia
             };
         }
 
-        private static string BuildStatusHint(bool isSystemDisk, bool isVirtualDisk, string serialNumber)
+        private static string FirstNonEmpty(params string?[] values)
+        {
+            foreach (string? value in values)
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value.Trim();
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private static string BuildStatusHint(bool isSystemDisk, bool isVirtualDisk)
         {
             if (isSystemDisk)
             {
@@ -160,11 +222,6 @@ namespace DocMgr.Services.HardDiskMedia
             if (isVirtualDisk)
             {
                 return "虚拟磁盘，不可用于登记";
-            }
-
-            if (string.IsNullOrWhiteSpace(serialNumber))
-            {
-                return "未读到序列号，回填后需手工补录";
             }
 
             return string.Empty;
@@ -418,8 +475,6 @@ namespace DocMgr.Services.HardDiskMedia
             return string.Empty;
         }
 
-        private static string FirstNonEmpty(string first, string second)
-            => !string.IsNullOrWhiteSpace(first) ? first : second;
 
         private static string EscapeWql(string value)
             => value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("'", "\\'", StringComparison.Ordinal);

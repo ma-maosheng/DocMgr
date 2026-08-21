@@ -26,7 +26,8 @@ namespace DocMgr.Services.YearlyArchive
             IReadOnlyList<YearlyArchiveBoxMediaItemLink> links,
             IReadOnlyList<YearlyArchiveRegisterMediaItem> mediaItems,
             DateTime filedAt,
-            string filedBy)
+            string filedBy,
+            int? numberingYear = null)
         {
             ArgumentNullException.ThrowIfNull(box);
             ArgumentNullException.ThrowIfNull(links);
@@ -39,7 +40,7 @@ namespace DocMgr.Services.YearlyArchive
 
             var mediaItemLookup = mediaItems.ToDictionary(item => item.Id);
             var facts = new List<YearlyArchiveFilingFact>();
-            int year = filedAt.Year;
+            int year = numberingYear ?? filedAt.Year;
             int nextSequence = await GetNextSequenceAsync(mediaKind: ArchiveRegisterDomainValues.MediaKindSimulated, year);
 
             foreach (var link in links)

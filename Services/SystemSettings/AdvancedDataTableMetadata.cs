@@ -51,7 +51,7 @@ namespace DocMgr.Services.SystemSettings
                 "只读浏览。通常由柜体布局初始化或业务配置写入。"),
 
             [nameof(CabinetArchiveSlotCategoryAssignment)] = new(
-                "定义标准滑道式档案柜指定面/档口的模拟介质资料存放用途（未设置、年度资料专用、历史资料专用）。",
+                "定义标准滑道式档案柜指定面/档口的模拟介质资料存放用途（未设置、年度资料专用、历史资料专用、混用档口）。",
                 "→ 引用 Cabinets（CabinetId，级联删除）。",
                 "只读浏览。通常由开柜界面设置或启动补全写入。"),
 

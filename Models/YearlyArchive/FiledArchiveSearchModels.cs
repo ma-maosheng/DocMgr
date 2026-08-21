@@ -352,6 +352,18 @@ namespace DocMgr.Models.YearlyArchive
 
         public string FilingFactNo { get; init; } = string.Empty;
 
+        /// <summary>列表折叠分组键（建档表单号；空表单号时为单条立档事实）。</summary>
+        public string FoldGroupKey { get; set; } = string.Empty;
+
+        /// <summary>同组第一条，可显示折叠/展开按钮。</summary>
+        public bool IsFoldGroupLeader { get; set; }
+
+        /// <summary>同组条数大于 1 时在「立档编号」列显示按钮。</summary>
+        public bool ShowFoldButton { get; set; }
+
+        /// <summary>组内首行按钮文案：折叠 或 展开(n)。</summary>
+        public string FoldButtonText { get; set; } = string.Empty;
+
         public string MediaKind { get; init; } = string.Empty;
 
         /// <summary>登记介质条目上的介质类型（如纸质、U盘等）。</summary>

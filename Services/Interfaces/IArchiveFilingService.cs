@@ -1,4 +1,4 @@
-﻿using DocMgr.Models.ArchiveContainers;
+using DocMgr.Models.ArchiveContainers;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -79,7 +79,8 @@ namespace DocMgr.Services.Interfaces
         /// </summary>
         /// <param name="newBox">档案盒信息</param>
         /// <param name="mediaItemIds">关联的资料子项ID列表</param>
-        Task CreateArchiveBoxAsync(YearlyArchiveBox newBox, List<int> mediaItemIds);
+        /// <param name="numberingYear">立档编号年度段；空则按办理日期年份。直办立档应传入项目年度。</param>
+        Task CreateArchiveBoxAsync(YearlyArchiveBox newBox, List<int> mediaItemIds, int? numberingYear = null);
 
         /// <summary>
         /// 执行电子介质立档：创建电子立档单元并归入选中的电子介质条目。

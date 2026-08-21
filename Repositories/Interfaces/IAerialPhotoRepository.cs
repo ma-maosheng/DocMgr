@@ -13,6 +13,11 @@ public interface IAerialPhotoRepository
 
     List<AerialPhoto> GetByCategory(string categoryName);
 
+    /// <summary>
+    /// 获取全部航摄影像记录。
+    /// </summary>
+    List<AerialPhoto> GetAll();
+
     void Import(string categoryName, List<AerialPhoto> items, bool isRecreate);
 
     void DeleteByCategory(string categoryName);

@@ -1,10 +1,13 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
@@ -18,9 +21,18 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveFilingLedgerService _ledgerService;
         private readonly IArchiveMaterialTransactionService _materialTransactionService;
         private readonly IDialogService _dialogService;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         private bool _isInitialized;
-        private string _selectedYear = AllYearsOption;
+        private bool _suppressYearSideEffects;
+        private bool _suppressSelectionLoad;
+        private int _busyDepth;
+        private int _detailLoadVersion;
+        private bool _isBusy;
+        private string _busyStatus = string.Empty;
+        private string _selectedYear = DateTime.Now.Year.ToString();
+        private readonly List<FilingLedgerRow> _sourceRows = new();
+        private readonly HashSet<string> _expandedFoldGroupKeys = new(StringComparer.Ordinal);
         private int? _selectedProjectId;
         private string _selectedMediaKind = string.Empty;
         private string _selectedLifecycleStatus = string.Empty;
@@ -42,19 +54,25 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ArchiveFilingLedgerViewModel(
             IArchiveFilingLedgerService ledgerService,
             IArchiveMaterialTransactionService materialTransactionService,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            IServiceScopeFactory scopeFactory)
         {
             _ledgerService = ledgerService;
             _materialTransactionService = materialTransactionService;
             _dialogService = dialogService;
+            _scopeFactory = scopeFactory;
 
-            SearchCommand = new RelayCommand(async _ => await SearchAsync());
-            ResetCommand = new RelayCommand(_ => ResetCriteria());
-            RefreshCommand = new RelayCommand(async _ => await SearchAsync());
-            ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => LedgerRows.Count > 0);
+            SearchCommand = new RelayCommand(async _ => await SearchAsync(), _ => !IsBusy);
+            ResetCommand = new RelayCommand(_ => ResetCriteria(), _ => !IsBusy);
+            RefreshCommand = new RelayCommand(async _ => await SearchAsync(), _ => !IsBusy);
+            ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => !IsBusy && _sourceRows.Count > 0);
             ViewRegisterDetailCommand = new RelayCommand(
                 _ => ViewRegisterDetail(),
                 _ => SelectedRow != null && SelectedRow.RegisterRecordId > 0);
+            ToggleFoldAllCommand = new RelayCommand(_ => ToggleFoldAll(), _ => HasFoldableGroups);
+            ToggleFoldGroupCommand = new RelayCommand<FilingLedgerRow>(
+                ToggleFoldGroup,
+                row => row is { ShowFoldButton: true });
 
             ContentEntriesPanel = new ItemDetailsListPresenter<FilingLedgerContentEntryInfo>(
                 "电子介质目录 / 文件明细",
@@ -67,14 +85,46 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public event Action<ArchiveDetailOpenRequest>? ViewRegisterDetailRequested;
 
-        public ObservableCollection<string> Years { get; } = new();
+        public bool IsBusy
+        {
+            get => _isBusy;
+            private set
+            {
+                if (SetProperty(ref _isBusy, value))
+                {
+                    CommandManager.InvalidateRequerySuggested();
+                }
+            }
+        }
+
+        public string BusyStatus
+        {
+            get => _busyStatus;
+            private set => SetProperty(ref _busyStatus, value);
+        }
+
+        public ObservableCollection<string> Years { get; } = new()
+        {
+            AllYearsOption,
+            DateTime.Now.Year.ToString()
+        };
 
         public string SelectedYear
         {
             get => _selectedYear;
             set
             {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    return;
+                }
+
                 if (!SetProperty(ref _selectedYear, value))
+                {
+                    return;
+                }
+
+                if (_suppressYearSideEffects)
                 {
                     return;
                 }
@@ -205,7 +255,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 OnPropertyChanged(nameof(HasSelectedRow));
-                _ = LoadSelectedDetailAsync();
+                if (!_suppressSelectionLoad)
+                {
+                    _ = LoadSelectedDetailAsync();
+                }
             }
         }
 
@@ -287,6 +340,32 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand RefreshCommand { get; }
         public RelayCommand ExportCommand { get; }
         public RelayCommand ViewRegisterDetailCommand { get; }
+        public RelayCommand ToggleFoldAllCommand { get; }
+        public RelayCommand<FilingLedgerRow> ToggleFoldGroupCommand { get; }
+
+        /// <summary>列表是否存在可折叠的同单多子项。</summary>
+        public bool HasFoldableGroups => _sourceRows.Any(row => row.ShowFoldButton);
+
+        /// <summary>列头折叠按钮文案：默认折叠态为「展开」，全部展开后为「折叠」。</summary>
+        public string FoldAllButtonText => AreAllFoldableGroupsExpanded ? "折叠" : "展开";
+
+        public string FoldAllButtonToolTip => AreAllFoldableGroupsExpanded
+            ? "按建档表单号折叠：每个表单号只保留第一行"
+            : "展开全部同单子项";
+
+        private bool AreAllFoldableGroupsExpanded
+        {
+            get
+            {
+                var foldableKeys = _sourceRows
+                    .Where(row => row.ShowFoldButton)
+                    .Select(row => row.FoldGroupKey)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
+                return foldableKeys.Count > 0
+                    && foldableKeys.All(key => _expandedFoldGroupKeys.Contains(key));
+            }
+        }
 
         public async Task InitializeAsync()
         {
@@ -295,9 +374,15 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            await LoadYearsAsync();
-            await LoadProjectOptionsAsync();
-            await SearchAsync();
+            await WithBusyAsync("正在加载立档台账…", async () =>
+            {
+                await ReportBusyAsync("正在加载档案年度…");
+                await LoadYearsAsync();
+                await ReportBusyAsync("正在加载项目列表…");
+                await LoadProjectOptionsAsync();
+                await ReportBusyAsync("正在查询立档记录…");
+                await SearchCoreAsync();
+            });
             _isInitialized = true;
         }
 
@@ -335,8 +420,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 await LoadProjectOptionsAsync();
-                await SearchAsync();
+                await SearchAsync(filingFactId);
                 SelectedRow = LedgerRows.FirstOrDefault(row => row.FilingFactId == filingFactId)
+                    ?? _sourceRows.FirstOrDefault(row => row.FilingFactId == filingFactId)
                     ?? target;
             }
             catch (Exception ex)
@@ -349,17 +435,32 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
-                var yearsList = await _ledgerService.GetExistingLedgerYearsAsync();
-                Years.Clear();
-                Years.Add(AllYearsOption);
-                foreach (int year in yearsList)
+                var yearsList = await QueryOnBackgroundAsync(service => service.GetExistingLedgerYearsAsync());
+                _suppressYearSideEffects = true;
+                try
                 {
-                    Years.Add(year.ToString());
-                }
+                    Years.Clear();
+                    Years.Add(AllYearsOption);
+                    foreach (int year in yearsList)
+                    {
+                        Years.Add(year.ToString());
+                    }
 
-                if (!Years.Contains(_selectedYear))
+                    string currentYearText = DateTime.Now.Year.ToString();
+                    if (Years.Contains(currentYearText))
+                    {
+                        _selectedYear = currentYearText;
+                    }
+                    else if (!Years.Contains(_selectedYear))
+                    {
+                        _selectedYear = AllYearsOption;
+                    }
+
+                    OnPropertyChanged(nameof(SelectedYear));
+                }
+                finally
                 {
-                    SelectedYear = AllYearsOption;
+                    _suppressYearSideEffects = false;
                 }
             }
             catch (Exception ex)
@@ -380,7 +481,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ProjectOptions.Clear();
                 ProjectOptions.Add(new ProjectFilterOption { Id = null, Name = "全部项目" });
 
-                var projects = await _ledgerService.GetProjectOptionsForYearAsync(ResolveSelectedArchiveYear());
+                string? archiveYear = ResolveSelectedArchiveYear();
+                var projects = await QueryOnBackgroundAsync(service => service.GetProjectOptionsForYearAsync(archiveYear));
                 foreach (var project in projects)
                 {
                     if (project.ProjectId is not > 0 && string.IsNullOrWhiteSpace(project.ProjectName))
@@ -401,31 +503,173 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        private async Task SearchAsync()
+        private async Task SearchAsync(int? focusFilingFactId = null)
+        {
+            await WithBusyAsync("正在查询立档记录…", () => SearchCoreAsync(focusFilingFactId));
+        }
+
+        private async Task SearchCoreAsync(int? focusFilingFactId = null)
         {
             try
             {
-                int? selectedId = SelectedRow?.FilingFactId;
+                int? selectedId = focusFilingFactId ?? SelectedRow?.FilingFactId;
                 var criteria = BuildCriteria();
-                var rows = await _ledgerService.SearchAsync(criteria);
+                await ReportBusyAsync("正在查询立档记录…");
+                var rows = await QueryOnBackgroundAsync(service => service.SearchAsync(criteria));
 
-                LedgerRows.Clear();
-                foreach (var row in rows)
-                {
-                    LedgerRows.Add(row);
-                }
+                await ReportBusyAsync("正在整理折叠列表…");
+                var expandedSnapshot = new HashSet<string>(_expandedFoldGroupKeys, StringComparer.Ordinal);
+                await Task.Run(() => AnnotateFoldGroups(rows, expandedSnapshot)).ConfigureAwait(true);
 
-                SelectedRow = selectedId.HasValue
-                    ? LedgerRows.FirstOrDefault(row => row.FilingFactId == selectedId.Value)
-                    : LedgerRows.FirstOrDefault();
-
-                UpdateSummary(rows);
+                _sourceRows.Clear();
+                _sourceRows.AddRange(rows);
+                EnsureFoldGroupVisible(selectedId);
+                ApplyFoldDisplay(selectedId);
+                UpdateSummary();
+                OnPropertyChanged(nameof(HasFoldableGroups));
+                OnPropertyChanged(nameof(FoldAllButtonText));
+                OnPropertyChanged(nameof(FoldAllButtonToolTip));
                 CommandManager.InvalidateRequerySuggested();
             }
             catch (Exception ex)
             {
                 _dialogService.ShowError($"查询立档台账失败：{ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 按建档表单号分组：同单一组，默认只展示组内第一行。
+        /// 立档编号本身一条一号，同单多子项才需要折叠。
+        /// </summary>
+        private void AnnotateFoldGroups()
+        {
+            AnnotateFoldGroups(_sourceRows, _expandedFoldGroupKeys);
+            OnPropertyChanged(nameof(HasFoldableGroups));
+            OnPropertyChanged(nameof(FoldAllButtonText));
+            OnPropertyChanged(nameof(FoldAllButtonToolTip));
+        }
+
+        private static void AnnotateFoldGroups(IReadOnlyList<FilingLedgerRow> rows, HashSet<string> expandedKeys)
+        {
+            foreach (var row in rows)
+            {
+                row.FoldGroupKey = ResolveFoldGroupKey(row);
+                row.IsFoldGroupLeader = false;
+                row.ShowFoldButton = false;
+                row.FoldButtonText = string.Empty;
+            }
+
+            foreach (var group in rows.GroupBy(row => row.FoldGroupKey, StringComparer.Ordinal))
+            {
+                var members = group.ToList();
+                var leader = members[0];
+                leader.IsFoldGroupLeader = true;
+                if (members.Count <= 1)
+                {
+                    continue;
+                }
+
+                leader.ShowFoldButton = true;
+                bool expanded = expandedKeys.Contains(leader.FoldGroupKey);
+                leader.FoldButtonText = expanded
+                    ? "折叠"
+                    : $"展开({members.Count - 1})";
+            }
+        }
+
+        private static string ResolveFoldGroupKey(FilingLedgerRow row)
+        {
+            string formNo = row.FormNo?.Trim() ?? string.Empty;
+            if (!string.IsNullOrEmpty(formNo))
+            {
+                return formNo;
+            }
+
+            return "id:" + row.FilingFactId.ToString();
+        }
+
+        private void EnsureFoldGroupVisible(int? filingFactId)
+        {
+            if (filingFactId is not int id || id <= 0)
+            {
+                return;
+            }
+
+            var row = _sourceRows.FirstOrDefault(item => item.FilingFactId == id);
+            if (row == null || row.IsFoldGroupLeader)
+            {
+                return;
+            }
+
+            _expandedFoldGroupKeys.Add(row.FoldGroupKey);
+            AnnotateFoldGroups();
+        }
+
+        private void ApplyFoldDisplay(int? preferredFilingFactId)
+        {
+            _suppressSelectionLoad = true;
+            try
+            {
+                LedgerRows.Clear();
+                foreach (var row in _sourceRows)
+                {
+                    if (row.IsFoldGroupLeader || _expandedFoldGroupKeys.Contains(row.FoldGroupKey))
+                    {
+                        LedgerRows.Add(row);
+                    }
+                }
+
+                SelectedRow = preferredFilingFactId.HasValue
+                    ? LedgerRows.FirstOrDefault(row => row.FilingFactId == preferredFilingFactId.Value)
+                        ?? LedgerRows.FirstOrDefault()
+                    : LedgerRows.FirstOrDefault();
+            }
+            finally
+            {
+                _suppressSelectionLoad = false;
+            }
+
+            _ = LoadSelectedDetailAsync();
+        }
+
+        private void ToggleFoldGroup(FilingLedgerRow? row)
+        {
+            if (row == null || !row.ShowFoldButton || string.IsNullOrWhiteSpace(row.FoldGroupKey))
+            {
+                return;
+            }
+
+            int? selectedId = SelectedRow?.FilingFactId;
+            if (!_expandedFoldGroupKeys.Add(row.FoldGroupKey))
+            {
+                _expandedFoldGroupKeys.Remove(row.FoldGroupKey);
+            }
+
+            AnnotateFoldGroups();
+            ApplyFoldDisplay(selectedId);
+            UpdateSummary();
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void ToggleFoldAll()
+        {
+            int? selectedId = SelectedRow?.FilingFactId;
+            if (AreAllFoldableGroupsExpanded)
+            {
+                _expandedFoldGroupKeys.Clear();
+            }
+            else
+            {
+                foreach (var key in _sourceRows.Where(row => row.ShowFoldButton).Select(row => row.FoldGroupKey))
+                {
+                    _expandedFoldGroupKeys.Add(key);
+                }
+            }
+
+            AnnotateFoldGroups();
+            ApplyFoldDisplay(selectedId);
+            UpdateSummary();
+            CommandManager.InvalidateRequerySuggested();
         }
 
         private FilingLedgerSearchCriteria BuildCriteria()
@@ -446,26 +690,33 @@ namespace DocMgr.ViewModels.YearlyArchive
             };
         }
 
-        private void UpdateSummary(IReadOnlyList<FilingLedgerRow> rows)
+        private void UpdateSummary()
         {
-            int simulatedCount = rows.Count(row => string.Equals(
+            int simulatedCount = _sourceRows.Count(row => string.Equals(
                 row.MediaKind,
                 ArchiveRegisterDomainValues.MediaKindSimulated,
                 StringComparison.Ordinal));
-            int electronicCount = rows.Count(row => string.Equals(
+            int electronicCount = _sourceRows.Count(row => string.Equals(
                 row.MediaKind,
                 ArchiveRegisterDomainValues.MediaKindElectronic,
                 StringComparison.Ordinal));
-            int backupCount = rows.Count(row => string.Equals(
+            int backupCount = _sourceRows.Count(row => string.Equals(
                 row.ArchiveCopyRole,
                 FilingFactArchiveCopyRole.Backup,
                 StringComparison.Ordinal));
 
-            SummaryText = $"共 {rows.Count} 条（模拟 {simulatedCount} / 电子 {electronicCount}，备份 {backupCount}）";
+            string summary = $"共 {_sourceRows.Count} 条（模拟 {simulatedCount} / 电子 {electronicCount}，备份 {backupCount}）";
+            if (LedgerRows.Count < _sourceRows.Count)
+            {
+                summary += $"；折叠后显示 {LedgerRows.Count} 行";
+            }
+
+            SummaryText = summary;
         }
 
         private async Task LoadSelectedDetailAsync()
         {
+            int version = ++_detailLoadVersion;
             SelectedContentEntries.Clear();
             ContentEntriesPanel.RefreshItems(SelectedContentEntries);
             SelectedMaterialTransactions.Clear();
@@ -494,6 +745,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 var transactions = await _materialTransactionService.GetTimelineByFilingFactIdAsync(row.FilingFactId);
+                if (version != _detailLoadVersion)
+                {
+                    return;
+                }
+
                 foreach (var transaction in transactions)
                 {
                     SelectedMaterialTransactions.Add(transaction);
@@ -504,12 +760,25 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"加载流转履历失败：{ex.Message}");
+                if (version == _detailLoadVersion)
+                {
+                    _dialogService.ShowError($"加载流转履历失败：{ex.Message}");
+                }
+            }
+
+            if (version != _detailLoadVersion)
+            {
+                return;
             }
 
             try
             {
                 var processNodes = await _materialTransactionService.GetOutboundProcessNodesByFilingFactIdAsync(row.FilingFactId);
+                if (version != _detailLoadVersion)
+                {
+                    return;
+                }
+
                 foreach (var node in processNodes)
                 {
                     SelectedOutboundProcessNodes.Add(node);
@@ -520,7 +789,15 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"加载出库流程节点失败：{ex.Message}");
+                if (version == _detailLoadVersion)
+                {
+                    _dialogService.ShowError($"加载出库流程节点失败：{ex.Message}");
+                }
+            }
+
+            if (version != _detailLoadVersion)
+            {
+                return;
             }
 
             if (!row.IsElectronicMedia || row.MediaItemId <= 0)
@@ -533,6 +810,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 var entries = await _ledgerService.GetContentEntriesByMediaItemIdAsync(
                     row.MediaItemId,
                     row.FilingStoragePath);
+                if (version != _detailLoadVersion)
+                {
+                    return;
+                }
+
                 foreach (var entry in entries)
                 {
                     SelectedContentEntries.Add(entry);
@@ -544,13 +826,67 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"加载目录/文件明细失败：{ex.Message}");
+                if (version == _detailLoadVersion)
+                {
+                    _dialogService.ShowError($"加载目录/文件明细失败：{ex.Message}");
+                }
             }
+        }
+
+        private async Task WithBusyAsync(string status, Func<Task> action)
+        {
+            _busyDepth++;
+            BusyStatus = status;
+            IsBusy = true;
+            try
+            {
+                await PumpUiAsync();
+                await action();
+            }
+            finally
+            {
+                _busyDepth--;
+                if (_busyDepth <= 0)
+                {
+                    _busyDepth = 0;
+                    IsBusy = false;
+                    BusyStatus = string.Empty;
+                }
+            }
+        }
+
+        private async Task ReportBusyAsync(string status)
+        {
+            BusyStatus = status;
+            await PumpUiAsync();
+        }
+
+        private static async Task PumpUiAsync()
+        {
+            Dispatcher? dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null)
+            {
+                await Task.Delay(16);
+                return;
+            }
+
+            await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+        }
+
+        private Task<T> QueryOnBackgroundAsync<T>(Func<IArchiveFilingLedgerService, Task<T>> query)
+        {
+            return Task.Run(() =>
+            {
+                using IServiceScope scope = _scopeFactory.CreateScope();
+                IArchiveFilingLedgerService service = scope.ServiceProvider.GetRequiredService<IArchiveFilingLedgerService>();
+                return query(service).ConfigureAwait(false).GetAwaiter().GetResult();
+            });
         }
 
         private void ResetCriteria()
         {
-            SelectedYear = AllYearsOption;
+            SelectedYear = DateTime.Now.Year.ToString();
             SelectedProjectId = null;
             SelectedMediaKind = string.Empty;
             SelectedLifecycleStatus = string.Empty;
@@ -559,6 +895,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             ContentEntryKeyword = string.Empty;
             FiledFrom = null;
             FiledTo = null;
+            _expandedFoldGroupKeys.Clear();
+            _sourceRows.Clear();
             LedgerRows.Clear();
             SelectedRow = null;
             SelectedContentEntries.Clear();
@@ -573,6 +911,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(OutboundProcessNodesExpanderHeader));
             OnPropertyChanged(nameof(ContentEntriesExpanderHeader));
             OnPropertyChanged(nameof(HasSelectedRow));
+            OnPropertyChanged(nameof(HasFoldableGroups));
+            OnPropertyChanged(nameof(FoldAllButtonText));
+            OnPropertyChanged(nameof(FoldAllButtonToolTip));
             SummaryText = "共 0 条";
             DetailSummary = string.Empty;
             CommandManager.InvalidateRequerySuggested();
@@ -603,7 +944,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _dialogService.SetBusyState(true);
             try
             {
-                await _ledgerService.ExportAsync(filePath, LedgerRows.ToList());
+                await _ledgerService.ExportAsync(filePath, _sourceRows.ToList());
                 _dialogService.ShowMessage($"立档台账导出完成：\n{filePath}", "完成");
             }
             catch (ArgumentException ex)

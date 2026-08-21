@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using DocMgr.Models.Cabinets;
 using DocMgr.Models.Projects;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
@@ -20,6 +21,8 @@ namespace DocMgr.Services.YearlyArchive
         private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly IArchiveRegisterRepository _archiveRegisterRepository;
         private readonly IArchiveFilingService _archiveFilingService;
+        private readonly IArchiveFilingRepository _archiveFilingRepository;
+        private readonly ICabinetService _cabinetService;
         private readonly IStockDirectFilingYearProjectCatalog _yearProjectCatalog;
 
         public StockTextArchiveDirectFilingService(
@@ -27,12 +30,16 @@ namespace DocMgr.Services.YearlyArchive
             IArchiveRegisterService archiveRegisterService,
             IArchiveRegisterRepository archiveRegisterRepository,
             IArchiveFilingService archiveFilingService,
+            IArchiveFilingRepository archiveFilingRepository,
+            ICabinetService cabinetService,
             IStockDirectFilingYearProjectCatalog yearProjectCatalog)
         {
             _projectService = projectService;
             _archiveRegisterService = archiveRegisterService;
             _archiveRegisterRepository = archiveRegisterRepository;
             _archiveFilingService = archiveFilingService;
+            _archiveFilingRepository = archiveFilingRepository;
+            _cabinetService = cabinetService;
             _yearProjectCatalog = yearProjectCatalog;
         }
 
@@ -153,6 +160,11 @@ namespace DocMgr.Services.YearlyArchive
                 errors.Add("请选择有效的年度资料专用档口（柜体/面/层/列）。");
             }
 
+            if (request.SpecifiedBoxIndex.HasValue && request.SpecifiedBoxIndex.Value < 1)
+            {
+                errors.Add("指定的档案盒序号必须大于 0。");
+            }
+
             var groups = request.MediaGroups ?? Array.Empty<StockTextArchiveMediaGroupDraft>();
             if (groups.Count == 0)
             {
@@ -241,6 +253,11 @@ namespace DocMgr.Services.YearlyArchive
 
             try
             {
+                if (request.SyncUnsetSlotCategoryOnCommit)
+                {
+                    await SyncUnsetSlotToYearlyMaterialsIfNeededAsync(request);
+                }
+
                 var project = EnsureProject(request);
                 int? numberingYear = TryParseProjectNumberYear(request.Year);
                 string year = request.Year.Trim();
@@ -262,13 +279,19 @@ namespace DocMgr.Services.YearlyArchive
                 }
 
                 string archiveSequenceNo = await _archiveFilingService.GenerateNextArchiveSequenceNoAsync(year);
-                int boxSequence = await _archiveFilingService.GetMinimumAvailableBoxSequenceInCellAsync(
+                int boxSequence = request.SpecifiedBoxIndex.HasValue
+                    ? request.SpecifiedBoxIndex.Value
+                    : await _archiveFilingService.GetMinimumAvailableBoxSequenceInCellAsync(
+                        request.CabinetName.Trim(),
+                        request.Side.Trim(),
+                        request.Row,
+                        request.Column);
+                string boxLocationCode = ArchiveSlotLocationSupport.BuildFullElectronicLocation(
                     request.CabinetName.Trim(),
                     request.Side.Trim(),
                     request.Row,
-                    request.Column);
-                string boxLocationCode =
-                    $"{request.CabinetName.Trim()}{request.Side.Trim()}-{request.Row}-{request.Column}-{boxSequence:D2}";
+                    request.Column,
+                    boxSequence);
 
                 var newBox = new YearlyArchiveBox
                 {
@@ -287,7 +310,7 @@ namespace DocMgr.Services.YearlyArchive
                     Remarks = request.Remarks?.Trim() ?? string.Empty
                 };
 
-                await _archiveFilingService.CreateArchiveBoxAsync(newBox, mediaItemIds);
+                await _archiveFilingService.CreateArchiveBoxAsync(newBox, mediaItemIds, numberingYear);
 
                 return new StockTextArchiveDirectFilingResult
                 {
@@ -419,6 +442,235 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return int.Parse(year.Trim(), NumberStyles.None, CultureInfo.InvariantCulture);
+        }
+
+        /// <inheritdoc/>
+        public IReadOnlyList<string> ListExcelSheetNames(string filePath)
+            => StockTextArchiveExcelImportSupport.ListSheetNames(filePath);
+
+        /// <inheritdoc/>
+        public StockTextArchiveExcelParseResult ParseExcel(string filePath, string sheetName)
+            => StockTextArchiveExcelImportSupport.Parse(filePath, sheetName);
+
+        /// <inheritdoc/>
+        public async Task<IReadOnlyList<StockTextArchiveExcelBoxValidation>> ValidateExcelImportAsync(
+            IReadOnlyList<StockTextArchiveExcelBoxDraft> boxes,
+            User? currentUser,
+            IProgress<(int Current, int Total, string Status)>? progress = null)
+        {
+            var source = boxes ?? Array.Empty<StockTextArchiveExcelBoxDraft>();
+            var occupied = await LoadOccupiedBoxLocationCodesAsync();
+            var cabinets = await _cabinetService.GetAllCabinetsAsync();
+
+            var results = new List<StockTextArchiveExcelBoxValidation>(source.Count);
+            int total = source.Count;
+            int index = 0;
+            foreach (var box in source)
+            {
+                index++;
+                progress?.Report((index, total, $"正在校验第 {index} / {total} 盒…"));
+                var errors = box.ParseErrors.ToList();
+                var request = box.ToRequest();
+                errors.AddRange(await CollectCommitErrorsAsync(request, currentUser));
+
+                if (!string.IsNullOrWhiteSpace(box.NormalizedBoxLocationCode)
+                    && occupied.Contains(box.NormalizedBoxLocationCode))
+                {
+                    errors.Add($"物理位置 [{box.NormalizedBoxLocationCode}] 已被占用。");
+                }
+
+                errors.AddRange(CollectExcelSlotCategoryErrors(box, cabinets));
+
+                results.Add(new StockTextArchiveExcelBoxValidation
+                {
+                    Box = box,
+                    Errors = errors.Distinct(StringComparer.Ordinal).ToList()
+                });
+            }
+
+            return results;
+        }
+
+        /// <inheritdoc/>
+        public async Task<StockTextArchiveExcelImportCommitResult> CommitExcelImportAsync(
+            IReadOnlyList<StockTextArchiveExcelBoxDraft> boxes,
+            User? currentUser,
+            IProgress<(int Current, int Total, string Status)>? progress = null)
+        {
+            var validations = await ValidateExcelImportAsync(boxes, currentUser);
+            int skipped = 0;
+            int succeeded = 0;
+            int failed = 0;
+            var messages = new List<string>();
+            var occupiedThisRun = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int total = validations.Count;
+            int index = 0;
+
+            foreach (var validation in validations)
+            {
+                index++;
+                var box = validation.Box;
+                progress?.Report((index, total, $"正在立档第 {index} / {total} 盒（{box.NormalizedBoxLocationCode}）…"));
+                if (!validation.CanImport)
+                {
+                    skipped++;
+                    messages.Add($"跳过 {box.NormalizedBoxLocationCode}（{box.ProjectName}）：{string.Join("；", validation.Errors)}");
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(box.NormalizedBoxLocationCode)
+                    && !occupiedThisRun.Add(box.NormalizedBoxLocationCode))
+                {
+                    failed++;
+                    messages.Add($"失败 {box.NormalizedBoxLocationCode}：本批重复占用。");
+                    continue;
+                }
+
+                var result = await CommitAsync(box.ToRequest(), currentUser);
+                if (result.Succeeded)
+                {
+                    succeeded++;
+                    messages.Add($"成功 {result.BoxLocationCode} → {result.ArchiveSequenceNo}（{result.ItemCount} 子项）");
+                }
+                else
+                {
+                    failed++;
+                    occupiedThisRun.Remove(box.NormalizedBoxLocationCode);
+                    messages.Add($"失败 {box.NormalizedBoxLocationCode}：{result.Message}");
+                }
+            }
+
+            return new StockTextArchiveExcelImportCommitResult
+            {
+                SucceededCount = succeeded,
+                FailedCount = failed,
+                SkippedCount = skipped,
+                Messages = messages
+            };
+        }
+
+        private async Task<HashSet<string>> LoadOccupiedBoxLocationCodesAsync()
+        {
+            var occupied = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string code in await _archiveFilingRepository.GetYearlyArchiveBoxLocationCodesAsync())
+            {
+                if (!string.IsNullOrWhiteSpace(code))
+                {
+                    occupied.Add(code.Trim());
+                }
+            }
+
+            var history = (await _archiveFilingRepository.GetTopoMapBoxNumbersAsync())
+                .Concat(await _archiveFilingRepository.GetAerialPhotoBoxNumbersAsync())
+                .Concat(await _archiveFilingRepository.GetOtherMapBoxNumbersAsync());
+            foreach (string source in history)
+            {
+                if (string.IsNullOrWhiteSpace(source))
+                {
+                    continue;
+                }
+
+                foreach (string code in source.Split(
+                    [';', '；', ',', '，', '\r', '\n'],
+                    StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                {
+                    occupied.Add(code);
+                }
+            }
+
+            return occupied;
+        }
+
+        /// <summary>
+        /// Excel 导入前：未设置档口同步为年度资料专用；与历史专用冲突则改为混用档口。
+        /// </summary>
+        private async Task SyncUnsetSlotToYearlyMaterialsIfNeededAsync(StockTextArchiveDirectFilingRequest request)
+        {
+            string cabinetName = request.CabinetName?.Trim() ?? string.Empty;
+            string faceCode = request.Side?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(cabinetName)
+                || string.IsNullOrWhiteSpace(faceCode)
+                || request.Row <= 0
+                || request.Column <= 0)
+            {
+                return;
+            }
+
+            var cabinet = (await _cabinetService.GetAllCabinetsAsync())
+                .FirstOrDefault(item => string.Equals(item.Name, cabinetName, StringComparison.OrdinalIgnoreCase));
+            if (cabinet == null || cabinet.Type != CabinetType.Standard)
+            {
+                return;
+            }
+
+            string slotCode = ArchiveStorageSlotCategorySupport.BuildSlotCode(request.Row, request.Column);
+            string? storedCategory = await _archiveFilingRepository.GetArchiveSlotCategoryNameAsync(
+                cabinet.Id,
+                faceCode,
+                slotCode);
+            string normalized = CabinetArchiveSlotCategoryAssignment.NormalizeCategoryName(storedCategory);
+            if (ArchiveStorageSlotCategorySupport.MatchesCompatibleLandingCategory(
+                    normalized,
+                    ArchiveStorageSlotCategorySupport.ExpectedYearlyMaterialsCategory))
+            {
+                return;
+            }
+
+            if (CabinetArchiveSlotCategoryAssignment.MatchesCategory(
+                    normalized,
+                    CabinetArchiveSlotCategoryAssignment.CategoryHistoricalMaterials))
+            {
+                _cabinetService.PromoteArchiveSlotToMixedUse(cabinet.Id, faceCode, slotCode);
+                return;
+            }
+
+            int historyCount = await _archiveFilingRepository.CountHistoryArchiveOccupanciesInSlotAsync(
+                cabinetName,
+                faceCode,
+                request.Row,
+                request.Column);
+            if (historyCount > 0)
+            {
+                _cabinetService.PromoteArchiveSlotToMixedUse(cabinet.Id, faceCode, slotCode);
+                return;
+            }
+
+            _cabinetService.PromoteUnsetArchiveSlotToYearlyMaterials(cabinet.Id, faceCode, slotCode);
+        }
+
+        private static IReadOnlyList<string> CollectExcelSlotCategoryErrors(
+            StockTextArchiveExcelBoxDraft box,
+            IReadOnlyList<Cabinet> cabinets)
+        {
+            var errors = new List<string>();
+            if (string.IsNullOrWhiteSpace(box.CabinetName)
+                || string.IsNullOrWhiteSpace(box.Side)
+                || box.Row <= 0
+                || box.Column <= 0)
+            {
+                return errors;
+            }
+
+            var cabinet = cabinets.FirstOrDefault(item =>
+                string.Equals(item.Name, box.CabinetName, StringComparison.OrdinalIgnoreCase));
+            if (cabinet == null)
+            {
+                errors.Add($"未找到资料柜 [{box.CabinetName.Trim()}]。");
+                return errors;
+            }
+
+            string face = box.Side.Trim();
+            bool faceAllowed = cabinet.FaceCount > 1
+                ? string.Equals(face, "A", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(face, "B", StringComparison.OrdinalIgnoreCase)
+                : string.Equals(face, "A", StringComparison.OrdinalIgnoreCase);
+            if (!faceAllowed || box.Row > cabinet.LayerCount || box.Column > cabinet.ColumnCount)
+            {
+                errors.Add($"档口 [{ArchiveSlotLocationSupport.BuildSlotKey(box.CabinetName, box.Side, box.Row, box.Column)}] 在柜体中不存在。");
+                return errors;
+            }
+
+            return errors;
         }
     }
 }

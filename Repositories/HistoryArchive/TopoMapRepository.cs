@@ -35,6 +35,16 @@ public class TopoMapRepository : ITopoMapRepository
             .ToList();
     }
 
+    public List<TopoMap> GetAll()
+    {
+        return _dbContext.TopoMaps
+            .OrderBy(item => item.Scale)
+            .ThenBy(item => item.BoxNumber)
+            .ThenBy(item => item.MapNumber)
+            .ThenBy(item => item.Id)
+            .ToList();
+    }
+
     public void Import(List<TopoMap> maps, bool isRecreate)
     {
         ArgumentNullException.ThrowIfNull(maps);

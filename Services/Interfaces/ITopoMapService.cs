@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DocMgr.Services.Interfaces
 {
@@ -13,9 +14,9 @@ namespace DocMgr.Services.Interfaces
         bool IsTableExist(string tableName);
 
         /// <summary>
-        /// 导入地形图数据
+        /// 导入地形图数据（先核验落档档口用途）。
         /// </summary>
-        void ImportTopoMaps(List<TopoMap> maps, bool isRecreate = false);
+        Task ImportTopoMapsAsync(List<TopoMap> maps, bool isRecreate = false);
 
         /// <summary>
         /// 获取所有地形图数据表名
@@ -26,6 +27,11 @@ namespace DocMgr.Services.Interfaces
         /// 获取指定表中的所有数据
         /// </summary>
         List<TopoMap> GetTopoMapsByTable(string tableName);
+
+        /// <summary>
+        /// 获取全部地形图记录（跨比例尺表）。
+        /// </summary>
+        List<TopoMap> GetAllTopoMaps();
 
         /// <summary>
         /// 删除指定表
