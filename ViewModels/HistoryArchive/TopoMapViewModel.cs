@@ -251,7 +251,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                     return;
                 }
 
-                string? selectedTable = _dialogService.ShowSheetSelectionDialog(tables, "选择存档数据表");
+                string? selectedTable = _dialogService.ShowSheetSelectionDialog(tables, "选择存档数据表")?.SheetName;
                 if (!string.IsNullOrEmpty(selectedTable))
                 {
                     await LoadDataAsync(selectedTable);
@@ -371,7 +371,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 }
 
                 // 2. 选择Sheet
-                string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames);
+                string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames)?.SheetName;
                 if (string.IsNullOrEmpty(selectedSheet)) return;
 
                 await ProcessImportLogicAsync(filePath, selectedSheet);
@@ -423,12 +423,14 @@ namespace DocMgr.ViewModels.HistoryArchive
                             string scale = GetCellValue(row, headerMap, "比例尺");
                             if (string.IsNullOrWhiteSpace(scale)) continue;
 
+                            string mapNumber = TopoMapCurrentMapNumberSupport.NormalizeMapNumber(GetCellValue(row, headerMap, "图号"));
                             var item = new TopoMap
                             {
                                 BoxNumber = box,
                                 Scale = scale,
                                 BoxSpecification = boxSpecification,
-                                MapNumber = NormalizeMapNumber(GetCellValue(row, headerMap, "图号")),
+                                MapNumber = mapNumber,
+                                CurrentMapNumber = TopoMapCurrentMapNumberSupport.Compute(scale, mapNumber),
                                 MapName = GetCellValue(row, headerMap, "图名"),
                                 CoordinateSystem = GetCellValue(row, headerMap, "坐标系统"),
                                 ElevationDatum = GetCellValue(row, headerMap, "高程基准"),
@@ -512,7 +514,12 @@ namespace DocMgr.ViewModels.HistoryArchive
                 return;
             }
 
-            _dialogService.ShowMessage($"成功导入 {data.Count} 条数据！");
+            int convertedCount = data.Count(item => !string.IsNullOrWhiteSpace(item.CurrentMapNumber));
+            int unresolvedCount = data.Count - convertedCount;
+            string importSummary = unresolvedCount == 0
+                ? $"成功导入 {data.Count} 条数据，并已全部换算当前图号。"
+                : $"成功导入 {data.Count} 条数据；已换算当前图号 {convertedCount} 条，另有 {unresolvedCount} 条图号无法按现行规则识别（当前图号留空）。";
+            _dialogService.ShowMessage(importSummary);
 
             // 4. 自动刷新
             InvalidateFullCache();
@@ -581,7 +588,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             var tables = await Task.Run(() => _topoMapService.GetTopoMapTables());
             if (tables.Count == 0) return;
 
-            string? selected = _dialogService.ShowSheetSelectionDialog(tables, "选择要删除的表");
+            string? selected = _dialogService.ShowSheetSelectionDialog(tables, "选择要删除的表")?.SheetName;
             if (string.IsNullOrEmpty(selected)) return;
 
             if (_dialogService.ShowConfirm($"确定要永久删除数据表 [{selected}] 吗？", "危险操作确认"))
@@ -713,6 +720,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                     Contains(x.BoxNumber, keyword) ||
                     Contains(x.Scale, keyword) ||
                     Contains(x.MapNumber, keyword) ||
+                    Contains(x.CurrentMapNumber, keyword) ||
                     Contains(x.MapName, keyword) ||
                     Contains(x.CreationDate, keyword) ||
                     Contains(x.SurveyDate, keyword) ||
@@ -805,7 +813,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             sheetName = sheetName.Length > 31 ? sheetName[..31] : sheetName;
             var sheet = workbook.CreateSheet(sheetName);
 
-            string[] headers = { "档案盒编号", "档案盒规格", "比例尺", "图号", "图名", "幅数", "成图日期", "调绘日期", "坐标系统", "高程基准", "涉及省市县", "登记人", "登记日期", "备注" };
+            string[] headers = { "档案盒编号", "档案盒规格", "比例尺", "图号", "当前图号", "图名", "幅数", "成图日期", "调绘日期", "坐标系统", "高程基准", "涉及省市县", "登记人", "登记日期", "备注" };
             var headerRow = sheet.CreateRow(0);
             for (int i = 0; i < headers.Length; i++)
             {
@@ -820,16 +828,17 @@ namespace DocMgr.ViewModels.HistoryArchive
                 row.CreateCell(1).SetCellValue(item.BoxSpecification ?? string.Empty);
                 row.CreateCell(2).SetCellValue(item.Scale ?? string.Empty);
                 row.CreateCell(3).SetCellValue(item.MapNumber ?? string.Empty);
-                row.CreateCell(4).SetCellValue(item.MapName ?? string.Empty);
-                row.CreateCell(5).SetCellValue(item.SheetCount);
-                row.CreateCell(6).SetCellValue(item.CreationDate ?? string.Empty);
-                row.CreateCell(7).SetCellValue(item.SurveyDate ?? string.Empty);
-                row.CreateCell(8).SetCellValue(item.CoordinateSystem ?? string.Empty);
-                row.CreateCell(9).SetCellValue(item.ElevationDatum ?? string.Empty);
-                row.CreateCell(10).SetCellValue(item.Region ?? string.Empty);
-                row.CreateCell(11).SetCellValue(item.Registrant ?? string.Empty);
-                row.CreateCell(12).SetCellValue(item.RegistrationDate ?? string.Empty);
-                row.CreateCell(13).SetCellValue(item.Remark ?? string.Empty);
+                row.CreateCell(4).SetCellValue(item.CurrentMapNumber ?? string.Empty);
+                row.CreateCell(5).SetCellValue(item.MapName ?? string.Empty);
+                row.CreateCell(6).SetCellValue(item.SheetCount);
+                row.CreateCell(7).SetCellValue(item.CreationDate ?? string.Empty);
+                row.CreateCell(8).SetCellValue(item.SurveyDate ?? string.Empty);
+                row.CreateCell(9).SetCellValue(item.CoordinateSystem ?? string.Empty);
+                row.CreateCell(10).SetCellValue(item.ElevationDatum ?? string.Empty);
+                row.CreateCell(11).SetCellValue(item.Region ?? string.Empty);
+                row.CreateCell(12).SetCellValue(item.Registrant ?? string.Empty);
+                row.CreateCell(13).SetCellValue(item.RegistrationDate ?? string.Empty);
+                row.CreateCell(14).SetCellValue(item.Remark ?? string.Empty);
             }
 
             for (int i = 0; i < headers.Length; i++)
@@ -872,15 +881,5 @@ namespace DocMgr.ViewModels.HistoryArchive
             return "";
         }
 
-        /// <summary>
-        /// 规范化图号：去除空白，并将全角括号替换为半角括号。
-        /// </summary>
-        private static string NormalizeMapNumber(string value)
-        {
-            if (string.IsNullOrEmpty(value)) return value;
-            return string.Concat(value.Where(c => !char.IsWhiteSpace(c)))
-                .Replace('（', '(')
-                .Replace('）', ')');
-        }
     }
 }

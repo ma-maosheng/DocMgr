@@ -66,7 +66,10 @@ namespace DocMgr.Services.YearlyArchive
         /// <summary>
         /// 读取指定工作表，按档案盒编号分组。
         /// </summary>
-        public static StockTextArchiveExcelParseResult Parse(string filePath, string sheetName)
+        /// <param name="expandItemsByTextLine">
+        /// 为 true 时，「子项名称」单元格内每一非空文本行作为一条资料子项；否则整行 Excel 作为一条资料子项。
+        /// </param>
+        public static StockTextArchiveExcelParseResult Parse(string filePath, string sheetName, bool expandItemsByTextLine = false)
         {
             if (string.IsNullOrWhiteSpace(filePath))
             {
@@ -147,19 +150,30 @@ namespace DocMgr.Services.YearlyArchive
                 }
 
                 string copyText = ReadCell(row, headerMap, ColumnCopyCount, formatter);
-                rawItems.Add(new RawItemRow
+                IReadOnlyList<string> itemNames = expandItemsByTextLine
+                    ? SplitItemNameLines(itemName)
+                    : new[] { itemName.Trim() };
+                foreach (string name in itemNames)
                 {
-                    ExcelRowNumber = excelRowNumber,
-                    SequenceText = sequence,
-                    Year = year,
-                    ProjectName = projectName,
-                    MaterialName = materialName,
-                    ItemName = itemName.Trim(),
-                    CopyText = copyText,
-                    BoxCountText = boxCountText,
-                    BoxLocation = boxLocation,
-                    BoxSpecification = boxSpecification
-                });
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        continue;
+                    }
+
+                    rawItems.Add(new RawItemRow
+                    {
+                        ExcelRowNumber = excelRowNumber,
+                        SequenceText = sequence,
+                        Year = year,
+                        ProjectName = projectName,
+                        MaterialName = materialName,
+                        ItemName = name.Trim(),
+                        CopyText = copyText,
+                        BoxCountText = boxCountText,
+                        BoxLocation = boxLocation,
+                        BoxSpecification = boxSpecification
+                    });
+                }
             }
 
             if (rawItems.Count == 0)
@@ -514,6 +528,20 @@ namespace DocMgr.Services.YearlyArchive
 
             Match match = Regex.Match(trimmed, @"\d{4}");
             return match.Success ? match.Value : trimmed;
+        }
+
+        private static IReadOnlyList<string> SplitItemNameLines(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return Array.Empty<string>();
+            }
+
+            return text
+                .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None)
+                .Select(line => line.Trim())
+                .Where(line => line.Length > 0)
+                .ToList();
         }
 
         private static string FillDown(string previous, string current)

@@ -20,6 +20,8 @@ namespace DocMgr.ViewModels.Cabinets
 
             CategoryText = descriptor.CategoryText;
 
+            HistoryCategoryText = descriptor.HistoryCategoryText;
+
             IdentifierText = descriptor.IdentifierText;
 
             TitleText = descriptor.TitleText;
@@ -125,6 +127,10 @@ namespace DocMgr.ViewModels.Cabinets
 
 
         public string CategoryText { get; }
+
+
+
+        public string HistoryCategoryText { get; }
 
 
 

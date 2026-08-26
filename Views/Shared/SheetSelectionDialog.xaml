@@ -3,13 +3,16 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
         Width="520"
-        Height="300"
+        Height="340"
         MinWidth="420"
-        MinHeight="240"
+        MinHeight="280"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
         WindowStyle="ToolWindow"
         Background="#F5F5F5">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </Window.Resources>
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -40,6 +43,15 @@
                   FontSize="14"
                   ItemsSource="{Binding SheetNames}"
                   SelectedItem="{Binding SelectedSheet, Mode=TwoWay}"/>
+
+        <CheckBox Grid.Row="2"
+                  Margin="0,12,0,0"
+                  VerticalAlignment="Top"
+                  FontSize="13"
+                  Content="以文本行为单位展开资料子项"
+                  IsChecked="{Binding ExpandItemsByTextLine, Mode=TwoWay}"
+                  Visibility="{Binding ShowExpandItemsByTextLineOption, Converter={StaticResource BooleanToVisibilityConverter}}"
+                  ToolTip="勾选后，「子项名称」单元格内每一非空文本行导入为一条资料子项；不勾选则以 Excel 表格行作为一条资料子项。"/>
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
             <Button Content="确定" Style="{StaticResource DialogPrimaryActionButtonStyle}"

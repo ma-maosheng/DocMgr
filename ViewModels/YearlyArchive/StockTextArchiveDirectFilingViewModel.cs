@@ -12,6 +12,7 @@ using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
@@ -766,8 +767,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames.ToList(), "选择要导入的工作表");
-            if (string.IsNullOrWhiteSpace(selectedSheet))
+            SheetSelectionResult? sheetSelection = _dialogService.ShowSheetSelectionDialog(
+                sheetNames.ToList(),
+                "选择要导入的工作表",
+                showExpandItemsByTextLineOption: true);
+            if (sheetSelection == null || string.IsNullOrWhiteSpace(sheetSelection.SheetName))
             {
                 return;
             }
@@ -778,7 +782,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 using (_dialogService.ShowOperationProgress("存档文本 Excel 导入", "正在解析工作表…"))
                 {
-                    parsed = await Task.Run(() => _filingService.ParseExcel(filePath, selectedSheet));
+                    parsed = await Task.Run(() => _filingService.ParseExcel(
+                        filePath,
+                        sheetSelection.SheetName,
+                        sheetSelection.ExpandItemsByTextLine));
                 }
             }
             catch (Exception ex)

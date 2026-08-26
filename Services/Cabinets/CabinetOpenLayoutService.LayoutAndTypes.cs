@@ -62,18 +62,262 @@ namespace DocMgr.Services.Cabinets
                 return BuildYearlyArchiveIdentifierText(group);
             }
 
-            string identifierText = string.Join("\n", group
-                .Select(item => item.IdentifierText)
-                .Where(text => !string.IsNullOrWhiteSpace(text))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Take(3));
+            return BuildHistoryArchiveIdentifierText(sourceSummaryText, group);
+        }
 
-            if (!string.IsNullOrWhiteSpace(identifierText))
+        /// <summary>
+        /// 历史存档盒脊/盒面标识正文：按地形图/航摄影像/其他图件结构化多行。
+        /// </summary>
+        private static string BuildHistoryArchiveIdentifierText(string sourceSummaryText, IEnumerable<ExpandedArchiveBoxAssignment> group)
+        {
+            var items = group as IReadOnlyList<ExpandedArchiveBoxAssignment> ?? group.ToList();
+            if (items.Count == 0)
             {
-                return identifierText;
+                return string.IsNullOrWhiteSpace(sourceSummaryText) ? "历史存档" : sourceSummaryText.Trim();
             }
 
-            return string.Equals(sourceSummaryText, "年度资料", StringComparison.OrdinalIgnoreCase) ? "年度资料" : string.Empty;
+            var sourceTypes = items
+                .Select(item => item.SourceType)
+                .Where(text => !string.IsNullOrWhiteSpace(text))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (sourceTypes.Count > 1
+                || string.Equals(sourceSummaryText, "多来源", StringComparison.OrdinalIgnoreCase))
+            {
+                return BuildMultiSourceHistoryIdentifierText(items);
+            }
+
+            string sourceType = sourceTypes.Count > 0 ? sourceTypes[0] : "历史存档";
+            if (items.Count == 1)
+            {
+                return BuildSingleHistoryItemIdentifierText(sourceType, items[0]);
+            }
+
+            return BuildMultiItemSameTypeHistoryIdentifierText(sourceType, items);
+        }
+
+        private static string BuildSingleHistoryItemIdentifierText(string sourceType, ExpandedArchiveBoxAssignment item)
+        {
+            var lines = new List<string>();
+            string typeLine = BuildHistoryTypeLine(sourceType, new[] { item });
+            if (!string.IsNullOrWhiteSpace(typeLine))
+            {
+                lines.Add(typeLine);
+            }
+
+            if (string.Equals(sourceType, "地形图", StringComparison.OrdinalIgnoreCase))
+            {
+                AppendHistoryLabeledLine(lines, "图号", item.IdentifierText);
+                AppendHistoryLabeledLine(lines, "图名", item.SortSecondary);
+            }
+            else if (string.Equals(sourceType, "航摄影像", StringComparison.OrdinalIgnoreCase))
+            {
+                AppendHistoryLabeledLine(lines, "测区", item.IdentifierText);
+                string boxContents = item.SortSecondary?.Trim() ?? string.Empty;
+                string surveyArea = item.IdentifierText?.Trim() ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(boxContents)
+                    && !string.Equals(boxContents, surveyArea, StringComparison.OrdinalIgnoreCase))
+                {
+                    AppendHistoryLabeledLine(lines, "盒内", boxContents);
+                }
+            }
+            else if (string.Equals(sourceType, "其他图件", StringComparison.OrdinalIgnoreCase))
+            {
+                AppendHistoryLabeledLine(lines, "序号", item.IdentifierText);
+                AppendHistoryLabeledLine(lines, "图名", item.SortSecondary);
+            }
+            else if (!string.IsNullOrWhiteSpace(item.IdentifierText))
+            {
+                lines.Add(item.IdentifierText.Trim());
+            }
+
+            if (lines.Count == 0)
+            {
+                return string.IsNullOrWhiteSpace(sourceType) ? "历史存档" : sourceType;
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        private static string BuildMultiItemSameTypeHistoryIdentifierText(
+            string sourceType,
+            IReadOnlyList<ExpandedArchiveBoxAssignment> items)
+        {
+            var lines = new List<string>();
+            string typeLine = BuildHistoryTypeLine(sourceType, items);
+            if (!string.IsNullOrWhiteSpace(typeLine))
+            {
+                lines.Add(typeLine);
+            }
+
+            var identifiers = items
+                .Select(item => item.IdentifierText)
+                .Where(text => !string.IsNullOrWhiteSpace(text))
+                .Select(text => text.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (string identifier in identifiers.Take(2))
+            {
+                lines.Add(identifier);
+            }
+
+            if (identifiers.Count > 2 || items.Count > 2)
+            {
+                lines.Add($"等{items.Count}条");
+            }
+
+            if (lines.Count == 0)
+            {
+                return string.IsNullOrWhiteSpace(sourceType) ? "历史存档" : sourceType;
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        private static string BuildMultiSourceHistoryIdentifierText(IReadOnlyList<ExpandedArchiveBoxAssignment> items)
+        {
+            var lines = new List<string> { "多来源" };
+            foreach (var typeGroup in items
+                .GroupBy(item => item.SourceType, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(group => group.Min(item => item.SourceSortOrder)))
+            {
+                if (lines.Count >= 4)
+                {
+                    break;
+                }
+
+                string sourceType = typeGroup.Key;
+                string? identifier = typeGroup
+                    .Select(item => item.IdentifierText)
+                    .FirstOrDefault(text => !string.IsNullOrWhiteSpace(text));
+
+                lines.Add(string.IsNullOrWhiteSpace(identifier)
+                    ? sourceType
+                    : $"{sourceType} {identifier.Trim()}");
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        private static string BuildHistoryTypeLine(string sourceType, IEnumerable<ExpandedArchiveBoxAssignment> items)
+        {
+            if (string.Equals(sourceType, "航摄影像", StringComparison.OrdinalIgnoreCase))
+            {
+                string scaleText = string.Join("/", items
+                    .Select(item => item.CategoryText)
+                    .Where(text => !string.IsNullOrWhiteSpace(text))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(text => text, StringComparer.OrdinalIgnoreCase));
+
+                if (!string.IsNullOrWhiteSpace(scaleText))
+                {
+                    return $"{sourceType} {scaleText}";
+                }
+
+                string suffixText = string.Join("/", items
+                    .Select(item => ExtractSourceSuffix(item.SortCategory, "历史存档航摄影像"))
+                    .Where(text => !string.IsNullOrWhiteSpace(text))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(text => text, StringComparer.OrdinalIgnoreCase));
+
+                return string.IsNullOrWhiteSpace(suffixText)
+                    ? sourceType
+                    : $"{sourceType} {suffixText}";
+            }
+
+            string scaleOrCategory = string.Join("/", items
+                .Select(item => item.CategoryText)
+                .Where(text => !string.IsNullOrWhiteSpace(text))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(text => text, StringComparer.OrdinalIgnoreCase));
+
+            return string.IsNullOrWhiteSpace(scaleOrCategory)
+                ? sourceType
+                : $"{sourceType} {scaleOrCategory}";
+        }
+
+        private static void AppendHistoryLabeledLine(ICollection<string> lines, string label, string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            lines.Add($"{label} {value.Trim()}");
+        }
+
+        /// <summary>
+        /// 历史存档盒签底部数量：同类型汇总幅/张，否则回退 N条。
+        /// </summary>
+        private static string BuildHistoryArchiveCountText(IEnumerable<ExpandedArchiveBoxAssignment> group)
+        {
+            var items = group as IReadOnlyList<ExpandedArchiveBoxAssignment> ?? group.ToList();
+            if (items.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var sourceTypes = items
+                .Select(item => item.SourceType)
+                .Where(text => !string.IsNullOrWhiteSpace(text))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (sourceTypes.Count > 1)
+            {
+                return $"{items.Count}条";
+            }
+
+            int total = 0;
+            string? unit = null;
+            foreach (var item in items)
+            {
+                if (!TryParseHistoryQuantity(item.QuantityText, out int value, out string parsedUnit))
+                {
+                    return $"{items.Count}条";
+                }
+
+                if (unit == null)
+                {
+                    unit = parsedUnit;
+                }
+                else if (!string.Equals(unit, parsedUnit, StringComparison.Ordinal))
+                {
+                    return $"{items.Count}条";
+                }
+
+                total += value;
+            }
+
+            return total > 0 && !string.IsNullOrWhiteSpace(unit)
+                ? $"{total}{unit}"
+                : $"{items.Count}条";
+        }
+
+        private static bool TryParseHistoryQuantity(string? quantityText, out int value, out string unit)
+        {
+            value = 0;
+            unit = string.Empty;
+            if (string.IsNullOrWhiteSpace(quantityText))
+            {
+                return false;
+            }
+
+            var match = Regex.Match(quantityText.Trim(), @"^(\d+)\s*(幅|张)$", RegexOptions.CultureInvariant);
+            if (!match.Success)
+            {
+                return false;
+            }
+
+            if (!int.TryParse(match.Groups[1].Value, out value) || value <= 0)
+            {
+                return false;
+            }
+
+            unit = match.Groups[2].Value;
+            return true;
         }
 
         private static string BuildYearlyArchiveIdentifierText(IEnumerable<ExpandedArchiveBoxAssignment> group)

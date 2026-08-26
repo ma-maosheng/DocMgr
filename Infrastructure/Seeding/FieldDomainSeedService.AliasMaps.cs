@@ -243,6 +243,7 @@ public static partial class FieldDomainSeedService
         ["TopoMap.BoxNumber"] = "盒号",
         ["TopoMap.BoxSpecification"] = "档案盒规格",
         ["TopoMap.MapNumber"] = "图号",
+        ["TopoMap.CurrentMapNumber"] = "当前图号",
         ["TopoMap.MapName"] = "图名",
         ["TopoMap.SheetCount"] = "图幅数",
         ["TopoMap.CreationDate"] = "成图日期",

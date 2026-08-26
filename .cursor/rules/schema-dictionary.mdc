@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-08-20T04:29:54Z
+> 生成时间（UTC）：2026-08-26T09:34:36Z
 
 ## 表索引
 
@@ -900,6 +900,7 @@ alwaysApply: true
 | 盒号 | `BoxNumber` | `String` | 否 |
 | 档案盒规格 | `BoxSpecification` | `String` | 否 |
 | 图号 | `MapNumber` | `String` | 否 |
+| 当前图号 | `CurrentMapNumber` | `String` | 否 |
 | 图名 | `MapName` | `String` | 否 |
 | 图幅数 | `SheetCount` | `Int32` | 否 |
 | 成图日期 | `CreationDate` | `String` | 否 |

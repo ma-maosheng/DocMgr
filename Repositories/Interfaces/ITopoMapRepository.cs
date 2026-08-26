@@ -28,4 +28,9 @@ public interface ITopoMapRepository
     void DeleteById(int id);
 
     void Update(TopoMap map);
+
+    /// <summary>
+    /// 持久化当前上下文中已跟踪实体的变更。
+    /// </summary>
+    void SaveChanges();
 }

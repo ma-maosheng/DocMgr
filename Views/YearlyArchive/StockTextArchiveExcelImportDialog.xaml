@@ -15,6 +15,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0"
@@ -72,5 +73,53 @@
                     Padding="14,4"
                     MinHeight="28"/>
         </DockPanel>
+
+        <StackPanel Grid.Row="3" Margin="0,8,0,0">
+            <DockPanel LastChildFill="True" Margin="0,0,0,4">
+                <TextBlock DockPanel.Dock="Right"
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           Foreground="#78909C"
+                           MinWidth="56"
+                           TextAlignment="Right"
+                           Text="{Binding ImportProgressPercentText, Mode=OneWay}"/>
+                <TextBlock VerticalAlignment="Center"
+                           FontSize="12"
+                           Foreground="#546E7A"
+                           TextTrimming="CharacterEllipsis"
+                           Text="{Binding ImportProgressStatus, Mode=OneWay}"/>
+            </DockPanel>
+            <Grid Height="24">
+                <ProgressBar Minimum="0"
+                             Maximum="100"
+                             IsIndeterminate="True">
+                    <ProgressBar.Style>
+                        <Style TargetType="ProgressBar">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ImportProgressIsIndeterminate, Mode=OneWay}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ProgressBar.Style>
+                </ProgressBar>
+                <ProgressBar Minimum="0"
+                             Maximum="100"
+                             IsIndeterminate="False"
+                             Value="{Binding ImportProgressValue, Mode=OneWay}">
+                    <ProgressBar.Style>
+                        <Style TargetType="ProgressBar">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ImportProgressIsIndeterminate, Mode=OneWay}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ProgressBar.Style>
+                </ProgressBar>
+            </Grid>
+        </StackPanel>
     </Grid>
 </Window>

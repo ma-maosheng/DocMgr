@@ -399,20 +399,36 @@ namespace DocMgr.Services.Cabinets
                     BoxCode = assignment.Parsed.BoxCode,
                     SourceType = assignment.SourceType,
                     CategoryText = assignment.CategoryText,
+                    HistoryCategoryText = ResolveHistoryCategoryText(assignment),
                     IdentifierText = assignment.IdentifierText,
                     TitleText = assignment.TitleText,
                     QuantityText = assignment.QuantityText,
                     DetailText = assignment.DetailText,
                     DateText = assignment.DateText,
+                    BoxSpecs = assignment.BoxSpecification ?? string.Empty,
                     IsMixedPlacement = assignment.IsMixedPlacement,
                     OriginalBoxNumberText = assignment.SourceBoxNumberText,
                     RelatedBoxCodesText = string.Join("；", assignment.RelatedBoxCodes),
                     RelatedBoxCount = assignment.RelatedBoxCodes.Count,
                     PlacementNote = assignment.IsMixedPlacement
                         ? "该批资料登记时涉及多个档案盒，当前未细化到具体盒。以下记录为关联记录，不代表已精确归属本盒。"
-                        : string.Empty
+                        : string.Empty,
+                    ViewMode = CabinetArchiveContainerViewMode.HistoryArchiveBox
                 })
                 .ToList();
+        }
+
+        private static string ResolveHistoryCategoryText(ExpandedArchiveBoxAssignment assignment)
+        {
+            if (string.Equals(assignment.SourceType, "航摄影像", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(assignment.SourceType, "其他图件", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.IsNullOrWhiteSpace(assignment.SortCategory)
+                    ? string.Empty
+                    : assignment.SortCategory.Trim();
+            }
+
+            return string.Empty;
         }
 
         private Dictionary<string, CabinetArchiveBoxPlacement> LoadPlacementLookup(string cabinetName)
@@ -586,7 +602,9 @@ namespace DocMgr.Services.Cabinets
                 ArchiveSequenceNoShortText = archiveSequenceNoShortText,
                 YearText = yearlyYearText,
                 ProjectText = yearlyProjectText,
-                CountText = group.Count() > 0 ? $"{group.Count()}条" : string.Empty,
+                CountText = isYearlyArchiveDisplay
+                    ? (group.Count() > 0 ? $"{group.Count()}条" : string.Empty)
+                    : BuildHistoryArchiveCountText(group),
                 SequenceIndex = first.Parsed.SequenceIndex,
                 ItemCount = group.Count(),
                 SlotCode = ResolveSlotCode(first, placementLookup),
@@ -1547,7 +1565,7 @@ namespace DocMgr.Services.Cabinets
                     map.SheetCount > 0 ? $"{map.SheetCount}幅" : string.Empty,
                     map.Remark,
                     string.Empty,
-                    map.Scale,
+                    map.Category,
                     map.SequenceNumber,
                     map.MapName);
             }

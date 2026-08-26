@@ -75,7 +75,8 @@ namespace DocMgr.Services.Interfaces
         /// <summary>
         /// 解析指定工作表，按档案盒编号分组。
         /// </summary>
-        StockTextArchiveExcelParseResult ParseExcel(string filePath, string sheetName);
+        /// <param name="expandItemsByTextLine">勾选「以文本行为单位展开资料子项」时为 true。</param>
+        StockTextArchiveExcelParseResult ParseExcel(string filePath, string sheetName, bool expandItemsByTextLine = false);
 
         /// <summary>
         /// 校验 Excel 解析出的各盒（档口用途、规格、占用、建档字段）。

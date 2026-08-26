@@ -95,4 +95,9 @@ public class TopoMapRepository : ITopoMapRepository
         _dbContext.TopoMaps.Update(map);
         _dbContext.SaveChanges();
     }
+
+    public void SaveChanges()
+    {
+        _dbContext.SaveChanges();
+    }
 }

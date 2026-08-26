@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DocMgr.Models.HistoryArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
 
@@ -33,17 +34,26 @@ namespace DocMgr.Services.HistoryArchive
         public List<TopoMap> GetTopoMapsByTable(string tableName)
         {
             string scale = tableName.Replace("历史存档纸质地形图", "");
-            return _topoMapRepository.GetByScale(scale);
+            var list = _topoMapRepository.GetByScale(scale);
+            EnsureCurrentMapNumbers(list);
+            return list;
         }
 
         public List<TopoMap> GetAllTopoMaps()
         {
-            return _topoMapRepository.GetAll();
+            var list = _topoMapRepository.GetAll();
+            EnsureCurrentMapNumbers(list);
+            return list;
         }
 
         public async Task ImportTopoMapsAsync(List<TopoMap> maps, bool isRecreate = false)
         {
             ArgumentNullException.ThrowIfNull(maps);
+            foreach (TopoMap map in maps)
+            {
+                TopoMapCurrentMapNumberSupport.Apply(map);
+            }
+
             await _importSlotGuard.EnsureSlotsReadyForHistoryImportAsync(maps.Select(item => item.BoxNumber));
             _topoMapRepository.Import(maps, isRecreate);
         }
@@ -61,7 +71,19 @@ namespace DocMgr.Services.HistoryArchive
 
         public void UpdateTopoMap(TopoMap map)
         {
+            ArgumentNullException.ThrowIfNull(map);
+            TopoMapCurrentMapNumberSupport.Apply(map);
             _topoMapRepository.Update(map);
+        }
+
+        private void EnsureCurrentMapNumbers(List<TopoMap> maps)
+        {
+            if (!TopoMapCurrentMapNumberSupport.FillMissing(maps))
+            {
+                return;
+            }
+
+            _topoMapRepository.SaveChanges();
         }
     }
 }

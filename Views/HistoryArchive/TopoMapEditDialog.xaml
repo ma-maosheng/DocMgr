@@ -57,13 +57,19 @@
         </StackPanel>
 
         <StackPanel Grid.Row="2" Grid.Column="1" Margin="10,0,0,15">
-            <TextBlock Text="档案盒规格" Foreground="#666" Margin="0,0,0,5"/>
-            <TextBox Height="35" Padding="5,8" Text="{Binding BoxSpecification, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Text="当前图号" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="35" Padding="5,8" IsReadOnly="True"
+                     Text="{Binding CurrentMapNumber, Mode=OneWay}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,10,15">
             <TextBlock Text="幅数" Foreground="#666" Margin="0,0,0,5"/>
             <TextBox Height="35" Padding="5,8" Text="{Binding SheetCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Grid.Column="1" Margin="10,0,0,15">
+            <TextBlock Text="档案盒规格" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="35" Padding="5,8" Text="{Binding BoxSpecification, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Margin="0,0,0,15">

@@ -2545,7 +2545,7 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
-            string? selectedSpecification = _dialogService.ShowSheetSelectionDialog(specifications.ToList(), "设置档案盒规格");
+            string? selectedSpecification = _dialogService.ShowSheetSelectionDialog(specifications.ToList(), "设置档案盒规格")?.SheetName;
             if (string.IsNullOrWhiteSpace(selectedSpecification))
             {
                 return;

@@ -449,8 +449,8 @@ namespace DocMgr.Services.YearlyArchive
             => StockTextArchiveExcelImportSupport.ListSheetNames(filePath);
 
         /// <inheritdoc/>
-        public StockTextArchiveExcelParseResult ParseExcel(string filePath, string sheetName)
-            => StockTextArchiveExcelImportSupport.Parse(filePath, sheetName);
+        public StockTextArchiveExcelParseResult ParseExcel(string filePath, string sheetName, bool expandItemsByTextLine = false)
+            => StockTextArchiveExcelImportSupport.Parse(filePath, sheetName, expandItemsByTextLine);
 
         /// <inheritdoc/>
         public async Task<IReadOnlyList<StockTextArchiveExcelBoxValidation>> ValidateExcelImportAsync(
@@ -469,6 +469,7 @@ namespace DocMgr.Services.YearlyArchive
             {
                 index++;
                 progress?.Report((index, total, $"正在校验第 {index} / {total} 盒…"));
+                await Task.Yield();
                 var errors = box.ParseErrors.ToList();
                 var request = box.ToRequest();
                 errors.AddRange(await CollectCommitErrorsAsync(request, currentUser));
@@ -497,7 +498,14 @@ namespace DocMgr.Services.YearlyArchive
             User? currentUser,
             IProgress<(int Current, int Total, string Status)>? progress = null)
         {
-            var validations = await ValidateExcelImportAsync(boxes, currentUser);
+            int expected = boxes?.Count ?? 0;
+            if (expected > 0)
+            {
+                progress?.Report((0, expected, "正在复核可立档盒…"));
+                await Task.Yield();
+            }
+
+            var validations = await ValidateExcelImportAsync(boxes, currentUser, progress);
             int skipped = 0;
             int succeeded = 0;
             int failed = 0;
@@ -511,6 +519,7 @@ namespace DocMgr.Services.YearlyArchive
                 index++;
                 var box = validation.Box;
                 progress?.Report((index, total, $"正在立档第 {index} / {total} 盒（{box.NormalizedBoxLocationCode}）…"));
+                await Task.Yield();
                 if (!validation.CanImport)
                 {
                     skipped++;

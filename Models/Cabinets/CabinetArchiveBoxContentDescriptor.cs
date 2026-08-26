@@ -8,6 +8,9 @@ namespace DocMgr.Models.Cabinets
 
         public string CategoryText { get; init; } = string.Empty;
 
+        /// <summary>历史存档分类（航摄影像/其他图件 Category；地形图为空）。</summary>
+        public string HistoryCategoryText { get; init; } = string.Empty;
+
         public string IdentifierText { get; init; } = string.Empty;
 
         public string TitleText { get; init; } = string.Empty;

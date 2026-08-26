@@ -3,6 +3,7 @@ using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.ViewModels.Cabinets;
+using DocMgr.ViewModels.Shared;
 using DocMgr.ViewModels.YearlyArchive;
 
 namespace DocMgr.Services.Interfaces
@@ -28,7 +29,13 @@ namespace DocMgr.Services.Interfaces
         /// </summary>
         void ShowSystemAttachmentView(SystemAttachment attachment);
 
-        string? ShowSheetSelectionDialog(List<string> sheetNames, string title = "选择Sheet");
+        /// <summary>
+        /// 选择工作表。取消返回 null。结果中含「以文本行为单位展开资料子项」勾选状态。
+        /// </summary>
+        SheetSelectionResult? ShowSheetSelectionDialog(
+            List<string> sheetNames,
+            string title = "选择Sheet",
+            bool showExpandItemsByTextLineOption = false);
         ImportMode? ShowImportOptionDialog(string tableName);
 
         void SetBusyState(bool isBusy);

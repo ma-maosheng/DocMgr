@@ -1,4 +1,5 @@
 using System;
+using DocMgr.Models.HistoryArchive;
 using DocMgr.ViewModels.Base;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ namespace DocMgr.ViewModels.HistoryArchive
         private string _boxSpecification = string.Empty;
         private string _scale = string.Empty;
         private string _mapNumber = string.Empty;
+        private string _currentMapNumber = string.Empty;
         private string _mapName = string.Empty;
         private string _sheetCount = string.Empty;
         private string _creationDate = string.Empty;
@@ -45,6 +47,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 BoxNumber = mapToEdit.BoxNumber,
                 BoxSpecification = mapToEdit.BoxSpecification,
                 MapNumber = mapToEdit.MapNumber,
+                CurrentMapNumber = mapToEdit.CurrentMapNumber,
                 MapName = mapToEdit.MapName,
                 SheetCount = mapToEdit.SheetCount,
                 CreationDate = mapToEdit.CreationDate,
@@ -63,6 +66,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             BoxSpecification = _map.BoxSpecification;
             Scale = _map.Scale;
             MapNumber = _map.MapNumber;
+            CurrentMapNumber = _map.CurrentMapNumber;
             MapName = _map.MapName;
             SheetCount = _map.SheetCount == 0 ? string.Empty : _map.SheetCount.ToString();
             CreationDate = _map.CreationDate;
@@ -71,6 +75,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             ElevationDatum = _map.ElevationDatum;
             Region = _map.Region;
             Remark = _map.Remark;
+            RefreshCurrentMapNumber();
 
             ConfirmCommand = new RelayCommand(_ => Confirm());
             CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
@@ -87,7 +92,13 @@ namespace DocMgr.ViewModels.HistoryArchive
         public string Scale
         {
             get => _scale;
-            set => SetProperty(ref _scale, value);
+            set
+            {
+                if (SetProperty(ref _scale, value))
+                {
+                    RefreshCurrentMapNumber();
+                }
+            }
         }
 
         public string BoxSpecification
@@ -99,7 +110,19 @@ namespace DocMgr.ViewModels.HistoryArchive
         public string MapNumber
         {
             get => _mapNumber;
-            set => SetProperty(ref _mapNumber, value);
+            set
+            {
+                if (SetProperty(ref _mapNumber, value))
+                {
+                    RefreshCurrentMapNumber();
+                }
+            }
+        }
+
+        public string CurrentMapNumber
+        {
+            get => _currentMapNumber;
+            private set => SetProperty(ref _currentMapNumber, value);
         }
 
         public string MapName
@@ -155,6 +178,11 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         public event Action<bool?>? RequestClose;
 
+        private void RefreshCurrentMapNumber()
+        {
+            CurrentMapNumber = TopoMapCurrentMapNumberSupport.Compute(Scale, MapNumber);
+        }
+
         private void Confirm()
         {
             if (string.IsNullOrWhiteSpace(BoxNumber))
@@ -186,7 +214,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 _map.BoxNumber = BoxNumber.Trim();
                 _map.BoxSpecification = BoxSpecification.Trim();
                 _map.Scale = Scale.Trim();
-                _map.MapNumber = MapNumber.Trim();
+                _map.MapNumber = TopoMapCurrentMapNumberSupport.NormalizeMapNumber(MapNumber);
                 _map.MapName = MapName.Trim();
                 _map.SheetCount = int.TryParse(SheetCount, out int sheetCount) ? sheetCount : 0;
                 _map.CreationDate = CreationDate.Trim();
@@ -197,6 +225,8 @@ namespace DocMgr.ViewModels.HistoryArchive
                 _map.Remark = Remark.Trim();
                 _map.Modifier = _userContextService.CurrentUser?.RealName ?? "Unknown";
                 _map.ModificationDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                TopoMapCurrentMapNumberSupport.Apply(_map);
+                CurrentMapNumber = _map.CurrentMapNumber;
 
                 _topoMapService.UpdateTopoMap(_map);
                 RequestClose?.Invoke(true);

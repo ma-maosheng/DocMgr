@@ -42,6 +42,7 @@
 
         <Border Grid.Row="1" Margin="0,16,0,16" Padding="12" Background="White" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="8">
             <Grid>
+                <!-- 年度模拟 / 电子袋：份数与载体列 -->
                 <DataGrid ItemsSource="{Binding Items}"
                           SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
                           AutoGenerateColumns="False"
@@ -51,7 +52,8 @@
                           SelectionMode="Single"
                           HeadersVisibility="Column"
                           GridLinesVisibility="Horizontal"
-                          RowHeaderWidth="0">
+                          RowHeaderWidth="0"
+                          Visibility="{Binding YearlyStyleGridVisibility}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="来源类型" Binding="{Binding SourceType}" Width="90"/>
                         <DataGridTextColumn Header="载体" Binding="{Binding CarrierTypeText}" Width="90"/>
@@ -68,6 +70,55 @@
                         <DataGridTextColumn Header="介质盘库状态" Binding="{Binding ElectronicStatusDisplay, Mode=OneWay}" Width="96"/>
                         <DataGridTextColumn Header="详细信息" Binding="{Binding DetailText}" Width="*"/>
                         <DataGridTextColumn Header="立档日期" Binding="{Binding DateText}" Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- 历史存档·地形图：图上图号，无盒规格 -->
+                <DataGrid ItemsSource="{Binding Items}"
+                          SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          SelectionMode="Single"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          RowHeaderWidth="0"
+                          Visibility="{Binding HistoryTopoGridVisibility}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="资料类型" Binding="{Binding SourceType}" Width="90"/>
+                        <DataGridTextColumn Header="比例尺" Binding="{Binding CategoryText}" Width="100"/>
+                        <DataGridTextColumn Header="分类" Binding="{Binding HistoryCategoryText}" Width="100"/>
+                        <DataGridTextColumn Header="图上图号" Binding="{Binding IdentifierText}" Width="120"/>
+                        <DataGridTextColumn Header="图名/盒内内容" Binding="{Binding TitleText}" Width="180"/>
+                        <DataGridTextColumn Header="数量" Binding="{Binding QuantityText}" Width="72"/>
+                        <DataGridTextColumn Header="补充信息" Binding="{Binding DetailText}" Width="*"/>
+                        <DataGridTextColumn Header="日期" Binding="{Binding DateText}" Width="110"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- 历史存档：航摄/其他图件/多来源通用列集 -->
+                <DataGrid ItemsSource="{Binding Items}"
+                          SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          SelectionMode="Single"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          RowHeaderWidth="0"
+                          Visibility="{Binding HistoryGeneralGridVisibility}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="资料类型" Binding="{Binding SourceType}" Width="90"/>
+                        <DataGridTextColumn Header="比例尺" Binding="{Binding CategoryText}" Width="100"/>
+                        <DataGridTextColumn Header="分类" Binding="{Binding HistoryCategoryText}" Width="100"/>
+                        <DataGridTextColumn Header="标识" Binding="{Binding IdentifierText}" Width="120"/>
+                        <DataGridTextColumn Header="图名/盒内内容" Binding="{Binding TitleText}" Width="180"/>
+                        <DataGridTextColumn Header="数量" Binding="{Binding QuantityText}" Width="72"/>
+                        <DataGridTextColumn Header="补充信息" Binding="{Binding DetailText}" Width="*"/>
+                        <DataGridTextColumn Header="日期" Binding="{Binding DateText}" Width="110"/>
+                        <DataGridTextColumn Header="盒规格" Binding="{Binding BoxSpecs}" Width="100"/>
                     </DataGrid.Columns>
                 </DataGrid>
 
@@ -96,6 +147,7 @@
                     Style="{StaticResource DialogSecondaryActionButtonStyle}"
                     Width="144"
                     Margin="0,0,8,0"
+                    Visibility="{Binding ViewArchiveDetailButtonVisibility}"
                     ToolTip="查看所选资料子项的登记明细、立档容器与关联信息"/>
             <Button Content="关闭"
                     Command="{Binding CloseCommand}"

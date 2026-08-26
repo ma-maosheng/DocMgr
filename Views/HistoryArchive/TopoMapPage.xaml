@@ -98,6 +98,7 @@
                     <DataGridTextColumn Header="档案盒编号" Binding="{Binding BoxNumber}" Width="100"/>
                     <DataGridTextColumn Header="比例尺" Binding="{Binding Scale}" Width="80"/>
                     <DataGridTextColumn Header="图号" Binding="{Binding MapNumber}" Width="100"/>
+                    <DataGridTextColumn Header="当前图号" Binding="{Binding CurrentMapNumber}" Width="120"/>
                     <DataGridTextColumn Header="图名" Binding="{Binding MapName}" Width="150"/>
                     
                     <!-- 补全缺失的字段 -->

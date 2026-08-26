@@ -124,11 +124,30 @@ namespace DocMgr.ViewModels.Cabinets
 
                 : Visibility.Collapsed;
 
-            HistoryGridVisibility = viewMode == CabinetArchiveContainerViewMode.HistoryArchiveBox
+            bool isHistoryArchive = viewMode == CabinetArchiveContainerViewMode.HistoryArchiveBox;
+            bool isHistoryTopoMapOnly = isHistoryArchive
+                && contents.Count > 0
+                && contents.All(item => string.Equals(item.SourceType, "地形图", StringComparison.OrdinalIgnoreCase));
 
+            HistoryGridVisibility = isHistoryArchive
                 ? Visibility.Visible
-
                 : Visibility.Collapsed;
+
+            HistoryTopoGridVisibility = isHistoryTopoMapOnly
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            HistoryGeneralGridVisibility = isHistoryArchive && !isHistoryTopoMapOnly
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            YearlyStyleGridVisibility = isHistoryArchive
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+
+            ViewArchiveDetailButtonVisibility = isHistoryArchive
+                ? Visibility.Collapsed
+                : Visibility.Visible;
 
 
 
@@ -300,6 +319,26 @@ namespace DocMgr.ViewModels.Cabinets
 
 
 
+        /// <summary>历史存档且全部为地形图：标识列为「图上图号」，无盒规格列。</summary>
+        public Visibility HistoryTopoGridVisibility { get; }
+
+
+
+        /// <summary>历史存档非纯地形图：通用历史列集。</summary>
+        public Visibility HistoryGeneralGridVisibility { get; }
+
+
+
+        /// <summary>年度模拟盒 / 电子袋共用列集网格（非历史存档时显示）。</summary>
+        public Visibility YearlyStyleGridVisibility { get; }
+
+
+
+        /// <summary>历史存档不支持查看资料详情，隐藏按钮。</summary>
+        public Visibility ViewArchiveDetailButtonVisibility { get; }
+
+
+
         public bool HasYearlyArchiveMediaItems { get; }
 
 
@@ -414,6 +453,10 @@ namespace DocMgr.ViewModels.Cabinets
 
                     $"查看档案盒内容 - {locationCode}",
 
+                CabinetArchiveContainerViewMode.HistoryArchiveBox =>
+
+                    $"查看历史存档盒内容 - {locationCode}",
+
                 _ => $"查看档案内容 - {locationCode}",
 
             };
@@ -446,6 +489,20 @@ namespace DocMgr.ViewModels.Cabinets
 
 
 
+            if (viewMode == CabinetArchiveContainerViewMode.HistoryArchiveBox)
+
+            {
+
+                return isMixedPlacement
+
+                    ? $"历史存档 · {locationCode}（混放待梳理）"
+
+                    : $"历史存档 · {locationCode}";
+
+            }
+
+
+
             return isMixedPlacement
 
                 ? $"档案盒：{locationCode}（混放待梳理）"
@@ -473,6 +530,46 @@ namespace DocMgr.ViewModels.Cabinets
             {
 
                 return $"共 {contents.Count} 条资料子项（电子介质按整件管理，显示库存状态）";
+
+            }
+
+
+
+            if (viewMode == CabinetArchiveContainerViewMode.HistoryArchiveBox)
+
+            {
+
+                string typeSummary = string.Join("/", contents
+
+                    .Select(item => item.SourceType)
+
+                    .Where(text => !string.IsNullOrWhiteSpace(text))
+
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+
+                    .OrderBy(text => text, StringComparer.OrdinalIgnoreCase));
+
+                if (string.IsNullOrWhiteSpace(typeSummary))
+
+                {
+
+                    typeSummary = "历史存档";
+
+                }
+
+
+
+                if (isMixedPlacement)
+
+                {
+
+                    return $"历史存档 · {typeSummary} · 共 {contents.Count} 条（当前未细化到具体盒）";
+
+                }
+
+
+
+                return $"历史存档 · {typeSummary} · 共 {contents.Count} 条";
 
             }
 
@@ -511,6 +608,10 @@ namespace DocMgr.ViewModels.Cabinets
                 CabinetArchiveContainerViewMode.ElectronicArchiveBag =>
 
                     "电子介质袋：表格列展示登记审批确定的子项属性、存储目录、目录/文件明细及介质盘库状态。",
+
+                CabinetArchiveContainerViewMode.HistoryArchiveBox =>
+
+                    "历史存档：表格列展示地形图/航摄影像/其他图件台账字段（不含年度份数分解）。",
 
                 _ => string.Empty,
 

@@ -230,14 +230,21 @@ namespace DocMgr.Services.Shared
             ShowMessage("附件已保存。", "提示");
         }
 
-        public string? ShowSheetSelectionDialog(List<string> sheetNames, string title = "选择Sheet")
+        public SheetSelectionResult? ShowSheetSelectionDialog(
+            List<string> sheetNames,
+            string title = "选择Sheet",
+            bool showExpandItemsByTextLineOption = false)
         {
             var dialog = new SheetSelectionDialog
             {
                 Owner = GetOwnerWindow(),
                 Title = string.IsNullOrWhiteSpace(title) ? "选择Sheet" : title.Trim()
             };
-            var (scope, viewModel) = CreateScopedViewModel<SheetSelectionDialogViewModel>(sheetNames, this);
+            var (scope, viewModel) = CreateScopedViewModel<SheetSelectionDialogViewModel>(
+                new[] { typeof(IEnumerable<string>), typeof(IDialogService), typeof(bool) },
+                sheetNames,
+                this,
+                showExpandItemsByTextLineOption);
 
             dialog.DataContext = viewModel;
 
@@ -246,7 +253,9 @@ namespace DocMgr.Services.Shared
 
             try
             {
-                return dialog.ShowDialog() == true ? viewModel.SelectedSheet : null;
+                return dialog.ShowDialog() == true
+                    ? new SheetSelectionResult(viewModel.SelectedSheet, viewModel.ExpandItemsByTextLine)
+                    : null;
             }
             finally
             {

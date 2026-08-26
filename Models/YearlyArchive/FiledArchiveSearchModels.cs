@@ -358,7 +358,7 @@ namespace DocMgr.Models.YearlyArchive
         /// <summary>同组第一条，可显示折叠/展开按钮。</summary>
         public bool IsFoldGroupLeader { get; set; }
 
-        /// <summary>同组条数大于 1 时在「立档编号」列显示按钮。</summary>
+        /// <summary>同组条数大于 1 时在「表单号」列显示按钮。</summary>
         public bool ShowFoldButton { get; set; }
 
         /// <summary>组内首行按钮文案：折叠 或 展开(n)。</summary>

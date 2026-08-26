@@ -242,7 +242,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                     return;
                 }
 
-                string? selectedTable = _dialogService.ShowSheetSelectionDialog(tables, "选择存档数据表");
+                string? selectedTable = _dialogService.ShowSheetSelectionDialog(tables, "选择存档数据表")?.SheetName;
                 if (!string.IsNullOrEmpty(selectedTable))
                 {
                     await LoadDataAsync(selectedTable);
@@ -354,7 +354,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                         sheetNames.Add(workbook.GetSheetName(i));
                 }
 
-                string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames);
+                string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames)?.SheetName;
                 if (string.IsNullOrEmpty(selectedSheet)) return;
 
                 await ProcessImportLogicAsync(filePath, selectedSheet);
@@ -485,7 +485,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             var tables = await Task.Run(() => _aerialPhotoService.GetAerialPhotoTables());
             if (tables.Count == 0) return;
 
-            string? selected = _dialogService.ShowSheetSelectionDialog(tables, "选择要删除的存档表");
+            string? selected = _dialogService.ShowSheetSelectionDialog(tables, "选择要删除的存档表")?.SheetName;
             if (string.IsNullOrEmpty(selected)) return;
 
             if (_dialogService.ShowConfirm($"确定要永久删除数据表 [{selected}] 吗？\n\n此操作不可恢复！", "危险操作确认"))

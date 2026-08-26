@@ -473,10 +473,10 @@
                           ItemsSource="{Binding LedgerRows}"
                           SelectedItem="{Binding SelectedRow, Mode=TwoWay}">
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Width="188" IsReadOnly="True">
+                        <DataGridTemplateColumn Width="168" IsReadOnly="True">
                             <DataGridTemplateColumn.Header>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="立档编号" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="表单号" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <Button Content="{Binding Data.FoldAllButtonText, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
                                             ToolTip="{Binding Data.FoldAllButtonToolTip, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
                                             Style="{StaticResource LedgerFoldButtonStyle}"
@@ -494,11 +494,12 @@
                                                 Command="{Binding Data.ToggleFoldGroupCommand, Source={StaticResource FilingLedgerVmProxy}}"
                                                 CommandParameter="{Binding}"
                                                 PreviewMouseLeftButtonDown="FoldButton_PreviewMouseLeftButtonDown"/>
-                                        <TextBlock Text="{Binding FilingFactNo, Mode=OneWay}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding FormNo, Mode=OneWay}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo, Mode=OneWay}" Width="140"/>
                         <DataGridTextColumn Header="介质" Binding="{Binding MediaKind, Mode=OneWay}" Width="56"/>
                         <DataGridTextColumn Header="介质类型" Binding="{Binding RegisterMediaType, Mode=OneWay}" Width="72">
                             <DataGridTextColumn.Visibility>
@@ -528,7 +529,6 @@
                                          Converter="{StaticResource BooleanToVisibilityConverter}"/>
                             </DataGridTextColumn.Visibility>
                         </DataGridTextColumn>
-                        <DataGridTextColumn Header="表单号" Binding="{Binding FormNo, Mode=OneWay}" Width="118"/>
                         <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="150"/>
                         <DataGridTextColumn Header="库管模式" Binding="{Binding ArchivePurpose, Mode=OneWay}" Width="80"/>
                         <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName, Mode=OneWay}" Width="130"/>

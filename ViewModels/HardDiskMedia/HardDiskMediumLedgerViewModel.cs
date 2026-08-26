@@ -199,7 +199,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return;
                 }
 
-                string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames.ToList(), "选择初始登记工作表");
+                string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames.ToList(), "选择初始登记工作表")?.SheetName;
                 if (string.IsNullOrWhiteSpace(selectedSheet))
                 {
                     return;

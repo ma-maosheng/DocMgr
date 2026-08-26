@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-08-20T04:29:54Z
+generatedAt: 2026-08-26T09:34:36Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -2241,6 +2241,12 @@ tables:
         aliases: []
       MapNumber:
         chineseName: 图号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      CurrentMapNumber:
+        chineseName: 当前图号
         description: ''
         clrType: String
         needsReview: false

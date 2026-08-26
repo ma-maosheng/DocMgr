@@ -11,6 +11,12 @@
         public string BoxNumber { get; set; } = string.Empty;
         public string BoxSpecification { get; set; } = string.Empty;
         public string MapNumber { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 按 GB/T 13989 现行地形图编号规则，由比例尺与图上图号换算得到的当前图号。
+        /// </summary>
+        public string CurrentMapNumber { get; set; } = string.Empty;
+
         public string MapName { get; set; } = string.Empty;
         public int SheetCount { get; set; }
 

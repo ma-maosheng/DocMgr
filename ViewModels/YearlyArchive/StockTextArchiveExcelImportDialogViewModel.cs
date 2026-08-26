@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
@@ -23,6 +25,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _isBusy;
         private string _summaryText = "正在校验…";
         private bool _imported;
+        private string _importProgressStatus = string.Empty;
+        private string _importProgressPercentText = string.Empty;
+        private double _importProgressValue;
+        private bool _importProgressIsIndeterminate;
 
         public StockTextArchiveExcelImportDialogViewModel(
             IReadOnlyList<StockTextArchiveExcelBoxDraft> boxes,
@@ -67,19 +73,52 @@ namespace DocMgr.ViewModels.YearlyArchive
             private set => SetProperty(ref _summaryText, value);
         }
 
+        /// <summary>
+        /// 底部导入进度说明。
+        /// </summary>
+        public string ImportProgressStatus
+        {
+            get => _importProgressStatus;
+            private set => SetProperty(ref _importProgressStatus, value);
+        }
+
+        /// <summary>
+        /// 底部导入进度分数，如 3 / 10。
+        /// </summary>
+        public string ImportProgressPercentText
+        {
+            get => _importProgressPercentText;
+            private set => SetProperty(ref _importProgressPercentText, value);
+        }
+
+        /// <summary>
+        /// 底部导入进度 0–100。
+        /// </summary>
+        public double ImportProgressValue
+        {
+            get => _importProgressValue;
+            private set => SetProperty(ref _importProgressValue, value);
+        }
+
+        /// <summary>
+        /// 导入尚未给出明确总量时为不确定进度。
+        /// </summary>
+        public bool ImportProgressIsIndeterminate
+        {
+            get => _importProgressIsIndeterminate;
+            private set => SetProperty(ref _importProgressIsIndeterminate, value);
+        }
+
         public int ImportableCount => Rows.Count(item => item.CanImport);
 
         public async Task InitializeAsync()
         {
             IsBusy = true;
-            using var progress = _dialogService.ShowOperationProgress("存档文本 Excel 导入", "正在校验档案盒…");
             try
             {
                 var validations = await _filingService.ValidateExcelImportAsync(
                     _boxes,
-                    _userContextService.CurrentUser,
-                    new Progress<(int Current, int Total, string Status)>(item =>
-                        progress.Report(item.Current, item.Total, item.Status)));
+                    _userContextService.CurrentUser);
                 Rows.Clear();
                 foreach (var item in validations)
                 {
@@ -111,18 +150,21 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             IsBusy = true;
+            BeginImportProgress("正在按盒立档…");
             StockTextArchiveExcelImportCommitResult result;
             try
             {
-                using (var progress = _dialogService.ShowOperationProgress("存档文本 Excel 导入", "正在按盒立档…"))
-                {
-                    result = await _filingService.CommitExcelImportAsync(
-                        importable,
-                        _userContextService.CurrentUser,
-                        new Progress<(int Current, int Total, string Status)>(item =>
-                            progress.Report(item.Current, item.Total, item.Status)));
-                }
+                var progress = new ImmediateUiProgress<(int Current, int Total, string Status)>(item =>
+                    ReportImportProgress(item.Current, item.Total, item.Status));
+                result = await _filingService.CommitExcelImportAsync(
+                    importable,
+                    _userContextService.CurrentUser,
+                    progress);
 
+                ReportImportProgress(
+                    importable.Count,
+                    importable.Count,
+                    $"导入完成：成功 {result.SucceededCount}，失败 {result.FailedCount}，跳过 {result.SkippedCount}。");
                 _imported = result.SucceededCount > 0;
                 _dialogService.ShowMessage(result.Summary, "导入结果");
                 RequestClose?.Invoke(_imported);
@@ -130,6 +172,83 @@ namespace DocMgr.ViewModels.YearlyArchive
             finally
             {
                 IsBusy = false;
+            }
+        }
+
+        private void BeginImportProgress(string status)
+        {
+            ImportProgressIsIndeterminate = true;
+            ImportProgressValue = 0;
+            ImportProgressPercentText = string.Empty;
+            ImportProgressStatus = status;
+            PumpDispatcher();
+        }
+
+        private void ReportImportProgress(int current, int total, string? status)
+        {
+            if (total <= 0)
+            {
+                BeginImportProgress(string.IsNullOrWhiteSpace(status) ? ImportProgressStatus : status.Trim());
+                return;
+            }
+
+            int safeCurrent = current < 0 ? 0 : current;
+            if (safeCurrent > total)
+            {
+                safeCurrent = total;
+            }
+
+            ImportProgressIsIndeterminate = false;
+            ImportProgressValue = 100d * safeCurrent / total;
+            ImportProgressPercentText = $"{safeCurrent} / {total}";
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                ImportProgressStatus = status.Trim();
+            }
+
+            PumpDispatcher();
+        }
+
+        private static void PumpDispatcher()
+        {
+            Dispatcher dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+            if (!dispatcher.CheckAccess())
+            {
+                dispatcher.Invoke(PumpDispatcher, DispatcherPriority.Send);
+                return;
+            }
+
+            var frame = new DispatcherFrame();
+            dispatcher.BeginInvoke(
+                DispatcherPriority.Render,
+                new DispatcherOperationCallback(static state =>
+                {
+                    ((DispatcherFrame)state!).Continue = false;
+                    return null;
+                }),
+                frame);
+            Dispatcher.PushFrame(frame);
+        }
+
+        private sealed class ImmediateUiProgress<T> : IProgress<T>
+        {
+            private readonly Action<T> _handler;
+
+            public ImmediateUiProgress(Action<T> handler)
+            {
+                _handler = handler;
+            }
+
+            public void Report(T value)
+            {
+                Dispatcher dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+                if (dispatcher.CheckAccess())
+                {
+                    _handler(value);
+                    return;
+                }
+
+                dispatcher.Invoke(() => _handler(value), DispatcherPriority.Send);
             }
         }
 

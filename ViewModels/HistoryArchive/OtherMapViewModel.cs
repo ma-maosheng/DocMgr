@@ -98,7 +98,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                     return;
                 }
 
-                string? selectedTable = _dialogService.ShowSheetSelectionDialog(tables, "选择存档数据表");
+                string? selectedTable = _dialogService.ShowSheetSelectionDialog(tables, "选择存档数据表")?.SheetName;
                 if (!string.IsNullOrEmpty(selectedTable))
                 {
                     await LoadDataAsync(selectedTable);
@@ -131,7 +131,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                     }
                 }
 
-                string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames);
+                string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames)?.SheetName;
                 if (string.IsNullOrEmpty(selectedSheet))
                 {
                     return;
@@ -296,7 +296,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 return;
             }
 
-            string? selected = _dialogService.ShowSheetSelectionDialog(tables, "选择要删除的存档表");
+            string? selected = _dialogService.ShowSheetSelectionDialog(tables, "选择要删除的存档表")?.SheetName;
             if (string.IsNullOrEmpty(selected))
             {
                 return;
