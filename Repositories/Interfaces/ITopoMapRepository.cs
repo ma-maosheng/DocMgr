@@ -17,5 +17,10 @@ public interface ITopoMapRepository
 
     void DeleteByScale(string scale);
 
+    /// <summary>
+    /// 按主键删除单条地形图记录。
+    /// </summary>
+    void DeleteById(int id);
+
     void Update(TopoMap map);
 }
