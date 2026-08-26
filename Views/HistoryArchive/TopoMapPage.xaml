@@ -47,7 +47,8 @@
                     <Button Content="📤 导出" Command="{Binding ExportCommand}" Width="80" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
 
                     <!-- 右侧删除按钮 -->
-                    <Button Content="🗑️ 删除表" Command="{Binding DeleteTableCommand}" Width="90" Margin="20,0,0,0" HorizontalAlignment="Right" Style="{StaticResource ToolbarDangerButtonStyle}"/>
+                    <Button Content="🗑️ 删除当前行" Command="{Binding DeleteCurrentRowCommand}" Width="110" Margin="20,0,10,0" HorizontalAlignment="Right" Style="{StaticResource ToolbarDangerButtonStyle}"/>
+                    <Button Content="🗑️ 删除表" Command="{Binding DeleteTableCommand}" Width="90" Margin="0,0,0,0" HorizontalAlignment="Right" Style="{StaticResource ToolbarDangerButtonStyle}"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -84,6 +85,7 @@
                       GridLinesVisibility="Horizontal"
                       HeadersVisibility="All"
                       CanUserAddRows="False"
+                      SelectionMode="Single"
                       EnableRowVirtualization="True"
                       EnableColumnVirtualization="True"
                       VirtualizingPanel.IsVirtualizing="True"

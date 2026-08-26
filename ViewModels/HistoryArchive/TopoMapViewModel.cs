@@ -190,6 +190,7 @@ namespace DocMgr.ViewModels.HistoryArchive
         // === Commands ===
         public RelayCommand ImportCommand { get; }
         public RelayCommand BrowseCommand { get; }
+        public RelayCommand DeleteCurrentRowCommand { get; }
         public RelayCommand DeleteTableCommand { get; }
         public RelayCommand EditCommand { get; }
         public RelayCommand SearchCommand { get; }
@@ -211,6 +212,7 @@ namespace DocMgr.ViewModels.HistoryArchive
 
             ImportCommand = new RelayCommand(async _ => await ImportAsync());
             BrowseCommand = new RelayCommand(async _ => await BrowseAsync());
+            DeleteCurrentRowCommand = new RelayCommand(async _ => await DeleteCurrentRowAsync(), _ => SelectedTopoMap != null);
             DeleteTableCommand = new RelayCommand(async _ => await DeleteTableAsync());
 
             EditCommand = new RelayCommand(async _ => await EditAsync(), _ => SelectedTopoMap != null);
@@ -521,6 +523,56 @@ namespace DocMgr.ViewModels.HistoryArchive
             else if (involvedScales.Any())
             {
                 await LoadDataAsync($"历史存档纸质地形图{involvedScales.First()}");
+            }
+        }
+
+        private async Task DeleteCurrentRowAsync()
+        {
+            if (SelectedTopoMap == null)
+            {
+                _dialogService.ShowMessage("请先选择要删除的记录。");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(CurrentTableName) || CurrentTableName == "（未选择）")
+            {
+                _dialogService.ShowMessage("当前未加载数据表，无法删除。");
+                return;
+            }
+
+            var target = SelectedTopoMap;
+            string mapLabel = string.IsNullOrWhiteSpace(target.MapName)
+                ? (string.IsNullOrWhiteSpace(target.MapNumber) ? $"ID={target.Id}" : target.MapNumber)
+                : target.MapName;
+
+            if (!_dialogService.ShowConfirm(
+                    $"确定要删除当前行吗？\n\n图名/图号：{mapLabel}\n档案盒编号：{target.BoxNumber}\n\n此操作不可恢复！",
+                    "确认删除"))
+            {
+                return;
+            }
+
+            try
+            {
+                int deletedId = target.Id;
+                await Task.Run(() => _topoMapService.DeleteTopoMap(deletedId));
+
+                _allTopoMaps.RemoveAll(item => item.Id == deletedId);
+                SelectedTopoMap = null;
+                ApplySearchFilter();
+
+                // 当前比例尺表若已无数据，同步刷新表名状态
+                if (_allTopoMaps.Count == 0)
+                {
+                    CurrentTableName = "（未选择）";
+                    NoDataHintVisibility = Visibility.Visible;
+                }
+
+                _dialogService.ShowMessage("当前行已删除。", "完成");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"删除当前行失败: {ex.Message}");
             }
         }
 

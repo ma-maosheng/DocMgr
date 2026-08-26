@@ -39,6 +39,11 @@ namespace DocMgr.Services.Interfaces
         void DropTable(string tableName);
 
         /// <summary>
+        /// 删除单条地形图记录
+        /// </summary>
+        void DeleteTopoMap(int id);
+
+        /// <summary>
         /// 更新地形图记录
         /// </summary>
         void UpdateTopoMap(TopoMap map);

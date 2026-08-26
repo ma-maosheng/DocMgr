@@ -84,6 +84,11 @@ public class TopoMapRepository : ITopoMapRepository
         _dbContext.TopoMaps.Where(item => item.Scale == scale).ExecuteDelete();
     }
 
+    public void DeleteById(int id)
+    {
+        _dbContext.TopoMaps.Where(item => item.Id == id).ExecuteDelete();
+    }
+
     public void Update(TopoMap map)
     {
         ArgumentNullException.ThrowIfNull(map);
