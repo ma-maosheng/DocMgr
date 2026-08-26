@@ -27,7 +27,8 @@
                     <Button Content="📤 导出" Command="{Binding ExportCommand}" Width="80" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
 
                     <!-- 右侧删除按钮 -->
-                    <Button Content="🗑️ 删除表" Command="{Binding DeleteTableCommand}" Width="90" Margin="20,0,0,0" HorizontalAlignment="Right" Style="{StaticResource ToolbarDangerButtonStyle}"/>
+                    <Button Content="🗑️ 删除当前行" Command="{Binding DeleteCurrentRowCommand}" Width="110" Margin="20,0,10,0" HorizontalAlignment="Right" Style="{StaticResource ToolbarDangerButtonStyle}"/>
+                    <Button Content="🗑️ 删除表" Command="{Binding DeleteTableCommand}" Width="90" Margin="0,0,0,0" HorizontalAlignment="Right" Style="{StaticResource ToolbarDangerButtonStyle}"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -36,12 +37,14 @@
         <Grid Grid.Row="1">
             <DataGrid x:Name="DgTopoMaps" 
                       ItemsSource="{Binding TopoMaps}"
+                      SelectedItem="{Binding SelectedTopoMap, Mode=TwoWay}"
                       LoadingRow="DgTopoMaps_LoadingRow"
                       AutoGenerateColumns="False" 
                       IsReadOnly="True"
                       GridLinesVisibility="Horizontal"
                       HeadersVisibility="All"
-                      CanUserAddRows="False">
+                      CanUserAddRows="False"
+                      SelectionMode="Single">
                 <DataGrid.Columns>
                     <!-- 序号列由 LoadingRow 事件处理，直接显示Header -->
                     

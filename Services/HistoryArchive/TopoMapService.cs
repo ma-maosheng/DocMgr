@@ -44,6 +44,11 @@ namespace DocMgr.Services.HistoryArchive
             _topoMapRepository.DeleteByScale(scale);
         }
 
+        public void DeleteTopoMap(int id)
+        {
+            _topoMapRepository.DeleteById(id);
+        }
+
         public void UpdateTopoMap(TopoMap map)
         {
             _topoMapRepository.Update(map);
