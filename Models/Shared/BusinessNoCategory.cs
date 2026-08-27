@@ -17,7 +17,8 @@ namespace DocMgr.Models.Shared
         ArchiveDisposalApply,
         NetworkInboundApply,
         NetworkOutboundApply,
-        NetworkDisposalApply
+        NetworkDisposalApply,
+        HistoryArchiveDisposalApply
     }
 
     /// <summary>

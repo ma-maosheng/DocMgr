@@ -40,43 +40,59 @@
 
         <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,15">
             <TextBlock Text="序号" Foreground="#666" Margin="0,0,0,5"/>
-            <TextBox Height="35" Padding="5,8"
+            <TextBox Height="{StaticResource FormControlHeight}" Padding="5,0"
+                     VerticalContentAlignment="Center"
                      Text="{Binding SequenceNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,0,0,15">
-            <TextBlock Text="比例尺 *" Foreground="#666" Margin="0,0,0,5"/>
-            <TextBox Height="35" Padding="5,8"
-                     Text="{Binding Scale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Text="资料分类" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="{StaticResource FormControlHeight}" Padding="5,0"
+                     VerticalContentAlignment="Center"
+                     Text="{Binding MaterialCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,10,15">
-            <TextBlock Text="档案盒编号 *" Foreground="#666" Margin="0,0,0,5"/>
-            <TextBox Height="35" Padding="5,8"
-                     Text="{Binding BoxNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Text="起始年度" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="{StaticResource FormControlHeight}" Padding="5,0"
+                     VerticalContentAlignment="Center"
+                     Text="{Binding StartYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="2" Grid.Column="1" Margin="10,0,0,15">
-            <TextBlock Text="档案盒规格" Foreground="#666" Margin="0,0,0,5"/>
-            <TextBox Height="35" Padding="5,8"
-                     Text="{Binding BoxSpecification, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Text="截止年度" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="{StaticResource FormControlHeight}" Padding="5,0"
+                     VerticalContentAlignment="Center"
+                     Text="{Binding EndYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,10,15">
+            <TextBlock Text="档案盒编号 *" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="{StaticResource FormControlHeight}" Padding="5,0"
+                     VerticalContentAlignment="Center"
+                     Text="{Binding BoxNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     IsEnabled="{Binding CanEditBoxNumber}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="3" Grid.Column="1" Margin="10,0,0,15">
-            <TextBlock Text="幅数" Foreground="#666" Margin="0,0,0,5"/>
-            <TextBox Height="35" Padding="5,8"
-                     Text="{Binding SheetCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Text="档案盒规格" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="{StaticResource FormControlHeight}" Padding="5,0"
+                     VerticalContentAlignment="Center"
+                     Text="{Binding BoxSpecification, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Margin="0,0,0,15">
-            <TextBlock Text="图名 *" Foreground="#666" Margin="0,0,0,5"/>
-            <TextBox Height="35" Padding="5,8"
+            <TextBlock Text="资料内容 *" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox MinHeight="60" Padding="5"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     VerticalContentAlignment="Top"
                      Text="{Binding MapName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Margin="0,0,0,25">
             <TextBlock Text="备注" Foreground="#666" Margin="0,0,0,5"/>
-            <TextBox Height="80" Padding="5"
+            <TextBox Height="60" Padding="5"
                      AcceptsReturn="True"
                      TextWrapping="Wrap"
                      VerticalContentAlignment="Top"

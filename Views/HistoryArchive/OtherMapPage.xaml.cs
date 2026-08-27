@@ -25,7 +25,13 @@ namespace DocMgr.Views.HistoryArchive
 
         private void DgOtherMaps_LoadingRow(object sender, DataGridRowEventArgs e)
         {
-            e.Row.Header = (e.Row.GetIndex() + 1).ToString();
+            int pageStartIndex = 0;
+            if (DataContext is OtherMapViewModel viewModel)
+            {
+                pageStartIndex = viewModel.PageStartIndex;
+            }
+
+            e.Row.Header = (pageStartIndex + e.Row.GetIndex() + 1).ToString();
         }
     }
 }

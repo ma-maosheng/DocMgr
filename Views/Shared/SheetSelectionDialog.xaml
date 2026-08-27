@@ -48,10 +48,10 @@
                   Margin="0,12,0,0"
                   VerticalAlignment="Top"
                   FontSize="13"
-                  Content="以文本行为单位展开资料子项"
+                  Content="{Binding ExpandItemsByTextLineContent, Mode=OneWay}"
                   IsChecked="{Binding ExpandItemsByTextLine, Mode=TwoWay}"
                   Visibility="{Binding ShowExpandItemsByTextLineOption, Converter={StaticResource BooleanToVisibilityConverter}}"
-                  ToolTip="勾选后，「子项名称」单元格内每一非空文本行导入为一条资料子项；不勾选则以 Excel 表格行作为一条资料子项。"/>
+                  ToolTip="{Binding ExpandItemsByTextLineToolTip, Mode=OneWay}"/>
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
             <Button Content="确定" Style="{StaticResource DialogPrimaryActionButtonStyle}"

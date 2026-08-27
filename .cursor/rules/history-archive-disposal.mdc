@@ -1,0 +1,45 @@
+---
+description: 历史存档资料离库处置：在柜档案盒为最小单元；一单一类一种方式；混放整组纳入；办结撤柜并跳过启动同步
+globs: Services/HistoryArchive/HistoryArchiveDisposal*.cs,Repositories/HistoryArchive/HistoryArchiveDisposal*.cs,ViewModels/HistoryArchive/HistoryArchiveDisposal*.cs,Views/HistoryArchive/HistoryArchiveDisposal*.cs,Models/HistoryArchive/HistoryArchiveDisposal*.cs,Models/HistoryArchive/HistoryArchiveBoxCodeSupport.cs
+alwaysApply: false
+---
+
+# 历史存档资料离库处置
+
+## 菜单位置
+
+「历史存档资料管理」→「资料离库处置」单一入口（`HA-DSP` / `HA-DSP-ED`）。权限仅资料室资料管理员。
+
+## 口径
+
+1. **一单一类**：资料类别三选一（地形图图件 / 航摄胶片、像片 / 其他资料），选定后不可改。
+2. **一单一种方式**：离库销毁 / 离库转交 / 其他。混用方式请拆单。
+3. **最小单元**：在柜档案盒（`CabinetArchiveBoxPlacement.BoxCode` 四段盒号）。未解析盒号不进候选。
+4. **编号前缀**：`史离-处`（`BusinessNoCategory.HistoryArchiveDisposalApply`）。
+5. **流程**：对齐 NT-DSP 七态（草稿→提交→审批→确认可上传→上传签批→办结）。仅草稿、已提交可撤回作废并解锁。
+6. **审核栏**：资料室负责人 + 分管资料副院长（姓名可改，日期只读）。
+
+## 混放盒
+
+同一类资料、一条台账 `BoxNumber` 挂多个四段盒号。选任一盒必须纳入连通分量全部在柜盒；移除任一盒则整组移除。跨类同盒（摆放 `SourceType=Mixed`）不可选，须先拆盒。
+
+## 办结效应
+
+- 台账 `LifecycleStatus=已离库`，`LastStorageLocation` 保留原盒号；不删台账行。
+- 按明细 `BoxCode` 删除 `CabinetArchiveBoxPlacement`（必须是历史四段盒号，不要用年度 `ArchiveSequenceNo`）。
+- 启动摆放同步与开柜内容跳过已离库；录入页默认排除已离库，已离库禁止改盒号。
+
+## 附件
+
+- 离库销毁：签批单 + 处置资料照片 + 实物已撤柜确认。
+- 离库转交：转交对象必填；签批单 + 实物已撤柜确认。
+- 其他：其他说明必填；签批单 + 实物已撤柜确认。
+
+## 实现入口
+
+- Service：`HistoryArchiveDisposalService`
+- 仓储：`HistoryArchiveDisposalRepository`
+- 域值：`HistoryArchiveDisposalDomainValues`
+- 盒号/混放组：`HistoryArchiveBoxCodeSupport`
+- 请勿复用 `YearlyArchiveDisposalRecord`（年度离库绑定立档事实/盘库中间态）。
+---

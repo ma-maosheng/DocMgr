@@ -36,7 +36,7 @@ namespace DocMgr.Services.SystemSettings
             Directory.CreateDirectory(directoryPath);
 
             using var workbook = new XSSFWorkbook();
-            var safeSheetName = TruncateSheetName(string.IsNullOrWhiteSpace(sheetName) ? "Sheet1" : sheetName);
+            var safeSheetName = ExcelSheetNameSupport.Sanitize(sheetName);
             var sheet = workbook.CreateSheet(safeSheetName);
 
             var englishHeaderRow = sheet.CreateRow(0);
@@ -85,12 +85,6 @@ namespace DocMgr.Services.SystemSettings
             }
 
             return string.IsNullOrWhiteSpace(sanitized) ? "export" : sanitized;
-        }
-
-        private static string TruncateSheetName(string sheetName)
-        {
-            var trimmed = sheetName.Trim();
-            return trimmed.Length <= 31 ? trimmed : trimmed[..31];
         }
 
         private static void SetCellValue(ICell cell, object? value)

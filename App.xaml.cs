@@ -183,7 +183,12 @@ namespace DocMgr
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.Message);
+                System.Diagnostics.Debug.WriteLine(ex.ToString());
+                DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
+                    "E",
+                    "App.InitializeDatabaseAsync",
+                    "database migrate failed",
+                    ex);
                 initializationState.MarkFailed(ex);
             }
         }

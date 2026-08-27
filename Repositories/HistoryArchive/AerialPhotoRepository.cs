@@ -83,6 +83,11 @@ public class AerialPhotoRepository : IAerialPhotoRepository
             .ExecuteDelete();
     }
 
+    public void DeleteById(int id)
+    {
+        _dbContext.AerialPhotos.Where(item => item.Id == id).ExecuteDelete();
+    }
+
     public void Update(AerialPhoto photo)
     {
         ArgumentNullException.ThrowIfNull(photo);

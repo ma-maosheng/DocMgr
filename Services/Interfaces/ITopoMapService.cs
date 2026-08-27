@@ -16,7 +16,7 @@ namespace DocMgr.Services.Interfaces
         /// <summary>
         /// 导入地形图数据（先核验落档档口用途）。
         /// </summary>
-        Task ImportTopoMapsAsync(List<TopoMap> maps, bool isRecreate = false);
+        Task ImportTopoMapsAsync(List<TopoMap> maps, string sheetName, bool isRecreate = false);
 
         /// <summary>
         /// 获取所有地形图数据表名
@@ -29,7 +29,7 @@ namespace DocMgr.Services.Interfaces
         List<TopoMap> GetTopoMapsByTable(string tableName);
 
         /// <summary>
-        /// 获取全部地形图记录（跨比例尺表）。
+        /// 获取全部地形图记录（跨分类表）。
         /// </summary>
         List<TopoMap> GetAllTopoMaps();
 

@@ -12,8 +12,11 @@ namespace DocMgr.Models.YearlyArchive
         public const string AttachmentBusinessType = "ArchiveDisposal";
 
         public const string AttachmentCategorySignedForm = "签批单";
-        public const string AttachmentCategoryScenePhoto = "处置现场照片";
+        public const string AttachmentCategoryScenePhoto = "处置资料照片";
         public const string AttachmentCategoryOther = "其他附件";
+
+        /// <summary>历史单据兼容：旧版附件分类「处置现场照片」。</summary>
+        public const string LegacyAttachmentCategoryScenePhoto = "处置现场照片";
 
         public const string ReasonLost = "盘失";
         public const string ReasonDamaged = "损坏";
@@ -242,10 +245,18 @@ namespace DocMgr.Models.YearlyArchive
             return null;
         }
 
-        /// <summary>是否需要处置现场照片（离库销毁必填）。</summary>
+        /// <summary>是否需要处置资料照片（离库销毁必填）。</summary>
         public static bool RequiresScenePhoto(IEnumerable<string?> methods)
         {
             return methods.Any(IsMediaDestroyMethod);
+        }
+
+        /// <summary>是否为处置资料照片分类（含旧版「处置现场照片」）。</summary>
+        public static bool IsScenePhotoCategory(string? category)
+        {
+            string normalized = category?.Trim() ?? string.Empty;
+            return string.Equals(normalized, AttachmentCategoryScenePhoto, StringComparison.Ordinal)
+                || string.Equals(normalized, LegacyAttachmentCategoryScenePhoto, StringComparison.Ordinal);
         }
 
         /// <summary>是否含低格留盘方式。</summary>

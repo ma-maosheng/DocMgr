@@ -493,7 +493,7 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
         if (existing.Status == YearlyArchiveDisposalRecord.StatusApproved
             && !string.Equals(category, ArchiveDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
         {
-            return (false, "请先确认可上传签批单，再上传签批单或处置现场照片。", null);
+            return (false, "请先确认可上传签批单，再上传签批单或处置资料照片。", null);
         }
 
         DateTime now = DateTime.Now;
@@ -519,7 +519,7 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
             existing.SignedAttachmentUploadedTime = now;
             existing.SignedAttachmentUploader = attachment.UploaderName;
         }
-        else if (string.Equals(category, ArchiveDisposalDomainValues.AttachmentCategoryScenePhoto, StringComparison.Ordinal))
+        else if (ArchiveDisposalDomainValues.IsScenePhotoCategory(category))
         {
             existing.ScenePhotoUploaded = true;
         }
@@ -566,10 +566,10 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
                 existing.SignedAttachmentUploader = string.Empty;
             }
         }
-        else if (string.Equals(category, ArchiveDisposalDomainValues.AttachmentCategoryScenePhoto, StringComparison.Ordinal))
+        else if (ArchiveDisposalDomainValues.IsScenePhotoCategory(category))
         {
             bool stillHas = remaining.Any(item =>
-                string.Equals(item.FileCategory, ArchiveDisposalDomainValues.AttachmentCategoryScenePhoto, StringComparison.Ordinal));
+                ArchiveDisposalDomainValues.IsScenePhotoCategory(item.FileCategory));
             if (!stillHas)
             {
                 existing.ScenePhotoUploaded = false;

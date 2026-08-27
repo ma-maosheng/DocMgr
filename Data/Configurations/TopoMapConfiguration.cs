@@ -8,6 +8,7 @@ namespace DocMgr.Data.Configurations
         public void Configure(EntityTypeBuilder<TopoMap> builder)
         {
             builder.HasKey(e => e.Id);
+            builder.HasIndex(e => e.Category);
             builder.HasIndex(e => e.Scale);
         }
     }

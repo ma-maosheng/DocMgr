@@ -124,6 +124,13 @@ namespace DocMgr.Services.Shared
                     WorkflowMode: BusinessWorkflowMode.Apply,
                     SequenceLength: 4,
                     ApprovalPolicy: ApplyApprovalPolicy,
+                    AttachmentPolicy: ApplyAttachmentPolicy),
+                [BusinessNoCategory.HistoryArchiveDisposalApply] = new(
+                    BusinessNoCategory.HistoryArchiveDisposalApply,
+                    Prefix: "史离-处",
+                    WorkflowMode: BusinessWorkflowMode.Apply,
+                    SequenceLength: 3,
+                    ApprovalPolicy: ApplyApprovalPolicy,
                     AttachmentPolicy: ApplyAttachmentPolicy)
             };
 

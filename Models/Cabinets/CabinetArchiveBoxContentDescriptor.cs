@@ -13,6 +13,12 @@ namespace DocMgr.Models.Cabinets
 
         public string IdentifierText { get; init; } = string.Empty;
 
+        /// <summary>地形图按 GB/T 13989 换算的当前图号；非地形图为空。</summary>
+        public string CurrentMapNumber { get; init; } = string.Empty;
+
+        /// <summary>历史存档台账表实际字段（地形图 / 航摄影像 / 其他图件）。</summary>
+        public HistoryArchiveBoxContentFields HistoryFields { get; init; } = new();
+
         public string TitleText { get; init; } = string.Empty;
 
         public string MaterialName { get; init; } = string.Empty;

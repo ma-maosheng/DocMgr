@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-08-26T09:34:36Z
+generatedAt: 2026-08-27T07:35:41Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -17,7 +17,7 @@ tables:
         aliases: []
       Category:
         chineseName: 分类
-        description: ''
+        description: 存档批次键（导入时写入为「像片」+ Excel 工作表名）。
         clrType: String
         needsReview: false
         aliases: []
@@ -90,6 +90,18 @@ tables:
       Remark:
         chineseName: 备注
         description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      LifecycleStatus:
+        chineseName: 生命周期状态
+        description: 在库 / 离库锁定 / 已离库。
+        clrType: String
+        needsReview: false
+        aliases: []
+      LastStorageLocation:
+        chineseName: 最后存储位置
+        description: 离库办结时写入原盒号，便于追溯。
         clrType: String
         needsReview: false
         aliases: []
@@ -1651,6 +1663,340 @@ tables:
         clrType: DateTime
         needsReview: false
         aliases: []
+  HistoryArchiveDisposalItem:
+    tableName: HistoryArchiveDisposalItems
+    chineseName: 历史存档离库处置明细
+    description: 历史存档离库处置单明细，一盒一行，固化盒内摘要与原柜位。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DisposalRecordId:
+        chineseName: 处置单ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      SortOrder:
+        chineseName: 排序序号
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      BoxCode:
+        chineseName: 档案盒编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      BoxSpecification:
+        chineseName: 档案盒规格
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      CabinetName:
+        chineseName: 柜体名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      FaceCode:
+        chineseName: 面别代码
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      SlotCode:
+        chineseName: 档口编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      BeforeStorageLocation:
+        chineseName: 处置前存放位置
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ContentSummary:
+        chineseName: 盒内摘要
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      LedgerRecordCount:
+        chineseName: 台账条数
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      SourceRecordKeys:
+        chineseName: 来源台账键
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      IsMixedPlacement:
+        chineseName: 是否混放
+        description: ''
+        clrType: Boolean
+        needsReview: false
+        aliases: []
+      RelatedBoxCodes:
+        chineseName: 关联混放盒号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+  HistoryArchiveDisposalRecord:
+    tableName: HistoryArchiveDisposalRecords
+    chineseName: 历史存档离库处置单
+    description: 历史存档资料离库处置主表，按资料类别办理全过程。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      DisposalNo:
+        chineseName: 处置单编号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Status:
+        chineseName: 状态
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      MaterialKind:
+        chineseName: 资料类别
+        description: TopoMap / AerialPhoto / OtherMap。
+        clrType: String
+        needsReview: false
+        aliases: []
+      DispositionMethod:
+        chineseName: 处置方式
+        description: 离库销毁 / 离库转交 / 其他。
+        clrType: String
+        needsReview: false
+        aliases: []
+      TransferTarget:
+        chineseName: 转交对象
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      OtherRemark:
+        chineseName: 其他说明
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Reason:
+        chineseName: 申请说明
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Remark:
+        chineseName: 备注
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantUserId:
+        chineseName: 申请人用户ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      ApplicantName:
+        chineseName: 申请人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplicantDept:
+        chineseName: 申请部门
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApplyTime:
+        chineseName: 申请时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      ApprovedBy:
+        chineseName: 审批人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApprovedTime:
+        chineseName: 审批时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ApprovalOpinion:
+        chineseName: 审批意见
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ArchiveRoomHead:
+        chineseName: 资料室负责人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ArchiveRoomHeadDate:
+        chineseName: 资料室负责人日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ArchiveDeputyPresident:
+        chineseName: 分管资料副院长
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ArchiveDeputyPresidentDate:
+        chineseName: 分管资料副院长日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ConfirmedBy:
+        chineseName: 确认可上传人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ConfirmedTime:
+        chineseName: 确认可上传时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploaded:
+        chineseName: 已上传签批单
+        description: ''
+        clrType: Boolean
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploadedTime:
+        chineseName: 签批单上传时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploader:
+        chineseName: 签批单上传人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ScenePhotoUploaded:
+        chineseName: 已上传处置现场照片
+        description: ''
+        clrType: Boolean
+        needsReview: false
+        aliases: []
+      PhysicalRemovalConfirmed:
+        chineseName: 已确认实物撤柜
+        description: ''
+        clrType: Boolean
+        needsReview: false
+        aliases: []
+      PhysicalRemovalConfirmedAt:
+        chineseName: 实物撤柜确认时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      PhysicalRemovalConfirmedBy:
+        chineseName: 实物撤柜确认人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      CompletedAt:
+        chineseName: 办结时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      CompletedBy:
+        chineseName: 办结人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      SubmittedAt:
+        chineseName: 提交时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      WithdrawnAt:
+        chineseName: 撤回时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      WithdrawReason:
+        chineseName: 撤回原因
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      PrintCount:
+        chineseName: 打印次数
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      LastPrintedAt:
+        chineseName: 最后打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UpdatedAt:
+        chineseName: 更新时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
   OpticalDiscLedger:
     tableName: OpticalDiscLedgers
     chineseName: 光盘台账
@@ -1948,7 +2294,7 @@ tables:
   OtherMap:
     tableName: OtherMaps
     chineseName: 其他图件
-    description: 除航片、地形图外的其他历史图件资料。
+    description: 除航片、地形图外的其他历史存档资料（交接记录等）。
     isView: false
     deprecated: false
     aliases: []
@@ -1961,7 +2307,7 @@ tables:
         aliases: []
       Category:
         chineseName: 分类
-        description: ''
+        description: 存档批次键（导入时写入为「其他资料」+ Excel 工作表名）。
         clrType: String
         needsReview: false
         aliases: []
@@ -1971,9 +2317,27 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      MaterialCategory:
+        chineseName: 资料分类
+        description: 模版列「资料分类」，如外部/内部交接记录。
+        clrType: String
+        needsReview: false
+        aliases: []
+      StartYear:
+        chineseName: 起始年度
+        description: 可为空；可与截止年度同值。
+        clrType: String
+        needsReview: false
+        aliases: []
+      EndYear:
+        chineseName: 截止年度
+        description: 可为空；可与起始年度同值。
+        clrType: String
+        needsReview: false
+        aliases: []
       Scale:
         chineseName: 比例尺
-        description: ''
+        description: 遗留字段；新模版不再导入。
         clrType: String
         needsReview: false
         aliases: []
@@ -1990,15 +2354,9 @@ tables:
         needsReview: false
         aliases: []
       MapName:
-        chineseName: 图名
-        description: ''
+        chineseName: 资料内容
+        description: 模版列「资料内容」。
         clrType: String
-        needsReview: false
-        aliases: []
-      SheetCount:
-        chineseName: 图幅数
-        description: ''
-        clrType: Int32
         needsReview: false
         aliases: []
       Registrant:
@@ -2028,6 +2386,18 @@ tables:
       Remark:
         chineseName: 备注
         description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      LifecycleStatus:
+        chineseName: 生命周期状态
+        description: 在库 / 离库锁定 / 已离库。
+        clrType: String
+        needsReview: false
+        aliases: []
+      LastStorageLocation:
+        chineseName: 最后存储位置
+        description: 离库办结时写入原盒号，便于追溯。
         clrType: String
         needsReview: false
         aliases: []
@@ -2221,6 +2591,12 @@ tables:
         clrType: Int32
         needsReview: false
         aliases: []
+      Category:
+        chineseName: 分类
+        description: 存档批次键（导入时写入为「地形图」+ Excel 工作表名）。
+        clrType: String
+        needsReview: false
+        aliases: []
       Scale:
         chineseName: 比例尺
         description: ''
@@ -2320,6 +2696,18 @@ tables:
       Remark:
         chineseName: 备注
         description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      LifecycleStatus:
+        chineseName: 生命周期状态
+        description: 在库 / 离库锁定 / 已离库。
+        clrType: String
+        needsReview: false
+        aliases: []
+      LastStorageLocation:
+        chineseName: 最后存储位置
+        description: 离库办结时写入原盒号，便于追溯。
         clrType: String
         needsReview: false
         aliases: []

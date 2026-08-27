@@ -154,9 +154,14 @@ namespace DocMgr.Infrastructure.Startup
 
             _isFullyInitialized = false;
 
-            _errorMessage = exception.Message;
+            string detail = exception.GetBaseException().Message;
+            if (string.IsNullOrWhiteSpace(detail))
+            {
+                detail = exception.Message;
+            }
 
-            _statusMessage = "系统初始化失败，请联系管理员。";
+            _errorMessage = detail;
+            _statusMessage = "系统初始化失败，请联系管理员。" + Environment.NewLine + detail;
 
             NotifyStateChanged();
 

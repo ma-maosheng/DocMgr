@@ -35,6 +35,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IHardDiskInventoryRegisterService, HardDiskInventoryRegisterService>();
         services.AddScoped<IArchiveInventoryRegisterService, ArchiveInventoryRegisterService>();
         services.AddScoped<IArchiveDisposalService, ArchiveDisposalService>();
+        services.AddScoped<IHistoryArchiveDisposalService, HistoryArchiveDisposalService>();
         services.AddScoped<INetworkTransferService, NetworkTransferService>();
         services.AddScoped<HistoryArchiveImportSlotGuard>();
         services.AddScoped<IAerialPhotoService, AerialPhotoService>();
@@ -71,6 +72,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IToDoProvider, YearlyArchiveToDoProvider>();
         services.AddScoped<IToDoProvider, HardDiskMediaToDoProvider>();
         services.AddScoped<IToDoProvider, NetworkTransferToDoProvider>();
+        services.AddScoped<IToDoProvider, HistoryArchiveToDoProvider>();
         services.AddScoped<IToDoService, ToDoAggregationService>();
         services.AddScoped<IUserPreferenceService, UserPreferenceService>();
         services.AddScoped<IBusinessLogicSettingsService, BusinessLogicSettingsService>();

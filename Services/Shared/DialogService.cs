@@ -233,7 +233,9 @@ namespace DocMgr.Services.Shared
         public SheetSelectionResult? ShowSheetSelectionDialog(
             List<string> sheetNames,
             string title = "选择Sheet",
-            bool showExpandItemsByTextLineOption = false)
+            bool showExpandItemsByTextLineOption = false,
+            string? expandItemsByTextLineContent = null,
+            string? expandItemsByTextLineToolTip = null)
         {
             var dialog = new SheetSelectionDialog
             {
@@ -241,10 +243,12 @@ namespace DocMgr.Services.Shared
                 Title = string.IsNullOrWhiteSpace(title) ? "选择Sheet" : title.Trim()
             };
             var (scope, viewModel) = CreateScopedViewModel<SheetSelectionDialogViewModel>(
-                new[] { typeof(IEnumerable<string>), typeof(IDialogService), typeof(bool) },
+                new[] { typeof(IEnumerable<string>), typeof(IDialogService), typeof(bool), typeof(string), typeof(string) },
                 sheetNames,
                 this,
-                showExpandItemsByTextLineOption);
+                showExpandItemsByTextLineOption,
+                expandItemsByTextLineContent,
+                expandItemsByTextLineToolTip);
 
             dialog.DataContext = viewModel;
 
@@ -968,6 +972,35 @@ namespace DocMgr.Services.Shared
             catch (Exception ex)
             {
                 ShowError($"打开在网处置窗口失败：{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (viewModel != null) viewModel.RequestClose -= HandleRequestClose;
+                scope?.Dispose();
+            }
+        }
+
+        public bool ShowHistoryArchiveDisposalEditDialog(HistoryArchiveDisposalRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            var dialog = new HistoryArchiveDisposalEditDialog { Owner = GetOwnerWindow() };
+            IServiceScope? scope = null;
+            HistoryArchiveDisposalEditDialogViewModel? viewModel = null;
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            try
+            {
+                (scope, viewModel) = CreateScopedViewModel<HistoryArchiveDisposalEditDialogViewModel>(
+                    new[] { typeof(HistoryArchiveDisposalRecord) },
+                    record);
+                dialog.DataContext = viewModel;
+                viewModel.RequestClose += HandleRequestClose;
+                dialog.ShowDialog();
+                return viewModel.HasCommittedChanges;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"打开历史存档离库处置窗口失败：{ex.Message}");
                 return false;
             }
             finally

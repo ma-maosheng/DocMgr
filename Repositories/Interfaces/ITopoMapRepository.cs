@@ -7,20 +7,20 @@ namespace DocMgr.Repositories.Interfaces;
 /// </summary>
 public interface ITopoMapRepository
 {
-    bool ExistsByScale(string scale);
+    bool ExistsByCategory(string categoryName);
 
-    List<string> GetDistinctScales();
+    List<string> GetDistinctCategories();
 
-    List<TopoMap> GetByScale(string scale);
+    List<TopoMap> GetByCategory(string categoryName);
 
     /// <summary>
     /// 获取全部地形图记录。
     /// </summary>
     List<TopoMap> GetAll();
 
-    void Import(List<TopoMap> maps, bool isRecreate);
+    void Import(string categoryName, List<TopoMap> maps, bool isRecreate);
 
-    void DeleteByScale(string scale);
+    void DeleteByCategory(string categoryName);
 
     /// <summary>
     /// 按主键删除单条地形图记录。

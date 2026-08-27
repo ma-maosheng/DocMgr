@@ -23,8 +23,8 @@
         <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Background="#F5F7FA" BorderBrush="#E0E0E0" BorderThickness="1" Margin="0,0,0,10">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="📥 导入影像" Command="{Binding ImportCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
-                    <Button Content="🔍 浏览数据" Command="{Binding BrowseCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <Button Content="📥 导入Excel表" Command="{Binding ImportCommand}" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <Button Content="🔍 浏览数据" Command="{Binding BrowseCommand}" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
 
                     <Separator Style="{StaticResource VerticalSeparatorStyle}" />
 
@@ -42,11 +42,29 @@
 
                     <Separator Style="{StaticResource VerticalSeparatorStyle}" />
 
-                    <Button Content="✏️ 编辑" Command="{Binding EditCommand}" Width="80" Margin="10,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
-                    <Button Content="🔎 检索" Command="{Binding SearchCommand}" Width="80" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
-                    <Button Content="📤 导出" Command="{Binding ExportCommand}" Width="80" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <Button Content="✏️ 编辑" Command="{Binding EditCommand}" Margin="10,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <TextBlock Text="关键词" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBox Width="220"
+                             Style="{StaticResource ToolbarFilterTextBoxStyle}"
+                             Margin="0,0,10,0"
+                             VerticalContentAlignment="Center"
+                             ToolTip="按盒号、测区、比例尺、航摄日期、盒内物品、规格、登记人、备注检索"
+                             Text="{Binding SearchKeyword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <Button Content="🔎 检索" Command="{Binding SearchCommand}" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <Button Content="重置" Command="{Binding ResetSearchCommand}" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <CheckBox Content="含已离库"
+                              IsChecked="{Binding IncludeDisposed, Mode=TwoWay}"
+                              VerticalAlignment="Center"
+                              Margin="0,0,10,0"
+                              ToolTip="默认不显示已离库记录"/>
+                    <Button Content="📤 导出" Command="{Binding ExportCommand}" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
 
-                    <Button Content="🗑️ 删除表" Command="{Binding DeleteTableCommand}" Width="90" Margin="20,0,0,0" HorizontalAlignment="Right" Style="{StaticResource ToolbarDangerButtonStyle}"/>
+                    <Button Content="🗑️ 删除当前行" Command="{Binding DeleteCurrentRowCommand}" Margin="20,0,10,0" HorizontalAlignment="Right" Style="{StaticResource ToolbarDangerButtonStyle}"/>
+                    <Button Content="🗑️ 删除表" Command="{Binding DeleteTableCommand}" Margin="0,0,0,0" HorizontalAlignment="Right" Style="{StaticResource ToolbarDangerButtonStyle}"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -82,6 +100,7 @@
                       GridLinesVisibility="Horizontal"
                       HeadersVisibility="All"
                       CanUserAddRows="False"
+                      SelectionMode="Single"
                       EnableRowVirtualization="True"
                       EnableColumnVirtualization="True"
                       VirtualizingPanel.IsVirtualizing="True"
@@ -131,25 +150,21 @@
 
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Content="首页"
-                            Width="64"
                             Margin="0,0,6,0"
                             Padding="8,2"
                             Style="{StaticResource ToolbarActionButtonStyle}"
                             Command="{Binding FirstPageCommand}"/>
                     <Button Content="上一页"
-                            Width="72"
                             Margin="0,0,6,0"
                             Padding="8,2"
                             Style="{StaticResource ToolbarActionButtonStyle}"
                             Command="{Binding PreviousPageCommand}"/>
                     <Button Content="下一页"
-                            Width="72"
                             Margin="0,0,6,0"
                             Padding="8,2"
                             Style="{StaticResource ToolbarActionButtonStyle}"
                             Command="{Binding NextPageCommand}"/>
                     <Button Content="末页"
-                            Width="64"
                             Padding="8,2"
                             Style="{StaticResource ToolbarActionButtonStyle}"
                             Command="{Binding LastPageCommand}"/>

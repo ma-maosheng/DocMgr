@@ -68,7 +68,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public string SignedAttachmentUploader { get; set; } = string.Empty;
 
-        /// <summary>是否已上传处置现场照片（销毁类必填）。</summary>
+        /// <summary>是否已上传处置资料照片（销毁类必填）。</summary>
         public bool ScenePhotoUploaded { get; set; }
 
         /// <summary>办结前确认：已完成空档案盒/介质袋物理移除。</summary>

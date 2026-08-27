@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-08-26T09:34:36Z
+> 生成时间（UTC）：2026-08-27T07:35:41Z
 
 ## 表索引
 
@@ -42,6 +42,8 @@ alwaysApply: true
 | 硬盘出入库流水 | `HardDiskMediaTransaction` | `HardDiskMediaTransactions` | 表 |
 | 硬盘介质 | `HardDiskMedium` | `HardDiskMedia` | 表 |
 | 硬盘登记锁 | `HardDiskRegisterLock` | `HardDiskRegisterLocks` | 表 |
+| 历史存档离库处置明细 | `HistoryArchiveDisposalItem` | `HistoryArchiveDisposalItems` | 表 |
+| 历史存档离库处置单 | `HistoryArchiveDisposalRecord` | `HistoryArchiveDisposalRecords` | 表 |
 | 跨域业务链 | `NetworkArchiveBusinessChain` | `NetworkArchiveBusinessChains` | 表 |
 | 跨域业务执行任务 | `NetworkArchiveBusinessTask` | `NetworkArchiveBusinessTasks` | 表 |
 | 入网申请明细 | `NetworkInboundItem` | `NetworkInboundItems` | 表 |
@@ -116,6 +118,8 @@ alwaysApply: true
 | 修改人 | `Modifier` | `String` | 否 |
 | 修改日期 | `ModificationDate` | `String` | 否 |
 | 备注 | `Remark` | `String` | 否 |
+| 生命周期状态 | `LifecycleStatus` | `String` | 否 |
+| 最后存储位置 | `LastStorageLocation` | `String` | 否 |
 
 ### ArchiveBoxSpecification（档案盒规格）
 
@@ -487,6 +491,69 @@ alwaysApply: true
 | 占用前状态 | `PreviousStatus` | `String` | 否 |
 | 锁定时间 | `LockedTime` | `DateTime` | 否 |
 
+### HistoryArchiveDisposalItem（历史存档离库处置明细）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 处置单ID | `DisposalRecordId` | `Int32` | 否 |
+| 排序序号 | `SortOrder` | `Int32` | 否 |
+| 档案盒编号 | `BoxCode` | `String` | 否 |
+| 档案盒规格 | `BoxSpecification` | `String` | 否 |
+| 柜体名称 | `CabinetName` | `String` | 否 |
+| 面别代码 | `FaceCode` | `String` | 否 |
+| 档口编号 | `SlotCode` | `String` | 否 |
+| 处置前存放位置 | `BeforeStorageLocation` | `String` | 否 |
+| 盒内摘要 | `ContentSummary` | `String` | 否 |
+| 台账条数 | `LedgerRecordCount` | `Int32` | 否 |
+| 来源台账键 | `SourceRecordKeys` | `String` | 否 |
+| 是否混放 | `IsMixedPlacement` | `Boolean` | 否 |
+| 关联混放盒号 | `RelatedBoxCodes` | `String` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+
+### HistoryArchiveDisposalRecord（历史存档离库处置单）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 处置单编号 | `DisposalNo` | `String` | 否 |
+| 状态 | `Status` | `Int32` | 否 |
+| 资料类别 | `MaterialKind` | `String` | 否 |
+| 处置方式 | `DispositionMethod` | `String` | 否 |
+| 转交对象 | `TransferTarget` | `String` | 否 |
+| 其他说明 | `OtherRemark` | `String` | 否 |
+| 申请说明 | `Reason` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+| 申请人用户ID | `ApplicantUserId` | `Int32` | 否 |
+| 申请人 | `ApplicantName` | `String` | 否 |
+| 申请部门 | `ApplicantDept` | `String` | 否 |
+| 申请时间 | `ApplyTime` | `DateTime` | 否 |
+| 审批人 | `ApprovedBy` | `String` | 否 |
+| 审批时间 | `ApprovedTime` | `DateTime?` | 否 |
+| 审批意见 | `ApprovalOpinion` | `String` | 否 |
+| 资料室负责人 | `ArchiveRoomHead` | `String` | 否 |
+| 资料室负责人日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
+| 分管资料副院长 | `ArchiveDeputyPresident` | `String` | 否 |
+| 分管资料副院长日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 确认可上传人 | `ConfirmedBy` | `String` | 否 |
+| 确认可上传时间 | `ConfirmedTime` | `DateTime?` | 否 |
+| 已上传签批单 | `SignedAttachmentUploaded` | `Boolean` | 否 |
+| 签批单上传时间 | `SignedAttachmentUploadedTime` | `DateTime?` | 否 |
+| 签批单上传人 | `SignedAttachmentUploader` | `String` | 否 |
+| 已上传处置现场照片 | `ScenePhotoUploaded` | `Boolean` | 否 |
+| 已确认实物撤柜 | `PhysicalRemovalConfirmed` | `Boolean` | 否 |
+| 实物撤柜确认时间 | `PhysicalRemovalConfirmedAt` | `DateTime?` | 否 |
+| 实物撤柜确认人 | `PhysicalRemovalConfirmedBy` | `String` | 否 |
+| 办结时间 | `CompletedAt` | `DateTime?` | 否 |
+| 办结人 | `CompletedBy` | `String` | 否 |
+| 提交时间 | `SubmittedAt` | `DateTime?` | 否 |
+| 撤回时间 | `WithdrawnAt` | `DateTime?` | 否 |
+| 撤回原因 | `WithdrawReason` | `String` | 否 |
+| 打印次数 | `PrintCount` | `Int32` | 否 |
+| 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 更新时间 | `UpdatedAt` | `DateTime` | 否 |
+
 ### NetworkArchiveBusinessChain（跨域业务链）
 
 | 中文字段 | Property | CLR 类型 | 待补全 |
@@ -825,16 +892,20 @@ alwaysApply: true
 | ID | `Id` | `Int32` | 否 |
 | 分类 | `Category` | `String` | 否 |
 | 序号 | `SequenceNumber` | `String` | 否 |
+| 资料分类 | `MaterialCategory` | `String` | 否 |
+| 起始年度 | `StartYear` | `String` | 否 |
+| 截止年度 | `EndYear` | `String` | 否 |
 | 比例尺 | `Scale` | `String` | 否 |
 | 盒号 | `BoxNumber` | `String` | 否 |
 | 档案盒规格 | `BoxSpecification` | `String` | 否 |
-| 图名 | `MapName` | `String` | 否 |
-| 图幅数 | `SheetCount` | `Int32` | 否 |
+| 资料内容 | `MapName` | `String` | 否 |
 | 登记人 | `Registrant` | `String` | 否 |
 | 登记日期 | `RegistrationDate` | `String` | 否 |
 | 修改人 | `Modifier` | `String` | 否 |
 | 修改日期 | `ModificationDate` | `String` | 否 |
 | 备注 | `Remark` | `String` | 否 |
+| 生命周期状态 | `LifecycleStatus` | `String` | 否 |
+| 最后存储位置 | `LastStorageLocation` | `String` | 否 |
 
 ### ProjectInfo（项目信息）
 
@@ -896,6 +967,7 @@ alwaysApply: true
 | 中文字段 | Property | CLR 类型 | 待补全 |
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
+| 分类 | `Category` | `String` | 否 |
 | 比例尺 | `Scale` | `String` | 否 |
 | 盒号 | `BoxNumber` | `String` | 否 |
 | 档案盒规格 | `BoxSpecification` | `String` | 否 |
@@ -913,6 +985,8 @@ alwaysApply: true
 | 修改人 | `Modifier` | `String` | 否 |
 | 修改日期 | `ModificationDate` | `String` | 否 |
 | 备注 | `Remark` | `String` | 否 |
+| 生命周期状态 | `LifecycleStatus` | `String` | 否 |
+| 最后存储位置 | `LastStorageLocation` | `String` | 否 |
 
 ### User（用户）
 

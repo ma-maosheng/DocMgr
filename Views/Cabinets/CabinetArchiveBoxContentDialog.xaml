@@ -73,54 +73,118 @@
                     </DataGrid.Columns>
                 </DataGrid>
 
-                <!-- 历史存档·地形图：图上图号，无盒规格 -->
-                <DataGrid ItemsSource="{Binding Items}"
-                          SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True"
-                          CanUserAddRows="False"
-                          CanUserDeleteRows="False"
-                          SelectionMode="Single"
-                          HeadersVisibility="Column"
-                          GridLinesVisibility="Horizontal"
-                          RowHeaderWidth="0"
-                          Visibility="{Binding HistoryTopoGridVisibility}">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="资料类型" Binding="{Binding SourceType}" Width="90"/>
-                        <DataGridTextColumn Header="比例尺" Binding="{Binding CategoryText}" Width="100"/>
-                        <DataGridTextColumn Header="分类" Binding="{Binding HistoryCategoryText}" Width="100"/>
-                        <DataGridTextColumn Header="图上图号" Binding="{Binding IdentifierText}" Width="120"/>
-                        <DataGridTextColumn Header="图名/盒内内容" Binding="{Binding TitleText}" Width="180"/>
-                        <DataGridTextColumn Header="数量" Binding="{Binding QuantityText}" Width="72"/>
-                        <DataGridTextColumn Header="补充信息" Binding="{Binding DetailText}" Width="*"/>
-                        <DataGridTextColumn Header="日期" Binding="{Binding DateText}" Width="110"/>
-                    </DataGrid.Columns>
-                </DataGrid>
+                <!-- 历史存档：按对应台账表实际字段分表列出 -->
+                <Grid Visibility="{Binding HistoryGridVisibility}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="{Binding HistoryTopoRowHeight}"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="{Binding HistoryAerialRowHeight}"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="{Binding HistoryOtherRowHeight}"/>
+                    </Grid.RowDefinitions>
 
-                <!-- 历史存档：航摄/其他图件/多来源通用列集 -->
-                <DataGrid ItemsSource="{Binding Items}"
-                          SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True"
-                          CanUserAddRows="False"
-                          CanUserDeleteRows="False"
-                          SelectionMode="Single"
-                          HeadersVisibility="Column"
-                          GridLinesVisibility="Horizontal"
-                          RowHeaderWidth="0"
-                          Visibility="{Binding HistoryGeneralGridVisibility}">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="资料类型" Binding="{Binding SourceType}" Width="90"/>
-                        <DataGridTextColumn Header="比例尺" Binding="{Binding CategoryText}" Width="100"/>
-                        <DataGridTextColumn Header="分类" Binding="{Binding HistoryCategoryText}" Width="100"/>
-                        <DataGridTextColumn Header="标识" Binding="{Binding IdentifierText}" Width="120"/>
-                        <DataGridTextColumn Header="图名/盒内内容" Binding="{Binding TitleText}" Width="180"/>
-                        <DataGridTextColumn Header="数量" Binding="{Binding QuantityText}" Width="72"/>
-                        <DataGridTextColumn Header="补充信息" Binding="{Binding DetailText}" Width="*"/>
-                        <DataGridTextColumn Header="日期" Binding="{Binding DateText}" Width="110"/>
-                        <DataGridTextColumn Header="盒规格" Binding="{Binding BoxSpecs}" Width="100"/>
-                    </DataGrid.Columns>
-                </DataGrid>
+                    <TextBlock Grid.Row="0"
+                               Text="地形图"
+                               Margin="0,0,0,6"
+                               FontSize="13"
+                               FontWeight="Bold"
+                               Foreground="#334155"
+                               Visibility="{Binding HistoryTopoSectionHeaderVisibility}"/>
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding TopoItems}"
+                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              RowHeaderWidth="0"
+                              Visibility="{Binding HistoryTopoGridVisibility}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="比例尺" Binding="{Binding HistoryFields.Scale}" Width="80"/>
+                            <DataGridTextColumn Header="图上图号" Binding="{Binding HistoryFields.MapNumber}" Width="110"/>
+                            <DataGridTextColumn Header="当前图号" Binding="{Binding HistoryFields.CurrentMapNumber}" Width="120"/>
+                            <DataGridTextColumn Header="图名" Binding="{Binding HistoryFields.MapName}" Width="150"/>
+                            <DataGridTextColumn Header="幅数" Binding="{Binding HistoryFields.SheetCount}" Width="56"/>
+                            <DataGridTextColumn Header="成图日期" Binding="{Binding HistoryFields.CreationDate}" Width="100"/>
+                            <DataGridTextColumn Header="调绘日期" Binding="{Binding HistoryFields.SurveyDate}" Width="100"/>
+                            <DataGridTextColumn Header="坐标系统" Binding="{Binding HistoryFields.CoordinateSystem}" Width="100"/>
+                            <DataGridTextColumn Header="高程基准" Binding="{Binding HistoryFields.ElevationDatum}" Width="100"/>
+                            <DataGridTextColumn Header="涉及省市县" Binding="{Binding HistoryFields.Region}" Width="140"/>
+                            <DataGridTextColumn Header="登记人" Binding="{Binding HistoryFields.Registrant}" Width="80"/>
+                            <DataGridTextColumn Header="登记日期" Binding="{Binding HistoryFields.RegistrationDate}" Width="110"/>
+                            <DataGridTextColumn Header="备注" Binding="{Binding HistoryFields.Remark}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <TextBlock Grid.Row="2"
+                               Text="航摄影像"
+                               Margin="0,8,0,6"
+                               FontSize="13"
+                               FontWeight="Bold"
+                               Foreground="#334155"
+                               Visibility="{Binding HistoryAerialSectionHeaderVisibility}"/>
+                    <DataGrid Grid.Row="3"
+                              ItemsSource="{Binding AerialItems}"
+                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              RowHeaderWidth="0"
+                              Visibility="{Binding HistoryAerialGridVisibility}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="分类" Binding="{Binding HistoryFields.Category}" Width="100"/>
+                            <DataGridTextColumn Header="测区名称" Binding="{Binding HistoryFields.SurveyArea}" Width="140"/>
+                            <DataGridTextColumn Header="比例尺" Binding="{Binding HistoryFields.Scale}" Width="80"/>
+                            <DataGridTextColumn Header="航摄日期" Binding="{Binding HistoryFields.PhotographyDate}" Width="100"/>
+                            <DataGridTextColumn Header="档案盒内物品" Binding="{Binding HistoryFields.BoxContents}" Width="*"/>
+                            <DataGridTextColumn Header="相片张数" Binding="{Binding HistoryFields.PhotoCount}" Width="80"/>
+                            <DataGridTextColumn Header="档案盒规格" Binding="{Binding HistoryFields.BoxSpecification}" Width="100"/>
+                            <DataGridTextColumn Header="登记人" Binding="{Binding HistoryFields.Registrant}" Width="80"/>
+                            <DataGridTextColumn Header="登记日期" Binding="{Binding HistoryFields.RegistrationDate}" Width="110"/>
+                            <DataGridTextColumn Header="备注" Binding="{Binding HistoryFields.Remark}" Width="150"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <TextBlock Grid.Row="4"
+                               Text="其他图件"
+                               Margin="0,8,0,6"
+                               FontSize="13"
+                               FontWeight="Bold"
+                               Foreground="#334155"
+                               Visibility="{Binding HistoryOtherSectionHeaderVisibility}"/>
+                    <DataGrid Grid.Row="5"
+                              ItemsSource="{Binding OtherItems}"
+                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              RowHeaderWidth="0"
+                              Visibility="{Binding HistoryOtherGridVisibility}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="序号" Binding="{Binding HistoryFields.SequenceNumber}" Width="70"/>
+                            <DataGridTextColumn Header="资料分类" Binding="{Binding HistoryFields.MaterialCategory}" Width="120"/>
+                            <DataGridTextColumn Header="起始年度" Binding="{Binding HistoryFields.StartYear}" Width="80"/>
+                            <DataGridTextColumn Header="截止年度" Binding="{Binding HistoryFields.EndYear}" Width="80"/>
+                            <DataGridTextColumn Header="资料内容" Binding="{Binding HistoryFields.MapName}" Width="*"/>
+                            <DataGridTextColumn Header="档案盒规格" Binding="{Binding HistoryFields.BoxSpecification}" Width="110"/>
+                            <DataGridTextColumn Header="登记人" Binding="{Binding HistoryFields.Registrant}" Width="90"/>
+                            <DataGridTextColumn Header="登记日期" Binding="{Binding HistoryFields.RegistrationDate}" Width="120"/>
+                            <DataGridTextColumn Header="备注" Binding="{Binding HistoryFields.Remark}" Width="160"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
 
                 <TextBlock Text="{Binding EmptyHint}"
                            HorizontalAlignment="Center"

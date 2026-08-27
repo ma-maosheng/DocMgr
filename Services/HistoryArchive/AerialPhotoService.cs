@@ -42,13 +42,18 @@ namespace DocMgr.Services.HistoryArchive
         {
             ArgumentNullException.ThrowIfNull(list);
             await _importSlotGuard.EnsureSlotsReadyForHistoryImportAsync(list.Select(item => item.BoxNumber));
-            string categoryName = $"历史存档航摄影像{sheetName}";
+            string categoryName = HistoryArchiveImportTableNameSupport.BuildAerialPhotoTableName(sheetName);
             _aerialPhotoRepository.Import(categoryName, list, isRecreate);
         }
 
         public void DropTable(string tableName)
         {
             _aerialPhotoRepository.DeleteByCategory(tableName);
+        }
+
+        public void DeleteAerialPhoto(int id)
+        {
+            _aerialPhotoRepository.DeleteById(id);
         }
 
         public void UpdateAerialPhoto(AerialPhoto photo)

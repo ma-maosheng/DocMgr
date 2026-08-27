@@ -1109,7 +1109,15 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("EndYear")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("MapName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MaterialCategory")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -1141,8 +1149,9 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("SheetCount")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("StartYear")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -1160,6 +1169,10 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("BoxSpecification")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -1223,6 +1236,8 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Category");
 
                     b.HasIndex("Scale");
 

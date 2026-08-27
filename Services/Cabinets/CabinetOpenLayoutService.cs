@@ -401,6 +401,8 @@ namespace DocMgr.Services.Cabinets
                     CategoryText = assignment.CategoryText,
                     HistoryCategoryText = ResolveHistoryCategoryText(assignment),
                     IdentifierText = assignment.IdentifierText,
+                    CurrentMapNumber = assignment.CurrentMapNumber,
+                    HistoryFields = assignment.HistoryFields ?? new HistoryArchiveBoxContentFields(),
                     TitleText = assignment.TitleText,
                     QuantityText = assignment.QuantityText,
                     DetailText = assignment.DetailText,
@@ -1435,7 +1437,9 @@ namespace DocMgr.Services.Cabinets
 
         private static IEnumerable<ExpandedArchiveBoxAssignment> ExpandTopoMapAssignments(TopoMap map)
         {
-            if (map == null || string.IsNullOrWhiteSpace(map.BoxNumber))
+            if (map == null
+                || string.IsNullOrWhiteSpace(map.BoxNumber)
+                || HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(map.LifecycleStatus))
             {
                 yield break;
             }
@@ -1456,6 +1460,7 @@ namespace DocMgr.Services.Cabinets
                     continue;
                 }
 
+                string currentMapNumber = ResolveTopoCurrentMapNumber(map);
                 yield return new ExpandedArchiveBoxAssignment(
                     parsed,
                     isMixedPlacement,
@@ -1473,15 +1478,32 @@ namespace DocMgr.Services.Cabinets
                     map.SheetCount > 0 ? $"{map.SheetCount}幅" : string.Empty,
                     BuildTopoDetailText(map),
                     BuildDateText(map.SurveyDate, map.CreationDate),
-                    map.Scale,
+                    map.Category,
                     map.MapNumber,
-                    map.MapName);
+                    map.MapName,
+                    CurrentMapNumber: currentMapNumber,
+                    HistoryFields: HistoryArchiveBoxContentFields.FromTopoMap(map, currentMapNumber));
             }
+        }
+
+        /// <summary>
+        /// 优先使用库内已落库的当前图号；为空时按 GB/T 13989 即时换算。
+        /// </summary>
+        private static string ResolveTopoCurrentMapNumber(TopoMap map)
+        {
+            if (!string.IsNullOrWhiteSpace(map.CurrentMapNumber))
+            {
+                return map.CurrentMapNumber.Trim();
+            }
+
+            return TopoMapCurrentMapNumberSupport.Compute(map.Scale, map.MapNumber);
         }
 
         private static IEnumerable<ExpandedArchiveBoxAssignment> ExpandAerialPhotoAssignments(AerialPhoto photo)
         {
-            if (photo == null || string.IsNullOrWhiteSpace(photo.BoxNumber))
+            if (photo == null
+                || string.IsNullOrWhiteSpace(photo.BoxNumber)
+                || HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(photo.LifecycleStatus))
             {
                 yield break;
             }
@@ -1521,13 +1543,16 @@ namespace DocMgr.Services.Cabinets
                     photo.PhotographyDate,
                     photo.Category,
                     photo.SurveyArea,
-                    photo.BoxContents);
+                    photo.BoxContents,
+                    HistoryFields: HistoryArchiveBoxContentFields.FromAerialPhoto(photo));
             }
         }
 
         private static IEnumerable<ExpandedArchiveBoxAssignment> ExpandOtherMapAssignments(OtherMap map)
         {
-            if (map == null || string.IsNullOrWhiteSpace(map.BoxNumber))
+            if (map == null
+                || string.IsNullOrWhiteSpace(map.BoxNumber)
+                || HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(map.LifecycleStatus))
             {
                 yield break;
             }
@@ -1548,6 +1573,11 @@ namespace DocMgr.Services.Cabinets
                     continue;
                 }
 
+                string categoryText = !string.IsNullOrWhiteSpace(map.MaterialCategory)
+                    ? map.MaterialCategory.Trim()
+                    : (map.Scale ?? string.Empty);
+                string yearRange = BuildOtherMapYearRangeText(map.StartYear, map.EndYear);
+
                 yield return new ExpandedArchiveBoxAssignment(
                     parsed,
                     isMixedPlacement,
@@ -1556,19 +1586,44 @@ namespace DocMgr.Services.Cabinets
                     "其他图件",
                     3,
                     map.BoxSpecification,
-                    map.Scale,
+                    categoryText,
                     map.SequenceNumber,
                     string.Empty,
                     string.Empty,
                     string.Empty,
                     map.MapName,
-                    map.SheetCount > 0 ? $"{map.SheetCount}幅" : string.Empty,
-                    map.Remark,
+                    string.Empty,
+                    string.IsNullOrWhiteSpace(yearRange)
+                        ? map.Remark
+                        : (string.IsNullOrWhiteSpace(map.Remark) ? yearRange : $"{yearRange}；{map.Remark}"),
                     string.Empty,
                     map.Category,
                     map.SequenceNumber,
-                    map.MapName);
+                    map.MapName,
+                    HistoryFields: HistoryArchiveBoxContentFields.FromOtherMap(map));
             }
+        }
+
+        private static string BuildOtherMapYearRangeText(string? startYear, string? endYear)
+        {
+            string start = startYear?.Trim() ?? string.Empty;
+            string end = endYear?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(start) && string.IsNullOrWhiteSpace(end))
+            {
+                return string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(start))
+            {
+                return end;
+            }
+
+            if (string.IsNullOrWhiteSpace(end) || string.Equals(start, end, StringComparison.Ordinal))
+            {
+                return start;
+            }
+
+            return $"{start}-{end}";
         }
 
         private static IEnumerable<ExpandedArchiveBoxAssignment> ExpandYearlyArchiveAssignments(YearlyArchiveBox box)

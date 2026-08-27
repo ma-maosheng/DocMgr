@@ -20,21 +20,17 @@ namespace DocMgr.Services.HistoryArchive
 
         public bool IsTableExist(string tableName)
         {
-            string scale = tableName.Replace("历史存档纸质地形图", "");
-            return _topoMapRepository.ExistsByScale(scale);
+            return _topoMapRepository.ExistsByCategory(tableName);
         }
 
         public List<string> GetTopoMapTables()
         {
-            var scales = _topoMapRepository.GetDistinctScales();
-
-            return scales.Select(s => $"历史存档纸质地形图{s}").ToList();
+            return _topoMapRepository.GetDistinctCategories();
         }
 
         public List<TopoMap> GetTopoMapsByTable(string tableName)
         {
-            string scale = tableName.Replace("历史存档纸质地形图", "");
-            var list = _topoMapRepository.GetByScale(scale);
+            var list = _topoMapRepository.GetByCategory(tableName);
             EnsureCurrentMapNumbers(list);
             return list;
         }
@@ -46,7 +42,7 @@ namespace DocMgr.Services.HistoryArchive
             return list;
         }
 
-        public async Task ImportTopoMapsAsync(List<TopoMap> maps, bool isRecreate = false)
+        public async Task ImportTopoMapsAsync(List<TopoMap> maps, string sheetName, bool isRecreate = false)
         {
             ArgumentNullException.ThrowIfNull(maps);
             foreach (TopoMap map in maps)
@@ -55,13 +51,13 @@ namespace DocMgr.Services.HistoryArchive
             }
 
             await _importSlotGuard.EnsureSlotsReadyForHistoryImportAsync(maps.Select(item => item.BoxNumber));
-            _topoMapRepository.Import(maps, isRecreate);
+            string categoryName = HistoryArchiveImportTableNameSupport.BuildTopoMapTableName(sheetName);
+            _topoMapRepository.Import(categoryName, maps, isRecreate);
         }
 
         public void DropTable(string tableName)
         {
-            string scale = tableName.Replace("历史存档纸质地形图", "");
-            _topoMapRepository.DeleteByScale(scale);
+            _topoMapRepository.DeleteByCategory(tableName);
         }
 
         public void DeleteTopoMap(int id)
@@ -76,14 +72,10 @@ namespace DocMgr.Services.HistoryArchive
             _topoMapRepository.Update(map);
         }
 
-        private void EnsureCurrentMapNumbers(List<TopoMap> maps)
+        private static void EnsureCurrentMapNumbers(List<TopoMap> maps)
         {
-            if (!TopoMapCurrentMapNumberSupport.FillMissing(maps))
-            {
-                return;
-            }
-
-            _topoMapRepository.SaveChanges();
+            // 浏览查询使用 AsNoTracking，只在内存中补全当前图号，避免数万条跟踪实体在切到全局浏览时卡住界面。
+            TopoMapCurrentMapNumberSupport.FillMissing(maps);
         }
     }
 }

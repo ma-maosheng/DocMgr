@@ -34,6 +34,16 @@ namespace DocMgr.Services.Interfaces
         List<OtherMap> GetOtherMapsByTable(string tableName);
 
         /// <summary>
+        /// 获取全部其他图件记录（跨分类表）。
+        /// </summary>
+        List<OtherMap> GetAllOtherMaps();
+
+        /// <summary>
+        /// 删除单条其他图件记录。
+        /// </summary>
+        void DeleteOtherMap(int id);
+
+        /// <summary>
         /// 更新其他图件记录。
         /// </summary>
         void UpdateOtherMap(OtherMap map);

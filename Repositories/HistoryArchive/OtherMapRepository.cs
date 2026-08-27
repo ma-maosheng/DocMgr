@@ -35,6 +35,15 @@ public class OtherMapRepository : IOtherMapRepository
             .ToList();
     }
 
+    public List<OtherMap> GetAll()
+    {
+        return _dbContext.OtherMaps
+            .OrderBy(item => item.Category)
+            .ThenBy(item => item.SequenceNumber)
+            .ThenBy(item => item.Id)
+            .ToList();
+    }
+
     public void Import(string categoryName, List<OtherMap> items, bool isRecreate)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(categoryName);
@@ -71,6 +80,11 @@ public class OtherMapRepository : IOtherMapRepository
         _dbContext.OtherMaps
             .Where(item => item.Category == categoryName)
             .ExecuteDelete();
+    }
+
+    public void DeleteById(int id)
+    {
+        _dbContext.OtherMaps.Where(item => item.Id == id).ExecuteDelete();
     }
 
     public void Update(OtherMap map)

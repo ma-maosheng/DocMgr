@@ -27,6 +27,11 @@ namespace DocMgr.Services.Interfaces
         void DropTable(string tableName);
 
         /// <summary>
+        /// 删除单条航摄影像记录
+        /// </summary>
+        void DeleteAerialPhoto(int id);
+
+        /// <summary>
         /// 获取所有相关的航摄影像数据表名
         /// </summary>
         List<string> GetAerialPhotoTables();

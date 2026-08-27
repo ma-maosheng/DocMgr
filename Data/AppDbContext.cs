@@ -9,6 +9,7 @@ using DocMgr.Models.SystemSettings;
 using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Models.NetworkTransfer;
+using DocMgr.Models.HistoryArchive;
 using DocMgr.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -37,6 +38,8 @@ namespace DocMgr.Data
         public DbSet<AerialPhoto> AerialPhotos { get; set; }
         public DbSet<OtherMap> OtherMaps { get; set; }
         public DbSet<TopoMap> TopoMaps { get; set; }
+        public DbSet<HistoryArchiveDisposalRecord> HistoryArchiveDisposalRecords { get; set; }
+        public DbSet<HistoryArchiveDisposalItem> HistoryArchiveDisposalItems { get; set; }
         public DbSet<ProjectInfo> ProjectInfos { get; set; }
         public DbSet<HardDiskMedium> HardDiskMedia { get; set; }
         public DbSet<HardDiskLedger> HardDiskLedgers { get; set; }
@@ -501,6 +504,26 @@ namespace DocMgr.Data
                     .WithOne(item => item.DisposalRecord)
                     .HasForeignKey(item => item.DisposalRecordId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<HistoryArchiveDisposalRecord>(entity =>
+            {
+                entity.HasIndex(item => item.DisposalNo).IsUnique();
+                entity.HasIndex(item => item.Status);
+                entity.HasIndex(item => item.ApplyTime);
+                entity.HasIndex(item => item.MaterialKind);
+
+                entity.HasMany(item => item.Items)
+                    .WithOne(item => item.DisposalRecord)
+                    .HasForeignKey(item => item.DisposalRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<HistoryArchiveDisposalItem>(entity =>
+            {
+                entity.HasIndex(item => item.DisposalRecordId);
+                entity.HasIndex(item => item.BoxCode);
+                entity.HasIndex(item => new { item.DisposalRecordId, item.BoxCode }).IsUnique();
             });
 
             modelBuilder.Entity<NetworkOnNetDisposalItem>(entity =>

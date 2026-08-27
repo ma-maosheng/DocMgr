@@ -148,9 +148,11 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<TopoMapPage>("HA-TOPO", "地形图");
             Add<AerialPhotoPage>("HA-AER", "航摄影像");
             Add<OtherMapPage>("HA-OTH", "其他图件");
+            Add<HistoryArchiveDisposalPage>("HA-DSP", "资料离库处置");
             Add<TopoMapEditDialog>("HA-TOPO-ED", "地形图编辑");
             Add<AerialPhotoEditDialog>("HA-AER-ED", "航摄影像编辑");
             Add<OtherMapEditDialog>("HA-OTH-ED", "其他图件编辑");
+            Add<HistoryArchiveDisposalEditDialog>("HA-DSP-ED", "资料离库处置编辑");
 
             // SS
             Add<UserManagementPage>("SS-USER", "用户管理");

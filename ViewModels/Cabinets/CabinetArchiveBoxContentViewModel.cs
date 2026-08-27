@@ -125,21 +125,35 @@ namespace DocMgr.ViewModels.Cabinets
                 : Visibility.Collapsed;
 
             bool isHistoryArchive = viewMode == CabinetArchiveContainerViewMode.HistoryArchiveBox;
-            bool isHistoryTopoMapOnly = isHistoryArchive
-                && contents.Count > 0
-                && contents.All(item => string.Equals(item.SourceType, "地形图", StringComparison.OrdinalIgnoreCase));
+            bool hasTopoItems = isHistoryArchive
+                && contents.Any(item => HistoryArchiveBoxContentFields.IsTopoMap(item.SourceType));
+            bool hasAerialItems = isHistoryArchive
+                && contents.Any(item => HistoryArchiveBoxContentFields.IsAerialPhoto(item.SourceType));
+            bool hasOtherItems = isHistoryArchive
+                && contents.Any(item => HistoryArchiveBoxContentFields.IsOtherMap(item.SourceType));
+            int historyGridCount = (hasTopoItems ? 1 : 0) + (hasAerialItems ? 1 : 0) + (hasOtherItems ? 1 : 0);
+            bool showHistorySectionHeaders = historyGridCount > 1;
 
             HistoryGridVisibility = isHistoryArchive
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
-            HistoryTopoGridVisibility = isHistoryTopoMapOnly
+            HistoryTopoGridVisibility = hasTopoItems ? Visibility.Visible : Visibility.Collapsed;
+            HistoryAerialGridVisibility = hasAerialItems ? Visibility.Visible : Visibility.Collapsed;
+            HistoryOtherGridVisibility = hasOtherItems ? Visibility.Visible : Visibility.Collapsed;
+            HistoryTopoSectionHeaderVisibility = showHistorySectionHeaders && hasTopoItems
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            HistoryAerialSectionHeaderVisibility = showHistorySectionHeaders && hasAerialItems
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            HistoryOtherSectionHeaderVisibility = showHistorySectionHeaders && hasOtherItems
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
-            HistoryGeneralGridVisibility = isHistoryArchive && !isHistoryTopoMapOnly
-                ? Visibility.Visible
-                : Visibility.Collapsed;
+            HistoryTopoRowHeight = ToStarOrZero(hasTopoItems);
+            HistoryAerialRowHeight = ToStarOrZero(hasAerialItems);
+            HistoryOtherRowHeight = ToStarOrZero(hasOtherItems);
 
             YearlyStyleGridVisibility = isHistoryArchive
                 ? Visibility.Collapsed
@@ -154,6 +168,13 @@ namespace DocMgr.ViewModels.Cabinets
             Items = new ObservableCollection<CabinetArchiveBoxContentItemViewModel>(
 
                 contents.Select(content => new CabinetArchiveBoxContentItemViewModel(content)));
+
+            TopoItems = new ObservableCollection<CabinetArchiveBoxContentItemViewModel>(
+                Items.Where(item => HistoryArchiveBoxContentFields.IsTopoMap(item.SourceType)));
+            AerialItems = new ObservableCollection<CabinetArchiveBoxContentItemViewModel>(
+                Items.Where(item => HistoryArchiveBoxContentFields.IsAerialPhoto(item.SourceType)));
+            OtherItems = new ObservableCollection<CabinetArchiveBoxContentItemViewModel>(
+                Items.Where(item => HistoryArchiveBoxContentFields.IsOtherMap(item.SourceType)));
 
             ItemDetailsPanel = new ItemDetailsListPresenter<CabinetArchiveBoxContentItemViewModel>(
                 "柜内资料明细",
@@ -319,13 +340,42 @@ namespace DocMgr.ViewModels.Cabinets
 
 
 
-        /// <summary>历史存档且全部为地形图：标识列为「图上图号」，无盒规格列。</summary>
+        /// <summary>盒内含地形图记录时显示对应台账列。</summary>
         public Visibility HistoryTopoGridVisibility { get; }
 
 
 
-        /// <summary>历史存档非纯地形图：通用历史列集。</summary>
-        public Visibility HistoryGeneralGridVisibility { get; }
+        /// <summary>盒内含航摄影像记录时显示对应台账列。</summary>
+        public Visibility HistoryAerialGridVisibility { get; }
+
+
+
+        /// <summary>盒内含其他图件记录时显示对应台账列。</summary>
+        public Visibility HistoryOtherGridVisibility { get; }
+
+
+
+        public Visibility HistoryTopoSectionHeaderVisibility { get; }
+
+
+
+        public Visibility HistoryAerialSectionHeaderVisibility { get; }
+
+
+
+        public Visibility HistoryOtherSectionHeaderVisibility { get; }
+
+
+
+        public GridLength HistoryTopoRowHeight { get; }
+
+
+
+        public GridLength HistoryAerialRowHeight { get; }
+
+
+
+        public GridLength HistoryOtherRowHeight { get; }
 
 
 
@@ -388,6 +438,18 @@ namespace DocMgr.ViewModels.Cabinets
 
 
         public ObservableCollection<CabinetArchiveBoxContentItemViewModel> Items { get; }
+
+
+
+        public ObservableCollection<CabinetArchiveBoxContentItemViewModel> TopoItems { get; }
+
+
+
+        public ObservableCollection<CabinetArchiveBoxContentItemViewModel> AerialItems { get; }
+
+
+
+        public ObservableCollection<CabinetArchiveBoxContentItemViewModel> OtherItems { get; }
 
 
 
@@ -611,7 +673,7 @@ namespace DocMgr.ViewModels.Cabinets
 
                 CabinetArchiveContainerViewMode.HistoryArchiveBox =>
 
-                    "历史存档：表格列展示地形图/航摄影像/其他图件台账字段（不含年度份数分解）。",
+                    "历史存档：表格按地形图、航摄影像、其他图件对应台账表的实际字段列出。",
 
                 _ => string.Empty,
 
@@ -930,6 +992,11 @@ namespace DocMgr.ViewModels.Cabinets
             };
 
         }
+
+
+
+        private static GridLength ToStarOrZero(bool visible) =>
+            visible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 
     }
 

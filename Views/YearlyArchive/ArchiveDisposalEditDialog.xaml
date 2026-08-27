@@ -498,7 +498,7 @@
                                   ColumnHeaderHeight="36"
                                   HeadersVisibility="Column">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="分类" Binding="{Binding FileCategory}" Width="80"/>
+                                <DataGridTextColumn Header="分类" Binding="{Binding FileCategoryDisplay, Mode=OneWay}" Width="80"/>
                                 <DataGridTextColumn Header="文件名" Binding="{Binding FileName}" Width="*"/>
                                 <DataGridTextColumn Header="上传人" Binding="{Binding UploaderName}" Width="72"/>
                                 <DataGridTextColumn Header="上传时间" Binding="{Binding UploadTime, StringFormat=yyyy-MM-dd HH:mm}" Width="120"/>

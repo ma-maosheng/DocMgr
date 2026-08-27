@@ -86,8 +86,18 @@ namespace DocMgr.Services.SystemSettings
                 "可维护。"),
 
             [nameof(OtherMap)] = new(
-                "除航片、地形图外的其他历史图件资料。",
+                "除航片、地形图外的其他历史存档资料（交接记录等）。",
                 "独立主数据表。",
+                "只读浏览。"),
+
+            [nameof(HistoryArchiveDisposalRecord)] = new(
+                "历史存档资料离库处置主单，按资料类别办理草稿至办结全过程。",
+                "← 被 HistoryArchiveDisposalItems 引用（一对多）。",
+                "只读浏览。办结后会将对应台账标为已离库并撤除柜位，请勿手工改生命周期。"),
+
+            [nameof(HistoryArchiveDisposalItem)] = new(
+                "历史存档离库处置明细，一盒一行，固化盒内摘要与原柜位。",
+                "→ 引用 HistoryArchiveDisposalRecords（DisposalRecordId，级联删除）。",
                 "只读浏览。"),
 
             [nameof(ProjectInfo)] = new(

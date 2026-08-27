@@ -24,6 +24,10 @@ namespace DocMgr.ViewModels.Cabinets
 
             IdentifierText = descriptor.IdentifierText;
 
+            CurrentMapNumber = descriptor.CurrentMapNumber;
+
+            HistoryFields = descriptor.HistoryFields ?? new HistoryArchiveBoxContentFields();
+
             TitleText = descriptor.TitleText;
 
             MaterialName = descriptor.MaterialName;
@@ -135,6 +139,16 @@ namespace DocMgr.ViewModels.Cabinets
 
 
         public string IdentifierText { get; }
+
+
+
+        /// <summary>地形图当前图号（GB/T 13989）。</summary>
+        public string CurrentMapNumber { get; }
+
+
+
+        /// <summary>历史存档对应台账表字段。</summary>
+        public HistoryArchiveBoxContentFields HistoryFields { get; }
 
 
 

@@ -12,11 +12,12 @@ namespace DocMgr.ViewModels.HistoryArchive
         private readonly OtherMap _map;
 
         private string _sequenceNumber = string.Empty;
-        private string _scale = string.Empty;
+        private string _materialCategory = string.Empty;
+        private string _startYear = string.Empty;
+        private string _endYear = string.Empty;
         private string _boxNumber = string.Empty;
         private string _boxSpecification = string.Empty;
         private string _mapName = string.Empty;
-        private string _sheetCount = string.Empty;
         private string _remark = string.Empty;
 
         public OtherMapEditDialogViewModel(
@@ -38,31 +39,40 @@ namespace DocMgr.ViewModels.HistoryArchive
                 Id = mapToEdit.Id,
                 Category = mapToEdit.Category,
                 SequenceNumber = mapToEdit.SequenceNumber,
+                MaterialCategory = mapToEdit.MaterialCategory,
+                StartYear = mapToEdit.StartYear,
+                EndYear = mapToEdit.EndYear,
                 Scale = mapToEdit.Scale,
                 BoxNumber = mapToEdit.BoxNumber,
                 BoxSpecification = mapToEdit.BoxSpecification,
                 MapName = mapToEdit.MapName,
-                SheetCount = mapToEdit.SheetCount,
                 Registrant = mapToEdit.Registrant,
                 RegistrationDate = mapToEdit.RegistrationDate,
                 Modifier = mapToEdit.Modifier,
                 ModificationDate = mapToEdit.ModificationDate,
-                Remark = mapToEdit.Remark
+                Remark = mapToEdit.Remark,
+                LifecycleStatus = mapToEdit.LifecycleStatus,
+                LastStorageLocation = mapToEdit.LastStorageLocation
             };
 
             SequenceNumber = _map.SequenceNumber;
-            Scale = _map.Scale;
+            MaterialCategory = _map.MaterialCategory;
+            StartYear = _map.StartYear;
+            EndYear = _map.EndYear;
             BoxNumber = _map.BoxNumber;
             BoxSpecification = _map.BoxSpecification;
             MapName = _map.MapName;
-            SheetCount = _map.SheetCount == 0 ? string.Empty : _map.SheetCount.ToString();
             Remark = _map.Remark;
 
-            ConfirmCommand = new RelayCommand(_ => Confirm());
+            ConfirmCommand = new RelayCommand(_ => Confirm(), _ => CanEditBoxNumber);
             CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
         }
 
-        public string Title => "编辑其他图件";
+        public string Title => "编辑其他资料";
+
+        /// <summary>已离库记录禁止改盒号，且不可保存。</summary>
+        public bool CanEditBoxNumber =>
+            !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(_map.LifecycleStatus);
 
         public string SequenceNumber
         {
@@ -70,10 +80,22 @@ namespace DocMgr.ViewModels.HistoryArchive
             set => SetProperty(ref _sequenceNumber, value);
         }
 
-        public string Scale
+        public string MaterialCategory
         {
-            get => _scale;
-            set => SetProperty(ref _scale, value);
+            get => _materialCategory;
+            set => SetProperty(ref _materialCategory, value);
+        }
+
+        public string StartYear
+        {
+            get => _startYear;
+            set => SetProperty(ref _startYear, value);
+        }
+
+        public string EndYear
+        {
+            get => _endYear;
+            set => SetProperty(ref _endYear, value);
         }
 
         public string BoxNumber
@@ -94,12 +116,6 @@ namespace DocMgr.ViewModels.HistoryArchive
             set => SetProperty(ref _mapName, value);
         }
 
-        public string SheetCount
-        {
-            get => _sheetCount;
-            set => SetProperty(ref _sheetCount, value);
-        }
-
         public string Remark
         {
             get => _remark;
@@ -113,9 +129,9 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private void Confirm()
         {
-            if (string.IsNullOrWhiteSpace(Scale))
+            if (!CanEditBoxNumber)
             {
-                _dialogService.ShowMessage("请输入比例尺。");
+                _dialogService.ShowMessage("已离库记录只读，禁止修改。");
                 return;
             }
 
@@ -127,24 +143,19 @@ namespace DocMgr.ViewModels.HistoryArchive
 
             if (string.IsNullOrWhiteSpace(MapName))
             {
-                _dialogService.ShowMessage("请输入图名。");
-                return;
-            }
-
-            if (!string.IsNullOrWhiteSpace(SheetCount) && !int.TryParse(SheetCount, out _))
-            {
-                _dialogService.ShowMessage("幅数必须为整数。");
+                _dialogService.ShowMessage("请输入资料内容。");
                 return;
             }
 
             try
             {
                 _map.SequenceNumber = SequenceNumber.Trim();
-                _map.Scale = Scale.Trim();
+                _map.MaterialCategory = MaterialCategory.Trim();
+                _map.StartYear = StartYear.Trim();
+                _map.EndYear = EndYear.Trim();
                 _map.BoxNumber = BoxNumber.Trim();
                 _map.BoxSpecification = BoxSpecification.Trim();
                 _map.MapName = MapName.Trim();
-                _map.SheetCount = int.TryParse(SheetCount, out int sheetCount) ? sheetCount : 0;
                 _map.Remark = Remark.Trim();
                 _map.Modifier = _userContextService.CurrentUser?.RealName ?? "Unknown";
                 _map.ModificationDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");

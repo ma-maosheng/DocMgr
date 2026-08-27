@@ -574,6 +574,7 @@ namespace DocMgr.Views
                 TopoMapPage => BtnHistMap,
                 AerialPhotoPage => BtnHistAerial,
                 OtherMapPage => BtnOtherData,
+                HistoryArchiveDisposalPage => BtnHistDisposal,
                 CabinetLayoutPage => BtnCabRegister,
                 CabinetSearchPage => BtnCabSearch,
                 HardDiskMediaPage => BtnDiskSearch,
@@ -722,6 +723,7 @@ namespace DocMgr.Views
                 TopoMapPage => "历史存档资料管理（地形图）",
                 OtherMapPage => "历史存档资料管理（其他图件）",
                 AerialPhotoPage => "历史存档资料管理（航摄影像）",
+                HistoryArchiveDisposalPage => "历史存档资料管理（资料离库处置）",
                 HardDiskMediumLedgerPage => "介质管理（硬盘·初始登记）",
                 OpticalDiscMediaPage => "介质管理（光盘·概览）",
                 OpticalDiscMediumLedgerPage => "介质管理（光盘·流转台账）",
@@ -784,6 +786,13 @@ namespace DocMgr.Views
             {
                 TxtPageTitle.Text = "介质管理（硬盘·离库处置）";
                 MainContentFrame.Navigate(new HardDiskDisposalPage());
+                return Task.CompletedTask;
+            }
+
+            if (item.BizType == "HistoryArchiveDisposal")
+            {
+                TxtPageTitle.Text = "历史存档资料管理（资料离库处置）";
+                MainContentFrame.Navigate(new HistoryArchiveDisposalPage());
                 return Task.CompletedTask;
             }
 
@@ -1072,6 +1081,18 @@ namespace DocMgr.Views
         {
             TxtPageTitle.Text = "档案柜管理（档案柜检索）";
             MainContentFrame.Navigate(new CabinetSearchPage());
+        }
+
+        private void BtnHistDisposal_Click(object sender, RoutedEventArgs e)
+        {
+            if (!CanAccessArchiveRelocation())
+            {
+                MessageBox.Show("仅资料室管理员可办理历史存档资料离库处置。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            TxtPageTitle.Text = "历史存档资料管理（资料离库处置）";
+            MainContentFrame.Navigate(new HistoryArchiveDisposalPage());
         }
 
         private void BtnTopoMap_Click(object sender, RoutedEventArgs e)

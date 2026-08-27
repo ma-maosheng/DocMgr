@@ -22,5 +22,10 @@ public interface IAerialPhotoRepository
 
     void DeleteByCategory(string categoryName);
 
+    /// <summary>
+    /// 按主键删除单条航摄影像记录。
+    /// </summary>
+    void DeleteById(int id);
+
     void Update(AerialPhoto photo);
 }

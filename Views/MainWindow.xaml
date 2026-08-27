@@ -557,9 +557,14 @@
                         <!-- 3. 历史存档资料管理 -->
                         <Expander x:Name="ExpHistoryArchive" Header="历史存档资料管理" Style="{StaticResource NavExpander}">
                             <StackPanel>
-                                <Button x:Name="BtnHistMap"       Content="地形图图件" Style="{StaticResource SubNavButton}" Click="BtnTopoMap_Click"/>
-                                <Button x:Name="BtnHistAerial"    Content="航摄胶片、像片" Style="{StaticResource SubNavButton}" Click="BtnAerialPhoto_Click"  />
-                                <Button x:Name="BtnOtherData"     Content="其他资料" Style="{StaticResource SubNavButton}" Click="BtnOtherMap_Click"/>
+                                <Expander Header="资料录入与编辑" Style="{StaticResource SubNavExpander}">
+                                    <StackPanel>
+                                        <Button x:Name="BtnHistMap" Content="地形图图件" Style="{StaticResource SubSubNavButton}" Click="BtnTopoMap_Click"/>
+                                        <Button x:Name="BtnHistAerial" Content="航摄胶片、像片" Style="{StaticResource SubSubNavButton}" Click="BtnAerialPhoto_Click"/>
+                                        <Button x:Name="BtnOtherData" Content="其他资料" Style="{StaticResource SubSubNavButton}" Click="BtnOtherMap_Click"/>
+                                    </StackPanel>
+                                </Expander>
+                                <Button x:Name="BtnHistDisposal" Content="资料离库处置" Style="{StaticResource SubNavButton}" Click="BtnHistDisposal_Click"/>
                             </StackPanel>
                         </Expander>
 

@@ -59,7 +59,9 @@ namespace DocMgr.ViewModels.HistoryArchive
                 RegistrationDate = mapToEdit.RegistrationDate,
                 Modifier = mapToEdit.Modifier,
                 ModificationDate = mapToEdit.ModificationDate,
-                Remark = mapToEdit.Remark
+                Remark = mapToEdit.Remark,
+                LifecycleStatus = mapToEdit.LifecycleStatus,
+                LastStorageLocation = mapToEdit.LastStorageLocation
             };
 
             BoxNumber = _map.BoxNumber;
@@ -77,11 +79,15 @@ namespace DocMgr.ViewModels.HistoryArchive
             Remark = _map.Remark;
             RefreshCurrentMapNumber();
 
-            ConfirmCommand = new RelayCommand(_ => Confirm());
+            ConfirmCommand = new RelayCommand(_ => Confirm(), _ => CanEditBoxNumber);
             CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
         }
 
         public string Title => "编辑地形图";
+
+        /// <summary>已离库记录禁止改盒号，且不可保存。</summary>
+        public bool CanEditBoxNumber =>
+            !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(_map.LifecycleStatus);
 
         public string BoxNumber
         {
@@ -185,6 +191,11 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private void Confirm()
         {
+            if (!CanEditBoxNumber)
+            {
+                _dialogService.ShowMessage("已离库记录只读，禁止修改。");
+                return;
+            }
             if (string.IsNullOrWhiteSpace(BoxNumber))
             {
                 _dialogService.ShowMessage("请输入档案盒编号。");

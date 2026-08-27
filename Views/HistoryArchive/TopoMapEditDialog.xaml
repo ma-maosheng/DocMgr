@@ -43,7 +43,9 @@
 
         <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,15">
             <TextBlock Text="档案盒编号 *" Foreground="#666" Margin="0,0,0,5"/>
-            <TextBox Height="35" Padding="5,8" Text="{Binding BoxNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBox Height="35" Padding="5,8"
+                     Text="{Binding BoxNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     IsEnabled="{Binding CanEditBoxNumber}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,0,0,15">

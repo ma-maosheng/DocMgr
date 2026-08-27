@@ -35,6 +35,7 @@ public static partial class ServiceCollectionExtensions
             (mode, initialRecordId) => ActivatorUtilities.CreateInstance<NetworkOutboundWorkbenchPageViewModel>(
                 sp, mode, initialRecordId));
         services.AddTransient<NetworkOnNetDisposalPageViewModel>();
+        services.AddTransient<HistoryArchiveDisposalPageViewModel>();
         services.AddTransient<Func<HardDiskReturnWorkspaceMode, HardDiskMediaReturnRegistrationPageViewModel>>(sp =>
             mode => ActivatorUtilities.CreateInstance<HardDiskMediaReturnRegistrationPageViewModel>(sp, mode));
         services.AddTransient<HardDiskMediaApprovalPageViewModel>();

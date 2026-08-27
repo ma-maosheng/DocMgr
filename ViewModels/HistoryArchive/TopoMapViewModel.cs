@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -23,6 +25,7 @@ namespace DocMgr.ViewModels.HistoryArchive
         // === Properties ===
 
         private const int DefaultPageSize = 100;
+        private const int BackgroundFilterThreshold = 3000;
         private const string UnselectedTableName = "（未选择）";
         private const string GlobalBrowseTableName = "全部地形图";
 
@@ -37,6 +40,7 @@ namespace DocMgr.ViewModels.HistoryArchive
         private int _currentPage = 1;
         private int _pageSize = DefaultPageSize;
         private bool _isSwitchingBrowseMode;
+        private int _filterGeneration;
 
         public ObservableCollection<TopoMap> TopoMaps
         {
@@ -62,6 +66,20 @@ namespace DocMgr.ViewModels.HistoryArchive
         {
             get => _searchKeyword;
             set => SetProperty(ref _searchKeyword, value);
+        }
+
+        private bool _includeDisposed;
+        /// <summary>默认排除已离库；勾选后可查看已离库记录。</summary>
+        public bool IncludeDisposed
+        {
+            get => _includeDisposed;
+            set
+            {
+                if (SetProperty(ref _includeDisposed, value))
+                {
+                    _ = ApplySearchFilterAsync();
+                }
+            }
         }
 
         // 当前显示的表名
@@ -93,16 +111,11 @@ namespace DocMgr.ViewModels.HistoryArchive
                     return $"{modeName}  ·  {dataName}";
                 }
 
-                if (IsPagedBrowse)
-                {
-                    return $"{modeName}  ·  {dataName}  ·  {PageInfo}";
-                }
-
-                return $"{modeName}  ·  {dataName}  ·  共 {TotalCount} 条";
+                return $"{modeName}  ·  {dataName}  ·  {PageInfo}";
             }
         }
 
-        /// <summary>分页浏览：按比例尺表加载，并按页展示。</summary>
+        /// <summary>分页浏览：按比例尺表加载，列表按页展示。</summary>
         public bool IsPagedBrowse
         {
             get => !_isGlobalBrowse;
@@ -115,7 +128,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             }
         }
 
-        /// <summary>全局浏览：一次加载全部地形图，列表不分页。</summary>
+        /// <summary>全局浏览：加载全部比例尺表，列表仍按页展示，避免万级记录卡住界面。</summary>
         public bool IsGlobalBrowse
         {
             get => _isGlobalBrowse;
@@ -170,14 +183,14 @@ namespace DocMgr.ViewModels.HistoryArchive
             ? "暂无记录"
             : $"第 {CurrentPage} / {TotalPages} 页，本页 {TopoMaps.Count} 条，共 {TotalCount} 条";
 
-        public bool CanGoPrevious => IsPagedBrowse && CurrentPage > 1;
+        public bool CanGoPrevious => CurrentPage > 1;
 
-        public bool CanGoNext => IsPagedBrowse && CurrentPage < TotalPages;
+        public bool CanGoNext => CurrentPage < TotalPages;
 
-        public bool ShowPaginationBar => IsPagedBrowse && _allTopoMaps.Count > 0;
+        public bool ShowPaginationBar => _allTopoMaps.Count > 0;
 
         /// <summary>当前页起始序号（0 基），供行号列使用。</summary>
-        public int PageStartIndex => IsPagedBrowse ? (CurrentPage - 1) * PageSize : 0;
+        public int PageStartIndex => (CurrentPage - 1) * PageSize;
 
         // 无数据提示的显示状态
         private Visibility _noDataHintVisibility = Visibility.Visible;
@@ -212,12 +225,14 @@ namespace DocMgr.ViewModels.HistoryArchive
 
             ImportCommand = new RelayCommand(async _ => await ImportAsync());
             BrowseCommand = new RelayCommand(async _ => await BrowseAsync());
-            DeleteCurrentRowCommand = new RelayCommand(async _ => await DeleteCurrentRowAsync(), _ => SelectedTopoMap != null);
+            DeleteCurrentRowCommand = new RelayCommand(async _ => await DeleteCurrentRowAsync(),
+                _ => SelectedTopoMap != null
+                     && !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(SelectedTopoMap.LifecycleStatus));
             DeleteTableCommand = new RelayCommand(async _ => await DeleteTableAsync());
 
             EditCommand = new RelayCommand(async _ => await EditAsync(), _ => SelectedTopoMap != null);
-            SearchCommand = new RelayCommand(_ => ApplySearchFilter());
-            ResetSearchCommand = new RelayCommand(_ => ResetSearch());
+            SearchCommand = new RelayCommand(async _ => await ApplySearchFilterAsync());
+            ResetSearchCommand = new RelayCommand(async _ => await ResetSearchAsync());
             ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => _filteredTopoMaps.Count > 0);
             FirstPageCommand = new RelayCommand(_ => GoToPage(1), _ => CanGoPrevious);
             PreviousPageCommand = new RelayCommand(_ => GoToPage(CurrentPage - 1), _ => CanGoPrevious);
@@ -272,6 +287,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             }
 
             _isSwitchingBrowseMode = true;
+            _dialogService.SetBusyState(true);
             try
             {
                 _isGlobalBrowse = isGlobal;
@@ -281,6 +297,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 OnPropertyChanged(nameof(PageStartIndex));
                 OnPropertyChanged(nameof(CurrentBrowseCaption));
 
+                TopoMaps = new ObservableCollection<TopoMap>();
                 await YieldUiAsync();
 
                 if (isGlobal)
@@ -289,7 +306,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                     {
                         _allTopoMaps = _cachedAllMaps;
                         CurrentTableName = _allTopoMaps.Count > 0 ? GlobalBrowseTableName : UnselectedTableName;
-                        ApplySearchFilter();
+                        await ApplySearchFilterAsync();
                     }
                     else
                     {
@@ -301,8 +318,13 @@ namespace DocMgr.ViewModels.HistoryArchive
 
                 await ApplyPagedScopeFromCacheOrKeepCurrentAsync();
             }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"切换浏览方式失败: {ex.Message}");
+            }
             finally
             {
+                _dialogService.SetBusyState(false);
                 _isSwitchingBrowseMode = false;
             }
         }
@@ -312,18 +334,17 @@ namespace DocMgr.ViewModels.HistoryArchive
             if (!IsUsablePagedTableName(_lastPagedTableName))
             {
                 CurrentPage = 1;
-                ApplySearchFilter();
+                await ApplySearchFilterAsync();
                 return;
             }
 
             if (_hasFullCache)
             {
-                string scale = GetScaleFromTableName(_lastPagedTableName);
                 _allTopoMaps = _cachedAllMaps
-                    .Where(item => string.Equals(item.Scale?.Trim(), scale, StringComparison.Ordinal))
+                    .Where(item => string.Equals(item.Category?.Trim(), _lastPagedTableName, StringComparison.Ordinal))
                     .ToList();
                 CurrentTableName = _lastPagedTableName;
-                ApplySearchFilter();
+                await ApplySearchFilterAsync();
                 return;
             }
 
@@ -335,11 +356,6 @@ namespace DocMgr.ViewModels.HistoryArchive
             return !string.IsNullOrWhiteSpace(tableName)
                 && tableName != UnselectedTableName
                 && tableName != GlobalBrowseTableName;
-        }
-
-        private static string GetScaleFromTableName(string tableName)
-        {
-            return tableName.Replace("历史存档纸质地形图", string.Empty, StringComparison.Ordinal).Trim();
         }
 
         private static async Task YieldUiAsync()
@@ -391,7 +407,6 @@ namespace DocMgr.ViewModels.HistoryArchive
             string nowStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
             List<TopoMap> data = new List<TopoMap>();
-            List<string> involvedScales = new List<string>();
 
             using (var progress = _dialogService.ShowOperationProgress("地形图 Excel 导入", "正在读取工作表…"))
             {
@@ -474,28 +489,19 @@ namespace DocMgr.ViewModels.HistoryArchive
                 return;
             }
 
-            involvedScales = data.Select(x => x.Scale).Distinct().ToList();
+            string targetTableName = HistoryArchiveImportTableNameSupport.BuildTopoMapTableName(sheetName);
 
-            // 2. 检查是否存在 (切回 UI 线程由 DialogService 处理)
-            bool needAsk = false;
-            string existingEx = "";
-            foreach (var s in involvedScales)
-            {
-                string tName = $"历史存档纸质地形图{s}";
-                if (_topoMapService.IsTableExist(tName))
-                {
-                    needAsk = true;
-                    existingEx = tName;
-                    break;
-                }
-            }
-
+            bool needAsk = await Task.Run(() => _topoMapService.IsTableExist(targetTableName));
             bool isRecreate = false;
             if (needAsk)
             {
-                var mode = _dialogService.ShowImportOptionDialog($"{existingEx} 等");
-                if (mode == null) return; // Cancel
-                isRecreate = (mode == ImportMode.Recreate);
+                var mode = _dialogService.ShowImportOptionDialog(targetTableName);
+                if (mode == null)
+                {
+                    return;
+                }
+
+                isRecreate = mode == ImportMode.Recreate;
             }
 
             // 3. 入库
@@ -505,7 +511,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                     "地形图 Excel 导入",
                     $"正在核验档口并写入 {data.Count} 条…"))
                 {
-                    await _topoMapService.ImportTopoMapsAsync(data, isRecreate);
+                    await _topoMapService.ImportTopoMapsAsync(data, sheetName, isRecreate);
                 }
             }
             catch (InvalidOperationException ex)
@@ -517,8 +523,8 @@ namespace DocMgr.ViewModels.HistoryArchive
             int convertedCount = data.Count(item => !string.IsNullOrWhiteSpace(item.CurrentMapNumber));
             int unresolvedCount = data.Count - convertedCount;
             string importSummary = unresolvedCount == 0
-                ? $"成功导入 {data.Count} 条数据，并已全部换算当前图号。"
-                : $"成功导入 {data.Count} 条数据；已换算当前图号 {convertedCount} 条，另有 {unresolvedCount} 条图号无法按现行规则识别（当前图号留空）。";
+                ? $"成功导入 {data.Count} 条数据到表 [{targetTableName}]，并已全部换算当前图号。"
+                : $"成功导入 {data.Count} 条数据到表 [{targetTableName}]；已换算当前图号 {convertedCount} 条，另有 {unresolvedCount} 条图号无法按现行规则识别（当前图号留空）。";
             _dialogService.ShowMessage(importSummary);
 
             // 4. 自动刷新
@@ -527,9 +533,9 @@ namespace DocMgr.ViewModels.HistoryArchive
             {
                 await LoadAllDataAsync();
             }
-            else if (involvedScales.Any())
+            else
             {
-                await LoadDataAsync($"历史存档纸质地形图{involvedScales.First()}");
+                await LoadDataAsync(targetTableName);
             }
         }
 
@@ -566,7 +572,7 @@ namespace DocMgr.ViewModels.HistoryArchive
 
                 _allTopoMaps.RemoveAll(item => item.Id == deletedId);
                 SelectedTopoMap = null;
-                ApplySearchFilter();
+                await ApplySearchFilterAsync();
 
                 // 当前比例尺表若已无数据，同步刷新表名状态
                 if (_allTopoMaps.Count == 0)
@@ -662,11 +668,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 await Task.Run(() => ExportToExcel(filePath, _filteredTopoMaps.ToList()));
                 _dialogService.ShowMessage($"导出完成：{filePath}", "完成");
             }
-            catch (IOException ex)
-            {
-                _dialogService.ShowError($"导出失败: {ex.Message}");
-            }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
                 _dialogService.ShowError($"导出失败: {ex.Message}");
             }
@@ -683,7 +685,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 _allTopoMaps = list;
                 CurrentTableName = list.Count > 0 ? GlobalBrowseTableName : UnselectedTableName;
                 SelectedTopoMap = null;
-                ApplySearchFilter();
+                await ApplySearchFilterAsync();
             }
             finally
             {
@@ -701,7 +703,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 CurrentTableName = tableName;
                 _lastPagedTableName = tableName;
                 SelectedTopoMap = null;
-                ApplySearchFilter();
+                await ApplySearchFilterAsync();
             }
             finally
             {
@@ -709,10 +711,40 @@ namespace DocMgr.ViewModels.HistoryArchive
             }
         }
 
-        private void ApplySearchFilter()
+        private async Task ApplySearchFilterAsync()
         {
-            IEnumerable<TopoMap> query = _allTopoMaps;
+            int generation = ++_filterGeneration;
+            bool includeDisposed = IncludeDisposed;
             string keyword = SearchKeyword?.Trim() ?? string.Empty;
+            List<TopoMap> source = _allTopoMaps;
+
+            List<TopoMap> filtered;
+            if (source.Count >= BackgroundFilterThreshold)
+            {
+                filtered = await Task.Run(() => FilterMaps(source, includeDisposed, keyword));
+            }
+            else
+            {
+                filtered = FilterMaps(source, includeDisposed, keyword);
+            }
+
+            if (generation != _filterGeneration)
+            {
+                return;
+            }
+
+            _filteredTopoMaps = filtered;
+            CurrentPage = 1;
+            RefreshDisplayedMaps();
+        }
+
+        private static List<TopoMap> FilterMaps(IReadOnlyList<TopoMap> source, bool includeDisposed, string keyword)
+        {
+            IEnumerable<TopoMap> query = source;
+            if (!includeDisposed)
+            {
+                query = query.Where(x => !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(x.LifecycleStatus));
+            }
 
             if (!string.IsNullOrWhiteSpace(keyword))
             {
@@ -730,15 +762,13 @@ namespace DocMgr.ViewModels.HistoryArchive
                     Contains(x.Remark, keyword));
             }
 
-            _filteredTopoMaps = query.ToList();
-            CurrentPage = 1;
-            RefreshDisplayedMaps();
+            return query.ToList();
         }
 
         private void RefreshDisplayedMaps()
         {
             IEnumerable<TopoMap> displayQuery = _filteredTopoMaps;
-            if (IsPagedBrowse && _filteredTopoMaps.Count > 0)
+            if (_filteredTopoMaps.Count > 0)
             {
                 int clampedPage = Math.Clamp(CurrentPage, 1, TotalPages);
                 if (clampedPage != CurrentPage)
@@ -776,10 +806,10 @@ namespace DocMgr.ViewModels.HistoryArchive
             OnPropertyChanged(nameof(CurrentBrowseCaption));
         }
 
-        private void ResetSearch()
+        private async Task ResetSearchAsync()
         {
             SearchKeyword = string.Empty;
-            ApplySearchFilter();
+            await ApplySearchFilterAsync();
         }
 
         private static bool Contains(string? value, string keyword)
@@ -810,8 +840,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 sheetName = "地形图";
             }
 
-            sheetName = sheetName.Length > 31 ? sheetName[..31] : sheetName;
-            var sheet = workbook.CreateSheet(sheetName);
+            var sheet = workbook.CreateSheet(ExcelSheetNameSupport.Sanitize(sheetName, "地形图"));
 
             string[] headers = { "档案盒编号", "档案盒规格", "比例尺", "图号", "当前图号", "图名", "幅数", "成图日期", "调绘日期", "坐标系统", "高程基准", "涉及省市县", "登记人", "登记日期", "备注" };
             var headerRow = sheet.CreateRow(0);

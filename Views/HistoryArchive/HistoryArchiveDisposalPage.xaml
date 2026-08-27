@@ -1,0 +1,74 @@
+<Page x:Class="DocMgr.Views.HistoryArchive.HistoryArchiveDisposalPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="资料离库处置" Background="#F0F2F5">
+  <Grid Margin="12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="2*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="3*"/>
+    </Grid.RowDefinitions>
+    <Border Style="{StaticResource ToolbarCardBorderStyle}" Padding="12,10" Margin="0,0,0,8">
+      <StackPanel Orientation="Horizontal">
+        <Button Content="新增处置" Command="{Binding AddDisposalCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
+        <Button Content="打开处置" Command="{Binding OpenDisposalCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
+        <Button Content="撤回作废" Command="{Binding WithdrawDisposalCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="96" Margin="0,0,16,0"/>
+        <Button Content="刷新" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72"/>
+      </StackPanel>
+    </Border>
+    <DockPanel Grid.Row="1">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+          <TextBlock Text="在柜档案盒" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+          <TextBlock Text="资料类别:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+          <ComboBox Width="150" ItemsSource="{Binding MaterialKindOptions}" SelectedItem="{Binding MaterialKindDisplay}"/>
+          <TextBlock Text="柜体:" VerticalAlignment="Center" Margin="12,0,4,0"/>
+          <ComboBox Width="140" ItemsSource="{Binding CabinetNameOptions}" SelectedItem="{Binding CabinetName}"/>
+          <TextBlock Text="关键字:" VerticalAlignment="Center" Margin="12,0,4,0"/>
+          <TextBox Width="200" Margin="0,0,8,0" Height="28" VerticalContentAlignment="Center"
+                   Text="{Binding BoxKeyword, UpdateSourceTrigger=PropertyChanged}"/>
+          <Button Content="查询盒" Command="{Binding SearchBoxesCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"/>
+        </StackPanel>
+        <TextBlock Text="{Binding MixedGroupPreview, Mode=OneWay}" Foreground="#B45309" TextWrapping="Wrap"/>
+      </StackPanel>
+      <DataGrid ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}"
+                AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
+                SelectionMode="Single" AlternatingRowBackground="#F8FAFC">
+        <DataGrid.Columns>
+          <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="36"/>
+          <DataGridTextColumn Header="盒号" Binding="{Binding BoxCode, Mode=OneWay}" Width="140" IsReadOnly="True"/>
+          <DataGridTextColumn Header="规格" Binding="{Binding BoxSpecification, Mode=OneWay}" Width="90" IsReadOnly="True"/>
+          <DataGridTextColumn Header="柜位" Binding="{Binding StorageLocation, Mode=OneWay}" Width="140" IsReadOnly="True"/>
+          <DataGridTextColumn Header="盒内摘要" Binding="{Binding ContentSummary, Mode=OneWay}" Width="*" IsReadOnly="True"/>
+          <DataGridTextColumn Header="台账条数" Binding="{Binding LedgerRecordCount, Mode=OneWay}" Width="80" IsReadOnly="True"/>
+          <DataGridTextColumn Header="混放" Binding="{Binding MixedPlacementText, Mode=OneWay}" Width="50" IsReadOnly="True"/>
+          <DataGridTextColumn Header="关联盒数" Binding="{Binding RelatedBoxCount, Mode=OneWay}" Width="80" IsReadOnly="True"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </DockPanel>
+    <TextBlock Grid.Row="2" Text="处置单" FontWeight="Bold" Margin="0,10,0,6"/>
+    <DockPanel Grid.Row="3">
+      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+        <ComboBox Width="220" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"/>
+        <TextBlock Text="年度:" VerticalAlignment="Center" Margin="12,0,4,0"/>
+        <ComboBox Width="90" ItemsSource="{Binding ApplyYears}" SelectedItem="{Binding ApplyYear}"/>
+        <TextBox Width="160" Margin="12,0,8,0" Height="28" VerticalContentAlignment="Center"
+                 Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"/>
+        <Button Content="查询单据" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"/>
+      </StackPanel>
+      <DataGrid ItemsSource="{Binding Records}" SelectedItem="{Binding SelectedRecord}" AutoGenerateColumns="False" IsReadOnly="True"
+                MouseDoubleClick="DgRecords_MouseDoubleClick">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="处置单号" Binding="{Binding DisposalNo, Mode=OneWay}" Width="160"/>
+          <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="180"/>
+          <DataGridTextColumn Header="资料类别" Binding="{Binding MaterialKindDisplay, Mode=OneWay}" Width="140"/>
+          <DataGridTextColumn Header="方式" Binding="{Binding DispositionMethod, Mode=OneWay}" Width="110"/>
+          <DataGridTextColumn Header="盒数" Binding="{Binding ItemCount, Mode=OneWay}" Width="60"/>
+          <DataGridTextColumn Header="申请时间" Binding="{Binding ApplyTime, Mode=OneWay, StringFormat={}{0:yyyy-MM-dd HH:mm}}" Width="140"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </DockPanel>
+  </Grid>
+</Page>

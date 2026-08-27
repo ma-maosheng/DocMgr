@@ -14,23 +14,24 @@ public class TopoMapRepository : ITopoMapRepository
         _dbContext = dbContext;
     }
 
-    public bool ExistsByScale(string scale)
+    public bool ExistsByCategory(string categoryName)
     {
-        return _dbContext.TopoMaps.Any(item => item.Scale == scale);
+        return _dbContext.TopoMaps.Any(item => item.Category == categoryName);
     }
 
-    public List<string> GetDistinctScales()
+    public List<string> GetDistinctCategories()
     {
         return _dbContext.TopoMaps
-            .Select(item => item.Scale)
+            .Select(item => item.Category)
             .Distinct()
             .ToList();
     }
 
-    public List<TopoMap> GetByScale(string scale)
+    public List<TopoMap> GetByCategory(string categoryName)
     {
         return _dbContext.TopoMaps
-            .Where(item => item.Scale == scale)
+            .AsNoTracking()
+            .Where(item => item.Category == categoryName)
             .OrderBy(item => item.Id)
             .ToList();
     }
@@ -38,37 +39,36 @@ public class TopoMapRepository : ITopoMapRepository
     public List<TopoMap> GetAll()
     {
         return _dbContext.TopoMaps
-            .OrderBy(item => item.Scale)
+            .AsNoTracking()
+            .OrderBy(item => item.Category)
+            .ThenBy(item => item.Scale)
             .ThenBy(item => item.BoxNumber)
             .ThenBy(item => item.MapNumber)
             .ThenBy(item => item.Id)
             .ToList();
     }
 
-    public void Import(List<TopoMap> maps, bool isRecreate)
+    public void Import(string categoryName, List<TopoMap> maps, bool isRecreate)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(categoryName);
         ArgumentNullException.ThrowIfNull(maps);
 
         using var transaction = _dbContext.Database.BeginTransaction();
         try
         {
-            var groupedMaps = maps.GroupBy(item => item.Scale);
-            foreach (var group in groupedMaps)
+            if (isRecreate)
             {
-                string scale = group.Key;
-                if (string.IsNullOrWhiteSpace(scale))
-                {
-                    continue;
-                }
-
-                if (isRecreate)
-                {
-                    _dbContext.TopoMaps.Where(item => item.Scale == scale).ExecuteDelete();
-                }
-
-                _dbContext.TopoMaps.AddRange(group);
+                _dbContext.TopoMaps
+                    .Where(item => item.Category == categoryName)
+                    .ExecuteDelete();
             }
 
+            foreach (var item in maps)
+            {
+                item.Category = categoryName;
+            }
+
+            _dbContext.TopoMaps.AddRange(maps);
             _dbContext.SaveChanges();
             transaction.Commit();
         }
@@ -79,9 +79,9 @@ public class TopoMapRepository : ITopoMapRepository
         }
     }
 
-    public void DeleteByScale(string scale)
+    public void DeleteByCategory(string categoryName)
     {
-        _dbContext.TopoMaps.Where(item => item.Scale == scale).ExecuteDelete();
+        _dbContext.TopoMaps.Where(item => item.Category == categoryName).ExecuteDelete();
     }
 
     public void DeleteById(int id)

@@ -31,7 +31,10 @@ namespace DocMgr.Services.Cabinets
             if (string.Equals(sourceType, "航摄影像", StringComparison.OrdinalIgnoreCase))
             {
                 string tableSuffixText = string.Join("/", group
-                    .Select(item => ExtractSourceSuffix(item.SortCategory, "历史存档航摄影像"))
+                    .Select(item => ExtractSourceSuffix(
+                        item.SortCategory,
+                        HistoryArchiveImportTableNameSupport.AerialPhotoPrefix,
+                        HistoryArchiveImportTableNameSupport.LegacyAerialPhotoPrefix))
                     .Where(text => !string.IsNullOrWhiteSpace(text))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .OrderBy(text => text, StringComparer.OrdinalIgnoreCase));
@@ -125,7 +128,7 @@ namespace DocMgr.Services.Cabinets
             else if (string.Equals(sourceType, "其他图件", StringComparison.OrdinalIgnoreCase))
             {
                 AppendHistoryLabeledLine(lines, "序号", item.IdentifierText);
-                AppendHistoryLabeledLine(lines, "图名", item.SortSecondary);
+                AppendHistoryLabeledLine(lines, "资料内容", item.SortSecondary);
             }
             else if (!string.IsNullOrWhiteSpace(item.IdentifierText))
             {
@@ -217,7 +220,10 @@ namespace DocMgr.Services.Cabinets
                 }
 
                 string suffixText = string.Join("/", items
-                    .Select(item => ExtractSourceSuffix(item.SortCategory, "历史存档航摄影像"))
+                    .Select(item => ExtractSourceSuffix(
+                        item.SortCategory,
+                        HistoryArchiveImportTableNameSupport.AerialPhotoPrefix,
+                        HistoryArchiveImportTableNameSupport.LegacyAerialPhotoPrefix))
                     .Where(text => !string.IsNullOrWhiteSpace(text))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .OrderBy(text => text, StringComparer.OrdinalIgnoreCase));
@@ -936,7 +942,7 @@ namespace DocMgr.Services.Cabinets
             return $"{Math.Round(ratio * 100d, MidpointRounding.AwayFromZero)}%";
         }
 
-        private static string ExtractSourceSuffix(string? sourceName, string prefix)
+        private static string ExtractSourceSuffix(string? sourceName, params string[] prefixes)
         {
             if (string.IsNullOrWhiteSpace(sourceName))
             {
@@ -944,9 +950,23 @@ namespace DocMgr.Services.Cabinets
             }
 
             var trimmed = sourceName.Trim();
-            var suffix = trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-                ? trimmed[prefix.Length..].Trim()
-                : trimmed;
+            var suffix = trimmed;
+            if (prefixes != null)
+            {
+                foreach (string prefix in prefixes)
+                {
+                    if (string.IsNullOrWhiteSpace(prefix))
+                    {
+                        continue;
+                    }
+
+                    if (trimmed.StartsWith(prefix, StringComparison.Ordinal))
+                    {
+                        suffix = trimmed[prefix.Length..].Trim();
+                        break;
+                    }
+                }
+            }
 
             var match = Regex.Match(suffix, @"\d+\s*cm", RegexOptions.IgnoreCase);
             if (match.Success)
@@ -1048,7 +1068,9 @@ namespace DocMgr.Services.Cabinets
             string SortPrimary,
             string SortSecondary,
             string ArchiveSequenceNo = "",
-            int? YearlyArchiveBoxId = null);
+            int? YearlyArchiveBoxId = null,
+            string CurrentMapNumber = "",
+            HistoryArchiveBoxContentFields? HistoryFields = null);
 
         private sealed record BoxRenderLayout(double X, double Y, double Width, double Height);
 

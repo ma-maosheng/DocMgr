@@ -49,7 +49,9 @@ namespace DocMgr.ViewModels.HistoryArchive
                 RegistrationDate = photoToEdit.RegistrationDate,
                 Modifier = photoToEdit.Modifier,
                 ModificationDate = photoToEdit.ModificationDate,
-                Remark = photoToEdit.Remark
+                Remark = photoToEdit.Remark,
+                LifecycleStatus = photoToEdit.LifecycleStatus,
+                LastStorageLocation = photoToEdit.LastStorageLocation
             };
 
             BoxNumber = _photo.BoxNumber;
@@ -61,11 +63,15 @@ namespace DocMgr.ViewModels.HistoryArchive
             PhotoCount = _photo.PhotoCount == 0 ? string.Empty : _photo.PhotoCount.ToString();
             Remark = _photo.Remark;
 
-            ConfirmCommand = new RelayCommand(_ => Confirm());
+            ConfirmCommand = new RelayCommand(_ => Confirm(), _ => CanEditBoxNumber);
             CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
         }
 
         public string Title => "编辑航摄影像";
+
+        /// <summary>已离库记录禁止改盒号，且不可保存。</summary>
+        public bool CanEditBoxNumber =>
+            !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(_photo.LifecycleStatus);
 
         public string BoxNumber
         {
@@ -122,6 +128,12 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private void Confirm()
         {
+            if (!CanEditBoxNumber)
+            {
+                _dialogService.ShowMessage("已离库记录只读，禁止修改。");
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(BoxNumber))
             {
                 _dialogService.ShowMessage("请输入档案盒编号。");

@@ -122,6 +122,10 @@ public static class CabinetArchiveBoxPlacementSyncService
     private static IEnumerable<PlacementSeed> ExpandTopoMapPlacements(TopoMap map)
     {
         ArgumentNullException.ThrowIfNull(map);
+        if (HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(map.LifecycleStatus))
+        {
+            yield break;
+        }
 
         foreach (var parsed in EnumerateParsedArchiveBoxes(map.BoxNumber))
         {
@@ -139,6 +143,10 @@ public static class CabinetArchiveBoxPlacementSyncService
     private static IEnumerable<PlacementSeed> ExpandAerialPhotoPlacements(AerialPhoto photo)
     {
         ArgumentNullException.ThrowIfNull(photo);
+        if (HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(photo.LifecycleStatus))
+        {
+            yield break;
+        }
 
         foreach (var parsed in EnumerateParsedArchiveBoxes(photo.BoxNumber))
         {
@@ -156,6 +164,10 @@ public static class CabinetArchiveBoxPlacementSyncService
     private static IEnumerable<PlacementSeed> ExpandOtherMapPlacements(OtherMap map)
     {
         ArgumentNullException.ThrowIfNull(map);
+        if (HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(map.LifecycleStatus))
+        {
+            yield break;
+        }
 
         foreach (var parsed in EnumerateParsedArchiveBoxes(map.BoxNumber))
         {

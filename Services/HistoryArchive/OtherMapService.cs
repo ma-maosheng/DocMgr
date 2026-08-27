@@ -32,17 +32,27 @@ namespace DocMgr.Services.HistoryArchive
             return _otherMapRepository.GetByCategory(tableName);
         }
 
+        public List<OtherMap> GetAllOtherMaps()
+        {
+            return _otherMapRepository.GetAll();
+        }
+
         public async Task ImportOtherMapsAsync(List<OtherMap> list, string sheetName, bool isRecreate = false)
         {
             ArgumentNullException.ThrowIfNull(list);
             await _importSlotGuard.EnsureSlotsReadyForHistoryImportAsync(list.Select(item => item.BoxNumber));
-            string categoryName = $"历史存档其他图件{sheetName}";
+            string categoryName = HistoryArchiveImportTableNameSupport.BuildOtherMapTableName(sheetName);
             _otherMapRepository.Import(categoryName, list, isRecreate);
         }
 
         public void DropTable(string tableName)
         {
             _otherMapRepository.DeleteByCategory(tableName);
+        }
+
+        public void DeleteOtherMap(int id)
+        {
+            _otherMapRepository.DeleteById(id);
         }
 
         public void UpdateOtherMap(OtherMap map)

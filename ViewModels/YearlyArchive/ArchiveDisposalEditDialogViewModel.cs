@@ -119,7 +119,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool ShowMediumKindFilter => !IsSimulated;
 
         public string BannerText =>
-            "流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批 → 确认可上传 → 上传签批单（销毁须现场照片）→ 办结。办结释档空盒/空袋前须确认物理移除；拟销硬盘低格留盘须确认已低格并填写目标空盘档口。";
+            "流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批 → 确认可上传 → 上传签批单（销毁须资料照片）→ 办结。办结释档空盒/空袋前须确认物理移除；拟销硬盘低格留盘须确认已低格并填写目标空盘档口。";
 
         public ObservableCollection<ArchiveDisposalCandidateRow> AvailableItems { get; } = new();
 
@@ -1019,7 +1019,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (_record.Status == YearlyArchiveDisposalRecord.StatusApproved
                     && !string.Equals(UploadCategory, ArchiveDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
                 {
-                    _dialogService.ShowMessage("请先点击「确认可上传」，再上传签批单或处置现场照片。");
+                    _dialogService.ShowMessage("请先点击「确认可上传」，再上传签批单或处置资料照片。");
                     return;
                 }
 

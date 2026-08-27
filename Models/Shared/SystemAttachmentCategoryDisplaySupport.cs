@@ -23,6 +23,12 @@ namespace DocMgr.Models.Shared
             // 已是中文类别（如归还「签批交接单」、默认「一般附件」）直接展示
             if (ContainsCjk(category))
             {
+                if (Models.YearlyArchive.ArchiveDisposalDomainValues.IsScenePhotoCategory(category)
+                    || Models.HistoryArchive.HistoryArchiveDisposalDomainValues.IsScenePhotoCategory(category))
+                {
+                    return Models.YearlyArchive.ArchiveDisposalDomainValues.AttachmentCategoryScenePhoto;
+                }
+
                 return category;
             }
 

@@ -41,10 +41,10 @@ public sealed partial class ArchiveDisposalService
         if (needsScenePhoto)
         {
             bool hasScenePhoto = attachments.Any(item =>
-                string.Equals(item.FileCategory, ArchiveDisposalDomainValues.AttachmentCategoryScenePhoto, StringComparison.Ordinal));
+                ArchiveDisposalDomainValues.IsScenePhotoCategory(item.FileCategory));
             if (!hasScenePhoto)
             {
-                throw new InvalidOperationException("处置方式含「离库销毁」时，办结前须上传处置现场照片。");
+                throw new InvalidOperationException("处置方式含「离库销毁」时，办结前须上传处置资料照片。");
             }
         }
 

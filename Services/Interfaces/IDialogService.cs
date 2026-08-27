@@ -30,12 +30,17 @@ namespace DocMgr.Services.Interfaces
         void ShowSystemAttachmentView(SystemAttachment attachment);
 
         /// <summary>
-        /// 选择工作表。取消返回 null。结果中含「以文本行为单位展开资料子项」勾选状态。
+        /// 选择工作表。取消返回 null。结果中含「以文本行为单位拆分」勾选状态。
         /// </summary>
+        /// <param name="showExpandItemsByTextLineOption">是否显示按文本行拆分勾选。</param>
+        /// <param name="expandItemsByTextLineContent">勾选框文案；空则用默认（资料子项）。</param>
+        /// <param name="expandItemsByTextLineToolTip">勾选框提示；空则用默认。</param>
         SheetSelectionResult? ShowSheetSelectionDialog(
             List<string> sheetNames,
             string title = "选择Sheet",
-            bool showExpandItemsByTextLineOption = false);
+            bool showExpandItemsByTextLineOption = false,
+            string? expandItemsByTextLineContent = null,
+            string? expandItemsByTextLineToolTip = null);
         ImportMode? ShowImportOptionDialog(string tableName);
 
         void SetBusyState(bool isBusy);
@@ -82,6 +87,7 @@ namespace DocMgr.Services.Interfaces
         bool ShowNetworkInboundEditDialog(NetworkInboundRecord record, NetworkTransferWorkspaceMode mode);
         bool ShowNetworkOutboundEditDialog(NetworkOutboundRecord record, NetworkTransferWorkspaceMode mode);
         bool ShowNetworkOnNetDisposalEditDialog(NetworkOnNetDisposalRecord record);
+        bool ShowHistoryArchiveDisposalEditDialog(HistoryArchiveDisposalRecord record);
         bool ShowNetworkProcessedOutputEditDialog();
         bool ShowArchiveDisposalEditDialog(YearlyArchiveDisposalRecord record);
         bool ShowHardDiskInventoryRegisterEditDialog(HardDiskInventoryRegisterRecord record);

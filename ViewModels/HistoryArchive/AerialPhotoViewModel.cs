@@ -60,6 +60,20 @@ namespace DocMgr.ViewModels.HistoryArchive
             set => SetProperty(ref _searchKeyword, value);
         }
 
+        private bool _includeDisposed;
+        /// <summary>默认排除已离库；勾选后可查看已离库记录。</summary>
+        public bool IncludeDisposed
+        {
+            get => _includeDisposed;
+            set
+            {
+                if (SetProperty(ref _includeDisposed, value))
+                {
+                    ApplySearchFilter();
+                }
+            }
+        }
+
         private string _currentTableName = UnselectedTableName;
         public string CurrentTableName
         {
@@ -183,6 +197,7 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         public RelayCommand ImportCommand { get; }
         public RelayCommand BrowseCommand { get; }
+        public RelayCommand DeleteCurrentRowCommand { get; }
         public RelayCommand DeleteTableCommand { get; }
         public RelayCommand EditCommand { get; }
         public RelayCommand SearchCommand { get; }
@@ -204,6 +219,9 @@ namespace DocMgr.ViewModels.HistoryArchive
 
             ImportCommand = new RelayCommand(async _ => await ImportAsync());
             BrowseCommand = new RelayCommand(async _ => await BrowseAsync());
+            DeleteCurrentRowCommand = new RelayCommand(async _ => await DeleteCurrentRowAsync(),
+                _ => SelectedAerialPhoto != null
+                     && !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(SelectedAerialPhoto.LifecycleStatus));
             DeleteTableCommand = new RelayCommand(async _ => await DeleteTableAsync());
 
             EditCommand = new RelayCommand(async _ => await EditAsync(), _ => SelectedAerialPhoto != null);
@@ -370,7 +388,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             string currentUser = _userContextService.CurrentUser?.RealName ?? "Unknown";
 
             string nowStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            string targetTableName = $"历史存档航摄影像{sheetName}";
+            string targetTableName = HistoryArchiveImportTableNameSupport.BuildAerialPhotoTableName(sheetName);
 
             List<AerialPhoto> dataList = new List<AerialPhoto>();
 
@@ -480,6 +498,60 @@ namespace DocMgr.ViewModels.HistoryArchive
             }
         }
 
+        private async Task DeleteCurrentRowAsync()
+        {
+            if (SelectedAerialPhoto == null)
+            {
+                _dialogService.ShowMessage("请先选择要删除的记录。");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(CurrentTableName) || CurrentTableName == UnselectedTableName)
+            {
+                _dialogService.ShowMessage("当前未加载数据表，无法删除。");
+                return;
+            }
+
+            var target = SelectedAerialPhoto;
+            string photoLabel = string.IsNullOrWhiteSpace(target.SurveyArea)
+                ? (string.IsNullOrWhiteSpace(target.BoxContents) ? $"ID={target.Id}" : target.BoxContents)
+                : target.SurveyArea;
+
+            if (!_dialogService.ShowConfirm(
+                    $"确定要删除当前行吗？\n\n测区/盒内内容：{photoLabel}\n档案盒编号：{target.BoxNumber}\n\n此操作不可恢复！",
+                    "确认删除"))
+            {
+                return;
+            }
+
+            try
+            {
+                int deletedId = target.Id;
+                await Task.Run(() => _aerialPhotoService.DeleteAerialPhoto(deletedId));
+
+                _allAerialPhotos.RemoveAll(item => item.Id == deletedId);
+                if (_hasFullCache)
+                {
+                    _cachedAllPhotos.RemoveAll(item => item.Id == deletedId);
+                }
+
+                SelectedAerialPhoto = null;
+                ApplySearchFilter();
+
+                if (_allAerialPhotos.Count == 0)
+                {
+                    CurrentTableName = UnselectedTableName;
+                    NoDataHintVisibility = Visibility.Visible;
+                }
+
+                _dialogService.ShowMessage("当前行已删除。", "完成");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"删除当前行失败: {ex.Message}");
+            }
+        }
+
         private async Task DeleteTableAsync()
         {
             var tables = await Task.Run(() => _aerialPhotoService.GetAerialPhotoTables());
@@ -559,11 +631,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 await Task.Run(() => ExportToExcel(filePath, _filteredAerialPhotos.ToList()));
                 _dialogService.ShowMessage($"导出完成：{filePath}", "完成");
             }
-            catch (IOException ex)
-            {
-                _dialogService.ShowError($"导出失败: {ex.Message}");
-            }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
                 _dialogService.ShowError($"导出失败: {ex.Message}");
             }
@@ -609,17 +677,26 @@ namespace DocMgr.ViewModels.HistoryArchive
         private void ApplySearchFilter()
         {
             IEnumerable<AerialPhoto> query = _allAerialPhotos;
+            if (!IncludeDisposed)
+            {
+                query = query.Where(x => !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(x.LifecycleStatus));
+            }
+
             string keyword = SearchKeyword?.Trim() ?? string.Empty;
 
             if (!string.IsNullOrWhiteSpace(keyword))
             {
                 query = query.Where(x =>
                     Contains(x.BoxNumber, keyword) ||
+                    Contains(x.BoxSpecification, keyword) ||
                     Contains(x.SurveyArea, keyword) ||
                     Contains(x.Scale, keyword) ||
                     Contains(x.PhotographyDate, keyword) ||
                     Contains(x.BoxContents, keyword) ||
-                    Contains(x.Remark, keyword));
+                    Contains(x.Registrant, keyword) ||
+                    Contains(x.RegistrationDate, keyword) ||
+                    Contains(x.Remark, keyword) ||
+                    x.PhotoCount.ToString().Contains(keyword, StringComparison.OrdinalIgnoreCase));
             }
 
             _filteredAerialPhotos = query.ToList();
@@ -702,8 +779,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 sheetName = "航摄影像";
             }
 
-            sheetName = sheetName.Length > 31 ? sheetName[..31] : sheetName;
-            var sheet = workbook.CreateSheet(sheetName);
+            var sheet = workbook.CreateSheet(ExcelSheetNameSupport.Sanitize(sheetName, "航摄影像"));
 
             string[] headers = { "档案盒编号", "档案盒规格", "测区名称", "比例尺", "航摄日期", "档案盒内物品", "相片张数", "登记人", "登记日期", "备注" };
             var headerRow = sheet.CreateRow(0);

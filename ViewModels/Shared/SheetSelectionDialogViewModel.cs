@@ -20,13 +20,17 @@ namespace DocMgr.ViewModels.Shared
         public string SheetName { get; }
 
         /// <summary>
-        /// 勾选时按「子项名称」单元格内的文本行拆分资料子项；否则按 Excel 表格行导入。
+        /// 勾选时按内容单元格内的文本行拆分记录；否则按 Excel 表格行导入。
         /// </summary>
         public bool ExpandItemsByTextLine { get; }
     }
 
     public class SheetSelectionDialogViewModel : ViewModelBase
     {
+        private const string DefaultExpandOptionContent = "以文本行为单位展开资料子项";
+        private const string DefaultExpandOptionToolTip =
+            "勾选后，「子项名称」单元格内每一非空文本行导入为一条资料子项；不勾选则以 Excel 表格行作为一条资料子项。";
+
         private readonly IDialogService _dialogService;
         private string _selectedSheet = string.Empty;
         private bool _expandItemsByTextLine;
@@ -34,12 +38,20 @@ namespace DocMgr.ViewModels.Shared
         public SheetSelectionDialogViewModel(
             IEnumerable<string> sheetNames,
             IDialogService dialogService,
-            bool showExpandItemsByTextLineOption = false)
+            bool showExpandItemsByTextLineOption = false,
+            string? expandItemsByTextLineContent = null,
+            string? expandItemsByTextLineToolTip = null)
         {
             _dialogService = dialogService;
             SheetNames = (sheetNames ?? Enumerable.Empty<string>()).ToList();
             _selectedSheet = SheetNames.FirstOrDefault() ?? string.Empty;
             ShowExpandItemsByTextLineOption = showExpandItemsByTextLineOption;
+            ExpandItemsByTextLineContent = string.IsNullOrWhiteSpace(expandItemsByTextLineContent)
+                ? DefaultExpandOptionContent
+                : expandItemsByTextLineContent.Trim();
+            ExpandItemsByTextLineToolTip = string.IsNullOrWhiteSpace(expandItemsByTextLineToolTip)
+                ? DefaultExpandOptionToolTip
+                : expandItemsByTextLineToolTip.Trim();
 
             ConfirmCommand = new RelayCommand(_ => Confirm(), _ => CanConfirm());
             CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
@@ -48,9 +60,19 @@ namespace DocMgr.ViewModels.Shared
         public List<string> SheetNames { get; }
 
         /// <summary>
-        /// 是否显示「以文本行为单位展开资料子项」（仅存档文本 Excel 导入需要）。
+        /// 是否显示「以文本行为单位拆分」勾选（存档文本 / 其他资料导入等场景）。
         /// </summary>
         public bool ShowExpandItemsByTextLineOption { get; }
+
+        /// <summary>
+        /// 勾选框显示文案。
+        /// </summary>
+        public string ExpandItemsByTextLineContent { get; }
+
+        /// <summary>
+        /// 勾选框提示。
+        /// </summary>
+        public string ExpandItemsByTextLineToolTip { get; }
 
         public string SelectedSheet
         {
@@ -65,7 +87,7 @@ namespace DocMgr.ViewModels.Shared
         }
 
         /// <summary>
-        /// 以文本行为单位展开资料子项。
+        /// 以文本行为单位拆分内容字段。
         /// </summary>
         public bool ExpandItemsByTextLine
         {

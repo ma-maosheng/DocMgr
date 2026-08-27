@@ -13,9 +13,19 @@ public interface IOtherMapRepository
 
     List<OtherMap> GetByCategory(string categoryName);
 
+    /// <summary>
+    /// 获取全部其他图件记录。
+    /// </summary>
+    List<OtherMap> GetAll();
+
     void Import(string categoryName, List<OtherMap> items, bool isRecreate);
 
     void DeleteByCategory(string categoryName);
+
+    /// <summary>
+    /// 按主键删除单条其他图件记录。
+    /// </summary>
+    void DeleteById(int id);
 
     void Update(OtherMap map);
 }
