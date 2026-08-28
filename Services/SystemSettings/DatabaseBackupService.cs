@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DocMgr.Data;
@@ -58,6 +59,57 @@ public sealed class DatabaseBackupService : IDatabaseBackupService
             cancellationToken.ThrowIfCancellationRequested();
             CopyDatabase(BuildFileConnectionString(source), _databaseSettings.ConnectionString);
         }, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public PreMigrateBackupResult TryCreatePreMigrateBackup()
+    {
+        const int keepCount = 3;
+        if (!File.Exists(DatabasePath))
+        {
+            return new PreMigrateBackupResult(Skipped: true, Succeeded: true, Message: "尚无数据库文件，跳过升级前备份。");
+        }
+
+        string? directory = Path.GetDirectoryName(DatabasePath);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return new PreMigrateBackupResult(Skipped: false, Succeeded: false, Message: $"无法解析数据库目录：{DatabasePath}");
+        }
+
+        string stem = Path.GetFileNameWithoutExtension(DatabasePath);
+        string destination = Path.Combine(directory, $"{stem}.pre-migrate-{DateTime.Now:yyyyMMdd-HHmmss}.db");
+
+        try
+        {
+            CopyDatabase(_databaseSettings.ConnectionString, BuildFileConnectionString(destination));
+            PrunePreMigrateBackups(directory, stem, keepCount);
+            return new PreMigrateBackupResult(Skipped: false, Succeeded: true, Message: destination);
+        }
+        catch (Exception ex)
+        {
+            return new PreMigrateBackupResult(
+                Skipped: false,
+                Succeeded: false,
+                Message: $"升级前备份未成功（将继续升级）：{ex.Message}");
+        }
+    }
+
+    private static void PrunePreMigrateBackups(string directory, string stem, int keepCount)
+    {
+        string pattern = $"{stem}.pre-migrate-*.db";
+        foreach (string stalePath in Directory.GetFiles(directory, pattern)
+                     .OrderByDescending(File.GetCreationTimeUtc)
+                     .Skip(keepCount))
+        {
+            try
+            {
+                File.Delete(stalePath);
+            }
+            catch
+            {
+                // 旧备份删不掉不影响本次升级。
+            }
+        }
     }
 
     private static void CopyDatabase(string sourceConnectionString, string destinationConnectionString)

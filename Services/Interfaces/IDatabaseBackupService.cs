@@ -19,4 +19,12 @@ public interface IDatabaseBackupService
 
     /// <summary>用指定备份文件覆盖当前库内容。还原后应立即重启程序。</summary>
     Task RestoreFromFileAsync(string sourcePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 结构升级前备份当前库到同目录 <c>*.pre-migrate-时间.db</c>。无库文件则跳过；失败不抛，避免阻断启动。
+    /// </summary>
+    PreMigrateBackupResult TryCreatePreMigrateBackup();
 }
+
+/// <summary>升级前自动备份的结果。</summary>
+public readonly record struct PreMigrateBackupResult(bool Skipped, bool Succeeded, string Message);

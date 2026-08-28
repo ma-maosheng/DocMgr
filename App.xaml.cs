@@ -171,6 +171,26 @@ namespace DocMgr
 
                 try
                 {
+                    if (File.Exists(databaseSettings.DbPath))
+                    {
+                        var pendingMigrations = db.Database.GetPendingMigrations().ToList();
+                        if (pendingMigrations.Count > 0)
+                        {
+                            initializationState.ReportProgress(
+                                $"检测到 {pendingMigrations.Count} 项数据库升级，正在备份当前库…");
+                            var backupService = scope.ServiceProvider.GetRequiredService<IDatabaseBackupService>();
+                            PreMigrateBackupResult backupResult = backupService.TryCreatePreMigrateBackup();
+                            if (!backupResult.Skipped && backupResult.Succeeded)
+                            {
+                                initializationState.ReportProgress($"升级前备份已写入：{backupResult.Message}");
+                            }
+                            else if (!backupResult.Succeeded)
+                            {
+                                initializationState.ReportProgress(backupResult.Message);
+                            }
+                        }
+                    }
+
                     SqliteNetworkAccessSupport.MigrateWithRetry(db, databaseOptions, initializationState);
                 }
                 catch (Exception ex) when (SqliteNetworkAccessSupport.IsSqliteLockException(ex))

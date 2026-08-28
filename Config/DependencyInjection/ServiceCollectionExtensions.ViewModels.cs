@@ -72,6 +72,7 @@ public static partial class ServiceCollectionExtensions
             (mode, initialRecordId) => ActivatorUtilities.CreateInstance<ArchiveOutboundWorkbenchPageViewModel>(
                 sp, mode, initialRecordId));
         services.AddTransient<AdvancedDataPageViewModel>();
+        services.AddTransient<HelpPageViewModel>();
         services.AddTransient<LoginWindowViewModel>();
         services.AddTransient<UserPreferenceViewModel>();
         services.AddTransient<DocumentCameraCaptureDialogViewModel>();

@@ -161,6 +161,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<UserPreferencePage>("SS-PREF", "个人设置");
             Add<BusinessLogicSettingsPage>("SS-BIZ", "业务逻辑设置");
             Add<AdvancedDataPage>("SS-ADV", "高级数据管理");
+            Add<HelpPage>("SS-HELP", "帮助文档");
             Add<DbOperationLogPage>("SS-DBLOG", "数据库操作日志");
             Add<UserEditDialog>("SS-USER-ED", "用户编辑");
             Add<RoleEditDialog>("SS-ROLE-ED", "角色编辑");

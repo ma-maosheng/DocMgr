@@ -1713,13 +1713,8 @@ namespace DocMgr.Views
 
         private void BtnHelpDoc_Click(object sender, RoutedEventArgs e)
         {
-            ShowMenuNotReady("帮助（帮助文档）");
-        }
-
-        private void ShowMenuNotReady(string title)
-        {
-            TxtPageTitle.Text = title;
-            MessageBox.Show("该菜单对应功能暂未开放。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            TxtPageTitle.Text = "帮助（帮助文档）";
+            MainContentFrame.Navigate(new HelpPage());
         }
 
         private void NavigateToHardDiskMedia(HardDiskMediaWorkbenchSection section, string title)
