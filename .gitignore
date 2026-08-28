@@ -370,6 +370,7 @@ DocMgr.db-shm
 # 本地构建输出目录
 _build_out/
 .build-*/
+installer-out/
 
 # 设计稿与 Visio 源文件（已移至仓库外同级目录）
 类图/

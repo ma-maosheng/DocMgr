@@ -93,9 +93,10 @@ EF `Migrations/*.Designer.cs` 超长——禁止为「瘦身」改历史迁移�
 
 发版时只改 `DocMgr.csproj` 的 `Version` / `InformationalVersion`。
 
-仍可后补：Inno/MSIX 安装向导。单元测试、审批按钮抽公共——有痛再做。
+仍可后补：本机安装 Inno Setup 后编译 `tools/DocMgr.iss` 生成安装向导。单元测试、审批按钮抽公共——有痛再做。
 
 覆盖发布脚本：`tools/PublishOverlay.ps1`（跳过数据库文件，保留已有 `appsettings.json`）。
+Inno 脚本：`tools/DocMgr.iss`（需先发布 `publish\overlay-win-x64`；本机当前未装 Inno 编译器）。
 
 ---
 
