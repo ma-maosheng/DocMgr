@@ -639,6 +639,13 @@
                 <StackPanel Grid.Row="2" Margin="0,0,0,20">
                     <Border Background="#37474F" Height="1" Margin="20,10"/>
 
+                    <TextBlock x:Name="TxtAppVersion"
+                               Foreground="#90A4AE"
+                               FontSize="11"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8"
+                               Text="版本"/>
+
                     <Button x:Name="BtnLogout" Content="切换用户" Style="{StaticResource NavButton}" Click="BtnLogout_Click"/>
 
                     <Button x:Name="BtnExit" Content="退出系统" Style="{StaticResource ButtonCautionStyle}" Click="BtnExit_Click"/>

@@ -7,6 +7,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <Version>1.0.0</Version>
+    <InformationalVersion>1.0.0</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <!-- 避免全局/上级 Directory.Build.props 将警告视为错误，导致 Cursor/VS Code 的 preLaunchTask(build) 失败 -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <!-- 启动时 EnsureColumn 使用 ExecuteSqlRaw；表/列名来自代码并非常量用户输入 -->

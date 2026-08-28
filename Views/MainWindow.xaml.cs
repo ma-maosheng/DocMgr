@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Navigation;
 using System.Windows.Threading;
+using DocMgr.Infrastructure;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.OpticalDiscMedia;
@@ -57,6 +58,7 @@ namespace DocMgr.Views
                 TxtCurrentUserRole.Text = CurrentUser.Role;
             }
 
+            ApplyAppVersionText();
             ApplyPermissions();
             UpdateMenuVisibility();
             InitializeNavMenuBehavior();
@@ -79,6 +81,7 @@ namespace DocMgr.Views
             _operationLogContextService = _windowScope.ServiceProvider.GetRequiredService<IDbOperationLogContextService>();
             _scopeFactory = _windowScope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
             _toDoNotificationPresenter = _windowScope.ServiceProvider.GetRequiredService<IToDoNotificationPresenter>();
+            ApplyAppVersionText();
             InitializeNavMenuBehavior();
             Closed += MainWindow_Closed;
             Activated += MainWindow_Activated;
@@ -87,6 +90,11 @@ namespace DocMgr.Views
             PreviewMouseDown += MainWindow_PreviewMouseDown;
             PreviewKeyDown += MainWindow_PreviewKeyDown;
             UpdateCurrentPageActions();
+        }
+
+        private void ApplyAppVersionText()
+        {
+            TxtAppVersion.Text = $"版本 {AppVersionInfo.DisplayVersion}";
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)

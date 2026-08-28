@@ -121,6 +121,32 @@
                             Padding="10,4"
                             Style="{StaticResource ToolbarActionButtonStyle}"/>
                 </WrapPanel>
+                <TextBlock Text="数据库备份 / 还原"
+                           FontSize="14"
+                           FontWeight="Bold"
+                           Foreground="#1565C0"
+                           Margin="0,10,0,4"/>
+                <TextBlock Text="{Binding DatabasePathText, Mode=OneWay}"
+                           FontSize="11"
+                           Foreground="#546E7A"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding DatabaseBackupHintText, Mode=OneWay}"
+                           FontSize="11"
+                           Foreground="#455A64"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,8"/>
+                <WrapPanel>
+                    <Button Content="💾 备份当前库"
+                            Command="{Binding BackupDatabaseCommand}"
+                            Margin="0,0,8,0"
+                            Padding="10,4"
+                            Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <Button Content="♻ 从备份还原"
+                            Command="{Binding RestoreDatabaseCommand}"
+                            Padding="10,4"
+                            Style="{StaticResource ToolbarDangerButtonStyle}"/>
+                </WrapPanel>
             </StackPanel>
         </Border>
 

@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using DocMgr.Infrastructure.Schema;
+using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.SystemSettings
@@ -13,6 +15,7 @@ namespace DocMgr.ViewModels.SystemSettings
     {
         private readonly IAdvancedDataService _dataService;
         private readonly ISchemaDictionaryMaintenanceService _schemaDictionaryMaintenance;
+        private readonly IDatabaseBackupService _databaseBackupService;
         private readonly IUserContextService _userContext;
         private readonly IDialogService _dialogService;
 
@@ -41,11 +44,13 @@ namespace DocMgr.ViewModels.SystemSettings
         public AdvancedDataPageViewModel(
             IAdvancedDataService dataService,
             ISchemaDictionaryMaintenanceService schemaDictionaryMaintenance,
+            IDatabaseBackupService databaseBackupService,
             IUserContextService userContext,
             IDialogService dialogService)
         {
             _dataService = dataService;
             _schemaDictionaryMaintenance = schemaDictionaryMaintenance;
+            _databaseBackupService = databaseBackupService;
             _userContext = userContext;
             _dialogService = dialogService;
 
@@ -57,6 +62,8 @@ namespace DocMgr.ViewModels.SystemSettings
             ExportDisplayNamesToDictionaryCommand = new RelayCommand(async _ => await ExportDisplayNamesToDictionaryAsync(), _ => !IsBusy);
             ApplyDictionaryToDatabaseCommand = new RelayCommand(async _ => await ApplyDictionaryToDatabaseAsync(), _ => !IsBusy);
             ExportToExcelCommand = new RelayCommand(async _ => await ExportToExcelAsync(), _ => !IsBusy && HasSelectedTable);
+            BackupDatabaseCommand = new RelayCommand(async _ => await BackupDatabaseAsync(), _ => !IsBusy);
+            RestoreDatabaseCommand = new RelayCommand(async _ => await RestoreDatabaseAsync(), _ => !IsBusy);
             FirstPageCommand = new RelayCommand(async _ => await GoToPageAsync(1), _ => !IsBusy && CanGoPrevious);
             PreviousPageCommand = new RelayCommand(async _ => await GoToPageAsync(CurrentPage - 1), _ => !IsBusy && CanGoPrevious);
             NextPageCommand = new RelayCommand(async _ => await GoToPageAsync(CurrentPage + 1), _ => !IsBusy && CanGoNext);
@@ -192,6 +199,14 @@ namespace DocMgr.ViewModels.SystemSettings
             set => SetProperty(ref _dictionaryStatusText, value);
         }
 
+        /// <summary>当前 SQLite 库路径，便于确认备份/还原目标。</summary>
+        public string DatabasePathText => _databaseBackupService.DatabasePath;
+
+        /// <summary>共享库时提醒其他终端先退出。</summary>
+        public string DatabaseBackupHintText => _databaseBackupService.IsNetworkPath
+            ? "当前为共享数据库。备份/还原前请先让其他终端退出；覆盖安装只替换程序文件，不要覆盖 DocMgr.db。"
+            : "覆盖安装只替换程序文件即可，数据库按迁移升级，不会冲库。不要把安装目录里的 DocMgr.db 一并覆盖。";
+
         public RelayCommand RefreshCommand { get; }
         public RelayCommand DeleteSelectedCommand { get; }
         public RelayCommand ClearTableCommand { get; }
@@ -200,6 +215,8 @@ namespace DocMgr.ViewModels.SystemSettings
         public RelayCommand ExportDisplayNamesToDictionaryCommand { get; }
         public RelayCommand ApplyDictionaryToDatabaseCommand { get; }
         public RelayCommand ExportToExcelCommand { get; }
+        public RelayCommand BackupDatabaseCommand { get; }
+        public RelayCommand RestoreDatabaseCommand { get; }
         public RelayCommand FirstPageCommand { get; }
         public RelayCommand PreviousPageCommand { get; }
         public RelayCommand NextPageCommand { get; }
@@ -696,6 +713,84 @@ namespace DocMgr.ViewModels.SystemSettings
                 IsBusy = false;
                 RaiseCommandStateChanged();
             }
+        }
+
+        private async Task BackupDatabaseAsync()
+        {
+            string defaultName = $"DocMgr-backup-{DateTime.Now:yyyyMMdd-HHmmss}.db";
+            string? savePath = _dialogService.SaveFileDialog(
+                "SQLite 数据库|*.db|所有文件|*.*",
+                "备份当前数据库",
+                defaultName);
+            if (string.IsNullOrWhiteSpace(savePath))
+            {
+                return;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _dialogService.SetBusyState(true);
+                await _databaseBackupService.BackupToFileAsync(savePath);
+                _dialogService.ShowMessage($"已备份到：\n{savePath}", "备份完成");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"备份失败: {ex.Message}");
+            }
+            finally
+            {
+                _dialogService.SetBusyState(false);
+                IsBusy = false;
+                RaiseCommandStateChanged();
+            }
+        }
+
+        private async Task RestoreDatabaseAsync()
+        {
+            if (_databaseBackupService.IsNetworkPath
+                && !_dialogService.ShowConfirm(
+                    "当前使用共享数据库。还原会覆盖该共享库。\n\n请确认其他终端已退出后再继续。是否继续选择备份文件？",
+                    "共享库还原"))
+            {
+                return;
+            }
+
+            string? sourcePath = _dialogService.OpenFileDialog(
+                "SQLite 数据库|*.db|所有文件|*.*",
+                "选择要还原的备份文件");
+            if (string.IsNullOrWhiteSpace(sourcePath))
+            {
+                return;
+            }
+
+            if (!_dialogService.ShowConfirm(
+                    $"将用所选备份覆盖当前数据库：\n{_databaseBackupService.DatabasePath}\n\n覆盖后无法撤销（请先自行备份），还原完成后程序将退出。是否继续？",
+                    "确认还原"))
+            {
+                return;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _dialogService.SetBusyState(true);
+                await _databaseBackupService.RestoreFromFileAsync(sourcePath);
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"还原失败: {ex.Message}");
+                return;
+            }
+            finally
+            {
+                _dialogService.SetBusyState(false);
+                IsBusy = false;
+                RaiseCommandStateChanged();
+            }
+
+            _dialogService.ShowMessage("数据库已还原。程序即将退出，请重新打开以加载还原后的数据。", "还原完成");
+            Application.Current.Shutdown();
         }
 
         private async Task ExportToExcelAsync()

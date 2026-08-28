@@ -22,6 +22,7 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton<IToDoNotificationPresenter, ToDoNotificationPresenter>();
 
         services.AddScoped<IAdvancedDataService, AdvancedDataService>();
+        services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
         services.AddScoped<ISchemaDictionaryMaintenanceService, SchemaDictionaryMaintenanceService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IServerPathSettingService, ServerPathSettingService>();

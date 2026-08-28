@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using DocMgr.Infrastructure;
 using DocMgr.Infrastructure.Startup;
 using DocMgr.ViewModels.Base;
 
@@ -60,6 +61,9 @@ namespace DocMgr.ViewModels
         }
 
         public string InitializationStatus => _initializationState.StatusMessage;
+
+        /// <summary>登录页展示的程序版本，例如「版本 1.0.0」。</summary>
+        public string VersionDisplay => $"版本 {AppVersionInfo.DisplayVersion}";
 
         public bool CanSubmitLogin => !IsBusy;
 
