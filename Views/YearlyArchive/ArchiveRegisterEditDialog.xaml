@@ -15,17 +15,17 @@
             <DataTemplate x:Key="ApplicantSectionsTemplate">
                 <UserControl>
                 <StackPanel Orientation="Vertical">
-                    <GroupBox Header="1. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="8">
+                    <GroupBox Header="1. 资料信息" Style="{StaticResource Level1GroupBoxStyle}">
                         <StackPanel Orientation="Vertical" Grid.IsSharedSizeScope="True">
-                            <DockPanel Margin="0,2" LastChildFill="True">
-                                <Label DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelStyle}" Content="资料名称 *："/>
+                            <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
+                                <Label DockPanel.Dock="Left" Style="{StaticResource ArchiveRegisterCardLabelStyle}" Content="资料名称 *："/>
                                 <TextBox Text="{Binding CurrentRecord.MaterialName, UpdateSourceTrigger=PropertyChanged}"
                                          Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
                             </DockPanel>
 
-                            <DockPanel Margin="0,2" LastChildFill="True">
-                                <Label DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelStyle}" Content="所属项目 *："/>
-                                <ComboBox DockPanel.Dock="Left" Width="100" Style="{StaticResource ArchiveRegisterFormComboBoxStyle}" Margin="0,0,6,0"
+                            <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
+                                <Label DockPanel.Dock="Left" Style="{StaticResource ArchiveRegisterCardLabelStyle}" Content="所属项目 *："/>
+                                <ComboBox DockPanel.Dock="Left" Width="{StaticResource YaRegYearWidth}" Style="{StaticResource ArchiveRegisterFormComboBoxStyle}" Margin="{StaticResource YaRegFieldTrailingMargin}"
                                           ItemsSource="{Binding ProjectYears}"
                                           SelectedItem="{Binding SelectedProjectYear}"/>
                                 <ComboBox Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
@@ -34,9 +34,9 @@
                                           SelectedItem="{Binding SelectedProject}"/>
                             </DockPanel>
 
-                            <DockPanel Margin="0,2" LastChildFill="True">
-                                <Label DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelStyle}" Content="资料来源 *："/>
-                                <ComboBox DockPanel.Dock="Left" Width="100" Margin="0,0,12,0"
+                            <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
+                                <Label DockPanel.Dock="Left" Style="{StaticResource ArchiveRegisterCardLabelStyle}" Content="资料来源 *："/>
+                                <ComboBox DockPanel.Dock="Left" Width="{StaticResource YaRegSourceTypeWidth}" Margin="{StaticResource YaRegFieldTrailingMargin}"
                                           ItemsSource="{Binding SourceTypeOptions}" SelectedItem="{Binding SelectedSourceType}">
                                     <ComboBox.Style>
                                         <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
@@ -49,7 +49,7 @@
                                         </Style>
                                     </ComboBox.Style>
                                 </ComboBox>
-                                <TextBox DockPanel.Dock="Left" Width="100" Margin="0,0,12,0"
+                                <TextBox DockPanel.Dock="Left" Width="{StaticResource YaRegSourceTypeWidth}" Margin="{StaticResource YaRegFieldTrailingMargin}"
                                          Text="{Binding SelectedSourceType, Mode=OneWay}" IsReadOnly="True"
                                          Background="#F5F5F5">
                                     <TextBox.Style>
@@ -63,9 +63,12 @@
                                         </Style>
                                     </TextBox.Style>
                                 </TextBox>
-                                <Label DockPanel.Dock="Left" Width="120" Style="{StaticResource FormLabelStyle}"
-                                       Content="提供部门(单位) *：" Margin="0,0,6,0"/>
-                                <ComboBox ItemsSource="{Binding Departments}" DisplayMemberPath="Name" SelectedValuePath="Name"
+                                <Label DockPanel.Dock="Left" Style="{StaticResource ArchiveRegisterInlineLabelStyle}"
+                                       Content="提供单位 *："/>
+                                <ComboBox DockPanel.Dock="Left"
+                                          Width="{StaticResource YaRegProvideUnitWidth}"
+                                          HorizontalAlignment="Left"
+                                          ItemsSource="{Binding Departments}" DisplayMemberPath="Name" SelectedValuePath="Name"
                                           SelectedValue="{Binding CurrentRecord.ProvideUnit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <ComboBox.Style>
                                         <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
@@ -92,21 +95,21 @@
                                 </TextBox>
                             </DockPanel>
 
-                            <GroupBox Header="资料介质（电子） *" Margin="0,6,0,0" BorderBrush="#DDD" Padding="6">
+                            <GroupBox Header="资料介质（电子） *" Style="{StaticResource Level2GroupBoxStyle}">
                                 <StackPanel>
                                     <Grid Margin="0,0,0,4">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
-                                            <ColumnDefinition Width="72" SharedSizeGroup="YaRegMediaTbKind"/>
-                                            <ColumnDefinition Width="12"/>
-                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
-                                            <ColumnDefinition Width="120" SharedSizeGroup="YaRegMediaTbType"/>
-                                            <ColumnDefinition Width="12"/>
-                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
-                                            <ColumnDefinition Width="56" SharedSizeGroup="YaRegMediaTbCount"/>
-                                            <ColumnDefinition Width="12"/>
-                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
-                                            <ColumnDefinition Width="120" SharedSizeGroup="YaRegMediaTbDisp"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegLabelColumn}" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegMediaKindColumn}" SharedSizeGroup="YaRegMediaTbKind"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegLabelColumn}" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegMediaTypeColumn}" SharedSizeGroup="YaRegMediaTbType"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegLabelColumn}" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegCountColumn}" SharedSizeGroup="YaRegMediaTbCount"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegLabelColumn}" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegDispositionColumn}" SharedSizeGroup="YaRegMediaTbDisp"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="介质：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
@@ -175,7 +178,7 @@
                                                 Content="+ 添加资料介质（电子）"
                                                 Command="{Binding AddDataElectronicMediaEntryCommand}"
                                                 Padding="8,2"
-                                                Margin="12,0,0,0"
+                                                Margin="{StaticResource YaRegFieldLeadingMargin}"
                                                 HorizontalAlignment="Right"
                                                 VerticalAlignment="Center"/>
                                     </Grid>
@@ -196,21 +199,21 @@
                                 </StackPanel>
                             </GroupBox>
 
-                            <GroupBox Header="资料介质（模拟） *" Margin="0,6,0,0" BorderBrush="#DDD" Padding="6">
+                            <GroupBox Header="资料介质（模拟） *" Style="{StaticResource Level2GroupBoxStyle}">
                                 <StackPanel>
                                     <Grid Margin="0,0,0,4">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
-                                            <ColumnDefinition Width="72" SharedSizeGroup="YaRegMediaTbKind"/>
-                                            <ColumnDefinition Width="12"/>
-                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
-                                            <ColumnDefinition Width="120" SharedSizeGroup="YaRegMediaTbType"/>
-                                            <ColumnDefinition Width="12"/>
-                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
-                                            <ColumnDefinition Width="56" SharedSizeGroup="YaRegMediaTbCount"/>
-                                            <ColumnDefinition Width="12"/>
-                                            <ColumnDefinition Width="Auto" SharedSizeGroup="YaRegMediaTbLabel"/>
-                                            <ColumnDefinition Width="120" SharedSizeGroup="YaRegMediaTbDisp"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegLabelColumn}" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegMediaKindColumn}" SharedSizeGroup="YaRegMediaTbKind"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegLabelColumn}" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegMediaTypeColumn}" SharedSizeGroup="YaRegMediaTbType"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegLabelColumn}" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegCountColumn}" SharedSizeGroup="YaRegMediaTbCount"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegLabelColumn}" SharedSizeGroup="YaRegMediaTbLabel"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegDispositionColumn}" SharedSizeGroup="YaRegMediaTbDisp"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="介质：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
@@ -228,7 +231,7 @@
                                                 Content="+ 添加资料介质（模拟）"
                                                 Command="{Binding AddDataSimulatedMediaEntryCommand}"
                                                 Padding="8,2"
-                                                Margin="12,0,0,0"
+                                                Margin="{StaticResource YaRegFieldLeadingMargin}"
                                                 HorizontalAlignment="Right"
                                                 VerticalAlignment="Center"/>
                                     </Grid>
@@ -238,17 +241,16 @@
                         </StackPanel>
                     </GroupBox>
 
-                    <GroupBox Header="2. 申请信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="8">
+                    <GroupBox Header="2. 申请信息" Style="{StaticResource Level1GroupBoxStyle}">
                         <StackPanel>
-                            <!-- 归档目的：左标签列宽统一 110；「其他」时横排补充说明 -->
-                            <DockPanel Margin="0,2" LastChildFill="True">
+                            <!-- 归档目的：左标签列宽统一 YaRegLabelWidth；「其他」时横排补充说明 -->
+                            <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
                                 <Label DockPanel.Dock="Left"
-                                       Width="110"
-                                       Style="{StaticResource FormLabelStyle}"
+                                       Style="{StaticResource ArchiveRegisterCardLabelStyle}"
                                        Content="归档目的 *："/>
                                 <ComboBox DockPanel.Dock="Left"
-                                          Width="150"
-                                          Margin="0,0,12,0"
+                                          Width="{StaticResource YaRegArchivePurposeWidth}"
+                                          Margin="{StaticResource YaRegFieldTrailingMargin}"
                                           Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
                                           ItemsSource="{Binding ArchivePurposeOptions}"
                                           SelectedItem="{Binding SelectedArchivePurpose}"/>
@@ -263,9 +265,8 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <Label Style="{StaticResource FormLabelStyle}" Content="说明：" Margin="0,0,6,0"/>
-                                    <TextBox MinWidth="240"
-                                             Width="360"
+                                    <Label Style="{StaticResource ArchiveRegisterInlineLabelStyle}" Content="说明："/>
+                                    <TextBox Width="240"
                                              Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
                                              Text="{Binding CurrentRecord.OtherRequests, UpdateSourceTrigger=PropertyChanged}"
                                              ToolTip="当目的为‘其他’时可在此补充说明"/>
@@ -273,10 +274,9 @@
                             </DockPanel>
 
                             <!-- 证明材料：是/否 + 名称同行（与借出硬盘行内单选同构） -->
-                            <DockPanel Margin="0,2" LastChildFill="True">
+                            <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
                                 <Label DockPanel.Dock="Left"
-                                       Width="110"
-                                       Style="{StaticResource FormLabelStyle}"
+                                       Style="{StaticResource ArchiveRegisterCardLabelStyle}"
                                        Content="附有证明材料："/>
                                 <StackPanel DockPanel.Dock="Left"
                                             Orientation="Horizontal"
@@ -303,53 +303,48 @@
                                         </Style>
                                     </DockPanel.Style>
                                     <Label DockPanel.Dock="Left"
-                                           Style="{StaticResource FormLabelStyle}"
-                                           Content="名称："
-                                           Margin="0,0,6,0"/>
+                                           Style="{StaticResource ArchiveRegisterInlineLabelStyle}"
+                                           Content="名称："/>
                                     <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
                                              Text="{Binding ProofMaterialName, UpdateSourceTrigger=PropertyChanged}"
                                              ToolTip="填写证明材料名称；审批环节由资料管理员上传扫描件"/>
                                 </DockPanel>
                             </DockPanel>
 
-                            <DockPanel Margin="0,2" LastChildFill="True">
+                            <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
                                 <Label DockPanel.Dock="Left"
-                                       Width="110"
-                                       Style="{StaticResource FormLabelStyle}"
+                                       Style="{StaticResource ArchiveRegisterCardLabelStyle}"
                                        Content="其他要求："/>
                                 <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
                                          Text="{Binding CurrentRecord.OtherRequests, UpdateSourceTrigger=PropertyChanged}"/>
                             </DockPanel>
 
-                            <DockPanel Margin="0,2" LastChildFill="True">
+                            <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
                                 <Label DockPanel.Dock="Left"
-                                       Width="110"
-                                       Style="{StaticResource FormLabelStyle}"
+                                       Style="{StaticResource ArchiveRegisterCardLabelStyle}"
                                        Content="申请人 *："/>
                                 <TextBox DockPanel.Dock="Left"
-                                         Width="88"
-                                         Margin="0,0,12,0"
+                                         Width="{StaticResource YaRegPersonNameWidth}"
+                                         Margin="{StaticResource YaRegFieldTrailingMargin}"
                                          Text="{Binding CurrentRecord.ApplicantName}"
                                          IsReadOnly="True"
                                          Background="#F5F5F5"
                                          Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
                                 <Label DockPanel.Dock="Left"
-                                       Style="{StaticResource FormLabelStyle}"
-                                       Content="部门 *："
-                                       Margin="0,0,6,0"/>
+                                       Style="{StaticResource ArchiveRegisterInlineLabelStyle}"
+                                       Content="部门 *："/>
                                 <TextBox DockPanel.Dock="Left"
-                                         Width="150"
-                                         Margin="0,0,12,0"
+                                         Width="{StaticResource YaRegDepartmentWidth}"
+                                         Margin="{StaticResource YaRegFieldTrailingMargin}"
                                          Text="{Binding CurrentRecord.ApplicantDept}"
                                          IsReadOnly="True"
                                          Background="#F5F5F5"
                                          Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
                                 <Label DockPanel.Dock="Left"
-                                       Style="{StaticResource FormLabelStyle}"
-                                       Content="日期 *："
-                                       Margin="0,0,6,0"/>
+                                       Style="{StaticResource ArchiveRegisterInlineLabelStyle}"
+                                       Content="日期 *："/>
                                 <DatePicker DockPanel.Dock="Left"
-                                            Width="120"
+                                            Width="{StaticResource YaRegDateWidth}"
                                             SelectedDate="{Binding CurrentRecord.ApplicantDate}"
                                             Style="{StaticResource ArchiveRegisterFormDatePickerStyle}"/>
 

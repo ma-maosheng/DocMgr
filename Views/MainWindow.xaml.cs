@@ -134,6 +134,11 @@ namespace DocMgr.Views
             }
             catch (Exception ex)
             {
+                DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
+                    "W",
+                    "MainWindow.InitializeAfterLoginAsync",
+                    "login todo init failed",
+                    ex);
                 System.Diagnostics.Debug.WriteLine($"[MainWindow] 登录后初始化失败: {ex.Message}");
             }
         }

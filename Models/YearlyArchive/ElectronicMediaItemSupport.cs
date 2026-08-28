@@ -14,13 +14,13 @@ namespace DocMgr.Models.YearlyArchive
         /// 登记申请存储目录格式说明。
         /// </summary>
         public const string RegistrationStoragePathFormatDescription =
-            "格式说明：\\年度\\项目\\资料名称\\资料子项名称";
+            "格式说明：\\年度\\项目\\资料名称\\资料子项名称；单独填写 \\ 表示根目录";
 
         /// <summary>
         /// 登记申请存储目录规范性示例。
         /// </summary>
         public const string RegistrationStoragePathFormatExamples =
-            "示例：\\2026\\基础测绘\\原始资料\\航摄影像";
+            "示例：\\ ；\\2026\\基础测绘\\原始资料\\航摄影像";
 
         private static readonly Regex RegistrationStoragePathPattern =
             new(@"^\\[^\\]+(\\[^\\]+)*$", RegexOptions.CultureInvariant);
@@ -206,7 +206,7 @@ namespace DocMgr.Models.YearlyArchive
         }
 
         /// <summary>
-        /// 登记申请用存储目录：去掉盘符，统一为 “\目录\子目录” 形式。
+        /// 登记申请用存储目录：去掉盘符，统一为 “\目录\子目录” 形式；仅根目录时为 “\”。
         /// </summary>
         public static string FormatStoragePathForRegistration(string? path)
         {
@@ -231,7 +231,13 @@ namespace DocMgr.Models.YearlyArchive
         }
 
         /// <summary>
-        /// 校验并规范化登记申请用的存储目录。
+        /// 是否为登记申请允许的根目录 “\”。
+        /// </summary>
+        public static bool IsRegistrationRootStoragePath(string? path) =>
+            string.Equals(FormatStoragePathForRegistration(path), "\\", StringComparison.Ordinal);
+
+        /// <summary>
+        /// 校验并规范化登记申请用的存储目录。允许单独填写 “\” 表示根目录。
         /// </summary>
         public static bool TryValidateRegistrationStoragePath(
             string? path,
@@ -248,10 +254,9 @@ namespace DocMgr.Models.YearlyArchive
             }
 
             normalizedPath = FormatStoragePathForRegistration(path);
-            if (normalizedPath == "\\")
+            if (IsRegistrationRootStoragePath(normalizedPath))
             {
-                errorMessage = "至少包含一级目录名";
-                return false;
+                return true;
             }
 
             if (!RegistrationStoragePathPattern.IsMatch(normalizedPath))

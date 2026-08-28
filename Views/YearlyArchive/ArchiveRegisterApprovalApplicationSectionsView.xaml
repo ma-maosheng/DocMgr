@@ -14,13 +14,13 @@
                        Foreground="#475569" FontSize="12" TextWrapping="Wrap"/>
         </Border>
 
-        <GroupBox Header="1. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="8">
+        <GroupBox Header="1. 资料信息" Style="{StaticResource Level1GroupBoxStyle}">
             <StackPanel>
                 <Grid Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="110"/>
+                        <ColumnDefinition Width="{StaticResource YaRegLabelColumn}"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="110"/>
+                        <ColumnDefinition Width="{StaticResource YaRegLabelColumn}"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
@@ -35,7 +35,7 @@
 
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="资料来源" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
                     <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding CurrentRecord.SourceType}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" Margin="0,0,12,0"/>
-                    <TextBlock Grid.Row="1" Grid.Column="2" Text="提供部门(单位)" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="提供单位" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
                     <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding CurrentRecord.ProvideUnit}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                 </Grid>
 
@@ -44,12 +44,12 @@
             </StackPanel>
         </GroupBox>
 
-        <GroupBox Header="2. 申请信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="8">
+        <GroupBox Header="2. 申请信息" Style="{StaticResource Level1GroupBoxStyle}">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="110"/>
+                    <ColumnDefinition Width="{StaticResource YaRegLabelColumn}"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="110"/>
+                    <ColumnDefinition Width="{StaticResource YaRegLabelColumn}"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>

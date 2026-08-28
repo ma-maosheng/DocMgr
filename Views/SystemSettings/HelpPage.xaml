@@ -38,16 +38,21 @@
                 BorderThickness="1"
                 CornerRadius="4"
                 Padding="12">
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <TextBox Text="{Binding GuideText, Mode=OneWay}"
-                         IsReadOnly="True"
-                         BorderThickness="0"
-                         TextWrapping="Wrap"
-                         FontSize="13"
-                         AcceptsReturn="True"
-                         Background="Transparent"/>
-            </ScrollViewer>
+            <!-- Style={x:Null} 避开全局 FormTextBoxStyle 的 Height=28，否则长文只露一行。 -->
+            <TextBox Text="{Binding GuideText, Mode=OneWay}"
+                     Style="{x:Null}"
+                     IsReadOnly="True"
+                     BorderThickness="0"
+                     TextWrapping="Wrap"
+                     FontSize="13"
+                     AcceptsReturn="True"
+                     Background="Transparent"
+                     VerticalAlignment="Stretch"
+                     HorizontalAlignment="Stretch"
+                     VerticalContentAlignment="Top"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Disabled"
+                     Padding="4,0"/>
         </Border>
     </Grid>
 </Page>

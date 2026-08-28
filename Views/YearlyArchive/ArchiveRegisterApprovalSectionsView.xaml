@@ -10,7 +10,7 @@
         </ResourceDictionary>
     </UserControl.Resources>
     <StackPanel>
-        <GroupBox Header="4. 审批流程" Style="{StaticResource Level1GroupBoxStyle}" Padding="6">
+        <GroupBox Header="4. 审批流程" Style="{StaticResource Level1GroupBoxStyle}">
             <StackPanel>
                 <TextBlock Text="各节点仅需签字人与日期，无需签署具体意见。"
                            Foreground="#64748B"

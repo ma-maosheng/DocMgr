@@ -64,6 +64,9 @@
 		<None Include="docs\覆盖安装说明.md">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
+		<None Include="docs\使用冒烟清单.md">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
 		<None Include=".cursor\schema\SchemaDictionary.yaml">
 			<Link>schema\SchemaDictionary.yaml</Link>
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
