@@ -59,9 +59,13 @@ public static class SchemaDictionarySyncService
                 tableEntry.TableName = snapshot.TableName;
             }
 
-            if (string.IsNullOrWhiteSpace(tableEntry.ChineseName))
+            if (SchemaDictionaryCatalog.NeedsTableReview(tableEntry.ChineseName, snapshot.EntityName))
             {
-                tableEntry.ChineseName = ResolveDefaultTableChineseName(snapshot);
+                string tableChineseName = SchemaDictionaryCatalog.ResolveTableChineseNameForSync(snapshot.EntityName);
+                if (!SchemaDictionaryCatalog.NeedsTableReview(tableChineseName, snapshot.EntityName))
+                {
+                    tableEntry.ChineseName = tableChineseName;
+                }
             }
 
             if (string.IsNullOrWhiteSpace(tableEntry.Description)
@@ -83,11 +87,9 @@ public static class SchemaDictionarySyncService
                     tableEntry.Fields[fieldSnapshot.FieldName] = fieldEntry;
                     addedFields++;
                 }
-                else if (string.IsNullOrWhiteSpace(fieldEntry.ChineseName))
+                else
                 {
-                    fieldEntry.ChineseName = SchemaDictionaryCatalog.ResolveFieldChineseNameForSync(
-                        snapshot.EntityName,
-                        fieldSnapshot.FieldName);
+                    TryRefreshFieldChineseName(snapshot.EntityName, fieldSnapshot.FieldName, fieldEntry);
                 }
 
                 if (string.IsNullOrWhiteSpace(fieldEntry.ClrType))
@@ -144,7 +146,7 @@ public static class SchemaDictionarySyncService
         var entry = new SchemaDictionaryTableEntry
         {
             TableName = snapshot.TableName,
-            ChineseName = ResolveDefaultTableChineseName(snapshot),
+            ChineseName = SchemaDictionaryCatalog.ResolveTableChineseNameForSync(snapshot.EntityName),
             IsView = snapshot.IsView,
             Deprecated = false
         };
@@ -183,18 +185,21 @@ public static class SchemaDictionarySyncService
         };
     }
 
-    private static string ResolveDefaultTableChineseName(SchemaEntitySnapshot snapshot)
+    private static void TryRefreshFieldChineseName(
+        string entityName,
+        string fieldName,
+        SchemaDictionaryFieldEntry fieldEntry)
     {
-        if (SchemaDictionaryStore.TryGetTableChineseName(snapshot.EntityName, out var yamlName)
-            && !string.IsNullOrWhiteSpace(yamlName)
-            && !string.Equals(yamlName, snapshot.EntityName, StringComparison.Ordinal))
+        if (!SchemaDictionaryCatalog.NeedsFieldReview(fieldEntry.ChineseName, fieldName))
         {
-            return yamlName;
+            return;
         }
 
-        return snapshot.IsView
-            ? $"{snapshot.EntityName}（视图）"
-            : snapshot.EntityName;
+        string resolved = SchemaDictionaryCatalog.ResolveFieldChineseNameForSync(entityName, fieldName);
+        if (!SchemaDictionaryCatalog.NeedsFieldReview(resolved, fieldName))
+        {
+            fieldEntry.ChineseName = resolved;
+        }
     }
 
     private static void ReorderTableFields(SchemaDictionaryTableEntry tableEntry, SchemaEntitySnapshot snapshot)

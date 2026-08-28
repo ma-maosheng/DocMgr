@@ -716,7 +716,7 @@ namespace DocMgr.Views
                 ArchiveReturnWorkbenchPage page => page.WorkspaceMode == ArchiveReturnWorkspaceMode.Application
                     ? "年度资料档案化管理（资料流转·归还申请）"
                     : "年度资料档案化管理（资料流转·审批入库）",
-                ArchiveSearchPage => "年度资料档案化管理（资料检索·资料检索_方式1）",
+                ArchiveSearchPage => "年度资料档案化管理（资料检索·资料检索(综合模式)）",
                 ProjectSettingPage => "年度项目管理（项目信息设置）",
                 CabinetLayoutPage => "档案柜管理（档案柜登记）",
                 CabinetSearchPage => "档案柜管理（档案柜检索）",
@@ -1347,7 +1347,7 @@ namespace DocMgr.Views
 
         private void BtnArchiveSearch_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料检索·资料检索_方式1）";
+            TxtPageTitle.Text = "年度资料档案化管理（资料检索·资料检索(综合模式)）";
             MainContentFrame.Navigate(new ArchiveSearchPage());
         }
 

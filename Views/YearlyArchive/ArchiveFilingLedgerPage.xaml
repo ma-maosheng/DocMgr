@@ -3,7 +3,6 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-      xmlns:local="clr-namespace:DocMgr.Views.YearlyArchive"
       xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
       mc:Ignorable="d"
       d:DesignHeight="900"
@@ -13,9 +12,9 @@
 
     <Page.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-        <local:InverseBoolToVisConverter x:Key="InverseBoolToVisConverter"/>
+        <viewShared:InverseBoolToVisConverter x:Key="InverseBoolToVisConverter"/>
         <!-- DataGridColumn 不在可视树，需经 BindingProxy 才能读到页面 DataContext -->
-        <local:BindingProxy x:Key="FilingLedgerVmProxy" Data="{Binding}"/>
+        <viewShared:BindingProxy x:Key="FilingLedgerVmProxy" Data="{Binding}"/>
 
         <Style x:Key="PageTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="18"/>

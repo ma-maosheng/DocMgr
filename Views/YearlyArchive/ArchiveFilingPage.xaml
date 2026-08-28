@@ -3,7 +3,6 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-      xmlns:local="clr-namespace:DocMgr.Views.YearlyArchive"
       xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
       xmlns:vm="clr-namespace:DocMgr.ViewModels.YearlyArchive"
       xmlns:archive="clr-namespace:DocMgr.Models.YearlyArchive"
@@ -17,7 +16,7 @@
 
     <Page.Resources>
         <DropShadowEffect x:Key="DefaultShadow" BlurRadius="8" ShadowDepth="2" Direction="315" Color="#CCCCCC" Opacity="0.4"/>
-        <local:BoolToVisConverter x:Key="BoolToVisConverter"/>
+        <viewShared:BoolToVisConverter x:Key="BoolToVisConverter"/>
         <Style TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
@@ -284,7 +283,7 @@
                                                              IsChecked="{Binding IsAppendMode, Mode=OneWay}"
                                                              FontSize="14"
                                                              FontWeight="Bold"
-                                                             IsEnabled="{Binding ExistingBoxes.Count, Converter={x:Static local:CountToBoolConverter.Instance}}"/>
+                                                             IsEnabled="{Binding ExistingBoxes.Count, Converter={x:Static viewShared:CountToBoolConverter.Instance}}"/>
                                                 <TextBlock Margin="12,0,0,0"
                                                            Foreground="#4A5568"
                                                            FontSize="12"

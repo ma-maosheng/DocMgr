@@ -108,7 +108,6 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<NetworkInboundEditDialog>("NT-IB-ED", "入网编辑");
             Add<NetworkOutboundEditDialog>("NT-OB-ED", "出网编辑");
             Add<NetworkOnNetDisposalEditDialog>("NT-DSP-ED", "在网数据处置编辑");
-            Add<NetworkProcessedOutputEditDialog>("NT-PROC-ED", "加工产出登记");
 
             // HD / OD Pages
             Add<HardDiskMediaPage>("HD-MED", "硬盘概览");

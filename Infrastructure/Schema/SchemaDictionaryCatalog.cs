@@ -78,6 +78,37 @@ public static class SchemaDictionaryCatalog
         => FieldDomainSeedService.GenerateAliasFromLegacyMaps(entityName, fieldName);
 
     /// <summary>
+    /// 解析表级中文名（同步 YAML 时使用内置表别名）。
+    /// </summary>
+    public static string ResolveTableChineseNameForSync(string entityName)
+    {
+        if (FieldDomainSeedService.TryGetTableChineseName(entityName, out var mapped))
+        {
+            return mapped;
+        }
+
+        return entityName;
+    }
+
+    /// <summary>
+    /// 判断表中文名是否仍需人工补全。
+    /// </summary>
+    public static bool NeedsTableReview(string? chineseName, string entityName)
+    {
+        if (string.IsNullOrWhiteSpace(chineseName))
+        {
+            return true;
+        }
+
+        if (string.Equals(chineseName, entityName, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return chineseName.Contains("未映射", StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// 解析字段中文显示名，优先 YAML，其次 legacy alias。
     /// </summary>
     public static string ResolveFieldChineseName(string entityName, string fieldName)

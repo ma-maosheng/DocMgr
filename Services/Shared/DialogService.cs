@@ -1030,32 +1030,6 @@ namespace DocMgr.Services.Shared
             }
         }
 
-        public bool ShowNetworkProcessedOutputEditDialog()
-        {
-            var dialog = new NetworkProcessedOutputEditDialog { Owner = GetOwnerWindow() };
-            IServiceScope? scope = null;
-            NetworkProcessedOutputEditDialogViewModel? viewModel = null;
-            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
-            try
-            {
-                (scope, viewModel) = CreateScopedViewModel<NetworkProcessedOutputEditDialogViewModel>();
-                dialog.DataContext = viewModel;
-                viewModel.RequestClose += HandleRequestClose;
-                dialog.ShowDialog();
-                return viewModel.HasCommittedChanges;
-            }
-            catch (Exception ex)
-            {
-                ShowError($"打开加工产出登记窗口失败：{ex.Message}");
-                return false;
-            }
-            finally
-            {
-                if (viewModel != null) viewModel.RequestClose -= HandleRequestClose;
-                scope?.Dispose();
-            }
-        }
-
         public bool ShowArchiveDisposalEditDialog(YearlyArchiveDisposalRecord record)
         {
             ArgumentNullException.ThrowIfNull(record);

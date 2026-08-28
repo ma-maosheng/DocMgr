@@ -11,8 +11,8 @@
                 <ResourceDictionary Source="ArchiveRegisterResources.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-            <local:BoolToVisConverter x:Key="BoolToVisConverter"/>
-            <local:BoolToStarOrZeroGridLengthConverter x:Key="BoolToStarOrZeroGridLengthConverter"/>
+            <viewShared:BoolToVisConverter x:Key="BoolToVisConverter"/>
+            <viewShared:BoolToStarOrZeroGridLengthConverter x:Key="BoolToStarOrZeroGridLengthConverter"/>
 
             <!-- 与出库审批一致：节点标题略宽，容纳「资料室负责人」等 -->
             <Style x:Key="ReturnApprovalCompactStepTitleStyle" TargetType="TextBlock"

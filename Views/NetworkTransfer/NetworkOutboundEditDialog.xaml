@@ -1,7 +1,7 @@
 ﻿<Window x:Class="DocMgr.Views.NetworkTransfer.NetworkOutboundEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="clr-namespace:DocMgr.Views.YearlyArchive"
+        xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
         xmlns:nt="clr-namespace:DocMgr.Views.NetworkTransfer"
         Width="1200"
         Height="820"
@@ -14,7 +14,7 @@
                 <ResourceDictionary Source="../YearlyArchive/ArchiveRegisterResources.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-            <local:InverseBoolRadioConverter x:Key="InverseBoolRadioConverter"/>
+            <viewShared:InverseBoolRadioConverter x:Key="InverseBoolRadioConverter"/>
             <DataTemplate x:Key="ApplicantSectionsTemplate">
                 <UserControl>
                     <StackPanel Orientation="Vertical">

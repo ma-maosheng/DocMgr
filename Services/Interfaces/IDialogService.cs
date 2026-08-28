@@ -93,7 +93,6 @@ namespace DocMgr.Services.Interfaces
         bool ShowNetworkOutboundEditDialog(NetworkOutboundRecord record, NetworkTransferWorkspaceMode mode);
         bool ShowNetworkOnNetDisposalEditDialog(NetworkOnNetDisposalRecord record);
         bool ShowHistoryArchiveDisposalEditDialog(HistoryArchiveDisposalRecord record);
-        bool ShowNetworkProcessedOutputEditDialog();
         bool ShowArchiveDisposalEditDialog(YearlyArchiveDisposalRecord record);
         bool ShowHardDiskInventoryRegisterEditDialog(HardDiskInventoryRegisterRecord record);
         bool ShowSimulatedArchiveInventoryRegisterEditDialog(YearlyArchiveInventoryRegisterRecord record);

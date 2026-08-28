@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace DocMgr.Models.NetworkTransfer
 {
     /// <summary>
-    /// 生产网在网台账（入网办结或加工产出登记写入）。
+    /// 生产网在网台账（入网办结写入；出网办结无关联对象时补写）。
     /// </summary>
     [Table("NetworkOnNetAssets")]
     public sealed class NetworkOnNetAsset
@@ -32,7 +32,7 @@ namespace DocMgr.Models.NetworkTransfer
 
         public string VersionText { get; set; } = string.Empty;
 
-        /// <summary>入网产生 / 加工产出。</summary>
+        /// <summary>入网产生 / 加工产出（后者仅出网办结补写或存量数据）。</summary>
         public string OriginKind { get; set; } = string.Empty;
 
         public int? OriginInboundItemId { get; set; }

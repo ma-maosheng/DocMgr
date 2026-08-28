@@ -50,6 +50,7 @@ namespace DocMgr.Models.NetworkTransfer
         public const string LegacySourceKindOther = "其他";
 
         public const string OriginKindInbound = "入网产生";
+        /// <summary>出网办结补写台账或存量数据的来源类别；已取消独立登记入口。</summary>
         public const string OriginKindProcessedOutput = "加工产出";
 
         public const string LifecycleOnNet = "在网";

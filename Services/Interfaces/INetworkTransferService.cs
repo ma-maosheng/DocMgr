@@ -102,14 +102,12 @@ public interface INetworkTransferService
 
     Task WithdrawOutboundAsync(int recordId, string? reason, User currentUser);
 
-    Task<IReadOnlyList<NetworkOnNetAsset>> SearchOnNetAssetsAsync(
+        Task<IReadOnlyList<NetworkOnNetAsset>> SearchOnNetAssetsAsync(
         string? keyword,
         string? originKind,
         string? lifecycleStatus,
         string? serverPath,
         string? departmentName);
-
-    Task<NetworkOnNetAsset> RegisterProcessedOutputAsync(NetworkOnNetAsset draft, User currentUser);
 
     Task<IReadOnlyList<NetworkOnNetDisposalRecord>> SearchDisposalRecordsAsync(
         string? keyword,

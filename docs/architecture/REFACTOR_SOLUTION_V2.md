@@ -356,25 +356,11 @@ DocMgr/
 
 当前收益：在保持行为不变的前提下，代码风格与 using 排序完成统一，提交前质量门禁通过。
 
-## 6. 后续分批重构计划
+## 6. 后续计划（已冻结）
 
-### 批次 A（低风险）
+第三批结构迁移已完成。**不再执行**原批次 A～C（继续拆文件、引入应用服务/查询服务分层）。
 
-- 将 `Config/DependencyInjection` 与 `Infrastructure/Seeding` 全面统一为文件作用域命名空间。
-- 对通用工具型类补充注释和单元测试。
-
-### 批次 B（中风险）
-
-- 拆分 `ArchiveRegisterService`、`CabinetOpenLayoutService`：
-  - `*.Workflow.cs`（流程）
-  - `*.Validator.cs`（规则）
-  - `*.Mapper.cs`（映射）
-- 保持原公开接口不变。
-
-### 批次 C（高风险）
-
-- 拆分 `ArchiveFilingViewModel`、`HardDiskMediaService`、`ArchiveFilingService`。
-- 引入“应用服务 + 领域规则服务 + 查询服务”结构，降低 ViewModel 与服务耦合。
+收口工作见 `docs/CLEANUP_BACKLOG.md`：补数据字典、卫生清理、冒烟清单。功能变更由使用中发现的问题驱动，不为分层而分层。
 
 ## 7. 迁移守则
 

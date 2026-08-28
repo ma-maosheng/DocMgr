@@ -989,65 +989,6 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             electronicSnapshots);
     }
 
-    public async Task<NetworkOnNetAsset> RegisterProcessedOutputAsync(NetworkOnNetAsset draft, User currentUser)
-    {
-        EnsureArchiveAdmin(currentUser);
-        ArgumentNullException.ThrowIfNull(draft);
-
-        if (string.IsNullOrWhiteSpace(draft.AssetName))
-        {
-            throw new InvalidOperationException("请填写加工产出名称。");
-        }
-
-        if (string.IsNullOrWhiteSpace(draft.ServerPath))
-        {
-            throw new InvalidOperationException("请填写服务器路径。");
-        }
-
-        string assetKind = draft.AssetKind?.Trim() ?? string.Empty;
-        if (!NetworkTransferDomainValues.AssetKindOptions.Contains(assetKind, StringComparer.Ordinal))
-        {
-            throw new InvalidOperationException("请选择有效的资料类别。");
-        }
-
-        if (draft.ParentAssetId.HasValue && draft.ParentAssetId.Value > 0)
-        {
-            var parent = await _repository.GetOnNetAssetByIdAsync(draft.ParentAssetId.Value)
-                ?? throw new InvalidOperationException("未找到父级在网对象。");
-            if (!NetworkTransferDomainValues.IsOnNetLifecycle(parent.LifecycleStatus)
-                && !string.Equals(parent.LifecycleStatus, NetworkTransferDomainValues.LifecycleDisposed, StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("父级在网对象状态异常，无法建立血缘。");
-            }
-        }
-
-        DateTime now = DateTime.Now;
-        var asset = new NetworkOnNetAsset
-        {
-            AssetNo = await GenerateNextOnNetAssetNoAsync(),
-            AssetKind = assetKind,
-            AssetName = draft.AssetName.Trim(),
-            ProjectName = draft.ProjectName?.Trim() ?? string.Empty,
-            Year = draft.Year?.Trim() ?? string.Empty,
-            ServerPath = draft.ServerPath.Trim(),
-            ConfidentialLevel = draft.ConfidentialLevel?.Trim() ?? string.Empty,
-            DataSizeText = draft.DataSizeText?.Trim() ?? string.Empty,
-            VersionText = draft.VersionText?.Trim() ?? string.Empty,
-            OriginKind = NetworkTransferDomainValues.OriginKindProcessedOutput,
-            ParentAssetId = draft.ParentAssetId is > 0 ? draft.ParentAssetId : null,
-            LifecycleStatus = NetworkTransferDomainValues.LifecycleOnNet,
-            Remark = draft.Remark?.Trim() ?? string.Empty,
-            RegisteredBy = ResolveUserDisplayName(currentUser),
-            RegisteredAt = now,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        _repository.AddOnNetAsset(asset);
-        await _repository.SaveChangesAsync();
-        return (await _repository.GetOnNetAssetByIdAsync(asset.Id))!;
-    }
-
     public async Task<IReadOnlyList<NetworkOnNetDisposalRecord>> SearchDisposalRecordsAsync(
         string? keyword,
         int? status,

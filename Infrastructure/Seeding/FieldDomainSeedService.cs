@@ -19,6 +19,23 @@ public static partial class FieldDomainSeedService
     public static string GenerateAliasFromLegacyMaps(string entityName, string fieldName)
         => BuildChineseAliasFromLegacyMaps(entityName, fieldName);
 
+    /// <summary>
+    /// 解析表级中文名（同步 YAML 时使用内置表别名）。
+    /// </summary>
+    public static bool TryGetTableChineseName(string entityName, out string chineseName)
+    {
+        if (!string.IsNullOrWhiteSpace(entityName)
+            && TableAliasMap.TryGetValue(entityName.Trim(), out var mapped)
+            && !string.IsNullOrWhiteSpace(mapped))
+        {
+            chineseName = mapped;
+            return true;
+        }
+
+        chineseName = string.Empty;
+        return false;
+    }
+
     public static bool IsCompliantAlias(string? alias, string fieldName)
         => IsAliasCompliant(alias, fieldName);
 
