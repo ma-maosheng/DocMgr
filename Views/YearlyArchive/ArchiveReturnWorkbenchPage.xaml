@@ -446,6 +446,9 @@
                                             <Button Content="上传" Command="{Binding UploadSignedAttachmentCommand}" Width="64" Height="{StaticResource FormControlHeight}"
                                                     Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"
                                                     IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                            <Button Content="高影仪直拍" Command="{Binding CaptureSignedAttachmentCommand}" Width="88" Height="{StaticResource FormControlHeight}"
+                                                    Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"
+                                                    IsEnabled="{Binding CanUploadSignedAttachment}"/>
                                             <Button Content="查看" Command="{Binding ViewSignedAttachmentCommand}" Width="56" Height="{StaticResource FormControlHeight}"
                                                     Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
                                             <Button Content="删除" Command="{Binding DeleteSignedAttachmentCommand}" Width="56" Height="{StaticResource FormControlHeight}"

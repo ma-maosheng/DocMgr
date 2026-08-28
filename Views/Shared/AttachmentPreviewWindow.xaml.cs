@@ -15,7 +15,7 @@ namespace DocMgr.Views.Shared
     {
         private readonly SystemAttachment _attachment;
 
-        public AttachmentPreviewWindow(SystemAttachment attachment, BitmapImage imageSource)
+        public AttachmentPreviewWindow(SystemAttachment attachment, BitmapSource imageSource)
         {
             ArgumentNullException.ThrowIfNull(attachment);
             ArgumentNullException.ThrowIfNull(imageSource);

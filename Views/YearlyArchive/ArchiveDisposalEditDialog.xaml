@@ -487,6 +487,11 @@
                                     Command="{Binding UploadAttachmentCommand}"
                                     Style="{StaticResource ToolbarActionButtonStyle}"
                                     Height="{StaticResource DialogFormControlHeight}"/>
+                            <Button Content="高影仪直拍"
+                                    Command="{Binding CaptureFromDocumentCameraCommand}"
+                                    Style="{StaticResource ToolbarActionButtonStyle}"
+                                    Height="{StaticResource DialogFormControlHeight}"
+                                    Margin="8,0,0,0"/>
                         </StackPanel>
                         <DataGrid ItemsSource="{Binding Attachments}"
                                   SelectedItem="{Binding SelectedAttachment}"

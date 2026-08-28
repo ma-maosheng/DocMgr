@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.Shared;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
 
@@ -76,6 +78,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ConfirmCommand = new RelayCommand(async _ => await ConfirmAsync(), _ => CanApprovePass);
             ConfirmPhysicalHandoverCommand = new RelayCommand(async _ => await ConfirmPhysicalHandoverAsync(), _ => CanConfirmPhysicalHandover);
             UploadSignedAttachmentCommand = new RelayCommand(async _ => await UploadSignedAttachmentAsync(), _ => CanUploadSignedAttachment);
+            CaptureSignedAttachmentCommand = new RelayCommand(async _ => await CaptureSignedAttachmentAsync(), _ => CanUploadSignedAttachment);
             CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
             PrintHandoverSheetCommand = new RelayCommand(async _ => await PrintHandoverSheetAsync(), _ => CanPrintHandoverSheet);
             ViewAttachmentCommand = new RelayCommand(async attachment => await ViewAttachmentAsync(attachment as SystemAttachment), attachment => attachment is SystemAttachment);
@@ -216,6 +219,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public ICommand ConfirmCommand { get; }
         public ICommand ConfirmPhysicalHandoverCommand { get; }
         public ICommand UploadSignedAttachmentCommand { get; }
+        public ICommand CaptureSignedAttachmentCommand { get; }
         public ICommand CompleteCommand { get; }
         public ICommand PrintHandoverSheetCommand { get; }
         public ICommand ViewAttachmentCommand { get; }
@@ -356,6 +360,51 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
         }
 
+        private async Task CaptureSignedAttachmentAsync()
+        {
+            if (!CanUploadSignedAttachment)
+            {
+                _dialogService.ShowMessage("请先确认实物交接，再上传签批交接单。");
+                return;
+            }
+
+            DocumentCameraCaptureResult? captured = DocumentCameraAttachmentCaptureSupport.Capture(_dialogService);
+            if (captured == null)
+            {
+                return;
+            }
+
+            try
+            {
+                string fileName = DocumentCameraAttachmentCaptureSupport.BuildFileName(ApplicationNo, "签批交接单", "盘审批");
+                var uploadResult = await _hardDiskMediaService.UploadSignedAttachmentAsync(
+                    _application,
+                    _currentUser,
+                    fileName,
+                    ".jpg",
+                    captured.JpegContent.LongLength,
+                    captured.JpegContent);
+                _dialogService.ShowMessage(uploadResult.Message);
+                if (!uploadResult.Success)
+                {
+                    return;
+                }
+
+                HasCommittedChanges = true;
+                _application.SignedAttachmentUploaded = true;
+                _application.SignedAttachmentUploadedTime = DateTime.Now;
+                _application.SignedAttachmentUploader = _currentUser?.RealName?.Trim() ?? string.Empty;
+                NotifyWorkflowDisplayChanged();
+                await RefreshApplicationStateAsync();
+                await LoadAttachmentsAsync();
+                _dialogService.ShowMessage("签批交接单上传成功。下一步：请点击“确认办结”。");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"上传失败：{ex.Message}");
+            }
+        }
+
         private async Task CompleteAsync()
         {
             if (!CanComplete)
@@ -444,20 +493,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
-            var fullAttachment = result.Attachment;
-            if (_dialogService.ShowConfirm("直接打开附件？\n【确定】打开 【取消】另存为", "附件操作"))
-            {
-                string tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{fullAttachment.FileName}");
-                await File.WriteAllBytesAsync(tempPath, fullAttachment.FileContent);
-                Process.Start(new ProcessStartInfo(tempPath) { UseShellExecute = true });
-                return;
-            }
-
-            var savePath = _dialogService.SaveFileDialog("所有文件|*.*", "另存附件", fullAttachment.FileName);
-            if (!string.IsNullOrWhiteSpace(savePath))
-            {
-                await File.WriteAllBytesAsync(savePath, fullAttachment.FileContent);
-            }
+            _dialogService.ShowSystemAttachmentView(result.Attachment);
         }
 
         private async Task DeleteAttachmentAsync(SystemAttachment? attachment)

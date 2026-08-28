@@ -1,5 +1,7 @@
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.Shared;
 using DocMgr.Services.HardDiskMedia;
+using DocMgr.Services.Shared;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -1124,6 +1126,50 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
         }
 
+        private async Task CaptureSignedAttachmentAsync()
+        {
+            if (!CanUploadSignedAttachment)
+            {
+                _dialogService.ShowMessage("请先确认实物交接，再上传签批交接单。");
+                return;
+            }
+
+            DocumentCameraCaptureResult? captured = DocumentCameraAttachmentCaptureSupport.Capture(_dialogService);
+            if (captured == null)
+            {
+                return;
+            }
+
+            try
+            {
+                string fileName = DocumentCameraAttachmentCaptureSupport.BuildFileName(
+                    _editingApplication?.ApplicationNo ?? ApplicationNo,
+                    "签批交接单",
+                    "盘归还");
+                var uploadResult = await _hardDiskMediaService.UploadSignedAttachmentAsync(
+                    _editingApplication,
+                    _userContextService.CurrentUser,
+                    fileName,
+                    ".jpg",
+                    captured.JpegContent.LongLength,
+                    captured.JpegContent);
+                _dialogService.ShowMessage(uploadResult.Message);
+                if (!uploadResult.Success)
+                {
+                    return;
+                }
+
+                await RefreshEditingApplicationAsync();
+                await LoadEditorAttachmentsAsync();
+                await RefreshListsKeepingEditorAsync();
+                NotifyEditorStateChanged();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"上传失败：{ex.Message}");
+            }
+        }
+
         private async Task CompleteAsync()
         {
             if (!CanComplete)
@@ -1169,20 +1215,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
-            var fullAttachment = result.Attachment;
-            if (_dialogService.ShowConfirm("直接打开附件？\n【确定】打开 【取消】另存为", "附件操作"))
-            {
-                string tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{fullAttachment.FileName}");
-                await File.WriteAllBytesAsync(tempPath, fullAttachment.FileContent);
-                Process.Start(new ProcessStartInfo(tempPath) { UseShellExecute = true });
-                return;
-            }
-
-            string? savePath = _dialogService.SaveFileDialog("所有文件|*.*", "另存附件", fullAttachment.FileName);
-            if (!string.IsNullOrWhiteSpace(savePath))
-            {
-                await File.WriteAllBytesAsync(savePath, fullAttachment.FileContent);
-            }
+            _dialogService.ShowSystemAttachmentView(result.Attachment);
         }
 
         private async Task DeleteAttachmentAsync(SystemAttachment? attachment)

@@ -81,6 +81,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
             ConfirmHandoverCommand = new RelayCommand(async _ => await ConfirmHandoverAsync(), _ => CanConfirmHandover);
             UploadSignedAttachmentCommand = new RelayCommand(async _ => await UploadSignedAttachmentAsync(), _ => CanUploadSignedAttachment);
+            CaptureSignedAttachmentCommand = new RelayCommand(async _ => await CaptureSignedAttachmentAsync(), _ => CanUploadSignedAttachment);
         }
 
         public HardDiskReturnWorkspaceMode WorkspaceMode => _workspaceMode;
@@ -233,6 +234,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public RelayCommand ConfirmHandoverCommand { get; }
 
         public RelayCommand UploadSignedAttachmentCommand { get; }
+
+        public RelayCommand CaptureSignedAttachmentCommand { get; }
 
         public async Task InitializeAsync(bool overdueOnly = false, bool matchAllYears = false)
         {

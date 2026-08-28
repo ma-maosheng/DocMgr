@@ -419,6 +419,7 @@
                                         </ListView>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
                                             <Button Content="上传签批交接单" Command="{Binding UploadSignedAttachmentCommand}" Width="128" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
+                                            <Button Content="高影仪直拍" Command="{Binding CaptureSignedAttachmentCommand}" Width="88" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
                                             <Button Content="查看" Command="{Binding ViewAttachmentCommand}" CommandParameter="{Binding SelectedAttachment}" Width="72" Style="{StaticResource FormInlineButtonStyle}" Margin="0,0,8,0"/>
                                             <Button Content="删除" Command="{Binding DeleteAttachmentCommand}" CommandParameter="{Binding SelectedAttachment}" Width="72" Style="{StaticResource FormInlineButtonStyle}"/>
                                         </StackPanel>

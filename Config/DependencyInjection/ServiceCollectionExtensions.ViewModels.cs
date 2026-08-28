@@ -6,6 +6,7 @@ using DocMgr.ViewModels.NetworkTransfer;
 using DocMgr.ViewModels.Projects;
 using DocMgr.ViewModels.SystemSettings;
 using DocMgr.ViewModels.YearlyArchive;
+using DocMgr.ViewModels.Shared;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.YearlyArchive;
@@ -73,6 +74,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<AdvancedDataPageViewModel>();
         services.AddTransient<LoginWindowViewModel>();
         services.AddTransient<UserPreferenceViewModel>();
+        services.AddTransient<DocumentCameraCaptureDialogViewModel>();
         services.AddTransient<BusinessLogicSettingsViewModel>();
         services.AddTransient<DbOperationLogPageViewModel>();
         return services;

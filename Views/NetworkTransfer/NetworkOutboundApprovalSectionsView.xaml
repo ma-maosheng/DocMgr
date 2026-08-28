@@ -164,9 +164,14 @@
                             Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
                         <DockPanel LastChildFill="True">
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
-                                <Button DockPanel.Dock="Right" Content="上传"
-                                        Command="{Binding UploadSignedHandoverAttachmentCommand}"
-                                        Padding="8,2" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Content="上传"
+                                            Command="{Binding UploadSignedHandoverAttachmentCommand}"
+                                            Padding="8,2" Margin="0,0,8,0" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                    <Button Content="高影仪直拍"
+                                            Command="{Binding CaptureSignedHandoverAttachmentCommand}"
+                                            Padding="8,2" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                </StackPanel>
                                 <TextBlock Text="签批交接单" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
                             </DockPanel>
                             <ListView ItemsSource="{Binding SignedHandoverAttachments}" Height="72" BorderBrush="#EEE" BorderThickness="1">
@@ -212,9 +217,14 @@
                             Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
                         <DockPanel LastChildFill="True">
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
-                                <Button DockPanel.Dock="Right" Content="上传"
-                                        Command="{Binding UploadProofMaterialAttachmentCommand}"
-                                        Padding="8,2" IsEnabled="{Binding CanUploadProofMaterialAttachment}"/>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Content="上传"
+                                            Command="{Binding UploadProofMaterialAttachmentCommand}"
+                                            Padding="8,2" Margin="0,0,8,0" IsEnabled="{Binding CanUploadProofMaterialAttachment}"/>
+                                    <Button Content="高影仪直拍"
+                                            Command="{Binding CaptureProofMaterialAttachmentCommand}"
+                                            Padding="8,2" IsEnabled="{Binding CanUploadProofMaterialAttachment}"/>
+                                </StackPanel>
                                 <TextBlock Text="证明材料" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
                             </DockPanel>
                             <TextBlock DockPanel.Dock="Bottom" Text="{Binding ProofMaterialAttachmentHint, Mode=OneWay}"
@@ -249,9 +259,14 @@
                             Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
                         <DockPanel LastChildFill="True">
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
-                                <Button DockPanel.Dock="Right" Content="上传"
-                                        Command="{Binding UploadOtherAttachmentCommand}"
-                                        Padding="8,2" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Content="上传"
+                                            Command="{Binding UploadOtherAttachmentCommand}"
+                                            Padding="8,2" Margin="0,0,8,0" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                    <Button Content="高影仪直拍"
+                                            Command="{Binding CaptureOtherAttachmentCommand}"
+                                            Padding="8,2" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                </StackPanel>
                                 <TextBlock Text="其他附件（可选）" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
                             </DockPanel>
                             <TextBlock DockPanel.Dock="Bottom" Text="非办结必备，按需上传即可。"

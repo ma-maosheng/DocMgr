@@ -396,6 +396,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand UploadMaterialPhotoAttachmentCommand { get; }
         public RelayCommand UploadProofMaterialAttachmentCommand { get; }
         public RelayCommand UploadOtherAttachmentCommand { get; }
+        public RelayCommand CaptureSignedHandoverAttachmentCommand { get; }
+        public RelayCommand CaptureMaterialPhotoAttachmentCommand { get; }
+        public RelayCommand CaptureProofMaterialAttachmentCommand { get; }
+        public RelayCommand CaptureOtherAttachmentCommand { get; }
         public RelayCommand<SystemAttachment> DeleteAttachmentCommand { get; }
         public RelayCommand<SystemAttachment> ViewAttachmentCommand { get; }
         public RelayCommand FillDefaultApprovalInfoCommand { get; }
@@ -465,6 +469,18 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _ => CanUploadProofMaterialAttachment);
             UploadOtherAttachmentCommand = new RelayCommand(
                 async _ => await UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindOther),
+                _ => CanUploadSignedAttachment);
+            CaptureSignedHandoverAttachmentCommand = new RelayCommand(
+                async _ => await CaptureAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindSignedHandoverForm),
+                _ => CanUploadSignedAttachment);
+            CaptureMaterialPhotoAttachmentCommand = new RelayCommand(
+                async _ => await CaptureAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindMaterialPhoto),
+                _ => CanUploadSignedAttachment);
+            CaptureProofMaterialAttachmentCommand = new RelayCommand(
+                async _ => await CaptureAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindProofMaterialScan),
+                _ => CanUploadProofMaterialAttachment);
+            CaptureOtherAttachmentCommand = new RelayCommand(
+                async _ => await CaptureAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindOther),
                 _ => CanUploadSignedAttachment);
             DeleteAttachmentCommand = new RelayCommand<SystemAttachment>(async a => await DeleteAttachment(a), _ => CanUpload);
             ViewAttachmentCommand = new RelayCommand<SystemAttachment>(a => ViewAttachment(a));

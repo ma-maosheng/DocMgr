@@ -177,29 +177,25 @@ namespace DocMgr.Services.Shared
                 return;
             }
 
-            if (SystemAttachmentViewSupport.TryCreateImageSource(attachment, out var imageSource) && imageSource != null)
+            try
             {
-                var previewWindow = new AttachmentPreviewWindow(attachment, imageSource)
+                if (SystemAttachmentViewSupport.IsImageAttachment(attachment))
+                {
+                    SystemAttachmentViewSupport.OpenWithDefaultApplication(attachment);
+                    return;
+                }
+
+                string displayFileName = SystemAttachmentViewSupport.ResolveDisplayFileName(attachment);
+                var choiceDialog = new AttachmentViewChoiceDialog(displayFileName)
                 {
                     Owner = GetOwnerWindow()
                 };
-                previewWindow.ShowDialog();
-                return;
-            }
 
-            string displayFileName = SystemAttachmentViewSupport.ResolveDisplayFileName(attachment);
-            var choiceDialog = new AttachmentViewChoiceDialog(displayFileName)
-            {
-                Owner = GetOwnerWindow()
-            };
+                if (choiceDialog.ShowDialog() != true || choiceDialog.Result == null)
+                {
+                    return;
+                }
 
-            if (choiceDialog.ShowDialog() != true || choiceDialog.Result == null)
-            {
-                return;
-            }
-
-            try
-            {
                 switch (choiceDialog.Result.Value)
                 {
                     case SystemAttachmentViewAction.OpenWithDefaultApp:
@@ -803,6 +799,30 @@ namespace DocMgr.Services.Shared
             finally
             {
                 viewModel.RequestClose -= HandleRequestClose;
+                scope.Dispose();
+            }
+        }
+
+        public DocumentCameraCaptureResult? ShowDocumentCameraCaptureDialog()
+        {
+            var dialog = new DocumentCameraCaptureDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+            var (scope, viewModel) = CreateScopedViewModel<DocumentCameraCaptureDialogViewModel>();
+            dialog.DataContext = viewModel;
+
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            viewModel.RequestClose += HandleRequestClose;
+
+            try
+            {
+                return dialog.ShowDialog() == true ? viewModel.CaptureResult : null;
+            }
+            finally
+            {
+                viewModel.RequestClose -= HandleRequestClose;
+                _ = viewModel.ShutdownAsync();
                 scope.Dispose();
             }
         }

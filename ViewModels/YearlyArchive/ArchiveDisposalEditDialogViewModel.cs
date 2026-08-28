@@ -90,6 +90,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
             ConfirmUploadCommand = new RelayCommand(async _ => await ConfirmUploadAsync(), _ => CanConfirmUpload);
             UploadAttachmentCommand = new RelayCommand(async _ => await UploadAttachmentAsync(), _ => CanUploadAttachment);
+            CaptureFromDocumentCameraCommand = new RelayCommand(
+                async _ => await CaptureFromDocumentCameraAsync(),
+                _ => CanUploadAttachment);
             DeleteAttachmentCommand = new RelayCommand(
                 async item => await DeleteAttachmentAsync(item as SystemAttachment),
                 item => item is SystemAttachment && CanUploadAttachment);
@@ -334,6 +337,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand ApproveCommand { get; }
         public RelayCommand ConfirmUploadCommand { get; }
         public RelayCommand UploadAttachmentCommand { get; }
+        public RelayCommand CaptureFromDocumentCameraCommand { get; }
         public RelayCommand DeleteAttachmentCommand { get; }
         public RelayCommand ViewAttachmentCommand { get; }
         public RelayCommand CompleteCommand { get; }
@@ -1041,6 +1045,55 @@ namespace DocMgr.ViewModels.YearlyArchive
                     extension,
                     content.LongLength,
                     content,
+                    RequireUser());
+                if (!ok)
+                {
+                    _dialogService.ShowError(message);
+                    return;
+                }
+
+                _hasCommittedChanges = true;
+                await ReloadAttachmentsAsync();
+                await ReloadRecordAsync();
+                _dialogService.ShowMessage(message);
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private async Task CaptureFromDocumentCameraAsync()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(UploadCategory))
+                {
+                    _dialogService.ShowMessage("请先选择附件分类。");
+                    return;
+                }
+
+                if (_record.Status == YearlyArchiveDisposalRecord.StatusApproved
+                    && !string.Equals(UploadCategory, ArchiveDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
+                {
+                    _dialogService.ShowMessage("请先点击「确认可上传」，再上传签批单或处置资料照片。");
+                    return;
+                }
+
+                DocumentCameraCaptureResult? captured = DocumentCameraAttachmentCaptureSupport.Capture(_dialogService);
+                if (captured == null)
+                {
+                    return;
+                }
+
+                string fileName = DocumentCameraAttachmentCaptureSupport.BuildFileName(DisposalNo, UploadCategory, "资离处");
+                var (ok, message, _) = await _disposalService.UploadAttachmentAsync(
+                    _record.Id,
+                    UploadCategory,
+                    fileName,
+                    ".jpg",
+                    captured.JpegContent.LongLength,
+                    captured.JpegContent,
                     RequireUser());
                 if (!ok)
                 {

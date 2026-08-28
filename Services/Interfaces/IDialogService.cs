@@ -25,7 +25,7 @@ namespace DocMgr.Services.Interfaces
         bool ShowConfirm(string message, string title = "确认");
 
         /// <summary>
-        /// 查看系统附件：图像在程序内预览，其他类型提供明确的打开/另存为选项。
+        /// 查看系统附件：图像用 Windows 照片查看器打开（跳过百度网盘「智能看图」）；其他类型提供打开/另存为选项。
         /// </summary>
         void ShowSystemAttachmentView(SystemAttachment attachment);
 
@@ -77,6 +77,11 @@ namespace DocMgr.Services.Interfaces
         /// 从本机物理磁盘中选择一块，供硬盘介质半自动登记回填。取消时返回 null。
         /// </summary>
         LocalPhysicalDiskInfo? ShowLocalPhysicalDiskPickerDialog();
+
+        /// <summary>
+        /// 打开高影仪直拍窗口。确认后返回 JPEG 内容；取消返回 null。
+        /// </summary>
+        DocumentCameraCaptureResult? ShowDocumentCameraCaptureDialog();
 
         /// <summary>
         /// 选择一个或多个硬盘介质。

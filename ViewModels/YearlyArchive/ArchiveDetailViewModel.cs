@@ -851,24 +851,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                var fullAttachment = result.Attachment;
-                if (_dialogService.ShowConfirm("直接打开？\n【确定】打开 【取消】另存为"))
-                {
-                    var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{fullAttachment.FileName}");
-                    await File.WriteAllBytesAsync(path, fullAttachment.FileContent);
-                    Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-                    return;
-                }
-
-                var dialog = new SaveFileDialog
-                {
-                    FileName = fullAttachment.FileName
-                };
-
-                if (dialog.ShowDialog() == true)
-                {
-                    await File.WriteAllBytesAsync(dialog.FileName, fullAttachment.FileContent);
-                }
+                _dialogService.ShowSystemAttachmentView(result.Attachment);
             }
             catch (Exception ex)
             {

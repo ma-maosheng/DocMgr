@@ -80,6 +80,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             PrintSignedHandoverCommand = new RelayCommand(async _ => await PrintHandoverDocumentAsync(), _ => !IsBusy && CanPrintSignedHandoverOnApplication);
             PrintHandoverSheetCommand = new RelayCommand(async _ => await PrintHandoverDocumentAsync(), _ => !IsBusy && CanPrintHandoverSheet);
             UploadSignedAttachmentCommand = new RelayCommand(async _ => await UploadSignedAttachmentAsync(), _ => !IsBusy && CanUploadSignedAttachment);
+            CaptureSignedAttachmentCommand = new RelayCommand(async _ => await CaptureSignedAttachmentAsync(), _ => !IsBusy && CanUploadSignedAttachment);
             ViewSignedAttachmentCommand = new RelayCommand(async _ => await ViewSignedAttachmentAsync(), _ => SelectedSignedAttachment != null);
             DeleteSignedAttachmentCommand = new RelayCommand(async _ => await DeleteSignedAttachmentAsync(), _ => !IsBusy && CanDeleteSignedAttachment && SelectedSignedAttachment != null);
             CancelEditCommand = new RelayCommand(_ => CancelEdit(), _ => IsEditing);
@@ -178,6 +179,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand PrintSignedHandoverCommand { get; }
         public RelayCommand PrintHandoverSheetCommand { get; }
         public RelayCommand UploadSignedAttachmentCommand { get; }
+        public RelayCommand CaptureSignedAttachmentCommand { get; }
         public RelayCommand ViewSignedAttachmentCommand { get; }
         public RelayCommand DeleteSignedAttachmentCommand { get; }
         public RelayCommand CancelEditCommand { get; }

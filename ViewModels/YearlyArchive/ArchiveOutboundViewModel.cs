@@ -6,6 +6,7 @@ using DocMgr.Models.YearlyArchive;
 using DocMgr.Models.Shared;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.Shared;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
 using DocMgr.Views.Shared;
@@ -71,6 +72,18 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _ => CanUploadSignedAttachment);
             UploadOtherAttachmentCommand = new RelayCommand(
                 async _ => await UploadAttachmentAsync(ArchiveOutboundDomainValues.AttachmentKindOther),
+                _ => CanUploadSignedAttachment);
+            CaptureSignedApprovalCommand = new RelayCommand(
+                async _ => await CaptureAttachmentAsync(ArchiveOutboundDomainValues.AttachmentKindSignedApprovalForm),
+                _ => CanUploadSignedAttachment);
+            CaptureMaterialPhotoCommand = new RelayCommand(
+                async _ => await CaptureAttachmentAsync(ArchiveOutboundDomainValues.AttachmentKindMaterialPhoto),
+                _ => CanUploadSignedAttachment);
+            CaptureProofMaterialScanCommand = new RelayCommand(
+                async _ => await CaptureAttachmentAsync(ArchiveOutboundDomainValues.AttachmentKindProofMaterialScan),
+                _ => CanUploadProofMaterialAttachment);
+            CaptureOtherAttachmentCommand = new RelayCommand(
+                async _ => await CaptureAttachmentAsync(ArchiveOutboundDomainValues.AttachmentKindOther),
                 _ => CanUploadSignedAttachment);
             PrintHandoverCommand = new RelayCommand(async _ => await PrintHandoverAsync(), _ => CanPrintHandover);
             CompleteHandoverCommand = new RelayCommand(async _ => await CompleteHandoverAsync(), _ => CanCompleteHandover);
@@ -329,6 +342,14 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand UploadMaterialPhotoCommand { get; }
 
         public RelayCommand UploadOtherAttachmentCommand { get; }
+
+        public RelayCommand CaptureSignedApprovalCommand { get; }
+
+        public RelayCommand CaptureMaterialPhotoCommand { get; }
+
+        public RelayCommand CaptureProofMaterialScanCommand { get; }
+
+        public RelayCommand CaptureOtherAttachmentCommand { get; }
 
         public RelayCommand PrintHandoverCommand { get; }
 
@@ -1435,6 +1456,48 @@ namespace DocMgr.ViewModels.YearlyArchive
             _dialogService.ShowMessage(result.Message, "上传成功");
         }
 
+        private async Task CaptureAttachmentAsync(string attachmentKind)
+        {
+            if (!CanUploadSignedAttachment)
+            {
+                _dialogService.ShowMessage("请先确认实物交接后再上传附件。");
+                return;
+            }
+
+            if (string.Equals(attachmentKind, ArchiveOutboundDomainValues.AttachmentKindProofMaterialScan, StringComparison.Ordinal)
+                && !CanUploadProofMaterialAttachment)
+            {
+                _dialogService.ShowMessage("申请时未声明附有证明材料，无需上传证明材料扫描件。");
+                return;
+            }
+
+            DocumentCameraCaptureResult? captured = DocumentCameraAttachmentCaptureSupport.Capture(_dialogService);
+            if (captured == null)
+            {
+                return;
+            }
+
+            string displayName = ArchiveOutboundDomainValues.GetAttachmentKindDisplayName(attachmentKind);
+            string fileName = DocumentCameraAttachmentCaptureSupport.BuildFileName(Record.OutboundNo, displayName, "资出库");
+            var attachment = new SystemAttachment
+            {
+                FileName = fileName,
+                Extension = ".jpg",
+                FileSize = captured.JpegContent.LongLength,
+                FileContent = captured.JpegContent
+            };
+
+            var result = await _outboundService.UploadAttachmentFlowAsync(Record.Id, attachmentKind, attachment, RequireUser());
+            if (!result.Success)
+            {
+                _dialogService.ShowError(result.Message);
+                return;
+            }
+
+            await LoadAttachmentsAsync();
+            _dialogService.ShowMessage(result.Message, "上传成功");
+        }
+
         private async Task ViewAttachmentAsync(SystemAttachment? attachment)
         {
             if (attachment == null)
@@ -1451,21 +1514,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                var full = result.Attachment;
-                if (_dialogService.ShowConfirm("直接打开？\n【确定】打开 【取消】另存为"))
-                {
-                    var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + "_" + full.FileName);
-                    await File.WriteAllBytesAsync(path, full.FileContent);
-                    Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-                }
-                else
-                {
-                    var dlg = new SaveFileDialog { FileName = full.FileName };
-                    if (dlg.ShowDialog() == true)
-                    {
-                        await File.WriteAllBytesAsync(dlg.FileName, full.FileContent);
-                    }
-                }
+                _dialogService.ShowSystemAttachmentView(result.Attachment);
             }
             catch (Exception ex)
             {

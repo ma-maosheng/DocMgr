@@ -62,6 +62,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
             ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
             ConfirmUploadCommand = new RelayCommand(async _ => await ConfirmUploadAsync(), _ => CanConfirmUpload);
             UploadAttachmentCommand = new RelayCommand(async _ => await UploadAttachmentAsync(), _ => CanUploadAttachment);
+            CaptureFromDocumentCameraCommand = new RelayCommand(
+                async _ => await CaptureFromDocumentCameraAsync(),
+                _ => CanUploadAttachment);
             DeleteAttachmentCommand = new RelayCommand(async item =>
             {
                 if (item is not SystemAttachment att) return;
@@ -178,6 +181,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public RelayCommand ApproveCommand { get; }
         public RelayCommand ConfirmUploadCommand { get; }
         public RelayCommand UploadAttachmentCommand { get; }
+        public RelayCommand CaptureFromDocumentCameraCommand { get; }
         public RelayCommand DeleteAttachmentCommand { get; }
         public RelayCommand ViewAttachmentCommand { get; }
         public RelayCommand CompleteCommand { get; }
@@ -591,6 +595,36 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     NetworkTransferDomainValues.DisposalAttachmentBusinessType,
                     _record.Id, _record.DisposalNo, UploadCategory,
                     Path.GetFileName(path), Path.GetExtension(path), content.LongLength, content, RequireUser());
+                if (!ok) { _dialogService.ShowError(message); return; }
+                _hasCommittedChanges = true;
+                await ReloadAttachmentsAsync();
+                await ReloadAsync();
+                _dialogService.ShowMessage(message);
+            }
+            catch (Exception ex) { _dialogService.ShowError(ex.Message); }
+        }
+
+        private async Task CaptureFromDocumentCameraAsync()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(UploadCategory))
+                {
+                    _dialogService.ShowMessage("请先选择附件分类。");
+                    return;
+                }
+
+                DocumentCameraCaptureResult? captured = DocumentCameraAttachmentCaptureSupport.Capture(_dialogService);
+                if (captured == null)
+                {
+                    return;
+                }
+
+                string fileName = DocumentCameraAttachmentCaptureSupport.BuildFileName(DisposalNo, UploadCategory, "网处");
+                var (ok, message, _) = await _service.UploadAttachmentAsync(
+                    NetworkTransferDomainValues.DisposalAttachmentBusinessType,
+                    _record.Id, _record.DisposalNo, UploadCategory,
+                    fileName, ".jpg", captured.JpegContent.LongLength, captured.JpegContent, RequireUser());
                 if (!ok) { _dialogService.ShowError(message); return; }
                 _hasCommittedChanges = true;
                 await ReloadAttachmentsAsync();

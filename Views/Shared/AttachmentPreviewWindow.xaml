@@ -7,6 +7,7 @@
         MinWidth="640"
         MinHeight="480"
         WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResizeWithGrip"
         ShowInTaskbar="False"
         Background="#F5F7FA">
     <Grid Margin="16">
@@ -25,19 +26,17 @@
         </StackPanel>
 
         <Border Grid.Row="1"
-                Background="White"
+                Background="#111827"
                 BorderBrush="#D8E2EC"
                 BorderThickness="1"
-                CornerRadius="4">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                          VerticalScrollBarVisibility="Auto"
-                          Background="#111827">
-                <Image x:Name="PreviewImage"
-                       Stretch="Uniform"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       Margin="12"/>
-            </ScrollViewer>
+                CornerRadius="4"
+                ClipToBounds="True">
+            <Image x:Name="PreviewImage"
+                   Stretch="Uniform"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   RenderOptions.BitmapScalingMode="HighQuality"
+                   Margin="8"/>
         </Border>
 
         <StackPanel Grid.Row="2"

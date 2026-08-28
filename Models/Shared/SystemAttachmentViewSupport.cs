@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using DocMgr.Models.SystemSettings;
 
@@ -59,9 +60,10 @@ namespace DocMgr.Models.Shared
         }
 
         /// <summary>
-        /// 尝试从附件内容创建可绑定的图像源。
+        /// 尝试从附件内容创建可绑定的预览图像源。
+        /// 会校正异常 DPI，并将超大图缩到显卡纹理上限内，避免预览窗打开后空白或只看到一角。
         /// </summary>
-        public static bool TryCreateImageSource(SystemAttachment attachment, out BitmapImage? imageSource)
+        public static bool TryCreateImageSource(SystemAttachment attachment, out BitmapSource? imageSource)
         {
             imageSource = null;
             ArgumentNullException.ThrowIfNull(attachment);
@@ -73,21 +75,109 @@ namespace DocMgr.Models.Shared
 
             try
             {
-                using var stream = new MemoryStream(attachment.FileContent);
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
-                bitmap.StreamSource = stream;
-                bitmap.EndInit();
-                bitmap.Freeze();
-                imageSource = bitmap;
-                return true;
+                imageSource = CreateDisplayBitmapSource(attachment.FileContent);
+                return imageSource != null;
             }
             catch
             {
+                imageSource = null;
                 return false;
             }
+        }
+
+        /// <summary>
+        /// WPF 硬件加速纹理常见上限。高影仪 4160×3120 等超过此值时 Image 会空白。
+        /// </summary>
+        private const int MaxDisplayEdgePx = 4096;
+
+        /// <summary>
+        /// 解码附件字节为适合界面展示的位图（96 DPI，最长边不超过纹理上限）。
+        /// </summary>
+        private static BitmapSource? CreateDisplayBitmapSource(byte[] content)
+        {
+            BitmapImage loaded = LoadBitmapImage(content, decodePixelWidth: null, decodePixelHeight: null);
+            if (loaded.PixelWidth <= 0 || loaded.PixelHeight <= 0)
+            {
+                return null;
+            }
+
+            if (loaded.PixelWidth > MaxDisplayEdgePx || loaded.PixelHeight > MaxDisplayEdgePx)
+            {
+                loaded = loaded.PixelWidth >= loaded.PixelHeight
+                    ? LoadBitmapImage(content, decodePixelWidth: MaxDisplayEdgePx, decodePixelHeight: null)
+                    : LoadBitmapImage(content, decodePixelWidth: null, decodePixelHeight: MaxDisplayEdgePx);
+            }
+
+            return NormalizeDpi(loaded);
+        }
+
+        private static BitmapImage LoadBitmapImage(byte[] content, int? decodePixelWidth, int? decodePixelHeight)
+        {
+            var stream = new MemoryStream(content, 0, content.Length, writable: false, publiclyVisible: true);
+            try
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.CreateOptions = BitmapCreateOptions.IgnoreColorProfile | BitmapCreateOptions.IgnoreImageCache;
+                bitmap.StreamSource = stream;
+                if (decodePixelWidth is int width && width > 0)
+                {
+                    bitmap.DecodePixelWidth = width;
+                }
+
+                if (decodePixelHeight is int height && height > 0)
+                {
+                    bitmap.DecodePixelHeight = height;
+                }
+
+                bitmap.EndInit();
+                bitmap.Freeze();
+                return bitmap;
+            }
+            finally
+            {
+                stream.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// 高影仪/OpenCV 写出的 JPEG 常带 JFIF 密度 1（无单位），WPF 会当成 1 DPI，
+        /// 预览尺寸被放大数百倍，ScrollViewer 里只看到黑边或一角。
+        /// </summary>
+        private static BitmapSource NormalizeDpi(BitmapSource source)
+        {
+            if (Math.Abs(source.DpiX - 96) < 0.5 && Math.Abs(source.DpiY - 96) < 0.5)
+            {
+                return source;
+            }
+
+            BitmapSource converted = source;
+            if (source.Format != PixelFormats.Bgr32
+                && source.Format != PixelFormats.Bgra32
+                && source.Format != PixelFormats.Pbgra32
+                && source.Format != PixelFormats.Bgr24)
+            {
+                converted = new FormatConvertedBitmap(source, PixelFormats.Bgr32, null, 0);
+                converted.Freeze();
+            }
+
+            int width = converted.PixelWidth;
+            int height = converted.PixelHeight;
+            int stride = (width * converted.Format.BitsPerPixel + 7) / 8;
+            byte[] pixels = new byte[checked(stride * height)];
+            converted.CopyPixels(pixels, stride, 0);
+            var normalized = BitmapSource.Create(
+                width,
+                height,
+                96,
+                96,
+                converted.Format,
+                converted.Palette,
+                pixels,
+                stride);
+            normalized.Freeze();
+            return normalized;
         }
 
         /// <summary>
@@ -113,12 +203,135 @@ namespace DocMgr.Models.Shared
         }
 
         /// <summary>
-        /// 使用系统默认程序打开附件。
+        /// 打开附件。图像不走系统默认关联（本机默认是百度网盘「智能看图」），改用 Windows 照片查看器等。
         /// </summary>
         public static void OpenWithDefaultApplication(SystemAttachment attachment)
         {
+            if (IsImageAttachment(attachment))
+            {
+                OpenImageWithPreferredViewer(attachment);
+                return;
+            }
+
             string tempPath = WriteTempFile(attachment);
             Process.Start(new ProcessStartInfo(tempPath) { UseShellExecute = true });
+        }
+
+        /// <summary>
+        /// 用 Windows 自带看图程序打开图像；不调用被屏蔽的默认关联（百度网盘「智能看图」）。
+        /// </summary>
+        private static void OpenImageWithPreferredViewer(SystemAttachment attachment)
+        {
+            string imagePath = WriteImageTempFile(attachment);
+            if (TryOpenWithWindowsPhotoViewer(imagePath))
+            {
+                return;
+            }
+
+            if (TryOpenWithPaint(imagePath))
+            {
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = Path.Combine(Environment.SystemDirectory, "rundll32.exe"),
+                Arguments = $"shell32.dll,OpenAs_RunDLL {imagePath}",
+                UseShellExecute = false
+            });
+        }
+
+        /// <summary>
+        /// 写出无空格路径的临时图像，避免 Windows 照片查看器无法解析带空格路径。
+        /// </summary>
+        private static string WriteImageTempFile(SystemAttachment attachment)
+        {
+            string displayName = ResolveDisplayFileName(attachment);
+            string extension = Path.GetExtension(displayName);
+            if (string.IsNullOrWhiteSpace(extension) || !IsImageExtension(extension))
+            {
+                extension = InferExtensionFromContent(attachment.FileContent);
+            }
+
+            if (string.IsNullOrWhiteSpace(extension))
+            {
+                extension = ".jpg";
+            }
+
+            string directory = Path.Combine(Path.GetTempPath(), "DocMgr", "attachments");
+            Directory.CreateDirectory(directory);
+            string imagePath = Path.Combine(directory, Guid.NewGuid().ToString("N") + extension.ToLowerInvariant());
+            File.WriteAllBytes(imagePath, attachment.FileContent!);
+            return imagePath;
+        }
+
+        private static bool TryOpenWithWindowsPhotoViewer(string imagePath)
+        {
+            string? dll = ResolveWindowsPhotoViewerDll();
+            if (dll == null)
+            {
+                return false;
+            }
+
+            string rundll = Path.Combine(Environment.SystemDirectory, "rundll32.exe");
+            if (!File.Exists(rundll))
+            {
+                return false;
+            }
+
+            try
+            {
+                Process? process = Process.Start(new ProcessStartInfo
+                {
+                    FileName = rundll,
+                    Arguments = $"\"{dll}\", ImageView_Fullscreen {imagePath}",
+                    UseShellExecute = false
+                });
+                return process != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string? ResolveWindowsPhotoViewerDll()
+        {
+            string[] candidates =
+            [
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Windows Photo Viewer", "PhotoViewer.dll"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Windows Photo Viewer", "PhotoViewer.dll")
+            ];
+
+            return candidates.FirstOrDefault(File.Exists);
+        }
+
+        private static bool TryOpenWithPaint(string imagePath)
+        {
+            string paintPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Microsoft",
+                "WindowsApps",
+                "mspaint.exe");
+            if (!File.Exists(paintPath))
+            {
+                return false;
+            }
+
+            try
+            {
+                Process? process = Process.Start(new ProcessStartInfo
+                {
+                    FileName = paintPath,
+                    Arguments = $"\"{imagePath}\"",
+                    UseShellExecute = true
+                });
+                return process != null;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static string GetEffectiveExtension(SystemAttachment attachment)
@@ -206,7 +419,7 @@ namespace DocMgr.Models.Shared
                 return true;
             }
 
-            return false;
+            return IsTiffContent(content);
         }
 
         private static string InferExtensionFromContent(byte[]? content)
@@ -243,7 +456,18 @@ namespace DocMgr.Models.Shared
                 return ".webp";
             }
 
-            return string.Empty;
+            return IsTiffContent(content) ? ".tif" : string.Empty;
+        }
+
+        private static bool IsTiffContent(byte[] content)
+        {
+            if (content.Length < 4)
+            {
+                return false;
+            }
+
+            return (content[0] == 0x49 && content[1] == 0x49 && content[2] == 0x2A && content[3] == 0x00)
+                || (content[0] == 0x4D && content[1] == 0x4D && content[2] == 0x00 && content[3] == 0x2A);
         }
 
         private static string SanitizeFileName(string fileName)

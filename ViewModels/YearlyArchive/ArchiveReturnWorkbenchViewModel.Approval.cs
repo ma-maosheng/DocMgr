@@ -1,6 +1,7 @@
 using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Services.Shared;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.Views.Shared;
 using System.Collections.Generic;
@@ -415,6 +416,61 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        private async Task CaptureSignedAttachmentAsync()
+        {
+            if (EditingRecord is not { Id: > 0 } record || !CanUploadSignedAttachment)
+            {
+                _dialogService.ShowMessage("请先确认实物交接，再上传签批交接单。");
+                return;
+            }
+
+            var user = _userContextService.CurrentUser;
+            if (user == null)
+            {
+                return;
+            }
+
+            DocumentCameraCaptureResult? captured = DocumentCameraAttachmentCaptureSupport.Capture(_dialogService);
+            if (captured == null)
+            {
+                return;
+            }
+
+            IsBusy = true;
+            try
+            {
+                string fileName = DocumentCameraAttachmentCaptureSupport.BuildFileName(
+                    record.ReturnNo,
+                    ArchiveReturnDomainValues.AttachmentKindSignedHandover,
+                    "资归还");
+                var attachment = new SystemAttachment
+                {
+                    FileName = fileName,
+                    Extension = ".jpg",
+                    FileSize = captured.JpegContent.LongLength,
+                    FileContent = captured.JpegContent
+                };
+                var result = await _returnService.UploadSignedHandoverAttachmentFlowAsync(record.Id, attachment, user);
+                if (!result.Success)
+                {
+                    _dialogService.ShowError(result.Message);
+                    return;
+                }
+
+                _dialogService.ShowMessage(result.Message);
+                await ReloadSavedRecordAsync(record.Id);
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"上传失败：{ex.Message}");
+            }
+            finally
+            {
+                IsBusy = false;
+                await TryReloadListsAfterOperationAsync();
+            }
+        }
+
         private async Task ViewSignedAttachmentAsync()
         {
             if (SelectedSignedAttachment == null)
@@ -431,15 +487,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                string tempPath = Path.Combine(
-                    Path.GetTempPath(),
-                    $"DocMgr_Return_{Guid.NewGuid():N}{result.Attachment.Extension}");
-                await File.WriteAllBytesAsync(tempPath, result.Attachment.FileContent);
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = tempPath,
-                    UseShellExecute = true
-                });
+                _dialogService.ShowSystemAttachmentView(result.Attachment);
             }
             catch (Exception ex)
             {

@@ -31,6 +31,8 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<ICabinetArchiveBoxContentService, CabinetArchiveBoxContentService>();
         services.AddScoped<IHardDiskMediaService, HardDiskMediaService>();
         services.AddScoped<ILocalPhysicalDiskHardwareService, LocalPhysicalDiskHardwareService>();
+        services.AddSingleton<IDocumentCameraCaptureService, DocumentCameraCaptureService>();
+        services.AddSingleton<IDocumentCameraCaptureSettingsStore, DocumentCameraCaptureSettingsStore>();
         services.AddScoped<IHardDiskDisposalService, HardDiskDisposalService>();
         services.AddScoped<IHardDiskInventoryRegisterService, HardDiskInventoryRegisterService>();
         services.AddScoped<IArchiveInventoryRegisterService, ArchiveInventoryRegisterService>();

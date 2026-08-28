@@ -63,6 +63,9 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
         ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
         ConfirmUploadCommand = new RelayCommand(async _ => await ConfirmUploadAsync(), _ => CanConfirmUpload);
         UploadAttachmentCommand = new RelayCommand(async _ => await UploadAttachmentAsync(), _ => CanUploadAttachment);
+        CaptureFromDocumentCameraCommand = new RelayCommand(
+            async _ => await CaptureFromDocumentCameraAsync(),
+            _ => CanUploadAttachment);
         DeleteAttachmentCommand = new RelayCommand(async item =>
         {
             if (item is not SystemAttachment att)
@@ -275,6 +278,7 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
     public RelayCommand ApproveCommand { get; }
     public RelayCommand ConfirmUploadCommand { get; }
     public RelayCommand UploadAttachmentCommand { get; }
+    public RelayCommand CaptureFromDocumentCameraCommand { get; }
     public RelayCommand DeleteAttachmentCommand { get; }
     public RelayCommand ViewAttachmentCommand { get; }
     public RelayCommand CompleteCommand { get; }
@@ -764,6 +768,48 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
                 Path.GetExtension(path),
                 content.LongLength,
                 content,
+                RequireUser());
+            if (!ok)
+            {
+                _dialogService.ShowError(message);
+                return;
+            }
+
+            _hasCommittedChanges = true;
+            await ReloadAttachmentsAsync();
+            await ReloadAsync();
+            _dialogService.ShowMessage(message);
+        }
+        catch (Exception ex)
+        {
+            _dialogService.ShowError(ex.Message);
+        }
+    }
+
+    private async Task CaptureFromDocumentCameraAsync()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(UploadCategory))
+            {
+                _dialogService.ShowMessage("请先选择附件分类。");
+                return;
+            }
+
+            DocumentCameraCaptureResult? captured = DocumentCameraAttachmentCaptureSupport.Capture(_dialogService);
+            if (captured == null)
+            {
+                return;
+            }
+
+            string fileName = DocumentCameraAttachmentCaptureSupport.BuildFileName(DisposalNo, UploadCategory, "史离处");
+            var (ok, message, _) = await _service.UploadAttachmentAsync(
+                _record.Id,
+                UploadCategory,
+                fileName,
+                ".jpg",
+                captured.JpegContent.LongLength,
+                captured.JpegContent,
                 RequireUser());
             if (!ok)
             {

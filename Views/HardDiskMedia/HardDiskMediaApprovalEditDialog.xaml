@@ -222,6 +222,11 @@
                                         Width="128"
                                         Style="{StaticResource FormInlineButtonStyle}"
                                         Margin="0,0,8,0"/>
+                                <Button Content="高影仪直拍"
+                                        Command="{Binding CaptureSignedAttachmentCommand}"
+                                        Width="88"
+                                        Style="{StaticResource FormInlineButtonStyle}"
+                                        Margin="0,0,8,0"/>
                                 <Button Content="查看"
                                         Command="{Binding ViewAttachmentCommand}"
                                         CommandParameter="{Binding SelectedAttachment}"

@@ -1,4 +1,6 @@
 using Microsoft.Win32;
+using DocMgr.Models.Shared;
+using DocMgr.Services.Shared;
 using DocMgr.Services.YearlyArchive;
 using System;
 using System.Collections.Specialized;
@@ -1544,6 +1546,91 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        private async Task CaptureAttachmentByKindAsync(string attachmentKind)
+        {
+            if (CurrentRecord == null || string.IsNullOrEmpty(CurrentRecord.FormNo))
+            {
+                _dialogService.ShowMessage("请先生成或输入表单编号。");
+                return;
+            }
+
+            if (!CanUploadSignedAttachment)
+            {
+                _dialogService.ShowMessage("请先执行「审批通过」并确认实物交接后再上传附件。");
+                return;
+            }
+
+            if (string.Equals(attachmentKind, ArchiveRegisterDomainValues.AttachmentKindProofMaterialScan, StringComparison.Ordinal)
+                && !CanUploadProofMaterialAttachment)
+            {
+                _dialogService.ShowMessage("申请时未声明附有证明材料，无需上传证明材料扫描件。");
+                return;
+            }
+
+            DocumentCameraCaptureResult? captured = DocumentCameraAttachmentCaptureSupport.Capture(_dialogService);
+            if (captured == null)
+            {
+                return;
+            }
+
+            string displayName = ArchiveRegisterDomainValues.GetAttachmentKindDisplayName(attachmentKind);
+            string fileName = DocumentCameraAttachmentCaptureSupport.BuildFileName(CurrentRecord.FormNo, displayName);
+            try
+            {
+                var result = await _archiveRegisterService.UploadAttachmentFlowAsync(
+                    CurrentRecord,
+                    _userContextService.CurrentUser,
+                    attachmentKind,
+                    fileName,
+                    ".jpg",
+                    captured.JpegContent.LongLength,
+                    captured.JpegContent);
+                if (!result.Success || result.Attachment == null)
+                {
+                    _dialogService.ShowMessage(result.Message);
+                    return;
+                }
+
+                Attachments.Add(result.Attachment);
+                RedistributeAttachmentsByKind();
+                await RefreshAttachmentRequirementsAsync();
+
+                if (CurrentRecord.IsApprovedReceived && AttachmentsMeetMandatoryRequirements)
+                {
+                    CurrentRecord.MarkAsSignedUploaded();
+                    try
+                    {
+                        await _archiveRegisterService.SaveOrUpdateAsync(CurrentRecord);
+                    }
+                    catch (Exception ex)
+                    {
+                        _dialogService.ShowError("附件已上传，但状态保存失败：" + ex.Message);
+                        return;
+                    }
+
+                    OnPropertyChanged(nameof(CurrentRecord));
+                    UpdateUIState();
+                    MarkCommitted();
+                    _dialogService.ShowMessage("必备附件已齐全，记录状态已更新。下一步：确认办结。");
+                    return;
+                }
+
+                MarkCommitted();
+                if (!AttachmentsMeetMandatoryRequirements)
+                {
+                    _dialogService.ShowMessage($"{displayName}已上传。\n\n当前尚未满足办结要求：\n{AttachmentRequirementHint}");
+                }
+                else
+                {
+                    _dialogService.ShowMessage($"{displayName}上传成功。");
+                }
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"上传失败: {ex.Message}");
+            }
+        }
+
         private async Task DeleteAttachment(SystemAttachment a)
         {
             if (a == null) return;
@@ -1585,18 +1672,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                var full = result.Attachment;
-                if (_dialogService.ShowConfirm("直接打开？\n【确定】打开 【取消】另存为"))
-                {
-                    var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + "_" + full.FileName);
-                    await File.WriteAllBytesAsync(path, full.FileContent);
-                    Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-                }
-                else
-                {
-                    var dlg = new SaveFileDialog { FileName = full.FileName };
-                    if (dlg.ShowDialog() == true) await File.WriteAllBytesAsync(dlg.FileName, full.FileContent);
-                }
+                _dialogService.ShowSystemAttachmentView(result.Attachment);
             }
             catch (Exception ex) { _dialogService.ShowError("错误: " + ex.Message); }
         }

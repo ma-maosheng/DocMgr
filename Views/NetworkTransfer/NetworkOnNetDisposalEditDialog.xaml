@@ -148,6 +148,7 @@
                           ItemsSource="{Binding UploadCategoryOptions}"
                           SelectedItem="{Binding UploadCategory}"/>
                 <Button Content="上传附件" Command="{Binding UploadAttachmentCommand}" Margin="8,0,0,0" Padding="12,6"/>
+                <Button Content="高影仪直拍" Command="{Binding CaptureFromDocumentCameraCommand}" Margin="8,0,0,0" Padding="12,6"/>
               </StackPanel>
               <DataGrid ItemsSource="{Binding Attachments}" Height="110" AutoGenerateColumns="False"
                         IsReadOnly="True" HeadersVisibility="Column"

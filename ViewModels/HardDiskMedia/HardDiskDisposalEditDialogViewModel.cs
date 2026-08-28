@@ -65,6 +65,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
             ConfirmUploadCommand = new RelayCommand(async _ => await ConfirmUploadAsync(), _ => CanConfirmUpload);
             UploadAttachmentCommand = new RelayCommand(async _ => await UploadAttachmentAsync(), _ => CanUploadAttachment);
+            CaptureFromDocumentCameraCommand = new RelayCommand(
+                async _ => await CaptureFromDocumentCameraAsync(),
+                _ => CanUploadAttachment);
             DeleteAttachmentCommand = new RelayCommand(async item => await DeleteAttachmentAsync(item as SystemAttachment), item => item is SystemAttachment && CanUploadAttachment);
             ViewAttachmentCommand = new RelayCommand(async item => await ViewAttachmentAsync(item as SystemAttachment), item => item is SystemAttachment);
             CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
@@ -288,6 +291,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public RelayCommand ApproveCommand { get; }
         public RelayCommand ConfirmUploadCommand { get; }
         public RelayCommand UploadAttachmentCommand { get; }
+        public RelayCommand CaptureFromDocumentCameraCommand { get; }
         public RelayCommand DeleteAttachmentCommand { get; }
         public RelayCommand ViewAttachmentCommand { get; }
         public RelayCommand CompleteCommand { get; }
@@ -857,6 +861,56 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     extension,
                     content.LongLength,
                     content,
+                    RequireCurrentUser());
+
+                if (!result.Ok)
+                {
+                    _dialogService.ShowError(result.Message);
+                    return;
+                }
+
+                _hasCommittedChanges = true;
+                await ReloadRecordAsync();
+                await ReloadAttachmentsAsync();
+                _dialogService.ShowMessage(result.Message);
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private async Task CaptureFromDocumentCameraAsync()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(UploadCategory))
+                {
+                    _dialogService.ShowMessage("请先选择附件分类。");
+                    return;
+                }
+
+                if (_record.Status == HardDiskDisposalRecord.StatusApproved
+                    && !string.Equals(UploadCategory, HardDiskDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
+                {
+                    _dialogService.ShowMessage("请先点击「确认可上传」，再上传签批单或硬盘照片。");
+                    return;
+                }
+
+                DocumentCameraCaptureResult? captured = DocumentCameraAttachmentCaptureSupport.Capture(_dialogService);
+                if (captured == null)
+                {
+                    return;
+                }
+
+                string fileName = DocumentCameraAttachmentCaptureSupport.BuildFileName(DisposalNo, UploadCategory, "盘离处");
+                var result = await _disposalService.UploadAttachmentAsync(
+                    _record.Id,
+                    UploadCategory,
+                    fileName,
+                    ".jpg",
+                    captured.JpegContent.LongLength,
+                    captured.JpegContent,
                     RequireCurrentUser());
 
                 if (!result.Ok)

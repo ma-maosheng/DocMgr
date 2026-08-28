@@ -7,6 +7,7 @@ using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.NetworkTransfer;
+using DocMgr.Services.Shared;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
@@ -189,6 +190,9 @@ public sealed partial class NetworkInboundEditDialogViewModel
     public RelayCommand UploadMaterialPhotoAttachmentCommand { get; private set; } = null!;
     public RelayCommand UploadProofMaterialAttachmentCommand { get; private set; } = null!;
     public RelayCommand UploadOtherAttachmentCommand { get; private set; } = null!;
+    public RelayCommand CaptureSignedHandoverAttachmentCommand { get; private set; } = null!;
+    public RelayCommand CaptureProofMaterialAttachmentCommand { get; private set; } = null!;
+    public RelayCommand CaptureOtherAttachmentCommand { get; private set; } = null!;
     public RelayCommand FillDefaultApprovalInfoCommand { get; private set; } = null!;
 
     public void SetDialogMode(bool isDialogMode)
@@ -222,6 +226,15 @@ public sealed partial class NetworkInboundEditDialogViewModel
             _ => CanUploadProofMaterialAttachment);
         UploadOtherAttachmentCommand = new RelayCommand(
             async _ => await UploadAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategoryOther),
+            _ => CanUploadSignedAttachment);
+        CaptureSignedHandoverAttachmentCommand = new RelayCommand(
+            async _ => await CaptureAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategorySignedForm),
+            _ => CanUploadSignedAttachment);
+        CaptureProofMaterialAttachmentCommand = new RelayCommand(
+            async _ => await CaptureAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategoryProofMaterial),
+            _ => CanUploadProofMaterialAttachment);
+        CaptureOtherAttachmentCommand = new RelayCommand(
+            async _ => await CaptureAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategoryOther),
             _ => CanUploadSignedAttachment);
         FillDefaultApprovalInfoCommand = new RelayCommand(
             async _ => await FillDefaultApprovalInfoAsync(),
@@ -450,6 +463,71 @@ public sealed partial class NetworkInboundEditDialogViewModel
         string displayName = string.Equals(fileCategory, NetworkTransferDomainValues.AttachmentCategorySignedForm, StringComparison.Ordinal)
             ? "签批交接单"
             : fileCategory;
+        if (!AttachmentsMeetMandatoryRequirements)
+        {
+            _dialogService.ShowMessage($"{displayName}已上传。\n\n当前尚未满足办结要求：\n{AttachmentRequirementHint}");
+        }
+    }
+
+    private async Task CaptureAttachmentByCategoryAsync(string fileCategory)
+    {
+        if (string.IsNullOrWhiteSpace(_record.InboundNo))
+        {
+            _dialogService.ShowMessage("请先保存草稿以生成入网单编号。");
+            return;
+        }
+
+        if (!CanUploadSignedAttachment)
+        {
+            _dialogService.ShowMessage(UploadHintText);
+            return;
+        }
+
+        if (string.Equals(fileCategory, NetworkTransferDomainValues.AttachmentCategoryProofMaterial, StringComparison.Ordinal)
+            && !CanUploadProofMaterialAttachment)
+        {
+            _dialogService.ShowMessage("申请时未声明附有证明材料，无需上传证明材料扫描件。");
+            return;
+        }
+
+        DocumentCameraCaptureResult? captured = DocumentCameraAttachmentCaptureSupport.Capture(_dialogService);
+        if (captured == null)
+        {
+            return;
+        }
+
+        string displayName = string.Equals(fileCategory, NetworkTransferDomainValues.AttachmentCategorySignedForm, StringComparison.Ordinal)
+            ? "签批交接单"
+            : fileCategory;
+        string fileName = DocumentCameraAttachmentCaptureSupport.BuildFileName(_record.InboundNo, displayName, "入网");
+        try
+        {
+            var (ok, message, _) = await _service.UploadAttachmentAsync(
+                NetworkTransferDomainValues.InboundAttachmentBusinessType,
+                _record.Id,
+                _record.InboundNo,
+                fileCategory,
+                fileName,
+                ".jpg",
+                captured.JpegContent.LongLength,
+                captured.JpegContent,
+                RequireUser());
+            if (!ok)
+            {
+                _dialogService.ShowError(message);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            _dialogService.ShowError($"上传失败：{ex.Message}");
+            return;
+        }
+
+        _hasCommittedChanges = true;
+        await ReloadAttachmentsAsync();
+        await ReloadRecordAsync();
+
         if (!AttachmentsMeetMandatoryRequirements)
         {
             _dialogService.ShowMessage($"{displayName}已上传。\n\n当前尚未满足办结要求：\n{AttachmentRequirementHint}");
