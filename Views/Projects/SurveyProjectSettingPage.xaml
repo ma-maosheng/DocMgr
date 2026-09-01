@@ -9,6 +9,10 @@
       Title="项目信息设置" Background="White"
       d:DataContext="{d:DesignInstance Type=vm:ProjectSettingViewModel}">
 
+    <Page.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </Page.Resources>
+
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -24,11 +28,14 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- 左侧按钮组 -->
+                    <!-- 左侧按钮组：增删改仅资料室资料管理员可见 -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <Button Content="新增项目" Command="{Binding AddCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}" Margin="0,0,10,0"/>
-                        <Button Content="编辑项目" Command="{Binding EditCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}" Margin="0,0,10,0"/>
-                        <Button Content="删除选中" Command="{Binding DeleteCommand}" Width="100" Style="{StaticResource ToolbarDangerButtonStyle}" Margin="0,0,10,0"/>
+                        <Button Content="新增项目" Command="{Binding AddCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}" Margin="0,0,10,0"
+                                Visibility="{Binding CanMaintainProjects, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <Button Content="编辑项目" Command="{Binding EditCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}" Margin="0,0,10,0"
+                                Visibility="{Binding CanMaintainProjects, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <Button Content="删除选中" Command="{Binding DeleteCommand}" Width="100" Style="{StaticResource ToolbarDangerButtonStyle}" Margin="0,0,10,0"
+                                Visibility="{Binding CanMaintainProjects, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         <Button Content="刷新列表" Command="{Binding RefreshCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}"/>
                     </StackPanel>
 

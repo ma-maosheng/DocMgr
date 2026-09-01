@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.Windows.Input;
+using DocMgr.Services.Projects;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.Projects
@@ -8,6 +9,7 @@ namespace DocMgr.ViewModels.Projects
     {
         private readonly IProjectService _projectService;
         private readonly IDialogService _dialogService;
+        private readonly IUserContextService _userContextService;
 
         // === Properties ===
 
@@ -26,9 +28,6 @@ namespace DocMgr.ViewModels.Projects
             {
                 if (SetProperty(ref _selectedProject, value))
                 {
-                    // 更新命令的可执行状态
-                    // [修复] RelayCommand 使用 CommandManager 管理事件，无需手动 RaiseCanExecuteChanged
-                    // 如果确实需要强制刷新，可以使用 CommandManager.InvalidateRequerySuggested();
                     CommandManager.InvalidateRequerySuggested();
                 }
             }
@@ -48,6 +47,10 @@ namespace DocMgr.ViewModels.Projects
             set => SetProperty(ref _searchKeyword, value);
         }
 
+        /// <summary>资料室资料管理员可新增、编辑、删除；其他人仅浏览与检索。</summary>
+        public bool CanMaintainProjects =>
+            ProjectSettingPermissionSupport.CanMaintain(_userContextService.CurrentUser);
+
         // === Commands ===
         public RelayCommand SearchCommand { get; }
         public RelayCommand RefreshCommand { get; }
@@ -55,22 +58,23 @@ namespace DocMgr.ViewModels.Projects
         public RelayCommand EditCommand { get; }
         public RelayCommand DeleteCommand { get; }
 
-        public ProjectSettingViewModel(IProjectService projectService, IDialogService dialogService)
+        public ProjectSettingViewModel(
+            IProjectService projectService,
+            IDialogService dialogService,
+            IUserContextService userContextService)
         {
             _projectService = projectService;
             _dialogService = dialogService;
+            _userContextService = userContextService;
 
-            // 初始化集合
             Projects = new ObservableCollection<ProjectInfo>();
 
-            // 初始化命令
             SearchCommand = new RelayCommand(_ => LoadData());
             RefreshCommand = new RelayCommand(_ => Refresh());
-            AddCommand = new RelayCommand(_ => AddProject());
-            EditCommand = new RelayCommand(_ => EditProject(), _ => SelectedProject != null);
-            DeleteCommand = new RelayCommand(_ => DeleteProject(), _ => SelectedProject != null);
+            AddCommand = new RelayCommand(_ => AddProject(), _ => CanMaintainProjects);
+            EditCommand = new RelayCommand(_ => EditProject(), _ => CanMaintainProjects && SelectedProject != null);
+            DeleteCommand = new RelayCommand(_ => DeleteProject(), _ => CanMaintainProjects && SelectedProject != null);
 
-            // 初始加载
             LoadData();
         }
 
@@ -89,36 +93,71 @@ namespace DocMgr.ViewModels.Projects
 
         private void AddProject()
         {
-            // 修改：使用 DialogService
+            if (!EnsureCanMaintainProjects())
+            {
+                return;
+            }
+
             if (_dialogService.ShowProjectEditDialog(null))
             {
-                // 如果对话框返回 true，说明保存成功，刷新列表
                 LoadData();
             }
         }
 
         private void EditProject()
         {
-            if (SelectedProject == null) return;
+            if (SelectedProject == null)
+            {
+                return;
+            }
 
-            // 修改：使用 DialogService
+            if (!EnsureCanMaintainProjects())
+            {
+                return;
+            }
+
             if (_dialogService.ShowProjectEditDialog(SelectedProject))
             {
-                // 编辑成功也刷新列表
                 LoadData();
             }
         }
 
         private void DeleteProject()
         {
-            if (SelectedProject == null) return;
+            if (SelectedProject == null)
+            {
+                return;
+            }
+
+            if (!EnsureCanMaintainProjects())
+            {
+                return;
+            }
 
             if (_dialogService.ShowConfirm($"确定要删除项目 [{SelectedProject.ProjectName}] 吗？", "警告"))
             {
-                _projectService.DeleteProject(SelectedProject.Id);
-                LoadData();
-                _dialogService.ShowMessage("删除成功。");
+                try
+                {
+                    _projectService.DeleteProject(SelectedProject.Id);
+                    LoadData();
+                    _dialogService.ShowMessage("删除成功。");
+                }
+                catch (Exception ex)
+                {
+                    _dialogService.ShowError($"删除失败: {ex.Message}");
+                }
             }
+        }
+
+        private bool EnsureCanMaintainProjects()
+        {
+            if (CanMaintainProjects)
+            {
+                return true;
+            }
+
+            _dialogService.ShowMessage(ProjectSettingPermissionSupport.MaintainDeniedMessage);
+            return false;
         }
     }
 }

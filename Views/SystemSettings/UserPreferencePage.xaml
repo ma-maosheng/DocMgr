@@ -10,9 +10,20 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Text="个人通知偏好" FontSize="20" FontWeight="Bold" Foreground="#333"/>
+        <TextBlock Text="个人设置" FontSize="20" FontWeight="Bold" Foreground="#333"/>
 
         <StackPanel Grid.Row="1" Margin="0,20,0,0">
+            <TextBlock Text="登录密码" FontSize="15" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,8"/>
+            <TextBlock Text="修改本人登录密码。新密码至少 8 位，且不能与登录账号相同。"
+                       Foreground="#666" FontSize="12" Margin="0,0,0,10" TextWrapping="Wrap"/>
+            <Button Content="修改密码"
+                    Width="100"
+                    Height="32"
+                    HorizontalAlignment="Left"
+                    Margin="0,0,0,24"
+                    Command="{Binding ChangePasswordCommand}"/>
+
+            <TextBlock Text="个人通知偏好" FontSize="15" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,12"/>
             <CheckBox Content="登录后显示待办弹窗"
                       IsChecked="{Binding EnableToDoPopup}"
                       Margin="0,0,0,12"/>

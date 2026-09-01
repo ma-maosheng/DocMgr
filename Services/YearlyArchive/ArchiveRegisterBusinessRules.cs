@@ -91,8 +91,8 @@ namespace DocMgr.Services.YearlyArchive
             => ArchiveRegisterDomainValues.NormalizeConfidentialLevel(value);
 
         /// <summary>
-        /// 资料室资料管理员：所属部门为「资料室」的部门资料管理员，或系统管理员。
-        /// 仅用于审批及后续办理（交接/办结等）。
+        /// 资料室资料管理员：所属部门为「资料室」的部门资料管理员。
+        /// 仅用于审批及后续办理（交接/办结等）。系统管理员不替代本角色。
         /// </summary>
         public static bool IsArchiveAdminUser(User? user)
         {
@@ -102,12 +102,6 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             string role = user.Role?.Trim() ?? string.Empty;
-            if (string.Equals(role, "Administrator", StringComparison.Ordinal)
-                || string.Equals(role, "管理员", StringComparison.Ordinal))
-            {
-                return true;
-            }
-
             string dept = user.Department?.Trim() ?? string.Empty;
             return string.Equals(dept, "资料室", StringComparison.Ordinal)
                    && (string.Equals(role, "部门资料管理员", StringComparison.Ordinal)
@@ -142,13 +136,13 @@ namespace DocMgr.Services.YearlyArchive
         public static bool IsApplicantUser(User? user) => IsDepartmentArchiveAdmin(user);
 
         /// <summary>
-        /// 是否允许发起申请（部门资料管理员，或系统管理员例外）。
+        /// 是否允许发起申请：仅部门资料管理员（不含资料室）。系统管理员不替代本角色。
         /// </summary>
         public static bool CanSubmitApplication(User? user) =>
-            IsDepartmentArchiveAdmin(user) || IsSystemAdministrator(user);
+            IsDepartmentArchiveAdmin(user);
 
         /// <summary>
-        /// 系统管理员（超管例外）。
+        /// 系统管理员：仅系统设置等运维，不替代资料室/部门资料管理员办理资料业务。
         /// </summary>
         public static bool IsSystemAdministrator(User? user)
         {
@@ -175,11 +169,10 @@ namespace DocMgr.Services.YearlyArchive
             bool isSignedUploaded = currentRecord?.IsSignedUploaded == true;
             bool isCompleted = currentRecord?.IsArchived == true;
 
-            bool isSysAdmin = IsSystemAdministrator(user);
             bool isArchiveAdmin = IsArchiveAdminUser(user);
             bool isApplicant = IsDepartmentArchiveAdmin(user);
 
-            bool canEditForm = (isApplicant && (isDraft || isSubmitted)) || isSysAdmin;
+            bool canEditForm = isApplicant && (isDraft || isSubmitted);
             bool canApprove = isArchiveAdmin && isSubmitted;
             bool canUpload = isArchiveAdmin && (isApproved || isSignedUploaded);
             bool canEditItemConfidentialLevel = !isCompleted

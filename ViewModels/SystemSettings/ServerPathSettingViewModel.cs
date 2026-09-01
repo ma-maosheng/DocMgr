@@ -91,9 +91,9 @@ namespace DocMgr.ViewModels.SystemSettings
                     _serverPathSettingService.Delete(SelectedSetting.Id);
                     LoadData();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    _dialogService.ShowError("删除失败。");
+                    _dialogService.ShowError($"删除失败：{ex.Message}");
                 }
             }
         }

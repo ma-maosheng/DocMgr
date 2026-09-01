@@ -13,6 +13,7 @@ namespace DocMgr.ViewModels.Cabinets
     {
         private readonly ICabinetService _cabinetService;
         private readonly IDialogService _dialogService;
+        private readonly IUserContextService _userContextService;
 
         private ObservableCollection<Cabinet> _cabinets = new();
 
@@ -45,7 +46,11 @@ namespace DocMgr.ViewModels.Cabinets
 
         public bool AllowOpenOnDoubleClick => false;
 
-        public bool AllowLayoutEdit => true;
+        public bool AllowLayoutEdit => CanMaintainLayout;
+
+        /// <summary>资料室资料管理员可增删改柜体与布局；其他人不可进入本页操作。</summary>
+        public bool CanMaintainLayout =>
+            CabinetManagementPermissionSupport.CanMaintain(_userContextService.CurrentUser);
 
         public RelayCommand RefreshCommand { get; }
         public RelayCommand AddCommand { get; }
@@ -79,18 +84,22 @@ namespace DocMgr.ViewModels.Cabinets
         private const double DefaultMagneticCabinetHeight = 150;
         private const double DefaultMagneticCabinetDepth = 52;
 
-        public CabinetLayoutViewModel(ICabinetService cabinetService, IDialogService dialogService)
+        public CabinetLayoutViewModel(
+            ICabinetService cabinetService,
+            IDialogService dialogService,
+            IUserContextService userContextService)
         {
             _cabinetService = cabinetService;
             _dialogService = dialogService;
+            _userContextService = userContextService;
 
             RefreshCommand = new RelayCommand(_ => LoadData());
-            AddCommand = new RelayCommand(_ => AddCabinet());
-            EditCommand = new RelayCommand(_ => EditCabinet(), _ => SelectedCabinet != null);
-            RotateCommand = new RelayCommand<Cabinet>(RotateCabinet);
-            DeleteCabinetCommand = new RelayCommand<Cabinet>(DeleteCabinetByKey);
-            DeleteCommand = new RelayCommand(_ => DeleteCabinet(), _ => SelectedCabinet != null);
-            SaveLocationCommand = new RelayCommand<Cabinet>(SaveCabinetLocation);
+            AddCommand = new RelayCommand(_ => AddCabinet(), _ => CanMaintainLayout);
+            EditCommand = new RelayCommand(_ => EditCabinet(), _ => CanMaintainLayout && SelectedCabinet != null);
+            RotateCommand = new RelayCommand<Cabinet>(RotateCabinet, _ => CanMaintainLayout);
+            DeleteCabinetCommand = new RelayCommand<Cabinet>(DeleteCabinetByKey, _ => CanMaintainLayout);
+            DeleteCommand = new RelayCommand(_ => DeleteCabinet(), _ => CanMaintainLayout && SelectedCabinet != null);
+            SaveLocationCommand = new RelayCommand<Cabinet>(SaveCabinetLocation, _ => CanMaintainLayout);
 
             SelectCabinetCommand = new RelayCommand<Cabinet>(cab =>
             {
@@ -105,7 +114,7 @@ namespace DocMgr.ViewModels.Cabinets
         private void LoadData()
         {
             var list = _cabinetService.GetAllCabinets();
-            if (list.Count == 0)
+            if (list.Count == 0 && CanMaintainLayout)
             {
                 list = CreateDefaultCabinets();
                 foreach (var cabinet in list)
@@ -162,6 +171,11 @@ namespace DocMgr.ViewModels.Cabinets
 
         private void AddCabinet()
         {
+            if (!EnsureCanMaintainLayout())
+            {
+                return;
+            }
+
             string nextName = GenerateNextName();
 
             var newCab = new Cabinet
@@ -257,6 +271,11 @@ namespace DocMgr.ViewModels.Cabinets
 
         private void EditCabinet()
         {
+            if (!EnsureCanMaintainLayout())
+            {
+                return;
+            }
+
             if (SelectedCabinet == null)
             {
                 _dialogService.ShowMessage("请先选择一个资料柜。", "提示");
@@ -323,6 +342,11 @@ namespace DocMgr.ViewModels.Cabinets
 
         private void DeleteCabinet()
         {
+            if (!EnsureCanMaintainLayout())
+            {
+                return;
+            }
+
             if (SelectedCabinet == null)
             {
                 _dialogService.ShowMessage("请先选择一个资料柜。", "提示");
@@ -338,7 +362,10 @@ namespace DocMgr.ViewModels.Cabinets
 
         private void RotateCabinet(Cabinet cab)
         {
-            if (cab == null) return;
+            if (cab == null || !EnsureCanMaintainLayout())
+            {
+                return;
+            }
 
             cab.RotationAngle += 90;
             if (cab.RotationAngle >= 360) cab.RotationAngle = 0;
@@ -354,10 +381,23 @@ namespace DocMgr.ViewModels.Cabinets
 
         private void SaveCabinetLocation(Cabinet cab)
         {
-            if (cab != null)
+            if (cab == null || !CanMaintainLayout)
             {
-                _cabinetService.UpdateCabinet(cab);
+                return;
             }
+
+            _cabinetService.UpdateCabinet(cab);
+        }
+
+        private bool EnsureCanMaintainLayout()
+        {
+            if (CanMaintainLayout)
+            {
+                return true;
+            }
+
+            _dialogService.ShowMessage(CabinetManagementPermissionSupport.RegisterDeniedMessage);
+            return false;
         }
     }
 }

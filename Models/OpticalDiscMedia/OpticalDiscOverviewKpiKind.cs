@@ -13,7 +13,9 @@ namespace DocMgr.Models.OpticalDiscMedia
         NeedReturn = 5,
         MissingLocation = 6,
         RecentTransactions = 7,
-        OutboundWithoutKeeper = 8
+        OutboundWithoutKeeper = 8,
+        LostInStock = 9,
+        ScrapInStock = 10
     }
 
     /// <summary>

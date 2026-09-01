@@ -281,6 +281,24 @@
             <Setter Property="FontSize" Value="13"/>
         </Style>
 
+        <Style x:Key="HomeSectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#1F2937"/>
+        </Style>
+
+        <Style x:Key="HomeBodyStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#64748B"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="HomeModuleTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+        </Style>
+
         <!-- Expander 样式 -->
         <Style TargetType="Expander" x:Key="NavExpander">
             <Setter Property="Foreground" Value="White"/>
@@ -629,7 +647,7 @@
                         <!-- 7. 帮助 -->
                         <Expander x:Name="ExpHelp" Header="帮助" Style="{StaticResource NavExpander}">
                             <StackPanel>
-                                <Button x:Name="BtnHelpDoc" Content="帮助文档" Style="{StaticResource SubNavButton}" Click="BtnHelpDoc_Click"/>
+                                <Button x:Name="BtnHelpDoc" Content="操作手册" Style="{StaticResource SubNavButton}" Click="BtnHelpDoc_Click"/>
                             </StackPanel>
                         </Expander>
                     </StackPanel>
@@ -770,177 +788,194 @@
                     </Grid>
                 </Border>
 
-                <Grid x:Name="HomeContentPanel" Grid.Row="1" Grid.RowSpan="2" Margin="20,20,20,24">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2.1*"/>
-                        <ColumnDefinition Width="1.2*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <Grid Grid.Column="0" Margin="0,0,18,0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-
-                        <Border Grid.Row="0" Background="{StaticResource HomeHeroBrush}" CornerRadius="18" Padding="24" Margin="0,0,0,18">
+                <ScrollViewer x:Name="HomeContentPanel"
+                              Grid.Row="1" Grid.RowSpan="2"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="20,16,12,20">
+                    <StackPanel>
+                        <Border Background="{StaticResource HomeHeroBrush}" CornerRadius="16" Padding="22,18" Margin="0,0,8,14">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="220"/>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="260"/>
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel>
-                                    <TextBlock Text="欢迎使用测绘资料管理系统" Foreground="White" FontSize="28" FontWeight="Bold"/>
-                                    <TextBlock Text="聚合年度资料登记、资料立档、历史资料与介质流转，帮助资料室形成更清晰、更稳健的日常协同体验。"
-                                               Foreground="#E8FFFB" FontSize="14" Margin="0,10,0,0" TextWrapping="Wrap"/>
-                                    <WrapPanel Margin="0,18,0,0">
-                                        <Border Background="#20FFFFFF" CornerRadius="12" Padding="12,8" Margin="0,0,10,10">
+                                    <TextBlock Text="测绘资料管理系统" Foreground="White" FontSize="26" FontWeight="Bold"/>
+                                    <TextBlock Text="面向资料室日常作业：年度资料按模拟盒、电子袋双轨立档并落柜，再经检索、借还、迁档、盘库与离库形成闭环；出入网、历史图件、档案柜与硬盘/光盘介质在同一工作台协同。"
+                                               Foreground="#E8FFFB" FontSize="13.5" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                                    <WrapPanel Margin="0,14,0,0">
+                                        <Border Background="#20FFFFFF" CornerRadius="10" Padding="12,7" Margin="0,0,8,8">
                                             <StackPanel>
-                                                <TextBlock Text="资料登记" Foreground="#D9FFFA" FontSize="12"/>
-                                                <TextBlock Text="规范化" Foreground="White" FontSize="16" FontWeight="SemiBold"/>
+                                                <TextBlock Text="资料形态" Foreground="#D9FFFA" FontSize="11"/>
+                                                <TextBlock Text="模拟盒 · 电子袋" Foreground="White" FontSize="14" FontWeight="SemiBold"/>
                                             </StackPanel>
                                         </Border>
-                                        <Border Background="#20FFFFFF" CornerRadius="12" Padding="12,8" Margin="0,0,10,10">
+                                        <Border Background="#20FFFFFF" CornerRadius="10" Padding="12,7" Margin="0,0,8,8">
                                             <StackPanel>
-                                                <TextBlock Text="资料立档" Foreground="#D9FFFA" FontSize="12"/>
-                                                <TextBlock Text="可追溯" Foreground="White" FontSize="16" FontWeight="SemiBold"/>
+                                                <TextBlock Text="存放位置" Foreground="#D9FFFA" FontSize="11"/>
+                                                <TextBlock Text="柜体 · 档口 · 盒袋" Foreground="White" FontSize="14" FontWeight="SemiBold"/>
                                             </StackPanel>
                                         </Border>
-                                        <Border Background="#20FFFFFF" CornerRadius="12" Padding="12,8" Margin="0,0,10,10">
+                                        <Border Background="#20FFFFFF" CornerRadius="10" Padding="12,7" Margin="0,0,8,8">
                                             <StackPanel>
-                                                <TextBlock Text="介质流转" Foreground="#D9FFFA" FontSize="12"/>
-                                                <TextBlock Text="全流程" Foreground="White" FontSize="16" FontWeight="SemiBold"/>
+                                                <TextBlock Text="办理方式" Foreground="#D9FFFA" FontSize="11"/>
+                                                <TextBlock Text="申请 · 审批 · 签批办结" Foreground="White" FontSize="14" FontWeight="SemiBold"/>
                                             </StackPanel>
                                         </Border>
                                     </WrapPanel>
                                 </StackPanel>
 
-                                <Border Grid.Column="1" Background="#18FFFFFF" CornerRadius="16" Padding="18" HorizontalAlignment="Stretch">
+                                <Border Grid.Column="2" Background="#18FFFFFF" CornerRadius="14" Padding="14">
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="今日建议" Foreground="#D6FFF8" FontSize="13" FontWeight="SemiBold"/>
-                                        <TextBlock Text="优先处理已提交待审批资料与待归档记录。" Foreground="White" FontSize="18" FontWeight="Bold" Margin="0,8,0,10" TextWrapping="Wrap"/>
-                                        <TextBlock Text="可通过左侧菜单快速进入“资料建档”“资料检索”“资料流转”等功能区。" Foreground="#E8FFFB" FontSize="12" TextWrapping="Wrap"/>
+                                        <TextBlock Text="从哪里开始" Foreground="#D6FFF8" FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBlock Text="先看右上角待办角标，再按角色进入左侧菜单。" Foreground="White" FontSize="15" FontWeight="Bold" Margin="0,6,0,8" TextWrapping="Wrap"/>
+                                        <TextBlock Text="无权限的菜单会显示为灰色。详细操作说明见「帮助 → 帮助文档」。" Foreground="#E8FFFB" FontSize="12" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </Border>
                             </Grid>
                         </Border>
 
-                        <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,18">
-                            <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,12,0">
+                        <TextBlock Text="功能模块" Style="{StaticResource HomeSectionTitleStyle}" Margin="2,0,0,8"/>
+                        <UniformGrid Columns="3" Margin="0,0,8,8">
+                            <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,10,10" Padding="14">
                                 <StackPanel>
-                                    <TextBlock Text="01" Foreground="#9CA3AF" FontSize="12" FontWeight="Bold"/>
-                                    <TextBlock Text="年度资料档案化" Margin="0,8,0,0" Style="{StaticResource HomeMetricLabelStyle}"/>
-                                    <TextBlock Text="登记 · 立档 · 检索" Margin="0,4,0,0" Style="{StaticResource HomeMetricValueStyle}" FontSize="20"/>
+                                    <TextBlock Text="年度项目管理" Style="{StaticResource HomeModuleTitleStyle}"/>
+                                    <TextBlock Text="维护项目名称、编号、实施年度，供建档申请与立档台账引用。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,12,0">
+                            <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,10,10" Padding="14">
                                 <StackPanel>
-                                    <TextBlock Text="02" Foreground="#9CA3AF" FontSize="12" FontWeight="Bold"/>
-                                    <TextBlock Text="历史资料管理" Margin="0,8,0,0" Style="{StaticResource HomeMetricLabelStyle}"/>
-                                    <TextBlock Text="图件 · 影像 · 文档" Margin="0,4,0,0" Style="{StaticResource HomeMetricValueStyle}" FontSize="20"/>
+                                    <TextBlock Text="年度资料档案化" Style="{StaticResource HomeModuleTitleStyle}"/>
+                                    <TextBlock Text="建档、立档、迁档、检索、借还、盘库、离库；存量硬盘/文本可直办立档。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource HomeCardStyle}" Margin="0">
+                            <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,0,10" Padding="14">
                                 <StackPanel>
-                                    <TextBlock Text="03" Foreground="#9CA3AF" FontSize="12" FontWeight="Bold"/>
-                                    <TextBlock Text="硬盘介质流转" Margin="0,8,0,0" Style="{StaticResource HomeMetricLabelStyle}"/>
-                                    <TextBlock Text="申请 · 审批 · 归还" Margin="0,4,0,0" Style="{StaticResource HomeMetricValueStyle}" FontSize="20"/>
+                                    <TextBlock Text="年度资料出入网" Style="{StaticResource HomeModuleTitleStyle}"/>
+                                    <TextBlock Text="入网、出网申请与审批，以及在网数据处置；可与检索池、建档、硬盘归还衔接。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,10,10" Padding="14">
+                                <StackPanel>
+                                    <TextBlock Text="历史存档资料" Style="{StaticResource HomeModuleTitleStyle}"/>
+                                    <TextBlock Text="地形图、航摄影像、其他图件按盒号落柜；支持历史资料离库处置。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,10,10" Padding="14">
+                                <StackPanel>
+                                    <TextBlock Text="档案柜管理" Style="{StaticResource HomeModuleTitleStyle}"/>
+                                    <TextBlock Text="登记柜体布局与档口用途，检索盒位/硬盘槽位占用，支撑立档落柜与迁档。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,0,10" Padding="14">
+                                <StackPanel>
+                                    <TextBlock Text="介质管理" Style="{StaticResource HomeModuleTitleStyle}"/>
+                                    <TextBlock Text="硬盘：登记、出库、归还、盘库、离库与台账。光盘：概览与流转台账。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
                                 </StackPanel>
                             </Border>
                         </UniformGrid>
 
-                        <Border Grid.Row="2" Style="{StaticResource HomeCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="推荐操作路径" FontSize="16" FontWeight="Bold" Foreground="#1F2937"/>
-                                <TextBlock Text="结合资料室常见工作节奏，对日常操作做简洁提示。" Foreground="#6B7280" Margin="0,6,0,14"/>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
+                        <Grid Margin="0,0,8,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.35*"/>
+                                <ColumnDefinition Width="14"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-                                    <Border Grid.Row="0" Width="34" Height="34" CornerRadius="17" Background="#E0F2F1" Margin="0,0,14,14">
-                                        <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#00695C"/>
-                                    </Border>
-                                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,14">
-                                        <TextBlock Text="资料建档" FontWeight="Bold" Foreground="#1F2937"/>
-                                        <TextBlock Text="先执行建档申请，再进入申请审批，最后完成资料立档。" Foreground="#6B7280" TextWrapping="Wrap"/>
-                                    </StackPanel>
-
-                                    <Border Grid.Row="1" Width="34" Height="34" CornerRadius="17" Background="#E3F2FD" Margin="0,0,14,14">
-                                        <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#1565C0"/>
-                                    </Border>
-                                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,14">
-                                        <TextBlock Text="资料立档" FontWeight="Bold" Foreground="#1F2937"/>
-                                        <TextBlock Text="将模拟档案盒与电子介质袋落位，并维护容器编号与物理位置。" Foreground="#6B7280" TextWrapping="Wrap"/>
-                                    </StackPanel>
-
-                                    <Border Grid.Row="2" Width="34" Height="34" CornerRadius="17" Background="#F3E5F5">
-                                        <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#7B1FA2"/>
-                                    </Border>
-                                    <StackPanel Grid.Row="2" Grid.Column="1">
-                                        <TextBlock Text="资料检索" FontWeight="Bold" Foreground="#1F2937"/>
-                                        <TextBlock Text="按编号、项目、人员和状态快速定位资料，并查看立档结果。" Foreground="#6B7280" TextWrapping="Wrap"/>
-                                    </StackPanel>
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-
-                    <StackPanel Grid.Column="1">
-                        <Border Style="{StaticResource HomeCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="系统亮点" FontSize="16" FontWeight="Bold" Foreground="#1F2937"/>
-                                <TextBlock Text="面向资料室实际业务流程的统一工作台。" Foreground="#6B7280" Margin="0,6,0,12"/>
-                                <Border Background="#F8FAFC" CornerRadius="10" Padding="12" Margin="0,0,0,10">
-                                    <StackPanel>
-                                        <TextBlock Text="资料与容器关联" FontWeight="SemiBold" Foreground="#0F172A"/>
-                                        <TextBlock Text="支持档案盒、电子介质袋及物理位置的关联追溯。" Foreground="#64748B" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="#F8FAFC" CornerRadius="10" Padding="12" Margin="0,0,0,10">
-                                    <StackPanel>
-                                        <TextBlock Text="流程闭环" FontWeight="SemiBold" Foreground="#0F172A"/>
-                                        <TextBlock Text="贯通申请、审批、交接、立档、检索与介质流转。" Foreground="#64748B" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="#F8FAFC" CornerRadius="10" Padding="12">
-                                    <StackPanel>
-                                        <TextBlock Text="统一入口" FontWeight="SemiBold" Foreground="#0F172A"/>
-                                        <TextBlock Text="首页提供清晰导航，便于快速切换到当前工作场景。" Foreground="#64748B" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                    </StackPanel>
-                                </Border>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource HomeCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="操作建议" FontSize="16" FontWeight="Bold" Foreground="#1F2937"/>
-                                <TextBlock Text="建议先关注顶部待办，再按业务模块逐项处理。" Foreground="#6B7280" Margin="0,6,0,12"/>
+                            <Border Style="{StaticResource HomeCardStyle}" Padding="16" Margin="0">
                                 <StackPanel>
-                                    <DockPanel Margin="0,0,0,10">
-                                        <Ellipse Width="8" Height="8" Fill="#26A69A" Margin="0,6,10,0"/>
-                                        <TextBlock Text="若顶部显示待办角标，优先处理审批和交接事项。" TextWrapping="Wrap" Foreground="#374151"/>
+                                    <TextBlock Text="年度资料主闭环" Style="{StaticResource HomeSectionTitleStyle}"/>
+                                    <TextBlock Text="模拟资料入档案盒，电子资料入介质袋；每条立档事实绑定容器与柜位，状态随流转更新。"
+                                               Style="{StaticResource HomeBodyStyle}" Margin="0,4,0,12"/>
+
+                                    <DockPanel Margin="0,0,0,8">
+                                        <Border Width="28" Height="28" CornerRadius="14" Background="#E0F2F1" Margin="0,0,10,0">
+                                            <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#00695C"/>
+                                        </Border>
+                                        <StackPanel>
+                                            <TextBlock Text="建档 → 审批 → 立档" FontWeight="SemiBold" Foreground="#1F2937"/>
+                                            <TextBlock Text="先提交建档申请并完成审批，再将资料落入盒/袋并占用档口。存量资料可用「直办立档」补登。" Style="{StaticResource HomeBodyStyle}"/>
+                                        </StackPanel>
                                     </DockPanel>
-                                    <DockPanel Margin="0,0,0,10">
-                                        <Ellipse Width="8" Height="8" Fill="#42A5F5" Margin="0,6,10,0"/>
-                                        <TextBlock Text="立档前建议先核对建档申请与审批信息，避免后续返工。" TextWrapping="Wrap" Foreground="#374151"/>
+                                    <DockPanel Margin="0,0,0,8">
+                                        <Border Width="28" Height="28" CornerRadius="14" Background="#E3F2FD" Margin="0,0,10,0">
+                                            <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#1565C0"/>
+                                        </Border>
+                                        <StackPanel>
+                                            <TextBlock Text="检索 → 检索池 → 借出/入网" FontWeight="SemiBold" Foreground="#1F2937"/>
+                                            <TextBlock Text="综合或分介质检索后加入检索池，再发起借出申请或入网申请，避免在库外零散勾选。" Style="{StaticResource HomeBodyStyle}"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                    <DockPanel Margin="0,0,0,8">
+                                        <Border Width="28" Height="28" CornerRadius="14" Background="#F3E5F5" Margin="0,0,10,0">
+                                            <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#7B1FA2"/>
+                                        </Border>
+                                        <StackPanel>
+                                            <TextBlock Text="出库交接 → 归还入库" FontWeight="SemiBold" Foreground="#1F2937"/>
+                                            <TextBlock Text="审批出库后办理实物交接；需归还的资料走归还申请与审批入库，盒袋位置随之回写。" Style="{StaticResource HomeBodyStyle}"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                    <DockPanel Margin="0,0,0,8">
+                                        <Border Width="28" Height="28" CornerRadius="14" Background="#FFF3E0" Margin="0,0,10,0">
+                                            <TextBlock Text="4" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#EF6C00"/>
+                                        </Border>
+                                        <StackPanel>
+                                            <TextBlock Text="迁档换位" FontWeight="SemiBold" Foreground="#1F2937"/>
+                                            <TextBlock Text="模拟/电子资料可整盒整袋迁档，更新柜位与容器编号，迁档台账可追溯。" Style="{StaticResource HomeBodyStyle}"/>
+                                        </StackPanel>
                                     </DockPanel>
                                     <DockPanel>
-                                        <Ellipse Width="8" Height="8" Fill="#AB47BC" Margin="0,6,10,0"/>
-                                        <TextBlock Text="检索页可直接查看已立档结果，便于后续借阅与追踪。" TextWrapping="Wrap" Foreground="#374151"/>
+                                        <Border Width="28" Height="28" CornerRadius="14" Background="#FFEBEE" Margin="0,0,10,0">
+                                            <TextBlock Text="5" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#C62828"/>
+                                        </Border>
+                                        <StackPanel>
+                                            <TextBlock Text="盘库登记 → 离库处置" FontWeight="SemiBold" Foreground="#1F2937"/>
+                                            <TextBlock Text="盘失、拟销、损坏先记入盘库中间态；离库处置审批办结后才正式清账、释档或低格留盘。" Style="{StaticResource HomeBodyStyle}"/>
+                                        </StackPanel>
                                     </DockPanel>
                                 </StackPanel>
+                            </Border>
+
+                            <StackPanel Grid.Column="2">
+                                <Border Style="{StaticResource HomeCardStyle}" Padding="16" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="出入网与跨域" Style="{StaticResource HomeSectionTitleStyle}"/>
+                                        <TextBlock Text="入网把资料写入指定服务器路径并形成在网台账；出网从在网数据导出，可衔接后续建档。跨域流转台账汇总入网、出网与关联硬盘借用。"
+                                                   Style="{StaticResource HomeBodyStyle}" Margin="0,4,0,8"/>
+                                        <TextBlock Text="在网数据处置用于注销或销毁已入网数据，流程与签批要求对齐资料离库。" Style="{StaticResource HomeBodyStyle}"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource HomeCardStyle}" Padding="16" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="柜位与介质" Style="{StaticResource HomeSectionTitleStyle}"/>
+                                        <TextBlock Text="立档、迁档、借还都依赖档案柜档口。硬盘可独立出库，也可随资料袋占用；已挂资料袋的硬盘不能再走硬盘离库。光盘随电子立档产生，在光盘台账中查看流转。"
+                                                   Style="{StaticResource HomeBodyStyle}" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource HomeCardStyle}" Padding="16" Margin="0">
+                                    <StackPanel>
+                                        <TextBlock Text="使用提示" Style="{StaticResource HomeSectionTitleStyle}"/>
+                                        <DockPanel Margin="0,8,0,6">
+                                            <Ellipse Width="8" Height="8" Fill="#26A69A" Margin="0,5,8,0"/>
+                                            <TextBlock Text="待办优先：审批、交接、签批上传未完成时，角标会提示。" TextWrapping="Wrap" Foreground="#374151" FontSize="12.5"/>
+                                        </DockPanel>
+                                        <DockPanel Margin="0,0,0,6">
+                                            <Ellipse Width="8" Height="8" Fill="#42A5F5" Margin="0,5,8,0"/>
+                                            <TextBlock Text="办结前打印签批单一般留白签字栏，办结后重打才按角色预填。" TextWrapping="Wrap" Foreground="#374151" FontSize="12.5"/>
+                                        </DockPanel>
+                                        <DockPanel>
+                                            <Ellipse Width="8" Height="8" Fill="#AB47BC" Margin="0,5,8,0"/>
+                                            <TextBlock Text="系统设置含用户、部门、角色、服务器路径、逾期规则与操作日志；个人设置控制待办弹窗与刷新。" TextWrapping="Wrap" Foreground="#374151" FontSize="12.5"/>
+                                        </DockPanel>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
-                        </Border>
+                        </Grid>
                     </StackPanel>
-                </Grid>
+                </ScrollViewer>
 
                 <!-- 页面内容容器 -->
                 <!-- NavigationUIVisibility="Hidden" 用于隐藏Frame自带的后退按钮 -->

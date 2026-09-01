@@ -41,6 +41,8 @@ namespace DocMgr.Services.HardDiskMedia
                 InStockCount = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusInStock),
                 OutTemporaryCount = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusOut),
                 DamagedInStockCount = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusDamaged),
+                LostInStockCount = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusLost),
+                ScrapInStockCount = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusScrap),
                 DestroyedCount = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusDestroyed),
                 NeedReturnMediumCount = mediaItems.Count(item => item.NeedReturn),
                 MissingLocationMediumCount = mediaItems.Count(item => string.IsNullOrWhiteSpace(item.CurrentLocation)),
@@ -108,6 +110,8 @@ namespace DocMgr.Services.HardDiskMedia
             int inStock = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusInStock);
             int outTemporary = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusOut);
             int damaged = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusDamaged);
+            int lost = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusLost);
+            int scrap = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusScrap);
             int destroyed = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusDestroyed);
             int needReturn = mediaItems.Count(item => item.NeedReturn);
 
@@ -121,7 +125,7 @@ namespace DocMgr.Services.HardDiskMedia
             return
             [
                 $"登记来源：资料存档登记 {archiveRegistered} 张（系统不管理空白光盘，仅管理已写入数据的数据光盘）。",
-                $"状态结构：在库(资料) {inStock} 张、出库(临时) {outTemporary} 张、在库(损坏) {damaged} 张、出库(销毁) {destroyed} 张。",
+                $"状态结构：在库(资料) {inStock} 张、出库(临时) {outTemporary} 张、在库(损坏) {damaged} 张、在库(盘失) {lost} 张、在库(拟销) {scrap} 张、出库(销毁) {destroyed} 张。",
                 $"归还控制：需归还 {needReturn} 张。",
                 $"光盘类型分布：{discTypeSummary}。"
             ];
@@ -163,6 +167,8 @@ namespace DocMgr.Services.HardDiskMedia
                 string.IsNullOrWhiteSpace(item.CurrentHolder));
             int needReturnCount = mediaItems.Count(item => item.NeedReturn);
             int damagedCount = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusDamaged);
+            int lostCount = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusLost);
+            int scrapCount = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusScrap);
             int outTemporaryCount = mediaItems.Count(item => item.CurrentStatus == OpticalDiscMedium.StatusOut);
 
             if (mediaItems.Count == 0)
@@ -173,7 +179,7 @@ namespace DocMgr.Services.HardDiskMedia
             return
             [
                 $"基础台账风险：未登记当前位置 {missingLocationCount} 张，出库但未明确保管人/接收单位 {outboundWithoutKeeperCount} 张。",
-                $"在外与损坏风险：临时出库 {outTemporaryCount} 张，其中需归还 {needReturnCount} 张；在库损坏 {damagedCount} 张。"
+                $"在外与中间态风险：临时出库 {outTemporaryCount} 张（需归还 {needReturnCount} 张）；在库损坏 {damagedCount} 张、盘失 {lostCount} 张、拟销 {scrapCount} 张。"
             ];
         }
 
@@ -212,7 +218,9 @@ namespace DocMgr.Services.HardDiskMedia
         private static bool IsOpticalDiscInStockStatus(OpticalDiscOverviewMediumSnapshot item)
         {
             return string.Equals(item.CurrentStatus, OpticalDiscMedium.StatusInStock, StringComparison.Ordinal)
-                || string.Equals(item.CurrentStatus, OpticalDiscMedium.StatusDamaged, StringComparison.Ordinal);
+                || string.Equals(item.CurrentStatus, OpticalDiscMedium.StatusDamaged, StringComparison.Ordinal)
+                || string.Equals(item.CurrentStatus, OpticalDiscMedium.StatusLost, StringComparison.Ordinal)
+                || string.Equals(item.CurrentStatus, OpticalDiscMedium.StatusScrap, StringComparison.Ordinal);
         }
 
         private sealed record OpticalDiscOverviewMediumSnapshot(

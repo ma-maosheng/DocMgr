@@ -40,11 +40,20 @@ public class UserRepository : IUserRepository
         _dbContext = dbContext;
     }
 
-    public User? GetByLogin(string loginName, string hashedPassword)
+    public User? GetByLoginName(string loginName)
     {
-        return _dbContext.Users.FirstOrDefault(user =>
-            user.LoginName == loginName &&
-            user.Password == hashedPassword);
+        string normalized = (loginName ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(normalized))
+        {
+            return null;
+        }
+
+        return _dbContext.Users.FirstOrDefault(user => user.LoginName == normalized);
+    }
+
+    public bool HasAnyUsers()
+    {
+        return _dbContext.Users.Any();
     }
 
     public User? GetById(int userId)
@@ -54,7 +63,10 @@ public class UserRepository : IUserRepository
 
     public List<User> GetAllUsers()
     {
-        return _dbContext.Users.OrderBy(user => user.Id).ToList();
+        return _dbContext.Users
+            .AsNoTracking()
+            .OrderBy(user => user.Id)
+            .ToList();
     }
 
     public List<UserSession> GetActiveSessions(int userId)

@@ -18,5 +18,13 @@ namespace DocMgr.Views.SystemSettings
                 vm.Password = pb.Password;
             }
         }
+
+        private void PwdConfirmBox_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is UserEditDialogViewModel vm && sender is PasswordBox pb)
+            {
+                vm.ConfirmPassword = pb.Password;
+            }
+        }
     }
 }

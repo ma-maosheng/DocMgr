@@ -198,6 +198,15 @@ namespace DocMgr
                     throw SqliteNetworkAccessSupport.CreateSharedDatabaseUnavailableException(ex);
                 }
 
+                initializationState.ReportProgress("正在检查系统基础数据…");
+                var devSeedRepository = scope.ServiceProvider.GetRequiredService<IDevSystemSettingsSeedRepository>();
+                var seedPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings", "system-settings.seed.json");
+                DevSystemSettingsSeeder.SeedFromExternalFileIfEmpty(devSeedRepository, seedPath);
+
+                initializationState.ReportProgress("正在检查默认管理员账号…");
+                var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+                DefaultAdministratorBootstrap.EnsureIfEmpty(userRepository);
+
                 initializationState.MarkLoginReady();
                 _ = Task.Run(() => RunDeferredDatabaseMaintenanceSafe(initializationState));
             }

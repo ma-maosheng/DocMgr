@@ -208,6 +208,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             StatusOptions.Add(OpticalDiscMedium.StatusInStock);
             StatusOptions.Add(OpticalDiscMedium.StatusOut);
             StatusOptions.Add(OpticalDiscMedium.StatusDamaged);
+            StatusOptions.Add(OpticalDiscMedium.StatusLost);
+            StatusOptions.Add(OpticalDiscMedium.StatusScrap);
             StatusOptions.Add(OpticalDiscMedium.StatusDestroyed);
 
             TransactionTypeOptions.Clear();
@@ -216,6 +218,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
             TransactionTypeOptions.Add(OpticalDiscMediaTransaction.TypeOutboundTemporary);
             TransactionTypeOptions.Add(OpticalDiscMediaTransaction.TypeReturnRegistration);
             TransactionTypeOptions.Add(OpticalDiscMediaTransaction.TypeDamagedRegistration);
+            TransactionTypeOptions.Add(OpticalDiscMediaTransaction.TypeInventoryRegisterDamage);
+            TransactionTypeOptions.Add(OpticalDiscMediaTransaction.TypeInventoryRegisterLost);
+            TransactionTypeOptions.Add(OpticalDiscMediaTransaction.TypeInventoryRegisterScrap);
             TransactionTypeOptions.Add(OpticalDiscMediaTransaction.TypeDestroy);
             TransactionTypeOptions.Add(OpticalDiscMediaTransaction.TypeRelocate);
             TransactionTypeOptions.Add(OpticalDiscMediaTransaction.TypeRegister);

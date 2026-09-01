@@ -24,7 +24,9 @@ namespace DocMgr.Models.HardDiskMedia
         NeedReturn = 16,
         MissingLocation = 17,
         MissingLedger = 18,
-        OutboundWithoutKeeper = 19
+        OutboundWithoutKeeper = 19,
+        OutLost = 20,
+        InStockScrap = 21
     }
 
     /// <summary>

@@ -372,6 +372,30 @@ namespace DocMgr.Services.Shared
             }
         }
 
+        public bool ShowChangePasswordDialog(bool isMandatory = false)
+        {
+            var dialog = new ChangePasswordDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+            var (scope, viewModel) = CreateScopedViewModel<ChangePasswordDialogViewModel>(isMandatory);
+
+            dialog.DataContext = viewModel;
+
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            viewModel.RequestClose += HandleRequestClose;
+
+            try
+            {
+                return dialog.ShowDialog() == true;
+            }
+            finally
+            {
+                viewModel.RequestClose -= HandleRequestClose;
+                scope.Dispose();
+            }
+        }
+
         public bool ShowCabinetEditDialog(Cabinet cabinetToEdit)
         {
             var dialog = new CabinetEditDialog

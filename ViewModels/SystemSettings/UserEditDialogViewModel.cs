@@ -18,6 +18,7 @@ namespace DocMgr.ViewModels.SystemSettings
         private string _selectedDepartment = string.Empty;
         private string _selectedRole = string.Empty;
         private string _password = string.Empty;
+        private string _confirmPassword = string.Empty;
 
         public UserEditDialogViewModel(IUserService userService, IDialogService dialogService, User? userToEdit)
         {
@@ -80,6 +81,15 @@ namespace DocMgr.ViewModels.SystemSettings
             set => SetProperty(ref _password, value);
         }
 
+        public string ConfirmPassword
+        {
+            get => _confirmPassword;
+            set => SetProperty(ref _confirmPassword, value);
+        }
+
+        public string PasswordHint =>
+            $"至少 {PasswordHashingSupport.MinLength} 位，且不能与登录账号相同。新增必填；编辑时留空则不改密码。管理员重置后，该用户下次登录须自行修改。";
+
         public ICommand ConfirmCommand { get; }
         public ICommand CancelCommand { get; }
 
@@ -92,6 +102,7 @@ namespace DocMgr.ViewModels.SystemSettings
             string dept = (SelectedDepartment ?? string.Empty).Trim();
             string role = (SelectedRole ?? string.Empty).Trim();
             string pwd = Password ?? string.Empty;
+            string confirmPwd = ConfirmPassword ?? string.Empty;
 
             if (string.IsNullOrEmpty(login) || string.IsNullOrEmpty(real))
             {
@@ -106,6 +117,11 @@ namespace DocMgr.ViewModels.SystemSettings
                     if (string.IsNullOrEmpty(pwd))
                     {
                         _dialogService.ShowMessage("新增用户时密码不能为空！", "提示");
+                        return;
+                    }
+
+                    if (!TryValidatePasswordInput(pwd, confirmPwd, login))
+                    {
                         return;
                     }
 
@@ -128,6 +144,11 @@ namespace DocMgr.ViewModels.SystemSettings
                         return;
                     }
 
+                    if (!string.IsNullOrEmpty(pwd) && !TryValidatePasswordInput(pwd, confirmPwd, login))
+                    {
+                        return;
+                    }
+
                     _currentUser.LoginName = login;
                     _currentUser.RealName = real;
                     _currentUser.Department = dept;
@@ -142,6 +163,24 @@ namespace DocMgr.ViewModels.SystemSettings
             {
                 _dialogService.ShowError($"操作失败：{ex.Message}\n可能原因：登录账号已存在。", "错误");
             }
+        }
+
+        private bool TryValidatePasswordInput(string password, string confirmPassword, string loginName)
+        {
+            if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
+            {
+                _dialogService.ShowMessage("两次输入的密码不一致。", "提示");
+                return false;
+            }
+
+            string? policyError = PasswordHashingSupport.ValidatePolicy(password, loginName);
+            if (policyError != null)
+            {
+                _dialogService.ShowMessage(policyError, "提示");
+                return false;
+            }
+
+            return true;
         }
     }
 }

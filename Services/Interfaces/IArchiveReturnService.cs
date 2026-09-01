@@ -15,7 +15,7 @@ namespace DocMgr.Services.Interfaces
         /// <summary>部门资料管理员（不含资料室），仅可发起申请。</summary>
         bool IsDepartmentArchiveAdmin(User? user);
 
-        /// <summary>是否允许发起申请（部门资料管理员或系统管理员）。</summary>
+        /// <summary>是否允许发起申请（仅部门资料管理员）。</summary>
         bool CanSubmitApplication(User? user);
 
         /// <summary>列出可发起归还的出库单（已办结出库、存在未归还提档项、且无有效归还单）。</summary>

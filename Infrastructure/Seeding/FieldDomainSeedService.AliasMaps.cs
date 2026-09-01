@@ -428,6 +428,9 @@ public static partial class FieldDomainSeedService
         ["User.Role"] = "角色",
         ["User.Password"] = "密码",
         ["User.CreatedDate"] = "创建日期",
+        ["User.MustChangePassword"] = "下次登录须改密",
+        ["User.FailedLoginCount"] = "登录失败次数",
+        ["User.LockoutUntil"] = "锁定截止时间",
 
         ["UserPreference.Id"] = "ID",
         ["UserPreference.UserId"] = "用户ID",

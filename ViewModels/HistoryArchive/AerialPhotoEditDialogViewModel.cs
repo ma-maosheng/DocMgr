@@ -63,15 +63,19 @@ namespace DocMgr.ViewModels.HistoryArchive
             PhotoCount = _photo.PhotoCount == 0 ? string.Empty : _photo.PhotoCount.ToString();
             Remark = _photo.Remark;
 
-            ConfirmCommand = new RelayCommand(_ => Confirm(), _ => CanEditBoxNumber);
+            ConfirmCommand = new RelayCommand(_ => Confirm(), _ => CanSave);
             CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
         }
 
         public string Title => "编辑航摄影像";
 
-        /// <summary>已离库记录禁止改盒号，且不可保存。</summary>
-        public bool CanEditBoxNumber =>
-            !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(_photo.LifecycleStatus);
+        /// <summary>已离库或无权维护时禁止改盒号。</summary>
+        public bool CanEditBoxNumber => CanSave;
+
+        /// <summary>仅资料室资料管理员可保存编辑。</summary>
+        public bool CanSave =>
+            HistoryArchiveLedgerPermissionSupport.CanMaintain(_userContextService.CurrentUser)
+            && !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(_photo.LifecycleStatus);
 
         public string BoxNumber
         {
@@ -128,9 +132,12 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private void Confirm()
         {
-            if (!CanEditBoxNumber)
+            if (!CanSave)
             {
-                _dialogService.ShowMessage("已离库记录只读，禁止修改。");
+                _dialogService.ShowMessage(
+                    HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(_photo.LifecycleStatus)
+                        ? "已离库记录只读，禁止修改。"
+                        : HistoryArchiveLedgerPermissionSupport.MaintainDeniedMessage);
                 return;
             }
 

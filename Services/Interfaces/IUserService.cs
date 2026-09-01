@@ -13,6 +13,11 @@ namespace DocMgr.Services.Interfaces
         UserLoginResult Login(string loginName, string password, bool forceReplaceExistingSession = false);
 
         /// <summary>
+        /// 当前用户修改本人密码。
+        /// </summary>
+        PasswordChangeResult ChangeOwnPassword(int userId, string currentPassword, string newPassword);
+
+        /// <summary>
         /// 刷新当前会话心跳。
         /// </summary>
         UserSessionHeartbeatResult RefreshSession(string sessionId);

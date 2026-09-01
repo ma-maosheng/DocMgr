@@ -260,7 +260,7 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveOutboundFlowResult.Fail("仅部门资料管理员可提交资料借出申请。");
             }
 
-            if (record.ApplicantUserId != user.Id && !ArchiveRegisterBusinessRules.IsSystemAdministrator(user))
+            if (record.ApplicantUserId != user.Id)
             {
                 return ArchiveOutboundFlowResult.Fail("仅申请人本人可提交该申请。");
             }
@@ -355,8 +355,7 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveOutboundFlowResult.Fail("仅部门资料管理员可撤回资料借出申请。");
             }
 
-            if (record.ApplicantUserId != user.Id
-                && !ArchiveRegisterBusinessRules.IsSystemAdministrator(user))
+            if (record.ApplicantUserId != user.Id)
             {
                 return ArchiveOutboundFlowResult.Fail("仅申请人本人可撤回该申请。");
             }

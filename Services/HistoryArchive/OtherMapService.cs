@@ -10,11 +10,16 @@ namespace DocMgr.Services.HistoryArchive
     {
         private readonly IOtherMapRepository _otherMapRepository;
         private readonly HistoryArchiveImportSlotGuard _importSlotGuard;
+        private readonly IUserContextService _userContextService;
 
-        public OtherMapService(IOtherMapRepository otherMapRepository, HistoryArchiveImportSlotGuard importSlotGuard)
+        public OtherMapService(
+            IOtherMapRepository otherMapRepository,
+            HistoryArchiveImportSlotGuard importSlotGuard,
+            IUserContextService userContextService)
         {
             _otherMapRepository = otherMapRepository;
             _importSlotGuard = importSlotGuard;
+            _userContextService = userContextService;
         }
 
         public bool IsTableExist(string tableName)
@@ -39,6 +44,7 @@ namespace DocMgr.Services.HistoryArchive
 
         public async Task ImportOtherMapsAsync(List<OtherMap> list, string sheetName, bool isRecreate = false)
         {
+            HistoryArchiveLedgerPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             ArgumentNullException.ThrowIfNull(list);
             await _importSlotGuard.EnsureSlotsReadyForHistoryImportAsync(list.Select(item => item.BoxNumber));
             string categoryName = HistoryArchiveImportTableNameSupport.BuildOtherMapTableName(sheetName);
@@ -47,16 +53,19 @@ namespace DocMgr.Services.HistoryArchive
 
         public void DropTable(string tableName)
         {
+            HistoryArchiveLedgerPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             _otherMapRepository.DeleteByCategory(tableName);
         }
 
         public void DeleteOtherMap(int id)
         {
+            HistoryArchiveLedgerPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             _otherMapRepository.DeleteById(id);
         }
 
         public void UpdateOtherMap(OtherMap map)
         {
+            HistoryArchiveLedgerPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             _otherMapRepository.Update(map);
         }
     }

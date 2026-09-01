@@ -214,6 +214,10 @@ namespace DocMgr.ViewModels.HistoryArchive
         public RelayCommand NextPageCommand { get; }
         public RelayCommand LastPageCommand { get; }
 
+        /// <summary>资料室资料管理员可导入、编辑、删除；其他部门资料管理员仅浏览与检索。</summary>
+        public bool CanMaintainLedger =>
+            HistoryArchiveLedgerPermissionSupport.CanMaintain(_userContextService.CurrentUser);
+
         public TopoMapViewModel(
             ITopoMapService topoMapService,
             IDialogService dialogService,
@@ -223,14 +227,15 @@ namespace DocMgr.ViewModels.HistoryArchive
             _dialogService = dialogService;
             _userContextService = userContextService; // 保存引用
 
-            ImportCommand = new RelayCommand(async _ => await ImportAsync());
+            ImportCommand = new RelayCommand(async _ => await ImportAsync(), _ => CanMaintainLedger);
             BrowseCommand = new RelayCommand(async _ => await BrowseAsync());
             DeleteCurrentRowCommand = new RelayCommand(async _ => await DeleteCurrentRowAsync(),
-                _ => SelectedTopoMap != null
+                _ => CanMaintainLedger
+                     && SelectedTopoMap != null
                      && !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(SelectedTopoMap.LifecycleStatus));
-            DeleteTableCommand = new RelayCommand(async _ => await DeleteTableAsync());
+            DeleteTableCommand = new RelayCommand(async _ => await DeleteTableAsync(), _ => CanMaintainLedger);
 
-            EditCommand = new RelayCommand(async _ => await EditAsync(), _ => SelectedTopoMap != null);
+            EditCommand = new RelayCommand(async _ => await EditAsync(), _ => CanMaintainLedger && SelectedTopoMap != null);
             SearchCommand = new RelayCommand(async _ => await ApplySearchFilterAsync());
             ResetSearchCommand = new RelayCommand(async _ => await ResetSearchAsync());
             ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => _filteredTopoMaps.Count > 0);
@@ -372,6 +377,11 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private async Task ImportAsync()
         {
+            if (!EnsureCanMaintainLedger())
+            {
+                return;
+            }
+
             string? filePath = _dialogService.OpenFileDialog("Excel Files|*.xlsx;*.xls", "选择地形图Excel存档文件");
             if (string.IsNullOrEmpty(filePath)) return;
 
@@ -541,6 +551,11 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private async Task DeleteCurrentRowAsync()
         {
+            if (!EnsureCanMaintainLedger())
+            {
+                return;
+            }
+
             if (SelectedTopoMap == null)
             {
                 _dialogService.ShowMessage("请先选择要删除的记录。");
@@ -591,6 +606,11 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private async Task DeleteTableAsync()
         {
+            if (!EnsureCanMaintainLedger())
+            {
+                return;
+            }
+
             var tables = await Task.Run(() => _topoMapService.GetTopoMapTables());
             if (tables.Count == 0) return;
 
@@ -625,6 +645,11 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private async Task EditAsync()
         {
+            if (!EnsureCanMaintainLedger())
+            {
+                return;
+            }
+
             if (SelectedTopoMap == null)
             {
                 _dialogService.ShowMessage("请先选择要编辑的记录。");
@@ -908,6 +933,17 @@ namespace DocMgr.ViewModels.HistoryArchive
         {
             if (map.ContainsKey(col)) return row.GetCell(map[col])?.ToString()?.Trim() ?? "";
             return "";
+        }
+
+        private bool EnsureCanMaintainLedger()
+        {
+            if (CanMaintainLedger)
+            {
+                return true;
+            }
+
+            _dialogService.ShowMessage(HistoryArchiveLedgerPermissionSupport.MaintainDeniedMessage);
+            return false;
         }
 
     }

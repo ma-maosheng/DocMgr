@@ -23,7 +23,11 @@
         <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Background="#F5F7FA" BorderBrush="#E0E0E0" BorderThickness="1" Margin="0,0,0,10">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="📥 导入Excel表" Command="{Binding ImportCommand}" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <Button Content="📥 导入Excel表"
+                            Command="{Binding ImportCommand}"
+                            Margin="0,0,10,0"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Visibility="{Binding CanMaintainLedger, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     <Button Content="🔍 浏览数据" Command="{Binding BrowseCommand}" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
 
                     <Separator Style="{StaticResource VerticalSeparatorStyle}" />
@@ -42,7 +46,11 @@
 
                     <Separator Style="{StaticResource VerticalSeparatorStyle}" />
 
-                    <Button Content="✏️ 编辑" Command="{Binding EditCommand}" Margin="10,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <Button Content="✏️ 编辑"
+                            Command="{Binding EditCommand}"
+                            Margin="10,0,10,0"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Visibility="{Binding CanMaintainLedger, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     <TextBlock Text="关键词" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <TextBox Width="220"
                              Style="{StaticResource ToolbarFilterTextBoxStyle}"
@@ -63,8 +71,18 @@
                               ToolTip="默认不显示已离库记录"/>
                     <Button Content="📤 导出" Command="{Binding ExportCommand}" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
 
-                    <Button Content="🗑️ 删除当前行" Command="{Binding DeleteCurrentRowCommand}" Margin="20,0,10,0" HorizontalAlignment="Right" Style="{StaticResource ToolbarDangerButtonStyle}"/>
-                    <Button Content="🗑️ 删除表" Command="{Binding DeleteTableCommand}" Margin="0,0,0,0" HorizontalAlignment="Right" Style="{StaticResource ToolbarDangerButtonStyle}"/>
+                    <Button Content="🗑️ 删除当前行"
+                            Command="{Binding DeleteCurrentRowCommand}"
+                            Margin="20,0,10,0"
+                            HorizontalAlignment="Right"
+                            Style="{StaticResource ToolbarDangerButtonStyle}"
+                            Visibility="{Binding CanMaintainLedger, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Button Content="🗑️ 删除表"
+                            Command="{Binding DeleteTableCommand}"
+                            Margin="0,0,0,0"
+                            HorizontalAlignment="Right"
+                            Style="{StaticResource ToolbarDangerButtonStyle}"
+                            Visibility="{Binding CanMaintainLedger, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>

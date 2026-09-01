@@ -37,6 +37,7 @@ namespace DocMgr.ViewModels.SystemSettings
 
             SaveCommand = new RelayCommand(async _ => await SaveAsync());
             ResetDefaultCommand = new RelayCommand(_ => ResetDefault());
+            ChangePasswordCommand = new RelayCommand(_ => ChangePassword());
         }
 
         public bool EnableToDoPopup
@@ -71,6 +72,7 @@ namespace DocMgr.ViewModels.SystemSettings
 
         public ICommand SaveCommand { get; }
         public ICommand ResetDefaultCommand { get; }
+        public ICommand ChangePasswordCommand { get; }
 
         public async Task InitializeAsync()
         {
@@ -111,6 +113,17 @@ namespace DocMgr.ViewModels.SystemSettings
         {
             var defaults = _preferenceService.CreateDefaultTemplate();
             ApplyToView(defaults);
+        }
+
+        private void ChangePassword()
+        {
+            if (_userContextService.CurrentUser == null)
+            {
+                _dialogService.ShowError("当前登录已失效，请重新登录。");
+                return;
+            }
+
+            _dialogService.ShowChangePasswordDialog();
         }
 
         private async Task SaveAsync()

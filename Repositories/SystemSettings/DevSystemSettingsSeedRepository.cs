@@ -12,6 +12,21 @@ public class DevSystemSettingsSeedRepository : IDevSystemSettingsSeedRepository
         _dbContext = dbContext;
     }
 
+    public bool HasAnyDepartments()
+    {
+        return _dbContext.Departments.Any();
+    }
+
+    public bool HasAnyRoles()
+    {
+        return _dbContext.Roles.Any();
+    }
+
+    public bool HasAnyUsers()
+    {
+        return _dbContext.Users.Any();
+    }
+
     public Department? GetDepartmentByName(string name)
     {
         return _dbContext.Departments.FirstOrDefault(item => item.Name == name);

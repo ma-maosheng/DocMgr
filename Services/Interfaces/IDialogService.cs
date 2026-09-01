@@ -51,6 +51,12 @@ namespace DocMgr.Services.Interfaces
         IOperationProgressSession ShowOperationProgress(string title, string initialStatus);
 
         bool ShowUserEditDialog(User? userToEdit);
+
+        /// <summary>
+        /// 当前用户修改登录密码。取消或失败返回 false。
+        /// </summary>
+        /// <param name="isMandatory">为 true 时表示登录后必须先改密，取消将无法进入系统。</param>
+        bool ShowChangePasswordDialog(bool isMandatory = false);
         bool ShowCabinetEditDialog(Cabinet cabinetToEdit);
         CabinetArchiveBoxPlacementMode? ShowCabinetArchiveBoxPlacementEditDialog(string title, string summary, CabinetArchiveBoxPlacementMode initialMode);
         CabinetHardDiskSlotCategoryEditResult? ShowCabinetHardDiskSlotCategoryEditDialog(string title, string summary, string? initialCategoryName);

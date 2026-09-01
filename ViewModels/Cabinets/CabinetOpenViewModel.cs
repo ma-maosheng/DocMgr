@@ -126,9 +126,9 @@ namespace DocMgr.ViewModels.Cabinets
             ShowSlotInfoCommand = new RelayCommand<CabinetSlotViewModel>(ShowSlotInfo);
             ShowSlotDetailCommand = new RelayCommand<CabinetSlotViewModel>(ShowSlotDetail);
             ShowSlotZoomCommand = new RelayCommand<CabinetSlotViewModel>(ShowSlotZoom, CanShowSlotZoomFromSlot);
-            AddArchiveBoxCommand = new RelayCommand<CabinetSlotViewModel>(AddArchiveBox);
+            AddArchiveBoxCommand = new RelayCommand<CabinetSlotViewModel>(AddArchiveBox, CanMaintainCabinetSlot);
             RefreshSlotCommand = new RelayCommand<CabinetSlotViewModel>(RefreshSlot);
-            EditSlotPlacementModeCommand = new RelayCommand<CabinetSlotViewModel>(EditSlotPlacementMode);
+            EditSlotPlacementModeCommand = new RelayCommand<CabinetSlotViewModel>(EditSlotPlacementMode, CanMaintainCabinetSlot);
             SetHardDiskSlotGeneralCategoryCommand = new RelayCommand<CabinetSlotViewModel>(
                 slot => SetHardDiskSlotCategory(slot, categoryName: null, showReturnHint: false),
                 CanChangeSlotDedicatedCategory);
@@ -167,8 +167,8 @@ namespace DocMgr.ViewModels.Cabinets
                 CanChangeArchiveSlotDedicatedCategory);
             ShowArchiveContentCommand = new RelayCommand<ArchiveBoxItemViewModel>(ShowArchiveContent);
             ShowPendingReturnDetailCommand = new RelayCommand<ArchiveBoxItemViewModel>(ShowPendingReturnDetail, CanShowPendingReturnDetail);
-            EditArchiveBoxPlacementModeCommand = new RelayCommand<ArchiveBoxItemViewModel>(EditArchiveBoxPlacementMode);
-            ResetArchiveBoxSpecificationCommand = new RelayCommand<ArchiveBoxItemViewModel>(ResetArchiveBoxSpecification);
+            EditArchiveBoxPlacementModeCommand = new RelayCommand<ArchiveBoxItemViewModel>(EditArchiveBoxPlacementMode, CanMaintainCabinetArchiveBox);
+            ResetArchiveBoxSpecificationCommand = new RelayCommand<ArchiveBoxItemViewModel>(ResetArchiveBoxSpecification, CanMaintainCabinetArchiveBox);
             ShowHardDiskMediumInfoCommand = new RelayCommand<CabinetHardDiskMediumItemViewModel>(ShowHardDiskMediumInfo);
             ShowHardDiskMediumArchiveInfoCommand = new RelayCommand<CabinetHardDiskMediumItemViewModel>(ShowHardDiskMediumArchiveInfo);
             ApplySelectedSlotsPurposeCommand = new RelayCommand(_ => ApplySelectedSlotsPurpose(), _ => CanApplySelectedSlotsPurpose);
@@ -241,6 +241,11 @@ namespace DocMgr.ViewModels.Cabinets
         public string PreviewTitle { get; }
 
         public string PreviewSubtitle { get; }
+
+        public bool CanMaintainCabinet => IsArchiveAdmin();
+
+        public Visibility CabinetMaintainActionVisibility =>
+            CanMaintainCabinet ? Visibility.Visible : Visibility.Collapsed;
 
         public Visibility MagneticDiskLegendVisibility => Request.CabinetType == CabinetType.MagneticDisk && !IsSingleSlotSnapshot
             ? Visibility.Visible
@@ -2255,7 +2260,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         private void AddArchiveBox(CabinetSlotViewModel? slot)
         {
-            if (slot == null)
+            if (slot == null || !CanMaintainCabinet)
             {
                 return;
             }
@@ -2443,7 +2448,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         private void EditSlotPlacementMode(CabinetSlotViewModel? slot)
         {
-            if (slot == null || slot.ArchiveBoxes.Count == 0)
+            if (slot == null || slot.ArchiveBoxes.Count == 0 || !CanMaintainCabinet)
             {
                 return;
             }
@@ -2477,7 +2482,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         private void EditArchiveBoxPlacementMode(ArchiveBoxItemViewModel? archiveBox)
         {
-            if (archiveBox == null)
+            if (archiveBox == null || !CanMaintainCabinet)
             {
                 return;
             }
@@ -2533,7 +2538,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         private void ResetArchiveBoxSpecification(ArchiveBoxItemViewModel? archiveBox)
         {
-            if (archiveBox == null)
+            if (archiveBox == null || !CanMaintainCabinet)
             {
                 return;
             }
@@ -2602,20 +2607,18 @@ namespace DocMgr.ViewModels.Cabinets
             return _userContextService.CurrentUser?.RealName ?? "System";
         }
 
-        private bool IsArchiveRoomMediaAdmin()
-        {
-            string dept = _userContextService.CurrentUser?.Department?.Trim() ?? string.Empty;
-            string role = _userContextService.CurrentUser?.Role?.Trim() ?? string.Empty;
-
-            return (string.Equals(dept, "资料室", StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(role, "部门资料管理员", StringComparison.OrdinalIgnoreCase)) ||
-                   string.Equals(role, "Administrator", StringComparison.OrdinalIgnoreCase);
-        }
+        private bool IsArchiveRoomMediaAdmin() => IsArchiveAdmin();
 
         private bool IsArchiveAdmin()
         {
             return _archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser);
         }
+
+        private bool CanMaintainCabinetSlot(CabinetSlotViewModel? slot) =>
+            CanMaintainCabinet && slot != null;
+
+        private bool CanMaintainCabinetArchiveBox(ArchiveBoxItemViewModel? box) =>
+            CanMaintainCabinet && box != null;
 
         private bool CanSetBatchRelocationSource(CabinetSlotViewModel? slot)
         {
@@ -3763,7 +3766,7 @@ namespace DocMgr.ViewModels.Cabinets
         private bool CanChangeSlotDedicatedCategory(CabinetSlotViewModel? slot)
         {
             slot = ResolveSlotContextMenuTarget(slot);
-            return slot != null && slot.IsMagneticDiskSlot && slot.IsFullyEmptyMagneticDiskSlot;
+            return slot != null && slot.IsMagneticDiskSlot && slot.IsFullyEmptyMagneticDiskSlot && IsArchiveRoomMediaAdmin();
         }
 
         private bool CanChangeArchiveSlotDedicatedCategory(CabinetSlotViewModel? slot)
@@ -3804,7 +3807,7 @@ namespace DocMgr.ViewModels.Cabinets
 
             foreach (var descriptor in descriptors)
             {
-                Slots.Add(new CabinetSlotViewModel(descriptor));
+                Slots.Add(new CabinetSlotViewModel(descriptor, CanMaintainCabinet));
             }
 
             OnPropertyChanged(nameof(ArchiveBoxCount));

@@ -12,11 +12,16 @@ namespace DocMgr.Services.Cabinets
         private const string TimestampFormat = "yyyy-MM-dd HH:mm:ss";
 
         private readonly ICabinetArchiveBoxPlacementRepository _placementRepository;
+        private readonly IUserContextService _userContextService;
 
-        public CabinetArchiveBoxPlacementService(ICabinetArchiveBoxPlacementRepository placementRepository)
+        public CabinetArchiveBoxPlacementService(
+            ICabinetArchiveBoxPlacementRepository placementRepository,
+            IUserContextService userContextService)
         {
             ArgumentNullException.ThrowIfNull(placementRepository);
+            ArgumentNullException.ThrowIfNull(userContextService);
             _placementRepository = placementRepository;
+            _userContextService = userContextService;
         }
 
         /// <summary>
@@ -39,10 +44,8 @@ namespace DocMgr.Services.Cabinets
         /// </summary>
         public int UpdateSlotPlacementMode(string cabinetName, string faceCode, string slotCode, CabinetArchiveBoxPlacementMode placementMode, string updatedBy)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             if (string.IsNullOrWhiteSpace(cabinetName))
-            {
-                throw new ArgumentException("柜号不能为空。", nameof(cabinetName));
-            }
 
             if (string.IsNullOrWhiteSpace(faceCode))
             {
@@ -89,6 +92,7 @@ namespace DocMgr.Services.Cabinets
         /// </summary>
         public bool UpdateBoxPlacementMode(string boxCode, CabinetArchiveBoxPlacementMode placementMode, string updatedBy)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             if (string.IsNullOrWhiteSpace(boxCode))
             {
                 throw new ArgumentException("档案盒编号不能为空。", nameof(boxCode));
@@ -166,6 +170,7 @@ namespace DocMgr.Services.Cabinets
         /// </summary>
         public bool ResetBoxSpecification(string boxCode, string boxSpecification, string updatedBy)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             if (string.IsNullOrWhiteSpace(boxCode))
             {
                 throw new ArgumentException("档案盒编号不能为空。", nameof(boxCode));

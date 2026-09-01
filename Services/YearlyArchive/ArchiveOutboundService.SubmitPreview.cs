@@ -27,7 +27,7 @@ namespace DocMgr.Services.YearlyArchive
                     string.Empty);
             }
 
-            if (record.ApplicantUserId != user.Id && !ArchiveRegisterBusinessRules.IsSystemAdministrator(user))
+            if (record.ApplicantUserId != user.Id)
             {
                 return new ArchiveOutboundSubmitPreviewResult(
                     ["仅申请人本人可提交该申请。"],

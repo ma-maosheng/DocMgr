@@ -5,6 +5,12 @@ namespace DocMgr.Repositories.Interfaces;
 /// </summary>
 public interface IDevSystemSettingsSeedRepository
 {
+    bool HasAnyDepartments();
+
+    bool HasAnyRoles();
+
+    bool HasAnyUsers();
+
     Department? GetDepartmentByName(string name);
 
     void AddDepartment(Department department);

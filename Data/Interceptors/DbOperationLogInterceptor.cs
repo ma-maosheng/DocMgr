@@ -311,7 +311,7 @@ namespace DocMgr.Data.Interceptors
                     IsPrimaryKey = property.Metadata.IsPrimaryKey(),
                     IsChanged = true,
                     OldValue = null,
-                    NewValue = FormatValueText(property.CurrentValue)
+                    NewValue = FormatPropertyValueText(property, property.CurrentValue)
                 })
                 .ToList();
         }
@@ -328,8 +328,8 @@ namespace DocMgr.Data.Interceptors
                     ClrType = GetClrTypeName(property),
                     IsPrimaryKey = property.Metadata.IsPrimaryKey(),
                     IsChanged = property.IsModified,
-                    OldValue = FormatValueText(property.OriginalValue),
-                    NewValue = FormatValueText(property.CurrentValue)
+                    OldValue = FormatPropertyValueText(property, property.OriginalValue),
+                    NewValue = FormatPropertyValueText(property, property.CurrentValue)
                 })
                 .ToList();
         }
@@ -346,7 +346,7 @@ namespace DocMgr.Data.Interceptors
                     ClrType = GetClrTypeName(property),
                     IsPrimaryKey = property.Metadata.IsPrimaryKey(),
                     IsChanged = true,
-                    OldValue = FormatValueText(property.OriginalValue),
+                    OldValue = FormatPropertyValueText(property, property.OriginalValue),
                     NewValue = null
                 })
                 .ToList();
@@ -376,6 +376,30 @@ namespace DocMgr.Data.Interceptors
                     or float or double or decimal or char or string or Guid => value,
                 _ => value.ToString()
             };
+        }
+
+        private static readonly HashSet<string> SensitivePropertyNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            nameof(User.Password)
+        };
+
+        private const string RedactedSecretValue = "***";
+
+        private static bool IsSensitiveProperty(PropertyEntry property)
+        {
+            string name = property.Metadata.Name;
+            string columnName = property.Metadata.GetColumnName() ?? name;
+            return SensitivePropertyNames.Contains(name) || SensitivePropertyNames.Contains(columnName);
+        }
+
+        private static string? FormatPropertyValueText(PropertyEntry property, object? value)
+        {
+            if (IsSensitiveProperty(property))
+            {
+                return value == null ? null : RedactedSecretValue;
+            }
+
+            return FormatValueText(value);
         }
 
         private static string? FormatValueText(object? value)

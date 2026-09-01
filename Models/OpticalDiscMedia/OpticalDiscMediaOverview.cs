@@ -26,6 +26,16 @@ namespace DocMgr.Models.OpticalDiscMedia
         public int DamagedInStockCount { get; set; }
 
         /// <summary>
+        /// 在库(盘失)数量，通常由电子资料盘库写入。
+        /// </summary>
+        public int LostInStockCount { get; set; }
+
+        /// <summary>
+        /// 在库(拟销)数量，通常由电子资料盘库写入。
+        /// </summary>
+        public int ScrapInStockCount { get; set; }
+
+        /// <summary>
         /// 出库(销毁)数量。
         /// </summary>
         public int DestroyedCount { get; set; }

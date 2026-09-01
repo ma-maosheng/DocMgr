@@ -11,11 +11,16 @@ namespace DocMgr.Services.HistoryArchive
     {
         private readonly ITopoMapRepository _topoMapRepository;
         private readonly HistoryArchiveImportSlotGuard _importSlotGuard;
+        private readonly IUserContextService _userContextService;
 
-        public TopoMapService(ITopoMapRepository topoMapRepository, HistoryArchiveImportSlotGuard importSlotGuard)
+        public TopoMapService(
+            ITopoMapRepository topoMapRepository,
+            HistoryArchiveImportSlotGuard importSlotGuard,
+            IUserContextService userContextService)
         {
             _topoMapRepository = topoMapRepository;
             _importSlotGuard = importSlotGuard;
+            _userContextService = userContextService;
         }
 
         public bool IsTableExist(string tableName)
@@ -44,6 +49,7 @@ namespace DocMgr.Services.HistoryArchive
 
         public async Task ImportTopoMapsAsync(List<TopoMap> maps, string sheetName, bool isRecreate = false)
         {
+            HistoryArchiveLedgerPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             ArgumentNullException.ThrowIfNull(maps);
             foreach (TopoMap map in maps)
             {
@@ -57,16 +63,19 @@ namespace DocMgr.Services.HistoryArchive
 
         public void DropTable(string tableName)
         {
+            HistoryArchiveLedgerPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             _topoMapRepository.DeleteByCategory(tableName);
         }
 
         public void DeleteTopoMap(int id)
         {
+            HistoryArchiveLedgerPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             _topoMapRepository.DeleteById(id);
         }
 
         public void UpdateTopoMap(TopoMap map)
         {
+            HistoryArchiveLedgerPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             ArgumentNullException.ThrowIfNull(map);
             TopoMapCurrentMapNumberSupport.Apply(map);
             _topoMapRepository.Update(map);

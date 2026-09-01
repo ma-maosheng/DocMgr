@@ -90,6 +90,10 @@
       "Description": ""
     },
     {
+      "Name": "网管负责人",
+      "Description": "维护服务器路径设置；不办理资料申请与审批"
+    },
+    {
       "Name": "部门负责人",
       "Description": ""
     },
@@ -113,6 +117,13 @@
       "Department": "科研开发室",
       "Role": "Administrator",
       "Password": "123456"
+    },
+    {
+      "LoginName": "shl",
+      "RealName": "孙惠龙",
+      "Department": "科研开发室",
+      "Role": "网管负责人",
+      "Password": "shl"
     },
     {
       "LoginName": "mxc",
@@ -205,7 +216,7 @@
   "ProjectInfos": [
     {
       "Id": 1,
-      "ProjectName": "基础测绘2026",
+      "ProjectName": "基础测绘",
       "ProjectCode": "2026001",
       "ImplementYear": "2026",
       "CapitalMgrDept": "财务处",
@@ -213,7 +224,7 @@
     },
     {
       "Id": 2,
-      "ProjectName": "国情普查2026",
+      "ProjectName": "国情普查",
       "ProjectCode": "2026002",
       "ImplementYear": "2026",
       "CapitalMgrDept": "财务处",

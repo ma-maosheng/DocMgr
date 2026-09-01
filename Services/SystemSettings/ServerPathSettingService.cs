@@ -7,10 +7,14 @@ namespace DocMgr.Services.SystemSettings;
 public class ServerPathSettingService : IServerPathSettingService
 {
     private readonly IServerPathSettingRepository _repository;
+    private readonly IUserContextService _userContextService;
 
-    public ServerPathSettingService(IServerPathSettingRepository repository)
+    public ServerPathSettingService(
+        IServerPathSettingRepository repository,
+        IUserContextService userContextService)
     {
         _repository = repository;
+        _userContextService = userContextService;
     }
 
     public List<ServerPathSetting> GetAll()
@@ -34,6 +38,7 @@ public class ServerPathSettingService : IServerPathSettingService
     public void Add(ServerPathSetting setting)
     {
         ArgumentNullException.ThrowIfNull(setting);
+        ServerPathSettingPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
         ValidateSetting(setting);
 
         _repository.Add(setting);
@@ -43,6 +48,7 @@ public class ServerPathSettingService : IServerPathSettingService
     public void Update(ServerPathSetting setting)
     {
         ArgumentNullException.ThrowIfNull(setting);
+        ServerPathSettingPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
 
         var existing = _repository.GetById(setting.Id)
             ?? throw new InvalidOperationException("服务器路径设置不存在或已被删除。");
@@ -60,6 +66,7 @@ public class ServerPathSettingService : IServerPathSettingService
 
     public void Delete(int id)
     {
+        ServerPathSettingPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
         var existing = _repository.GetById(id);
         if (existing == null)
         {

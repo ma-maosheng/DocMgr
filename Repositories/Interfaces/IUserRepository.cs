@@ -7,7 +7,11 @@ namespace DocMgr.Repositories.Interfaces;
 /// </summary>
 public interface IUserRepository
 {
-    User? GetByLogin(string loginName, string hashedPassword);
+    /// <summary>按登录名查询用户（不含口令比对）。</summary>
+    User? GetByLoginName(string loginName);
+
+    /// <summary>用户表是否已有任意账号。</summary>
+    bool HasAnyUsers();
 
     User? GetById(int userId);
 

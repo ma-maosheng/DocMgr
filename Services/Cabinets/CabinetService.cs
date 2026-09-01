@@ -29,10 +29,12 @@ namespace DocMgr.Services.Cabinets
         private const double DefaultMagneticCabinetDepth = 52;
 
         private readonly ICabinetRepository _cabinetRepository;
+        private readonly IUserContextService _userContextService;
 
-        public CabinetService(ICabinetRepository cabinetRepository)
+        public CabinetService(ICabinetRepository cabinetRepository, IUserContextService userContextService)
         {
             _cabinetRepository = cabinetRepository;
+            _userContextService = userContextService;
         }
 
         public List<Cabinet> GetAllCabinets()
@@ -48,12 +50,14 @@ namespace DocMgr.Services.Cabinets
 
         public void AddCabinet(Cabinet cabinet)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             _cabinetRepository.Add(cabinet);
             _cabinetRepository.SaveChanges();
         }
 
         public void UpdateCabinet(Cabinet cabinet)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             _cabinetRepository.Update(cabinet);
             _cabinetRepository.SaveChanges();
         }
@@ -61,6 +65,7 @@ namespace DocMgr.Services.Cabinets
         /// <inheritdoc/>
         public void SetHardDiskDedicatedSlotCategory(int cabinetId, string faceCode, string slotCode, string categoryName)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             if (string.IsNullOrWhiteSpace(faceCode))
             {
                 throw new ArgumentException("门别不能为空。", nameof(faceCode));
@@ -119,6 +124,7 @@ namespace DocMgr.Services.Cabinets
         /// <inheritdoc/>
         public void ClearHardDiskDedicatedSlotCategory(int cabinetId, string faceCode, string slotCode)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             if (string.IsNullOrWhiteSpace(faceCode))
             {
                 throw new ArgumentException("门别不能为空。", nameof(faceCode));
@@ -229,6 +235,7 @@ namespace DocMgr.Services.Cabinets
         /// <inheritdoc/>
         public void SetArchiveDedicatedSlotCategory(int cabinetId, string faceCode, string slotCode, string categoryName)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             if (string.IsNullOrWhiteSpace(faceCode))
             {
                 throw new ArgumentException("门别不能为空。", nameof(faceCode));
@@ -271,6 +278,7 @@ namespace DocMgr.Services.Cabinets
         /// <inheritdoc/>
         public void PromoteUnsetArchiveSlotToHistoricalMaterials(int cabinetId, string faceCode, string slotCode)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             if (string.IsNullOrWhiteSpace(faceCode))
             {
                 throw new ArgumentException("门别不能为空。", nameof(faceCode));
@@ -325,6 +333,7 @@ namespace DocMgr.Services.Cabinets
         /// <inheritdoc/>
         public void PromoteUnsetArchiveSlotToYearlyMaterials(int cabinetId, string faceCode, string slotCode)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             var (target, trimmedFaceCode, trimmedSlotCode) = RequireStandardArchiveSlot(cabinetId, faceCode, slotCode);
             _ = target;
             var existing = _cabinetRepository.GetArchiveSlotCategoryAssignment(cabinetId, trimmedFaceCode, trimmedSlotCode);
@@ -358,6 +367,7 @@ namespace DocMgr.Services.Cabinets
         /// <inheritdoc/>
         public void PromoteArchiveSlotToMixedUse(int cabinetId, string faceCode, string slotCode)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             var (target, trimmedFaceCode, trimmedSlotCode) = RequireStandardArchiveSlot(cabinetId, faceCode, slotCode);
             _ = target;
             var existing = _cabinetRepository.GetArchiveSlotCategoryAssignment(cabinetId, trimmedFaceCode, trimmedSlotCode);
@@ -409,6 +419,7 @@ namespace DocMgr.Services.Cabinets
         /// <inheritdoc/>
         public void ClearArchiveDedicatedSlotCategory(int cabinetId, string faceCode, string slotCode)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             if (string.IsNullOrWhiteSpace(faceCode))
             {
                 throw new ArgumentException("门别不能为空。", nameof(faceCode));
@@ -538,6 +549,7 @@ namespace DocMgr.Services.Cabinets
 
         public void DeleteCabinet(int cabinetId)
         {
+            CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             var cab = _cabinetRepository.GetById(cabinetId);
             if (cab != null)
             {

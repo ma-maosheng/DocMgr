@@ -1,6 +1,4 @@
-﻿using System.Security.Cryptography;
-using System.Text;
-using DocMgr.Repositories.Interfaces;
+﻿using DocMgr.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocMgr.Services.SystemSettings
@@ -8,6 +6,8 @@ namespace DocMgr.Services.SystemSettings
     public class UserService : IUserService
     {
         private static readonly TimeSpan SessionTimeout = TimeSpan.FromMinutes(2);
+        private const int MaxFailedLoginAttempts = 5;
+        private static readonly TimeSpan LoginLockoutDuration = TimeSpan.FromMinutes(5);
 
         private readonly IUserRepository _userRepository;
         private readonly IDepartmentRepository _departmentRepository;
@@ -26,7 +26,7 @@ namespace DocMgr.Services.SystemSettings
         // === 登录/会话 ===
         public UserLoginResult Login(string loginName, string password, bool forceReplaceExistingSession = false)
         {
-            if (string.IsNullOrWhiteSpace(loginName) || string.IsNullOrWhiteSpace(password))
+            if (string.IsNullOrWhiteSpace(loginName) || string.IsNullOrEmpty(password))
             {
                 return new UserLoginResult(
                     UserLoginStatus.InvalidCredentials,
@@ -38,21 +38,41 @@ namespace DocMgr.Services.SystemSettings
             }
 
             var normalizedLoginName = loginName.Trim();
-
-            string hashedPassword = HashPassword(password);
-
-            // 查询匹配的用户
-            var user = _userRepository.GetByLogin(normalizedLoginName, hashedPassword);
-
+            var user = _userRepository.GetByLoginName(normalizedLoginName);
             if (user == null)
             {
-                return new UserLoginResult(
-                    UserLoginStatus.InvalidCredentials,
-                    null,
-                    string.Empty,
-                    string.Empty,
-                    null,
-                    "用户名或密码错误。");
+                return CreateInvalidCredentialsResult();
+            }
+
+            var now = DateTime.Now;
+            if (user.LockoutUntil is DateTime lockoutUntil && lockoutUntil > now)
+            {
+                return CreateLockedOutResult(lockoutUntil);
+            }
+
+            if (user.LockoutUntil != null && user.LockoutUntil <= now)
+            {
+                user.LockoutUntil = null;
+                user.FailedLoginCount = 0;
+            }
+
+            if (!PasswordHashingSupport.Verify(password, user.Password))
+            {
+                RecordFailedLogin(user, now);
+                _userRepository.SaveChanges();
+
+                if (user.LockoutUntil is DateTime newlyLocked && newlyLocked > now)
+                {
+                    return CreateLockedOutResult(newlyLocked);
+                }
+
+                return CreateInvalidCredentialsResult();
+            }
+
+            ResetLoginFailures(user);
+            if (PasswordHashingSupport.NeedsRehash(user.Password))
+            {
+                user.Password = PasswordHashingSupport.Hash(password);
             }
 
             using var transaction = _userRepository.BeginTransaction();
@@ -63,16 +83,25 @@ namespace DocMgr.Services.SystemSettings
 
             if (activeSession != null && !forceReplaceExistingSession)
             {
-                transaction.Rollback();
+                try
+                {
+                    _userRepository.SaveChanges();
+                    transaction.Commit();
+                }
+                catch (DbUpdateException)
+                {
+                    transaction.Rollback();
+                    _userRepository.ClearChangeTracker();
+                }
+
                 return BuildAlreadyLoggedInResult(user, activeSession);
             }
 
             if (activeSession != null)
             {
-                DeactivateSessions(user.Id, DateTime.Now);
+                DeactivateSessions(user.Id, now);
             }
 
-            var now = DateTime.Now;
             var newSession = new UserSession
             {
                 UserId = user.Id,
@@ -108,11 +137,49 @@ namespace DocMgr.Services.SystemSettings
 
             return new UserLoginResult(
                 UserLoginStatus.Success,
-                user,
+                CreatePublicUser(user),
                 newSession.SessionId,
                 string.Empty,
                 null,
                 "登录成功。");
+        }
+
+        /// <inheritdoc />
+        public PasswordChangeResult ChangeOwnPassword(int userId, string currentPassword, string newPassword)
+        {
+            if (string.IsNullOrEmpty(currentPassword) || string.IsNullOrEmpty(newPassword))
+            {
+                return new PasswordChangeResult(false, "当前密码和新密码都不能为空。");
+            }
+
+            var user = _userRepository.GetById(userId);
+            if (user == null)
+            {
+                return new PasswordChangeResult(false, "当前用户不存在，请重新登录。");
+            }
+
+            if (!PasswordHashingSupport.Verify(currentPassword, user.Password))
+            {
+                return new PasswordChangeResult(false, "当前密码不正确。");
+            }
+
+            if (string.Equals(currentPassword, newPassword, StringComparison.Ordinal))
+            {
+                return new PasswordChangeResult(false, "新密码不能与当前密码相同。");
+            }
+
+            string? policyError = PasswordHashingSupport.ValidatePolicy(newPassword, user.LoginName);
+            if (policyError != null)
+            {
+                return new PasswordChangeResult(false, policyError);
+            }
+
+            user.Password = PasswordHashingSupport.Hash(newPassword);
+            user.MustChangePassword = false;
+            ResetLoginFailures(user);
+            _userRepository.SaveChanges();
+
+            return new PasswordChangeResult(true, "密码已修改。");
         }
 
         public UserSessionHeartbeatResult RefreshSession(string sessionId)
@@ -181,25 +248,33 @@ namespace DocMgr.Services.SystemSettings
         // === 用户 CRUD ===
         public List<User> GetAllUsers()
         {
-            return _userRepository.GetAllUsers();
+            var users = _userRepository.GetAllUsers();
+            foreach (var user in users)
+            {
+                user.Password = string.Empty;
+            }
+
+            return users;
         }
 
         public void AddUser(User user, string password)
         {
             ArgumentNullException.ThrowIfNull(user);
 
-            if (string.IsNullOrWhiteSpace(password))
+            string? policyError = PasswordHashingSupport.ValidatePolicy(password, user.LoginName);
+            if (policyError != null)
             {
-                throw new ArgumentException("Password cannot be empty.", nameof(password));
+                throw new ArgumentException(policyError, nameof(password));
             }
 
             user.LoginName = user.LoginName?.Trim() ?? string.Empty;
             user.RealName = user.RealName?.Trim() ?? string.Empty;
             user.Department = user.Department?.Trim() ?? string.Empty;
             user.Role = user.Role?.Trim() ?? string.Empty;
-
-            // 在保存前加密密码
-            user.Password = HashPassword(password);
+            user.Password = PasswordHashingSupport.Hash(password);
+            user.MustChangePassword = true;
+            user.FailedLoginCount = 0;
+            user.LockoutUntil = null;
             _userRepository.AddUser(user);
             _userRepository.SaveChanges();
         }
@@ -219,9 +294,17 @@ namespace DocMgr.Services.SystemSettings
             existing.Department = user.Department?.Trim() ?? string.Empty;
             existing.Role = user.Role?.Trim() ?? string.Empty;
 
-            if (!string.IsNullOrWhiteSpace(newPassword))
+            if (!string.IsNullOrEmpty(newPassword))
             {
-                existing.Password = HashPassword(newPassword);
+                string? policyError = PasswordHashingSupport.ValidatePolicy(newPassword, existing.LoginName);
+                if (policyError != null)
+                {
+                    throw new ArgumentException(policyError, nameof(newPassword));
+                }
+
+                existing.Password = PasswordHashingSupport.Hash(newPassword);
+                existing.MustChangePassword = true;
+                ResetLoginFailures(existing);
             }
 
             _userRepository.SaveChanges();
@@ -321,7 +404,7 @@ namespace DocMgr.Services.SystemSettings
         {
             return new UserLoginResult(
                 UserLoginStatus.AlreadyLoggedIn,
-                user,
+                CreatePublicUser(user),
                 string.Empty,
                 activeSession.TerminalName,
                 activeSession.LoginTime,
@@ -380,24 +463,61 @@ namespace DocMgr.Services.SystemSettings
             return lastHeartbeatTime < now - SessionTimeout;
         }
 
-        // === 辅助方法 ===
-        private string HashPassword(string password)
+        private static void RecordFailedLogin(User user, DateTime now)
         {
-            if (string.IsNullOrWhiteSpace(password))
+            user.FailedLoginCount += 1;
+            if (user.FailedLoginCount < MaxFailedLoginAttempts)
             {
-                throw new ArgumentException("Password cannot be empty.", nameof(password));
+                return;
             }
 
-            using (var sha256 = SHA256.Create())
+            user.LockoutUntil = now.Add(LoginLockoutDuration);
+            user.FailedLoginCount = 0;
+        }
+
+        private static void ResetLoginFailures(User user)
+        {
+            user.FailedLoginCount = 0;
+            user.LockoutUntil = null;
+        }
+
+        private static UserLoginResult CreateInvalidCredentialsResult()
+        {
+            return new UserLoginResult(
+                UserLoginStatus.InvalidCredentials,
+                null,
+                string.Empty,
+                string.Empty,
+                null,
+                "用户名或密码错误。");
+        }
+
+        private static UserLoginResult CreateLockedOutResult(DateTime lockoutUntil)
+        {
+            return new UserLoginResult(
+                UserLoginStatus.LockedOut,
+                null,
+                string.Empty,
+                string.Empty,
+                null,
+                $"登录失败次数过多，请于 {lockoutUntil:HH:mm} 后再试。");
+        }
+
+        private static User CreatePublicUser(User user)
+        {
+            return new User
             {
-                var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-                var builder = new StringBuilder();
-                foreach (var b in bytes)
-                {
-                    builder.Append(b.ToString("x2"));
-                }
-                return builder.ToString();
-            }
+                Id = user.Id,
+                LoginName = user.LoginName,
+                RealName = user.RealName,
+                Department = user.Department,
+                Role = user.Role,
+                Password = string.Empty,
+                CreatedDate = user.CreatedDate,
+                MustChangePassword = user.MustChangePassword,
+                FailedLoginCount = 0,
+                LockoutUntil = null
+            };
         }
     }
 }

@@ -44,6 +44,20 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _damagedInStockCount, value);
         }
 
+        private int _lostInStockCount;
+        public int LostInStockCount
+        {
+            get => _lostInStockCount;
+            set => SetProperty(ref _lostInStockCount, value);
+        }
+
+        private int _scrapInStockCount;
+        public int ScrapInStockCount
+        {
+            get => _scrapInStockCount;
+            set => SetProperty(ref _scrapInStockCount, value);
+        }
+
         private int _destroyedCount;
         public int DestroyedCount
         {
@@ -79,22 +93,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _recentTransactionCount, value);
         }
 
-        private string _statusSummary = string.Empty;
-        public string StatusSummary
-        {
-            get => _statusSummary;
-            set => SetProperty(ref _statusSummary, value);
-        }
-
-        private string _transactionTypeSummary = string.Empty;
-        public string TransactionTypeSummary
-        {
-            get => _transactionTypeSummary;
-            set => SetProperty(ref _transactionTypeSummary, value);
-        }
-
-        public ObservableCollection<string> WorkflowSteps { get; } = new();
-        public ObservableCollection<string> SectionHighlights { get; } = new();
         public ObservableCollection<string> LocationInsights { get; } = new();
         public ObservableCollection<string> LifecycleInsights { get; } = new();
         public ObservableCollection<string> CirculationInsights { get; } = new();
@@ -120,7 +118,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             try
             {
-                ApplyStaticSection();
                 await LoadOverviewAsync();
                 _isInitialized = true;
             }
@@ -130,23 +127,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
         }
 
-        private void ApplyStaticSection()
-        {
-            SectionHighlights.Clear();
-            SectionHighlights.Add("电子立档建档");
-            SectionHighlights.Add("位置与状态台账");
-            SectionHighlights.Add("资料出库/归还联动");
-            SectionHighlights.Add("迁档与销毁留痕");
-            SectionHighlights.Add("流转台账查询");
-
-            WorkflowSteps.Clear();
-            WorkflowSteps.Add("系统不管理空白光盘；仅当电子立档向光盘写入数据时，自动生成数据光盘介质与台账。");
-            WorkflowSteps.Add("立档入库后状态为“在库(资料)”，存放位置落在年度数据光盘专用档口。");
-            WorkflowSteps.Add("资料出库、归还、迁档与销毁等业务会同步回写光盘状态、位置与流转流水。");
-            WorkflowSteps.Add("请在「流转台账」查看当前状态与全过程；本页侧重库存结构与风险提示。");
-            WorkflowSteps.Add("点击上方 KPI 卡片可跳转到流转台账（带对应状态或快捷筛选）。");
-        }
-
         private async Task LoadOverviewAsync()
         {
             var overview = await _hardDiskMediaService.GetOpticalDiscOverviewAsync();
@@ -154,6 +134,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             InStockCount = overview.InStockCount;
             OutTemporaryCount = overview.OutTemporaryCount;
             DamagedInStockCount = overview.DamagedInStockCount;
+            LostInStockCount = overview.LostInStockCount;
+            ScrapInStockCount = overview.ScrapInStockCount;
             DestroyedCount = overview.DestroyedCount;
             NeedReturnMediumCount = overview.NeedReturnMediumCount;
             MissingLocationMediumCount = overview.MissingLocationMediumCount;
@@ -164,24 +146,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ReplaceCollection(LifecycleInsights, overview.LifecycleInsights);
             ReplaceCollection(CirculationInsights, overview.CirculationInsights);
             ReplaceCollection(RiskInsights, overview.RiskInsights);
-
-            StatusSummary = string.Join("、",
-            [
-                OpticalDiscMedium.StatusInStock,
-                OpticalDiscMedium.StatusOut,
-                OpticalDiscMedium.StatusDamaged,
-                OpticalDiscMedium.StatusDestroyed
-            ]);
-
-            TransactionTypeSummary = string.Join("、",
-            [
-                OpticalDiscMediaTransaction.TypeArchiveInbound,
-                OpticalDiscMediaTransaction.TypeOutboundTemporary,
-                OpticalDiscMediaTransaction.TypeReturnRegistration,
-                OpticalDiscMediaTransaction.TypeDamagedRegistration,
-                OpticalDiscMediaTransaction.TypeDestroy,
-                OpticalDiscMediaTransaction.TypeRelocate
-            ]);
         }
 
         private void NavigateKpi(object? parameter)
@@ -220,7 +184,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             try
             {
-                ApplyStaticSection();
                 await LoadOverviewAsync();
             }
             catch (Exception ex)

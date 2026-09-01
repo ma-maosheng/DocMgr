@@ -6,10 +6,12 @@ namespace DocMgr.Services.Projects
     public class ProjectService : IProjectService
     {
         private readonly IProjectRepository _projectRepository;
+        private readonly IUserContextService _userContextService;
 
-        public ProjectService(IProjectRepository projectRepository)
+        public ProjectService(IProjectRepository projectRepository, IUserContextService userContextService)
         {
             _projectRepository = projectRepository;
+            _userContextService = userContextService;
         }
 
         public List<ProjectInfo> GetAllProjects()
@@ -24,12 +26,14 @@ namespace DocMgr.Services.Projects
 
         public void AddProject(ProjectInfo project)
         {
+            ProjectSettingPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             _projectRepository.Add(project);
             _projectRepository.SaveChanges();
         }
 
         public void UpdateProject(ProjectInfo project)
         {
+            ProjectSettingPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             var existing = _projectRepository.GetById(project.Id);
             if (existing != null)
             {
@@ -44,6 +48,7 @@ namespace DocMgr.Services.Projects
 
         public void DeleteProject(int projectId)
         {
+            ProjectSettingPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             var project = _projectRepository.GetById(projectId);
             if (project != null)
             {

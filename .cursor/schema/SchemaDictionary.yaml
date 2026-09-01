@@ -2863,7 +2863,7 @@ tables:
         aliases: []
       Password:
         chineseName: 密码
-        description: ''
+        description: 口令哈希（带盐 PBKDF2；历史数据可能为无盐 SHA-256）
         clrType: String
         needsReview: false
         aliases: []
@@ -2871,6 +2871,24 @@ tables:
         chineseName: 创建日期
         description: ''
         clrType: DateTime
+        needsReview: false
+        aliases: []
+      MustChangePassword:
+        chineseName: 下次登录须改密
+        description: 管理员重置或新建账号后，首次登录须修改密码
+        clrType: Boolean
+        needsReview: false
+        aliases: []
+      FailedLoginCount:
+        chineseName: 登录失败次数
+        description: 连续登录失败计数，用于短时锁定
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      LockoutUntil:
+        chineseName: 锁定截止时间
+        description: 登录失败过多后的解锁时间
+        clrType: DateTime?
         needsReview: false
         aliases: []
   YearlyArchiveBoxMediaItemLink:

@@ -135,6 +135,19 @@ namespace DocMgr.ViewModels
                 }
 
                 _userContextService.SetCurrentSession(loginResult.User, loginResult.SessionId);
+
+                if (loginResult.User.MustChangePassword)
+                {
+                    bool changed = _dialogService.ShowChangePasswordDialog(isMandatory: true);
+                    if (!changed)
+                    {
+                        _userService.Logout(loginResult.SessionId);
+                        _userContextService.Clear();
+                        _dialogService.ShowMessage("必须修改初始密码后才能进入系统。");
+                        return;
+                    }
+                }
+
                 LoginSucceeded?.Invoke(loginResult.User);
             }
             finally
@@ -148,6 +161,12 @@ namespace DocMgr.ViewModels
             if (loginResult.Status == UserLoginStatus.InvalidCredentials)
             {
                 _dialogService.ShowError("用户名或密码错误！");
+                return;
+            }
+
+            if (loginResult.Status == UserLoginStatus.LockedOut)
+            {
+                _dialogService.ShowError(loginResult.Message, "账号已锁定");
                 return;
             }
 

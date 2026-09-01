@@ -19,6 +19,7 @@
     </Window.InputBindings>
 
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <Style x:Key="SnapFs7" TargetType="TextBlock">
             <Setter Property="FontSize" Value="7"/>
             <Style.Triggers>
@@ -314,7 +315,8 @@
                                     Margin="8,0,0,0"
                                     Command="{Binding ApplySelectedSlotsPurposeCommand}"
                                     Style="{StaticResource DialogPrimaryActionButtonStyle}"
-                                    Padding="12,5"/>
+                                    Padding="12,5"
+                                    Visibility="{Binding CabinetMaintainActionVisibility}"/>
                             <Button Content="清空选择"
                                     Margin="8,0,0,0"
                                     Command="{Binding ClearSlotSelectionCommand}"
@@ -343,7 +345,8 @@
                                 Margin="8,0,0,0"
                                 Command="{Binding SetInteractiveItemRelocationFromSelectionCommand}"
                                 Style="{StaticResource DialogPrimaryActionButtonStyle}"
-                                Padding="12,5"/>
+                                Padding="12,5"
+                                Visibility="{Binding InteractiveItemRelocationMenuVisibility}"/>
                     </DockPanel>
                 </StackPanel>
 
@@ -768,9 +771,11 @@
                                                                                       Command="{Binding PlacementTarget.Tag.ShowArchiveContentCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                                                             <MenuItem Header="设置档案盒现行放置方式"
+                                                                                      Visibility="{Binding PlacementTarget.Tag.CabinetMaintainActionVisibility, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                                                       Command="{Binding PlacementTarget.Tag.EditArchiveBoxPlacementModeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                                                             <MenuItem Header="重置档案盒规格"
+                                                                                      Visibility="{Binding PlacementTarget.Tag.CabinetMaintainActionVisibility, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                                                       Command="{Binding PlacementTarget.Tag.ResetArchiveBoxSpecificationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                                                             <Separator Visibility="{Binding PlacementTarget.Tag.InteractiveItemRelocationMenuVisibility, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>

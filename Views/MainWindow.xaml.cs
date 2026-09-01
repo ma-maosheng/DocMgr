@@ -672,7 +672,7 @@ namespace DocMgr.Views
 
             MainContentFrame.Visibility = hasActivePage ? Visibility.Visible : Visibility.Collapsed;
 
-            if (FindName("HomeContentPanel") is Grid homeContentPanel)
+            if (FindName("HomeContentPanel") is FrameworkElement homeContentPanel)
             {
                 homeContentPanel.Visibility = hasActivePage ? Visibility.Collapsed : Visibility.Visible;
             }
@@ -887,8 +887,7 @@ namespace DocMgr.Views
             bool isArchiveAdmin = CanAccessArchiveRelocation();
             bool canFiling = CanAccessArchiveFiling();
             bool canMediaAdmin = CanAccessArchiveMediaAdmin();
-            // 申请菜单：仅部门资料管理员（不含资料室）；系统管理员保留运维例外。
-            bool canSubmitApplication = CanAccessDepartmentArchiveApply() || isSystemAdmin;
+            bool canSubmitApplication = CanAccessDepartmentArchiveApply();
 
             SystemSettingsExpander.Visibility = Visibility.Visible;
             SystemSettingsExpander.IsEnabled = true;
@@ -903,11 +902,11 @@ namespace DocMgr.Views
             SetNavButton(BtnUserMgr, isSystemAdmin);
             SetNavButton(BtnDeptMgr, isSystemAdmin);
             SetNavButton(BtnRoleMgr, isSystemAdmin);
-            SetNavButton(BtnServerPathMgr, isSystemAdmin);
+            SetNavButton(BtnServerPathMgr, ServerPathSettingPermissionSupport.CanMaintain(CurrentUser));
             SetNavButton(BtnAdvancedData, isSystemAdmin);
             SetNavButton(BtnBusinessLogicSettings, isSystemAdmin);
             SetNavButton(BtnUserPreference, true);
-            SetNavButton(BtnDbOperationLog, true);
+            SetNavButton(BtnDbOperationLog, isSystemAdmin);
 
             SetNavButton(BtnProjectInfo, true);
 
@@ -946,7 +945,7 @@ namespace DocMgr.Views
             SetNavButton(BtnHistAerial, true);
             SetNavButton(BtnOtherData, true);
 
-            SetNavButton(BtnCabRegister, true);
+            SetNavButton(BtnCabRegister, isArchiveAdmin);
             SetNavButton(BtnCabSearch, true);
 
             SetNavButton(BtnDiskSearch, true);
@@ -980,6 +979,28 @@ namespace DocMgr.Views
             return CurrentUser.Role == "Administrator" || CurrentUser.Role == "管理员";
         }
 
+        private bool EnsureServerPathSettingAccess()
+        {
+            if (ServerPathSettingPermissionSupport.CanMaintain(CurrentUser))
+            {
+                return true;
+            }
+
+            MessageBox.Show(ServerPathSettingPermissionSupport.DeniedMessage, "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            return false;
+        }
+
+        private bool EnsureSystemSettingsAccess()
+        {
+            if (IsSystemAdministrator())
+            {
+                return true;
+            }
+
+            MessageBox.Show("仅系统管理员可进入系统设置。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            return false;
+        }
+
         private bool CanAccessArchiveMediaAdmin()
         {
             if (CurrentUser == null)
@@ -990,21 +1011,16 @@ namespace DocMgr.Views
             string dept = CurrentUser.Department?.Trim() ?? string.Empty;
             string role = CurrentUser.Role?.Trim() ?? string.Empty;
 
-            return (string.Equals(dept, "资料室", StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(role, "部门资料管理员", StringComparison.OrdinalIgnoreCase))
-                   || IsSystemAdministrator();
+            return string.Equals(dept, "资料室", StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(role, "部门资料管理员", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool CanAccessArchiveFiling()
         {
             if (CurrentUser == null) return false;
 
-            bool isAdmin = CurrentUser.Role == "Administrator" || CurrentUser.Role == "管理员";
-            bool isArchiveRoomDataManager =
-                CurrentUser.Department == "资料室" &&
+            return CurrentUser.Department == "资料室" &&
                 CurrentUser.Role == "部门资料管理员";
-
-            return isAdmin || isArchiveRoomDataManager;
         }
 
         private bool CanAccessArchiveRelocation()
@@ -1036,24 +1052,44 @@ namespace DocMgr.Views
 
         private void BtnDeptSetting_Click(object sender, RoutedEventArgs e)
         {
+            if (!EnsureSystemSettingsAccess())
+            {
+                return;
+            }
+
             TxtPageTitle.Text = "系统设置（部门设置）";
             MainContentFrame.Navigate(new DeptSettingPage());
         }
 
         private void BtnRoleSetting_Click(object sender, RoutedEventArgs e)
         {
+            if (!EnsureSystemSettingsAccess())
+            {
+                return;
+            }
+
             TxtPageTitle.Text = "系统设置（角色设置）";
             MainContentFrame.Navigate(new RoleSettingPage());
         }
 
         private void BtnServerPathSetting_Click(object sender, RoutedEventArgs e)
         {
+            if (!EnsureServerPathSettingAccess())
+            {
+                return;
+            }
+
             TxtPageTitle.Text = "系统设置（服务器路径设置）";
             MainContentFrame.Navigate(new ServerPathSettingPage());
         }
 
         private void BtnUserManagement_Click(object sender, RoutedEventArgs e)
         {
+            if (!EnsureSystemSettingsAccess())
+            {
+                return;
+            }
+
             TxtPageTitle.Text = "系统设置（用户管理）";
             MainContentFrame.Navigate(new UserManagementPage());
         }
@@ -1086,6 +1122,12 @@ namespace DocMgr.Views
 
         private void BtnCabRegister_Click(object sender, RoutedEventArgs e)
         {
+            if (!CanAccessArchiveRelocation())
+            {
+                MessageBox.Show(CabinetManagementPermissionSupport.RegisterDeniedMessage, "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             TxtPageTitle.Text = "档案柜管理（档案柜登记）";
             MainContentFrame.Navigate(new CabinetLayoutPage());
         }
@@ -1144,6 +1186,11 @@ namespace DocMgr.Views
 
         private void BtnAdvancedData_Click(object sender, RoutedEventArgs e)
         {
+            if (!EnsureSystemSettingsAccess())
+            {
+                return;
+            }
+
             TxtPageTitle.Text = "高级数据管理";
             MainContentFrame.Navigate(new AdvancedDataPage());
         }
@@ -1506,7 +1553,7 @@ namespace DocMgr.Views
 
         private void BtnNetInboundApply_Click(object sender, RoutedEventArgs e)
         {
-            if (!CanAccessDepartmentArchiveApply() && !IsSystemAdministrator())
+            if (!CanAccessDepartmentArchiveApply())
             {
                 MessageBox.Show("仅部门资料管理员可发起入网申请。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
@@ -1529,7 +1576,7 @@ namespace DocMgr.Views
 
         private void BtnNetOutboundApply_Click(object sender, RoutedEventArgs e)
         {
-            if (!CanAccessDepartmentArchiveApply() && !IsSystemAdministrator())
+            if (!CanAccessDepartmentArchiveApply())
             {
                 MessageBox.Show("仅部门资料管理员可发起出网申请。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
@@ -1609,6 +1656,12 @@ namespace DocMgr.Views
                     break;
                 case OpticalDiscOverviewKpiKind.DamagedInStock:
                     NavigateToOpticalDiscLedgerPage(OpticalDiscMedium.StatusDamaged);
+                    break;
+                case OpticalDiscOverviewKpiKind.LostInStock:
+                    NavigateToOpticalDiscLedgerPage(OpticalDiscMedium.StatusLost);
+                    break;
+                case OpticalDiscOverviewKpiKind.ScrapInStock:
+                    NavigateToOpticalDiscLedgerPage(OpticalDiscMedium.StatusScrap);
                     break;
                 case OpticalDiscOverviewKpiKind.Destroyed:
                     NavigateToOpticalDiscLedgerPage(OpticalDiscMedium.StatusDestroyed);
@@ -1706,19 +1759,29 @@ namespace DocMgr.Views
 
         private void BtnBusinessLogicSettings_Click(object sender, RoutedEventArgs e)
         {
+            if (!EnsureSystemSettingsAccess())
+            {
+                return;
+            }
+
             TxtPageTitle.Text = "系统设置（业务逻辑设置）";
             MainContentFrame.Navigate(new BusinessLogicSettingsPage());
         }
 
         private void BtnDbOperationLog_Click(object sender, RoutedEventArgs e)
         {
+            if (!EnsureSystemSettingsAccess())
+            {
+                return;
+            }
+
             TxtPageTitle.Text = "系统设置（数据库操作日志）";
             MainContentFrame.Navigate(new DbOperationLogPage());
         }
 
         private void BtnHelpDoc_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "帮助（帮助文档）";
+            TxtPageTitle.Text = "帮助（操作手册）";
             MainContentFrame.Navigate(new HelpPage());
         }
 
@@ -1785,6 +1848,12 @@ namespace DocMgr.Views
                     break;
                 case HardDiskOverviewKpiKind.InStockLost:
                     NavigateToHardDiskTransactionPage(HardDiskMedium.StatusInStockLost);
+                    break;
+                case HardDiskOverviewKpiKind.InStockScrap:
+                    NavigateToHardDiskTransactionPage(HardDiskMedium.StatusInStockScrap);
+                    break;
+                case HardDiskOverviewKpiKind.OutLost:
+                    NavigateToHardDiskTransactionPage(HardDiskMedium.StatusOutLost);
                     break;
                 case HardDiskOverviewKpiKind.PermanentTransfer:
                     NavigateToHardDiskTransactionPage(HardDiskMedium.StatusOutPermanent);

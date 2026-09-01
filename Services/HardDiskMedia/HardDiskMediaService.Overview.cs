@@ -59,6 +59,7 @@ namespace DocMgr.Services.HardDiskMedia
                 DataCarrierInStockCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockData),
                 DamagedInStockCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockDamaged),
                 InStockLostCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockLost),
+                InStockScrapCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusInStockScrap),
                 BorrowedCount = mediaItems.Count(IsBorrowedStatus),
                 PermanentTransferCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusOutPermanent),
                 DisposedCount = mediaItems.Count(item => item.CurrentStatus == HardDiskMedium.StatusDisposed),

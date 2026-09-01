@@ -64,15 +64,19 @@ namespace DocMgr.ViewModels.HistoryArchive
             MapName = _map.MapName;
             Remark = _map.Remark;
 
-            ConfirmCommand = new RelayCommand(_ => Confirm(), _ => CanEditBoxNumber);
+            ConfirmCommand = new RelayCommand(_ => Confirm(), _ => CanSave);
             CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
         }
 
         public string Title => "编辑其他资料";
 
-        /// <summary>已离库记录禁止改盒号，且不可保存。</summary>
-        public bool CanEditBoxNumber =>
-            !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(_map.LifecycleStatus);
+        /// <summary>已离库或无权维护时禁止改盒号。</summary>
+        public bool CanEditBoxNumber => CanSave;
+
+        /// <summary>仅资料室资料管理员可保存编辑。</summary>
+        public bool CanSave =>
+            HistoryArchiveLedgerPermissionSupport.CanMaintain(_userContextService.CurrentUser)
+            && !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(_map.LifecycleStatus);
 
         public string SequenceNumber
         {
@@ -129,9 +133,12 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private void Confirm()
         {
-            if (!CanEditBoxNumber)
+            if (!CanSave)
             {
-                _dialogService.ShowMessage("已离库记录只读，禁止修改。");
+                _dialogService.ShowMessage(
+                    HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(_map.LifecycleStatus)
+                        ? "已离库记录只读，禁止修改。"
+                        : HistoryArchiveLedgerPermissionSupport.MaintainDeniedMessage);
                 return;
             }
 

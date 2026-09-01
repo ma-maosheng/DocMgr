@@ -23,6 +23,9 @@ namespace DocMgr.Models.HardDiskMedia
         /// <summary>在库盘失。</summary>
         public int InStockLostCount { get; set; }
 
+        /// <summary>在库拟销（通常由资料盘库写入，再经离库处置清账）。</summary>
+        public int InStockScrapCount { get; set; }
+
         /// <summary>出库中（临时 + 长期）。</summary>
         public int BorrowedCount { get; set; }
 

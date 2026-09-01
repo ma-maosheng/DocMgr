@@ -44,7 +44,7 @@ namespace DocMgr.Services.Interfaces
         // 规范化密级值
         string NormalizeConfidentialLevel(string? value);
 
-        // 流程编排：保存草稿（仅部门资料管理员或系统管理员）
+        // 流程编排：保存草稿（仅部门资料管理员）
         Task<ArchiveRegisterFlowResult> SaveDraftFlowAsync(
             YearlyArchiveRegisterRecord? record,
             IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries,
@@ -59,7 +59,7 @@ namespace DocMgr.Services.Interfaces
         // 流程编排：确认办结
         Task<ArchiveRegisterFlowResult> CompleteRegisterFlowAsync(YearlyArchiveRegisterRecord? record, IReadOnlyCollection<SystemAttachment> attachments, User? currentUser);
 
-        // 流程编排：提交申请（仅部门资料管理员或系统管理员）
+        // 流程编排：提交申请（仅部门资料管理员）
         Task<ArchiveRegisterFlowResult> SubmitApplicationFlowAsync(
             YearlyArchiveRegisterRecord? record,
             IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries,
@@ -150,7 +150,7 @@ namespace DocMgr.Services.Interfaces
             string? rndOpinion,
             string? deputyOpinion);
 
-        // 角色判定：资料室资料管理员/系统管理员（审批及后续办理）
+        // 角色判定：资料室资料管理员（审批及后续办理；不含系统管理员）
         bool IsArchiveAdminUser(User? user);
 
         // 角色判定：部门资料管理员（不含资料室，仅可发起申请）
@@ -159,7 +159,7 @@ namespace DocMgr.Services.Interfaces
         // 角色判定：申请侧操作人（同 IsDepartmentArchiveAdmin）
         bool IsApplicantUser(User? user);
 
-        // 角色判定：是否允许发起申请（部门资料管理员或系统管理员）
+        // 角色判定：是否允许发起申请（仅部门资料管理员）
         bool CanSubmitApplication(User? user);
 
         // 计算登记页界面权限状态

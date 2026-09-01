@@ -26,8 +26,9 @@ namespace DocMgr.ViewModels.Cabinets
         private bool _isSelected;
         private InteractiveRelocationDropHighlightKind _interactiveRelocationDropHighlight;
 
-        public CabinetSlotViewModel(CabinetSlotDescriptor descriptor)
+        public CabinetSlotViewModel(CabinetSlotDescriptor descriptor, bool canMaintainCabinet = true)
         {
+            CanMaintainCabinet = canMaintainCabinet;
             VisualRowIndex = descriptor.VisualRowIndex;
             VisualColumnIndex = descriptor.VisualColumnIndex;
             LayerIndex = descriptor.LayerIndex;
@@ -63,6 +64,8 @@ namespace DocMgr.ViewModels.Cabinets
             IsMixedUseArchiveSlot = descriptor.IsMixedUseArchiveSlot;
             DedicatedSlotCategoryName = descriptor.DedicatedSlotCategoryName;
         }
+
+        public bool CanMaintainCabinet { get; }
 
         public int VisualRowIndex { get; }
 
@@ -274,7 +277,8 @@ namespace DocMgr.ViewModels.Cabinets
 
         public Visibility PendingReturnVisibility => PendingReturnMediaItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        public Visibility ArchiveBoxActionsVisibility => IsMagneticDiskSlot ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility ArchiveBoxActionsVisibility =>
+            IsMagneticDiskSlot || !CanMaintainCabinet ? Visibility.Collapsed : Visibility.Visible;
 
         public Visibility SpecialRuleVisibility => IsSpecialRule ? Visibility.Visible : Visibility.Collapsed;
 

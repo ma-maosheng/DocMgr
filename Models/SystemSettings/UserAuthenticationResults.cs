@@ -6,7 +6,14 @@ namespace DocMgr.Models.SystemSettings
     {
         Success = 0,
         InvalidCredentials = 1,
-        AlreadyLoggedIn = 2
+        AlreadyLoggedIn = 2,
+        LockedOut = 3
+    }
+
+    /// <summary>本人修改密码的结果。</summary>
+    public sealed record PasswordChangeResult(bool Succeeded, string Message)
+    {
+        public bool IsSuccess => Succeeded;
     }
 
     public sealed record UserLoginResult(

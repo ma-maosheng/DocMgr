@@ -5,55 +5,63 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:odm="clr-namespace:DocMgr.Models.OpticalDiscMedia"
       mc:Ignorable="d"
-      d:DesignHeight="800"
+      d:DesignHeight="900"
       d:DesignWidth="1200"
       Title="OpticalDiscMediaPage"
       Background="#F0F2F5">
-    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-        <Grid Margin="16">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-
-            <Border Grid.Row="0"
-                    Padding="20"
-                    Margin="0,0,0,16"
-                    Background="White"
-                    CornerRadius="6">
-                <StackPanel>
-                    <TextBlock Text="介质管理（光盘）"
-                               FontSize="24"
-                               FontWeight="Bold"
-                               Foreground="#1F2937"/>
-                    <TextBlock Margin="0,8,0,0"
-                               Text="数据光盘概览"
-                               FontSize="18"
-                               FontWeight="SemiBold"
-                               Foreground="#0F766E"/>
-                    <TextBlock Margin="0,8,0,0"
-                               Text="本系统仅管理已写入资料数据的光盘，不管理空白光盘。光盘台账随电子立档、资料出库/归还与迁档业务被动维护。"
-                               TextWrapping="Wrap"
-                               Foreground="#4B5563"/>
-                    <Border Margin="0,14,0,0"
-                            Padding="12"
-                            Background="#ECFDF5"
-                            BorderBrush="#A7F3D0"
-                            BorderThickness="1"
-                            CornerRadius="4">
-                        <TextBlock Text="重点：主表看当前库存与位置，流转台账看立档入库、出库、归还、迁档与销毁全过程；点击 KPI 卡片可下钻到流转台账。"
-                                   TextWrapping="Wrap"
-                                   Foreground="#065F46"/>
+    <Page.Resources>
+        <Style x:Key="KpiCaptionStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#64748B"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+        <Style x:Key="FlowTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#1F2937"/>
+        </Style>
+        <Style x:Key="FlowBodyStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#64748B"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+    </Page.Resources>
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="16">
+            <Border Padding="18,16" Margin="0,0,0,12" Background="White" CornerRadius="6">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="14"/>
+                        <ColumnDefinition Width="280"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="介质管理（光盘）" FontSize="22" FontWeight="Bold" Foreground="#1F2937"/>
+                        <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#4B5563"
+                                   Text="光盘是电子立档的伴生介质：不管理空白盘，也不设独立借还菜单。介质与台账在向光盘写入资料时自动生成，随后随资料出库、归还、迁档、盘库与离库处置被动回写。"/>
+                        <WrapPanel Margin="0,10,0,0">
+                            <Border Background="#ECFDF5" CornerRadius="8" Padding="10,6" Margin="0,0,8,6">
+                                <TextBlock Text="仅数据光盘 · 资料存档登记" Foreground="#065F46" FontSize="12"/>
+                            </Border>
+                            <Border Background="#EEF2FF" CornerRadius="8" Padding="10,6" Margin="0,0,8,6">
+                                <TextBlock Text="落年度/历史数据光盘专用档口" Foreground="#3730A3" FontSize="12"/>
+                            </Border>
+                            <Border Background="#FEF3C7" CornerRadius="8" Padding="10,6" Margin="0,0,8,6">
+                                <TextBlock Text="盘失/拟销不可迁档" Foreground="#92400E" FontSize="12"/>
+                            </Border>
+                        </WrapPanel>
+                    </StackPanel>
+                    <Border Grid.Column="2" Background="#F0FDFA" BorderBrush="#99F6E4" BorderThickness="1" CornerRadius="8" Padding="12">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="怎么用本页" FontWeight="SemiBold" Foreground="#0F766E"/>
+                            <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#115E59" FontSize="12.5"
+                                       Text="点击 KPI 下钻到「流转台账」。办理立档、借还、迁档、盘库、离库请走年度资料菜单。"/>
+                        </StackPanel>
                     </Border>
-                </StackPanel>
+                </Grid>
             </Border>
 
-            <Border Grid.Row="1"
-                    Padding="16"
-                    Margin="0,0,0,16"
-                    Background="White"
-                    CornerRadius="6">
+            <Border Padding="16" Margin="0,0,0,12" Background="White" CornerRadius="6">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -63,241 +71,238 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="库存概览"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               Foreground="#1F2937"/>
+                    <TextBlock Text="光盘概览" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
                     <Button Grid.Column="1"
                             Content="刷新概览"
                             Padding="16,6"
                             Style="{StaticResource ButtonSecondaryStyle}"
                             Command="{Binding RefreshCommand}"/>
-                    <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,12,0,0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,10,0,0">
+                        <TextBlock Text="库存结构（仅统计有台账的数据光盘）" Style="{StaticResource KpiCaptionStyle}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Margin="0,0,12,12" Padding="12" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="打开光盘流转台账" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.TotalMedia}">
+                                <StackPanel>
+                                    <TextBlock Text="光盘总数" Foreground="#64748B"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding TotalMediumCount}" FontSize="22" FontWeight="Bold" Foreground="#0F172A"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Margin="0,0,12,12" Padding="12" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="在库(资料)" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.InStock}">
+                                <StackPanel>
+                                    <TextBlock Text="在库(资料)" Foreground="#64748B"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding InStockCount}" FontSize="22" FontWeight="Bold" Foreground="#1D4ED8"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Margin="0,0,12,12" Padding="12" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="出库(临时)，随资料出库回写" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.OutTemporary}">
+                                <StackPanel>
+                                    <TextBlock Text="出库(临时)" Foreground="#64748B"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding OutTemporaryCount}" FontSize="22" FontWeight="Bold" Foreground="#B45309"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="3" Margin="0,0,0,12" Padding="12" Background="#EFF6FF" CornerRadius="4" Cursor="Hand" ToolTip="台账「需归还」标记" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.NeedReturn}">
+                                <StackPanel>
+                                    <TextBlock Text="需归还" Foreground="#1D4ED8"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding NeedReturnMediumCount}" FontSize="22" FontWeight="Bold" Foreground="#2563EB"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
 
-                        <Border Grid.Row="0" Grid.Column="0" Margin="0,0,12,12" Padding="14" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应流转台账" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.TotalMedia}">
-                            <StackPanel>
-                                <TextBlock Text="光盘总数" Foreground="#64748B"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding TotalMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#0F172A"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Row="0" Grid.Column="1" Margin="0,0,12,12" Padding="14" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应流转台账" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.InStock}">
-                            <StackPanel>
-                                <TextBlock Text="在库(资料)" Foreground="#64748B"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding InStockCount}" FontSize="24" FontWeight="Bold" Foreground="#1D4ED8"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Row="0" Grid.Column="2" Margin="0,0,12,12" Padding="14" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应流转台账" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.OutTemporary}">
-                            <StackPanel>
-                                <TextBlock Text="出库(临时)" Foreground="#64748B"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding OutTemporaryCount}" FontSize="24" FontWeight="Bold" Foreground="#B45309"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Row="0" Grid.Column="3" Margin="0,0,0,12" Padding="14" Background="#FFF7ED" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应流转台账" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.DamagedInStock}">
-                            <StackPanel>
-                                <TextBlock Text="在库(损坏)" Foreground="#9A3412"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding DamagedInStockCount}" FontSize="24" FontWeight="Bold" Foreground="#C2410C"/>
-                            </StackPanel>
-                        </Border>
+                        <TextBlock Text="中间态与终态（损坏可迁至损坏光盘专用档口；盘失/拟销不可迁档，销毁由资料离库办结）" Style="{StaticResource KpiCaptionStyle}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Margin="0,0,12,12" Padding="12" Background="#FFF7ED" CornerRadius="4" Cursor="Hand" ToolTip="在库(损坏)，多由电子资料盘库「损坏登记」产生" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.DamagedInStock}">
+                                <StackPanel>
+                                    <TextBlock Text="在库(损坏)" Foreground="#9A3412"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding DamagedInStockCount}" FontSize="22" FontWeight="Bold" Foreground="#C2410C"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Margin="0,0,12,12" Padding="12" Background="#FEF2F2" CornerRadius="4" Cursor="Hand" ToolTip="在库(盘失)" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.LostInStock}">
+                                <StackPanel>
+                                    <TextBlock Text="在库(盘失)" Foreground="#991B1B"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding LostInStockCount}" FontSize="22" FontWeight="Bold" Foreground="#DC2626"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Margin="0,0,12,12" Padding="12" Background="#FDF2F8" CornerRadius="4" Cursor="Hand" ToolTip="在库(拟销)" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.ScrapInStock}">
+                                <StackPanel>
+                                    <TextBlock Text="在库(拟销)" Foreground="#9D174D"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding ScrapInStockCount}" FontSize="22" FontWeight="Bold" Foreground="#DB2777"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="3" Margin="0,0,0,12" Padding="12" Background="#F5F3FF" CornerRadius="4" Cursor="Hand" ToolTip="出库(销毁)，资料离库办结后写入" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.Destroyed}">
+                                <StackPanel>
+                                    <TextBlock Text="出库(销毁)" Foreground="#5B21B6"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding DestroyedCount}" FontSize="22" FontWeight="Bold" Foreground="#7C3AED"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
 
-                        <Border Grid.Row="1" Grid.Column="0" Margin="0,0,12,0" Padding="14" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应流转台账" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.Destroyed}">
-                            <StackPanel>
-                                <TextBlock Text="出库(销毁)" Foreground="#64748B"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding DestroyedCount}" FontSize="24" FontWeight="Bold" Foreground="#7C3AED"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Row="1" Grid.Column="1" Margin="0,0,12,0" Padding="14" Background="#EFF6FF" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应流转台账" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.NeedReturn}">
-                            <StackPanel>
-                                <TextBlock Text="需归还" Foreground="#1D4ED8"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding NeedReturnMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#2563EB"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Row="1" Grid.Column="2" Margin="0,0,12,0" Padding="14" Background="#FEFCE8" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应流转台账" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.MissingLocation}">
-                            <StackPanel>
-                                <TextBlock Text="未登记位置" Foreground="#A16207"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding MissingLocationMediumCount}" FontSize="24" FontWeight="Bold" Foreground="#CA8A04"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Row="1" Grid.Column="3" Padding="14" Background="#ECFEFF" CornerRadius="4" Cursor="Hand" ToolTip="点击查看对应流转台账" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.RecentTransactions}">
-                            <StackPanel>
-                                <TextBlock Text="近90天流转" Foreground="#0F766E"/>
-                                <TextBlock Margin="0,8,0,0" Text="{Binding RecentTransactionCount}" FontSize="24" FontWeight="Bold" Foreground="#0D9488"/>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
+                        <TextBlock Text="台账质量与近期流转" Style="{StaticResource KpiCaptionStyle}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Margin="0,0,12,0" Padding="12" Background="#FEFCE8" CornerRadius="4" Cursor="Hand" ToolTip="当前位置为空" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.MissingLocation}">
+                                <StackPanel>
+                                    <TextBlock Text="未登记位置" Foreground="#A16207"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding MissingLocationMediumCount}" FontSize="22" FontWeight="Bold" Foreground="#CA8A04"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Margin="0,0,12,0" Padding="12" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="出库(临时)或出库(销毁)但未填保管人" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.OutboundWithoutKeeper}">
+                                <StackPanel>
+                                    <TextBlock Text="出库未明确保管" Foreground="#475569"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding OutboundWithoutKeeperMediumCount}" FontSize="22" FontWeight="Bold" Foreground="#334155"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Margin="0,0,12,0" Padding="12" Background="#ECFEFF" CornerRadius="4" Cursor="Hand" ToolTip="近90天流转流水" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.RecentTransactions}">
+                                <StackPanel>
+                                    <TextBlock Text="近90天流转" Foreground="#0F766E"/>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding RecentTransactionCount}" FontSize="22" FontWeight="Bold" Foreground="#0D9488"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
                 </Grid>
             </Border>
 
-            <Grid Grid.Row="2">
+            <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.4*"/>
+                    <ColumnDefinition Width="1.35*"/>
+                    <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0"
-                        Padding="16"
-                        Margin="0,0,16,0"
-                        Background="White"
-                        CornerRadius="6">
+                <Border Padding="16" Background="White" CornerRadius="6">
                     <StackPanel>
-                        <TextBlock Text="业务主线"
-                                   FontSize="16"
-                                   FontWeight="SemiBold"
-                                   Foreground="#1F2937"/>
-                        <TextBlock Margin="0,6,0,0"
-                                   Text="数据光盘作为年度电子立档的伴生介质管理"
-                                   Foreground="#6B7280"/>
-                        <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding SectionHighlights}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Margin="0,0,8,8"
-                                            Padding="10,6"
-                                            Background="#EEF2FF"
-                                            CornerRadius="14">
-                                        <TextBlock Text="{Binding}" Foreground="#3730A3"/>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                        <TextBlock Text="光盘如何形成与流转" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
+                        <TextBlock Margin="0,4,0,10" Style="{StaticResource FlowBodyStyle}"
+                                   Text="状态、档口变化都会写入流转流水。本模块只有概览和流转台账两个入口。"/>
 
-                        <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding WorkflowSteps}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Margin="0,0,0,10"
-                                            Padding="12"
-                                            Background="#F8FAFC"
-                                            CornerRadius="4">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Width="22"
-                                                    Height="22"
-                                                    Margin="0,0,10,0"
-                                                    Background="#0F766E"
-                                                    CornerRadius="11">
-                                                <TextBlock HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           Text="✓"
-                                                           Foreground="White"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Text="{Binding}"
-                                                       TextWrapping="Wrap"
-                                                       Foreground="#374151"/>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <DockPanel Margin="0,0,0,8">
+                            <Border Width="26" Height="26" CornerRadius="13" Background="#E0F2F1" Margin="0,0,10,0">
+                                <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#00695C"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="电子立档写入" Style="{StaticResource FlowTitleStyle}"/>
+                                <TextBlock Style="{StaticResource FlowBodyStyle}" Text="选择光盘载体并赋码后自动建介质与台账，状态为在库(资料)，位置须落数据光盘专用档口（年度或历史，由档口用途决定）。"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <DockPanel Margin="0,0,0,8">
+                            <Border Width="26" Height="26" CornerRadius="13" Background="#E3F2FD" Margin="0,0,10,0">
+                                <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#1565C0"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="随资料袋出库 / 归还" Style="{StaticResource FlowTitleStyle}"/>
+                                <TextBlock Style="{StaticResource FlowBodyStyle}" Text="光盘不单独审批。资料出库办结后变为出库(临时)，可标需归还；归还入库后回到在库(资料)并回写档口。"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <DockPanel Margin="0,0,0,8">
+                            <Border Width="26" Height="26" CornerRadius="13" Background="#F3E5F5" Margin="0,0,10,0">
+                                <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#7B1FA2"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="电子迁档" Style="{StaticResource FlowTitleStyle}"/>
+                                <TextBlock Style="{StaticResource FlowBodyStyle}" Text="仅在库(资料)、在库(损坏)可迁档。损坏盘须迁入损坏光盘专用档口；盘失、拟销不可迁档。"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <DockPanel Margin="0,0,0,8">
+                            <Border Width="26" Height="26" CornerRadius="13" Background="#FFF3E0" Margin="0,0,10,0">
+                                <TextBlock Text="4" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#EF6C00"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="电子资料盘库" Style="{StaticResource FlowTitleStyle}"/>
+                                <TextBlock Style="{StaticResource FlowBodyStyle}" Text="损坏登记→在库(损坏)；盘失登记→在库(盘失)；拟销登记→在库(拟销)。这是中间态，尚未清账。"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <DockPanel>
+                            <Border Width="26" Height="26" CornerRadius="13" Background="#FFEBEE" Margin="0,0,10,0">
+                                <TextBlock Text="5" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#C62828"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="电子资料离库" Style="{StaticResource FlowTitleStyle}"/>
+                                <TextBlock Style="{StaticResource FlowBodyStyle}" Text="光盘拟销/损坏离库销毁后状态为出库(销毁)；盘失走库内注销。办结后解除袋内关联。"/>
+                            </StackPanel>
+                        </DockPanel>
                     </StackPanel>
                 </Border>
 
-                <StackPanel Grid.Column="1">
-                    <Border Padding="16" Margin="0,0,0,16" Background="White" CornerRadius="6">
+                <StackPanel Grid.Column="2">
+                    <Border Padding="16" Margin="0,0,0,12" Background="White" CornerRadius="6">
                         <StackPanel>
-                            <TextBlock Text="统计分析" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
-                            <TextBlock Margin="0,6,0,0" Text="从位置、生命周期、流转与风险四个维度看数据光盘运行情况" Foreground="#6B7280"/>
-
-                            <Border Margin="0,12,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
-                                <StackPanel>
-                                    <TextBlock Text="位置与保管分布" FontWeight="SemiBold" Foreground="#0F172A"/>
-                                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding LocationInsights}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Margin="0,0,0,6" Text="{Binding}" TextWrapping="Wrap" Foreground="#4B5563"/>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Margin="0,10,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
-                                <StackPanel>
-                                    <TextBlock Text="生命周期结构" FontWeight="SemiBold" Foreground="#0F172A"/>
-                                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding LifecycleInsights}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Margin="0,0,0,6" Text="{Binding}" TextWrapping="Wrap" Foreground="#4B5563"/>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Margin="0,10,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
-                                <StackPanel>
-                                    <TextBlock Text="流转分析" FontWeight="SemiBold" Foreground="#0F172A"/>
-                                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding CirculationInsights}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Margin="0,0,0,6" Text="{Binding}" TextWrapping="Wrap" Foreground="#4B5563"/>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Margin="0,10,0,0" Padding="12" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="4">
-                                <StackPanel>
-                                    <TextBlock Text="风险提示" FontWeight="SemiBold" Foreground="#991B1B"/>
-                                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding RiskInsights}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Margin="0,0,0,6" Text="{Binding}" TextWrapping="Wrap" Foreground="#7F1D1D"/>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <TextBlock Margin="0,8,0,0"
-                                               Cursor="Hand"
-                                               ToolTip="点击查看对应流转台账"
-                                               MouseLeftButtonUp="KpiCard_MouseLeftButtonUp"
-                                               Tag="{x:Static odm:OpticalDiscOverviewKpiKind.OutboundWithoutKeeper}"
-                                               Text="{Binding OutboundWithoutKeeperMediumCount, StringFormat=出库未明确保管：{0} 张}"
-                                               Foreground="#7F1D1D"
-                                               TextDecorations="Underline"/>
-                                </StackPanel>
-                            </Border>
+                            <TextBlock Text="与硬盘的差别" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
+                            <TextBlock Margin="0,6,0,0" Style="{StaticResource FlowBodyStyle}"
+                                       Text="硬盘可空白登记、独立出库审批与硬盘离库；光盘始终绑在电子资料袋上，不能单独出库或格式化留盘。查看全过程请用「流转台账」。"/>
                         </StackPanel>
                     </Border>
-
                     <Border Padding="16" Background="White" CornerRadius="6">
                         <StackPanel>
-                            <TextBlock Text="关键域值" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
-                            <TextBlock Margin="0,6,0,0" Text="数据光盘状态与流转类型摘要" Foreground="#6B7280"/>
+                            <TextBlock Text="统计分析" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
+                            <TextBlock Margin="0,4,0,0" Foreground="#6B7280" FontSize="12.5" Text="位置、生命周期、流转类型与风险。"/>
 
-                            <Border Margin="0,12,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
+                            <Border Margin="0,10,0,0" Padding="10" Background="#F8FAFC" CornerRadius="4">
                                 <StackPanel>
-                                    <TextBlock Text="介质状态" FontWeight="SemiBold" Foreground="#0F172A"/>
-                                    <TextBlock Margin="0,6,0,0" Text="{Binding StatusSummary}" TextWrapping="Wrap" Foreground="#4B5563"/>
+                                    <TextBlock Text="位置与保管" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                    <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding LocationInsights}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,0,0,5" Text="{Binding}" TextWrapping="Wrap" Foreground="#4B5563" FontSize="12.5"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </StackPanel>
                             </Border>
-
-                            <Border Margin="0,10,0,0" Padding="12" Background="#F8FAFC" CornerRadius="4">
+                            <Border Margin="0,8,0,0" Padding="10" Background="#F8FAFC" CornerRadius="4">
                                 <StackPanel>
-                                    <TextBlock Text="流转类型" FontWeight="SemiBold" Foreground="#0F172A"/>
-                                    <TextBlock Margin="0,6,0,0" Text="{Binding TransactionTypeSummary}" TextWrapping="Wrap" Foreground="#4B5563"/>
+                                    <TextBlock Text="生命周期" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                    <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding LifecycleInsights}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,0,0,5" Text="{Binding}" TextWrapping="Wrap" Foreground="#4B5563" FontSize="12.5"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                            <Border Margin="0,8,0,0" Padding="10" Background="#F8FAFC" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="流转分析" FontWeight="SemiBold" Foreground="#0F172A"/>
+                                    <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding CirculationInsights}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,0,0,5" Text="{Binding}" TextWrapping="Wrap" Foreground="#4B5563" FontSize="12.5"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                            <Border Margin="0,8,0,0" Padding="10" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="风险提示" FontWeight="SemiBold" Foreground="#991B1B"/>
+                                    <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding RiskInsights}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,0,0,5" Text="{Binding}" TextWrapping="Wrap" Foreground="#7F1D1D" FontSize="12.5"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
                     </Border>
                 </StackPanel>
             </Grid>
-        </Grid>
+        </StackPanel>
     </ScrollViewer>
 </Page>

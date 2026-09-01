@@ -209,6 +209,10 @@ namespace DocMgr.ViewModels.HistoryArchive
         public RelayCommand NextPageCommand { get; }
         public RelayCommand LastPageCommand { get; }
 
+        /// <summary>资料室资料管理员可导入、编辑、删除；其他部门资料管理员仅浏览与检索。</summary>
+        public bool CanMaintainLedger =>
+            HistoryArchiveLedgerPermissionSupport.CanMaintain(_userContextService.CurrentUser);
+
         public OtherMapViewModel(
             IOtherMapService otherMapService,
             IDialogService dialogService,
@@ -218,13 +222,14 @@ namespace DocMgr.ViewModels.HistoryArchive
             _dialogService = dialogService;
             _userContextService = userContextService;
 
-            ImportCommand = new RelayCommand(async _ => await ImportAsync());
+            ImportCommand = new RelayCommand(async _ => await ImportAsync(), _ => CanMaintainLedger);
             BrowseCommand = new RelayCommand(async _ => await BrowseAsync());
             DeleteCurrentRowCommand = new RelayCommand(async _ => await DeleteCurrentRowAsync(),
-                _ => SelectedOtherMap != null
+                _ => CanMaintainLedger
+                     && SelectedOtherMap != null
                      && !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(SelectedOtherMap.LifecycleStatus));
-            DeleteTableCommand = new RelayCommand(async _ => await DeleteTableAsync());
-            EditCommand = new RelayCommand(async _ => await EditAsync(), _ => SelectedOtherMap != null);
+            DeleteTableCommand = new RelayCommand(async _ => await DeleteTableAsync(), _ => CanMaintainLedger);
+            EditCommand = new RelayCommand(async _ => await EditAsync(), _ => CanMaintainLedger && SelectedOtherMap != null);
             SearchCommand = new RelayCommand(_ => ApplySearchFilter());
             ResetSearchCommand = new RelayCommand(_ => ResetSearch());
             ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => _filteredOtherMaps.Count > 0);
@@ -359,6 +364,11 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private async Task ImportAsync()
         {
+            if (!EnsureCanMaintainLedger())
+            {
+                return;
+            }
+
             string? filePath = _dialogService.OpenFileDialog("Excel Files|*.xlsx;*.xls", "选择其他历史资料 Excel 存档文件");
             if (string.IsNullOrEmpty(filePath))
             {
@@ -579,6 +589,11 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private async Task DeleteCurrentRowAsync()
         {
+            if (!EnsureCanMaintainLedger())
+            {
+                return;
+            }
+
             if (SelectedOtherMap == null)
             {
                 _dialogService.ShowMessage("请先选择要删除的记录。");
@@ -633,6 +648,11 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private async Task DeleteTableAsync()
         {
+            if (!EnsureCanMaintainLedger())
+            {
+                return;
+            }
+
             var tables = await Task.Run(() => _otherMapService.GetOtherMapTables());
             if (tables.Count == 0)
             {
@@ -673,6 +693,11 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         private async Task EditAsync()
         {
+            if (!EnsureCanMaintainLedger())
+            {
+                return;
+            }
+
             if (SelectedOtherMap == null)
             {
                 _dialogService.ShowMessage("请先选择要编辑的记录。");
@@ -982,6 +1007,17 @@ namespace DocMgr.ViewModels.HistoryArchive
             }
 
             return text;
+        }
+
+        private bool EnsureCanMaintainLedger()
+        {
+            if (CanMaintainLedger)
+            {
+                return true;
+            }
+
+            _dialogService.ShowMessage(HistoryArchiveLedgerPermissionSupport.MaintainDeniedMessage);
+            return false;
         }
     }
 }
