@@ -1,6 +1,7 @@
 {
     "version": "0.2.0",
     "configurations": [
+    
         {
             // 使用 IntelliSense 找出 C# 调试存在哪些属性
             // 将悬停用于现有属性的说明
