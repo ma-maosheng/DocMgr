@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.SystemSettings;
+using DocMgr.Services.YearlyArchive;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 
@@ -50,7 +51,8 @@ namespace DocMgr.Services.HardDiskMedia
         public string GetMediaImportTemplateDescription()
         {
             return "导入模板字段：硬盘编号*、序列号*、硬盘类型*、品牌*、容量、接口类型、出厂日期、当前存放位置、备注。"
-                + " 若未填写当前存放位置，系统将按防磁磁盘柜空白专用档口用途与档口容量（10盘/档口）自动入位；"
+                + " 当前存放位置须能解析为防磁磁盘柜档口（如 壬A-1-2），且对应该柜空白硬盘专用档口；无法对应的记录须先整改再导入。"
+                + " 若未填写当前存放位置，系统将按空白专用档口用途与档口容量（10盘/档口）自动入位；"
                 + " 导入完成后请资料室管理员前往【硬盘台账】核对存放位置。";
         }
 
@@ -115,6 +117,7 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             ValidateImportedMedia(importedRows);
+            await ValidateImportedBlankSlotCorrespondenceAsync(importedRows, importMode);
 
             int clearedCount = 0;
             await using var transaction = await _hardDiskMediaRepository.BeginTransactionAsync();
@@ -260,6 +263,163 @@ namespace DocMgr.Services.HardDiskMedia
                 int rowNumber = importedItems.First(item => string.Equals(item.Medium.SerialNumber, duplicateSerialNumber, StringComparison.OrdinalIgnoreCase)).RowNumber;
                 throw new HardDiskMediaImportException($"第 {rowNumber} 行的序列号 [{duplicateSerialNumber}] 与现有台账重复，无法执行追加导入。", rowNumber, "序列号");
             }
+        }
+
+        /// <summary>
+        /// 导入前核验已填写的存放位置能否对应防磁磁盘柜空白专用档口，并预检档口容量。
+        /// </summary>
+        private async Task ValidateImportedBlankSlotCorrespondenceAsync(
+            IReadOnlyList<ImportedMediumRow> importedItems,
+            ImportMode importMode)
+        {
+            var blankSlotCodes = (await GetOrderedBlankDedicatedSlotLocationCodesAsync())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var cabinetCache = new Dictionary<string, Cabinet?>(StringComparer.OrdinalIgnoreCase);
+            var categoryCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var errors = new List<string>();
+            var filledSlotRowNumbers = new Dictionary<string, List<int>>(StringComparer.OrdinalIgnoreCase);
+            int emptyLocationCount = 0;
+
+            foreach (var item in importedItems)
+            {
+                string diskCode = item.Medium.DiskCode?.Trim() ?? string.Empty;
+                string location = item.Medium.Ledger?.StorageLocation?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(location))
+                {
+                    emptyLocationCount++;
+                    continue;
+                }
+
+                if (!HardDiskBlankSlotLocationSupport.TryParseLocationCode(
+                        location,
+                        out string cabinetName,
+                        out string face,
+                        out int row,
+                        out int column))
+                {
+                    errors.Add(
+                        $"第 {item.RowNumber} 行硬盘编号 [{diskCode}] 的当前存放位置 [{location}] 无法解析为防磁磁盘柜档口（柜号+面别-层号-列号，例如 壬A-1-2）。");
+                    continue;
+                }
+
+                string slotKey = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, face, row, column);
+                string faceCode = face.Trim().ToUpperInvariant();
+                if (!cabinetCache.TryGetValue(cabinetName, out var cabinet))
+                {
+                    cabinet = await _archiveFilingRepository.GetMagneticDiskCabinetByNameAsync(cabinetName.Trim());
+                    cabinetCache[cabinetName] = cabinet;
+                }
+
+                if (cabinet == null)
+                {
+                    errors.Add(
+                        $"第 {item.RowNumber} 行硬盘编号 [{diskCode}] 的当前存放位置 [{slotKey}] 未能对应防磁磁盘柜（柜号 [{cabinetName.Trim()}] 不存在或不是防磁磁盘柜）。");
+                    continue;
+                }
+
+                bool faceAllowed = cabinet.FaceCount > 1
+                    ? string.Equals(faceCode, "A", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(faceCode, "B", StringComparison.OrdinalIgnoreCase)
+                    : string.Equals(faceCode, "A", StringComparison.OrdinalIgnoreCase);
+                if (!faceAllowed || row < 1 || column < 1 || row > cabinet.LayerCount || column > cabinet.ColumnCount)
+                {
+                    errors.Add(
+                        $"第 {item.RowNumber} 行硬盘编号 [{diskCode}] 的当前存放位置 [{slotKey}] 在防磁磁盘柜 [{cabinet.Name}] 中不存在（面别/层号/列号超出柜体布局）。");
+                    continue;
+                }
+
+                if (!blankSlotCodes.Contains(slotKey))
+                {
+                    string assignmentKey = $"{cabinet.Id}:{faceCode}:{row}-{column}";
+                    if (!categoryCache.TryGetValue(assignmentKey, out string? cachedCategory))
+                    {
+                        cachedCategory = (await _archiveFilingRepository.GetMagneticDiskSlotCategoryNameAsync(
+                            cabinet.Id,
+                            faceCode,
+                            $"{row}-{column}"))?.Trim() ?? string.Empty;
+                        categoryCache[assignmentKey] = cachedCategory;
+                    }
+
+                    string categoryName = cachedCategory ?? string.Empty;
+
+                    string categoryText = string.IsNullOrWhiteSpace(categoryName)
+                        ? "未设置"
+                        : CabinetHardDiskSlotCategoryAssignment.NormalizeCategoryName(categoryName);
+                    errors.Add(
+                        $"第 {item.RowNumber} 行硬盘编号 [{diskCode}] 的当前存放位置 [{slotKey}] 用途为「{categoryText}」，不能作为空白硬盘导入落位（须对应空白硬盘专用档口）。");
+                    continue;
+                }
+
+                if (!filledSlotRowNumbers.TryGetValue(slotKey, out var rowNumbers))
+                {
+                    rowNumbers = new List<int>();
+                    filledSlotRowNumbers[slotKey] = rowNumbers;
+                }
+
+                rowNumbers.Add(item.RowNumber);
+            }
+
+            var occupancy = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (string slotCode in blankSlotCodes)
+            {
+                occupancy[slotCode] = 0;
+            }
+
+            if (importMode != ImportMode.Recreate && blankSlotCodes.Count > 0)
+            {
+                var existingCounts = await _hardDiskMediaRepository.GetInStockBlankLedgerCountsBySlotCodesAsync(blankSlotCodes);
+                foreach (var pair in existingCounts)
+                {
+                    occupancy[pair.Key] = pair.Value;
+                }
+            }
+
+            foreach (var pair in filledSlotRowNumbers)
+            {
+                occupancy.TryGetValue(pair.Key, out int existingCount);
+                int projectedCount = existingCount + pair.Value.Count;
+                occupancy[pair.Key] = projectedCount;
+                if (projectedCount <= HardDiskBlankSlotLocationSupport.DefaultSlotCapacity)
+                {
+                    continue;
+                }
+
+                string rowNumbers = string.Join("、", pair.Value);
+                errors.Add(
+                    $"档口 [{pair.Key}] 空白硬盘容量为 {HardDiskBlankSlotLocationSupport.DefaultSlotCapacity} 盘/档口，"
+                    + $"本次导入填写该档口的记录为第 {rowNumbers} 行（共 {pair.Value.Count} 块），加上已在库 {existingCount} 块后将超出容量。");
+            }
+
+            if (emptyLocationCount > 0)
+            {
+                int remainingCapacity = occupancy.Values.Sum(count =>
+                    Math.Max(0, HardDiskBlankSlotLocationSupport.DefaultSlotCapacity - count));
+                if (blankSlotCodes.Count == 0)
+                {
+                    errors.Add("未找到空白硬盘专用档口，无法为未填写存放位置的空白硬盘自动入位，请先在防磁磁盘柜开柜界面配置档口用途。");
+                }
+                else if (emptyLocationCount > remainingCapacity)
+                {
+                    errors.Add(
+                        $"有 {emptyLocationCount} 块硬盘未填写当前存放位置，空白专用档口剩余容量仅 {remainingCapacity} 盘，无法全部自动入位。");
+                }
+            }
+
+            if (errors.Count == 0)
+            {
+                return;
+            }
+
+            const int maxPreview = 40;
+            var preview = errors.Take(maxPreview).ToList();
+            string suffix = errors.Count > maxPreview
+                ? $"{Environment.NewLine}（仅列出前 {maxPreview} 条，共 {errors.Count} 条）"
+                : string.Empty;
+            throw new HardDiskMediaImportException(
+                "导入前逻辑核验未通过，请整改下列记录后再导入："
+                + Environment.NewLine
+                + string.Join(Environment.NewLine, preview.Select(item => "• " + item))
+                + suffix);
         }
 
         private static void ValidateImportedMedia(IReadOnlyList<ImportedMediumRow> importedItems)
@@ -504,7 +664,7 @@ namespace DocMgr.Services.HardDiskMedia
             row6.CreateCell(1).SetCellValue("可选；格式 yyyy-MM-dd");
             var row7 = sheet.CreateRow(7);
             row7.CreateCell(0).SetCellValue("当前存放位置");
-            row7.CreateCell(1).SetCellValue("可选；留空时系统按空白专用档口用途与容量自动入位（10盘/档口）");
+            row7.CreateCell(1).SetCellValue("可选；须对应防磁磁盘柜空白硬盘专用档口（如 壬A-1-2）；无法对应则禁止导入。留空时按空白专用档口用途与容量自动入位（10盘/档口）");
         }
 
         private sealed record ImportedMediumRow(int RowNumber, HardDiskMedium Medium);
