@@ -163,10 +163,16 @@ namespace DocMgr.ViewModels.Cabinets
                 : Visibility.Collapsed;
 
         public bool CanInteractiveRelocate =>
-            YearlyArchiveBoxId > 0
+            (YearlyArchiveBoxId > 0 || IsHistoryArchiveDisplay)
             && !IsMixedPlacement
             && ItemCount > 0
             && !HasOccupationLock;
+
+        /// <summary>是否历史存档资料盒（地形图/航片/其他图件，无年度盒实体）。</summary>
+        public bool IsHistoryArchiveDisplay =>
+            YearlyArchiveBoxId <= 0
+            && !IsYearlyArchiveDisplay
+            && !string.IsNullOrWhiteSpace(BoxCode);
 
         public string BoxCode { get; init; } = string.Empty;
 

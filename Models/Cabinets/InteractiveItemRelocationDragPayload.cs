@@ -17,11 +17,16 @@ namespace DocMgr.Models.Cabinets
 
         public int SourceMediumId { get; init; }
 
+        public string SourceHistoryBoxCode { get; init; } = string.Empty;
+
         public IReadOnlyList<int> SourceBoxIds { get; init; } = [];
 
         public IReadOnlyList<int> SourceUnitIds { get; init; } = [];
 
         public IReadOnlyList<int> SourceMediumIds { get; init; } = [];
+
+        /// <summary>历史资料源盒号列表；仅 MediaKind=历史 时使用。</summary>
+        public IReadOnlyList<string> SourceHistoryBoxCodes { get; init; } = [];
 
         public string BoxSpecification { get; init; } = string.Empty;
 
@@ -40,6 +45,10 @@ namespace DocMgr.Models.Cabinets
             var boxIds = ResolveIds(SourceBoxIds, SourceBoxId);
             var unitIds = ResolveIds(SourceUnitIds, SourceUnitId);
             var mediumIds = ResolveIds(SourceMediumIds, SourceMediumId);
+            var historyBoxCodes = ResolveBoxCodes(
+                SourceHistoryBoxCodes.Count > 0 || string.IsNullOrWhiteSpace(SourceHistoryBoxCode)
+                    ? SourceHistoryBoxCodes
+                    : [SourceHistoryBoxCode]);
 
             if (string.Equals(MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal)
                 && boxIds.Count > 0)
@@ -48,6 +57,21 @@ namespace DocMgr.Models.Cabinets
                 {
                     MediaKind = MediaKind,
                     SourceBoxId = id,
+                    DisplayText = DisplayText,
+                    BoxSpecification = BoxSpecification,
+                    SourceDedicatedSlotCategoryName = SourceDedicatedSlotCategoryName,
+                    SourceStorageLocation = SourceStorageLocation,
+                    SourceSlotKey = SourceSlotKey
+                }).ToList();
+            }
+
+            if (string.Equals(MediaKind, ArchiveRegisterDomainValues.MediaKindHistory, StringComparison.Ordinal)
+                && historyBoxCodes.Count > 0)
+            {
+                return historyBoxCodes.Select(code => new InteractiveItemRelocationSource
+                {
+                    MediaKind = MediaKind,
+                    SourceHistoryBoxCode = code,
                     DisplayText = DisplayText,
                     BoxSpecification = BoxSpecification,
                     SourceDedicatedSlotCategoryName = SourceDedicatedSlotCategoryName,
@@ -93,6 +117,7 @@ namespace DocMgr.Models.Cabinets
                     SourceBoxId = SourceBoxId,
                     SourceUnitId = SourceUnitId,
                     SourceMediumId = SourceMediumId,
+                    SourceHistoryBoxCode = SourceHistoryBoxCode,
                     DisplayText = DisplayText,
                     BoxSpecification = BoxSpecification,
                     SourceDedicatedSlotCategoryName = SourceDedicatedSlotCategoryName,
@@ -114,6 +139,20 @@ namespace DocMgr.Models.Cabinets
             }
 
             return single > 0 ? [single] : [];
+        }
+
+        private static IReadOnlyList<string> ResolveBoxCodes(IReadOnlyList<string>? codes)
+        {
+            if (codes == null || codes.Count == 0)
+            {
+                return [];
+            }
+
+            return codes
+                .Select(code => code?.Trim() ?? string.Empty)
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
         }
     }
 }

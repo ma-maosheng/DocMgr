@@ -470,6 +470,18 @@ namespace DocMgr.ViewModels.Cabinets
             IsYearlySimulatedOnlyArchiveSlot
             && RelocatableSimulatedArchiveBoxCount > 0;
 
+        /// <summary>是否历史资料专用档口且全部为历史盒（可整档口批量迁出）。</summary>
+        public bool IsHistoryOnlyBatchRelocationSourceSlot =>
+            !IsMagneticDiskSlot
+            && ArchiveBoxes.Count > 0
+            && ArchiveBoxes.All(box => box.IsHistoryArchiveDisplay)
+            && MixedArchiveBoxCount == 0
+            && RelocatableHistoryArchiveBoxCount > 0;
+
+        /// <summary>可交互式/批量迁出的历史盒数量（排除混放）。</summary>
+        public int RelocatableHistoryArchiveBoxCount =>
+            ArchiveBoxes.Count(box => box.IsHistoryArchiveDisplay && !box.IsMixedPlacement);
+
         public bool CanAcceptElectronicBatchRelocationTarget(string? sourceDedicatedCategoryName)
         {
             if (!IsMagneticDiskSlot)
@@ -574,6 +586,14 @@ namespace DocMgr.ViewModels.Cabinets
             if (IsMagneticDiskSlot)
             {
                 return false;
+            }
+
+            // 历史资料盒：标准滑道式须为历史专用或混用档口；立式/卧式不限制用途标记。
+            if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindHistory, StringComparison.Ordinal))
+            {
+                return IsHistoricalMaterialsDedicatedSlot
+                    || IsMixedUseArchiveSlot
+                    || string.IsNullOrWhiteSpace(DedicatedSlotCategoryName);
             }
 
             // 年度模拟档案盒：标准滑道式须为年度资料专用或混用档口；立式/卧式不限制用途标记。

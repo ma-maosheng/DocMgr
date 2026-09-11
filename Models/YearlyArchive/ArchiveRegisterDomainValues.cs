@@ -17,6 +17,8 @@ namespace DocMgr.Models.YearlyArchive
         public const string MediaKindDamagedHardDisk = "损坏盘";
         /// <summary>裸损坏数据光盘（损坏光盘专用档口）。</summary>
         public const string MediaKindDamagedOpticalDisc = "损坏光盘";
+        /// <summary>历史存档资料（地形图/航摄影像/其他图件，以四段盒号为迁移单元）。</summary>
+        public const string MediaKindHistory = "历史";
 
         public const string ElectronicMediaTypeUsbDrive = "U盘";
         public const string ElectronicMediaTypeOpticalDisc = "光盘";

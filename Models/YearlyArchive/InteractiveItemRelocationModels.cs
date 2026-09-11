@@ -13,6 +13,9 @@ namespace DocMgr.Models.YearlyArchive
 
         public int SourceMediumId { get; set; }
 
+        /// <summary>历史资料源盒号（四段编码）；仅 MediaKind=历史 时使用。</summary>
+        public string SourceHistoryBoxCode { get; set; } = string.Empty;
+
         public string TargetCabinetName { get; set; } = string.Empty;
 
         public string TargetFace { get; set; } = string.Empty;
@@ -53,6 +56,11 @@ namespace DocMgr.Models.YearlyArchive
                 request.SourceMediumIds.Add(SourceMediumId);
             }
 
+            if (!string.IsNullOrWhiteSpace(SourceHistoryBoxCode))
+            {
+                request.SourceHistoryBoxCodes.Add(SourceHistoryBoxCode.Trim());
+            }
+
             return request;
         }
     }
@@ -69,6 +77,9 @@ namespace DocMgr.Models.YearlyArchive
         public List<int> SourceUnitIds { get; set; } = [];
 
         public List<int> SourceMediumIds { get; set; } = [];
+
+        /// <summary>历史资料源盒号（四段编码，如 甲A-1-2-01）；仅 MediaKind=历史 时使用。</summary>
+        public List<string> SourceHistoryBoxCodes { get; set; } = [];
 
         public string TargetCabinetName { get; set; } = string.Empty;
 
@@ -93,6 +104,9 @@ namespace DocMgr.Models.YearlyArchive
         public int SourceUnitId { get; init; }
 
         public int SourceMediumId { get; init; }
+
+        /// <summary>历史资料源盒号（四段编码）；仅 MediaKind=历史 时使用。</summary>
+        public string SourceHistoryBoxCode { get; init; } = string.Empty;
 
         public string DisplayText { get; init; } = string.Empty;
 

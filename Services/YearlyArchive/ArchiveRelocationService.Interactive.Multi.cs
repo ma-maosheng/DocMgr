@@ -40,6 +40,11 @@ namespace DocMgr.Services.YearlyArchive
                 return await BuildInteractiveDamagedOpticalDiscsPreviewAsync(request);
             }
 
+            if (string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindHistory, StringComparison.Ordinal))
+            {
+                return await BuildInteractiveHistoryPreviewAsync(request);
+            }
+
             return string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
                 ? await BuildInteractiveElectronicsPreviewAsync(request)
                 : await BuildInteractiveSimulatedsPreviewAsync(request);
@@ -74,6 +79,11 @@ namespace DocMgr.Services.YearlyArchive
             if (string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
             {
                 return await ExecuteInteractiveElectronicsPhysicalMoveAsync(request);
+            }
+
+            if (string.Equals(request.MediaKind, ArchiveRegisterDomainValues.MediaKindHistory, StringComparison.Ordinal))
+            {
+                return await ExecuteInteractiveHistoryPhysicalMoveAsync(request);
             }
 
             return await ExecuteInteractiveSimulatedsPhysicalMoveAsync(request);

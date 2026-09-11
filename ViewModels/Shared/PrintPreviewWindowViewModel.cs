@@ -3,7 +3,6 @@ using DocMgr.Services.Shared;
 using Microsoft.Win32;
 using System;
 using System.IO;
-using System.IO.Packaging;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -16,9 +15,7 @@ namespace DocMgr.ViewModels.Shared
     {
         private readonly FlowDocument _sourceDocument;
         private readonly PrintPreviewExportOptions? _exportOptions;
-        private MemoryStream? _xpsStream;
-        private Package? _xpsPackage;
-        private Uri? _packageUri;
+        private string? _xpsFilePath;
         private XpsDocument? _xpsDocument;
         private IDocumentPaginatorSource? _previewDocument;
 
@@ -106,22 +103,25 @@ namespace DocMgr.ViewModels.Shared
                 MessageBoxImage.Information);
         }
 
+        /// <summary>
+        /// 写入临时 .xps 文件后按只读方式打开回读。
+        /// 2026-08 桌面运行时 servicing 更新后，XPS 从内存包（PackageStore + MemoryStream）
+        /// 回读时解析内嵌 ODTTF 字体会抛 FormatException（FixedDocument 初始化失败），
+        /// 从文件打开回读不受影响，故改用临时文件承载。
+        /// </summary>
         private void LoadDocument(FlowDocument document)
         {
             DisposeInternal();
 
-            _xpsStream = new MemoryStream();
-            _xpsPackage = Package.Open(_xpsStream, FileMode.Create, FileAccess.ReadWrite);
+            _xpsFilePath = Path.Combine(Path.GetTempPath(), $"docmgr-print-preview-{Guid.NewGuid():N}.xps");
 
-            var uriString = $"pack://temp_print_preview_{Guid.NewGuid():N}.xps";
-            _packageUri = new Uri(uriString);
+            using (var writeDocument = new XpsDocument(_xpsFilePath, FileAccess.ReadWrite))
+            {
+                var writer = XpsDocument.CreateXpsDocumentWriter(writeDocument);
+                writer.Write(((IDocumentPaginatorSource)document).DocumentPaginator);
+            }
 
-            PackageStore.AddPackage(_packageUri, _xpsPackage);
-
-            _xpsDocument = new XpsDocument(_xpsPackage, CompressionOption.SuperFast, uriString);
-            var writer = XpsDocument.CreateXpsDocumentWriter(_xpsDocument);
-            writer.Write(((IDocumentPaginatorSource)document).DocumentPaginator);
-
+            _xpsDocument = new XpsDocument(_xpsFilePath, FileAccess.Read);
             PreviewDocument = _xpsDocument.GetFixedDocumentSequence();
         }
 
@@ -135,20 +135,21 @@ namespace DocMgr.ViewModels.Shared
         {
             PreviewDocument = null;
 
-            if (_packageUri != null)
-            {
-                PackageStore.RemovePackage(_packageUri);
-                _packageUri = null;
-            }
-
             _xpsDocument?.Close();
             _xpsDocument = null;
 
-            _xpsPackage?.Close();
-            _xpsPackage = null;
-
-            _xpsStream?.Dispose();
-            _xpsStream = null;
+            if (_xpsFilePath != null)
+            {
+                try
+                {
+                    File.Delete(_xpsFilePath);
+                }
+                catch (IOException)
+                {
+                    // 文件仍被占用时忽略，留在临时目录由系统清理
+                }
+                _xpsFilePath = null;
+            }
         }
     }
 }

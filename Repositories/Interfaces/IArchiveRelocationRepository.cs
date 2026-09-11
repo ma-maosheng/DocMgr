@@ -1,3 +1,4 @@
+using DocMgr.Models.HistoryArchive;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Repositories.Interfaces
@@ -18,6 +19,20 @@ namespace DocMgr.Repositories.Interfaces
         Task<YearlyArchiveBox?> GetArchiveBoxForRelocationAsync(int boxId);
 
         Task<YearlyArchiveBox?> GetArchiveBoxBySequenceNoAsync(string sequenceNo);
+
+        /// <summary>按盒号列表加载引用该盒号的在库历史资料台账（带跟踪，用于迁档改写 BoxNumber）。</summary>
+        Task<List<HistoryArchiveLedgerReferenceGroup>> GetHistoryLedgerReferencesByBoxCodesAsync(
+            IReadOnlyCollection<string> boxCodes);
+
+        /// <summary>加载指定档口内全部在库历史资料台账引用（带跟踪，用于整档口批量搬迁）。</summary>
+        Task<List<HistoryArchiveLedgerReferenceGroup>> GetHistoryLedgerReferencesInSlotAsync(
+            string cabinetName,
+            string face,
+            int row,
+            int column);
+
+        /// <summary>获取被未办结历史处置单占用的盒号集合（历史迁档互斥校验）。</summary>
+        Task<HashSet<string>> GetHistoryDisposalLockedBoxCodesAsync();
 
         Task<YearlyElectronicArchiveUnit?> GetElectronicUnitForRelocationAsync(int unitId);
 

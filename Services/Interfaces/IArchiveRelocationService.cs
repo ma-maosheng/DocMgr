@@ -37,6 +37,12 @@ namespace DocMgr.Services.Interfaces
 
         Task<ArchiveRelocationResult> ExecuteBatchSimulatedSlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);
 
+        /// <summary>历史资料整档口批量搬迁预览（地形图/航片/其他图件）。</summary>
+        Task<ArchiveRelocationPreview> PreviewBatchHistorySlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);
+
+        /// <summary>历史资料整档口批量搬迁执行。</summary>
+        Task<ArchiveRelocationResult> ExecuteBatchHistorySlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);
+
         Task<ArchiveRelocationPreview> PreviewBatchElectronicSlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);
 
         Task<ArchiveRelocationResult> ExecuteBatchElectronicSlotPhysicalMoveAsync(BatchSimulatedSlotPhysicalMoveRequest request);

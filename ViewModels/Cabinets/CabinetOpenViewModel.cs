@@ -1016,9 +1016,15 @@ namespace DocMgr.ViewModels.Cabinets
             int targetRow = targetSlot.LayerIndex;
             int targetColumn = targetSlot.ColumnIndex;
 
-            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal)
+                || string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindHistory, StringComparison.Ordinal))
             {
+                bool historyOnly = string.Equals(
+                    source.MediaKind,
+                    ArchiveRegisterDomainValues.MediaKindHistory,
+                    StringComparison.Ordinal);
                 var boxes = sourceSlot.ArchiveBoxes
+                    .Where(box => !historyOnly || (!box.IsMixedPlacement && box.IsHistoryArchiveDisplay))
                     .OrderBy(box => box.SequenceIndex <= 0 ? int.MaxValue : box.SequenceIndex)
                     .ThenBy(box => box.BoxCode, StringComparer.OrdinalIgnoreCase)
                     .ToList();
@@ -1172,6 +1178,36 @@ namespace DocMgr.ViewModels.Cabinets
                 targetFace,
                 targetRow,
                 targetColumn);
+
+            if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindHistory, StringComparison.Ordinal))
+            {
+                var sourceCodes = sources
+                    .Select(item => item.SourceHistoryBoxCode)
+                    .Where(code => !string.IsNullOrWhiteSpace(code))
+                    .ToList();
+                var occupied = targetSlot.ArchiveBoxes
+                    .Select(box => box.BoxCode)
+                    .Where(code => !sourceCodes.Contains(code, StringComparer.OrdinalIgnoreCase))
+                    .Select(code => ArchiveSlotLocationSupport.TryParseSequenceIndex(code, out int seq) ? seq : 0)
+                    .Where(seq => seq > 0)
+                    .ToList();
+
+                var routes = new List<string>();
+                foreach (string sourceCode in sourceCodes)
+                {
+                    int targetSequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupied);
+                    occupied.Add(targetSequence);
+                    string targetLocation = BuildFullLocation(
+                        Request.CabinetName,
+                        targetFace,
+                        targetRow,
+                        targetColumn,
+                        targetSequence);
+                    routes.Add(FormatLocationRoute(sourceCode, targetLocation));
+                }
+
+                return (sourceSlotText, JoinCodes(routes), JoinCodes(sourceCodes), string.Empty, string.Empty);
+            }
 
             if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
             {
@@ -2636,7 +2672,9 @@ namespace DocMgr.ViewModels.Cabinets
                     || slot.IsDamagedOpticalDiscMagneticDiskSourceSlot;
             }
 
-            return IsArchiveRelocationCabinet && slot.IsYearlySimulatedBatchRelocationSourceSlot;
+            return IsArchiveRelocationCabinet
+                && (slot.IsYearlySimulatedBatchRelocationSourceSlot
+                    || slot.IsHistoryOnlyBatchRelocationSourceSlot);
         }
 
         private void SetBatchRelocationSource(CabinetSlotViewModel? slot)
@@ -2713,10 +2751,26 @@ namespace DocMgr.ViewModels.Cabinets
             }
 
             bool isElectronic = IsMagneticDiskRelocationCabinet;
-            int itemCount = isElectronic
-                ? slot.ElectronicMediaRelocationCandidateCount
-                : slot.RelocatableSimulatedArchiveBoxCount;
-            string itemLabel = isElectronic ? "袋" : "盒";
+            int itemCount;
+            string itemLabel;
+            string mediaKind;
+
+            if (!isElectronic && slot.IsHistoryOnlyBatchRelocationSourceSlot)
+            {
+                itemCount = slot.RelocatableHistoryArchiveBoxCount;
+                itemLabel = "盒";
+                mediaKind = ArchiveRegisterDomainValues.MediaKindHistory;
+            }
+            else
+            {
+                itemCount = isElectronic
+                    ? slot.ElectronicMediaRelocationCandidateCount
+                    : slot.RelocatableSimulatedArchiveBoxCount;
+                itemLabel = isElectronic ? "袋" : "盒";
+                mediaKind = isElectronic
+                    ? ArchiveRegisterDomainValues.MediaKindElectronic
+                    : ArchiveRegisterDomainValues.MediaKindSimulated;
+            }
 
             if (itemCount <= 0)
             {
@@ -2730,9 +2784,7 @@ namespace DocMgr.ViewModels.Cabinets
                 Row = slot.LayerIndex,
                 Column = slot.ColumnIndex,
                 SlotCode = slot.SlotCode,
-                MediaKind = isElectronic
-                    ? ArchiveRegisterDomainValues.MediaKindElectronic
-                    : ArchiveRegisterDomainValues.MediaKindSimulated,
+                MediaKind = mediaKind,
                 DedicatedSlotCategoryName = isElectronic ? slot.DedicatedSlotCategoryName : string.Empty,
                 ItemCount = itemCount
             });
@@ -2789,6 +2841,12 @@ namespace DocMgr.ViewModels.Cabinets
                     && slot.CanAcceptElectronicBatchRelocationTarget(source.DedicatedSlotCategoryName);
             }
 
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindHistory, StringComparison.Ordinal))
+            {
+                return IsArchiveRelocationCabinet
+                    && slot.IsFullyEmptyArchiveSlot;
+            }
+
             return IsArchiveRelocationCabinet && slot.IsFullyEmptyArchiveSlot;
         }
 
@@ -2829,6 +2887,10 @@ namespace DocMgr.ViewModels.Cabinets
                 source.MediaKind,
                 ArchiveRegisterDomainValues.MediaKindElectronic,
                 StringComparison.Ordinal);
+            bool isHistory = string.Equals(
+                source.MediaKind,
+                ArchiveRegisterDomainValues.MediaKindHistory,
+                StringComparison.Ordinal);
 
             try
             {
@@ -2849,6 +2911,10 @@ namespace DocMgr.ViewModels.Cabinets
                 {
                     preview = await _archiveRelocationService.PreviewBatchElectronicSlotPhysicalMoveAsync(request);
                 }
+                else if (isHistory)
+                {
+                    preview = await _archiveRelocationService.PreviewBatchHistorySlotPhysicalMoveAsync(request);
+                }
                 else
                 {
                     preview = await _archiveRelocationService.PreviewBatchSimulatedSlotPhysicalMoveAsync(request);
@@ -2865,7 +2931,7 @@ namespace DocMgr.ViewModels.Cabinets
                     return;
                 }
 
-                if (!isElectronic && !isBlankHardDisk && !isDamagedHardDisk && !isDamagedOpticalDisc)
+                if (!isElectronic && !isBlankHardDisk && !isDamagedHardDisk && !isDamagedOpticalDisc && !isHistory)
                 {
                     string? pendingReturnWarning = await _archiveRelocationService.GetBatchSimulatedPendingReturnConfirmMessageAsync(
                         request,
@@ -2905,6 +2971,10 @@ namespace DocMgr.ViewModels.Cabinets
                 else if (isElectronic)
                 {
                     result = await _archiveRelocationService.ExecuteBatchElectronicSlotPhysicalMoveAsync(request);
+                }
+                else if (isHistory)
+                {
+                    result = await _archiveRelocationService.ExecuteBatchHistorySlotPhysicalMoveAsync(request);
                 }
                 else
                 {
@@ -3001,19 +3071,29 @@ namespace DocMgr.ViewModels.Cabinets
 
             string slotKey = $"{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}";
             _batchSlotRelocationSession.ClearSource();
+
+            bool isHistory = boxes[0].IsHistoryArchiveDisplay;
             _interactiveItemRelocationSession.SetSources(boxes.Select(box => new InteractiveItemRelocationSource
             {
-                MediaKind = ArchiveRegisterDomainValues.MediaKindSimulated,
-                SourceBoxId = box.YearlyArchiveBoxId,
+                MediaKind = isHistory
+                    ? ArchiveRegisterDomainValues.MediaKindHistory
+                    : ArchiveRegisterDomainValues.MediaKindSimulated,
+                SourceBoxId = isHistory ? 0 : box.YearlyArchiveBoxId,
+                SourceHistoryBoxCode = isHistory ? box.BoxCode : string.Empty,
                 DisplayText = $"{box.BoxCode}（{box.BoxLabel}）",
                 BoxSpecification = box.BoxSpecification,
-                SourceStorageLocation = BuildFullLocationFromSlotKey(slotKey, box.SequenceIndex),
+                SourceDedicatedSlotCategoryName = isHistory ? slot.DedicatedSlotCategoryName : string.Empty,
+                SourceStorageLocation = isHistory ? box.BoxCode : BuildFullLocationFromSlotKey(slotKey, box.SequenceIndex),
                 SourceSlotKey = slotKey
             }).ToList());
 
-            string message = boxes.Count == 1
-                ? $"已将档案盒 [{boxes[0].BoxCode}] 设为迁档对象。请在目标档口右键选择「迁档到此档口」。"
-                : $"已将同档口 {boxes.Count} 个档案盒设为迁档对象。请在目标档口右键选择「迁档到此档口」。";
+            string message = isHistory
+                ? (boxes.Count == 1
+                    ? $"已将历史资料盒 [{boxes[0].BoxCode}] 设为迁档对象。请在历史专用或混用目标档口右键选择「迁档到此档口」。"
+                    : $"已将同档口 {boxes.Count} 个历史资料盒设为迁档对象。请在历史专用或混用目标档口右键选择「迁档到此档口」。")
+                : (boxes.Count == 1
+                    ? $"已将档案盒 [{boxes[0].BoxCode}] 设为迁档对象。请在目标档口右键选择「迁档到此档口」。"
+                    : $"已将同档口 {boxes.Count} 个档案盒设为迁档对象。请在目标档口右键选择「迁档到此档口」。");
             _dialogService.ShowMessage(message, "交互式迁档");
         }
 
@@ -3148,6 +3228,12 @@ namespace DocMgr.ViewModels.Cabinets
                     && slot.CanAcceptInteractiveItemRelocationTarget(source.MediaKind, source.SourceDedicatedSlotCategoryName);
             }
 
+            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindHistory, StringComparison.Ordinal))
+            {
+                return IsArchiveRelocationCabinet
+                    && slot.CanAcceptInteractiveItemRelocationTarget(source.MediaKind, source.SourceDedicatedSlotCategoryName);
+            }
+
             if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal))
             {
                 return IsMagneticDiskRelocationCabinet
@@ -3197,15 +3283,21 @@ namespace DocMgr.ViewModels.Cabinets
             string slotKey = slot == null
                 ? string.Empty
                 : $"{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}";
+            bool isHistory = boxes[0].IsHistoryArchiveDisplay;
             return new InteractiveItemRelocationDragPayload
             {
-                MediaKind = ArchiveRegisterDomainValues.MediaKindSimulated,
-                SourceBoxId = boxes[0].YearlyArchiveBoxId,
-                SourceBoxIds = boxes.Select(box => box.YearlyArchiveBoxId).ToList(),
+                MediaKind = isHistory
+                    ? ArchiveRegisterDomainValues.MediaKindHistory
+                    : ArchiveRegisterDomainValues.MediaKindSimulated,
+                SourceBoxId = isHistory ? 0 : boxes[0].YearlyArchiveBoxId,
+                SourceBoxIds = isHistory ? [] : boxes.Select(box => box.YearlyArchiveBoxId).ToList(),
+                SourceHistoryBoxCode = isHistory ? boxes[0].BoxCode : string.Empty,
+                SourceHistoryBoxCodes = isHistory ? boxes.Select(box => box.BoxCode).ToList() : [],
                 DisplayText = boxes.Count == 1
                     ? $"{boxes[0].BoxCode}（{boxes[0].BoxLabel}）"
-                    : $"{boxes.Count} 个档案盒",
+                    : (isHistory ? $"{boxes.Count} 个历史资料盒" : $"{boxes.Count} 个档案盒"),
                 BoxSpecification = boxes[0].BoxSpecification,
+                SourceDedicatedSlotCategoryName = isHistory && slot != null ? slot.DedicatedSlotCategoryName : string.Empty,
                 SourceStorageLocation = boxes[0].BoxCode,
                 SourceSlotKey = slotKey
             };
@@ -3348,6 +3440,11 @@ namespace DocMgr.ViewModels.Cabinets
                 SourceBoxIds = sources.Select(item => item.SourceBoxId).Where(id => id > 0).Distinct().ToList(),
                 SourceUnitIds = sources.Select(item => item.SourceUnitId).Where(id => id > 0).Distinct().ToList(),
                 SourceMediumIds = sources.Select(item => item.SourceMediumId).Where(id => id > 0).Distinct().ToList(),
+                SourceHistoryBoxCodes = sources
+                    .Select(item => item.SourceHistoryBoxCode)
+                    .Where(code => !string.IsNullOrWhiteSpace(code))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList(),
                 TargetCabinetName = Request.CabinetName,
                 TargetFace = ResolveFaceCode(slot.Face),
                 TargetRow = slot.LayerIndex,
