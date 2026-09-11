@@ -40,6 +40,9 @@ namespace DocMgr.Data
         public DbSet<TopoMap> TopoMaps { get; set; }
         public DbSet<HistoryArchiveDisposalRecord> HistoryArchiveDisposalRecords { get; set; }
         public DbSet<HistoryArchiveDisposalItem> HistoryArchiveDisposalItems { get; set; }
+        // 历史存档资料档案盒（实体化容器）及其台账关联
+        public DbSet<HistoryArchiveBox> HistoryArchiveBoxes { get; set; }
+        public DbSet<HistoryArchiveBoxLedgerLink> HistoryArchiveBoxLedgerLinks { get; set; }
         public DbSet<ProjectInfo> ProjectInfos { get; set; }
         public DbSet<HardDiskMedium> HardDiskMedia { get; set; }
         public DbSet<HardDiskLedger> HardDiskLedgers { get; set; }

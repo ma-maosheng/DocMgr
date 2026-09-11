@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-08-28T05:32:54Z
+> 生成时间（UTC）：2026-09-11T07:34:08Z
 
 ## 表索引
 
@@ -42,6 +42,8 @@ alwaysApply: true
 | 硬盘出入库流水 | `HardDiskMediaTransaction` | `HardDiskMediaTransactions` | 表 |
 | 硬盘介质 | `HardDiskMedium` | `HardDiskMedia` | 表 |
 | 硬盘登记锁 | `HardDiskRegisterLock` | `HardDiskRegisterLocks` | 表 |
+| 历史存档档案盒 | `HistoryArchiveBox` | `HistoryArchiveBoxes` | 表 |
+| 历史档案盒-台账关联 | `HistoryArchiveBoxLedgerLink` | `HistoryArchiveBoxLedgerLinks` | 表 |
 | 历史存档离库处置明细 | `HistoryArchiveDisposalItem` | `HistoryArchiveDisposalItems` | 表 |
 | 历史存档离库处置单 | `HistoryArchiveDisposalRecord` | `HistoryArchiveDisposalRecords` | 表 |
 | 跨域业务链 | `NetworkArchiveBusinessChain` | `NetworkArchiveBusinessChains` | 表 |
@@ -490,6 +492,34 @@ alwaysApply: true
 | 占用业务单号 | `BusinessNo` | `String` | 否 |
 | 占用前状态 | `PreviousStatus` | `String` | 否 |
 | 锁定时间 | `LockedTime` | `DateTime` | 否 |
+
+### HistoryArchiveBox（历史存档档案盒）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 盒号 | `BoxCode` | `String` | 否 |
+| 柜体名称 | `CabinetName` | `String` | 否 |
+| 面别 | `Side` | `String` | 否 |
+| 行 | `Row` | `Int32` | 否 |
+| 列 | `Column` | `Int32` | 否 |
+| 盒序号 | `BoxIndex` | `Int32` | 否 |
+| 档案盒规格 | `BoxSpecification` | `String` | 否 |
+| 放置方式 | `PlacementMode` | `String` | 否 |
+| 生命周期状态 | `LifecycleStatus` | `String` | 否 |
+| 归档人 | `ArchivedBy` | `String` | 否 |
+| 归档日期 | `ArchivedDate` | `DateTime` | 否 |
+| 备注 | `Remarks` | `String` | 否 |
+
+### HistoryArchiveBoxLedgerLink（历史档案盒-台账关联）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 历史档案盒ID | `HistoryArchiveBoxId` | `Int32` | 否 |
+| 资料类别 | `MaterialKind` | `String` | 否 |
+| 台账行ID | `RecordId` | `Int32` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
 
 ### HistoryArchiveDisposalItem（历史存档离库处置明细）
 
@@ -999,6 +1029,9 @@ alwaysApply: true
 | 角色 | `Role` | `String` | 否 |
 | 密码 | `Password` | `String` | 否 |
 | 创建日期 | `CreatedDate` | `DateTime` | 否 |
+| 下次登录须改密 | `MustChangePassword` | `Boolean` | 否 |
+| 登录失败次数 | `FailedLoginCount` | `Int32` | 否 |
+| 锁定截止时间 | `LockoutUntil` | `DateTime?` | 否 |
 
 ### UserPreference（用户偏好）
 

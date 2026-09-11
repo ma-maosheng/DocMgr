@@ -166,6 +166,75 @@ public sealed class HistoryArchiveDisposalRepository : IHistoryArchiveDisposalRe
             .ToListAsync();
     }
 
+    public async Task<List<HistoryArchiveBox>> GetHistoryArchiveBoxesByCodesAsync(IReadOnlyCollection<string> boxCodes)
+    {
+        if (boxCodes == null || boxCodes.Count == 0)
+        {
+            return [];
+        }
+
+        var normalized = boxCodes
+            .Select(code => code?.Trim() ?? string.Empty)
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .ToList();
+        if (normalized.Count == 0)
+        {
+            return [];
+        }
+
+        return await _dbContext.HistoryArchiveBoxes
+            .Where(box => normalized.Contains(box.BoxCode))
+            .ToListAsync();
+    }
+
+    public async Task RemoveHistoryArchiveBoxLinksByBoxCodesAsync(IReadOnlyCollection<string> boxCodes)
+    {
+        if (boxCodes == null || boxCodes.Count == 0)
+        {
+            return;
+        }
+
+        var normalized = boxCodes
+            .Select(code => code?.Trim() ?? string.Empty)
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .ToList();
+        if (normalized.Count == 0)
+        {
+            return;
+        }
+
+        var boxIds = await _dbContext.HistoryArchiveBoxes
+            .Where(box => normalized.Contains(box.BoxCode))
+            .Select(box => box.Id)
+            .ToListAsync();
+        if (boxIds.Count == 0)
+        {
+            return;
+        }
+
+        await _dbContext.HistoryArchiveBoxLedgerLinks
+            .Where(link => boxIds.Contains(link.HistoryArchiveBoxId))
+            .ExecuteDeleteAsync();
+    }
+
+    public Task<List<HistoryArchiveBox>> GetHistoryArchiveBoxesInSlotAsync(
+        string cabinetName,
+        string face,
+        int row,
+        int column)
+    {
+        string normalizedCabinet = cabinetName?.Trim() ?? string.Empty;
+        string normalizedFace = face?.Trim() ?? string.Empty;
+        return _dbContext.HistoryArchiveBoxes
+            .Where(box =>
+                box.CabinetName == normalizedCabinet
+                && box.Side == normalizedFace
+                && box.Row == row
+                && box.Column == column
+                && box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+            .ToListAsync();
+    }
+
     public Task<List<SystemAttachment>> GetAttachmentsAsync(string disposalNo)
     {
         string trimmed = disposalNo?.Trim() ?? string.Empty;

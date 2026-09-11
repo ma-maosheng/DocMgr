@@ -179,7 +179,7 @@ namespace DocMgr.Services.YearlyArchive
 
             int affectedRecords = groups.Select(group => group.RecordId).Distinct().Count();
             return Ready(
-                $"【整档口历史资料批量搬迁】源档口 [{sourceSlotKey}] 内 {boxCodes.Count} 个历史资料盒（{affectedRecords} 条台账）整体迁至空档口 [{targetSlotKey}]。",
+                $"【整档口历史资料批量搬迁】源档口 [{sourceSlotKey}] 内 {boxCodes.Count} 个历史资料盒（{affectedRecords} 条台账）整体迁至目标档口 [{targetSlotKey}]，按剩余容量依次放置。",
                 affectedRecords);
         }
 
@@ -269,12 +269,21 @@ namespace DocMgr.Services.YearlyArchive
                 targetCabinetName, targetFace, targetRow, targetColumn);
             var relocationItems = new List<YearlyArchiveRelocationItem>();
 
+            // 预加载待迁移盒实体，迁移时同步改写盒号与结构化位置
+            var boxesByCode = (await _relocationRepository.GetHistoryArchiveBoxesByCodesForUpdateAsync(sourceBoxCodes))
+                .ToDictionary(box => box.BoxCode, StringComparer.OrdinalIgnoreCase);
+
             foreach (string sourceBoxCode in sourceBoxCodes)
             {
                 int sequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupiedIndexes);
                 occupiedIndexes.Add(sequence);
                 string newBoxCode = $"{targetSlotKey}-{sequence:D2}";
                 ApplyHistoryBoxCodeRewrite(groups, sourceBoxCode, newBoxCode, operatedAt, operatorName, relocationItems);
+
+                if (boxesByCode.TryGetValue(sourceBoxCode, out var box))
+                {
+                    RewriteHistoryBoxEntity(box, newBoxCode, targetSlotKey);
+                }
             }
 
             var record = new YearlyArchiveRelocationRecord
@@ -406,6 +415,55 @@ namespace DocMgr.Services.YearlyArchive
             };
         }
 
+        /// <summary>改写盒实体：新盒号 + 结构化位置同步解析写入。</summary>
+        private static void RewriteHistoryBoxEntity(HistoryArchiveBox box, string newBoxCode, string targetSlotKey)
+        {
+            if (HistoryArchiveBoxCodeSupport.TryParseBoxCode(
+                    newBoxCode,
+                    out string cabinetName,
+                    out string faceCode,
+                    out string slotCode,
+                    out _)
+                && TryParseHistorySlotAndIndex(newBoxCode, slotCode, out int row, out int column, out int boxIndex))
+            {
+                box.BoxCode = newBoxCode;
+                box.CabinetName = cabinetName;
+                box.Side = faceCode;
+                box.Row = row;
+                box.Column = column;
+                box.BoxIndex = boxIndex;
+            }
+            else
+            {
+                // 兜底：至少保住盒号，位置字段留待下次导入校正
+                box.BoxCode = newBoxCode;
+            }
+        }
+
+        private static bool TryParseHistorySlotAndIndex(
+            string boxCode,
+            string slotCode,
+            out int row,
+            out int column,
+            out int boxIndex)
+        {
+            row = 0;
+            column = 0;
+            boxIndex = 0;
+
+            var slotParts = (slotCode ?? string.Empty).Split('-');
+            string indexText = (boxCode ?? string.Empty).Split('-')[^1];
+            if (slotParts.Length != 2
+                || !int.TryParse(slotParts[0], out row)
+                || !int.TryParse(slotParts[1], out column)
+                || !int.TryParse(indexText, out boxIndex))
+            {
+                return false;
+            }
+
+            return row > 0 && column > 0 && boxIndex > 0;
+        }
+
         private sealed record HistoryRelocationOutcome(
             string RelocationNo,
             string TargetSlotKey,
@@ -511,34 +569,77 @@ namespace DocMgr.Services.YearlyArchive
                 }
             }
 
-            // 目标档口已有历史盒（源自身除外）时禁迁：历史盒号即位置，盒号须全局唯一
-            var targetGroups = await _relocationRepository.GetHistoryLedgerReferencesInSlotAsync(
+            // 目标档口容量校验：已有历史盒（源除外）按规格厚度折算，须有足够剩余宽度
+            var targetBoxes = await _relocationRepository.GetHistoryArchiveBoxesInSlotForUpdateAsync(
                 targetCabinetName, targetFace, targetRow, targetColumn);
-            var existingCodes = targetGroups
-                .SelectMany(group => group.BoxCodes)
-                .Where(code => !sourceBoxCodes.Contains(code, StringComparer.OrdinalIgnoreCase))
+            var residentBoxes = targetBoxes
+                .Where(box => !sourceBoxCodes.Contains(box.BoxCode, StringComparer.OrdinalIgnoreCase))
                 .ToList();
-            if (existingCodes.Count > 0)
+
+            // 档口已有非历史内容（年度盒）时拒绝：历史与年度盒不混档
+            int yearlyCount = (await _filingRepository.GetInUseYearlyArchiveBoxesInSlotAsync(
+                targetCabinetName, targetFace, targetRow, targetColumn)).Count;
+            if (yearlyCount > 0)
             {
-                return $"目标档口已有 {existingCodes.Count} 个历史资料盒占用，历史资料只可迁入空档口。";
+                return "目标档口已有年度档案盒占用，历史资料只可迁入无年度盒的档口。";
+            }
+
+            if (residentBoxes.Count > 0)
+            {
+                string? capacityIssue = await ValidateHistoryTargetSlotCapacityAsync(
+                    targetCabinet, targetFace.Trim(), targetRow, targetColumn, residentBoxes.Count + sourceBoxCodes.Count);
+                if (!string.IsNullOrWhiteSpace(capacityIssue))
+                {
+                    return capacityIssue;
+                }
             }
 
             return null;
         }
 
-        /// <summary>批量目标档口校验：须全空（无年度盒、无历史盒）且用途匹配。</summary>
-        private async Task<string?> ValidateHistoryTargetSlotForBatchMoveAsync(
+        /// <summary>
+        /// 历史目标档口容量校验：按标准盒厚折算容量，校验迁入后总数不超容量。
+        /// </summary>
+        private async Task<string?> ValidateHistoryTargetSlotCapacityAsync(
+            Cabinet targetCabinet,
+            string targetFace,
+            int targetRow,
+            int targetColumn,
+            int totalBoxCountAfterMove)
+        {
+            var slotSpecificationLookup = (await _filingRepository.GetCabinetSlotSpecificationsAsync())
+                .ToDictionary(item => item.CabinetTypeCode, item => item, StringComparer.OrdinalIgnoreCase);
+            string cabinetTypeCode = GetCabinetTypeCodeForBatchMove(targetCabinet.Type);
+            if (!slotSpecificationLookup.TryGetValue(cabinetTypeCode, out var slotSpecification))
+            {
+                return null;
+            }
+
+            var specificationLookup = (await _filingRepository.GetArchiveBoxSpecificationsAsync())
+                .ToDictionary(item => item.Name, item => item, StringComparer.OrdinalIgnoreCase);
+            decimal standardThickness = specificationLookup.TryGetValue("标准(10cm)", out var standardSpec)
+                ? standardSpec.ThicknessCm
+                : 10m;
+            if (standardThickness <= 0m)
+            {
+                return null;
+            }
+
+            int capacity = (int)Math.Floor(slotSpecification.WidthCm / standardThickness);
+            if (capacity > 0 && totalBoxCountAfterMove > capacity)
+            {
+                return $"目标档口容量不足（容量 {capacity} 盒，迁入后将达 {totalBoxCountAfterMove} 盒）。";
+            }
+
+            return null;
+        }
+
+        /// <summary>批量目标档口校验：须无年度盒、无历史盒占用冲突且用途匹配。</summary>
+        private Task<string?> ValidateHistoryTargetSlotForBatchMoveAsync(
             BatchSimulatedSlotPhysicalMoveRequest request,
             IReadOnlyList<string> sourceBoxCodes)
         {
-            int yearlyCount = (await _filingRepository.GetInUseYearlyArchiveBoxesInSlotAsync(
-                request.TargetCabinetName, request.TargetFace, request.TargetRow, request.TargetColumn)).Count;
-            if (yearlyCount > 0)
-            {
-                return "目标档口已有年度档案盒占用，请选择全空档口。";
-            }
-
-            return await ValidateHistoryTargetSlotAsync(
+            return ValidateHistoryTargetSlotAsync(
                 request.TargetCabinetName,
                 request.TargetFace,
                 request.TargetRow,
@@ -594,7 +695,7 @@ namespace DocMgr.Services.YearlyArchive
                 .ToList();
         }
 
-        /// <summary>收集目标档口内已占用序号（历史盒号末段 + 年度盒 BoxIndex）。</summary>
+        /// <summary>收集目标档口内已占用序号（历史盒实体 BoxIndex + 年度盒 BoxIndex）。</summary>
         private async Task<List<int>> ResolveHistoryOccupiedIndexesInSlotAsync(
             string cabinetName,
             string face,
@@ -603,14 +704,8 @@ namespace DocMgr.Services.YearlyArchive
         {
             var occupied = new List<int>();
 
-            var historyGroups = await _relocationRepository.GetHistoryLedgerReferencesInSlotAsync(cabinetName, face, row, column);
-            foreach (string code in historyGroups.SelectMany(group => group.BoxCodes))
-            {
-                if (ArchiveSlotLocationSupport.TryParseSequenceIndex(code, out int sequence))
-                {
-                    occupied.Add(sequence);
-                }
-            }
+            var historyBoxes = await _relocationRepository.GetHistoryArchiveBoxesInSlotForUpdateAsync(cabinetName, face, row, column);
+            occupied.AddRange(historyBoxes.Select(box => box.BoxIndex).Where(index => index > 0));
 
             var yearlyBoxes = await _filingRepository.GetInUseYearlyArchiveBoxesInSlotAsync(cabinetName, face, row, column);
             occupied.AddRange(yearlyBoxes.Select(box => box.BoxIndex).Where(index => index > 0));

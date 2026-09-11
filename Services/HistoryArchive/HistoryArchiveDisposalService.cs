@@ -303,6 +303,9 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             _repository.RemoveArchiveBoxPlacementByBoxCode(boxCode);
         }
 
+        // 盒已离库：清理其台账关联，避免残留链接指向离库盒
+        await _repository.RemoveHistoryArchiveBoxLinksByBoxCodesAsync(disposedBoxCodes);
+
         existing.PhysicalRemovalConfirmed = true;
         existing.PhysicalRemovalConfirmedAt = now;
         existing.PhysicalRemovalConfirmedBy = operatorName;
@@ -784,6 +787,22 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             {
                 ApplyLedgerRow(map, targetStatus, writeLastLocation, boxCodes, map.BoxNumber, value => map.BoxNumber = value);
             }
+        }
+
+        await ApplyHistoryBoxLifecycleAsync(boxCodes, targetStatus);
+    }
+
+    /// <summary>台账生命周期变化同步到盒实体（盒随最后一条关联台账离库，处置撤回时回库）。</summary>
+    private async Task ApplyHistoryBoxLifecycleAsync(HashSet<string> boxCodes, string targetStatus)
+    {
+        if (boxCodes.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var box in await _repository.GetHistoryArchiveBoxesByCodesAsync(boxCodes))
+        {
+            box.LifecycleStatus = targetStatus;
         }
     }
 

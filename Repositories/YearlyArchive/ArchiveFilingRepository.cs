@@ -781,23 +781,22 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
         int row,
         int column)
     {
-        string targetSlotKey = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, side, row, column);
-        if (string.IsNullOrWhiteSpace(targetSlotKey))
+        // 历史盒已实体化：直接按结构化位置计数在库盒（准确且避免扫描三张台账）
+        string normalizedCabinet = cabinetName?.Trim() ?? string.Empty;
+        string normalizedSide = side?.Trim() ?? string.Empty;
+        if (normalizedCabinet.Length == 0 || normalizedSide.Length == 0)
         {
             return 0;
         }
 
-        var sourceValues = new List<string>();
-        sourceValues.AddRange(await GetTopoMapBoxNumbersAsync());
-        sourceValues.AddRange(await GetAerialPhotoBoxNumbersAsync());
-        sourceValues.AddRange(await GetOtherMapBoxNumbersAsync());
-
-        return sourceValues
-            .SelectMany(SplitArchiveBoxCodesForSlotCount)
-            .Count(boxCode => string.Equals(
-                ArchiveSlotLocationSupport.BuildSlotKey(boxCode),
-                targetSlotKey,
-                StringComparison.OrdinalIgnoreCase));
+        return await _dbContext.HistoryArchiveBoxes
+            .AsNoTracking()
+            .CountAsync(box =>
+                box.CabinetName == normalizedCabinet
+                && box.Side == normalizedSide
+                && box.Row == row
+                && box.Column == column
+                && box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock);
     }
 
     public Task<Cabinet?> GetMagneticDiskCabinetByNameAsync(string cabinetName)
@@ -907,18 +906,6 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
                 HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(location),
                 normalizedSlotCode,
                 StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static IEnumerable<string> SplitArchiveBoxCodesForSlotCount(string? source)
-    {
-        if (string.IsNullOrWhiteSpace(source))
-        {
-            return Enumerable.Empty<string>();
-        }
-
-        return source
-            .Split([';', '；', ',', '，', '\r', '\n'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-            .Where(code => !string.IsNullOrWhiteSpace(code));
     }
 
     public Task<List<string>> GetTopoMapBoxNumbersAsync()

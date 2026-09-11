@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-08-28T05:32:54Z
+generatedAt: 2026-09-11T07:34:08Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -7913,5 +7913,129 @@ tables:
         chineseName: 创建时间
         description: ''
         clrType: DateTime
+        needsReview: false
+        aliases: []
+  HistoryArchiveBoxLedgerLink:
+    tableName: HistoryArchiveBoxLedgerLinks
+    chineseName: 历史档案盒-台账关联
+    description: 历史档案盒与三张历史台账行的多对多关联（一条台账可关联多个盒）。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      HistoryArchiveBoxId:
+        chineseName: 历史档案盒ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      MaterialKind:
+        chineseName: 资料类别
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      RecordId:
+        chineseName: 台账行ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      CreatedAt:
+        chineseName: 创建时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+  HistoryArchiveBox:
+    tableName: HistoryArchiveBoxes
+    chineseName: 历史存档档案盒
+    description: 历史存档资料（地形图/航片/其他图件）的实体化档案盒，盒号即四段位置编码。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      BoxCode:
+        chineseName: 盒号
+        description: 四段位置编码（柜名-面-行-列-序），全局唯一。
+        clrType: String
+        needsReview: false
+        aliases: []
+      CabinetName:
+        chineseName: 柜体名称
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Side:
+        chineseName: 面别
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      Row:
+        chineseName: 行
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      Column:
+        chineseName: 列
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      BoxIndex:
+        chineseName: 盒序号
+        description: 盒号末段，档口内顺序。
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      BoxSpecification:
+        chineseName: 档案盒规格
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      PlacementMode:
+        chineseName: 放置方式
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      LifecycleStatus:
+        chineseName: 生命周期状态
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ArchivedBy:
+        chineseName: 归档人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ArchivedDate:
+        chineseName: 归档日期
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      Remarks:
+        chineseName: 备注
+        description: ''
+        clrType: String
         needsReview: false
         aliases: []

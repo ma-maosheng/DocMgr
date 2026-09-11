@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace DocMgr.Models.Cabinets
@@ -37,6 +38,17 @@ namespace DocMgr.Models.Cabinets
         public string CapacitySummaryText { get; init; } = string.Empty;
 
         public string RemainingSummaryText { get; init; } = string.Empty;
+
+        /// <summary>档口内已放盒数（含历史与年度，按盒去重）。</summary>
+        public int PlacedBoxCount { get; init; }
+
+        /// <summary>档口标准容量（按标准盒厚折算）；0 表示未登记规格无法折算。</summary>
+        public int StandardBoxCapacity { get; init; }
+
+        /// <summary>档口剩余可放盒数（标准容量-已放）；容量未知时为 0。</summary>
+        public int RemainingBoxCapacity => StandardBoxCapacity <= 0
+            ? 0
+            : Math.Max(0, StandardBoxCapacity - PlacedBoxCount);
 
         public string LayoutModeText { get; init; } = string.Empty;
 

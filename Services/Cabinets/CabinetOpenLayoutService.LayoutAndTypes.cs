@@ -1087,7 +1087,9 @@ namespace DocMgr.Services.Cabinets
             string ToolTipText,
             bool IsCrossFaceLinked,
             bool IsSpecialRule,
-            string SpecialRuleText);
+            string SpecialRuleText,
+            int PlacedBoxCount = 0,
+            int StandardBoxCapacity = 0);
 
         private readonly record struct MediumArchiveItemDetail(
             string MediumCode,

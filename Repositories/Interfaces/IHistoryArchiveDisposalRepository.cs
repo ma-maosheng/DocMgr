@@ -36,6 +36,19 @@ public interface IHistoryArchiveDisposalRepository
 
     Task<HashSet<string>> GetLockedBoxCodesAsync(int? excludeRecordId);
 
+    /// <summary>按盒号取在册历史档案盒（带跟踪），供生命周期同步与迁档改写。</summary>
+    Task<List<HistoryArchiveBox>> GetHistoryArchiveBoxesByCodesAsync(IReadOnlyCollection<string> boxCodes);
+
+    /// <summary>删除指定盒号的台账关联（盒已离库时清理残链）。</summary>
+    Task RemoveHistoryArchiveBoxLinksByBoxCodesAsync(IReadOnlyCollection<string> boxCodes);
+
+    /// <summary>按档口取在册历史档案盒（带跟踪）。</summary>
+    Task<List<HistoryArchiveBox>> GetHistoryArchiveBoxesInSlotAsync(
+        string cabinetName,
+        string face,
+        int row,
+        int column);
+
     Task<List<HistoryArchiveDisposalRecord>> GetPendingRecordsForToDoAsync(int takeCount);
 
     Task<List<SystemAttachment>> GetAttachmentsAsync(string disposalNo);

@@ -111,6 +111,8 @@ namespace DocMgr.Services.Cabinets
                         UtilizationText = metrics?.UtilizationText ?? "0%",
                         CapacitySummaryText = metrics?.CapacitySummaryText ?? "已放 0盒",
                         RemainingSummaryText = metrics?.RemainingSummaryText ?? "余 0cm",
+                        PlacedBoxCount = metrics?.PlacedBoxCount ?? 0,
+                        StandardBoxCapacity = metrics?.StandardBoxCapacity ?? 0,
                         LayoutModeText = metrics?.LayoutModeText ?? string.Empty,
                         SlotToolTipText = slotToolTipText,
                         IsCrossFaceLinked = metrics?.IsCrossFaceLinked ?? false,
@@ -746,8 +748,20 @@ namespace DocMgr.Services.Cabinets
                 .ToList();
 
             var placementMetrics = ResolvePlacementMetrics(boxes, boxSpecificationLookup, slotWidth);
+            int capacity = ResolveStandardCapacity(boxSpecificationLookup, slotWidth);
             string tooltip = BuildSlotToolTipText(request, slotCode, boxes, placementMetrics.UtilizationRatio, placementMetrics.CapacitySummaryText, placementMetrics.RemainingSummaryText, placementMetrics.LayoutModeText, false, false, string.Empty);
-            return new SlotMetrics(placementMetrics.UtilizationRatio, FormatPercent(placementMetrics.UtilizationRatio), placementMetrics.CapacitySummaryText, placementMetrics.RemainingSummaryText, placementMetrics.LayoutModeText, tooltip, false, false, string.Empty);
+            return new SlotMetrics(
+                placementMetrics.UtilizationRatio,
+                FormatPercent(placementMetrics.UtilizationRatio),
+                placementMetrics.CapacitySummaryText,
+                placementMetrics.RemainingSummaryText,
+                placementMetrics.LayoutModeText,
+                tooltip,
+                false,
+                false,
+                string.Empty,
+                PlacedBoxCount: boxes.Count,
+                StandardBoxCapacity: capacity);
         }
 
         private static SlotMetrics BuildMagneticDiskSlotMetrics(string slotCode, IReadOnlyCollection<CabinetHardDiskMediumDescriptor> presentMedia, IReadOnlyCollection<CabinetHardDiskMediumDescriptor> pendingReturnMedia, string dedicatedSlotCategoryName, int slotCapacity)

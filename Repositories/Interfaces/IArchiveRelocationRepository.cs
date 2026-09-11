@@ -34,6 +34,17 @@ namespace DocMgr.Repositories.Interfaces
         /// <summary>获取被未办结历史处置单占用的盒号集合（历史迁档互斥校验）。</summary>
         Task<HashSet<string>> GetHistoryDisposalLockedBoxCodesAsync();
 
+        /// <summary>按盒号加载在库历史档案盒实体（带跟踪，用于迁档改写盒号与位置）。</summary>
+        Task<List<HistoryArchiveBox>> GetHistoryArchiveBoxesByCodesForUpdateAsync(
+            IReadOnlyCollection<string> boxCodes);
+
+        /// <summary>加载指定档口内全部在库历史档案盒实体（带跟踪）。</summary>
+        Task<List<HistoryArchiveBox>> GetHistoryArchiveBoxesInSlotForUpdateAsync(
+            string cabinetName,
+            string face,
+            int row,
+            int column);
+
         Task<YearlyElectronicArchiveUnit?> GetElectronicUnitForRelocationAsync(int unitId);
 
         Task<YearlyElectronicArchiveUnit?> GetElectronicUnitByArchiveNoAsync(string archiveNo);

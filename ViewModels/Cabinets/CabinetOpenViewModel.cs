@@ -2793,12 +2793,19 @@ namespace DocMgr.ViewModels.Cabinets
                 ? (slot.HardDiskPresentCount > itemCount
                     ? $"（已排除 {slot.HardDiskPresentCount - itemCount} 个征用/预订袋）"
                     : string.Empty)
-                : (slot.ArchiveBoxes.Count > itemCount
+                : string.Empty;
+            if (!isElectronic && mediaKind == ArchiveRegisterDomainValues.MediaKindHistory)
+            {
+                occupiedHint = slot.ArchiveBoxes.Count > itemCount
                     ? $"（已排除 {slot.ArchiveBoxes.Count - itemCount} 个征用/预订盒）"
-                    : string.Empty);
+                    : string.Empty;
+            }
 
+            string targetHint = mediaKind == ArchiveRegisterDomainValues.MediaKindHistory
+                ? "请在有剩余容量的历史专用/混用目标档口右键选择「搬迁到此档口」"
+                : "请在全空目标档口右键选择「搬迁到此档口」";
             _dialogService.ShowMessage(
-                $"已将 [{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}] 设为批量搬迁源（{itemCount} {itemLabel}{occupiedHint}）。请在全空目标档口右键选择「搬迁到此档口」。",
+                $"已将 [{Request.CabinetName}{ResolveFaceCode(slot.Face)}-{slot.LayerIndex}-{slot.ColumnIndex}] 设为批量搬迁源（{itemCount} {itemLabel}{occupiedHint}）。{targetHint}。",
                 "批量搬迁");
         }
 
@@ -2844,7 +2851,7 @@ namespace DocMgr.ViewModels.Cabinets
             if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindHistory, StringComparison.Ordinal))
             {
                 return IsArchiveRelocationCabinet
-                    && slot.IsFullyEmptyArchiveSlot;
+                    && slot.CanAcceptHistoryBatchRelocationTarget(source.ItemCount);
             }
 
             return IsArchiveRelocationCabinet && slot.IsFullyEmptyArchiveSlot;

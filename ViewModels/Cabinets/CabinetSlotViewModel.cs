@@ -47,6 +47,8 @@ namespace DocMgr.ViewModels.Cabinets
             UtilizationText = descriptor.UtilizationText;
             CapacitySummaryText = descriptor.CapacitySummaryText;
             RemainingSummaryText = descriptor.RemainingSummaryText;
+            PlacedBoxCount = descriptor.PlacedBoxCount;
+            RemainingBoxCapacity = descriptor.RemainingBoxCapacity;
             LayoutModeText = descriptor.LayoutModeText;
             SlotToolTipText = descriptor.SlotToolTipText;
             IsCrossFaceLinked = descriptor.IsCrossFaceLinked;
@@ -149,6 +151,12 @@ namespace DocMgr.ViewModels.Cabinets
         public string CapacitySummaryText { get; }
 
         public string RemainingSummaryText { get; }
+
+        /// <summary>档口已放盒数（按盒去重，含历史与年度）。</summary>
+        public int PlacedBoxCount { get; }
+
+        /// <summary>档口剩余可放盒数（标准容量-已放）；容量未知为 0。</summary>
+        public int RemainingBoxCapacity { get; }
 
         public string LayoutModeText { get; }
 
@@ -482,6 +490,45 @@ namespace DocMgr.ViewModels.Cabinets
         public int RelocatableHistoryArchiveBoxCount =>
             ArchiveBoxes.Count(box => box.IsHistoryArchiveDisplay && !box.IsMixedPlacement);
 
+        /// <summary>
+        /// 是否可接受历史盒迁入：非磁盘柜档口，用途为历史专用/混用（含未设置用途），
+        /// 且档口内无年度盒冲突时按剩余容量判断（容量未知时仅允许空档口）。
+        /// </summary>
+        public bool CanAcceptHistoryBatchRelocationTarget(int incomingCount)
+        {
+            if (IsMagneticDiskSlot || incomingCount <= 0)
+            {
+                return false;
+            }
+
+            // 年度专用档口不放历史盒
+            if (IsYearlyMaterialsDedicatedSlot && !IsMixedUseArchiveSlot)
+            {
+                return false;
+            }
+
+            if (ArchiveBoxes.Count == 0)
+            {
+                return true;
+            }
+
+            // 档口已有盒：仅历史专用/混用档口可追加，且须有剩余容量
+            if (!IsHistoricalMaterialsDedicatedSlot && !IsMixedUseArchiveSlot)
+            {
+                return false;
+            }
+
+            // 目标档口内不应已有年度盒（与历史混放无从治理，先维持单一类别）
+            if (ArchiveBoxes.Any(box => !box.IsHistoryArchiveDisplay))
+            {
+                return false;
+            }
+
+            return RemainingBoxCapacity <= 0
+                ? false
+                : RemainingBoxCapacity >= incomingCount;
+        }
+
         public bool CanAcceptElectronicBatchRelocationTarget(string? sourceDedicatedCategoryName)
         {
             if (!IsMagneticDiskSlot)
@@ -591,9 +638,25 @@ namespace DocMgr.ViewModels.Cabinets
             // 历史资料盒：标准滑道式须为历史专用或混用档口；立式/卧式不限制用途标记。
             if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindHistory, StringComparison.Ordinal))
             {
-                return IsHistoricalMaterialsDedicatedSlot
+                if (!(IsHistoricalMaterialsDedicatedSlot
                     || IsMixedUseArchiveSlot
-                    || string.IsNullOrWhiteSpace(DedicatedSlotCategoryName);
+                    || string.IsNullOrWhiteSpace(DedicatedSlotCategoryName)))
+                {
+                    return false;
+                }
+
+                // 已有非历史盒（年度）的档口不可迁入历史盒；已有历史盒时按剩余容量判断
+                if (ArchiveBoxes.Count == 0)
+                {
+                    return true;
+                }
+
+                if (ArchiveBoxes.Any(box => !box.IsHistoryArchiveDisplay))
+                {
+                    return false;
+                }
+
+                return RemainingBoxCapacity <= 0 || RemainingBoxCapacity >= 1;
             }
 
             // 年度模拟档案盒：标准滑道式须为年度资料专用或混用档口；立式/卧式不限制用途标记。

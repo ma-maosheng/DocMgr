@@ -194,6 +194,48 @@ namespace DocMgr.Repositories.YearlyArchive
             return GetHistoryDisposalLockedBoxCodesCoreAsync();
         }
 
+        /// <inheritdoc />
+        public async Task<List<HistoryArchiveBox>> GetHistoryArchiveBoxesByCodesForUpdateAsync(
+            IReadOnlyCollection<string> boxCodes)
+        {
+            if (boxCodes == null || boxCodes.Count == 0)
+            {
+                return [];
+            }
+
+            var normalized = boxCodes
+                .Select(code => code?.Trim() ?? string.Empty)
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .ToList();
+            if (normalized.Count == 0)
+            {
+                return [];
+            }
+
+            return await _dbContext.HistoryArchiveBoxes
+                .Where(box => normalized.Contains(box.BoxCode))
+                .ToListAsync();
+        }
+
+        /// <inheritdoc />
+        public Task<List<HistoryArchiveBox>> GetHistoryArchiveBoxesInSlotForUpdateAsync(
+            string cabinetName,
+            string face,
+            int row,
+            int column)
+        {
+            string normalizedCabinet = cabinetName?.Trim() ?? string.Empty;
+            string normalizedFace = face?.Trim() ?? string.Empty;
+            return _dbContext.HistoryArchiveBoxes
+                .Where(box =>
+                    box.CabinetName == normalizedCabinet
+                    && box.Side == normalizedFace
+                    && box.Row == row
+                    && box.Column == column
+                    && box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+                .ToListAsync();
+        }
+
         private static readonly int[] HistoryDisposalActiveStatuses =
         [
             HistoryArchiveDisposalRecord.StatusDraft,
