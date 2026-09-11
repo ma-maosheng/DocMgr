@@ -57,6 +57,9 @@ namespace DocMgr.Services.HistoryArchive
 
             UpsertBoxes(dbContext, allBoxCodes, rows, operatorName);
 
+            // 新盒先落库取得真实自增 Id；后续链接写入按盒号查库取 Id，未落库会全部跳过
+            dbContext.SaveChanges();
+
             var recordIds = rows.Select(row => row.RecordId).ToList();
             var existingLinks = dbContext.HistoryArchiveBoxLedgerLinks
                 .Where(link => link.MaterialKind == materialKind && recordIds.Contains(link.RecordId))
@@ -110,6 +113,10 @@ namespace DocMgr.Services.HistoryArchive
                     dbContext.HistoryArchiveBoxLedgerLinks.Remove(link);
                 }
             }
+
+            // 链接变更落库：后续 CleanupOrphanBoxes 按 ExecuteDelete 直查数据库判定孤儿，
+            // 未落库的链接会让刚建的盒被误判为孤儿删除
+            dbContext.SaveChanges();
         }
 
         /// <summary>删除台账行对应的关联（整表重建/删行/删表前调用）。</summary>

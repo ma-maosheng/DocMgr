@@ -26,13 +26,25 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#FFEBEE" BorderBrush="#FFCDD2" BorderThickness="1" CornerRadius="4" Padding="15" Margin="0,0,0,20">
+        <Border Grid.Row="0" Background="#FFEBEE" BorderBrush="#FFCDD2" BorderThickness="1" CornerRadius="4" Padding="15" Margin="0,0,0,20"
+                Visibility="{Binding ShowAdvancedMaintenance, Converter={StaticResource BooleanToVisibilityConverter}}">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="⚠️" FontSize="20" Margin="0,0,10,0"/>
                     <TextBlock Text="高级数据管理 (危险区域)" FontSize="18" FontWeight="Bold" Foreground="#D32F2F" VerticalAlignment="Center"/>
                 </StackPanel>
                 <TextBlock Text="此功能允许管理员直接删除数据库记录。操作不可逆，请谨慎使用！" Foreground="#B71C1C" Margin="34,5,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="0" Background="#FFF8E1" BorderBrush="#FFE0B2" BorderThickness="1" CornerRadius="4" Padding="15" Margin="0,0,0,20"
+                Visibility="{Binding IsArchiveAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="🔒" FontSize="20" Margin="0,0,10,0"/>
+                    <TextBlock Text="高级数据管理（受限模式）" FontSize="18" FontWeight="Bold" Foreground="#E65100" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock Text="当前角色：资料室资料管理员。可浏览全部数据表并备份当前库；删除、清空、还原及字典维护仅系统管理员可用。" Foreground="#BF360C" Margin="34,5,0,0"/>
             </StackPanel>
         </Border>
 
@@ -88,7 +100,8 @@
                 BorderThickness="1"
                 CornerRadius="4"
                 Padding="12"
-                Margin="0,0,0,10">
+                Margin="0,0,0,10"
+                Visibility="{Binding ShowAdvancedMaintenance, Converter={StaticResource BooleanToVisibilityConverter}}">
             <StackPanel>
                 <TextBlock Text="数据字典维护（SchemaDictionary.yaml）"
                            FontSize="14"
@@ -121,11 +134,23 @@
                             Padding="10,4"
                             Style="{StaticResource ToolbarActionButtonStyle}"/>
                 </WrapPanel>
-                <TextBlock Text="数据库备份 / 还原"
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2"
+                Background="#F3F8FF"
+                BorderBrush="#BBDEFB"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="12"
+                Margin="0,0,0,10"
+                Visibility="{Binding IsArchiveAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel>
+                <TextBlock Text="数据库备份"
                            FontSize="14"
                            FontWeight="Bold"
                            Foreground="#1565C0"
-                           Margin="0,10,0,4"/>
+                           Margin="0,0,0,4"/>
                 <TextBlock Text="{Binding DatabasePathText, Mode=OneWay}"
                            FontSize="11"
                            Foreground="#546E7A"
@@ -139,13 +164,8 @@
                 <WrapPanel>
                     <Button Content="💾 备份当前库"
                             Command="{Binding BackupDatabaseCommand}"
-                            Margin="0,0,8,0"
                             Padding="10,4"
                             Style="{StaticResource ToolbarActionButtonStyle}"/>
-                    <Button Content="♻ 从备份还原"
-                            Command="{Binding RestoreDatabaseCommand}"
-                            Padding="10,4"
-                            Style="{StaticResource ToolbarDangerButtonStyle}"/>
                 </WrapPanel>
             </StackPanel>
         </Border>
@@ -156,7 +176,8 @@
                 BorderThickness="1"
                 CornerRadius="4"
                 Padding="12"
-                Margin="0,0,0,10">
+                Margin="0,0,0,10"
+                Visibility="{Binding ShowAdvancedMaintenance, Converter={StaticResource BooleanToVisibilityConverter}}">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="字段显示名：" VerticalAlignment="Center" FontWeight="Bold"/>
                 <ComboBox Width="220"
@@ -263,7 +284,8 @@
             </DockPanel>
         </Border>
 
-        <ScrollViewer Grid.Row="6" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,15,0,0">
+        <ScrollViewer Grid.Row="6" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,15,0,0"
+                      Visibility="{Binding ShowAdvancedMaintenance, Converter={StaticResource BooleanToVisibilityConverter}}">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Margin="0,0,20,0" Foreground="Gray"/>
 
@@ -277,6 +299,13 @@
                         Command="{Binding ClearTableCommand}"
                         Width="140"
                         Style="{StaticResource ToolbarDangerButtonStyle}"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer Grid.Row="6" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,15,0,0"
+                      Visibility="{Binding IsArchiveAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Foreground="Gray"/>
             </StackPanel>
         </ScrollViewer>
     </Grid>

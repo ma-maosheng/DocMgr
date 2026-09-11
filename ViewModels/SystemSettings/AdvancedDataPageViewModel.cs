@@ -7,7 +7,9 @@ using System.Windows;
 using System.Windows.Input;
 using DocMgr.Infrastructure.Schema;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.Models;
 
 namespace DocMgr.ViewModels.SystemSettings
 {
@@ -18,6 +20,16 @@ namespace DocMgr.ViewModels.SystemSettings
         private readonly IDatabaseBackupService _databaseBackupService;
         private readonly IUserContextService _userContext;
         private readonly IDialogService _dialogService;
+
+        /// <summary>是否系统管理员（全量功能：字典维护、删行、清空、还原）。</summary>
+        public bool IsSystemAdministrator { get; }
+
+        /// <summary>是否资料室资料管理员（受限开放：仅数据表浏览与备份当前库）。</summary>
+        public bool IsArchiveAdministrator => !IsSystemAdministrator
+            && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContext.CurrentUser);
+
+        /// <summary>非系统管理员时隐藏高危功能区，仅保留浏览/备份/导出。</summary>
+        public bool ShowAdvancedMaintenance => IsSystemAdministrator;
 
         private List<TableBrowseEntryDto> _tables = new();
         private TableBrowseEntryDto? _selectedTable;
@@ -53,17 +65,18 @@ namespace DocMgr.ViewModels.SystemSettings
             _databaseBackupService = databaseBackupService;
             _userContext = userContext;
             _dialogService = dialogService;
+            IsSystemAdministrator = ArchiveRegisterBusinessRules.IsSystemAdministrator(_userContext.CurrentUser);
 
             RefreshCommand = new RelayCommand(async _ => await RefreshGridAsync(), _ => !IsBusy);
-            DeleteSelectedCommand = new RelayCommand(async _ => await DeleteSelectedAsync(), _ => !IsBusy && CanDeleteSelected());
-            ClearTableCommand = new RelayCommand(async _ => await ClearTableAsync(), _ => !IsBusy && CanClearTable());
-            SaveFieldDisplayNameCommand = new RelayCommand(async _ => await SaveFieldDisplayNameAsync(), _ => !IsBusy && CanSaveFieldDisplayName());
-            SyncModelToDictionaryCommand = new RelayCommand(async _ => await SyncModelToDictionaryAsync(), _ => !IsBusy);
-            ExportDisplayNamesToDictionaryCommand = new RelayCommand(async _ => await ExportDisplayNamesToDictionaryAsync(), _ => !IsBusy);
-            ApplyDictionaryToDatabaseCommand = new RelayCommand(async _ => await ApplyDictionaryToDatabaseAsync(), _ => !IsBusy);
+            DeleteSelectedCommand = new RelayCommand(async _ => await DeleteSelectedAsync(), _ => !IsBusy && IsSystemAdministrator && CanDeleteSelected());
+            ClearTableCommand = new RelayCommand(async _ => await ClearTableAsync(), _ => !IsBusy && IsSystemAdministrator && CanClearTable());
+            SaveFieldDisplayNameCommand = new RelayCommand(async _ => await SaveFieldDisplayNameAsync(), _ => !IsBusy && IsSystemAdministrator && CanSaveFieldDisplayName());
+            SyncModelToDictionaryCommand = new RelayCommand(async _ => await SyncModelToDictionaryAsync(), _ => !IsBusy && IsSystemAdministrator);
+            ExportDisplayNamesToDictionaryCommand = new RelayCommand(async _ => await ExportDisplayNamesToDictionaryAsync(), _ => !IsBusy && IsSystemAdministrator);
+            ApplyDictionaryToDatabaseCommand = new RelayCommand(async _ => await ApplyDictionaryToDatabaseAsync(), _ => !IsBusy && IsSystemAdministrator);
             ExportToExcelCommand = new RelayCommand(async _ => await ExportToExcelAsync(), _ => !IsBusy && HasSelectedTable);
             BackupDatabaseCommand = new RelayCommand(async _ => await BackupDatabaseAsync(), _ => !IsBusy);
-            RestoreDatabaseCommand = new RelayCommand(async _ => await RestoreDatabaseAsync(), _ => !IsBusy);
+            RestoreDatabaseCommand = new RelayCommand(async _ => await RestoreDatabaseAsync(), _ => !IsBusy && IsSystemAdministrator);
             FirstPageCommand = new RelayCommand(async _ => await GoToPageAsync(1), _ => !IsBusy && CanGoPrevious);
             PreviousPageCommand = new RelayCommand(async _ => await GoToPageAsync(CurrentPage - 1), _ => !IsBusy && CanGoPrevious);
             NextPageCommand = new RelayCommand(async _ => await GoToPageAsync(CurrentPage + 1), _ => !IsBusy && CanGoNext);
@@ -287,7 +300,7 @@ namespace DocMgr.ViewModels.SystemSettings
             set => SetProperty(ref _goToPageText, value);
         }
 
-        public bool CanEditFieldDisplayName => true;
+        public bool CanEditFieldDisplayName => IsSystemAdministrator;
 
         private void LoadTables()
         {
@@ -565,6 +578,12 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private async Task SaveFieldDisplayNameAsync()
         {
+            if (!IsSystemAdministrator)
+            {
+                _dialogService.ShowError("仅系统管理员可维护字段显示名。", "禁止操作");
+                return;
+            }
+
             if (SelectedField == null)
             {
                 _dialogService.ShowMessage("请先选择一个字段。", "提示");
@@ -621,6 +640,12 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private async Task SyncModelToDictionaryAsync()
         {
+            if (!IsSystemAdministrator)
+            {
+                _dialogService.ShowError("仅系统管理员可维护数据字典。", "禁止操作");
+                return;
+            }
+
             var targetPath = ResolveTargetDictionaryPath(allowSaveDialog: true);
             if (string.IsNullOrWhiteSpace(targetPath))
             {
@@ -651,6 +676,12 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private async Task ExportDisplayNamesToDictionaryAsync()
         {
+            if (!IsSystemAdministrator)
+            {
+                _dialogService.ShowError("仅系统管理员可维护数据字典。", "禁止操作");
+                return;
+            }
+
             var targetPath = ResolveTargetDictionaryPath(allowSaveDialog: true);
             if (string.IsNullOrWhiteSpace(targetPath))
             {
@@ -681,6 +712,12 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private async Task ApplyDictionaryToDatabaseAsync()
         {
+            if (!IsSystemAdministrator)
+            {
+                _dialogService.ShowError("仅系统管理员可维护数据字典。", "禁止操作");
+                return;
+            }
+
             if (!_dialogService.ShowConfirm(
                     "将使用当前字典文件中的字段显示名覆盖数据库 FieldDomainDefinitions。\n\n域值选项不会被修改，是否继续？",
                     "从字典重置显示名"))
@@ -748,6 +785,12 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private async Task RestoreDatabaseAsync()
         {
+            if (!IsSystemAdministrator)
+            {
+                _dialogService.ShowError("仅系统管理员可从备份还原数据库。", "禁止操作");
+                return;
+            }
+
             if (_databaseBackupService.IsNetworkPath
                 && !_dialogService.ShowConfirm(
                     "当前使用共享数据库。还原会覆盖该共享库。\n\n请确认其他终端已退出后再继续。是否继续选择备份文件？",
@@ -876,6 +919,12 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private async Task DeleteSelectedAsync()
         {
+            if (!IsSystemAdministrator)
+            {
+                _dialogService.ShowError("仅系统管理员可删除记录。", "禁止操作");
+                return;
+            }
+
             if (SelectedRecord == null || SelectedTable is not TableBrowseEntryDto selected)
             {
                 _dialogService.ShowMessage("请先选择一条记录。");
@@ -931,6 +980,12 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private async Task ClearTableAsync()
         {
+            if (!IsSystemAdministrator)
+            {
+                _dialogService.ShowError("仅系统管理员可清空数据表。", "禁止操作");
+                return;
+            }
+
             if (SelectedTable is not TableBrowseEntryDto selected)
             {
                 return;

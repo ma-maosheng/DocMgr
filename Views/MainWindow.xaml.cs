@@ -990,17 +990,6 @@ namespace DocMgr.Views
             return false;
         }
 
-        private bool EnsureSystemSettingsAccess()
-        {
-            if (IsSystemAdministrator())
-            {
-                return true;
-            }
-
-            MessageBox.Show("仅系统管理员可进入系统设置。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-            return false;
-        }
-
         private bool CanAccessArchiveMediaAdmin()
         {
             if (CurrentUser == null)
@@ -1186,13 +1175,26 @@ namespace DocMgr.Views
 
         private void BtnAdvancedData_Click(object sender, RoutedEventArgs e)
         {
-            if (!EnsureSystemSettingsAccess())
+            // 系统管理员全量；资料室资料管理员受限开放（表浏览 + 备份当前库），页面内按角色隐藏高危操作
+            if (!IsSystemAdministrator() && !CanAccessArchiveRelocation())
             {
+                MessageBox.Show("仅系统管理员或资料室资料管理员可进入高级数据管理。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             TxtPageTitle.Text = "高级数据管理";
             MainContentFrame.Navigate(new AdvancedDataPage());
+        }
+
+        private bool EnsureSystemSettingsAccess()
+        {
+            if (IsSystemAdministrator())
+            {
+                return true;
+            }
+
+            MessageBox.Show("仅系统管理员可进入系统设置。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            return false;
         }
 
         private void BtnArchiveFilingLedger_Click(object sender, RoutedEventArgs e)
