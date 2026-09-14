@@ -240,7 +240,7 @@ namespace DocMgr
         }
 
         /// <summary>
-        /// 登录不依赖的耗时维护：种子数据、历史档案盒同步等，在后台执行。
+        /// 登录不依赖的耗时维护：种子数据等，在后台执行。
         /// </summary>
         private static void RunDeferredDatabaseMaintenance(AppInitializationState initializationState)
         {
@@ -248,7 +248,6 @@ namespace DocMgr
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var devSeedRepository = scope.ServiceProvider.GetRequiredService<IDevSystemSettingsSeedRepository>();
             var cabinetSpecificationSeedRepository = scope.ServiceProvider.GetRequiredService<ICabinetSpecificationSeedRepository>();
-            var cabinetArchiveBoxPlacementSyncRepository = scope.ServiceProvider.GetRequiredService<ICabinetArchiveBoxPlacementSyncRepository>();
             var fieldDomainSeedRepository = scope.ServiceProvider.GetRequiredService<IFieldDomainSeedRepository>();
 
             initializationState.ReportProgress("正在同步基础数据…");
@@ -275,9 +274,6 @@ namespace DocMgr
             initializationState.ReportProgress("正在补全标准滑道式档案柜未配置档口用途…");
             scope.ServiceProvider.GetRequiredService<ICabinetService>()
                 .EnsureAllStandardArchiveSlotsUseUnsetCategoryOnStartup();
-
-            initializationState.ReportProgress("正在同步历史档案盒位置…");
-            CabinetArchiveBoxPlacementSyncService.SyncHistoryArchivePlacements(cabinetArchiveBoxPlacementSyncRepository);
 
             initializationState.ReportProgress("正在同步字段字典…");
             FieldDomainSeedService.SeedDefaults(fieldDomainSeedRepository);
@@ -350,26 +346,6 @@ namespace DocMgr
                 if (!string.Equals(rule.CabinetName, normalizedName, StringComparison.Ordinal))
                 {
                     rule.CabinetName = normalizedName;
-                    changed = true;
-                }
-            }
-
-            foreach (var archiveBox in db.YearlyArchiveBoxes)
-            {
-                string normalizedName = CabinetNameNormalizer.Normalize(archiveBox.CabinetName);
-                if (!string.Equals(archiveBox.CabinetName, normalizedName, StringComparison.Ordinal))
-                {
-                    archiveBox.CabinetName = normalizedName;
-                    changed = true;
-                }
-            }
-
-            foreach (var placement in db.CabinetArchiveBoxPlacements)
-            {
-                string normalizedName = CabinetNameNormalizer.Normalize(placement.CabinetName);
-                if (!string.Equals(placement.CabinetName, normalizedName, StringComparison.Ordinal))
-                {
-                    placement.CabinetName = normalizedName;
                     changed = true;
                 }
             }

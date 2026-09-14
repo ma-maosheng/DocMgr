@@ -767,22 +767,6 @@ namespace DocMgr.Repositories.YearlyArchive
             return await AttachCopyCountsForSyncAsync(facts);
         }
 
-        public void RemoveArchiveBoxPlacementByBoxCode(string boxCode)
-        {
-            if (string.IsNullOrWhiteSpace(boxCode))
-            {
-                return;
-            }
-
-            string normalized = boxCode.Trim();
-            var placement = _dbContext.CabinetArchiveBoxPlacements
-                .FirstOrDefault(item => item.BoxCode == normalized);
-            if (placement != null)
-            {
-                _dbContext.CabinetArchiveBoxPlacements.Remove(placement);
-            }
-        }
-
         private async Task<List<YearlyArchiveBoxMediaItemRow>> AttachCopyCountsForSyncAsync(
             List<YearlyArchiveFilingFact> facts)
         {

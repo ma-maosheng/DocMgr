@@ -559,52 +559,15 @@ namespace DocMgr.Services.YearlyArchive
             };
         }
 
-        private void UpsertArchiveBoxPlacement(YearlyArchiveBox box, DateTime updatedAt, string updatedBy)
-        {
-            var placement = _filingRepository.GetArchiveBoxPlacementByCode(box.BoxLocationCode);
-            string nowText = updatedAt.ToString("yyyy-MM-dd HH:mm:ss");
-            string sourceRecordKey = string.Join("|", box.RegisterRecords.Select(record => record.Id).Distinct().OrderBy(id => id));
-            string normalizedPlacementMode = string.Equals(box.PlacementMode, "FrontOut", StringComparison.OrdinalIgnoreCase)
-                ? "FrontOut"
-                : "SpineOut";
-            box.PlacementMode = normalizedPlacementMode;
-
-            if (placement == null)
-            {
-                _filingRepository.AddArchiveBoxPlacement(new CabinetArchiveBoxPlacement
-                {
-                    BoxCode = box.BoxLocationCode,
-                    BoxSpecification = NormalizeArchiveBoxSpecification(box.Specs),
-                    CabinetName = box.CabinetName,
-                    FaceCode = box.Side,
-                    SlotCode = $"{box.Row}-{box.Column}",
-                    PlacementMode = normalizedPlacementMode,
-                    SourceType = "YearlyArchive",
-                    SourceRecordKey = sourceRecordKey,
-                    CreatedAt = nowText,
-                    UpdatedAt = nowText,
-                    UpdatedBy = updatedBy
-                });
-                return;
-            }
-
-            placement.BoxSpecification = NormalizeArchiveBoxSpecification(box.Specs);
-            placement.CabinetName = box.CabinetName;
-            placement.FaceCode = box.Side;
-            placement.SlotCode = $"{box.Row}-{box.Column}";
-            placement.SourceType = "YearlyArchive";
-            placement.SourceRecordKey = sourceRecordKey;
-            placement.PlacementMode = normalizedPlacementMode;
-            placement.UpdatedAt = nowText;
-            placement.UpdatedBy = updatedBy;
-            if (string.IsNullOrWhiteSpace(placement.CreatedAt))
-            {
-                placement.CreatedAt = nowText;
-            }
-        }
-
         private static string NormalizeArchiveBoxSpecification(string? value)
             => ArchiveBoxSpecificationSupport.Normalize(value);
+
+        /// <summary>归一化年度盒放置方式并落回实体（原摆放表 upsert 的替代：实体即权威源）。</summary>
+        private static void NormalizeBoxPlacementMode(YearlyArchiveBox box)
+        {
+            ArgumentNullException.ThrowIfNull(box);
+            box.PlacementMode = ArchiveBoxPlacementModeSupport.Normalize(box.PlacementMode);
+        }
 
         private async Task UpdateFilingFactsForLinksAsync(
             string sourceLinkType,

@@ -445,11 +445,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     ArchiveSequenceNo = ArchiveSequenceNo.Trim(),
                     BoxLocationCode = boxLocationCode,
-                    CabinetName = cabinetName,
-                    Side = SelectedSide,
-                    Row = row,
-                    Column = col,
-                    BoxIndex = boxSequence,
                     ProjectName = TargetProject,
                     Year = TargetYear,
                     Specs = SelectedSpec,

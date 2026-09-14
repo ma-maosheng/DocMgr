@@ -1,7 +1,10 @@
 using DocMgr.Data;
 using DocMgr.Models.Cabinets;
+using DocMgr.Models.HistoryArchive;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
+using DocMgr.Services.YearlyArchive;
+using Microsoft.EntityFrameworkCore;
 
 namespace DocMgr.Repositories.Cabinets;
 
@@ -14,38 +17,102 @@ public class CabinetArchiveBoxPlacementRepository : ICabinetArchiveBoxPlacementR
         _dbContext = dbContext;
     }
 
-    public CabinetArchiveBoxPlacement? GetPlacementByBoxCode(string boxCode)
+    public YearlyArchiveBox? GetYearlyArchiveBoxByLocationCode(string boxLocationCode)
     {
-        return _dbContext.CabinetArchiveBoxPlacements
-            .FirstOrDefault(item => item.BoxCode == boxCode);
+        if (string.IsNullOrWhiteSpace(boxLocationCode))
+        {
+            return null;
+        }
+
+        string normalized = boxLocationCode.Trim();
+        return _dbContext.YearlyArchiveBoxes
+            .FirstOrDefault(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse
+                && box.BoxLocationCode == normalized);
     }
 
-    public List<CabinetArchiveBoxPlacement> GetPlacementsBySlot(string cabinetName, string faceCode, string slotCode)
+    public List<YearlyArchiveBox> GetYearlyArchiveBoxesByLocationCodes(IReadOnlyCollection<string> boxLocationCodes)
     {
-        return _dbContext.CabinetArchiveBoxPlacements
-            .Where(item => item.CabinetName == cabinetName)
-            .Where(item => item.FaceCode == faceCode)
-            .Where(item => item.SlotCode == slotCode)
+        if (boxLocationCodes == null || boxLocationCodes.Count == 0)
+        {
+            return [];
+        }
+
+        var normalizedCodes = boxLocationCodes
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Select(code => code.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (normalizedCodes.Count == 0)
+        {
+            return [];
+        }
+
+        return _dbContext.YearlyArchiveBoxes
+            .Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse
+                && normalizedCodes.Contains(box.BoxLocationCode))
             .ToList();
     }
 
-    public void AddPlacement(CabinetArchiveBoxPlacement placement)
+    public List<YearlyArchiveBox> GetInUseYearlyArchiveBoxesBySlot(string cabinetName, string faceCode, string slotCode)
     {
-        ArgumentNullException.ThrowIfNull(placement);
-        _dbContext.CabinetArchiveBoxPlacements.Add(placement);
-    }
+        // slotCode 即「行-列」，与 ArchiveSlotLocationSupport.BuildSlotKey 的后半段同构，直接拼接档口键。
+        string slotKey = $"{CabinetNameNormalizer.Normalize(cabinetName)}{faceCode.Trim().ToUpperInvariant()}-{slotCode.Trim()}";
+        if (string.IsNullOrWhiteSpace(slotKey))
+        {
+            return [];
+        }
 
-    public List<YearlyArchiveBox> GetYearlyArchiveBoxesByLocationCodes(IReadOnlyCollection<string> boxCodes)
-    {
+        string slotPrefix = slotKey + "-";
         return _dbContext.YearlyArchiveBoxes
-            .Where(item => boxCodes.Contains(item.BoxLocationCode))
+            .Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+            .Where(box => box.BoxLocationCode == slotKey || box.BoxLocationCode.StartsWith(slotPrefix))
             .ToList();
     }
 
-    public YearlyArchiveBox? GetYearlyArchiveBoxByLocationCode(string boxCode)
+    public HistoryArchiveBox? GetHistoryArchiveBoxByCode(string boxCode)
+    {
+        if (string.IsNullOrWhiteSpace(boxCode))
+        {
+            return null;
+        }
+
+        string normalized = boxCode.Trim();
+        return _dbContext.HistoryArchiveBoxes
+            .FirstOrDefault(box => box.BoxCode == normalized);
+    }
+
+    public List<HistoryArchiveBox> GetInStockHistoryArchiveBoxesBySlot(string cabinetName, string faceCode, string slotCode)
+    {
+        // slotCode 即「行-列」，直接拼接档口键。
+        string slotKey = $"{CabinetNameNormalizer.Normalize(cabinetName)}{faceCode.Trim().ToUpperInvariant()}-{slotCode.Trim()}";
+        if (string.IsNullOrWhiteSpace(slotKey))
+        {
+            return [];
+        }
+
+        string slotPrefix = slotKey + "-";
+        return _dbContext.HistoryArchiveBoxes
+            .Where(box => box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+            .Where(box => box.BoxCode == slotKey || box.BoxCode.StartsWith(slotPrefix))
+            .ToList();
+    }
+
+    public Dictionary<string, string> GetHistoryPlacementModeLookup(string cabinetName)
+    {
+        return _dbContext.HistoryArchiveBoxes
+            .AsNoTracking()
+            .Where(box => box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+            .Where(box => box.BoxCode.StartsWith(cabinetName))
+            .ToDictionary(box => box.BoxCode, box => box.PlacementMode, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public Dictionary<string, string> GetYearlyPlacementModeLookup(string cabinetName)
     {
         return _dbContext.YearlyArchiveBoxes
-            .FirstOrDefault(item => item.BoxLocationCode == boxCode);
+            .AsNoTracking()
+            .Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+            .Where(box => box.BoxLocationCode.StartsWith(cabinetName))
+            .ToDictionary(box => box.BoxLocationCode, box => box.PlacementMode, StringComparer.OrdinalIgnoreCase);
     }
 
     public List<ArchiveBoxSpecification> GetArchiveBoxSpecifications()

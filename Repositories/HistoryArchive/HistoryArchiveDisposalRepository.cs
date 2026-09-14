@@ -2,6 +2,7 @@ using DocMgr.Data;
 using DocMgr.Models.HistoryArchive;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Repositories.Interfaces;
+using DocMgr.Services.HistoryArchive;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocMgr.Repositories.HistoryArchive;
@@ -86,52 +87,87 @@ public sealed class HistoryArchiveDisposalRepository : IHistoryArchiveDisposalRe
             .FirstOrDefault();
     }
 
-    public Task<List<CabinetArchiveBoxPlacement>> GetHistoryPlacementsAsync()
+    /// <summary>跨类混放盒号集合：同一盒号的台账关联存在多种资料类别（链接表聚合）。</summary>
+    public async Task<List<string>> GetCrossTypeMixedBoxCodesAsync()
     {
-        return _dbContext.CabinetArchiveBoxPlacements
+        // EF Core 无法翻译 GroupBy 内嵌 Distinct 计数，拉平后在内存聚合。
+        var rows = await _dbContext.HistoryArchiveBoxLedgerLinks
             .AsNoTracking()
-            .Where(item =>
-                item.SourceType == HistoryArchiveDisposalDomainValues.PlacementSourceTopoMap
-                || item.SourceType == HistoryArchiveDisposalDomainValues.PlacementSourceAerialPhoto
-                || item.SourceType == HistoryArchiveDisposalDomainValues.PlacementSourceOtherMap
-                || item.SourceType == HistoryArchiveDisposalDomainValues.PlacementSourceMixed)
+            .Select(link => new { link.HistoryArchiveBoxId, link.MaterialKind })
+            .ToListAsync();
+        if (rows.Count == 0)
+        {
+            return [];
+        }
+
+        var crossTypeBoxIds = rows
+            .GroupBy(row => row.HistoryArchiveBoxId)
+            .Where(group => group.Select(row => row.MaterialKind).Distinct().Count() > 1)
+            .Select(group => group.Key)
+            .ToList();
+        if (crossTypeBoxIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await _dbContext.HistoryArchiveBoxes
+            .AsNoTracking()
+            .Where(box => crossTypeBoxIds.Contains(box.Id))
+            .Select(box => box.BoxCode)
             .ToListAsync();
     }
 
-    public Task<List<TopoMap>> GetTopoMapsAsync() =>
-        _dbContext.TopoMaps.AsNoTracking().ToListAsync();
+    public Task<List<HistoryArchiveBox>> GetInStockHistoryArchiveBoxesAsync()
+    {
+        return _dbContext.HistoryArchiveBoxes
+            .AsNoTracking()
+            .Where(box => box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+            .ToListAsync();
+    }
 
-    public Task<List<AerialPhoto>> GetAerialPhotosAsync() =>
-        _dbContext.AerialPhotos.AsNoTracking().ToListAsync();
+    public async Task<List<TopoMap>> GetTopoMapsAsync()
+    {
+        var list = await _dbContext.TopoMaps.AsNoTracking().ToListAsync();
+        HistoryArchiveBoxProjectionSupport.Hydrate(_dbContext, HistoryArchiveDisposalDomainValues.MaterialKindTopoMap, list);
+        return list;
+    }
 
-    public Task<List<OtherMap>> GetOtherMapsAsync() =>
-        _dbContext.OtherMaps.AsNoTracking().ToListAsync();
+    public async Task<List<AerialPhoto>> GetAerialPhotosAsync()
+    {
+        var list = await _dbContext.AerialPhotos.AsNoTracking().ToListAsync();
+        HistoryArchiveBoxProjectionSupport.Hydrate(_dbContext, HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto, list);
+        return list;
+    }
 
-    public Task<List<TopoMap>> GetTopoMapsForUpdateAsync() =>
-        _dbContext.TopoMaps.ToListAsync();
+    public async Task<List<OtherMap>> GetOtherMapsAsync()
+    {
+        var list = await _dbContext.OtherMaps.AsNoTracking().ToListAsync();
+        HistoryArchiveBoxProjectionSupport.Hydrate(_dbContext, HistoryArchiveDisposalDomainValues.MaterialKindOtherMap, list);
+        return list;
+    }
 
-    public Task<List<AerialPhoto>> GetAerialPhotosForUpdateAsync() =>
-        _dbContext.AerialPhotos.ToListAsync();
-
-    public Task<List<OtherMap>> GetOtherMapsForUpdateAsync() =>
-        _dbContext.OtherMaps.ToListAsync();
-
-    public Task<List<TopoMap>> GetTopoMapsByIdsAsync(IReadOnlyCollection<int> ids, bool tracking)
+    public async Task<List<TopoMap>> GetTopoMapsByIdsAsync(IReadOnlyCollection<int> ids, bool tracking)
     {
         IQueryable<TopoMap> query = tracking ? _dbContext.TopoMaps : _dbContext.TopoMaps.AsNoTracking();
-        return query.Where(item => ids.Contains(item.Id)).ToListAsync();
+        var list = await query.Where(item => ids.Contains(item.Id)).ToListAsync();
+        HistoryArchiveBoxProjectionSupport.Hydrate(_dbContext, HistoryArchiveDisposalDomainValues.MaterialKindTopoMap, list);
+        return list;
     }
 
-    public Task<List<AerialPhoto>> GetAerialPhotosByIdsAsync(IReadOnlyCollection<int> ids, bool tracking)
+    public async Task<List<AerialPhoto>> GetAerialPhotosByIdsAsync(IReadOnlyCollection<int> ids, bool tracking)
     {
         IQueryable<AerialPhoto> query = tracking ? _dbContext.AerialPhotos : _dbContext.AerialPhotos.AsNoTracking();
-        return query.Where(item => ids.Contains(item.Id)).ToListAsync();
+        var list = await query.Where(item => ids.Contains(item.Id)).ToListAsync();
+        HistoryArchiveBoxProjectionSupport.Hydrate(_dbContext, HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto, list);
+        return list;
     }
 
-    public Task<List<OtherMap>> GetOtherMapsByIdsAsync(IReadOnlyCollection<int> ids, bool tracking)
+    public async Task<List<OtherMap>> GetOtherMapsByIdsAsync(IReadOnlyCollection<int> ids, bool tracking)
     {
         IQueryable<OtherMap> query = tracking ? _dbContext.OtherMaps : _dbContext.OtherMaps.AsNoTracking();
-        return query.Where(item => ids.Contains(item.Id)).ToListAsync();
+        var list = await query.Where(item => ids.Contains(item.Id)).ToListAsync();
+        HistoryArchiveBoxProjectionSupport.Hydrate(_dbContext, HistoryArchiveDisposalDomainValues.MaterialKindOtherMap, list);
+        return list;
     }
 
     public async Task<HashSet<string>> GetLockedBoxCodesAsync(int? excludeRecordId)
@@ -217,24 +253,6 @@ public sealed class HistoryArchiveDisposalRepository : IHistoryArchiveDisposalRe
             .ExecuteDeleteAsync();
     }
 
-    public Task<List<HistoryArchiveBox>> GetHistoryArchiveBoxesInSlotAsync(
-        string cabinetName,
-        string face,
-        int row,
-        int column)
-    {
-        string normalizedCabinet = cabinetName?.Trim() ?? string.Empty;
-        string normalizedFace = face?.Trim() ?? string.Empty;
-        return _dbContext.HistoryArchiveBoxes
-            .Where(box =>
-                box.CabinetName == normalizedCabinet
-                && box.Side == normalizedFace
-                && box.Row == row
-                && box.Column == column
-                && box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
-            .ToListAsync();
-    }
-
     public Task<List<SystemAttachment>> GetAttachmentsAsync(string disposalNo)
     {
         string trimmed = disposalNo?.Trim() ?? string.Empty;
@@ -255,22 +273,6 @@ public sealed class HistoryArchiveDisposalRepository : IHistoryArchiveDisposalRe
 
     public void RemoveItems(IEnumerable<HistoryArchiveDisposalItem> items) =>
         _dbContext.HistoryArchiveDisposalItems.RemoveRange(items);
-
-    public void RemoveArchiveBoxPlacementByBoxCode(string boxCode)
-    {
-        string trimmed = boxCode?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(trimmed))
-        {
-            return;
-        }
-
-        var placement = _dbContext.CabinetArchiveBoxPlacements
-            .FirstOrDefault(item => item.BoxCode == trimmed);
-        if (placement != null)
-        {
-            _dbContext.CabinetArchiveBoxPlacements.Remove(placement);
-        }
-    }
 
     public void AddAttachment(SystemAttachment attachment) =>
         _dbContext.SystemAttachments.Add(attachment);

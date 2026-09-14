@@ -12,51 +12,11 @@ namespace DocMgr.Services.YearlyArchive
     /// </summary>
     public partial class ArchiveFilingService
     {
-        private void UpsertArchiveBoxPlacement(YearlyArchiveBox box, DateTime updatedAt)
+        /// <summary>归一化年度盒放置方式并落回实体（原摆放表 upsert 的替代：实体即权威源）。</summary>
+        private static void NormalizeBoxPlacementMode(YearlyArchiveBox box)
         {
             ArgumentNullException.ThrowIfNull(box);
-
-            var placement = _archiveFilingRepository.GetArchiveBoxPlacementByCode(box.BoxLocationCode);
-
-            string nowText = updatedAt.ToString("yyyy-MM-dd HH:mm:ss");
-            string sourceRecordKey = string.Join("|", box.RegisterRecords.Select(record => record.Id).Distinct().OrderBy(id => id));
-            string normalizedPlacementMode = string.Equals(box.PlacementMode, "FrontOut", StringComparison.OrdinalIgnoreCase)
-                ? "FrontOut"
-                : "SpineOut";
-            box.PlacementMode = normalizedPlacementMode;
-
-            if (placement == null)
-            {
-                _archiveFilingRepository.AddArchiveBoxPlacement(new CabinetArchiveBoxPlacement
-                {
-                    BoxCode = box.BoxLocationCode,
-                    BoxSpecification = NormalizeArchiveBoxSpecification(box.Specs),
-                    CabinetName = box.CabinetName,
-                    FaceCode = box.Side,
-                    SlotCode = $"{box.Row}-{box.Column}",
-                    PlacementMode = normalizedPlacementMode,
-                    SourceType = "YearlyArchive",
-                    SourceRecordKey = sourceRecordKey,
-                    CreatedAt = nowText,
-                    UpdatedAt = nowText,
-                    UpdatedBy = box.ArchivedBy
-                });
-                return;
-            }
-
-            placement.BoxSpecification = NormalizeArchiveBoxSpecification(box.Specs);
-            placement.CabinetName = box.CabinetName;
-            placement.FaceCode = box.Side;
-            placement.SlotCode = $"{box.Row}-{box.Column}";
-            placement.SourceType = "YearlyArchive";
-            placement.SourceRecordKey = sourceRecordKey;
-            placement.PlacementMode = normalizedPlacementMode;
-            placement.UpdatedAt = nowText;
-            placement.UpdatedBy = box.ArchivedBy;
-            if (string.IsNullOrWhiteSpace(placement.CreatedAt))
-            {
-                placement.CreatedAt = nowText;
-            }
+            box.PlacementMode = ArchiveBoxPlacementModeSupport.Normalize(box.PlacementMode);
         }
 
         private string ResolveSuggestedPlacementMode(string cabinetName, string side, int row, int column, string boxSpecification)
@@ -145,11 +105,9 @@ namespace DocMgr.Services.YearlyArchive
             };
         }
 
-        private static double ResolveOccupiedWidthForBox(YearlyArchiveBox box, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> specificationLookup)
+        private static double ResolveOccupiedWidthForBox(YearlyArchiveBox box, IReadOnlyDictionary<string, ArchiveBoxSpecification> specificationLookup)
         {
-            string placementMode = placementLookup.TryGetValue(box.BoxLocationCode, out var placement) && !string.IsNullOrWhiteSpace(placement.PlacementMode)
-                ? placement.PlacementMode
-                : "SpineOut";
+            string placementMode = string.IsNullOrWhiteSpace(box.PlacementMode) ? "SpineOut" : box.PlacementMode;
             return ResolveOccupiedWidth(placementMode, NormalizeArchiveBoxSpecification(box.Specs), specificationLookup);
         }
 
@@ -255,9 +213,9 @@ namespace DocMgr.Services.YearlyArchive
                 .ThenByDescending(item => item.Id)
                 .FirstOrDefault();
 
-            return latest == null
-                ? string.Empty
-                : BuildArchiveSlotKey(latest.CabinetName, latest.Side, latest.Row, latest.Column);
+            return latest != null && TryBuildArchiveSlotKeyFromBoxCode(latest.BoxLocationCode, out string slotKey)
+                ? slotKey
+                : string.Empty;
         }
 
         private async Task<Dictionary<string, int>> LoadOccupiedArchiveSlotBoxCountsAsync()
@@ -337,11 +295,6 @@ namespace DocMgr.Services.YearlyArchive
                 if (excludeBoxId is int excludedId && box.Id == excludedId)
                 {
                     continue;
-                }
-
-                if (box.BoxIndex > 0)
-                {
-                    occupied.Add(box.BoxIndex);
                 }
 
                 if (ArchiveSlotLocationSupport.TryParseSequenceIndex(box.BoxLocationCode, out int fromCode))

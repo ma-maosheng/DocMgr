@@ -1,4 +1,6 @@
-﻿namespace DocMgr.Models.HistoryArchive
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace DocMgr.Models.HistoryArchive
 {
     /// <summary>
     /// 历史存档纸质地形图实体
@@ -14,8 +16,17 @@
 
         public string Scale { get; set; } = string.Empty; // 比例尺 (必须有值)
 
+        /// <summary>
+        /// 盒号投影（非映射列）。加载后由 <see cref="Services.HistoryArchive.HistoryArchiveBoxProjectionSupport"/> 从
+        /// 盒/链接权威源水合；仅导入流程在内存中暂存 Excel 原文，写库不持久化。
+        /// </summary>
+        [NotMapped]
         public string BoxNumber { get; set; } = string.Empty;
+
+        /// <summary>盒规格投影（非映射列）。权威源为 HistoryArchiveBoxes.BoxSpecification。</summary>
+        [NotMapped]
         public string BoxSpecification { get; set; } = string.Empty;
+
         public string MapNumber { get; set; } = string.Empty;
 
         /// <summary>

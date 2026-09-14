@@ -31,7 +31,6 @@ namespace DocMgr.Data
         public DbSet<Cabinet> Cabinets { get; set; }
         public DbSet<CabinetHardDiskSlotCategoryAssignment> CabinetHardDiskSlotCategoryAssignments { get; set; }
         public DbSet<CabinetArchiveSlotCategoryAssignment> CabinetArchiveSlotCategoryAssignments { get; set; }
-        public DbSet<CabinetArchiveBoxPlacement> CabinetArchiveBoxPlacements { get; set; }
         public DbSet<CabinetSlotSpecification> CabinetSlotSpecifications { get; set; }
         public DbSet<ArchiveBoxSpecification> ArchiveBoxSpecifications { get; set; }
         public DbSet<CabinetSlotSpecialRule> CabinetSlotSpecialRules { get; set; }
@@ -129,16 +128,6 @@ namespace DocMgr.Data
             {
                 entity.HasNoKey();
                 entity.ToView("vw_ArchiveContainerSummaries");
-            });
-
-            modelBuilder.Entity<CabinetArchiveBoxPlacement>(entity =>
-            {
-                entity.HasIndex(item => item.BoxCode)
-                    .IsUnique();
-
-                entity.HasIndex(item => new { item.CabinetName, item.FaceCode, item.SlotCode });
-
-                entity.HasIndex(item => new { item.SourceType, item.SourceRecordKey });
             });
 
             modelBuilder.Entity<CabinetHardDiskSlotCategoryAssignment>(entity =>
@@ -699,22 +688,6 @@ namespace DocMgr.Data
             }
 
             foreach (var entry in ChangeTracker.Entries<CabinetSlotSpecialRule>())
-            {
-                if (entry.State is EntityState.Added or EntityState.Modified)
-                {
-                    entry.Entity.CabinetName = CabinetNameNormalizer.Normalize(entry.Entity.CabinetName);
-                }
-            }
-
-            foreach (var entry in ChangeTracker.Entries<CabinetArchiveBoxPlacement>())
-            {
-                if (entry.State is EntityState.Added or EntityState.Modified)
-                {
-                    entry.Entity.CabinetName = CabinetNameNormalizer.Normalize(entry.Entity.CabinetName);
-                }
-            }
-
-            foreach (var entry in ChangeTracker.Entries<YearlyArchiveBox>())
             {
                 if (entry.State is EntityState.Added or EntityState.Modified)
                 {

@@ -122,68 +122,6 @@ namespace DocMgr.Data.Migrations
                     b.ToTable("Cabinets");
                 });
 
-            modelBuilder.Entity("DocMgr.Models.Cabinets.CabinetArchiveBoxPlacement", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("BoxCode")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BoxSpecification")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CabinetName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CreatedAt")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FaceCode")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("PlacementMode")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SlotCode")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SourceRecordKey")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SourceType")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("UpdatedAt")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("UpdatedBy")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BoxCode")
-                        .IsUnique();
-
-                    b.HasIndex("SourceType", "SourceRecordKey");
-
-                    b.HasIndex("CabinetName", "FaceCode", "SlotCode");
-
-                    b.ToTable("CabinetArchiveBoxPlacements");
-                });
-
             modelBuilder.Entity("DocMgr.Models.Cabinets.CabinetArchiveSlotCategoryAssignment", b =>
                 {
                     b.Property<int>("Id")
@@ -1037,14 +975,6 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("BoxNumber")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BoxSpecification")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1117,20 +1047,10 @@ namespace DocMgr.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("BoxIndex")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("BoxSpecification")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
-
-                    b.Property<string>("CabinetName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Column")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("LifecycleStatus")
                         .IsRequired()
@@ -1145,19 +1065,10 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("Row")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Side")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
                     b.HasIndex("BoxCode")
                         .IsUnique();
-
-                    b.HasIndex("CabinetName", "Side", "Row", "Column");
 
                     b.ToTable("HistoryArchiveBoxes");
                 });
@@ -1197,10 +1108,6 @@ namespace DocMgr.Data.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("BeforeStorageLocation")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("BoxCode")
                         .IsRequired()
@@ -1416,14 +1323,6 @@ namespace DocMgr.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("BoxNumber")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BoxSpecification")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1490,14 +1389,6 @@ namespace DocMgr.Data.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("BoxNumber")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BoxSpecification")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("Category")
                         .IsRequired()
@@ -3206,19 +3097,9 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime>("ArchivedDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("BoxIndex")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("BoxLocationCode")
                         .IsRequired()
                         .HasColumnType("TEXT");
-
-                    b.Property<string>("CabinetName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Column")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("ContainerLifecycleStatus")
                         .IsRequired()
@@ -3244,13 +3125,6 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("RetiredBy")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Row")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Side")
                         .IsRequired()
                         .HasColumnType("TEXT");
 

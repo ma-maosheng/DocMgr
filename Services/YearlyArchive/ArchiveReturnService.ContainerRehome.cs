@@ -198,7 +198,9 @@ namespace DocMgr.Services.YearlyArchive
             fact.CurrentContainerCode = fact.ContainerCode;
             fact.StorageLocation = box.BoxLocationCode?.Trim() ?? string.Empty;
             fact.CurrentStorageLocation = fact.StorageLocation;
-            fact.CabinetName = box.CabinetName?.Trim() ?? string.Empty;
+            ArchiveSlotLocationSupport.TryParseSlotLocation(
+                fact.StorageLocation, out string cabinetName, out _, out _, out _);
+            fact.CabinetName = cabinetName;
             fact.BoxLocationCode = fact.StorageLocation;
             fact.BoxSpecs = box.Specs?.Trim() ?? string.Empty;
             fact.LifecycleUpdatedAt = operatedAt;
@@ -400,15 +402,10 @@ namespace DocMgr.Services.YearlyArchive
             {
                 ArchiveSequenceNo = archiveSequenceNo,
                 BoxLocationCode = location,
-                CabinetName = request.CabinetName.Trim(),
-                Side = request.Side.Trim(),
-                Row = request.Row,
-                Column = request.Column,
-                BoxIndex = request.BoxIndex <= 0 ? 1 : request.BoxIndex,
                 ProjectName = project,
                 Year = year,
                 Specs = request.Specs.Trim(),
-                PlacementMode = string.IsNullOrWhiteSpace(request.PlacementMode) ? "竖放" : request.PlacementMode.Trim(),
+                PlacementMode = ArchiveBoxPlacementModeSupport.Normalize(request.PlacementMode),
                 ArchivedBy = operatorName,
                 ArchivedDate = now,
                 ContainerLifecycleStatus = ArchiveContainerLifecycleStatus.InUse,
@@ -416,23 +413,6 @@ namespace DocMgr.Services.YearlyArchive
             };
 
             _filingRepository.AddArchiveBox(newBox);
-            await _outboundRepository.SaveChangesAsync();
-
-            string nowText = now.ToString("yyyy-MM-dd HH:mm:ss");
-            _filingRepository.AddArchiveBoxPlacement(new CabinetArchiveBoxPlacement
-            {
-                BoxCode = location,
-                BoxSpecification = ArchiveBoxSpecificationSupport.Normalize(newBox.Specs),
-                CabinetName = newBox.CabinetName,
-                FaceCode = newBox.Side,
-                SlotCode = $"{newBox.Row}-{newBox.Column}",
-                PlacementMode = newBox.PlacementMode,
-                SourceType = "YearlyArchive",
-                SourceRecordKey = $"YearlyArchiveBox:{newBox.Id}",
-                CreatedAt = nowText,
-                UpdatedAt = nowText,
-                UpdatedBy = operatorName
-            });
             await _outboundRepository.SaveChangesAsync();
 
             item.RehomeTargetBoxId = newBox.Id;
@@ -467,11 +447,22 @@ namespace DocMgr.Services.YearlyArchive
         private async Task<string?> ValidateYearlyMaterialsSlotCategoryForBoxAsync(YearlyArchiveBox box)
         {
             ArgumentNullException.ThrowIfNull(box);
+
+            if (!ArchiveSlotLocationSupport.TryParseSlotLocation(
+                    box.BoxLocationCode,
+                    out string cabinetName,
+                    out string faceCode,
+                    out int row,
+                    out int column))
+            {
+                return "档案盒存放位置不完整，请重新选择档口。";
+            }
+
             return await ValidateYearlyMaterialsSlotCategoryAsync(
-                box.CabinetName,
-                box.Side,
-                box.Row,
-                box.Column,
+                cabinetName,
+                faceCode,
+                row,
+                column,
                 box.BoxLocationCode);
         }
 

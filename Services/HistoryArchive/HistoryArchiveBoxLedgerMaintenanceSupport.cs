@@ -179,12 +179,10 @@ namespace DocMgr.Services.HistoryArchive
             {
                 if (!HistoryArchiveBoxCodeSupport.TryParseBoxCode(
                         code,
-                        out string cabinetName,
-                        out string faceCode,
-                        out string slotCode,
-                        out string normalizedBoxCode)
-                    || !TryParseSlotCode(slotCode, out int row, out int column)
-                    || !int.TryParse(normalizedBoxCode.Split('-')[^1], out int boxIndex))
+                        out _,
+                        out _,
+                        out _,
+                        out string normalizedBoxCode))
                 {
                     continue;
                 }
@@ -193,17 +191,7 @@ namespace DocMgr.Services.HistoryArchive
                 string boxSpec = spec ?? string.Empty;
                 if (existingBoxes.TryGetValue(normalizedBoxCode, out var box))
                 {
-                    bool changed = false;
-                    changed |= SetIfChanged(box.BoxSpecification, boxSpec, value => box.BoxSpecification = value);
-                    changed |= SetIfChanged(box.CabinetName, cabinetName, value => box.CabinetName = value);
-                    changed |= SetIfChanged(box.Side, faceCode, value => box.Side = faceCode);
-                    changed |= SetIfChanged(box.BoxIndex, boxIndex, value => box.BoxIndex = value);
-                    if (box.Row != row || box.Column != column)
-                    {
-                        box.Row = row;
-                        box.Column = column;
-                        changed = true;
-                    }
+                    bool changed = SetIfChanged(box.BoxSpecification, boxSpec, value => box.BoxSpecification = value);
 
                     if (changed && string.IsNullOrWhiteSpace(box.ArchivedBy))
                     {
@@ -216,11 +204,6 @@ namespace DocMgr.Services.HistoryArchive
                 dbContext.HistoryArchiveBoxes.Add(new HistoryArchiveBox
                 {
                     BoxCode = normalizedBoxCode,
-                    CabinetName = cabinetName,
-                    Side = faceCode,
-                    Row = row,
-                    Column = column,
-                    BoxIndex = boxIndex,
                     BoxSpecification = boxSpec,
                     PlacementMode = DefaultPlacementMode,
                     LifecycleStatus = HistoryArchiveDisposalDomainValues.LifecycleInStock,
@@ -228,21 +211,6 @@ namespace DocMgr.Services.HistoryArchive
                     ArchivedDate = DateTime.Now
                 });
             }
-        }
-
-        private static bool TryParseSlotCode(string? slotCode, out int row, out int column)
-        {
-            row = 0;
-            column = 0;
-            if (string.IsNullOrWhiteSpace(slotCode))
-            {
-                return false;
-            }
-
-            var parts = slotCode.Split('-');
-            return parts.Length == 2
-                && int.TryParse(parts[0], out row)
-                && int.TryParse(parts[1], out column);
         }
 
         private static string ResolveOperator(string? operatorName)
@@ -259,17 +227,6 @@ namespace DocMgr.Services.HistoryArchive
             }
 
             setter(target ?? string.Empty);
-            return true;
-        }
-
-        private static bool SetIfChanged(int current, int target, Action<int> setter)
-        {
-            if (current == target)
-            {
-                return false;
-            }
-
-            setter(target);
             return true;
         }
     }

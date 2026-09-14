@@ -12,17 +12,8 @@ namespace DocMgr.Models.HistoryArchive
     {
         public int Id { get; set; }
 
-        /// <summary>盒号（四段编码，全局唯一）。</summary>
+        /// <summary>盒号（四段编码，全局唯一，即物理位置）。</summary>
         public string BoxCode { get; set; } = string.Empty;
-
-        // 结构化位置信息（由盒号解析写入，冗余存储便于按档口检索）
-        public string CabinetName { get; set; } = string.Empty;
-        public string Side { get; set; } = string.Empty;
-        public int Row { get; set; }
-        public int Column { get; set; }
-
-        /// <summary>盒在档口内的序号（盒号末段）。</summary>
-        public int BoxIndex { get; set; }
 
         /// <summary>档案盒规格（对齐 ArchiveBoxSpecifications 名称）。</summary>
         public string BoxSpecification { get; set; } = string.Empty;

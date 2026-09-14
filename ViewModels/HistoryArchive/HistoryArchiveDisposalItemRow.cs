@@ -16,7 +16,6 @@ public sealed class HistoryArchiveDisposalItemRow : ViewModelBase
         CabinetName = candidate.CabinetName;
         FaceCode = candidate.FaceCode;
         SlotCode = candidate.SlotCode;
-        BeforeStorageLocation = candidate.StorageLocation;
         ContentSummary = candidate.ContentSummary;
         LedgerRecordCount = candidate.LedgerRecordCount;
         SourceRecordKeys = candidate.SourceRecordKeys;
@@ -32,7 +31,6 @@ public sealed class HistoryArchiveDisposalItemRow : ViewModelBase
         CabinetName = item.CabinetName;
         FaceCode = item.FaceCode;
         SlotCode = item.SlotCode;
-        BeforeStorageLocation = item.BeforeStorageLocation;
         ContentSummary = item.ContentSummary;
         LedgerRecordCount = item.LedgerRecordCount;
         SourceRecordKeys = item.SourceRecordKeys;
@@ -45,7 +43,6 @@ public sealed class HistoryArchiveDisposalItemRow : ViewModelBase
     public string CabinetName { get; }
     public string FaceCode { get; }
     public string SlotCode { get; }
-    public string BeforeStorageLocation { get; }
     public string ContentSummary { get; }
     public int LedgerRecordCount { get; }
     public string SourceRecordKeys { get; }
@@ -62,7 +59,6 @@ public sealed class HistoryArchiveDisposalItemRow : ViewModelBase
             CabinetName = CabinetName,
             FaceCode = FaceCode,
             SlotCode = SlotCode,
-            BeforeStorageLocation = BeforeStorageLocation,
             ContentSummary = ContentSummary,
             LedgerRecordCount = LedgerRecordCount,
             SourceRecordKeys = SourceRecordKeys,

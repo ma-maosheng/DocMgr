@@ -281,7 +281,6 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
             query = query.Where(item =>
                 Contains(item.BoxCode, keyword)
                 || Contains(item.ContentSummary, keyword)
-                || Contains(item.StorageLocation, keyword)
                 || Contains(item.RelatedBoxCodesText, keyword));
         }
 

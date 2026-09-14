@@ -34,10 +34,12 @@ public class OtherMapRepository : IOtherMapRepository
 
     public List<OtherMap> GetByCategory(string categoryName)
     {
-        return _dbContext.OtherMaps
+        var list = _dbContext.OtherMaps
             .Where(item => item.Category == categoryName)
             .OrderBy(item => item.Id)
             .ToList();
+        HistoryArchiveBoxProjectionSupport.Hydrate(_dbContext, MaterialKind, list);
+        return list;
     }
 
     public List<OtherMap> GetAll()
@@ -142,25 +144,8 @@ public class OtherMapRepository : IOtherMapRepository
     public void Update(OtherMap map)
     {
         ArgumentNullException.ThrowIfNull(map);
-        using var transaction = _dbContext.Database.BeginTransaction();
-        try
-        {
-            _dbContext.OtherMaps.Update(map);
-            _dbContext.SaveChanges();
-            HistoryArchiveBoxLedgerMaintenanceSupport.SyncBoxesAndLinksForRows(
-                _dbContext,
-                MaterialKind,
-                [new HistoryArchiveBoxLedgerMaintenanceSupport.LedgerRowSnapshot(
-                    map.Id, map.BoxNumber, map.BoxSpecification)],
-                _userContextService?.CurrentUser?.RealName);
-            HistoryArchiveBoxLedgerMaintenanceSupport.CleanupOrphanBoxes(_dbContext);
-            _dbContext.SaveChanges();
-            transaction.Commit();
-        }
-        catch
-        {
-            transaction.Rollback();
-            throw;
-        }
+        // 盒号/规格为投影属性：编辑路径不再同步盒与链接（权威源不随台账字段变化）
+        _dbContext.OtherMaps.Update(map);
+        _dbContext.SaveChanges();
     }
 }

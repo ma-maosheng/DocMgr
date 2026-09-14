@@ -282,7 +282,7 @@ namespace DocMgr.Services.YearlyArchive
 
                 if (boxesByCode.TryGetValue(sourceBoxCode, out var box))
                 {
-                    RewriteHistoryBoxEntity(box, newBoxCode, targetSlotKey);
+                    RewriteHistoryBoxEntity(box, newBoxCode);
                 }
             }
 
@@ -311,7 +311,7 @@ namespace DocMgr.Services.YearlyArchive
             return new HistoryRelocationOutcome(relocationNo, targetSlotKey, relocationItems);
         }
 
-        /// <summary>改写引用该盒号的全部台账行与摆放登记。</summary>
+        /// <summary>改写引用该盒号的台账引用组记录（盒号改写由盒实体承载，台账与摆放零触碰）。</summary>
         private void ApplyHistoryBoxCodeRewrite(
             IReadOnlyList<HistoryArchiveLedgerReferenceGroup> groups,
             string oldBoxCode,
@@ -337,131 +337,13 @@ namespace DocMgr.Services.YearlyArchive
                     AfterContainerCode = newBoxCode,
                     AfterStorageLocation = newBoxCode
                 });
-
-                RewriteHistoryLedgerRowBoxNumber(group, oldBoxCode, newBoxCode, operatedAt, operatorName);
-            }
-
-            _filingRepository.RemoveArchiveBoxPlacementByBoxCode(oldBoxCode);
-            _filingRepository.AddArchiveBoxPlacement(BuildHistoryPlacement(newBoxCode, operatedAt, operatorName));
-        }
-
-        /// <summary>改写台账行 BoxNumber：替换旧盒号为新盒号，其余盒号保持原顺序。</summary>
-        private static void RewriteHistoryLedgerRowBoxNumber(
-            HistoryArchiveLedgerReferenceGroup group,
-            string oldBoxCode,
-            string newBoxCode,
-            DateTime operatedAt,
-            string operatorName)
-        {
-            string dateText = operatedAt.ToString("yyyy-MM-dd");
-            string rebuilt = HistoryArchiveBoxCodeSupport.RemoveBoxCodes(group.BoxNumberText, [oldBoxCode]);
-            string newBoxNumber = string.IsNullOrWhiteSpace(rebuilt)
-                ? newBoxCode
-                : $"{rebuilt}；{newBoxCode}";
-
-            switch (group.MaterialKind)
-            {
-                case HistoryArchiveDisposalDomainValues.MaterialKindTopoMap:
-                    if (group.AsTopoMap() is { } topoMap)
-                    {
-                        topoMap.BoxNumber = newBoxNumber;
-                        topoMap.Modifier = operatorName;
-                        topoMap.ModificationDate = dateText;
-                    }
-                    break;
-
-                case HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto:
-                    if (group.AsAerialPhoto() is { } aerialPhoto)
-                    {
-                        aerialPhoto.BoxNumber = newBoxNumber;
-                        aerialPhoto.Modifier = operatorName;
-                        aerialPhoto.ModificationDate = dateText;
-                    }
-                    break;
-
-                case HistoryArchiveDisposalDomainValues.MaterialKindOtherMap:
-                    if (group.AsOtherMap() is { } otherMap)
-                    {
-                        otherMap.BoxNumber = newBoxNumber;
-                        otherMap.Modifier = operatorName;
-                        otherMap.ModificationDate = dateText;
-                    }
-                    break;
             }
         }
 
-        /// <summary>为目标盒号构造摆放登记行（历史资料来源，按柜面档口解析）。</summary>
-        private CabinetArchiveBoxPlacement BuildHistoryPlacement(
-            string boxCode,
-            DateTime operatedAt,
-            string operatorName)
+        /// <summary>改写盒实体：仅更新盒号（结构化位置由盒号解析，不再冗余存储）。</summary>
+        private static void RewriteHistoryBoxEntity(HistoryArchiveBox box, string newBoxCode)
         {
-            HistoryArchiveBoxCodeSupport.TryParseBoxCode(
-                boxCode, out string cabinetName, out string faceCode, out string slotCode, out _);
-            string nowText = operatedAt.ToString("yyyy-MM-dd HH:mm:ss");
-            return new CabinetArchiveBoxPlacement
-            {
-                BoxCode = boxCode,
-                BoxSpecification = string.Empty,
-                CabinetName = cabinetName,
-                FaceCode = faceCode,
-                SlotCode = slotCode,
-                PlacementMode = "SpineOut",
-                SourceType = HistoryArchiveDisposalDomainValues.PlacementSourceMixed,
-                SourceRecordKey = string.Empty,
-                CreatedAt = nowText,
-                UpdatedAt = nowText,
-                UpdatedBy = operatorName
-            };
-        }
-
-        /// <summary>改写盒实体：新盒号 + 结构化位置同步解析写入。</summary>
-        private static void RewriteHistoryBoxEntity(HistoryArchiveBox box, string newBoxCode, string targetSlotKey)
-        {
-            if (HistoryArchiveBoxCodeSupport.TryParseBoxCode(
-                    newBoxCode,
-                    out string cabinetName,
-                    out string faceCode,
-                    out string slotCode,
-                    out _)
-                && TryParseHistorySlotAndIndex(newBoxCode, slotCode, out int row, out int column, out int boxIndex))
-            {
-                box.BoxCode = newBoxCode;
-                box.CabinetName = cabinetName;
-                box.Side = faceCode;
-                box.Row = row;
-                box.Column = column;
-                box.BoxIndex = boxIndex;
-            }
-            else
-            {
-                // 兜底：至少保住盒号，位置字段留待下次导入校正
-                box.BoxCode = newBoxCode;
-            }
-        }
-
-        private static bool TryParseHistorySlotAndIndex(
-            string boxCode,
-            string slotCode,
-            out int row,
-            out int column,
-            out int boxIndex)
-        {
-            row = 0;
-            column = 0;
-            boxIndex = 0;
-
-            var slotParts = (slotCode ?? string.Empty).Split('-');
-            string indexText = (boxCode ?? string.Empty).Split('-')[^1];
-            if (slotParts.Length != 2
-                || !int.TryParse(slotParts[0], out row)
-                || !int.TryParse(slotParts[1], out column)
-                || !int.TryParse(indexText, out boxIndex))
-            {
-                return false;
-            }
-
-            return row > 0 && column > 0 && boxIndex > 0;
+            box.BoxCode = newBoxCode;
         }
 
         private sealed record HistoryRelocationOutcome(
@@ -695,7 +577,7 @@ namespace DocMgr.Services.YearlyArchive
                 .ToList();
         }
 
-        /// <summary>收集目标档口内已占用序号（历史盒实体 BoxIndex + 年度盒 BoxIndex）。</summary>
+        /// <summary>收集目标档口内已占用序号（历史盒盒号末段 + 年度盒位置编码末段）。</summary>
         private async Task<List<int>> ResolveHistoryOccupiedIndexesInSlotAsync(
             string cabinetName,
             string face,
@@ -705,10 +587,22 @@ namespace DocMgr.Services.YearlyArchive
             var occupied = new List<int>();
 
             var historyBoxes = await _relocationRepository.GetHistoryArchiveBoxesInSlotForUpdateAsync(cabinetName, face, row, column);
-            occupied.AddRange(historyBoxes.Select(box => box.BoxIndex).Where(index => index > 0));
+            foreach (var box in historyBoxes)
+            {
+                if (ArchiveSlotLocationSupport.TryParseSequenceIndex(box.BoxCode, out int index))
+                {
+                    occupied.Add(index);
+                }
+            }
 
             var yearlyBoxes = await _filingRepository.GetInUseYearlyArchiveBoxesInSlotAsync(cabinetName, face, row, column);
-            occupied.AddRange(yearlyBoxes.Select(box => box.BoxIndex).Where(index => index > 0));
+            foreach (var box in yearlyBoxes)
+            {
+                if (ArchiveSlotLocationSupport.TryParseSequenceIndex(box.BoxLocationCode, out int index))
+                {
+                    occupied.Add(index);
+                }
+            }
 
             return occupied;
         }

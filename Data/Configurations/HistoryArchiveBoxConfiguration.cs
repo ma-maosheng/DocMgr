@@ -10,7 +10,6 @@ namespace DocMgr.Data.Configurations
         {
             builder.HasKey(b => b.Id);
             builder.HasIndex(b => b.BoxCode).IsUnique();
-            builder.HasIndex(b => new { b.CabinetName, b.Side, b.Row, b.Column });
             builder.Property(b => b.BoxCode).HasMaxLength(64);
             builder.Property(b => b.BoxSpecification).HasMaxLength(64);
             builder.Property(b => b.PlacementMode).HasMaxLength(32);

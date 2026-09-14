@@ -95,31 +95,13 @@ namespace DocMgr.Repositories.YearlyArchive
                 boxCodes.Select(code => code?.Trim() ?? string.Empty)
                     .Where(code => !string.IsNullOrWhiteSpace(code)),
                 StringComparer.OrdinalIgnoreCase);
+            if (normalizedCodes.Count == 0)
+            {
+                return [];
+            }
 
-            var groups = new List<HistoryArchiveLedgerReferenceGroup>();
-
-            var topoMaps = await _dbContext.TopoMaps
-                .Where(item => item.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
-                .ToListAsync();
-            AppendGroups(groups, HistoryArchiveDisposalDomainValues.MaterialKindTopoMap, topoMaps
-                .Where(item => HistoryArchiveBoxCodeSupport.SplitBoxCodes(item.BoxNumber).Any(code => normalizedCodes.Contains(code)))
-                .Select(item => (item.Id, item.BoxNumber, (object)item)));
-
-            var aerialPhotos = await _dbContext.AerialPhotos
-                .Where(item => item.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
-                .ToListAsync();
-            AppendGroups(groups, HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto, aerialPhotos
-                .Where(item => HistoryArchiveBoxCodeSupport.SplitBoxCodes(item.BoxNumber).Any(code => normalizedCodes.Contains(code)))
-                .Select(item => (item.Id, item.BoxNumber, (object)item)));
-
-            var otherMaps = await _dbContext.OtherMaps
-                .Where(item => item.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
-                .ToListAsync();
-            AppendGroups(groups, HistoryArchiveDisposalDomainValues.MaterialKindOtherMap, otherMaps
-                .Where(item => HistoryArchiveBoxCodeSupport.SplitBoxCodes(item.BoxNumber).Any(code => normalizedCodes.Contains(code)))
-                .Select(item => (item.Id, item.BoxNumber, (object)item)));
-
-            return groups;
+            return await BuildReferenceGroupsAsync(links => links
+                .Where(link => normalizedCodes.Contains(link.BoxCode)));
         }
 
         /// <inheritdoc />
@@ -129,63 +111,112 @@ namespace DocMgr.Repositories.YearlyArchive
             int row,
             int column)
         {
-            string targetSlotKey = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, face, row, column);
-            if (string.IsNullOrWhiteSpace(targetSlotKey))
+            string slotKey = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, face, row, column);
+            string slotPrefix = slotKey + "-";
+
+            var boxesInSlot = await _dbContext.HistoryArchiveBoxes
+                .Where(box =>
+                    (box.BoxCode == slotKey || box.BoxCode.StartsWith(slotPrefix))
+                    && box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+                .Select(box => box.BoxCode)
+                .ToListAsync();
+            var slotCodes = new HashSet<string>(boxesInSlot, StringComparer.OrdinalIgnoreCase);
+            if (slotCodes.Count == 0)
             {
                 return [];
             }
 
-            var groups = new List<HistoryArchiveLedgerReferenceGroup>();
-
-            var topoMaps = await _dbContext.TopoMaps
-                .Where(item => item.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
-                .ToListAsync();
-            AppendGroups(groups, HistoryArchiveDisposalDomainValues.MaterialKindTopoMap, topoMaps
-                .Where(item => MatchesSlotKey(item.BoxNumber, targetSlotKey))
-                .Select(item => (item.Id, item.BoxNumber, (object)item)));
-
-            var aerialPhotos = await _dbContext.AerialPhotos
-                .Where(item => item.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
-                .ToListAsync();
-            AppendGroups(groups, HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto, aerialPhotos
-                .Where(item => MatchesSlotKey(item.BoxNumber, targetSlotKey))
-                .Select(item => (item.Id, item.BoxNumber, (object)item)));
-
-            var otherMapsInSlot = await _dbContext.OtherMaps
-                .Where(item => item.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
-                .ToListAsync();
-            AppendGroups(groups, HistoryArchiveDisposalDomainValues.MaterialKindOtherMap, otherMapsInSlot
-                .Where(item => MatchesSlotKey(item.BoxNumber, targetSlotKey))
-                .Select(item => (item.Id, item.BoxNumber, (object)item)));
-
-            return groups;
+            return await BuildReferenceGroupsAsync(links => links
+                .Where(link => slotCodes.Contains(link.BoxCode)));
         }
 
-        private static void AppendGroups(
-            List<HistoryArchiveLedgerReferenceGroup> groups,
-            string materialKind,
-            IEnumerable<(int Id, string BoxNumber, object Entity)> rows)
+        /// <summary>
+        /// 盒驱动构建台账引用组：遍历在库盒与全部链接（内存按盒号过滤），
+        /// 按台账行聚合出盒号序列（与投影水合同构）。
+        /// </summary>
+        private async Task<List<HistoryArchiveLedgerReferenceGroup>> BuildReferenceGroupsAsync(
+            Func<IEnumerable<(int BoxId, string BoxCode)>, IEnumerable<(int BoxId, string BoxCode)>> filterLinks)
         {
-            foreach (var row in rows)
+            var boxIdToCode = await _dbContext.HistoryArchiveBoxes
+                .AsNoTracking()
+                .Where(box => box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+                .ToDictionaryAsync(box => box.Id, box => box.BoxCode);
+
+            var boxCodesByBoxId = new Dictionary<int, string>();
+            foreach (var (boxId, boxCode) in filterLinks(boxIdToCode.Select(pair => (pair.Key, pair.Value))))
             {
+                boxCodesByBoxId[boxId] = boxCode;
+            }
+
+            if (boxCodesByBoxId.Count == 0)
+            {
+                return [];
+            }
+
+            var links = await _dbContext.HistoryArchiveBoxLedgerLinks
+                .AsNoTracking()
+                .Where(link => boxCodesByBoxId.Keys.Contains(link.HistoryArchiveBoxId))
+                .OrderBy(link => link.Id)
+                .ToListAsync();
+
+            var inStockIdsByKind = new Dictionary<string, HashSet<int>>(StringComparer.Ordinal)
+            {
+                [HistoryArchiveDisposalDomainValues.MaterialKindTopoMap] =
+                    (await _dbContext.TopoMaps.AsNoTracking()
+                        .Where(item => item.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+                        .Select(item => item.Id)
+                        .ToListAsync())
+                    .ToHashSet(),
+                [HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto] =
+                    (await _dbContext.AerialPhotos.AsNoTracking()
+                        .Where(item => item.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+                        .Select(item => item.Id)
+                        .ToListAsync())
+                    .ToHashSet(),
+                [HistoryArchiveDisposalDomainValues.MaterialKindOtherMap] =
+                    (await _dbContext.OtherMaps.AsNoTracking()
+                        .Where(item => item.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+                        .Select(item => item.Id)
+                        .ToListAsync())
+                    .ToHashSet()
+            };
+
+            var codesByRecord = new Dictionary<(string Kind, int RecordId), List<string>>();
+            foreach (var link in links)
+            {
+                if (!inStockIdsByKind.TryGetValue(link.MaterialKind, out HashSet<int>? inStockIds)
+                    || !inStockIds.Contains(link.RecordId)
+                    || !boxCodesByBoxId.TryGetValue(link.HistoryArchiveBoxId, out string? boxCode))
+                {
+                    continue;
+                }
+
+                var key = (link.MaterialKind, link.RecordId);
+                if (!codesByRecord.TryGetValue(key, out List<string>? codes))
+                {
+                    codes = new List<string>();
+                    codesByRecord[key] = codes;
+                }
+
+                codes.Add(boxCode);
+            }
+
+            var groups = new List<HistoryArchiveLedgerReferenceGroup>();
+            foreach (var pair in codesByRecord)
+            {
+                IReadOnlyList<string> codes = pair.Value
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
                 groups.Add(new HistoryArchiveLedgerReferenceGroup
                 {
-                    MaterialKind = materialKind,
-                    RecordId = row.Id,
-                    BoxCodes = HistoryArchiveBoxCodeSupport.SplitBoxCodes(row.BoxNumber),
-                    BoxNumberText = row.BoxNumber?.Trim() ?? string.Empty,
-                    LedgerEntity = row.Entity
+                    MaterialKind = pair.Key.Kind,
+                    RecordId = pair.Key.RecordId,
+                    BoxCodes = codes,
+                    BoxNumberText = string.Join("；", codes)
                 });
             }
-        }
 
-        private static bool MatchesSlotKey(string? boxNumber, string targetSlotKey)
-        {
-            return HistoryArchiveBoxCodeSupport.SplitBoxCodes(boxNumber)
-                .Any(code => string.Equals(
-                    ArchiveSlotLocationSupport.BuildSlotKey(code),
-                    targetSlotKey,
-                    StringComparison.OrdinalIgnoreCase));
+            return groups;
         }
 
         /// <inheritdoc />
@@ -224,14 +255,11 @@ namespace DocMgr.Repositories.YearlyArchive
             int row,
             int column)
         {
-            string normalizedCabinet = cabinetName?.Trim() ?? string.Empty;
-            string normalizedFace = face?.Trim() ?? string.Empty;
+            string slotKey = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, face, row, column);
+            string slotPrefix = slotKey + "-";
             return _dbContext.HistoryArchiveBoxes
                 .Where(box =>
-                    box.CabinetName == normalizedCabinet
-                    && box.Side == normalizedFace
-                    && box.Row == row
-                    && box.Column == column
+                    (box.BoxCode == slotKey || box.BoxCode.StartsWith(slotPrefix))
                     && box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
                 .ToListAsync();
         }

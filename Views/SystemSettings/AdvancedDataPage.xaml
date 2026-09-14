@@ -48,6 +48,17 @@
             </StackPanel>
         </Border>
 
+        <Border Grid.Row="0" Background="#E8F5E9" BorderBrush="#C8E6C9" BorderThickness="1" CornerRadius="4" Padding="15" Margin="0,0,0,20"
+                Visibility="{Binding IsBrowsableOnlyUser, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="👁" FontSize="20" Margin="0,0,10,0"/>
+                    <TextBlock Text="高级数据管理（浏览模式）" FontSize="18" FontWeight="Bold" Foreground="#2E7D32" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock Text="当前角色：普通用户。仅可浏览全部数据表；删除、清空、还原、备份及字典维护仅相应管理员可用。" Foreground="#1B5E20" Margin="34,5,0,0"/>
+            </StackPanel>
+        </Border>
+
         <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}">
         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
             <StackPanel Orientation="Horizontal">
@@ -303,7 +314,7 @@
         </ScrollViewer>
 
         <ScrollViewer Grid.Row="6" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,15,0,0"
-                      Visibility="{Binding IsArchiveAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}">
+                      Visibility="{Binding ShowReadOnlyStatusBar, Converter={StaticResource BooleanToVisibilityConverter}}">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Foreground="Gray"/>
             </StackPanel>

@@ -413,7 +413,6 @@ public static partial class FieldDomainSeedService
         ["HistoryArchiveDisposalItem.CabinetName"] = "柜体名称",
         ["HistoryArchiveDisposalItem.FaceCode"] = "面别代码",
         ["HistoryArchiveDisposalItem.SlotCode"] = "档口编号",
-        ["HistoryArchiveDisposalItem.BeforeStorageLocation"] = "处置前存放位置",
         ["HistoryArchiveDisposalItem.ContentSummary"] = "盒内摘要",
         ["HistoryArchiveDisposalItem.LedgerRecordCount"] = "台账条数",
         ["HistoryArchiveDisposalItem.SourceRecordKeys"] = "来源台账键",

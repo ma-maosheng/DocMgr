@@ -56,8 +56,6 @@ namespace DocMgr.Models.HistoryArchive
 
         public string BoxSpecification { get; init; } = string.Empty;
 
-        public string StorageLocation { get; init; } = string.Empty;
-
         public string ContentSummary { get; init; } = string.Empty;
 
         public string MixedPlacementText { get; init; } = string.Empty;

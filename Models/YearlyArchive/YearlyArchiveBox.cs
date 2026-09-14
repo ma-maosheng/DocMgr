@@ -31,15 +31,8 @@ namespace DocMgr.Models.YearlyArchive
         [NotMapped]
         public ArchiveContainerKind ContainerKind => ArchiveContainerKind.ArchiveBox;
 
-        // 物理位置编号 (例如: 甲A-1-1-01) - 居住地址
+        // 物理位置编号 (例如: 甲A-1-1-01) - 居住地址；柜/面/层/列/序由此解析
         public string BoxLocationCode { get; set; } = string.Empty;
-
-        // 结构化位置信息
-        public string CabinetName { get; set; } = string.Empty;
-        public string Side { get; set; } = string.Empty;
-        public int Row { get; set; }
-        public int Column { get; set; }
-        public int BoxIndex { get; set; }
 
         // 业务属性
         public string ProjectName { get; set; } = string.Empty;

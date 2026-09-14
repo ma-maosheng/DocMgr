@@ -235,16 +235,6 @@ public sealed partial class ArchiveDisposalService
         box.RetiredAt = now;
         box.RetiredBy = operatorName;
         box.BoxLocationCode = string.Empty;
-        box.CabinetName = string.Empty;
-        box.Side = string.Empty;
-        box.Row = 0;
-        box.Column = 0;
-        box.BoxIndex = 0;
-
-        if (!string.IsNullOrWhiteSpace(box.ArchiveSequenceNo))
-        {
-            _repository.RemoveArchiveBoxPlacementByBoxCode(box.ArchiveSequenceNo);
-        }
     }
 
     private async Task CompleteElectronicAsync(

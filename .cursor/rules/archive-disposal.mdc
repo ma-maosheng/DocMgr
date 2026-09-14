@@ -40,7 +40,7 @@ alwaysApply: false
 ## 办结效应
 
 - 立档事实 → `Disposed`；写 `YearlyArchiveMaterialTransaction`（`Disposal`）。
-- 模拟盒：盒内事实均已处置/销毁/转移且无在库/借出残留 → 盒 `Disposed`，删 `CabinetArchiveBoxPlacement`。
+- 模拟盒：盒内事实均已处置/销毁/转移且无在库/借出残留 → 盒 `Disposed`，清空 `BoxLocationCode`（摆放登记表已退役，放置方式由盒实体 `PlacementMode` 承载）。
 - 电子袋：袋内介质关联清空 → 袋 `Disposed`，清空 `StorageLocation`。
 - **物理移除确认**：本单将释档至少一个空盒/空袋时必填。
 - **低格确认**：含「低格留盘」时必填；且每盘须填目标空盘档口。

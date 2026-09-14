@@ -903,7 +903,8 @@ namespace DocMgr.Views
             SetNavButton(BtnDeptMgr, isSystemAdmin);
             SetNavButton(BtnRoleMgr, isSystemAdmin);
             SetNavButton(BtnServerPathMgr, ServerPathSettingPermissionSupport.CanMaintain(CurrentUser));
-            SetNavButton(BtnAdvancedData, isSystemAdmin);
+            // 数据浏览对全员开放；删除、清空、还原、字典维护等高危操作在页面内按角色控制。
+            SetNavButton(BtnAdvancedData, true);
             SetNavButton(BtnBusinessLogicSettings, isSystemAdmin);
             SetNavButton(BtnUserPreference, true);
             SetNavButton(BtnDbOperationLog, isSystemAdmin);
@@ -1175,13 +1176,7 @@ namespace DocMgr.Views
 
         private void BtnAdvancedData_Click(object sender, RoutedEventArgs e)
         {
-            // 系统管理员全量；资料室资料管理员受限开放（表浏览 + 备份当前库），页面内按角色隐藏高危操作
-            if (!IsSystemAdministrator() && !CanAccessArchiveRelocation())
-            {
-                MessageBox.Show("仅系统管理员或资料室资料管理员可进入高级数据管理。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
+            // 所有用户均可进入：普通用户仅数据浏览，资料室资料管理员可另备份当前库，高危维护仅系统管理员（页面内按角色隐藏）。
             TxtPageTitle.Text = "高级数据管理";
             MainContentFrame.Navigate(new AdvancedDataPage());
         }

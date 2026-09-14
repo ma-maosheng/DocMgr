@@ -502,15 +502,13 @@ namespace DocMgr.Services.YearlyArchive
             var existingBoxes = await _archiveFilingRepository.GetExistingYearlyArchiveBoxesWithCabinetAsync();
             var occupiedSlotBoxCounts = await LoadOccupiedArchiveSlotBoxCountsAsync();
             var occupiedSlotSequenceIndexes = await LoadOccupiedArchiveSlotSequenceIndexesAsync();
-            var placementLookup = (await _archiveFilingRepository.GetArchiveBoxPlacementsAsync())
-                .ToDictionary(item => item.BoxCode, item => item, StringComparer.OrdinalIgnoreCase);
 
             string normalizedProjectName = projectName?.Trim() ?? string.Empty;
             string normalizedYear = year?.Trim() ?? string.Empty;
             var sameYearSameProjectSlotKeys = existingBoxes
                 .Where(item => string.Equals(item.Year, normalizedYear, StringComparison.OrdinalIgnoreCase)
                     && string.Equals(item.ProjectName, normalizedProjectName, StringComparison.OrdinalIgnoreCase))
-                .Select(item => BuildArchiveSlotKey(item.CabinetName, item.Side, item.Row, item.Column))
+                .Select(item => TryBuildArchiveSlotKeyFromBoxCode(item.BoxLocationCode, out string slotKey) ? slotKey : string.Empty)
                 .Where(key => !string.IsNullOrWhiteSpace(key))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             string sameYearLastProjectSlotKey = ResolveLatestSlotKey(existingBoxes
@@ -546,18 +544,15 @@ namespace DocMgr.Services.YearlyArchive
                                 continue;
                             }
 
+                            string currentSlotKey = BuildArchiveSlotKey(cabinet.Name, side, row, column);
                             var slotBoxes = existingBoxes
-                                .Where(item => string.Equals(item.CabinetName, cabinet.Name, StringComparison.OrdinalIgnoreCase)
-                                    && string.Equals(item.Side, side, StringComparison.OrdinalIgnoreCase)
-                                    && item.Row == row
-                                    && item.Column == column)
-                                .OrderBy(item => item.BoxIndex)
+                                .Where(item => TryBuildArchiveSlotKeyFromBoxCode(item.BoxLocationCode, out string itemSlotKey)
+                                    && string.Equals(itemSlotKey, currentSlotKey, StringComparison.OrdinalIgnoreCase))
                                 .ToList();
 
-                            double occupiedWidth = slotBoxes.Sum(box => ResolveOccupiedWidthForBox(box, placementLookup, specificationLookup));
+                            double occupiedWidth = slotBoxes.Sum(box => ResolveOccupiedWidthForBox(box, specificationLookup));
                             double nextBoxWidth = ResolveOccupiedWidth(placementMode, normalizedSpecification, specificationLookup);
 
-                            string currentSlotKey = BuildArchiveSlotKey(cabinet.Name, side, row, column);
                             int stagePriority = ResolveSuggestionStagePriority(
                                 currentSlotKey,
                                 sameYearSameProjectSlotKeys,
@@ -571,9 +566,9 @@ namespace DocMgr.Services.YearlyArchive
                             var occupiedIndexes = occupiedSlotSequenceIndexes.TryGetValue(currentSlotKey, out var indexes)
                                 ? indexes
                                 : (IEnumerable<int>)Array.Empty<int>();
-                            // 同档口年度在用盒的 BoxIndex 可能与位置编码不一致，一并纳入占用集合。
+                            // 同档口年度在用盒位置编码序号一并纳入占用集合。
                             var slotBoxIndexes = slotBoxes
-                                .Select(box => box.BoxIndex)
+                                .Select(box => ArchiveSlotLocationSupport.TryParseSequenceIndex(box.BoxLocationCode, out int idx) ? idx : 0)
                                 .Where(index => index > 0)
                                 .Concat(occupiedIndexes);
                             int nextIndex = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(slotBoxIndexes);
@@ -649,7 +644,7 @@ namespace DocMgr.Services.YearlyArchive
                 await _archiveFilingRepository.SaveChangesAsync();
 
                 var createdLinks = AddMediaItemLinks(newBox.Id, mediaItems.Select(item => item.Id), archivedAt);
-                UpsertArchiveBoxPlacement(newBox, archivedAt);
+                NormalizeBoxPlacementMode(newBox);
                 await _archiveFilingRepository.SaveChangesAsync();
 
                 await _filingFactWriter.WriteForSimulatedLinksAsync(
@@ -719,7 +714,7 @@ namespace DocMgr.Services.YearlyArchive
                 }
 
                 var createdLinks = AddMediaItemLinks(box.Id, mediaItems.Select(item => item.Id), archivedAt);
-                UpsertArchiveBoxPlacement(box, archivedAt);
+                NormalizeBoxPlacementMode(box);
                 await _archiveFilingRepository.SaveChangesAsync();
 
                 await _filingFactWriter.WriteForSimulatedLinksAsync(
@@ -1023,9 +1018,9 @@ namespace DocMgr.Services.YearlyArchive
         {
             ArgumentNullException.ThrowIfNull(box);
 
-            string cabinetName = box.CabinetName?.Trim() ?? string.Empty;
-            string faceCode = box.Side?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(cabinetName) || string.IsNullOrWhiteSpace(faceCode) || box.Row <= 0 || box.Column <= 0)
+            string locationCode = box.BoxLocationCode?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(locationCode)
+                || !ArchiveSlotLocationSupport.TryParseSlotLocation(locationCode, out string cabinetName, out string faceCode, out int row, out int column))
             {
                 throw new InvalidOperationException("档案盒存放位置不完整，请重新选择档口。");
             }
@@ -1033,21 +1028,18 @@ namespace DocMgr.Services.YearlyArchive
             var cabinets = await _cabinetRepository.GetAllAsync();
             var cabinet = cabinets.FirstOrDefault(item =>
                 string.Equals(item.Name, cabinetName, StringComparison.OrdinalIgnoreCase));
-            string slotCode = ArchiveStorageSlotCategorySupport.BuildSlotCode(box.Row, box.Column);
+            string slotCode = ArchiveStorageSlotCategorySupport.BuildSlotCode(row, column);
             string? storedCategory = cabinet == null || cabinet.Type != CabinetType.Standard
                 ? null
                 : await _archiveFilingRepository.GetArchiveSlotCategoryNameAsync(cabinet.Id, faceCode, slotCode);
 
-            string locationDisplay = string.IsNullOrWhiteSpace(box.BoxLocationCode)
-                ? $"{cabinetName}{faceCode}-{slotCode}"
-                : box.BoxLocationCode.Trim();
             string? issue = ArchiveStorageSlotCategorySupport.TryValidateStandardSlotCategory(
                 cabinet,
                 faceCode,
                 slotCode,
                 storedCategory,
                 ArchiveStorageSlotCategorySupport.ExpectedYearlyMaterialsCategory,
-                locationDisplay);
+                locationCode);
             if (!string.IsNullOrWhiteSpace(issue))
             {
                 throw new InvalidOperationException(issue);

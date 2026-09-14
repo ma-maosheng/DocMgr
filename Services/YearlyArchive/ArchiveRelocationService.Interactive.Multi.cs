@@ -362,11 +362,19 @@ namespace DocMgr.Services.YearlyArchive
                 request.TargetFace,
                 request.TargetRow,
                 request.TargetColumn);
-            var usedIndexes = boxesInTarget
-                .Where(box => !sourceIds.Contains(box.Id))
-                .Select(box => box.BoxIndex)
-                .Where(index => index > 0)
-                .ToList();
+            var usedIndexes = new List<int>();
+            foreach (var box in boxesInTarget)
+            {
+                if (sourceIds.Contains(box.Id))
+                {
+                    continue;
+                }
+
+                if (ArchiveSlotLocationSupport.TryParseSequenceIndex(box.BoxLocationCode, out int index) && index > 0)
+                {
+                    usedIndexes.Add(index);
+                }
+            }
 
             var prepared = new List<SimulatedRelocationRequest>(sources.Count);
             foreach (var source in sources)
@@ -566,10 +574,14 @@ namespace DocMgr.Services.YearlyArchive
                 return InteractiveTargetValidationResult.Fail($"目标档口可用宽度不足（迁入后需 {totalWidthAfterMove:0.##}cm，档口 {slotSpecification.WidthCm:0.##}cm）。");
             }
 
-            var occupiedIndexes = occupyingBoxes
-                .Select(box => box.BoxIndex)
-                .Where(index => index > 0)
-                .ToList();
+            var occupiedIndexes = new List<int>();
+            foreach (var box in occupyingBoxes)
+            {
+                if (ArchiveSlotLocationSupport.TryParseSequenceIndex(box.BoxLocationCode, out int index) && index > 0)
+                {
+                    occupiedIndexes.Add(index);
+                }
+            }
             int firstSequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupiedIndexes);
             string sampleLocation = ArchiveSlotLocationSupport.BuildFullElectronicLocation(
                 request.TargetCabinetName,

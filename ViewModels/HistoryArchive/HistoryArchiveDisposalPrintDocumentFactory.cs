@@ -122,7 +122,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             }
 
             var builder = new StringBuilder();
-            builder.Append($"共{data.Items.Count}盒（盒号 / 规格 / 原柜位 / 盒内摘要 / 方式）");
+            builder.Append($"共{data.Items.Count}盒（盒号 / 规格 / 盒内摘要 / 方式）");
             foreach (var item in data.Items)
             {
                 builder.AppendLine();
@@ -132,7 +132,6 @@ namespace DocMgr.ViewModels.HistoryArchive
                 builder.Append(
                     $"{item.SortOrder}. {mixed}{EmptyAsPlaceholder(item.BoxCode)}" +
                     $" / {EmptyAsPlaceholder(item.BoxSpecification)}" +
-                    $" / {EmptyAsPlaceholder(item.StorageLocation)}" +
                     $" / {EmptyAsPlaceholder(item.ContentSummary)}" +
                     $" / {EmptyAsPlaceholder(item.DispositionMethod)}");
             }

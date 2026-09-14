@@ -20,8 +20,7 @@ alwaysApply: false
 - `ContainerLifecycleStatus` → `Retired`
 - `LastStorageLocation` ← 销号前 `BoxLocationCode`
 - `RetiredAt` / `RetiredBy` 记录操作信息
-- 清空 `BoxLocationCode`、柜号/面/层/列/盒序等物理字段
-- **删除** `CabinetArchiveBoxPlacements` 中对应 `BoxCode` 记录
+- 清空 `BoxLocationCode`（柜/面/层/列/盒序号不再单独存储，均由位置编码派生，见 `ArchiveSlotLocationSupport`；放置方式由盒实体 `PlacementMode` 承载，摆放登记表已退役）
 - 资料子项与 FilingFact 指向目标盒（新建盒或并档目标盒）
 
 ## 追溯

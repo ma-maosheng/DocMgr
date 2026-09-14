@@ -160,14 +160,7 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
         return _dbContext.YearlyArchiveBoxes
             .AsNoTracking()
             .Where(item => item.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
-            .Where(item => item.CabinetName != string.Empty)
-            .ToListAsync();
-    }
-
-    public Task<List<CabinetArchiveBoxPlacement>> GetArchiveBoxPlacementsAsync()
-    {
-        return _dbContext.CabinetArchiveBoxPlacements
-            .AsNoTracking()
+            .Where(item => !string.IsNullOrWhiteSpace(item.BoxLocationCode))
             .ToListAsync();
     }
 
@@ -690,40 +683,6 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
             .ToListAsync();
     }
 
-    public Task<CabinetArchiveBoxPlacement?> GetArchiveBoxPlacementByCodeAsync(string boxCode)
-    {
-        return _dbContext.CabinetArchiveBoxPlacements
-            .FirstOrDefaultAsync(item => item.BoxCode == boxCode);
-    }
-
-    public CabinetArchiveBoxPlacement? GetArchiveBoxPlacementByCode(string boxCode)
-    {
-        return _dbContext.CabinetArchiveBoxPlacements
-            .FirstOrDefault(item => item.BoxCode == boxCode);
-    }
-
-    public void AddArchiveBoxPlacement(CabinetArchiveBoxPlacement placement)
-    {
-        ArgumentNullException.ThrowIfNull(placement);
-        _dbContext.CabinetArchiveBoxPlacements.Add(placement);
-    }
-
-    public void RemoveArchiveBoxPlacementByBoxCode(string boxCode)
-    {
-        if (string.IsNullOrWhiteSpace(boxCode))
-        {
-            return;
-        }
-
-        string normalized = boxCode.Trim();
-        var placement = _dbContext.CabinetArchiveBoxPlacements
-            .FirstOrDefault(item => item.BoxCode == normalized);
-        if (placement != null)
-        {
-            _dbContext.CabinetArchiveBoxPlacements.Remove(placement);
-        }
-    }
-
     public CabinetSlotSpecialRule? GetCabinetSlotSpecialRule(string cabinetName, string slotCode, string boxSpecification, string sideCode)
     {
         return _dbContext.CabinetSlotSpecialRules
@@ -764,14 +723,13 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
         int row,
         int column)
     {
-        string normalizedCabinet = cabinetName.Trim();
-        string normalizedSide = side.Trim();
+        string slotKey = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, side, row, column);
+        string slotPrefix = slotKey + "-";
         return _dbContext.YearlyArchiveBoxes
             .Include(box => box.MediaItemLinks)
             .Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
-            .Where(box => box.CabinetName == normalizedCabinet && box.Side == normalizedSide && box.Row == row && box.Column == column)
-            .OrderBy(box => box.BoxIndex)
-            .ThenBy(box => box.BoxLocationCode)
+            .Where(box => box.BoxLocationCode == slotKey || box.BoxLocationCode.StartsWith(slotPrefix))
+            .OrderBy(box => box.BoxLocationCode)
             .ToListAsync();
     }
 
@@ -781,21 +739,18 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
         int row,
         int column)
     {
-        // 历史盒已实体化：直接按结构化位置计数在库盒（准确且避免扫描三张台账）
-        string normalizedCabinet = cabinetName?.Trim() ?? string.Empty;
-        string normalizedSide = side?.Trim() ?? string.Empty;
-        if (normalizedCabinet.Length == 0 || normalizedSide.Length == 0)
+        // 历史盒已实体化：按盒号前缀计数在库盒（盒号即物理位置）
+        string slotKey = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, side, row, column);
+        if (string.IsNullOrWhiteSpace(slotKey))
         {
             return 0;
         }
 
+        string slotPrefix = slotKey + "-";
         return await _dbContext.HistoryArchiveBoxes
             .AsNoTracking()
             .CountAsync(box =>
-                box.CabinetName == normalizedCabinet
-                && box.Side == normalizedSide
-                && box.Row == row
-                && box.Column == column
+                (box.BoxCode == slotKey || box.BoxCode.StartsWith(slotPrefix))
                 && box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock);
     }
 

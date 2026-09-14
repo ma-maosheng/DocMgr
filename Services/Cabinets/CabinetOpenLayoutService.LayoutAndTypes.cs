@@ -469,44 +469,30 @@ namespace DocMgr.Services.Cabinets
             return string.Join("\n", lines);
         }
 
-        private static SlotBoxInfo CreateSlotBoxInfo(IGrouping<string, ExpandedArchiveBoxAssignment> group, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup)
+        private static SlotBoxInfo CreateSlotBoxInfo(IGrouping<string, ExpandedArchiveBoxAssignment> group, IReadOnlyDictionary<string, string> placementModeLookup)
         {
             var first = group.First();
             return new SlotBoxInfo(
                 first.Parsed.BoxCode,
                 first.Parsed.SequenceIndex,
-                ResolveBoxSpecification(group, placementLookup),
-                ResolvePlacementMode(first.Parsed.BoxCode, placementLookup),
+                ResolveBoxSpecification(group),
+                ResolvePlacementMode(first.Parsed.BoxCode, placementModeLookup),
                 group.Select(item => item.SourceType).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
         }
 
-        private static string ResolveSlotCode(ExpandedArchiveBoxAssignment assignment, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup)
+        private static string ResolveSlotCode(ExpandedArchiveBoxAssignment assignment)
         {
             ArgumentNullException.ThrowIfNull(assignment);
-
-            if (placementLookup.TryGetValue(assignment.Parsed.BoxCode, out var placement)
-                && !string.IsNullOrWhiteSpace(placement.SlotCode))
-            {
-                return placement.SlotCode;
-            }
-
             return assignment.Parsed.SlotCode;
         }
 
-        private static string ResolveFaceCode(ExpandedArchiveBoxAssignment assignment, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup)
+        private static string ResolveFaceCode(ExpandedArchiveBoxAssignment assignment)
         {
             ArgumentNullException.ThrowIfNull(assignment);
-
-            if (placementLookup.TryGetValue(assignment.Parsed.BoxCode, out var placement)
-                && !string.IsNullOrWhiteSpace(placement.FaceCode))
-            {
-                return placement.FaceCode;
-            }
-
             return assignment.Parsed.Face.ToString();
         }
 
-        private static string ResolveBoxSpecification(IEnumerable<ExpandedArchiveBoxAssignment> assignments, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup)
+        private static string ResolveBoxSpecification(IEnumerable<ExpandedArchiveBoxAssignment> assignments)
         {
             var groupedAssignments = assignments.ToList();
             if (groupedAssignments.Count == 0)
@@ -514,32 +500,25 @@ namespace DocMgr.Services.Cabinets
                 return string.Empty;
             }
 
-            string boxCode = groupedAssignments[0].Parsed.BoxCode;
-            if (placementLookup.TryGetValue(boxCode, out var placement)
-                && !string.IsNullOrWhiteSpace(placement.BoxSpecification))
-            {
-                return placement.BoxSpecification;
-            }
-
             return string.Join("/", groupedAssignments
-                .Select(item => item.BoxSpecification)
+                .Select(item => ArchiveBoxSpecificationSupport.Normalize(item.BoxSpecification))
                 .Where(text => !string.IsNullOrWhiteSpace(text))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(text => text, StringComparer.OrdinalIgnoreCase));
         }
 
-        private static string ResolvePlacementMode(string boxCode, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup)
+        private static string ResolvePlacementMode(string boxCode, IReadOnlyDictionary<string, string> placementModeLookup)
         {
-            if (placementLookup.TryGetValue(boxCode, out var placement)
-                && !string.IsNullOrWhiteSpace(placement.PlacementMode))
+            if (placementModeLookup.TryGetValue(boxCode, out string? placementMode)
+                && !string.IsNullOrWhiteSpace(placementMode))
             {
-                return placement.PlacementMode;
+                return placementMode;
             }
 
             return "SpineOut";
         }
 
-        private static Dictionary<string, BoxRenderLayout> CalculateBoxLayouts(IReadOnlyList<IGrouping<string, ExpandedArchiveBoxAssignment>> boxGroups, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight)
+        private static Dictionary<string, BoxRenderLayout> CalculateBoxLayouts(IReadOnlyList<IGrouping<string, ExpandedArchiveBoxAssignment>> boxGroups, IReadOnlyDictionary<string, string> placementModeLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight)
         {
             const double gap = 0.6d;
 
@@ -548,30 +527,30 @@ namespace DocMgr.Services.Cabinets
                 && boxGroups.All(group => group.First().Parsed.SequenceIndex > 0);
             if (allHaveSequence)
             {
-                return CalculateSequentialLayouts(boxGroups, placementLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, gap);
+                return CalculateSequentialLayouts(boxGroups, placementModeLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, gap);
             }
 
             var frontOutBoxGroups = boxGroups
-                .Where(group => string.Equals(ResolvePlacementMode(group.Key, placementLookup), "FrontOut", StringComparison.OrdinalIgnoreCase))
+                .Where(group => string.Equals(ResolvePlacementMode(group.Key, placementModeLookup), "FrontOut", StringComparison.OrdinalIgnoreCase))
                 .ToList();
             if (frontOutBoxGroups.Count == boxGroups.Count && frontOutBoxGroups.Count > 0 && frontOutBoxGroups.Count <= 4)
             {
-                return CalculateFrontOutLayouts(frontOutBoxGroups, placementLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, gap);
+                return CalculateFrontOutLayouts(frontOutBoxGroups, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, gap);
             }
 
             if (frontOutBoxGroups.Count > 0 && frontOutBoxGroups.Count <= 4 && frontOutBoxGroups.Count < boxGroups.Count)
             {
-                var mixedLayouts = CalculateMixedLayouts(boxGroups, placementLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, gap, frontOutBoxGroups.Count);
+                var mixedLayouts = CalculateMixedLayouts(boxGroups, placementModeLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, gap, frontOutBoxGroups.Count);
                 if (mixedLayouts != null)
                 {
                     return mixedLayouts;
                 }
             }
 
-            return CalculateSequentialLayouts(boxGroups, placementLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, gap);
+            return CalculateSequentialLayouts(boxGroups, placementModeLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, gap);
         }
 
-        private static Dictionary<string, BoxRenderLayout>? CalculateMixedLayouts(IReadOnlyList<IGrouping<string, ExpandedArchiveBoxAssignment>> boxGroups, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight, double gap, int frontOutCount)
+        private static Dictionary<string, BoxRenderLayout>? CalculateMixedLayouts(IReadOnlyList<IGrouping<string, ExpandedArchiveBoxAssignment>> boxGroups, IReadOnlyDictionary<string, string> placementModeLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight, double gap, int frontOutCount)
         {
             var layouts = new Dictionary<string, BoxRenderLayout>(StringComparer.OrdinalIgnoreCase);
             double currentX = 0d;
@@ -581,8 +560,8 @@ namespace DocMgr.Services.Cabinets
 
             foreach (var boxGroup in boxGroups)
             {
-                string boxSpecification = ResolveBoxSpecification(boxGroup, placementLookup);
-                string placementMode = ResolvePlacementMode(boxGroup.Key, placementLookup);
+                string boxSpecification = ResolveBoxSpecification(boxGroup);
+                string placementMode = ResolvePlacementMode(boxGroup.Key, placementModeLookup);
                 double boxWidth = ResolveOccupiedWidth(placementMode, boxSpecification, boxSpecificationLookup);
                 double boxHeight = ResolveBoxHeight(boxSpecification, boxSpecificationLookup);
 
@@ -618,7 +597,7 @@ namespace DocMgr.Services.Cabinets
             return layouts;
         }
 
-        private static Dictionary<string, BoxRenderLayout> CalculateSequentialLayouts(IReadOnlyList<IGrouping<string, ExpandedArchiveBoxAssignment>> boxGroups, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight, double gap)
+        private static Dictionary<string, BoxRenderLayout> CalculateSequentialLayouts(IReadOnlyList<IGrouping<string, ExpandedArchiveBoxAssignment>> boxGroups, IReadOnlyDictionary<string, string> placementModeLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight, double gap)
         {
             var layouts = new Dictionary<string, BoxRenderLayout>(StringComparer.OrdinalIgnoreCase);
             var indexedGroups = boxGroups
@@ -627,7 +606,7 @@ namespace DocMgr.Services.Cabinets
             bool reserveSequenceGaps = indexedGroups.Count > 0
                 && indexedGroups.All(item => item.SequenceIndex > 0);
 
-            var measurements = CalculateBoxMeasurements(boxGroups, placementLookup, boxSpecificationLookup, slotCanvasHeight);
+            var measurements = CalculateBoxMeasurements(boxGroups, placementModeLookup, boxSpecificationLookup, slotCanvasHeight);
             if (!reserveSequenceGaps)
             {
                 double currentX = 0d;
@@ -707,12 +686,12 @@ namespace DocMgr.Services.Cabinets
             return layouts;
         }
 
-        private static Dictionary<string, BoxRenderLayout> CalculateFrontOutLayouts(IReadOnlyList<IGrouping<string, ExpandedArchiveBoxAssignment>> boxGroups, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight, double gap)
+        private static Dictionary<string, BoxRenderLayout> CalculateFrontOutLayouts(IReadOnlyList<IGrouping<string, ExpandedArchiveBoxAssignment>> boxGroups, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight, double gap)
         {
             var measurements = boxGroups
                 .Select((boxGroup, index) =>
                 {
-                    string boxSpecification = ResolveBoxSpecification(boxGroup, placementLookup);
+                    string boxSpecification = ResolveBoxSpecification(boxGroup);
                     double fullWidth = ResolveOccupiedWidth("FrontOut", boxSpecification, boxSpecificationLookup);
                     double height = ResolveBoxHeight(boxSpecification, boxSpecificationLookup);
                     if (fullWidth <= 0d)
@@ -742,13 +721,13 @@ namespace DocMgr.Services.Cabinets
             return layouts;
         }
 
-        private static List<BoxMeasurement> CalculateBoxMeasurements(IReadOnlyList<IGrouping<string, ExpandedArchiveBoxAssignment>> boxGroups, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasHeight)
+        private static List<BoxMeasurement> CalculateBoxMeasurements(IReadOnlyList<IGrouping<string, ExpandedArchiveBoxAssignment>> boxGroups, IReadOnlyDictionary<string, string> placementModeLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasHeight)
         {
             return boxGroups
                 .Select(boxGroup =>
                 {
-                    string boxSpecification = ResolveBoxSpecification(boxGroup, placementLookup);
-                    string placementMode = ResolvePlacementMode(boxGroup.Key, placementLookup);
+                    string boxSpecification = ResolveBoxSpecification(boxGroup);
+                    string placementMode = ResolvePlacementMode(boxGroup.Key, placementModeLookup);
                     double boxWidth = ResolveOccupiedWidth(placementMode, boxSpecification, boxSpecificationLookup);
                     double boxHeight = ResolveBoxHeight(boxSpecification, boxSpecificationLookup);
 

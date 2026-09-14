@@ -298,11 +298,6 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             writeLastLocation: true,
             disposedBoxCodes);
 
-        foreach (string boxCode in disposedBoxCodes)
-        {
-            _repository.RemoveArchiveBoxPlacementByBoxCode(boxCode);
-        }
-
         // 盒已离库：清理其台账关联，避免残留链接指向离库盒
         await _repository.RemoveHistoryArchiveBoxLinksByBoxCodesAsync(disposedBoxCodes);
 
@@ -407,7 +402,6 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
                     SortOrder = item.SortOrder,
                     BoxCode = item.BoxCode,
                     BoxSpecification = item.BoxSpecification,
-                    StorageLocation = item.BeforeStorageLocation,
                     ContentSummary = item.ContentSummary,
                     MixedPlacementText = item.IsMixedPlacement ? "混放" : string.Empty,
                     DispositionMethod = record.DispositionMethod
@@ -556,7 +550,6 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
                 CabinetName = candidate.CabinetName,
                 FaceCode = candidate.FaceCode,
                 SlotCode = candidate.SlotCode,
-                BeforeStorageLocation = candidate.StorageLocation,
                 ContentSummary = candidate.ContentSummary,
                 LedgerRecordCount = candidate.LedgerRecordCount,
                 SourceRecordKeys = candidate.SourceRecordKeys,
@@ -574,7 +567,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         int? currentRecordId)
     {
         string kind = HistoryArchiveDisposalDomainValues.NormalizeMaterialKind(materialKind);
-        var placements = await _repository.GetHistoryPlacementsAsync();
+        var inStockBoxes = await _repository.GetInStockHistoryArchiveBoxesAsync();
         HashSet<string> lockedByOther = await _repository.GetLockedBoxCodesAsync(currentRecordId);
 
         var ledgerRows = new List<LedgerRow>();
@@ -653,36 +646,19 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             }
         }
 
-        HashSet<string> crossTypeBoxes = placements
-            .Where(item => string.Equals(
-                item.SourceType?.Trim(),
-                HistoryArchiveDisposalDomainValues.PlacementSourceMixed,
-                StringComparison.OrdinalIgnoreCase))
-            .Select(item => item.BoxCode?.Trim() ?? string.Empty)
-            .Where(code => !string.IsNullOrWhiteSpace(code))
+        HashSet<string> crossTypeBoxes = (await _repository.GetCrossTypeMixedBoxCodesAsync())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        string expectedSource = kind switch
-        {
-            HistoryArchiveDisposalDomainValues.MaterialKindTopoMap =>
-                HistoryArchiveDisposalDomainValues.PlacementSourceTopoMap,
-            HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto =>
-                HistoryArchiveDisposalDomainValues.PlacementSourceAerialPhoto,
-            _ => HistoryArchiveDisposalDomainValues.PlacementSourceOtherMap
-        };
-
-        Dictionary<string, CabinetArchiveBoxPlacement> placementByCode = placements
-            .Where(item =>
-                string.Equals(item.SourceType?.Trim(), expectedSource, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(item.SourceType?.Trim(), HistoryArchiveDisposalDomainValues.PlacementSourceMixed, StringComparison.OrdinalIgnoreCase))
-            .GroupBy(item => item.BoxCode, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        var boxByCode = inStockBoxes.ToDictionary(
+            box => box.BoxCode,
+            box => box,
+            StringComparer.OrdinalIgnoreCase);
 
         var result = new List<HistoryArchiveDisposalBoxCandidate>();
         foreach (var pair in rowsByBox)
         {
             string boxCode = pair.Key;
-            if (!placementByCode.TryGetValue(boxCode, out CabinetArchiveBoxPlacement? placement))
+            if (!boxByCode.TryGetValue(boxCode, out HistoryArchiveBox? box))
             {
                 continue;
             }
@@ -694,16 +670,17 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
 
             string summary = BuildGroupSummary(kind, pair.Value);
 
+            HistoryArchiveBoxCodeSupport.TryParseBoxCode(boxCode, out string cabinetName, out string faceCode, out string slotCode, out _);
+
             result.Add(new HistoryArchiveDisposalBoxCandidate
             {
                 BoxCode = boxCode,
                 BoxSpecification = FirstNonEmpty(
-                    placement.BoxSpecification,
+                    box.BoxSpecification,
                     pair.Value.Select(item => item.BoxSpecification)),
-                CabinetName = placement.CabinetName,
-                FaceCode = placement.FaceCode,
-                SlotCode = placement.SlotCode,
-                StorageLocation = boxCode,
+                CabinetName = cabinetName,
+                FaceCode = faceCode,
+                SlotCode = slotCode,
                 ContentSummary = summary,
                 LedgerRecordCount = pair.Value.Select(item => item.Id).Distinct().Count(),
                 SourceRecordKeys = string.Join("|", pair.Value.Select(item => item.SourceKey).Distinct(StringComparer.Ordinal)),
@@ -771,21 +748,21 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         {
             foreach (var map in await _repository.GetTopoMapsByIdsAsync(ids, tracking: true))
             {
-                ApplyLedgerRow(map, targetStatus, writeLastLocation, boxCodes, map.BoxNumber, value => map.BoxNumber = value);
+                ApplyLedgerRowStatus(map, targetStatus, writeLastLocation, boxCodes);
             }
         }
         else if (string.Equals(kind, HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto, StringComparison.Ordinal))
         {
             foreach (var photo in await _repository.GetAerialPhotosByIdsAsync(ids, tracking: true))
             {
-                ApplyLedgerRow(photo, targetStatus, writeLastLocation, boxCodes, photo.BoxNumber, value => photo.BoxNumber = value);
+                ApplyLedgerRowStatus(photo, targetStatus, writeLastLocation, boxCodes);
             }
         }
         else
         {
             foreach (var map in await _repository.GetOtherMapsByIdsAsync(ids, tracking: true))
             {
-                ApplyLedgerRow(map, targetStatus, writeLastLocation, boxCodes, map.BoxNumber, value => map.BoxNumber = value);
+                ApplyLedgerRowStatus(map, targetStatus, writeLastLocation, boxCodes);
             }
         }
 
@@ -806,112 +783,59 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         }
     }
 
-    private static void ApplyLedgerRow(
-        object entity,
+    /// <summary>
+    /// 台账行生命周期落库。盒号为投影属性：不改写、只更新状态；
+    /// 办结写 <c>LastStorageLocation</c> 时取水合后的当前盒号原文（删链接前）。
+    /// </summary>
+    private static void ApplyLedgerRowStatus<TLedgerRow>(
+        TLedgerRow entity,
         string targetStatus,
         bool writeLastLocation,
-        HashSet<string> disposedBoxCodes,
-        string boxNumber,
-        Action<string> setBoxNumber)
+        HashSet<string> disposedBoxCodes)
+        where TLedgerRow : notnull
     {
-        IReadOnlyList<string> codes = HistoryArchiveBoxCodeSupport.SplitBoxCodes(boxNumber);
-        bool mixed = codes.Count > 1;
-        if (entity is TopoMap topo)
+        string? originalBoxNumber = entity switch
         {
-            ApplyStatus(topo, targetStatus, writeLastLocation, disposedBoxCodes, mixed, codes, setBoxNumber);
-        }
-        else if (entity is AerialPhoto aerial)
+            TopoMap topo => topo.BoxNumber,
+            AerialPhoto aerial => aerial.BoxNumber,
+            OtherMap other => other.BoxNumber,
+            _ => null
+        };
+        if (originalBoxNumber == null)
         {
-            ApplyStatus(aerial, targetStatus, writeLastLocation, disposedBoxCodes, mixed, codes, setBoxNumber);
-        }
-        else if (entity is OtherMap other)
-        {
-            ApplyStatus(other, targetStatus, writeLastLocation, disposedBoxCodes, mixed, codes, setBoxNumber);
-        }
-    }
-
-    private static void ApplyStatus(
-        TopoMap map,
-        string targetStatus,
-        bool writeLastLocation,
-        HashSet<string> disposedBoxCodes,
-        bool mixed,
-        IReadOnlyList<string> codes,
-        Action<string> setBoxNumber)
-    {
-        ApplyCommon(targetStatus, writeLastLocation, disposedBoxCodes, mixed, codes, setBoxNumber,
-            () => map.LifecycleStatus, value => map.LifecycleStatus = value,
-            () => map.LastStorageLocation, value => map.LastStorageLocation = value,
-            map.BoxNumber);
-    }
-
-    private static void ApplyStatus(
-        AerialPhoto photo,
-        string targetStatus,
-        bool writeLastLocation,
-        HashSet<string> disposedBoxCodes,
-        bool mixed,
-        IReadOnlyList<string> codes,
-        Action<string> setBoxNumber)
-    {
-        ApplyCommon(targetStatus, writeLastLocation, disposedBoxCodes, mixed, codes, setBoxNumber,
-            () => photo.LifecycleStatus, value => photo.LifecycleStatus = value,
-            () => photo.LastStorageLocation, value => photo.LastStorageLocation = value,
-            photo.BoxNumber);
-    }
-
-    private static void ApplyStatus(
-        OtherMap map,
-        string targetStatus,
-        bool writeLastLocation,
-        HashSet<string> disposedBoxCodes,
-        bool mixed,
-        IReadOnlyList<string> codes,
-        Action<string> setBoxNumber)
-    {
-        ApplyCommon(targetStatus, writeLastLocation, disposedBoxCodes, mixed, codes, setBoxNumber,
-            () => map.LifecycleStatus, value => map.LifecycleStatus = value,
-            () => map.LastStorageLocation, value => map.LastStorageLocation = value,
-            map.BoxNumber);
-    }
-
-    private static void ApplyCommon(
-        string targetStatus,
-        bool writeLastLocation,
-        HashSet<string> disposedBoxCodes,
-        bool mixed,
-        IReadOnlyList<string> codes,
-        Action<string> setBoxNumber,
-        Func<string> getLifecycle,
-        Action<string> setLifecycle,
-        Func<string> getLastLocation,
-        Action<string> setLastLocation,
-        string originalBoxNumber)
-    {
-        _ = getLifecycle;
-        _ = getLastLocation;
-
-        if (string.Equals(targetStatus, HistoryArchiveDisposalDomainValues.LifecycleDisposed, StringComparison.Ordinal)
-            && writeLastLocation
-            && !mixed)
-        {
-            IReadOnlyList<string> remaining = codes
-                .Where(code => !disposedBoxCodes.Contains(code))
-                .ToList();
-            if (remaining.Count > 0)
-            {
-                setLastLocation(originalBoxNumber);
-                setBoxNumber(string.Join("；", remaining));
-                return;
-            }
+            return;
         }
 
         if (writeLastLocation)
         {
-            setLastLocation(originalBoxNumber);
+            switch (entity)
+            {
+                case TopoMap topo:
+                    topo.LastStorageLocation = originalBoxNumber;
+                    break;
+                case AerialPhoto aerial:
+                    aerial.LastStorageLocation = originalBoxNumber;
+                    break;
+                case OtherMap other:
+                    other.LastStorageLocation = originalBoxNumber;
+                    break;
+            }
+
+            _ = disposedBoxCodes;
         }
 
-        setLifecycle(targetStatus);
+        switch (entity)
+        {
+            case TopoMap topo:
+                topo.LifecycleStatus = targetStatus;
+                break;
+            case AerialPhoto aerial:
+                aerial.LifecycleStatus = targetStatus;
+                break;
+            case OtherMap other:
+                other.LifecycleStatus = targetStatus;
+                break;
+        }
     }
 
     private static List<(string Kind, int Id)> ParseSourceKeys(IEnumerable<string?> blobs)

@@ -505,22 +505,6 @@ public sealed class ArchiveDisposalRepository : IArchiveDisposalRepository
     public void RemoveRegisterLock(HardDiskRegisterLock lockItem) =>
         _dbContext.HardDiskRegisterLocks.Remove(lockItem);
 
-    public void RemoveArchiveBoxPlacementByBoxCode(string boxCode)
-    {
-        string trimmed = boxCode?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(trimmed))
-        {
-            return;
-        }
-
-        var placement = _dbContext.CabinetArchiveBoxPlacements
-            .FirstOrDefault(item => item.BoxCode == trimmed);
-        if (placement != null)
-        {
-            _dbContext.CabinetArchiveBoxPlacements.Remove(placement);
-        }
-    }
-
     public void RemoveHardDiskMediumLink(YearlyElectronicArchiveUnitMediumLink link) =>
         _dbContext.YearlyElectronicArchiveUnitMediumLinks.Remove(link);
 

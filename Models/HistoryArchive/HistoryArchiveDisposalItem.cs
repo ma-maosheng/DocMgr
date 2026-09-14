@@ -27,9 +27,6 @@ namespace DocMgr.Models.HistoryArchive
 
         public string SlotCode { get; set; } = string.Empty;
 
-        /// <summary>原完整存放位置（通常等于盒号）。</summary>
-        public string BeforeStorageLocation { get; set; } = string.Empty;
-
         /// <summary>盒内资料简要描述（提交时固化）。</summary>
         public string ContentSummary { get; set; } = string.Empty;
 

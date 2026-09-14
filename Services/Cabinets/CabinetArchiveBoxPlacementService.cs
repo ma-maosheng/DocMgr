@@ -1,15 +1,16 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using DocMgr.Models.Cabinets;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
 
 namespace DocMgr.Services.Cabinets
 {
+    /// <summary>
+    /// 档案盒摆放服务：直接读写历史/年度档案盒实体的放置方式与规格。
+    /// </summary>
     public class CabinetArchiveBoxPlacementService : ICabinetArchiveBoxPlacementService
     {
-        private const string TimestampFormat = "yyyy-MM-dd HH:mm:ss";
+        private const string SpineOut = "SpineOut";
+        private const string FrontOut = "FrontOut";
 
         private readonly ICabinetArchiveBoxPlacementRepository _placementRepository;
         private readonly IUserContextService _userContextService;
@@ -34,18 +35,28 @@ namespace DocMgr.Services.Cabinets
                 throw new ArgumentException("档案盒编号不能为空。", nameof(boxCode));
             }
 
-            var placement = _placementRepository.GetPlacementByBoxCode(boxCode.Trim());
+            string normalizedBoxCode = boxCode.Trim();
 
-            return ParsePlacementMode(placement?.PlacementMode);
+            var yearlyBox = _placementRepository.GetYearlyArchiveBoxByLocationCode(normalizedBoxCode);
+            if (yearlyBox != null)
+            {
+                return ParsePlacementMode(yearlyBox.PlacementMode);
+            }
+
+            var historyBox = _placementRepository.GetHistoryArchiveBoxByCode(normalizedBoxCode);
+            return ParsePlacementMode(historyBox?.PlacementMode);
         }
 
         /// <summary>
-        /// 批量更新指定柜体、面别、档口下所有档案盒的放置方式。
+        /// 批量更新指定柜体、面别、档口下所有档案盒（历史盒与年度盒）的放置方式。
         /// </summary>
         public int UpdateSlotPlacementMode(string cabinetName, string faceCode, string slotCode, CabinetArchiveBoxPlacementMode placementMode, string updatedBy)
         {
             CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             if (string.IsNullOrWhiteSpace(cabinetName))
+            {
+                throw new ArgumentException("柜体名称不能为空。", nameof(cabinetName));
+            }
 
             if (string.IsNullOrWhiteSpace(faceCode))
             {
@@ -57,38 +68,31 @@ namespace DocMgr.Services.Cabinets
                 throw new ArgumentException("档口编号不能为空。", nameof(slotCode));
             }
 
-            string normalizedCabinetName = CabinetNameNormalizer.Normalize(cabinetName);
-            string normalizedFaceCode = faceCode.Trim().ToUpperInvariant();
-            string normalizedSlotCode = slotCode.Trim();
-            string normalizedUpdatedBy = string.IsNullOrWhiteSpace(updatedBy) ? "System" : updatedBy.Trim();
-            string nowText = DateTime.Now.ToString(TimestampFormat);
             string placementModeText = ToStorageValue(placementMode);
 
-            var placements = _placementRepository.GetPlacementsBySlot(normalizedCabinetName, normalizedFaceCode, normalizedSlotCode);
-
-            foreach (var placement in placements)
+            var yearlyBoxes = _placementRepository.GetInUseYearlyArchiveBoxesBySlot(cabinetName, faceCode, slotCode);
+            foreach (var yearlyBox in yearlyBoxes)
             {
-                placement.PlacementMode = placementModeText;
-                placement.UpdatedAt = nowText;
-                placement.UpdatedBy = normalizedUpdatedBy;
+                yearlyBox.PlacementMode = placementModeText;
             }
 
-            if (placements.Count > 0)
+            var historyBoxes = _placementRepository.GetInStockHistoryArchiveBoxesBySlot(cabinetName, faceCode, slotCode);
+            foreach (var historyBox in historyBoxes)
             {
-                var boxCodes = placements
-                    .Select(item => item.BoxCode)
-                    .Where(item => !string.IsNullOrWhiteSpace(item))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-                UpdateYearlyArchiveBoxPlacementModes(boxCodes, placementModeText);
+                historyBox.PlacementMode = placementModeText;
+            }
+
+            int updatedCount = yearlyBoxes.Count + historyBoxes.Count;
+            if (updatedCount > 0)
+            {
                 _placementRepository.SaveChanges();
             }
 
-            return placements.Count;
+            return updatedCount;
         }
 
         /// <summary>
-        /// 更新单个档案盒的放置方式。
+        /// 更新单个档案盒的放置方式（优先匹配年度盒，其次历史盒）。
         /// </summary>
         public bool UpdateBoxPlacementMode(string boxCode, CabinetArchiveBoxPlacementMode placementMode, string updatedBy)
         {
@@ -99,46 +103,25 @@ namespace DocMgr.Services.Cabinets
             }
 
             string normalizedBoxCode = boxCode.Trim();
-            string normalizedUpdatedBy = string.IsNullOrWhiteSpace(updatedBy) ? "System" : updatedBy.Trim();
-            string nowText = DateTime.Now.ToString(TimestampFormat);
             string placementModeText = ToStorageValue(placementMode);
 
-            var placement = _placementRepository.GetPlacementByBoxCode(normalizedBoxCode);
-
-            if (placement == null)
+            var yearlyBox = _placementRepository.GetYearlyArchiveBoxByLocationCode(normalizedBoxCode);
+            if (yearlyBox != null)
             {
-                if (!TryParseBoxCode(normalizedBoxCode, out string cabinetName, out string faceCode, out string slotCode))
-                {
-                    return false;
-                }
-
-                placement = new CabinetArchiveBoxPlacement
-                {
-                    BoxCode = normalizedBoxCode,
-                    CabinetName = cabinetName,
-                    FaceCode = faceCode,
-                    SlotCode = slotCode,
-                    BoxSpecification = string.Empty,
-                    SourceType = "Manual",
-                    SourceRecordKey = string.Empty,
-                    CreatedAt = nowText,
-                    UpdatedAt = nowText,
-                    UpdatedBy = normalizedUpdatedBy,
-                    PlacementMode = placementModeText
-                };
-
-                _placementRepository.AddPlacement(placement);
-            }
-            else
-            {
-                placement.PlacementMode = placementModeText;
-                placement.UpdatedAt = nowText;
-                placement.UpdatedBy = normalizedUpdatedBy;
+                yearlyBox.PlacementMode = placementModeText;
+                _placementRepository.SaveChanges();
+                return true;
             }
 
-            UpdateYearlyArchiveBoxPlacementMode(normalizedBoxCode, placementModeText);
-            _placementRepository.SaveChanges();
-            return true;
+            var historyBox = _placementRepository.GetHistoryArchiveBoxByCode(normalizedBoxCode);
+            if (historyBox != null)
+            {
+                historyBox.PlacementMode = placementModeText;
+                _placementRepository.SaveChanges();
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -147,7 +130,7 @@ namespace DocMgr.Services.Cabinets
         public IReadOnlyList<string> GetAvailableBoxSpecifications()
         {
             var names = _placementRepository.GetArchiveBoxSpecifications()
-                .Select(item => item.Name?.Trim())
+                .Select(item => item.Name?.Trim() ?? string.Empty)
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
@@ -166,7 +149,7 @@ namespace DocMgr.Services.Cabinets
         }
 
         /// <summary>
-        /// 为单个档案盒设置规格。
+        /// 为单个档案盒设置规格（年度盒写 Specs，历史盒写 BoxSpecification）。
         /// </summary>
         public bool ResetBoxSpecification(string boxCode, string boxSpecification, string updatedBy)
         {
@@ -183,99 +166,36 @@ namespace DocMgr.Services.Cabinets
 
             string normalizedBoxCode = boxCode.Trim();
             string normalizedSpecification = boxSpecification.Trim();
-            var placement = _placementRepository.GetPlacementByBoxCode(normalizedBoxCode);
-            if (placement == null)
+
+            var yearlyBox = _placementRepository.GetYearlyArchiveBoxByLocationCode(normalizedBoxCode);
+            if (yearlyBox != null)
             {
-                return false;
+                yearlyBox.Specs = normalizedSpecification;
+                _placementRepository.SaveChanges();
+                return true;
             }
 
-            placement.BoxSpecification = normalizedSpecification;
-            placement.UpdatedAt = DateTime.Now.ToString(TimestampFormat);
-            placement.UpdatedBy = string.IsNullOrWhiteSpace(updatedBy) ? "System" : updatedBy.Trim();
-            _placementRepository.SaveChanges();
-            return true;
+            var historyBox = _placementRepository.GetHistoryArchiveBoxByCode(normalizedBoxCode);
+            if (historyBox != null)
+            {
+                historyBox.BoxSpecification = normalizedSpecification;
+                _placementRepository.SaveChanges();
+                return true;
+            }
+
+            return false;
         }
 
         private static CabinetArchiveBoxPlacementMode ParsePlacementMode(string? placementMode)
         {
-            return string.Equals(placementMode?.Trim(), "FrontOut", StringComparison.OrdinalIgnoreCase)
+            return string.Equals(placementMode?.Trim(), FrontOut, StringComparison.OrdinalIgnoreCase)
                 ? CabinetArchiveBoxPlacementMode.FrontOut
                 : CabinetArchiveBoxPlacementMode.SpineOut;
         }
 
         private static string ToStorageValue(CabinetArchiveBoxPlacementMode placementMode)
         {
-            return placementMode == CabinetArchiveBoxPlacementMode.FrontOut ? "FrontOut" : "SpineOut";
-        }
-
-        private void UpdateYearlyArchiveBoxPlacementModes(IReadOnlyCollection<string> boxCodes, string placementModeText)
-        {
-            if (boxCodes.Count == 0)
-            {
-                return;
-            }
-
-            var yearlyBoxes = _placementRepository.GetYearlyArchiveBoxesByLocationCodes(boxCodes);
-
-            foreach (var yearlyBox in yearlyBoxes)
-            {
-                yearlyBox.PlacementMode = placementModeText;
-            }
-        }
-
-        private void UpdateYearlyArchiveBoxPlacementMode(string boxCode, string placementModeText)
-        {
-            if (string.IsNullOrWhiteSpace(boxCode))
-            {
-                return;
-            }
-
-            var yearlyBox = _placementRepository.GetYearlyArchiveBoxByLocationCode(boxCode);
-
-            if (yearlyBox != null)
-            {
-                yearlyBox.PlacementMode = placementModeText;
-            }
-        }
-
-        private static bool TryParseBoxCode(string boxCode, out string cabinetName, out string faceCode, out string slotCode)
-        {
-            cabinetName = string.Empty;
-            faceCode = string.Empty;
-            slotCode = string.Empty;
-
-            if (string.IsNullOrWhiteSpace(boxCode))
-            {
-                return false;
-            }
-
-            var parts = boxCode.Split('-', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length != 4)
-            {
-                return false;
-            }
-
-            string cabinetAndFace = parts[0].Trim();
-            if (cabinetAndFace.Length < 2)
-            {
-                return false;
-            }
-
-            char faceToken = cabinetAndFace[^1];
-            if (faceToken != 'A' && faceToken != 'a' && faceToken != 'B' && faceToken != 'b')
-            {
-                return false;
-            }
-
-            if (!int.TryParse(parts[1], out int layerIndex) || !int.TryParse(parts[2], out int columnIndex))
-            {
-                return false;
-            }
-
-            cabinetName = CabinetNameNormalizer.Normalize(cabinetAndFace[..^1]);
-            faceCode = char.ToUpperInvariant(faceToken).ToString();
-            slotCode = $"{layerIndex}-{columnIndex}";
-            return true;
+            return placementMode == CabinetArchiveBoxPlacementMode.FrontOut ? FrontOut : SpineOut;
         }
     }
 }

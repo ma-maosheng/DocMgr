@@ -34,21 +34,29 @@ public class TopoMapRepository : ITopoMapRepository
 
     public List<TopoMap> GetByCategory(string categoryName)
     {
-        return _dbContext.TopoMaps
+        var list = _dbContext.TopoMaps
             .AsNoTracking()
             .Where(item => item.Category == categoryName)
             .OrderBy(item => item.Id)
             .ToList();
+        HistoryArchiveBoxProjectionSupport.Hydrate(_dbContext, MaterialKind, list);
+        return list;
     }
 
     public List<TopoMap> GetAll()
     {
-        return _dbContext.TopoMaps
+        var list = _dbContext.TopoMaps
             .AsNoTracking()
             .OrderBy(item => item.Category)
             .ThenBy(item => item.Scale)
-            .ThenBy(item => item.BoxNumber)
-            .ThenBy(item => item.MapNumber)
+            .ThenBy(item => item.Id)
+            .ToList();
+        HistoryArchiveBoxProjectionSupport.Hydrate(_dbContext, MaterialKind, list);
+        // 盒号投影非映射列，SQL 侧排序后须在内存按投影重排
+        return list
+            .OrderBy(item => item.Category, StringComparer.Ordinal)
+            .ThenBy(item => item.BoxNumber, StringComparer.Ordinal)
+            .ThenBy(item => item.MapNumber, StringComparer.Ordinal)
             .ThenBy(item => item.Id)
             .ToList();
     }
@@ -146,26 +154,9 @@ public class TopoMapRepository : ITopoMapRepository
     public void Update(TopoMap map)
     {
         ArgumentNullException.ThrowIfNull(map);
-        using var transaction = _dbContext.Database.BeginTransaction();
-        try
-        {
-            _dbContext.TopoMaps.Update(map);
-            _dbContext.SaveChanges();
-            HistoryArchiveBoxLedgerMaintenanceSupport.SyncBoxesAndLinksForRows(
-                _dbContext,
-                MaterialKind,
-                [new HistoryArchiveBoxLedgerMaintenanceSupport.LedgerRowSnapshot(
-                    map.Id, map.BoxNumber, map.BoxSpecification)],
-                _userContextService?.CurrentUser?.RealName);
-            HistoryArchiveBoxLedgerMaintenanceSupport.CleanupOrphanBoxes(_dbContext);
-            _dbContext.SaveChanges();
-            transaction.Commit();
-        }
-        catch
-        {
-            transaction.Rollback();
-            throw;
-        }
+        // 盒号/规格为投影属性：编辑路径不再同步盒与链接（权威源不随台账字段变化）
+        _dbContext.TopoMaps.Update(map);
+        _dbContext.SaveChanges();
     }
 
     public void SaveChanges()

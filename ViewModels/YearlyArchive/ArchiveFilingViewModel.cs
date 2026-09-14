@@ -1,4 +1,5 @@
 ﻿using DocMgr.Models.ArchiveContainers;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
 using Microsoft.Extensions.DependencyInjection;
@@ -1236,10 +1237,18 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _suppressSimulatedLocationRecalc = true;
                 try
                 {
-                    SelectedCabinet = Cabinets.FirstOrDefault(item => string.Equals(item.Name, SelectedExistingBox.CabinetName, StringComparison.OrdinalIgnoreCase));
-                    SelectedSide = SelectedExistingBox.Side;
-                    SelectedRow = SelectedExistingBox.Row.ToString();
-                    SelectedColumn = SelectedExistingBox.Column.ToString();
+                    if (ArchiveSlotLocationSupport.TryParseSlotLocation(
+                            SelectedExistingBox.BoxLocationCode,
+                            out string cabinetName,
+                            out string side,
+                            out int row,
+                            out int column))
+                    {
+                        SelectedCabinet = Cabinets.FirstOrDefault(item => string.Equals(item.Name, cabinetName, StringComparison.OrdinalIgnoreCase));
+                        SelectedSide = side;
+                        SelectedRow = row.ToString();
+                        SelectedColumn = column.ToString();
+                    }
                 }
                 finally
                 {
@@ -1248,7 +1257,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 SelectedSpec = string.IsNullOrWhiteSpace(SelectedExistingBox.Specs) ? SelectedSpec : SelectedExistingBox.Specs;
                 Remarks = SelectedExistingBox.Remarks;
-                _currentCellBoxCount = Math.Max(SelectedExistingBox.BoxIndex, 1);
+                _currentCellBoxCount = Math.Max(
+                    ArchiveSlotLocationSupport.TryParseSequenceIndex(SelectedExistingBox.BoxLocationCode, out int boxIndex) ? boxIndex : 1,
+                    1);
                 CellCountText = $"{_currentCellBoxCount} 盒";
                 IsPhysicalCodeWarning = false;
             }

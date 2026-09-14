@@ -27,7 +27,6 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<ICabinetRepository, CabinetRepository>();
         services.AddScoped<ICabinetArchiveBoxPlacementRepository, CabinetArchiveBoxPlacementRepository>();
         services.AddScoped<ICabinetSpecificationSeedRepository, CabinetSpecificationSeedRepository>();
-        services.AddScoped<ICabinetArchiveBoxPlacementSyncRepository, CabinetArchiveBoxPlacementSyncRepository>();
         services.AddScoped<ICabinetOpenLayoutRepository, CabinetOpenLayoutRepository>();
         services.AddScoped<ITopoMapRepository, TopoMapRepository>();
         services.AddScoped<IAerialPhotoRepository, AerialPhotoRepository>();

@@ -33,7 +33,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public string Specs { get; set; } = string.Empty;
 
-        public string PlacementMode { get; set; } = "竖放";
+        public string PlacementMode { get; set; } = "SpineOut";
 
         public string Year { get; set; } = string.Empty;
 

@@ -70,8 +70,8 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         public string Title => "编辑其他资料";
 
-        /// <summary>已离库或无权维护时禁止改盒号。</summary>
-        public bool CanEditBoxNumber => CanSave;
+        /// <summary>盒号为投影属性：禁止手编，只读展示（调整盒位请走迁档或重新导入）。</summary>
+        public bool CanEditBoxNumber => false;
 
         /// <summary>仅资料室资料管理员可保存编辑。</summary>
         public bool CanSave =>
@@ -105,13 +105,13 @@ namespace DocMgr.ViewModels.HistoryArchive
         public string BoxNumber
         {
             get => _boxNumber;
-            set => SetProperty(ref _boxNumber, value);
+            private set => SetProperty(ref _boxNumber, value);
         }
 
         public string BoxSpecification
         {
             get => _boxSpecification;
-            set => SetProperty(ref _boxSpecification, value);
+            private set => SetProperty(ref _boxSpecification, value);
         }
 
         public string MapName
@@ -142,12 +142,6 @@ namespace DocMgr.ViewModels.HistoryArchive
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(BoxNumber))
-            {
-                _dialogService.ShowMessage("请输入档案盒编号。");
-                return;
-            }
-
             if (string.IsNullOrWhiteSpace(MapName))
             {
                 _dialogService.ShowMessage("请输入资料内容。");
@@ -156,12 +150,11 @@ namespace DocMgr.ViewModels.HistoryArchive
 
             try
             {
+                // 盒号/规格为投影属性：不随台账保存，权威源在盒/链接表
                 _map.SequenceNumber = SequenceNumber.Trim();
                 _map.MaterialCategory = MaterialCategory.Trim();
                 _map.StartYear = StartYear.Trim();
                 _map.EndYear = EndYear.Trim();
-                _map.BoxNumber = BoxNumber.Trim();
-                _map.BoxSpecification = BoxSpecification.Trim();
                 _map.MapName = MapName.Trim();
                 _map.Remark = Remark.Trim();
                 _map.Modifier = _userContextService.CurrentUser?.RealName ?? "Unknown";

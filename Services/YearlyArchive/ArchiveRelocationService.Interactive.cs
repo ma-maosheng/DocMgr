@@ -339,11 +339,19 @@ namespace DocMgr.Services.YearlyArchive
                 request.TargetRow,
                 request.TargetColumn);
 
-            var occupiedIndexes = boxesInTarget
-                .Where(box => box.Id != source.Id)
-                .Select(box => box.BoxIndex)
-                .Where(index => index > 0)
-                .ToList();
+            var occupiedIndexes = new List<int>();
+            foreach (var box in boxesInTarget)
+            {
+                if (box.Id == source.Id)
+                {
+                    continue;
+                }
+
+                if (ArchiveSlotLocationSupport.TryParseSequenceIndex(box.BoxLocationCode, out int index) && index > 0)
+                {
+                    occupiedIndexes.Add(index);
+                }
+            }
 
             return ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupiedIndexes);
         }

@@ -297,11 +297,6 @@ namespace DocMgr.Services.YearlyArchive
                 {
                     ArchiveSequenceNo = archiveSequenceNo,
                     BoxLocationCode = boxLocationCode,
-                    CabinetName = request.CabinetName.Trim(),
-                    Side = request.Side.Trim(),
-                    Row = request.Row,
-                    Column = request.Column,
-                    BoxIndex = boxSequence,
                     ProjectName = project.ProjectName.Trim(),
                     Year = year,
                     Specs = request.BoxSpecification.Trim(),

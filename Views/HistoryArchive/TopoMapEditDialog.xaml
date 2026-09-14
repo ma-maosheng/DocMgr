@@ -42,10 +42,9 @@
                    Foreground="#333"/>
 
         <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,15">
-            <TextBlock Text="档案盒编号 *" Foreground="#666" Margin="0,0,0,5"/>
-            <TextBox Height="35" Padding="5,8"
-                     Text="{Binding BoxNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     IsEnabled="{Binding CanEditBoxNumber}"/>
+            <TextBlock Text="档案盒编号（只读，调整请走迁档）" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="35" Padding="5,8" IsReadOnly="True"
+                     Text="{Binding BoxNumber, Mode=OneWay}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,0,0,15">
@@ -70,8 +69,9 @@
         </StackPanel>
 
         <StackPanel Grid.Row="3" Grid.Column="1" Margin="10,0,0,15">
-            <TextBlock Text="档案盒规格" Foreground="#666" Margin="0,0,0,5"/>
-            <TextBox Height="35" Padding="5,8" Text="{Binding BoxSpecification, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Text="档案盒规格（只读）" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBox Height="35" Padding="5,8" IsReadOnly="True"
+                     Text="{Binding BoxSpecification, Mode=OneWay}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Margin="0,0,0,15">

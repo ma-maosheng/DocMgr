@@ -42,7 +42,7 @@ namespace DocMgr.Services.Cabinets
                 .Where(assignment => assignment.Parsed.LayerIndex >= 1 && assignment.Parsed.LayerIndex <= request.LayerCount)
                 .Where(assignment => assignment.Parsed.ColumnIndex >= 1 && assignment.Parsed.ColumnIndex <= request.ColumnCount)
                 .ToList();
-            var placementLookup = LoadPlacementLookup(normalizedCabinetName);
+            var placementModeLookup = LoadPlacementLookup(normalizedCabinetName);
             var boxSpecificationLookup = _cabinetOpenLayoutRepository.GetArchiveBoxSpecificationLookup();
             var slotSpecification = _cabinetOpenLayoutRepository.GetCabinetSlotSpecification(GetCabinetTypeCode(request.CabinetType));
             var (slotCanvasWidth, slotCanvasHeight) = ResolveSlotCanvasSize(request, slotSpecification);
@@ -62,8 +62,8 @@ namespace DocMgr.Services.Cabinets
                 return BuildMagneticDiskSlots(request, normalizedCabinetName, slotCanvasWidth, slotCanvasHeight);
             }
 
-            var archiveBoxesBySlot = BuildArchiveBoxesBySlot(request, assignments, placementLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, pendingReturnByBoxId, inventoryMarkByBoxId, activeWithdrawalLockByBoxId);
-            var slotMetricsBySlot = BuildSlotMetricsBySlot(request, assignments, placementLookup, boxSpecificationLookup, slotCanvasWidth);
+            var archiveBoxesBySlot = BuildArchiveBoxesBySlot(request, assignments, placementModeLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight, pendingReturnByBoxId, inventoryMarkByBoxId, activeWithdrawalLockByBoxId);
+            var slotMetricsBySlot = BuildSlotMetricsBySlot(request, assignments, placementModeLookup, boxSpecificationLookup, slotCanvasWidth);
             var archiveCategoryLookup = request.CabinetType == CabinetType.Standard
                 ? _cabinetOpenLayoutRepository.GetArchiveSlotCategoryLookup(request.CabinetId)
                 : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -435,10 +435,10 @@ namespace DocMgr.Services.Cabinets
             return string.Empty;
         }
 
-        private Dictionary<string, CabinetArchiveBoxPlacement> LoadPlacementLookup(string cabinetName)
+        private Dictionary<string, string> LoadPlacementLookup(string cabinetName)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(cabinetName);
-            return _cabinetOpenLayoutRepository.GetPlacementLookup(cabinetName);
+            return _cabinetOpenLayoutRepository.GetPlacementModeLookup(cabinetName);
         }
 
         /// <summary>
@@ -531,11 +531,11 @@ namespace DocMgr.Services.Cabinets
                 : $"{slotToolTipText}\n{pendingHint}";
         }
 
-        private static Dictionary<string, IReadOnlyList<CabinetArchiveBoxDescriptor>> BuildArchiveBoxesBySlot(CabinetOpenRequest request, IEnumerable<ExpandedArchiveBoxAssignment> assignments, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight, IReadOnlyDictionary<int, int> pendingReturnByBoxId, IReadOnlyDictionary<int, string> inventoryMarkByBoxId, IReadOnlyDictionary<int, CabinetOccupationLockDescriptor> activeWithdrawalLockByBoxId)
+        private static Dictionary<string, IReadOnlyList<CabinetArchiveBoxDescriptor>> BuildArchiveBoxesBySlot(CabinetOpenRequest request, IEnumerable<ExpandedArchiveBoxAssignment> assignments, IReadOnlyDictionary<string, string> placementModeLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight, IReadOnlyDictionary<int, int> pendingReturnByBoxId, IReadOnlyDictionary<int, string> inventoryMarkByBoxId, IReadOnlyDictionary<int, CabinetOccupationLockDescriptor> activeWithdrawalLockByBoxId)
         {
             var groupedBoxes = assignments
-                .Where(assignment => ResolveFaceCode(assignment, placementLookup) == request.Face.ToString())
-                .GroupBy(assignment => ResolveSlotCode(assignment, placementLookup), StringComparer.OrdinalIgnoreCase)
+                .Where(assignment => ResolveFaceCode(assignment) == request.Face.ToString())
+                .GroupBy(assignment => ResolveSlotCode(assignment), StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(
                     group => group.Key,
                     group =>
@@ -544,9 +544,9 @@ namespace DocMgr.Services.Cabinets
                             .GroupBy(item => item.Parsed.BoxCode, StringComparer.OrdinalIgnoreCase)
                             .OrderBy(item => item.First().Parsed.SequenceIndex)
                             .ToList();
-                        var layouts = CalculateBoxLayouts(boxGroups, placementLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight);
+                        var layouts = CalculateBoxLayouts(boxGroups, placementModeLookup, boxSpecificationLookup, slotCanvasWidth, slotCanvasHeight);
                         return (IReadOnlyList<CabinetArchiveBoxDescriptor>)boxGroups
-                            .Select(item => CreateArchiveBoxDescriptor(item, placementLookup, layouts[item.Key], pendingReturnByBoxId, inventoryMarkByBoxId, activeWithdrawalLockByBoxId))
+                            .Select(item => CreateArchiveBoxDescriptor(item, placementModeLookup, layouts[item.Key], pendingReturnByBoxId, inventoryMarkByBoxId, activeWithdrawalLockByBoxId))
                             .ToList();
                     },
                     StringComparer.OrdinalIgnoreCase);
@@ -554,7 +554,7 @@ namespace DocMgr.Services.Cabinets
             return groupedBoxes;
         }
 
-        private static CabinetArchiveBoxDescriptor CreateArchiveBoxDescriptor(IGrouping<string, ExpandedArchiveBoxAssignment> group, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, BoxRenderLayout layout, IReadOnlyDictionary<int, int> pendingReturnByBoxId, IReadOnlyDictionary<int, string> inventoryMarkByBoxId, IReadOnlyDictionary<int, CabinetOccupationLockDescriptor> activeWithdrawalLockByBoxId)
+        private static CabinetArchiveBoxDescriptor CreateArchiveBoxDescriptor(IGrouping<string, ExpandedArchiveBoxAssignment> group, IReadOnlyDictionary<string, string> placementModeLookup, BoxRenderLayout layout, IReadOnlyDictionary<int, int> pendingReturnByBoxId, IReadOnlyDictionary<int, string> inventoryMarkByBoxId, IReadOnlyDictionary<int, CabinetOccupationLockDescriptor> activeWithdrawalLockByBoxId)
         {
             var first = group.First();
             var relatedBoxCodes = group
@@ -586,7 +586,7 @@ namespace DocMgr.Services.Cabinets
             {
                 archiveIdentifierText = BuildYearlyArchiveIdentifierText(group);
             }
-            string boxSpecification = ResolveBoxSpecification(group, placementLookup);
+            string boxSpecification = ResolveBoxSpecification(group);
             int yearlyArchiveBoxId = first.YearlyArchiveBoxId ?? 0;
             int pendingReturnCopyCount = yearlyArchiveBoxId > 0
                 ? pendingReturnByBoxId.GetValueOrDefault(yearlyArchiveBoxId)
@@ -611,7 +611,7 @@ namespace DocMgr.Services.Cabinets
                     : BuildHistoryArchiveCountText(group),
                 SequenceIndex = first.Parsed.SequenceIndex,
                 ItemCount = group.Count(),
-                SlotCode = ResolveSlotCode(first, placementLookup),
+                SlotCode = ResolveSlotCode(first),
                 IsMixedPlacement = isMixedPlacement,
                 OriginalBoxNumberText = string.Join("；", sourceBoxNumbers),
                 RelatedBoxCodesText = string.Join("；", relatedBoxCodes),
@@ -622,7 +622,7 @@ namespace DocMgr.Services.Cabinets
                 SourceSummaryText = sourceSummaryText,
                 PendingSortingRecordCount = isMixedPlacement ? group.Count() : 0,
                 BoxSpecification = boxSpecification,
-                PlacementMode = ResolvePlacementMode(first.Parsed.BoxCode, placementLookup),
+                PlacementMode = ResolvePlacementMode(first.Parsed.BoxCode, placementModeLookup),
                 LayoutX = layout.X,
                 LayoutY = layout.Y,
                 LayoutWidth = layout.Width,
@@ -729,22 +729,22 @@ namespace DocMgr.Services.Cabinets
             };
         }
 
-        private static Dictionary<string, SlotMetrics> BuildSlotMetricsBySlot(CabinetOpenRequest request, IReadOnlyList<ExpandedArchiveBoxAssignment> assignments, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth)
+        private static Dictionary<string, SlotMetrics> BuildSlotMetricsBySlot(CabinetOpenRequest request, IReadOnlyList<ExpandedArchiveBoxAssignment> assignments, IReadOnlyDictionary<string, string> placementModeLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth)
         {
             var relevantAssignments = assignments
-                .Where(item => ResolveFaceCode(item, placementLookup) == request.Face.ToString())
+                .Where(item => ResolveFaceCode(item) == request.Face.ToString())
                 .ToList();
 
             return relevantAssignments
-                .GroupBy(item => ResolveSlotCode(item, placementLookup), StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(group => group.Key, group => BuildSlotMetrics(request, group.Key, group.ToList(), placementLookup, boxSpecificationLookup, (decimal)slotCanvasWidth), StringComparer.OrdinalIgnoreCase);
+                .GroupBy(item => ResolveSlotCode(item), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => BuildSlotMetrics(request, group.Key, group.ToList(), placementModeLookup, boxSpecificationLookup, (decimal)slotCanvasWidth), StringComparer.OrdinalIgnoreCase);
         }
 
-        private static SlotMetrics BuildSlotMetrics(CabinetOpenRequest request, string slotCode, IReadOnlyList<ExpandedArchiveBoxAssignment> assignments, IReadOnlyDictionary<string, CabinetArchiveBoxPlacement> placementLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, decimal slotWidth)
+        private static SlotMetrics BuildSlotMetrics(CabinetOpenRequest request, string slotCode, IReadOnlyList<ExpandedArchiveBoxAssignment> assignments, IReadOnlyDictionary<string, string> placementModeLookup, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, decimal slotWidth)
         {
             var boxes = assignments
                 .GroupBy(item => item.Parsed.BoxCode, StringComparer.OrdinalIgnoreCase)
-                .Select(group => CreateSlotBoxInfo(group, placementLookup))
+                .Select(group => CreateSlotBoxInfo(group, placementModeLookup))
                 .ToList();
 
             var placementMetrics = ResolvePlacementMetrics(boxes, boxSpecificationLookup, slotWidth);

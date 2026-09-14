@@ -58,11 +58,6 @@ namespace DocMgr.Services.YearlyArchive
                     ApplySimulatedBoxPhysicalLocation(
                         box,
                         newLocation,
-                        request.TargetCabinetName,
-                        request.TargetFace,
-                        request.TargetRow,
-                        request.TargetColumn,
-                        sequence,
                         operatedAt,
                         operatorName);
 
@@ -347,22 +342,12 @@ namespace DocMgr.Services.YearlyArchive
         private void ApplySimulatedBoxPhysicalLocation(
             YearlyArchiveBox box,
             string newLocation,
-            string cabinetName,
-            string side,
-            int row,
-            int column,
-            int boxIndex,
             DateTime operatedAt,
             string operatorName)
         {
-            box.CabinetName = cabinetName.Trim();
-            box.Side = side.Trim();
-            box.Row = row;
-            box.Column = column;
-            box.BoxIndex = boxIndex;
             box.BoxLocationCode = newLocation;
             box.ContainerLifecycleStatus = ArchiveContainerLifecycleStatus.InUse;
-            UpsertArchiveBoxPlacement(box, operatedAt, operatorName);
+            NormalizeBoxPlacementMode(box);
         }
 
         private static YearlyArchiveRelocationRecord BuildBatchSlotRelocationRecord(

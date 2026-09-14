@@ -45,8 +45,6 @@ public interface IArchiveFilingRepository
 
     Task<List<YearlyArchiveBox>> GetExistingYearlyArchiveBoxesWithCabinetAsync();
 
-    Task<List<CabinetArchiveBoxPlacement>> GetArchiveBoxPlacementsAsync();
-
     Task<List<YearlyArchiveBox>> GetExistingBoxesForProjectAsync(string projectName, string year);
 
     Task<List<YearlyElectronicArchiveUnit>> GetExistingElectronicUnitsForProjectAsync(string projectName, string year);
@@ -141,14 +139,6 @@ public interface IArchiveFilingRepository
 
     /// <summary>按档案盒编号批量读取档案盒（检索结果盒级摘要用）。</summary>
     Task<IReadOnlyList<YearlyArchiveBox>> GetArchiveBoxesBySequenceNosAsync(IReadOnlyCollection<string> sequenceNos);
-
-    Task<CabinetArchiveBoxPlacement?> GetArchiveBoxPlacementByCodeAsync(string boxCode);
-
-    CabinetArchiveBoxPlacement? GetArchiveBoxPlacementByCode(string boxCode);
-
-    void AddArchiveBoxPlacement(CabinetArchiveBoxPlacement placement);
-
-    void RemoveArchiveBoxPlacementByBoxCode(string boxCode);
 
     CabinetSlotSpecialRule? GetCabinetSlotSpecialRule(string cabinetName, string slotCode, string boxSpecification, string sideCode);
 

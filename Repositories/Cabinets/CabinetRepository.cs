@@ -180,31 +180,29 @@ public class CabinetRepository : ICabinetRepository
             return false;
         }
 
-        string normalizedCabinetName = CabinetNameNormalizer.Normalize(cabinetName);
-        string normalizedFaceCode = faceCode.Trim();
-        string normalizedSlotCode = slotCode.Trim();
+        string slotKey = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, faceCode, row, column);
+        if (string.IsNullOrWhiteSpace(slotKey))
+        {
+            return false;
+        }
 
-        bool hasPlacement = _dbContext.CabinetArchiveBoxPlacements
+        bool hasYearlyBox = _dbContext.YearlyArchiveBoxes
             .AsNoTracking()
+            .Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+            .Select(box => box.BoxLocationCode)
             .AsEnumerable()
-            .Any(item =>
-                string.Equals(CabinetNameNormalizer.Normalize(item.CabinetName), normalizedCabinetName, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(item.FaceCode, normalizedFaceCode, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(item.SlotCode, normalizedSlotCode, StringComparison.OrdinalIgnoreCase));
-        if (hasPlacement)
+            .Any(location => ArchiveSlotLocationSupport.IsSameSlot(location, slotKey));
+        if (hasYearlyBox)
         {
             return true;
         }
 
-        return _dbContext.YearlyArchiveBoxes
+        return _dbContext.HistoryArchiveBoxes
             .AsNoTracking()
-            .Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+            .Where(box => box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+            .Select(box => box.BoxCode)
             .AsEnumerable()
-            .Any(box =>
-                string.Equals(CabinetNameNormalizer.Normalize(box.CabinetName), normalizedCabinetName, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(box.Side, normalizedFaceCode, StringComparison.OrdinalIgnoreCase)
-                && box.Row == row
-                && box.Column == column);
+            .Any(boxCode => ArchiveSlotLocationSupport.IsSameSlot(boxCode, slotKey));
     }
 
     private static bool IsSameMagneticDiskSlot(string? storageLocation, string slotKey)

@@ -75,16 +75,9 @@ namespace DocMgr.Services.YearlyArchive
 
             string archiveSequenceNo = box.ArchiveSequenceNo?.Trim() ?? string.Empty;
 
-            _outboundRepository.RemoveArchiveBoxPlacementByBoxCode(lastLocation);
-
             box.LastStorageLocation = lastLocation;
             box.ContainerLifecycleStatus = ArchiveContainerLifecycleStatus.Emptied;
             box.BoxLocationCode = string.Empty;
-            box.CabinetName = string.Empty;
-            box.Side = string.Empty;
-            box.Row = 0;
-            box.Column = 0;
-            box.BoxIndex = 0;
 
             foreach (var row in rows)
             {

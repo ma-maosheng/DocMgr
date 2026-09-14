@@ -2,7 +2,7 @@ namespace DocMgr.Models.HistoryArchive
 {
     /// <summary>
     /// 历史资料迁档引用组：一条历史台账（地形图/航片/其他图件）行及其登记的全部盒号。
-    /// 迁移一个盒号时须整体改写该行 BoxNumber 文本。
+    /// 盒号为投影属性：迁档只改盒实体，台账行零触碰；本组仅用于定位受影响台账与预览。
     /// </summary>
     public sealed class HistoryArchiveLedgerReferenceGroup
     {
@@ -12,19 +12,10 @@ namespace DocMgr.Models.HistoryArchive
         /// <summary>台账行主键。</summary>
         public int RecordId { get; init; }
 
-        /// <summary>该行 BoxNumber 拆分后的全部盒号（保持原顺序）。</summary>
+        /// <summary>该行关联的全部盒号（按链接顺序）。</summary>
         public IReadOnlyList<string> BoxCodes { get; init; } = [];
 
-        /// <summary>该行 BoxNumber 原始文本（迁档改写时以此为基准重建）。</summary>
+        /// <summary>该行盒号投影文本（水合值，供预览展示）。</summary>
         public string BoxNumberText { get; init; } = string.Empty;
-
-        /// <summary>台账行实体（TopoMap/AerialPhoto/OtherMap 之一），用于迁档改写。</summary>
-        public object LedgerEntity { get; init; } = new();
-
-        public TopoMap? AsTopoMap() => LedgerEntity as TopoMap;
-
-        public AerialPhoto? AsAerialPhoto() => LedgerEntity as AerialPhoto;
-
-        public OtherMap? AsOtherMap() => LedgerEntity as OtherMap;
     }
 }

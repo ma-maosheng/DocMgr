@@ -34,18 +34,26 @@ public class AerialPhotoRepository : IAerialPhotoRepository
 
     public List<AerialPhoto> GetByCategory(string categoryName)
     {
-        return _dbContext.AerialPhotos
+        var list = _dbContext.AerialPhotos
             .Where(item => item.Category == categoryName)
             .OrderBy(item => item.Id)
             .ToList();
+        HistoryArchiveBoxProjectionSupport.Hydrate(_dbContext, MaterialKind, list);
+        return list;
     }
 
     public List<AerialPhoto> GetAll()
     {
-        return _dbContext.AerialPhotos
+        var list = _dbContext.AerialPhotos
             .OrderBy(item => item.Category)
-            .ThenBy(item => item.BoxNumber)
-            .ThenBy(item => item.SurveyArea)
+            .ThenBy(item => item.Id)
+            .ToList();
+        HistoryArchiveBoxProjectionSupport.Hydrate(_dbContext, MaterialKind, list);
+        // 盒号投影非映射列，SQL 侧排序后须在内存按投影重排
+        return list
+            .OrderBy(item => item.Category, StringComparer.Ordinal)
+            .ThenBy(item => item.BoxNumber, StringComparer.Ordinal)
+            .ThenBy(item => item.SurveyArea, StringComparer.Ordinal)
             .ThenBy(item => item.Id)
             .ToList();
     }
@@ -143,25 +151,8 @@ public class AerialPhotoRepository : IAerialPhotoRepository
     public void Update(AerialPhoto photo)
     {
         ArgumentNullException.ThrowIfNull(photo);
-        using var transaction = _dbContext.Database.BeginTransaction();
-        try
-        {
-            _dbContext.AerialPhotos.Update(photo);
-            _dbContext.SaveChanges();
-            HistoryArchiveBoxLedgerMaintenanceSupport.SyncBoxesAndLinksForRows(
-                _dbContext,
-                MaterialKind,
-                [new HistoryArchiveBoxLedgerMaintenanceSupport.LedgerRowSnapshot(
-                    photo.Id, photo.BoxNumber, photo.BoxSpecification)],
-                _userContextService?.CurrentUser?.RealName);
-            HistoryArchiveBoxLedgerMaintenanceSupport.CleanupOrphanBoxes(_dbContext);
-            _dbContext.SaveChanges();
-            transaction.Commit();
-        }
-        catch
-        {
-            transaction.Rollback();
-            throw;
-        }
+        // 盒号/规格为投影属性：编辑路径不再同步盒与链接（权威源不随台账字段变化）
+        _dbContext.AerialPhotos.Update(photo);
+        _dbContext.SaveChanges();
     }
 }

@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-09-11T07:34:08Z
+generatedAt: 2026-09-14T12:04:20Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -18,18 +18,6 @@ tables:
       Category:
         chineseName: 分类
         description: 存档批次键（导入时写入为「像片」+ Excel 工作表名）。
-        clrType: String
-        needsReview: false
-        aliases: []
-      BoxNumber:
-        chineseName: 盒号
-        description: ''
-        clrType: String
-        needsReview: false
-        aliases: []
-      BoxSpecification:
-        chineseName: 档案盒规格
-        description: ''
         clrType: String
         needsReview: false
         aliases: []
@@ -230,7 +218,7 @@ tables:
     chineseName: 档案盒柜位分配
     description: 记录档案盒在资料柜中的物理位置（柜名、面、槽位）及来源业务键。
     isView: false
-    deprecated: false
+    deprecated: true
     aliases: []
     fields:
       Id:
@@ -1666,7 +1654,7 @@ tables:
   HistoryArchiveDisposalItem:
     tableName: HistoryArchiveDisposalItems
     chineseName: 历史存档离库处置明细
-    description: 历史存档离库处置单明细，一盒一行，固化盒内摘要与原柜位。
+    description: 历史存档离库处置单明细，一盒一行，固化盒内摘要。
     isView: false
     deprecated: false
     aliases: []
@@ -1715,12 +1703,6 @@ tables:
         aliases: []
       SlotCode:
         chineseName: 档口编号
-        description: ''
-        clrType: String
-        needsReview: false
-        aliases: []
-      BeforeStorageLocation:
-        chineseName: 处置前存放位置
         description: ''
         clrType: String
         needsReview: false
@@ -2341,18 +2323,6 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
-      BoxNumber:
-        chineseName: 盒号
-        description: ''
-        clrType: String
-        needsReview: false
-        aliases: []
-      BoxSpecification:
-        chineseName: 档案盒规格
-        description: ''
-        clrType: String
-        needsReview: false
-        aliases: []
       MapName:
         chineseName: 资料内容
         description: 模版列「资料内容」。
@@ -2599,18 +2569,6 @@ tables:
         aliases: []
       Scale:
         chineseName: 比例尺
-        description: ''
-        clrType: String
-        needsReview: false
-        aliases: []
-      BoxNumber:
-        chineseName: 盒号
-        description: ''
-        clrType: String
-        needsReview: false
-        aliases: []
-      BoxSpecification:
-        chineseName: 档案盒规格
         description: ''
         clrType: String
         needsReview: false
@@ -2967,36 +2925,6 @@ tables:
         chineseName: 盒位编码
         description: ''
         clrType: String
-        needsReview: false
-        aliases: []
-      CabinetName:
-        chineseName: 柜体名称
-        description: ''
-        clrType: String
-        needsReview: false
-        aliases: []
-      Side:
-        chineseName: 面别
-        description: ''
-        clrType: String
-        needsReview: false
-        aliases: []
-      Row:
-        chineseName: 行
-        description: ''
-        clrType: Int32
-        needsReview: false
-        aliases: []
-      Column:
-        chineseName: 列
-        description: ''
-        clrType: Int32
-        needsReview: false
-        aliases: []
-      BoxIndex:
-        chineseName: 盒序号
-        description: ''
-        clrType: Int32
         needsReview: false
         aliases: []
       ProjectName:
@@ -7971,36 +7899,6 @@ tables:
         chineseName: 盒号
         description: 四段位置编码（柜名-面-行-列-序），全局唯一。
         clrType: String
-        needsReview: false
-        aliases: []
-      CabinetName:
-        chineseName: 柜体名称
-        description: ''
-        clrType: String
-        needsReview: false
-        aliases: []
-      Side:
-        chineseName: 面别
-        description: ''
-        clrType: String
-        needsReview: false
-        aliases: []
-      Row:
-        chineseName: 行
-        description: ''
-        clrType: Int32
-        needsReview: false
-        aliases: []
-      Column:
-        chineseName: 列
-        description: ''
-        clrType: Int32
-        needsReview: false
-        aliases: []
-      BoxIndex:
-        chineseName: 盒序号
-        description: 盒号末段，档口内顺序。
-        clrType: Int32
         needsReview: false
         aliases: []
       BoxSpecification:

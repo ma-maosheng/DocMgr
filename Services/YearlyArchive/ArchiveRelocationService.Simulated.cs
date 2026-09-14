@@ -114,11 +114,6 @@ namespace DocMgr.Services.YearlyArchive
             ApplySimulatedBoxPhysicalLocation(
                 source,
                 newLocation,
-                request.NewCabinetName,
-                request.NewSide,
-                request.NewRow.Value,
-                request.NewColumn.Value,
-                request.NewBoxIndex ?? source.BoxIndex,
                 operatedAt,
                 operatorName);
 
@@ -169,11 +164,6 @@ namespace DocMgr.Services.YearlyArchive
             {
                 ArchiveSequenceNo = archiveSequenceNo,
                 BoxLocationCode = newLocation,
-                CabinetName = request.NewCabinetName.Trim(),
-                Side = request.NewSide.Trim(),
-                Row = request.NewRow.Value,
-                Column = request.NewColumn.Value,
-                BoxIndex = request.NewBoxIndex ?? 1,
                 ProjectName = source.ProjectName,
                 Year = source.Year,
                 Specs = request.NewBoxSpecification.Trim(),
@@ -204,7 +194,7 @@ namespace DocMgr.Services.YearlyArchive
                 }
             }
 
-            UpsertArchiveBoxPlacement(newBox, operatedAt, operatorName);
+            NormalizeBoxPlacementMode(newBox);
             RetireSimulatedSourceBox(source, operatedAt, operatorName);
 
             var context = new ArchiveRelocationExecutionContext
@@ -275,7 +265,7 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             target.ContainerLifecycleStatus = ArchiveContainerLifecycleStatus.InUse;
-            UpsertArchiveBoxPlacement(target, operatedAt, operatorName);
+            NormalizeBoxPlacementMode(target);
             RetireSimulatedSourceBox(source, operatedAt, operatorName);
 
             var context = new ArchiveRelocationExecutionContext
@@ -306,10 +296,6 @@ namespace DocMgr.Services.YearlyArchive
             string operatorName)
         {
             string lastLocation = source.BoxLocationCode?.Trim() ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(lastLocation))
-            {
-                _filingRepository.RemoveArchiveBoxPlacementByBoxCode(lastLocation);
-            }
 
             source.LastStorageLocation = lastLocation;
             source.RetiredAt = operatedAt;
@@ -317,11 +303,6 @@ namespace DocMgr.Services.YearlyArchive
             source.ContainerLifecycleStatus = ArchiveContainerLifecycleStatus.Retired;
             source.RegisterRecords.Clear();
             source.BoxLocationCode = string.Empty;
-            source.CabinetName = string.Empty;
-            source.Side = string.Empty;
-            source.Row = 0;
-            source.Column = 0;
-            source.BoxIndex = 0;
         }
 
         private async Task<string> GenerateNextArchiveSequenceNoAsync(string year)

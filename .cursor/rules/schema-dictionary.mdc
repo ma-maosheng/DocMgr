@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-09-11T07:34:08Z
+> 生成时间（UTC）：2026-09-14T12:04:20Z
 
 ## 表索引
 
@@ -24,7 +24,6 @@ alwaysApply: true
 | 档案容器汇总视图 | `ArchiveContainerProjection` | `ArchiveContainerProjection` | 视图 |
 | 业务逻辑设置 | `BusinessLogicSettings` | `BusinessLogicSettings` | 表 |
 | 资料柜 | `Cabinet` | `Cabinets` | 表 |
-| 档案盒柜位分配 | `CabinetArchiveBoxPlacement` | `CabinetArchiveBoxPlacements` | 表 |
 | 标准档案柜档口用途 | `CabinetArchiveSlotCategoryAssignment` | `CabinetArchiveSlotCategoryAssignments` | 表 |
 | 资料柜硬盘槽位分类 | `CabinetHardDiskSlotCategoryAssignment` | `CabinetHardDiskSlotCategoryAssignments` | 表 |
 | 资料柜槽位特殊规则 | `CabinetSlotSpecialRule` | `CabinetSlotSpecialRules` | 表 |
@@ -108,8 +107,6 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 分类 | `Category` | `String` | 否 |
-| 盒号 | `BoxNumber` | `String` | 否 |
-| 档案盒规格 | `BoxSpecification` | `String` | 否 |
 | 测区 | `SurveyArea` | `String` | 否 |
 | 比例尺 | `Scale` | `String` | 否 |
 | 摄影日期 | `PhotographyDate` | `String` | 否 |
@@ -170,23 +167,6 @@ alwaysApply: true
 | 层数 | `LayerCount` | `Int32` | 否 |
 | 列数 | `ColumnCount` | `Int32` | 否 |
 | 旋转角度 | `RotationAngle` | `Double` | 否 |
-
-### CabinetArchiveBoxPlacement（档案盒柜位分配）
-
-| 中文字段 | Property | CLR 类型 | 待补全 |
-| --- | --- | --- | --- |
-| ID | `Id` | `Int32` | 否 |
-| 档案盒编号 | `BoxCode` | `String` | 否 |
-| 档案盒规格 | `BoxSpecification` | `String` | 否 |
-| 柜体名称 | `CabinetName` | `String` | 否 |
-| 面别代码 | `FaceCode` | `String` | 否 |
-| 档口编号 | `SlotCode` | `String` | 否 |
-| 放置方式 | `PlacementMode` | `String` | 否 |
-| 资料来源 | `SourceType` | `String` | 否 |
-| 来源记录标识 | `SourceRecordKey` | `String` | 否 |
-| 创建时间 | `CreatedAt` | `String` | 否 |
-| 更新时间 | `UpdatedAt` | `String` | 否 |
-| 最后更新人 | `UpdatedBy` | `String` | 否 |
 
 ### CabinetArchiveSlotCategoryAssignment（标准档案柜档口用途）
 
@@ -499,11 +479,6 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 盒号 | `BoxCode` | `String` | 否 |
-| 柜体名称 | `CabinetName` | `String` | 否 |
-| 面别 | `Side` | `String` | 否 |
-| 行 | `Row` | `Int32` | 否 |
-| 列 | `Column` | `Int32` | 否 |
-| 盒序号 | `BoxIndex` | `Int32` | 否 |
 | 档案盒规格 | `BoxSpecification` | `String` | 否 |
 | 放置方式 | `PlacementMode` | `String` | 否 |
 | 生命周期状态 | `LifecycleStatus` | `String` | 否 |
@@ -533,7 +508,6 @@ alwaysApply: true
 | 柜体名称 | `CabinetName` | `String` | 否 |
 | 面别代码 | `FaceCode` | `String` | 否 |
 | 档口编号 | `SlotCode` | `String` | 否 |
-| 处置前存放位置 | `BeforeStorageLocation` | `String` | 否 |
 | 盒内摘要 | `ContentSummary` | `String` | 否 |
 | 台账条数 | `LedgerRecordCount` | `Int32` | 否 |
 | 来源台账键 | `SourceRecordKeys` | `String` | 否 |
@@ -926,8 +900,6 @@ alwaysApply: true
 | 起始年度 | `StartYear` | `String` | 否 |
 | 截止年度 | `EndYear` | `String` | 否 |
 | 比例尺 | `Scale` | `String` | 否 |
-| 盒号 | `BoxNumber` | `String` | 否 |
-| 档案盒规格 | `BoxSpecification` | `String` | 否 |
 | 资料内容 | `MapName` | `String` | 否 |
 | 登记人 | `Registrant` | `String` | 否 |
 | 登记日期 | `RegistrationDate` | `String` | 否 |
@@ -999,8 +971,6 @@ alwaysApply: true
 | ID | `Id` | `Int32` | 否 |
 | 分类 | `Category` | `String` | 否 |
 | 比例尺 | `Scale` | `String` | 否 |
-| 盒号 | `BoxNumber` | `String` | 否 |
-| 档案盒规格 | `BoxSpecification` | `String` | 否 |
 | 图号 | `MapNumber` | `String` | 否 |
 | 当前图号 | `CurrentMapNumber` | `String` | 否 |
 | 图名 | `MapName` | `String` | 否 |
@@ -1066,11 +1036,6 @@ alwaysApply: true
 | ID | `Id` | `Int32` | 否 |
 | 归档序号 | `ArchiveSequenceNo` | `String` | 否 |
 | 盒位编码 | `BoxLocationCode` | `String` | 否 |
-| 柜体名称 | `CabinetName` | `String` | 否 |
-| 面别 | `Side` | `String` | 否 |
-| 行 | `Row` | `Int32` | 否 |
-| 列 | `Column` | `Int32` | 否 |
-| 盒序号 | `BoxIndex` | `Int32` | 否 |
 | 项目名称 | `ProjectName` | `String` | 否 |
 | 年度 | `Year` | `String` | 否 |
 | 规格 | `Specs` | `String` | 否 |
@@ -1734,4 +1699,8 @@ alwaysApply: true
 | ID | `Id` | `Int32` | 否 |
 | 电子立档单元ID | `YearlyElectronicArchiveUnitId` | `Int32` | 否 |
 | 硬盘介质ID | `HardDiskMediumId` | `Int32` | 否 |
+
+## 已废弃（模型中已不存在）
+
+- `CabinetArchiveBoxPlacement`（档案盒柜位分配）
 

@@ -15,8 +15,6 @@ namespace DocMgr.Models.HistoryArchive
 
         public string SlotCode { get; init; } = string.Empty;
 
-        public string StorageLocation { get; init; } = string.Empty;
-
         public string ContentSummary { get; init; } = string.Empty;
 
         public int LedgerRecordCount { get; init; }

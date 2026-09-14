@@ -120,9 +120,6 @@ namespace DocMgr.Repositories.Interfaces
         Task<List<YearlyArchiveBoxMediaItemRow>> GetElectronicArchiveUnitMediaItemRowsForSyncAsync(
             YearlyElectronicArchiveUnit unit);
 
-        /// <summary>移除档案盒在开柜布局中的占位记录。</summary>
-        void RemoveArchiveBoxPlacementByBoxCode(string boxCode);
-
         /// <summary>按盒/袋编号加载在库立档事实（供提档完整性校验）。</summary>
         Task<List<YearlyArchiveFilingFact>> GetInArchiveFilingFactsByContainerAsync(string mediaKind, string containerCode);
 

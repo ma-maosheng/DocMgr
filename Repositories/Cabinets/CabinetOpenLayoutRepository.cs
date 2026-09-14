@@ -7,6 +7,7 @@ using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Repositories.YearlyArchive;
+using DocMgr.Services.HistoryArchive;
 using DocMgr.Services.YearlyArchive;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,12 +36,25 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
             .FirstOrDefault(item => item.CabinetTypeCode == cabinetTypeCode);
     }
 
-    public Dictionary<string, CabinetArchiveBoxPlacement> GetPlacementLookup(string cabinetName)
+    /// <summary>历史/年度档案盒放置方式查找表（盒号 → 放置方式），合并两类盒实体。</summary>
+    public Dictionary<string, string> GetPlacementModeLookup(string cabinetName)
     {
-        return _dbContext.CabinetArchiveBoxPlacements
+        var lookup = _dbContext.HistoryArchiveBoxes
             .AsNoTracking()
-            .Where(item => item.CabinetName == cabinetName)
-            .ToDictionary(item => item.BoxCode, StringComparer.OrdinalIgnoreCase);
+            .Where(box => box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+            .Where(box => box.BoxCode.StartsWith(cabinetName))
+            .ToDictionary(box => box.BoxCode, box => box.PlacementMode, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var box in _dbContext.YearlyArchiveBoxes
+            .AsNoTracking()
+            .Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+            .Where(box => box.BoxLocationCode.StartsWith(cabinetName))
+            .ToList())
+        {
+            lookup.TryAdd(box.BoxLocationCode, box.PlacementMode);
+        }
+
+        return lookup;
     }
 
     public Cabinet? GetCabinetByIdOrName(int cabinetId, string cabinetName)
@@ -184,23 +198,32 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
 
     public List<TopoMap> GetTopoMaps()
     {
-        return _dbContext.TopoMaps
+        var list = _dbContext.TopoMaps
             .AsNoTracking()
             .ToList();
+        HistoryArchiveBoxProjectionSupport.Hydrate(
+            _dbContext, HistoryArchiveDisposalDomainValues.MaterialKindTopoMap, list);
+        return list;
     }
 
     public List<AerialPhoto> GetAerialPhotos()
     {
-        return _dbContext.AerialPhotos
+        var list = _dbContext.AerialPhotos
             .AsNoTracking()
             .ToList();
+        HistoryArchiveBoxProjectionSupport.Hydrate(
+            _dbContext, HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto, list);
+        return list;
     }
 
     public List<OtherMap> GetOtherMaps()
     {
-        return _dbContext.OtherMaps
+        var list = _dbContext.OtherMaps
             .AsNoTracking()
             .ToList();
+        HistoryArchiveBoxProjectionSupport.Hydrate(
+            _dbContext, HistoryArchiveDisposalDomainValues.MaterialKindOtherMap, list);
+        return list;
     }
 
     public List<YearlyArchiveBox> GetYearlyArchiveBoxesWithContents()

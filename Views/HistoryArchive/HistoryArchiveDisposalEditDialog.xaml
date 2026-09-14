@@ -125,7 +125,6 @@
                   <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="36"/>
                   <DataGridTextColumn Header="盒号" Binding="{Binding BoxCode, Mode=OneWay}" Width="130" IsReadOnly="True"/>
                   <DataGridTextColumn Header="规格" Binding="{Binding BoxSpecification, Mode=OneWay}" Width="80" IsReadOnly="True"/>
-                  <DataGridTextColumn Header="柜位" Binding="{Binding StorageLocation, Mode=OneWay}" Width="130" IsReadOnly="True"/>
                   <DataGridTextColumn Header="盒内摘要" Binding="{Binding ContentSummary, Mode=OneWay}" Width="*" IsReadOnly="True"/>
                   <DataGridTextColumn Header="混放" Binding="{Binding MixedPlacementText, Mode=OneWay}" Width="50" IsReadOnly="True"/>
                   <DataGridTextColumn Header="关联盒数" Binding="{Binding RelatedBoxCount, Mode=OneWay}" Width="70" IsReadOnly="True"/>
@@ -142,7 +141,6 @@
                 <DataGrid.Columns>
                   <DataGridTextColumn Header="盒号" Binding="{Binding BoxCode, Mode=OneWay}" Width="130"/>
                   <DataGridTextColumn Header="规格" Binding="{Binding BoxSpecification, Mode=OneWay}" Width="80"/>
-                  <DataGridTextColumn Header="原柜位" Binding="{Binding BeforeStorageLocation, Mode=OneWay}" Width="130"/>
                   <DataGridTextColumn Header="盒内摘要" Binding="{Binding ContentSummary, Mode=OneWay}" Width="*"/>
                   <DataGridTextColumn Header="混放" Binding="{Binding MixedPlacementText, Mode=OneWay}" Width="50"/>
                   <DataGridTemplateColumn Width="70">

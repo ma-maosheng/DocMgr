@@ -2,6 +2,7 @@ using DocMgr.Data;
 using DocMgr.Models.ArchiveContainers;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
+using DocMgr.Services.YearlyArchive;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocMgr.Repositories.YearlyArchive;
@@ -842,6 +843,9 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
         var record = mediaItem.MediaEntry?.RegisterRecord;
         var mediaEntry = mediaItem.MediaEntry;
         DateTime filedAt = link.CreatedAt == default ? box.ArchivedDate : link.CreatedAt;
+        string storageLocation = box.BoxLocationCode?.Trim() ?? string.Empty;
+        ArchiveSlotLocationSupport.TryParseSlotLocation(
+            storageLocation, out string cabinetName, out _, out _, out _);
 
         return new YearlyArchiveFilingFact
         {
@@ -863,9 +867,9 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             ContainerKind = ArchiveContainerKind.ArchiveBox,
             ContainerId = box.Id,
             ContainerCode = box.ArchiveSequenceNo?.Trim() ?? string.Empty,
-            StorageLocation = box.BoxLocationCode?.Trim() ?? string.Empty,
-            CabinetName = box.CabinetName?.Trim() ?? string.Empty,
-            BoxLocationCode = box.BoxLocationCode?.Trim() ?? string.Empty,
+            StorageLocation = storageLocation,
+            CabinetName = cabinetName,
+            BoxLocationCode = storageLocation,
             BoxSpecs = box.Specs?.Trim() ?? string.Empty,
             FiledAt = filedAt,
             FiledBy = box.ArchivedBy?.Trim() ?? string.Empty,

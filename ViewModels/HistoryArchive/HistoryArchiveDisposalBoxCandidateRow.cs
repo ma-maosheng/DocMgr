@@ -39,7 +39,6 @@ public sealed class HistoryArchiveDisposalBoxCandidateRow : ViewModelBase
     public string BoxCode => Candidate.BoxCode;
     public string BoxSpecification => Candidate.BoxSpecification;
     public string CabinetName => Candidate.CabinetName;
-    public string StorageLocation => Candidate.StorageLocation;
     public string ContentSummary => Candidate.ContentSummary;
     public int LedgerRecordCount => Candidate.LedgerRecordCount;
     public int RelatedBoxCount => Candidate.RelatedBoxCount;

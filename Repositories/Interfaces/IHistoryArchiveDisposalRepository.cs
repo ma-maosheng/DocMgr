@@ -14,19 +14,17 @@ public interface IHistoryArchiveDisposalRepository
 
     Task<string?> GetLastDisposalNoByPrefixAsync(string prefix);
 
-    Task<List<CabinetArchiveBoxPlacement>> GetHistoryPlacementsAsync();
+    /// <summary>跨类混放盒号集合：同一盒号的台账关联存在多种资料类别（链接表聚合）。</summary>
+    Task<List<string>> GetCrossTypeMixedBoxCodesAsync();
+
+    /// <summary>全部在库历史档案盒（无跟踪），供处置候选构建。</summary>
+    Task<List<HistoryArchiveBox>> GetInStockHistoryArchiveBoxesAsync();
 
     Task<List<TopoMap>> GetTopoMapsAsync();
 
     Task<List<AerialPhoto>> GetAerialPhotosAsync();
 
     Task<List<OtherMap>> GetOtherMapsAsync();
-
-    Task<List<TopoMap>> GetTopoMapsForUpdateAsync();
-
-    Task<List<AerialPhoto>> GetAerialPhotosForUpdateAsync();
-
-    Task<List<OtherMap>> GetOtherMapsForUpdateAsync();
 
     Task<List<TopoMap>> GetTopoMapsByIdsAsync(IReadOnlyCollection<int> ids, bool tracking);
 
@@ -42,13 +40,6 @@ public interface IHistoryArchiveDisposalRepository
     /// <summary>删除指定盒号的台账关联（盒已离库时清理残链）。</summary>
     Task RemoveHistoryArchiveBoxLinksByBoxCodesAsync(IReadOnlyCollection<string> boxCodes);
 
-    /// <summary>按档口取在册历史档案盒（带跟踪）。</summary>
-    Task<List<HistoryArchiveBox>> GetHistoryArchiveBoxesInSlotAsync(
-        string cabinetName,
-        string face,
-        int row,
-        int column);
-
     Task<List<HistoryArchiveDisposalRecord>> GetPendingRecordsForToDoAsync(int takeCount);
 
     Task<List<SystemAttachment>> GetAttachmentsAsync(string disposalNo);
@@ -58,8 +49,6 @@ public interface IHistoryArchiveDisposalRepository
     void AddRecord(HistoryArchiveDisposalRecord record);
 
     void RemoveItems(IEnumerable<HistoryArchiveDisposalItem> items);
-
-    void RemoveArchiveBoxPlacementByBoxCode(string boxCode);
 
     void AddAttachment(SystemAttachment attachment);
 

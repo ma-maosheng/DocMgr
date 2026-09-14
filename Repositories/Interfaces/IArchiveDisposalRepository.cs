@@ -68,8 +68,6 @@ public interface IArchiveDisposalRepository
 
     void RemoveRegisterLock(HardDiskRegisterLock lockItem);
 
-    void RemoveArchiveBoxPlacementByBoxCode(string boxCode);
-
     void RemoveHardDiskMediumLink(YearlyElectronicArchiveUnitMediumLink link);
 
     void RemoveDiscLink(YearlyElectronicArchiveUnitDiscLink link);

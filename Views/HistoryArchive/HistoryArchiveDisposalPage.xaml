@@ -39,7 +39,6 @@
           <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="36"/>
           <DataGridTextColumn Header="盒号" Binding="{Binding BoxCode, Mode=OneWay}" Width="140" IsReadOnly="True"/>
           <DataGridTextColumn Header="规格" Binding="{Binding BoxSpecification, Mode=OneWay}" Width="90" IsReadOnly="True"/>
-          <DataGridTextColumn Header="柜位" Binding="{Binding StorageLocation, Mode=OneWay}" Width="140" IsReadOnly="True"/>
           <DataGridTextColumn Header="盒内摘要" Binding="{Binding ContentSummary, Mode=OneWay}" Width="*" IsReadOnly="True"/>
           <DataGridTextColumn Header="台账条数" Binding="{Binding LedgerRecordCount, Mode=OneWay}" Width="80" IsReadOnly="True"/>
           <DataGridTextColumn Header="混放" Binding="{Binding MixedPlacementText, Mode=OneWay}" Width="50" IsReadOnly="True"/>

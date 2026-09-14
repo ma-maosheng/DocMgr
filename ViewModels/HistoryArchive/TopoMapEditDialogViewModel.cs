@@ -85,8 +85,8 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         public string Title => "编辑地形图";
 
-        /// <summary>已离库或无权维护时禁止改盒号。</summary>
-        public bool CanEditBoxNumber => CanSave;
+        /// <summary>盒号为投影属性：禁止手编，只读展示（调整盒位请走迁档或重新导入）。</summary>
+        public bool CanEditBoxNumber => false;
 
         /// <summary>仅资料室资料管理员可保存编辑。</summary>
         public bool CanSave =>
@@ -96,7 +96,7 @@ namespace DocMgr.ViewModels.HistoryArchive
         public string BoxNumber
         {
             get => _boxNumber;
-            set => SetProperty(ref _boxNumber, value);
+            private set => SetProperty(ref _boxNumber, value);
         }
 
         public string Scale
@@ -114,7 +114,7 @@ namespace DocMgr.ViewModels.HistoryArchive
         public string BoxSpecification
         {
             get => _boxSpecification;
-            set => SetProperty(ref _boxSpecification, value);
+            private set => SetProperty(ref _boxSpecification, value);
         }
 
         public string MapNumber
@@ -203,11 +203,6 @@ namespace DocMgr.ViewModels.HistoryArchive
                         : HistoryArchiveLedgerPermissionSupport.MaintainDeniedMessage);
                 return;
             }
-            if (string.IsNullOrWhiteSpace(BoxNumber))
-            {
-                _dialogService.ShowMessage("请输入档案盒编号。");
-                return;
-            }
 
             if (string.IsNullOrWhiteSpace(Scale))
             {
@@ -229,8 +224,7 @@ namespace DocMgr.ViewModels.HistoryArchive
 
             try
             {
-                _map.BoxNumber = BoxNumber.Trim();
-                _map.BoxSpecification = BoxSpecification.Trim();
+                // 盒号/规格为投影属性：不随台账保存，权威源在盒/链接表
                 _map.Scale = Scale.Trim();
                 _map.MapNumber = TopoMapCurrentMapNumberSupport.NormalizeMapNumber(MapNumber);
                 _map.MapName = MapName.Trim();

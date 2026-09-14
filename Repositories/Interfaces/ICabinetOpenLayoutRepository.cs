@@ -15,7 +15,8 @@ public interface ICabinetOpenLayoutRepository
 
     CabinetSlotSpecification? GetCabinetSlotSpecification(string cabinetTypeCode);
 
-    Dictionary<string, CabinetArchiveBoxPlacement> GetPlacementLookup(string cabinetName);
+    /// <summary>历史/年度档案盒放置方式查找表（柜号或位置编号 → 放置方式），合并两类盒实体。</summary>
+    Dictionary<string, string> GetPlacementModeLookup(string cabinetName);
 
     Cabinet? GetCabinetByIdOrName(int cabinetId, string cabinetName);
 
