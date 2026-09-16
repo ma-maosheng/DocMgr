@@ -794,7 +794,6 @@ namespace DocMgr.Services.YearlyArchive
             MergeElectronicArchiveMediumLinks(unit, linkedMedia);
             await UpsertElectronicArchiveDiscLinksAsync(unit, archivedAt);
             var createdItemLinks = AddElectronicMediaItemLinks(unit, mediaItems, filingStoragePathByMediaItemId, mediumCode, archivedAt);
-            SyncElectronicMediaEntryLinksAfterItemFiling(unit, mediaItems, archivedAt);
 
             _submissionChangeTracker?.BeginSection("电子介质袋（YearlyElectronicArchiveUnit）");
             _submissionChangeTracker?.AddLine(
@@ -946,7 +945,7 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             var archivedEntries = entries
-                .Where(item => item.ElectronicArchiveUnitLinks.Any())
+                .Where(ArchiveContainerRegisterRecordProjectionSupport.IsMediaEntryArchived)
                 .Select(item => item.RegisterRecord!.FormNo + "/" + item.MediaType)
                 .ToList();
 

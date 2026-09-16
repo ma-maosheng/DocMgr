@@ -51,7 +51,6 @@ namespace DocMgr.Models.YearlyArchive
         public virtual NetworkTransfer.NetworkOutboundRecord? NetworkOutboundRecord { get; set; }
 
         public virtual List<YearlyArchiveRegisterMediaItem> Items { get; set; } = new();
-        public virtual List<YearlyElectronicArchiveUnitMediaLink> ElectronicArchiveUnitLinks { get; set; } = new();
     }
 
     public class YearlyArchiveRegisterMediaItem

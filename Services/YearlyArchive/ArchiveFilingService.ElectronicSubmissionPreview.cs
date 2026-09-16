@@ -218,12 +218,12 @@ namespace DocMgr.Services.YearlyArchive
                 $"新建电子介质袋 [{archiveUnit.ElectronicArchiveNo}]；项目 [{archiveUnit.ProjectName}]；年度 [{archiveUnit.Year}]；"
                 + $"载体 [{archiveUnit.StorageCarrierType}]；档口 [{archiveUnit.StorageLocation}]；关联硬盘 [{archiveUnit.LinkedMediumCodes}]");
 
-            changeTracker.BeginSection("登记介质关联（YearlyElectronicArchiveUnitMediaLink / MediumLink）");
+            changeTracker.BeginSection("登记介质明细关联（YearlyElectronicArchiveUnitMediaItemLink / MediumLink）");
             foreach (var entry in mediaEntries)
             {
                 string formNo = entry.RegisterRecord?.FormNo?.Trim() ?? "-";
                 changeTracker.AddLine(
-                    $"登记介质条目 Id={entry.Id}（单号 {formNo} / {entry.MediaType}）将关联至电子袋 [{archiveUnit.ElectronicArchiveNo}]");
+                    $"登记介质条目 Id={entry.Id}（单号 {formNo} / {entry.MediaType}）的资料明细将关联至电子袋 [{archiveUnit.ElectronicArchiveNo}]");
             }
 
             foreach (var linked in linkedMedia)
@@ -612,7 +612,8 @@ namespace DocMgr.Services.YearlyArchive
             {
                 bool allElectronicArchived = record.MediaEntries
                     .Where(media => string.Equals(media.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.OrdinalIgnoreCase))
-                    .All(media => media.ElectronicArchiveUnitLinks.Any() || filingEntryIdSet.Contains(media.Id));
+                    .All(media => filingEntryIdSet.Contains(media.Id)
+                        || (media.Items.Count > 0 && media.Items.All(item => item.ElectronicArchiveUnitMediaItemLinks.Any())));
 
                 string electronicStatus = allElectronicArchived
                     ? YearlyArchiveRegisterRecord.TrackArchived.ToString()

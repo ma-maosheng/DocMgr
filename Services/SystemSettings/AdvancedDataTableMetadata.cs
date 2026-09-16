@@ -195,11 +195,6 @@ namespace DocMgr.Services.SystemSettings
                 "→ 引用 YearlyElectronicArchiveUnits、OpticalDiscMedia。",
                 "只读浏览。"),
 
-            [nameof(YearlyElectronicArchiveUnitMediaLink)] = new(
-                "电子档案单元与 YearlyArchiveRegisterMedia 的一对一关联。",
-                "→ 引用 YearlyElectronicArchiveUnits、YearlyArchiveRegisterMedias（级联删除）。",
-                "只读浏览。"),
-
             [nameof(SystemAttachment)] = new(
                 "业务单据关联的附件文件元数据（路径、类型、所属业务键等）。",
                 "通过 BusinessType/BusinessRecordId 等字段逻辑关联各业务表。",

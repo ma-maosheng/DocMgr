@@ -94,7 +94,6 @@ alwaysApply: true
 | 电子档案单元 | `YearlyElectronicArchiveUnit` | `YearlyElectronicArchiveUnits` | 表 |
 | 电子档案-光盘关联 | `YearlyElectronicArchiveUnitDiscLink` | `YearlyElectronicArchiveUnitDiscLinks` | 表 |
 | 电子立档单元-介质明细关联 | `YearlyElectronicArchiveUnitMediaItemLink` | `YearlyElectronicArchiveUnitMediaItemLinks` | 表 |
-| 电子档案-登记介质关联 | `YearlyElectronicArchiveUnitMediaLink` | `YearlyElectronicArchiveUnitMediaLinks` | 表 |
 | 电子档案-硬盘关联 | `YearlyElectronicArchiveUnitMediumLink` | `YearlyElectronicArchiveUnitMediumLinks` | 表 |
 
 ## 字段明细
@@ -1667,15 +1666,6 @@ alwaysApply: true
 | 数据大小(MB) | `DataSizeMb` | `Decimal` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 
-### YearlyElectronicArchiveUnitMediaLink（电子档案-登记介质关联）
-
-| 中文字段 | Property | CLR 类型 | 待补全 |
-| --- | --- | --- | --- |
-| ID | `Id` | `Int32` | 否 |
-| 电子立档单元ID | `YearlyElectronicArchiveUnitId` | `Int32` | 否 |
-| 登记介质ID | `YearlyArchiveRegisterMediaId` | `Int32` | 否 |
-| 创建时间 | `CreatedAt` | `DateTime` | 否 |
-
 ### YearlyElectronicArchiveUnitMediumLink（电子档案-硬盘关联）
 
 | 中文字段 | Property | CLR 类型 | 待补全 |
@@ -1687,4 +1677,7 @@ alwaysApply: true
 ## 已废弃（模型中已不存在）
 
 - `CabinetArchiveBoxPlacement`（档案盒柜位分配）
+- `YearlyArchiveBoxYearlyArchiveRegisterRecord`（档案盒-登记申请关联）
+- `YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit`（登记申请-电子档案关联）
+- `YearlyElectronicArchiveUnitMediaLink`（电子档案-登记介质关联）
 

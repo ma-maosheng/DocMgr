@@ -5631,38 +5631,6 @@ tables:
         clrType: DateTime
         needsReview: false
         aliases: []
-  YearlyElectronicArchiveUnitMediaLink:
-    tableName: YearlyElectronicArchiveUnitMediaLinks
-    chineseName: 电子档案-登记介质关联
-    description: 电子档案单元与 YearlyArchiveRegisterMedia 的一对一关联。
-    isView: false
-    deprecated: false
-    aliases: []
-    fields:
-      Id:
-        chineseName: ID
-        description: ''
-        clrType: Int32
-        needsReview: false
-        aliases: []
-      YearlyElectronicArchiveUnitId:
-        chineseName: 电子立档单元ID
-        description: ''
-        clrType: Int32
-        needsReview: false
-        aliases: []
-      YearlyArchiveRegisterMediaId:
-        chineseName: 登记介质ID
-        description: ''
-        clrType: Int32
-        needsReview: false
-        aliases: []
-      CreatedAt:
-        chineseName: 创建时间
-        description: ''
-        clrType: DateTime
-        needsReview: false
-        aliases: []
   YearlyElectronicArchiveUnitMediumLink:
     tableName: YearlyElectronicArchiveUnitMediumLinks
     chineseName: 电子档案-硬盘关联

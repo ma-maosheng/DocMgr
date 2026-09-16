@@ -666,16 +666,15 @@ namespace DocMgr.ViewModels.YearlyArchive
                 })
                 .Select(entry =>
                 {
-                    var itemArchiveLink = entry.Item?.ElectronicArchiveUnitMediaItemLinks
+                    // 子项优先按自身立档链接判断；无子项条目按整体投影（全部子项已入袋才视为已立档，无子项视为未立档）。
+                    var archiveLink = entry.Item?.ElectronicArchiveUnitMediaItemLinks
                         ?.Where(link => link.ElectronicArchiveUnit != null)
                         .OrderByDescending(link => link.CreatedAt)
                         .FirstOrDefault();
-                    var mediaArchiveLink = entry.Media.ElectronicArchiveUnitLinks
-                        .Where(link => link.ElectronicArchiveUnit != null)
-                        .OrderByDescending(link => link.CreatedAt)
-                        .FirstOrDefault();
-                    bool isArchived = itemArchiveLink?.ElectronicArchiveUnit != null
-                        || (entry.Item == null && mediaArchiveLink?.ElectronicArchiveUnit != null);
+                    bool isArchived = entry.Item != null
+                        ? archiveLink != null
+                        : entry.Media.Items.Count > 0
+                            && entry.Media.Items.All(item => item.ElectronicArchiveUnitMediaItemLinks.Any());
                     ElectronicMediaContentPathLine displayLine = entry.Item != null
                         ? ElectronicMediaItemSupport.ResolveMediaItemDisplayContentPathLine(entry.Item)
                         : ElectronicMediaItemSupport.CollectMediaContentPathLines(entry.Media).FirstOrDefault();
@@ -703,12 +702,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                         ItemName = displayLine.ItemName,
                         CanSelect = !isArchived,
                         ArchiveStatusText = isArchived ? "已入袋" : "未入袋",
-                        ElectronicArchiveNo = itemArchiveLink?.ElectronicArchiveUnit?.ElectronicArchiveNo
-                            ?? mediaArchiveLink?.ElectronicArchiveUnit?.ElectronicArchiveNo
-                            ?? string.Empty,
-                        LinkedMediumCodes = itemArchiveLink?.ElectronicArchiveUnit?.LinkedMediumCodes
-                            ?? mediaArchiveLink?.ElectronicArchiveUnit?.LinkedMediumCodes
-                            ?? string.Empty,
+                        ElectronicArchiveNo = archiveLink?.ElectronicArchiveUnit?.ElectronicArchiveNo ?? string.Empty,
+                        LinkedMediumCodes = archiveLink?.ElectronicArchiveUnit?.LinkedMediumCodes ?? string.Empty,
                         IsBorrowedHardDisk = entry.Media.IsBorrowedHardDisk,
                         BorrowedHardDiskCode = entry.Media.BorrowedHardDiskCode ?? string.Empty,
                         IsSelected = !isArchived

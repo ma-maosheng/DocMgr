@@ -383,7 +383,6 @@ namespace DocMgr.Services.YearlyArchive
 
             AssignElectronicArchiveMediumLinks(newUnit, linkedMedia);
             var createdItemLinks = AddElectronicMediaItemLinks(newUnit, mediaItems, filingStoragePathByMediaItemId, mediumCode, archivedAt);
-            SyncElectronicMediaEntryLinksAfterItemFiling(newUnit, mediaItems, archivedAt);
             _archiveFilingRepository.AddElectronicArchiveUnit(newUnit);
             await UpsertElectronicArchiveDiscLinksAsync(newUnit, archivedAt);
 

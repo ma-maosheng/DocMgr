@@ -91,8 +91,7 @@ namespace DocMgr.Services.YearlyArchive
 
         /// <summary>
         /// 从登记申请已加载的介质明细推导其关联的电子立档单元（去重）。
-        /// 依赖 Include 链：MediaEntries → Items → ElectronicArchiveUnitMediaItemLinks → ElectronicArchiveUnit，
-        /// 以及条目级 MediaEntries → ElectronicArchiveUnitLinks → ElectronicArchiveUnit（取并集兜底）。
+        /// 依赖 Include 链：MediaEntries → Items → ElectronicArchiveUnitMediaItemLinks → ElectronicArchiveUnit。
         /// </summary>
         public static List<YearlyElectronicArchiveUnit> ProjectRecordElectronicUnits(YearlyArchiveRegisterRecord record)
         {
@@ -102,15 +101,6 @@ namespace DocMgr.Services.YearlyArchive
             var seenIds = new HashSet<int>();
             foreach (var media in record.MediaEntries)
             {
-                foreach (var link in media.ElectronicArchiveUnitLinks)
-                {
-                    var unit = link.ElectronicArchiveUnit;
-                    if (unit != null && seenIds.Add(unit.Id))
-                    {
-                        units.Add(unit);
-                    }
-                }
-
                 foreach (var item in media.Items)
                 {
                     foreach (var link in item.ElectronicArchiveUnitMediaItemLinks)
@@ -125,6 +115,18 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return units;
+        }
+
+        /// <summary>
+        /// 判断登记介质条目是否已整体立档（内存版，需已加载 Items 与其 ElectronicArchiveUnitMediaItemLinks）。
+        /// 语义与原 YearlyElectronicArchiveUnitMediaLinks 写入条件一致：条目有子项且全部子项均已入电子立档单元。
+        /// </summary>
+        public static bool IsMediaEntryArchived(YearlyArchiveRegisterMedia mediaEntry)
+        {
+            ArgumentNullException.ThrowIfNull(mediaEntry);
+
+            return mediaEntry.Items.Count > 0
+                && mediaEntry.Items.All(item => item.ElectronicArchiveUnitMediaItemLinks.Any());
         }
     }
 }

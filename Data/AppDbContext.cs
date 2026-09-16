@@ -70,7 +70,6 @@ namespace DocMgr.Data
         public DbSet<OpticalDiscLedger> OpticalDiscLedgers { get; set; }
         public DbSet<OpticalDiscMediaTransaction> OpticalDiscMediaTransactions { get; set; }
         public DbSet<YearlyElectronicArchiveUnitDiscLink> YearlyElectronicArchiveUnitDiscLinks { get; set; }
-        public DbSet<YearlyElectronicArchiveUnitMediaLink> YearlyElectronicArchiveUnitMediaLinks { get; set; }
         public DbSet<YearlyElectronicArchiveUnitMediaItemLink> YearlyElectronicArchiveUnitMediaItemLinks { get; set; }
         public DbSet<YearlyArchiveFilingFact> YearlyArchiveFilingFacts { get; set; }
         public DbSet<YearlyArchiveSearchResultSet> YearlyArchiveSearchResultSets { get; set; }
@@ -540,11 +539,6 @@ namespace DocMgr.Data
                     .HasForeignKey(link => link.YearlyElectronicArchiveUnitId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                entity.HasMany(item => item.MediaEntryLinks)
-                    .WithOne(link => link.ElectronicArchiveUnit)
-                    .HasForeignKey(link => link.YearlyElectronicArchiveUnitId)
-                    .OnDelete(DeleteBehavior.Cascade);
-
                 entity.HasMany(item => item.DiscLinks)
                     .WithOne(link => link.ElectronicArchiveUnit)
                     .HasForeignKey(link => link.YearlyElectronicArchiveUnitId)
@@ -580,20 +574,6 @@ namespace DocMgr.Data
             {
                 entity.HasIndex(item => new { item.YearlyElectronicArchiveUnitId, item.OpticalDiscMediumId })
                     .IsUnique();
-            });
-
-            modelBuilder.Entity<YearlyElectronicArchiveUnitMediaLink>(entity =>
-            {
-                entity.HasIndex(item => new { item.YearlyElectronicArchiveUnitId, item.YearlyArchiveRegisterMediaId })
-                    .IsUnique();
-
-                entity.HasIndex(item => item.YearlyArchiveRegisterMediaId)
-                    .IsUnique();
-
-                entity.HasOne(item => item.MediaEntry)
-                    .WithMany(media => media.ElectronicArchiveUnitLinks)
-                    .HasForeignKey(item => item.YearlyArchiveRegisterMediaId)
-                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<YearlyElectronicArchiveUnitMediaItemLink>(entity =>

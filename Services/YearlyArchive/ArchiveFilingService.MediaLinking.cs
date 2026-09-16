@@ -197,23 +197,6 @@ namespace DocMgr.Services.YearlyArchive
             return linkedMedia;
         }
 
-        private static void AssignElectronicArchiveMediaLinks(YearlyElectronicArchiveUnit unit, IEnumerable<YearlyArchiveRegisterMedia> mediaEntries, DateTime createdAt)
-        {
-            ArgumentNullException.ThrowIfNull(unit);
-            ArgumentNullException.ThrowIfNull(mediaEntries);
-
-            unit.MediaEntryLinks.Clear();
-            foreach (var mediaEntry in mediaEntries)
-            {
-                unit.MediaEntryLinks.Add(new YearlyElectronicArchiveUnitMediaLink
-                {
-                    ElectronicArchiveUnit = unit,
-                    MediaEntry = mediaEntry,
-                    CreatedAt = createdAt
-                });
-            }
-        }
-
         private List<YearlyElectronicArchiveUnitMediaItemLink> AddElectronicMediaItemLinks(
             YearlyElectronicArchiveUnit unit,
             IEnumerable<YearlyArchiveRegisterMediaItem> mediaItems,
@@ -261,59 +244,6 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return createdLinks;
-        }
-
-        private void SyncElectronicMediaEntryLinksAfterItemFiling(
-            YearlyElectronicArchiveUnit unit,
-            IEnumerable<YearlyArchiveRegisterMediaItem> filedMediaItems,
-            DateTime createdAt)
-        {
-            ArgumentNullException.ThrowIfNull(unit);
-            ArgumentNullException.ThrowIfNull(filedMediaItems);
-
-            var mediaEntries = filedMediaItems
-                .Select(item => item.MediaEntry)
-                .Where(entry => entry != null)
-                .DistinctBy(entry => entry!.Id)
-                .Cast<YearlyArchiveRegisterMedia>()
-                .ToList();
-
-            var fullyArchivedEntries = mediaEntries
-                .Where(entry => entry.Items.Count > 0 && entry.Items.All(IsMediaItemLinkedForEntrySync))
-                .ToList();
-
-            AddElectronicMediaLinks(unit, fullyArchivedEntries, createdAt);
-
-            bool IsMediaItemLinkedForEntrySync(YearlyArchiveRegisterMediaItem item)
-                => item.ElectronicArchiveUnitMediaItemLinks.Any()
-                   || unit.MediaItemLinks.Any(link => link.YearlyArchiveRegisterMediaItemId == item.Id);
-        }
-
-        private void AddElectronicMediaLinks(YearlyElectronicArchiveUnit unit, IEnumerable<YearlyArchiveRegisterMedia> mediaEntries, DateTime createdAt)
-        {
-            ArgumentNullException.ThrowIfNull(unit);
-            ArgumentNullException.ThrowIfNull(mediaEntries);
-
-            var existingMediaEntryIds = unit.MediaEntryLinks
-                .Select(item => item.YearlyArchiveRegisterMediaId)
-                .ToHashSet();
-
-            foreach (var mediaEntry in mediaEntries)
-            {
-                if (existingMediaEntryIds.Contains(mediaEntry.Id))
-                {
-                    continue;
-                }
-
-                unit.MediaEntryLinks.Add(new YearlyElectronicArchiveUnitMediaLink
-                {
-                    YearlyElectronicArchiveUnitId = unit.Id,
-                    YearlyArchiveRegisterMediaId = mediaEntry.Id,
-                    ElectronicArchiveUnit = unit,
-                    MediaEntry = mediaEntry,
-                    CreatedAt = createdAt
-                });
-            }
         }
 
         private async Task ValidateMediumLinkConflictsAsync(int currentUnitId, string electronicArchiveNo, IEnumerable<HardDiskMedium> linkedMedia)

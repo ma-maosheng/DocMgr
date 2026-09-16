@@ -276,8 +276,6 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ElectronicArchiveUnitMediaItemLinks)
                         .ThenInclude(link => link.ElectronicArchiveUnit)
-            .Include(record => record.MediaEntries)
-                .ThenInclude(media => media.ElectronicArchiveUnitLinks)
             .Where(record => recordIds.Contains(record.Id))
             .ToListAsync();
     }
@@ -361,8 +359,7 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
         return _dbContext.YearlyArchiveRegisterMedias
             .Include(media => media.RegisterRecord)
             .Include(media => media.Items)
-            .Include(media => media.ElectronicArchiveUnitLinks)
-                .ThenInclude(link => link.ElectronicArchiveUnit)
+                .ThenInclude(item => item.ElectronicArchiveUnitMediaItemLinks)
             .Where(media => mediaEntryIds.Contains(media.Id))
             .ToListAsync();
     }
@@ -432,7 +429,6 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
         return _dbContext.YearlyElectronicArchiveUnits
             .Include(item => item.MediumLinks)
             .Include(item => item.DiscLinks)
-            .Include(item => item.MediaEntryLinks)
             .Include(item => item.MediaItemLinks)
                 .ThenInclude(link => link.MediaItem)
             .FirstOrDefaultAsync(item => item.Id == unitId);
@@ -529,7 +525,7 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
                 && media.Disposition == ArchiveRegisterDomainValues.ElectronicDispositionRetain
                 && media.IsBorrowedHardDisk
                 && media.BorrowedHardDiskCode == normalizedDiskCode
-                && !media.ElectronicArchiveUnitLinks.Any()
+                && !(media.Items.Count > 0 && media.Items.All(item => item.ElectronicArchiveUnitMediaItemLinks.Any()))
                 && (excludedMediaEntryIds.Count == 0 || !excludedMediaEntryIds.Contains(media.Id))
                 && media.RegisterRecord != null
                 && media.RegisterRecord.Status == YearlyArchiveRegisterRecord.Completed);
@@ -557,7 +553,7 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
                 && media.MediaType == ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk
                 && media.Disposition == ArchiveRegisterDomainValues.ElectronicDispositionRetain
                 && !media.IsBorrowedHardDisk
-                && !media.ElectronicArchiveUnitLinks.Any()
+                && !(media.Items.Count > 0 && media.Items.All(item => item.ElectronicArchiveUnitMediaItemLinks.Any()))
                 && media.RegisterRecord != null
                 && media.RegisterRecord.Status == YearlyArchiveRegisterRecord.Completed);
     }
@@ -635,8 +631,6 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ElectronicArchiveUnitMediaItemLinks)
-            .Include(record => record.MediaEntries)
-                .ThenInclude(media => media.ElectronicArchiveUnitLinks)
             .Where(record => recordIds.Contains(record.Id))
             .ToListAsync();
     }
@@ -956,9 +950,6 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ElectronicArchiveUnitMediaItemLinks)
-                        .ThenInclude(link => link.ElectronicArchiveUnit)
-            .Include(record => record.MediaEntries)
-                .ThenInclude(media => media.ElectronicArchiveUnitLinks)
-                    .ThenInclude(link => link.ElectronicArchiveUnit);
+                        .ThenInclude(link => link.ElectronicArchiveUnit);
     }
 }

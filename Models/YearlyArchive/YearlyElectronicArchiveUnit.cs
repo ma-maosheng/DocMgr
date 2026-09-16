@@ -121,11 +121,6 @@ namespace DocMgr.Models.YearlyArchive
         public virtual List<YearlyElectronicArchiveUnitDiscLink> DiscLinks { get; set; } = new();
 
         /// <summary>
-        /// 关联登记介质条目集合。
-        /// </summary>
-        public virtual List<YearlyElectronicArchiveUnitMediaLink> MediaEntryLinks { get; set; } = new();
-
-        /// <summary>
         /// 关联资料子项（立档明细）。
         /// </summary>
         public virtual List<YearlyElectronicArchiveUnitMediaItemLink> MediaItemLinks { get; set; } = new();

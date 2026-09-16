@@ -327,11 +327,6 @@ namespace DocMgr.Services.YearlyArchive
                 }
             }
 
-            foreach (var entryLink in source.MediaEntryLinks.ToList())
-            {
-                entryLink.YearlyElectronicArchiveUnitId = target.Id;
-            }
-
             target.UnitLifecycleStatus = ArchiveContainerLifecycleStatus.InUse;
             target.MediaCount = target.MediaItemLinks.Count;
             if (string.IsNullOrWhiteSpace(target.ContentSummary) && !string.IsNullOrWhiteSpace(source.ContentSummary))
