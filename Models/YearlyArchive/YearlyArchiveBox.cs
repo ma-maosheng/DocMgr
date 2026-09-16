@@ -63,11 +63,8 @@ namespace DocMgr.Models.YearlyArchive
 
         public string RetiredBy { get; set; } = string.Empty;
 
-        // [重要修改] 这里必须去掉 [NotMapped]，才能在数据库生成多对多关联表
-        public virtual List<YearlyArchiveRegisterRecord> RegisterRecords { get; set; } = new List<YearlyArchiveRegisterRecord>();
-
         /// <summary>
-        /// 归入当前档案盒的资料子项关联。
+        /// 归入当前档案盒的资料子项关联（盒内登记单关联由此推导，见 ArchiveContainerRegisterRecordProjectionSupport）。
         /// </summary>
         public virtual List<YearlyArchiveBoxMediaItemLink> MediaItemLinks { get; set; } = new List<YearlyArchiveBoxMediaItemLink>();
     }

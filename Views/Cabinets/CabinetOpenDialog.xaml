@@ -1919,6 +1919,40 @@
                     </Expander.Header>
 
                     <StackPanel Margin="12,8,12,10">
+                        <TextBlock Text="盒边框配色（按资料类别）"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,6"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Grid.Column="0" Width="14" Height="9" Margin="0,0,6,4" Background="#FFF8E1" BorderBrush="#0D9488" BorderThickness="1.4" CornerRadius="1"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,0,14,4" FontSize="10" Foreground="#475569" Text="历史存档地形图图件"/>
+                            <Border Grid.Row="1" Grid.Column="0" Width="14" Height="9" Margin="0,0,6,0" Background="#FFF8E1" BorderBrush="#7C3AED" BorderThickness="1.4" CornerRadius="1"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" FontSize="10" Foreground="#475569" Text="历史存档航摄胶片、像片"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Grid.Column="0" Width="14" Height="9" Margin="0,0,6,4" Background="#FFF8E1" BorderBrush="#DB2777" BorderThickness="1.4" CornerRadius="1"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,0,14,4" FontSize="10" Foreground="#475569" Text="历史存档其他资料"/>
+                            <Border Grid.Row="1" Grid.Column="0" Width="14" Height="9" Margin="0,0,6,0" Background="#FFF8E1" BorderBrush="#0284C7" BorderThickness="1.4" CornerRadius="1"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" FontSize="10" Foreground="#475569" Text="年度存档资料"/>
+                        </Grid>
+
                         <TextBlock Text="角位示意（与档案盒卡片一致）"
                                    FontSize="10"
                                    FontWeight="SemiBold"

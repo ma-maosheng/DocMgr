@@ -1,3 +1,5 @@
+using DocMgr.Models.Cabinets;
+
 namespace DocMgr.Models.YearlyArchive
 {
     /// <summary>
@@ -118,6 +120,12 @@ namespace DocMgr.Models.YearlyArchive
 
         /// <summary>源档口键（柜面-层-列），用于校验同档口多选。</summary>
         public string SourceSlotKey { get; init; } = string.Empty;
+
+        /// <summary>源柜体 ID；用于跨柜迁档成功后定向刷新源柜开柜窗。</summary>
+        public int SourceCabinetId { get; init; }
+
+        /// <summary>源柜面；用于跨柜迁档成功后定向刷新源柜开柜窗。</summary>
+        public CabinetFace SourceCabinetFace { get; init; }
 
         public bool IsOpticalDiscMedia { get; init; }
     }

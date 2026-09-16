@@ -171,11 +171,8 @@ public interface IArchiveFilingRepository
 
     Task<bool> IsMagneticDiskSlotFullyEmptyAsync(string slotCode, string slotPrefix);
 
-    Task<List<string>> GetTopoMapBoxNumbersAsync();
-
-    Task<List<string>> GetAerialPhotoBoxNumbersAsync();
-
-    Task<List<string>> GetOtherMapBoxNumbersAsync();
+    /// <summary>在库历史档案盒盒号清单（三类图件台账合并；权威源 HistoryArchiveBoxes）。</summary>
+    Task<List<string>> GetInStockHistoryArchiveBoxCodesAsync();
 
     Task<List<SystemAttachment>> GetRegisterAttachmentsByBusinessIdAsync(int id);
 

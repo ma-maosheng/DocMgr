@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.Shared;
+using DocMgr.Services.YearlyArchive;
 
 namespace DocMgr.Models.YearlyArchive
 {
@@ -76,14 +77,16 @@ namespace DocMgr.Models.YearlyArchive
         public int ElectronicArchiveStatus { get; set; } = TrackPending;
 
         /// <summary>
-        /// 归档盒集合
+        /// 归档盒集合（由介质明细的 ArchiveBoxLinks 推导，不再落库存储）。
         /// </summary>
-        public virtual List<YearlyArchiveBox> ArchiveBoxes { get; set; } = new List<YearlyArchiveBox>();
+        [NotMapped]
+        public List<YearlyArchiveBox> ArchiveBoxes => ArchiveContainerRegisterRecordProjectionSupport.ProjectRecordArchiveBoxes(this);
 
         /// <summary>
-        /// 电子介质立档单元集合
+        /// 电子介质立档单元集合（由介质明细的电子立档链接推导，不再落库存储）。
         /// </summary>
-        public virtual List<YearlyElectronicArchiveUnit> ElectronicArchiveUnits { get; set; } = new List<YearlyElectronicArchiveUnit>();
+        [NotMapped]
+        public List<YearlyElectronicArchiveUnit> ElectronicArchiveUnits => ArchiveContainerRegisterRecordProjectionSupport.ProjectRecordElectronicUnits(this);
 
         [NotMapped]
         public string ArchiveBoxNos

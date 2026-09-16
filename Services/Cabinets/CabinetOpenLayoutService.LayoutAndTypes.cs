@@ -58,6 +58,27 @@ namespace DocMgr.Services.Cabinets
             return string.IsNullOrWhiteSpace(scaleText) ? sourceType : $"{sourceType}({scaleText})";
         }
 
+        /// <summary>
+        /// 由来源类型归一为档案盒资料类别（开柜视图盒边框配色依据）。
+        /// 多来源/混放/未登记来源归为未分类。
+        /// </summary>
+        private static ArchiveBoxCategory ResolveArchiveBoxCategory(IReadOnlyCollection<string> sourceTypes, bool isMixedPlacement)
+        {
+            if (isMixedPlacement || sourceTypes.Count != 1)
+            {
+                return ArchiveBoxCategory.Unknown;
+            }
+
+            return sourceTypes.First() switch
+            {
+                "地形图" => ArchiveBoxCategory.HistoryTopoMap,
+                "航摄影像" => ArchiveBoxCategory.HistoryAerialPhoto,
+                "其他图件" => ArchiveBoxCategory.HistoryOtherMap,
+                "年度资料" => ArchiveBoxCategory.Yearly,
+                _ => ArchiveBoxCategory.Unknown
+            };
+        }
+
         private static string BuildArchiveIdentifierText(string sourceSummaryText, IEnumerable<ExpandedArchiveBoxAssignment> group)
         {
             if (string.Equals(sourceSummaryText, "年度资料", StringComparison.OrdinalIgnoreCase))
@@ -688,8 +709,9 @@ namespace DocMgr.Services.Cabinets
 
         private static Dictionary<string, BoxRenderLayout> CalculateFrontOutLayouts(IReadOnlyList<IGrouping<string, ExpandedArchiveBoxAssignment>> boxGroups, IReadOnlyDictionary<string, ArchiveBoxSpecification> boxSpecificationLookup, double slotCanvasWidth, double slotCanvasHeight, double gap)
         {
+            // 盒面向外：高度减半，同列两盒上下叠放，保证每个档案盒完整可见（替代旧的半宽并排部分叠加）。
             var measurements = boxGroups
-                .Select((boxGroup, index) =>
+                .Select(boxGroup =>
                 {
                     string boxSpecification = ResolveBoxSpecification(boxGroup);
                     double fullWidth = ResolveOccupiedWidth("FrontOut", boxSpecification, boxSpecificationLookup);
@@ -704,18 +726,29 @@ namespace DocMgr.Services.Cabinets
                         height = slotCanvasHeight;
                     }
 
-                    return new BoxMeasurement(boxGroup.Key, ResolveFrontOutWidth(boxGroups.Count, index, fullWidth), Math.Min(height, slotCanvasHeight));
+                    return new BoxMeasurement(boxGroup.Key, fullWidth, Math.Min(height, slotCanvasHeight) / 2d);
                 })
                 .ToList();
 
-            double currentX = 0d;
             var layouts = new Dictionary<string, BoxRenderLayout>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var measurement in measurements)
+            double currentX = 0d;
+            for (int index = 0; index < measurements.Count; index++)
             {
-                double top = Math.Max(0d, slotCanvasHeight - measurement.Height);
+                BoxMeasurement measurement = measurements[index];
+                bool isUpperOfStack = index % 2 == 1;
+                double top = isUpperOfStack
+                    ? Math.Max(0d, slotCanvasHeight - measurements[index - 1].Height - gap - measurement.Height)
+                    : Math.Max(0d, slotCanvasHeight - measurement.Height);
                 layouts[measurement.BoxCode] = new BoxRenderLayout(currentX, top, measurement.Width, measurement.Height);
-                currentX += measurement.Width + gap;
+
+                // 每两盒为一摞（列）：摞满或收尾单盒时右移开启新一列。
+                if (isUpperOfStack || index == measurements.Count - 1)
+                {
+                    double columnWidth = isUpperOfStack
+                        ? Math.Max(measurement.Width, measurements[index - 1].Width)
+                        : measurement.Width;
+                    currentX += columnWidth + gap;
+                }
             }
 
             return layouts;

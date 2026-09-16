@@ -23,10 +23,6 @@ namespace DocMgr.Data.Configurations
                 .HasForeignKey(m => m.YearlyArchiveRegisterRecordId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // 多对多：登记记录 <-> 档案盒
-            builder.HasMany(r => r.ArchiveBoxes)
-                .WithMany(b => b.RegisterRecords);
-
             builder.HasOne(r => r.BusinessChain)
                 .WithMany()
                 .HasForeignKey(r => r.BusinessChainId)

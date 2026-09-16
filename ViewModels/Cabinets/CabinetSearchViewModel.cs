@@ -108,7 +108,8 @@ namespace DocMgr.ViewModels.Cabinets
 
             SelectedCabinet = cabinet;
 
-            _dialogService.ShowCabinetOpenDialog(new CabinetOpenRequest
+            // 非模态打开：支持同时打开两个同类介质柜（电子对电子 / 模拟对模拟）实现跨柜、跨面迁档。
+            _dialogService.ShowCabinetOpenDialogModeless(new CabinetOpenRequest
             {
                 CabinetId = cabinet.Id,
                 CabinetName = cabinet.Name,

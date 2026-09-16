@@ -62,6 +62,12 @@ namespace DocMgr.Services.Interfaces
         CabinetHardDiskSlotCategoryEditResult? ShowCabinetHardDiskSlotCategoryEditDialog(string title, string summary, string? initialCategoryName);
         CabinetArchiveSlotCategoryEditResult? ShowCabinetArchiveSlotCategoryEditDialog(string title, string summary, string? initialCategoryName);
         void ShowCabinetOpenDialog(CabinetOpenRequest request);
+
+        /// <summary>
+        /// 以非模态方式打开开柜窗（支持同时打开两个，用于跨柜/跨面迁档）。
+        /// 同柜同面已开时置前既有窗；已有两扇时提示并置前最早的一扇。
+        /// </summary>
+        void ShowCabinetOpenDialogModeless(CabinetOpenRequest request);
         void ShowCabinetSlotDetailDialog(CabinetOpenRequest request, CabinetSlotViewModel slot, bool canShowSlotZoom);
         void ShowCabinetArchiveBoxContentDialog(string boxCode);
 

@@ -524,12 +524,6 @@ public static partial class FieldDomainSeedService
         ["YearlyArchiveRegisterRecord.DeptLeader"] = "部门负责人",
         ["YearlyArchiveRegisterRecord.DeptDate"] = "部门审核日期",
 
-        ["YearlyArchiveBoxYearlyArchiveRegisterRecord.ArchiveBoxesId"] = "年度档案盒ID",
-        ["YearlyArchiveBoxYearlyArchiveRegisterRecord.RegisterRecordsId"] = "登记申请ID",
-
-        ["YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit.ElectronicArchiveUnitsId"] = "电子立档单元ID",
-        ["YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit.RegisterRecordsId"] = "登记申请ID",
-
         ["HardDiskInventoryRegisterRecord.Reason"] = "登记说明",
         ["HardDiskInventoryRegisterItem.BeforeMediaStatus"] = "登记前介质状态",
         ["HardDiskInventoryRegisterItem.BeforeStorageLocation"] = "登记前存放位置",

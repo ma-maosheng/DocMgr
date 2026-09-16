@@ -52,7 +52,7 @@ namespace DocMgr.ViewModels.Cabinets
         private readonly double _layoutDisplayScale;
         private double _canvasLayoutScale;
 
-        public ArchiveBoxItemViewModel(string boxCode, string boxLabel, string categoryText, string archiveTypeText, string archiveIdentifierText, string countText, string slotCode, int sequenceIndex, int itemCount, bool isMixedPlacement, string originalBoxNumberText, string relatedBoxCodesText, int relatedBoxCount, string mixedPlacementHint, string sourceSummaryText, int pendingSortingRecordCount, string boxSpecification, string placementMode, double layoutX, double layoutY, double layoutWidth, double layoutHeight, double displayScale, int yearlyArchiveBoxId = 0, int pendingReturnCopyCount = 0, bool hasOccupationLock = false, string occupationLockToolTipText = "", string occupationLockBadgeText = "", bool isYearlyArchiveDisplay = false, string archiveSequenceNoShortText = "", string yearText = "", string projectText = "", string inventoryMarkBadgeText = "")
+        public ArchiveBoxItemViewModel(string boxCode, string boxLabel, string categoryText, string archiveTypeText, string archiveIdentifierText, string countText, string slotCode, int sequenceIndex, int itemCount, bool isMixedPlacement, string originalBoxNumberText, string relatedBoxCodesText, int relatedBoxCount, string mixedPlacementHint, string sourceSummaryText, int pendingSortingRecordCount, string boxSpecification, string placementMode, double layoutX, double layoutY, double layoutWidth, double layoutHeight, double displayScale, int yearlyArchiveBoxId = 0, int pendingReturnCopyCount = 0, bool hasOccupationLock = false, string occupationLockToolTipText = "", string occupationLockBadgeText = "", bool isYearlyArchiveDisplay = false, string archiveSequenceNoShortText = "", string yearText = "", string projectText = "", string inventoryMarkBadgeText = "", ArchiveBoxCategory category = ArchiveBoxCategory.Unknown)
         {
             BoxCode = boxCode;
             BoxLabel = boxLabel;
@@ -91,6 +91,7 @@ namespace DocMgr.ViewModels.Cabinets
             ArchiveSequenceNoShortText = archiveSequenceNoShortText?.Trim() ?? string.Empty;
             YearDisplayText = FormatLabelValue("年度", yearText);
             ProjectDisplayText = FormatLabelValue("项目", projectText);
+            Category = category;
 
             bool isNonStandard = !string.IsNullOrWhiteSpace(BoxSpecification)
                 && BoxSpecification.Contains("非标", System.StringComparison.OrdinalIgnoreCase);
@@ -173,6 +174,9 @@ namespace DocMgr.ViewModels.Cabinets
             YearlyArchiveBoxId <= 0
             && !IsYearlyArchiveDisplay
             && !string.IsNullOrWhiteSpace(BoxCode);
+
+        /// <summary>资料类别（开柜视图盒边框配色依据）。</summary>
+        public ArchiveBoxCategory Category { get; }
 
         public string BoxCode { get; init; } = string.Empty;
 
@@ -341,13 +345,19 @@ namespace DocMgr.ViewModels.Cabinets
             ? "#2563EB"
             : IsMixedPlacement
                 ? "#FCA5A5"
-                : _hasInventoryMarkWash
-                    ? "#FCA5A5"
-                    : HasPendingReturn
-                        ? "#FDBA74"
-                        : "#D97706";
+                : ResolveCategoryBorderBrush();
 
-        public double BoxBorderThickness => IsHighlighted ? 2d : 0.6d;
+        /// <summary>盒边框按资料类别配色：地形图=蓝绿、航摄=紫、其他资料=玫红、年度=天蓝；未分类维持琥珀。</summary>
+        private string ResolveCategoryBorderBrush() => Category switch
+        {
+            ArchiveBoxCategory.HistoryTopoMap => "#0D9488",
+            ArchiveBoxCategory.HistoryAerialPhoto => "#7C3AED",
+            ArchiveBoxCategory.HistoryOtherMap => "#DB2777",
+            ArchiveBoxCategory.Yearly => "#0284C7",
+            _ => "#D97706"
+        };
+
+        public double BoxBorderThickness => IsHighlighted ? 2d : 1.2d;
 
         public string AccentBrush => IsHighlighted
             ? "#2563EB"

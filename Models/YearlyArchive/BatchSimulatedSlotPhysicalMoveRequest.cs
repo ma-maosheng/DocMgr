@@ -30,6 +30,9 @@ namespace DocMgr.Models.YearlyArchive
     {
         public string CabinetName { get; init; } = string.Empty;
 
+        /// <summary>源柜体 ID；用于跨柜批量搬迁成功后定向刷新源柜开柜窗。</summary>
+        public int CabinetId { get; init; }
+
         public string FaceCode { get; init; } = string.Empty;
 
         public int Row { get; init; }

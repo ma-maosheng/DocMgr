@@ -429,8 +429,7 @@ namespace DocMgr.Services.YearlyArchive
                 ArchivedDate = archivedAt,
                 SourceType = string.IsNullOrWhiteSpace(updatedUnit.SourceType) ? existingUnit.SourceType : updatedUnit.SourceType,
                 SourceRecordKey = string.IsNullOrWhiteSpace(updatedUnit.SourceRecordKey) ? existingUnit.SourceRecordKey : updatedUnit.SourceRecordKey,
-                Remarks = MergeDelimitedText(existingUnit.Remarks, updatedUnit.Remarks),
-                RegisterRecords = existingUnit.RegisterRecords
+                Remarks = MergeDelimitedText(existingUnit.Remarks, updatedUnit.Remarks)
             };
         }
 

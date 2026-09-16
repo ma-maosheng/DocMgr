@@ -84,6 +84,18 @@ namespace DocMgr.Services.YearlyArchive
         public static string BuildFullElectronicLocation(string cabinetName, string side, int row, int column, int sequenceIndex)
             => $"{BuildSlotKey(cabinetName, side, row, column)}-{sequenceIndex:D2}";
 
+        /// <summary>
+        /// 将完整位置编码规范为统一口径（面大写、序号两位补零）。
+        /// 用于年度档案盒位置编码与历史盒号的跨体系冲突比对；无法解析返回空串。
+        /// </summary>
+        public static string NormalizeFullLocationCode(string? location)
+        {
+            return TryParseSlotLocation(location, out string cabinetName, out string side, out int row, out int column)
+                   && TryParseSequenceIndex(location, out int sequenceIndex)
+                ? BuildFullElectronicLocation(cabinetName, side, row, column, sequenceIndex)
+                : string.Empty;
+        }
+
         public static int ResolveMinimumAvailableSequence(IEnumerable<int> occupiedIndexes)
         {
             var occupied = occupiedIndexes

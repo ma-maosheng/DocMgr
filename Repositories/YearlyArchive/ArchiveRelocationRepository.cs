@@ -62,7 +62,6 @@ namespace DocMgr.Repositories.YearlyArchive
         public Task<YearlyArchiveBox?> GetArchiveBoxForRelocationAsync(int boxId)
         {
             return _dbContext.YearlyArchiveBoxes
-                .Include(box => box.RegisterRecords)
                 .Include(box => box.MediaItemLinks)
                     .ThenInclude(link => link.MediaItem)
                         .ThenInclude(item => item.MediaEntry)
@@ -74,7 +73,6 @@ namespace DocMgr.Repositories.YearlyArchive
         {
             string normalized = sequenceNo.Trim();
             return _dbContext.YearlyArchiveBoxes
-                .Include(box => box.RegisterRecords)
                 .Include(box => box.MediaItemLinks)
                     .ThenInclude(link => link.MediaItem)
                         .ThenInclude(item => item.MediaEntry)
@@ -288,7 +286,6 @@ namespace DocMgr.Repositories.YearlyArchive
         public Task<YearlyElectronicArchiveUnit?> GetElectronicUnitForRelocationAsync(int unitId)
         {
             return _dbContext.YearlyElectronicArchiveUnits
-                .Include(unit => unit.RegisterRecords)
                 .Include(unit => unit.MediumLinks)
                     .ThenInclude(link => link.HardDiskMedium)
                         .ThenInclude(medium => medium!.RegisterLock)
@@ -310,7 +307,6 @@ namespace DocMgr.Repositories.YearlyArchive
         {
             string normalized = archiveNo.Trim();
             return _dbContext.YearlyElectronicArchiveUnits
-                .Include(unit => unit.RegisterRecords)
                 .Include(unit => unit.MediumLinks)
                     .ThenInclude(link => link.HardDiskMedium)
                         .ThenInclude(medium => medium.Ledger)

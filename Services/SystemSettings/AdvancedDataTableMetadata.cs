@@ -180,16 +180,6 @@ namespace DocMgr.Services.SystemSettings
                 "→ 引用 YearlyArchiveBoxes、YearlyArchiveRegisterMediaItems（均级联删除）。",
                 "只读浏览。关联由归档流程自动建立。"),
 
-            ["YearlyArchiveBoxYearlyArchiveRegisterRecord"] = new(
-                "年度档案盒与年度资料登记申请的多对多关联（EF 隐式中间表）。",
-                "→ 引用 YearlyArchiveBoxes（ArchiveBoxesId）；→ 引用 YearlyArchiveRegisterRecords（RegisterRecordsId）。",
-                "只读浏览。关联由模拟介质立档流程写入，手工改动可能影响登记单与档案盒的对应关系。"),
-
-            ["YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit"] = new(
-                "年度资料登记申请与电子立档单元的多对多关联（EF 隐式中间表）。",
-                "→ 引用 YearlyArchiveRegisterRecords（RegisterRecordsId）；→ 引用 YearlyElectronicArchiveUnits（ElectronicArchiveUnitsId）。",
-                "只读浏览。关联由电子立档流程写入。"),
-
             [nameof(YearlyElectronicArchiveUnit)] = new(
                 "电子档案编号主实体，聚合硬盘/光盘/登记介质等多种关联。",
                 "← 被 YearlyElectronicArchiveUnitMediumLinks、YearlyElectronicArchiveUnitDiscLinks、YearlyElectronicArchiveUnitMediaLinks 引用。",

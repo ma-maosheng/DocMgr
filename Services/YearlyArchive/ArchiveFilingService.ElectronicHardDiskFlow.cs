@@ -381,7 +381,6 @@ namespace DocMgr.Services.YearlyArchive
 
             var linkedMedia = await PrepareElectronicArchiveUnitAsync(newUnit, archivedAt, borrowedHardDiskCandidate, pendingExternalHardDisk);
 
-            newUnit.RegisterRecords.AddRange(records);
             AssignElectronicArchiveMediumLinks(newUnit, linkedMedia);
             var createdItemLinks = AddElectronicMediaItemLinks(newUnit, mediaItems, filingStoragePathByMediaItemId, mediumCode, archivedAt);
             SyncElectronicMediaEntryLinksAfterItemFiling(newUnit, mediaItems, archivedAt);

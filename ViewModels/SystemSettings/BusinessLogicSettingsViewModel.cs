@@ -58,7 +58,7 @@ namespace DocMgr.ViewModels.SystemSettings
             catch (Exception ex)
             {
                 _isInitialized = false;
-                _dialogService.ShowError($"业务逻辑设置初始化失败：{ex.Message}");
+                _dialogService.ShowError($"逾期设置初始化失败：{ex.Message}");
             }
         }
 
@@ -81,7 +81,7 @@ namespace DocMgr.ViewModels.SystemSettings
             var user = _userContextService.CurrentUser;
             if (user == null)
             {
-                _dialogService.ShowError("当前未登录，无法保存业务逻辑设置。");
+                _dialogService.ShowError("当前未登录，无法保存逾期设置。");
                 return;
             }
 
@@ -104,7 +104,7 @@ namespace DocMgr.ViewModels.SystemSettings
                 await _businessLogicSettingsService.SaveApplicationOverdueSettingCodeAsync(
                     SelectedApplicationOverdueOption.Code,
                     user);
-                _dialogService.ShowMessage("业务逻辑设置已保存。");
+                _dialogService.ShowMessage("逾期设置已保存。");
             }
             catch (Exception ex)
             {

@@ -111,11 +111,6 @@ namespace DocMgr.Models.YearlyArchive
         public string UnitLifecycleStatus { get; set; } = ArchiveContainerLifecycleStatus.InUse;
 
         /// <summary>
-        /// 关联登记记录
-        /// </summary>
-        public virtual List<YearlyArchiveRegisterRecord> RegisterRecords { get; set; } = new();
-
-        /// <summary>
         /// 关联硬盘介质集合，是硬盘关联的"真相来源"；<see cref="LinkedMediumCodes"/> 为其反范式快照。
         /// </summary>
         public virtual List<YearlyElectronicArchiveUnitMediumLink> MediumLinks { get; set; } = new();

@@ -40,7 +40,7 @@ namespace DocMgr.ViewModels.Cabinets
             CanvasDisplayScale = ResolveCanvasDisplayScale(SlotCanvasWidth, SlotCanvasHeight, descriptor.IsMagneticDiskSlot);
             IsMagneticDiskSlot = descriptor.IsMagneticDiskSlot;
             HardDiskCapacity = descriptor.HardDiskCapacity <= 0 ? 10 : descriptor.HardDiskCapacity;
-            ArchiveBoxes = new ObservableCollection<ArchiveBoxItemViewModel>(descriptor.ArchiveBoxes.Select(box => new ArchiveBoxItemViewModel(box.BoxCode, box.BoxLabel, box.CategoryText, box.ArchiveTypeText, box.ArchiveIdentifierText, box.CountText, box.SlotCode, box.SequenceIndex, box.ItemCount, box.IsMixedPlacement, box.OriginalBoxNumberText, box.RelatedBoxCodesText, box.RelatedBoxCount, box.MixedPlacementHint, box.SourceSummaryText, box.PendingSortingRecordCount, box.BoxSpecification, box.PlacementMode, box.LayoutX, box.LayoutY, box.LayoutWidth, box.LayoutHeight, CanvasDisplayScale, box.YearlyArchiveBoxId, box.PendingReturnCopyCount, box.HasOccupationLock, box.OccupationLockToolTipText, box.OccupationLockBadgeText, box.IsYearlyArchiveDisplay, box.ArchiveSequenceNoShortText, box.YearText, box.ProjectText, box.InventoryMarkBadgeText)));
+            ArchiveBoxes = new ObservableCollection<ArchiveBoxItemViewModel>(descriptor.ArchiveBoxes.Select(box => new ArchiveBoxItemViewModel(box.BoxCode, box.BoxLabel, box.CategoryText, box.ArchiveTypeText, box.ArchiveIdentifierText, box.CountText, box.SlotCode, box.SequenceIndex, box.ItemCount, box.IsMixedPlacement, box.OriginalBoxNumberText, box.RelatedBoxCodesText, box.RelatedBoxCount, box.MixedPlacementHint, box.SourceSummaryText, box.PendingSortingRecordCount, box.BoxSpecification, box.PlacementMode, box.LayoutX, box.LayoutY, box.LayoutWidth, box.LayoutHeight, CanvasDisplayScale, box.YearlyArchiveBoxId, box.PendingReturnCopyCount, box.HasOccupationLock, box.OccupationLockToolTipText, box.OccupationLockBadgeText, box.IsYearlyArchiveDisplay, box.ArchiveSequenceNoShortText, box.YearText, box.ProjectText, box.InventoryMarkBadgeText, box.Category)));
             HardDiskMediaItems = new ObservableCollection<CabinetHardDiskMediumItemViewModel>(BuildHardDiskMediaItems(descriptor));
             PendingReturnMediaItems = new ObservableCollection<CabinetHardDiskMediumItemViewModel>(descriptor.PendingReturnMedia.Select(item => new CabinetHardDiskMediumItemViewModel(item)));
             UtilizationRatio = descriptor.UtilizationRatio;
@@ -478,17 +478,16 @@ namespace DocMgr.ViewModels.Cabinets
             IsYearlySimulatedOnlyArchiveSlot
             && RelocatableSimulatedArchiveBoxCount > 0;
 
-        /// <summary>是否历史资料专用档口且全部为历史盒（可整档口批量迁出）。</summary>
+        /// <summary>是否历史资料专用档口且全部为历史盒（可整档口批量迁出；混放盒可整体随迁）。</summary>
         public bool IsHistoryOnlyBatchRelocationSourceSlot =>
             !IsMagneticDiskSlot
             && ArchiveBoxes.Count > 0
             && ArchiveBoxes.All(box => box.IsHistoryArchiveDisplay)
-            && MixedArchiveBoxCount == 0
             && RelocatableHistoryArchiveBoxCount > 0;
 
-        /// <summary>可交互式/批量迁出的历史盒数量（排除混放）。</summary>
+        /// <summary>可交互式/批量迁出的历史盒数量（排除占用锁）。</summary>
         public int RelocatableHistoryArchiveBoxCount =>
-            ArchiveBoxes.Count(box => box.IsHistoryArchiveDisplay && !box.IsMixedPlacement);
+            ArchiveBoxes.Count(box => box.IsHistoryArchiveDisplay && box.CanInteractiveRelocate);
 
         /// <summary>
         /// 是否可接受历史盒迁入：非磁盘柜档口，用途为历史专用/混用（含未设置用途），

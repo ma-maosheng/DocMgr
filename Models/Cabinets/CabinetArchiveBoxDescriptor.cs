@@ -12,6 +12,9 @@ namespace DocMgr.Models.Cabinets
 
         public string ArchiveIdentifierText { get; init; } = string.Empty;
 
+        /// <summary>资料类别（开柜视图盒边框配色依据）。</summary>
+        public ArchiveBoxCategory Category { get; init; }
+
         public bool IsYearlyArchiveDisplay { get; init; }
 
         public string ArchiveSequenceNoShortText { get; init; } = string.Empty;

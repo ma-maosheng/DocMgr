@@ -355,7 +355,7 @@ namespace DocMgr.Services.YearlyArchive
 
         #region 校验
 
-        /// <summary>源校验：盒号在库、未锁、未混放引用、（交互式）同档口。</summary>
+        /// <summary>源校验：盒号在库、未锁、（交互式）同档口。混放盒可迁（盒实体改号，台账投影自动跟随）。</summary>
         private async Task<string?> ValidateHistoryMoveSourcesAsync(
             IReadOnlyList<string> boxCodes,
             IReadOnlyList<HistoryArchiveLedgerReferenceGroup> groups,
@@ -386,17 +386,8 @@ namespace DocMgr.Services.YearlyArchive
                 }
             }
 
-            // 混放盒（同一台账行登记多个盒号）禁迁，先梳理再迁移
-            var mixedCodes = groups
-                .Where(group => group.BoxCodes.Count > 1)
-                .SelectMany(group => group.BoxCodes)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(code => code, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            if (mixedCodes.Count > 0)
-            {
-                return $"以下历史盒为混放盒（同一台账登记多个盒号，需先梳理）：{string.Join("、", mixedCodes)}，暂不可迁档。";
-            }
+            // 混放盒（同一台账行登记多个盒号）不再禁迁：迁档仅改盒实体 BoxCode，
+            // 链接表按盒 ID 关联且台账 BoxNumber 为投影属性，迁移后混放关系原样保留。
 
             var locked = await _relocationRepository.GetHistoryDisposalLockedBoxCodesAsync();
             var lockedConflicts = boxCodes

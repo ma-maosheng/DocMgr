@@ -498,6 +498,7 @@ namespace DocMgr.Services.Shared
             var (scope, viewModel) = CreateScopedViewModel<CabinetOpenViewModel>(request, this);
 
             dialog.DataContext = viewModel;
+            dialog.Title = viewModel.WindowTitle;
             dialog.Owner = GetOwnerWindow();
 
             void HandleRequestClose(bool? result) => dialog.DialogResult = result;
@@ -513,6 +514,122 @@ namespace DocMgr.Services.Shared
                 viewModel.Detach();
                 scope.Dispose();
             }
+        }
+
+        /// <summary>
+        /// 非模态开柜窗口注册表；DialogService 为 Transient，须跨实例共享。
+        /// </summary>
+        private static readonly List<WeakReference<CabinetOpenDialog>> _modelessCabinetOpenDialogs = new();
+
+        private const int MaxModelessCabinetOpenDialogCount = 2;
+
+        public void ShowCabinetOpenDialogModeless(CabinetOpenRequest request)
+        {
+            var openDialogs = CollectLiveModelessCabinetOpenDialogs();
+
+            // 同柜同面已开时置前既有窗，避免双窗显示同一面互相覆盖。
+            var existing = openDialogs.FirstOrDefault(dialog =>
+                dialog.DataContext is CabinetOpenViewModel vm
+                && vm.Request.CabinetId == request.CabinetId
+                && vm.Request.Face == request.Face);
+            if (existing != null)
+            {
+                ActivateWindow(existing);
+                return;
+            }
+
+            if (openDialogs.Count >= MaxModelessCabinetOpenDialogCount)
+            {
+                var oldest = openDialogs[0];
+                ActivateWindow(oldest);
+                ShowMessage(
+                    $"最多同时打开 {MaxModelessCabinetOpenDialogCount} 个开柜窗。\n已切换到最早打开的窗口，请先关闭它再打开新的柜面。",
+                    "开柜窗口已达上限");
+                return;
+            }
+
+            var dialog = new CabinetOpenDialog();
+            var (scope, viewModel) = CreateScopedViewModel<CabinetOpenViewModel>(request, this);
+
+            dialog.DataContext = viewModel;
+            dialog.Title = viewModel.WindowTitle;
+            // 固定主窗口为 Owner：避免以另一扇开柜窗为父（父窗最小化时子窗连带最小化、层级绑定）。
+            dialog.Owner = Application.Current?.MainWindow ?? GetOwnerWindow();
+
+            // 与已开窗口错开位置，避免完全重叠。
+            ArrangeModelessCabinetOpenDialogPosition(dialog, openDialogs);
+
+            void HandleRequestClose(bool? result) => dialog.Close();
+            viewModel.RequestClose += HandleRequestClose;
+
+            void HandleClosed(object? sender, EventArgs e)
+            {
+                dialog.Closed -= HandleClosed;
+                viewModel.RequestClose -= HandleRequestClose;
+                viewModel.Detach();
+                scope.Dispose();
+            }
+
+            dialog.Closed += HandleClosed;
+
+            _modelessCabinetOpenDialogs.Add(new WeakReference<CabinetOpenDialog>(dialog));
+            dialog.Show();
+            ActivateWindow(dialog);
+        }
+
+        private static List<CabinetOpenDialog> CollectLiveModelessCabinetOpenDialogs()
+        {
+            var liveDialogs = new List<CabinetOpenDialog>();
+            for (int i = _modelessCabinetOpenDialogs.Count - 1; i >= 0; i--)
+            {
+                if (_modelessCabinetOpenDialogs[i].TryGetTarget(out var dialog) && dialog.IsVisible)
+                {
+                    liveDialogs.Add(dialog);
+                    continue;
+                }
+
+                _modelessCabinetOpenDialogs.RemoveAt(i);
+            }
+
+            // 反向遍历收集后恢复打开顺序：索引 0 = 最早打开的窗口。
+            liveDialogs.Reverse();
+            return liveDialogs;
+        }
+
+        private static void ArrangeModelessCabinetOpenDialogPosition(Window dialog, IReadOnlyList<CabinetOpenDialog> openDialogs)
+        {
+            if (openDialogs.Count == 0)
+            {
+                return;
+            }
+
+            dialog.WindowStartupLocation = WindowStartupLocation.Manual;
+            var reference = openDialogs[openDialogs.Count - 1];
+            double offset = 48d;
+            dialog.Left = reference.Left + offset;
+            dialog.Top = reference.Top + offset;
+
+            // 越界时回落：贴住工作区左上角。
+            var workArea = SystemParameters.WorkArea;
+            if (dialog.Left + dialog.Width > workArea.Right)
+            {
+                dialog.Left = Math.Max(workArea.Left, workArea.Right - dialog.Width);
+            }
+
+            if (dialog.Top + dialog.Height > workArea.Bottom)
+            {
+                dialog.Top = Math.Max(workArea.Top, workArea.Bottom - dialog.Height);
+            }
+        }
+
+        private static void ActivateWindow(Window window)
+        {
+            if (window.WindowState == WindowState.Minimized)
+            {
+                window.WindowState = WindowState.Normal;
+            }
+
+            window.Activate();
         }
 
         public void ShowCabinetSlotDetailDialog(CabinetOpenRequest request, CabinetSlotViewModel slot, bool canShowSlotZoom)

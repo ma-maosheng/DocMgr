@@ -10,7 +10,8 @@ using DocMgr.Services.YearlyArchive;
 namespace DocMgr.Services.HistoryArchive
 {
     /// <summary>
-    /// 历史存档 Excel 导入：核验落档档口用途。未设置则同步为历史资料专用；与年度专用冲突则改为混用档口。
+    /// 历史存档 Excel 导入：核验落档档口用途，并校验完整盒位不与库内在用年度档案盒冲突。
+    /// 未设置则同步为历史资料专用；与年度专用冲突则改为混用档口。
     /// </summary>
     public sealed class HistoryArchiveImportSlotGuard
     {
@@ -32,6 +33,7 @@ namespace DocMgr.Services.HistoryArchive
         {
             var errors = new List<string>();
             var slots = new List<ParsedHistorySlot>();
+            var importFullCodes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (string code in SplitBoxNumbers(boxNumbers))
             {
                 if (!ArchiveSlotLocationSupport.TryParseSlotLocation(
@@ -43,6 +45,12 @@ namespace DocMgr.Services.HistoryArchive
                 {
                     errors.Add($"档案盒编号 [{code}] 无法解析为柜面-层-列，无法核验落档档口用途。");
                     continue;
+                }
+
+                string normalizedFullCode = ArchiveSlotLocationSupport.NormalizeFullLocationCode(code);
+                if (!string.IsNullOrEmpty(normalizedFullCode) && !importFullCodes.ContainsKey(normalizedFullCode))
+                {
+                    importFullCodes[normalizedFullCode] = code;
                 }
 
                 string slotKey = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, side, row, column);
@@ -73,6 +81,22 @@ namespace DocMgr.Services.HistoryArchive
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
             var categoryLookup = await _archiveFilingRepository.GetArchiveSlotCategoryLookupForCabinetsAsync(
                 cabinets.Where(item => item.Type == CabinetType.Standard).Select(item => item.Id).ToList());
+
+            // 冲突核验：导入盒号不得与库内任何在用年度档案盒的物理位置编码重复
+            if (importFullCodes.Count > 0)
+            {
+                foreach (string occupiedCode in await _archiveFilingRepository.GetYearlyArchiveBoxLocationCodesAsync())
+                {
+                    string normalizedOccupied = ArchiveSlotLocationSupport.NormalizeFullLocationCode(occupiedCode ?? string.Empty);
+                    if (string.IsNullOrEmpty(normalizedOccupied)
+                        || !importFullCodes.TryGetValue(normalizedOccupied, out string? sourceCode))
+                    {
+                        continue;
+                    }
+
+                    errors.Add($"档案盒编号 [{sourceCode}] 与库内在用年度档案盒位置 [{(occupiedCode ?? string.Empty).Trim()}] 冲突。");
+                }
+            }
 
             var pendingHistorical = new List<(Cabinet Cabinet, string FaceCode, string SlotCode)>();
             var pendingMixed = new List<(Cabinet Cabinet, string FaceCode, string SlotCode)>();
@@ -138,7 +162,7 @@ namespace DocMgr.Services.HistoryArchive
             if (errors.Count > 0)
             {
                 throw new InvalidOperationException(
-                    "历史存档导入前档口用途核验未通过："
+                    "历史存档导入前档口用途与盒位冲突核验未通过："
                     + Environment.NewLine
                     + string.Join(Environment.NewLine, errors.Distinct(StringComparer.Ordinal)));
             }

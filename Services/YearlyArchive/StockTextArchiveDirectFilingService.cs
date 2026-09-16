@@ -564,9 +564,7 @@ namespace DocMgr.Services.YearlyArchive
                 }
             }
 
-            var history = (await _archiveFilingRepository.GetTopoMapBoxNumbersAsync())
-                .Concat(await _archiveFilingRepository.GetAerialPhotoBoxNumbersAsync())
-                .Concat(await _archiveFilingRepository.GetOtherMapBoxNumbersAsync());
+            var history = await _archiveFilingRepository.GetInStockHistoryArchiveBoxCodesAsync();
             foreach (string source in history)
             {
                 if (string.IsNullOrWhiteSpace(source))

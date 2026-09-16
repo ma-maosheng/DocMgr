@@ -278,8 +278,6 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
                         .ThenInclude(link => link.ElectronicArchiveUnit)
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.ElectronicArchiveUnitLinks)
-            .Include(record => record.ArchiveBoxes)
-            .Include(record => record.ElectronicArchiveUnits)
             .Where(record => recordIds.Contains(record.Id))
             .ToListAsync();
     }
@@ -425,7 +423,6 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ArchiveBoxLinks)
-            .Include(record => record.ArchiveBoxes)
             .Where(record => recordIds.Contains(record.Id))
             .ToListAsync();
     }
@@ -433,7 +430,6 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     public Task<YearlyElectronicArchiveUnit?> GetElectronicArchiveUnitWithDetailsAsync(int unitId)
     {
         return _dbContext.YearlyElectronicArchiveUnits
-            .Include(item => item.RegisterRecords)
             .Include(item => item.MediumLinks)
             .Include(item => item.DiscLinks)
             .Include(item => item.MediaEntryLinks)
@@ -656,7 +652,10 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     public Task<YearlyArchiveBox?> GetArchiveBoxWithRegisterRecordsAsync(int boxId)
     {
         return _dbContext.YearlyArchiveBoxes
-            .Include(item => item.RegisterRecords)
+            .Include(item => item.MediaItemLinks)
+                .ThenInclude(link => link.MediaItem)
+                    .ThenInclude(item => item!.MediaEntry)
+                        .ThenInclude(media => media!.RegisterRecord)
             .FirstOrDefaultAsync(item => item.Id == boxId);
     }
 
@@ -863,27 +862,16 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
                 StringComparison.OrdinalIgnoreCase));
     }
 
-    public Task<List<string>> GetTopoMapBoxNumbersAsync()
+    /// <inheritdoc cref="IArchiveFilingRepository.GetInStockHistoryArchiveBoxCodesAsync"/>
+    public Task<List<string>> GetInStockHistoryArchiveBoxCodesAsync()
     {
-        return _dbContext.TopoMaps
+        // 历史台账盒号已投影化（TopoMap/AerialPhoto/OtherMap.BoxNumber 非映射列）；
+        // 权威源为 HistoryArchiveBoxes，按「在库」过滤（已离库盒不再占用物理编号）
+        return _dbContext.HistoryArchiveBoxes
             .AsNoTracking()
-            .Select(item => item.BoxNumber)
-            .ToListAsync();
-    }
-
-    public Task<List<string>> GetAerialPhotoBoxNumbersAsync()
-    {
-        return _dbContext.AerialPhotos
-            .AsNoTracking()
-            .Select(item => item.BoxNumber)
-            .ToListAsync();
-    }
-
-    public Task<List<string>> GetOtherMapBoxNumbersAsync()
-    {
-        return _dbContext.OtherMaps
-            .AsNoTracking()
-            .Select(item => item.BoxNumber)
+            .Where(box => box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock)
+            .Where(box => !string.IsNullOrWhiteSpace(box.BoxCode))
+            .Select(box => box.BoxCode)
             .ToListAsync();
     }
 

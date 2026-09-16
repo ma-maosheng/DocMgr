@@ -603,6 +603,7 @@ namespace DocMgr.Views
                 UserManagementPage => BtnUserMgr,
                 DeptSettingPage => BtnDeptMgr,
                 RoleSettingPage => BtnRoleMgr,
+                PermissionSettingPage => BtnPermissionMgr,
                 ServerPathSettingPage => BtnServerPathMgr,
                 AdvancedDataPage => BtnAdvancedData,
                 BusinessLogicSettingsPage => BtnBusinessLogicSettings,
@@ -902,6 +903,7 @@ namespace DocMgr.Views
             SetNavButton(BtnUserMgr, isSystemAdmin);
             SetNavButton(BtnDeptMgr, isSystemAdmin);
             SetNavButton(BtnRoleMgr, isSystemAdmin);
+            SetNavButton(BtnPermissionMgr, isSystemAdmin);
             SetNavButton(BtnServerPathMgr, ServerPathSettingPermissionSupport.CanMaintain(CurrentUser));
             // 数据浏览对全员开放；删除、清空、还原、字典维护等高危操作在页面内按角色控制。
             SetNavButton(BtnAdvancedData, true);
@@ -1060,6 +1062,17 @@ namespace DocMgr.Views
 
             TxtPageTitle.Text = "系统设置（角色设置）";
             MainContentFrame.Navigate(new RoleSettingPage());
+        }
+
+        private void BtnPermissionSetting_Click(object sender, RoutedEventArgs e)
+        {
+            if (!EnsureSystemSettingsAccess())
+            {
+                return;
+            }
+
+            TxtPageTitle.Text = "系统设置（权限设置）";
+            MainContentFrame.Navigate(new PermissionSettingPage());
         }
 
         private void BtnServerPathSetting_Click(object sender, RoutedEventArgs e)
@@ -1761,7 +1774,7 @@ namespace DocMgr.Views
                 return;
             }
 
-            TxtPageTitle.Text = "系统设置（业务逻辑设置）";
+            TxtPageTitle.Text = "系统设置（逾期设置）";
             MainContentFrame.Navigate(new BusinessLogicSettingsPage());
         }
 

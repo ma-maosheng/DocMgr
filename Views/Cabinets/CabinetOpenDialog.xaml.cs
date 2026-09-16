@@ -51,6 +51,12 @@ namespace DocMgr.Views.Cabinets
                 return;
             }
 
+            // 应用退出（Shutdown）时直接放行，不触发迁档汇总核对门禁。
+            if (Application.Current?.Dispatcher.HasShutdownStarted == true)
+            {
+                return;
+            }
+
             if (viewModel.AllowClose || !viewModel.HasSessionRelocations)
             {
                 return;
@@ -59,7 +65,9 @@ namespace DocMgr.Views.Cabinets
             e.Cancel = true;
             if (!viewModel.IsCloseGateInProgress)
             {
-                _ = viewModel.TryCloseWithSessionGateAsync();
+                // 延迟到 Closing 处理器返回之后再执行门禁：
+                // 窗口处于“关闭中”期间调用 Close() 会抛 InvalidOperationException（无法在关闭期间 Show/Close）。
+                Dispatcher.BeginInvoke(() => _ = viewModel.TryCloseWithSessionGateAsync());
             }
         }
 

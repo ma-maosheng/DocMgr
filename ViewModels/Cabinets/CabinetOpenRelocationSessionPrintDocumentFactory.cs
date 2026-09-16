@@ -5,7 +5,6 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.Shared;
-using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.ViewModels.Cabinets
 {
@@ -122,7 +121,7 @@ namespace DocMgr.ViewModels.Cabinets
             }
 
             var builder = new StringBuilder();
-            builder.Append($"共 {data.Entries.Count} 次。按物理位置路线与编号线下核对后勾选。");
+            builder.Append($"共 {data.Entries.Count} 次。以档案盒、介质袋、盘为单位核对迁移前后位置编号，线下核对后勾选。");
             foreach (var entry in data.Entries)
             {
                 builder.AppendLine();
@@ -135,55 +134,29 @@ namespace DocMgr.ViewModels.Cabinets
                     $"单号：{relocationNo}　□");
                 builder.AppendLine();
                 builder.Append(
-                    $"　{EmptyAsPlaceholder(entry.SourceSlotText)} → {EmptyAsPlaceholder(entry.TargetSlotText)}");
+                    $"　档口：{EmptyAsPlaceholder(entry.SourceSlotText)} → {EmptyAsPlaceholder(entry.TargetSlotText)}");
 
-                if (!string.IsNullOrWhiteSpace(entry.LocationRoutesText))
+                if (entry.ItemRoutes.Count == 0)
+                {
+                    continue;
+                }
+
+                builder.AppendLine();
+                builder.Append("　实体前后位置对应：");
+                foreach (var route in entry.ItemRoutes)
                 {
                     builder.AppendLine();
-                    builder.Append($"　路线：{entry.LocationRoutesText.Trim()}");
-                }
-
-                var codeParts = new List<string>();
-                string containerLabel = ResolveContainerCodesLabel(entry.MediaKind);
-                if (!string.IsNullOrWhiteSpace(containerLabel)
-                    && !string.IsNullOrWhiteSpace(entry.ContainerCodesText))
-                {
-                    codeParts.Add($"{containerLabel}：{entry.ContainerCodesText.Trim()}");
-                }
-
-                if (!string.IsNullOrWhiteSpace(entry.HardDiskCodesText))
-                {
-                    codeParts.Add($"硬盘：{entry.HardDiskCodesText.Trim()}");
-                }
-
-                if (!string.IsNullOrWhiteSpace(entry.OpticalDiscCodesText))
-                {
-                    codeParts.Add($"光盘：{entry.OpticalDiscCodesText.Trim()}");
-                }
-
-                if (codeParts.Count > 0)
-                {
-                    builder.AppendLine();
-                    builder.Append($"　{string.Join("　", codeParts)}");
+                    string entity = string.IsNullOrWhiteSpace(route.EntityKindLabel)
+                        ? "（仅档口级迁移）"
+                        : (string.IsNullOrWhiteSpace(route.EntityCode)
+                            ? route.EntityKindLabel
+                            : $"{route.EntityKindLabel} {route.EntityCode}");
+                    builder.Append(
+                        $"　□ {entity}　{EmptyAsPlaceholder(route.SourceLocation)} → {EmptyAsPlaceholder(route.TargetLocation)}");
                 }
             }
 
             return builder.ToString();
-        }
-
-        private static string ResolveContainerCodesLabel(string mediaKind)
-        {
-            if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
-            {
-                return "盒编号";
-            }
-
-            if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
-            {
-                return "袋编号";
-            }
-
-            return string.Empty;
         }
 
         private static Paragraph CreateFooterParagraph()

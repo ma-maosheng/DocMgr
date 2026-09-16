@@ -5,7 +5,8 @@ using System.Text.RegularExpressions;
 namespace DocMgr.Models.HistoryArchive
 {
     /// <summary>
-    /// 按 GB/T 13989《国家基本比例尺地形图分幅和编号》将历史图上图号换算为现行图号。
+    /// 按 GB/T 13989《国家基本比例尺地形图分幅和编号》将历史图上图号换算为现行图号；
+    /// 并支持老图号（1:20 万图幅基准编号，如 4513-250）换算。
     /// </summary>
     public static class TopoMapCurrentMapNumberSupport
     {
@@ -43,6 +44,23 @@ namespace DocMgr.Models.HistoryArchive
             [2_000] = (576, 576),
             [1_000] = (1152, 1152),
             [500] = (2304, 2304),
+        };
+
+        private static readonly Regex Legacy200kBasedRegex = new(
+            @"^(\d{2})(\d{2})-(\d{1,3})$",
+            RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+        /// <summary>
+        /// 老图号（1:20 万图幅基准编号）前两位与所属 1:100 万图幅的对照表。
+        /// 老图号形如 4513-250：前两位为 1:100 万图幅的档案老代码，中间两位为该图幅内 1:20 万图幅序号（1–36），
+        /// 短横线后为 1:1 万图幅在所属 1:20 万图幅内的序号（1–256，自西北角起行列连续编号）。
+        /// 已用 8 组样本核实：4513-250→J-50-62-58、4513-234→J-50-62-50、4513-252→J-50-62-60、
+        /// 4514-97→J-50-51-49、4514-99→J-50-51-51、4531-25→J-50-122-9、4525-249→J-50-110-57、
+        /// 4525-248→J-50-109-64；档案出现其他前缀时在此补录。
+        /// </summary>
+        private static readonly Dictionary<string, (char RowLetter, int MillionCol)> LegacyMillionthCodeByPrefix = new()
+        {
+            ["45"] = ('J', 50),
         };
 
         /// <summary>
@@ -189,6 +207,11 @@ namespace DocMgr.Models.HistoryArchive
                 return true;
             }
 
+            if (TryConvertLegacy200kBased(denominator, mapNumber, out currentMapNumber))
+            {
+                return true;
+            }
+
             if (!TryParseMillionthAndTokens(mapNumber, out char rowLetter, out int millionCol, out IReadOnlyList<string> tokens))
             {
                 return false;
@@ -217,6 +240,51 @@ namespace DocMgr.Models.HistoryArchive
             }
 
             currentMapNumber = $"{FormatMillionth(rowLetter, millionCol)}{scaleChar}{gridRow:D3}{gridCol:D3}";
+            return true;
+        }
+
+        /// <summary>
+        /// 换算老图号（1:20 万图幅基准编号，如 4513-250）。
+        /// 仅在比例尺为 1:1 万且前缀已收录于 <see cref="LegacyMillionthCodeByPrefix"/> 时生效，
+        /// 其他前缀返回 false 走原有识别链，不会误换算。
+        /// </summary>
+        private static bool TryConvertLegacy200kBased(int denominator, string mapNumber, out string currentMapNumber)
+        {
+            currentMapNumber = string.Empty;
+            if (denominator != 10_000)
+            {
+                return false;
+            }
+
+            Match match = Legacy200kBasedRegex.Match(mapNumber);
+            if (!match.Success)
+            {
+                return false;
+            }
+
+            if (!LegacyMillionthCodeByPrefix.TryGetValue(match.Groups[1].Value, out var millionth))
+            {
+                return false;
+            }
+
+            if (!TryParseSerial(match.Groups[2].Value, 1, 36, out int sheet200k)
+                || !TryParseSerial(match.Groups[3].Value, 1, 256, out int serial10k))
+            {
+                return false;
+            }
+
+            // 1:20 万在 1:100 万内为 6×6、自西北角编号；1:1 万在 1:20 万内为 16×16、自西北角编号。
+            TryRowColFromSerial(sheet200k, columns: 6, out int row200, out int col200);
+            TryRowColFromSerial(serial10k, columns: 16, out int row10, out int col10);
+
+            int gridRow = (row200 - 1) * 16 + row10;
+            int gridCol = (col200 - 1) * 16 + col10;
+            if (gridRow is < 1 or > 96 || gridCol is < 1 or > 96)
+            {
+                return false;
+            }
+
+            currentMapNumber = $"{FormatMillionth(millionth.RowLetter, millionth.MillionCol)}G{gridRow:D3}{gridCol:D3}";
             return true;
         }
 

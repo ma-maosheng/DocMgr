@@ -638,7 +638,6 @@ namespace DocMgr.Services.YearlyArchive
                 var mediaItems = await LoadSimulatedMediaItemsForArchivingAsync(mediaItemIds);
                 var records = await LoadRegisterRecordsForSimulatedArchivingAsync(mediaItems);
 
-                newBox.RegisterRecords.AddRange(records);
                 _archiveFilingRepository.AddArchiveBox(newBox);
 
                 await _archiveFilingRepository.SaveChangesAsync();
@@ -706,12 +705,6 @@ namespace DocMgr.Services.YearlyArchive
 
                 var mediaItems = await LoadSimulatedMediaItemsForArchivingAsync(mediaItemIds);
                 var records = await LoadRegisterRecordsForSimulatedArchivingAsync(mediaItems);
-                var existingRecordIds = box.RegisterRecords.Select(item => item.Id).ToHashSet();
-
-                foreach (var record in records.Where(item => !existingRecordIds.Contains(item.Id)))
-                {
-                    box.RegisterRecords.Add(record);
-                }
 
                 var createdLinks = AddMediaItemLinks(box.Id, mediaItems.Select(item => item.Id), archivedAt);
                 NormalizeBoxPlacementMode(box);
@@ -822,13 +815,6 @@ namespace DocMgr.Services.YearlyArchive
                 currentUser,
                 archivedAt,
                 filingMediaEntryIds);
-
-            var existingRecordIds = unit.RegisterRecords.Select(item => item.Id).ToHashSet();
-
-            foreach (var record in records.Where(item => !existingRecordIds.Contains(item.Id)))
-            {
-                unit.RegisterRecords.Add(record);
-            }
 
             await _archiveFilingRepository.SaveChangesAsync();
 
@@ -1067,9 +1053,7 @@ namespace DocMgr.Services.YearlyArchive
                     $"物理位置编码 [{locationCode}] 已被其他在用档案盒占用，请刷新档口后重试。");
             }
 
-            var historyCodes = (await _archiveFilingRepository.GetTopoMapBoxNumbersAsync())
-                .Concat(await _archiveFilingRepository.GetAerialPhotoBoxNumbersAsync())
-                .Concat(await _archiveFilingRepository.GetOtherMapBoxNumbersAsync())
+            var historyCodes = (await _archiveFilingRepository.GetInStockHistoryArchiveBoxCodesAsync())
                 .SelectMany(SplitArchiveBoxCodes);
 
             if (historyCodes.Any(code =>

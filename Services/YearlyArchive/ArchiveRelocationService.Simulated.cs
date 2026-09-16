@@ -185,15 +185,6 @@ namespace DocMgr.Services.YearlyArchive
                 link.YearlyArchiveBoxId = newBox.Id;
             }
 
-            foreach (var record in source.RegisterRecords.ToList())
-            {
-                source.RegisterRecords.Remove(record);
-                if (!newBox.RegisterRecords.Any(item => item.Id == record.Id))
-                {
-                    newBox.RegisterRecords.Add(record);
-                }
-            }
-
             NormalizeBoxPlacementMode(newBox);
             RetireSimulatedSourceBox(source, operatedAt, operatorName);
 
@@ -255,15 +246,6 @@ namespace DocMgr.Services.YearlyArchive
                 link.YearlyArchiveBoxId = target.Id;
             }
 
-            foreach (var record in source.RegisterRecords.ToList())
-            {
-                source.RegisterRecords.Remove(record);
-                if (!target.RegisterRecords.Any(item => item.Id == record.Id))
-                {
-                    target.RegisterRecords.Add(record);
-                }
-            }
-
             target.ContainerLifecycleStatus = ArchiveContainerLifecycleStatus.InUse;
             NormalizeBoxPlacementMode(target);
             RetireSimulatedSourceBox(source, operatedAt, operatorName);
@@ -301,7 +283,6 @@ namespace DocMgr.Services.YearlyArchive
             source.RetiredAt = operatedAt;
             source.RetiredBy = operatorName;
             source.ContainerLifecycleStatus = ArchiveContainerLifecycleStatus.Retired;
-            source.RegisterRecords.Clear();
             source.BoxLocationCode = string.Empty;
         }
 

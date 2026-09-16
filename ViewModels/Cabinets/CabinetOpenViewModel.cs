@@ -844,10 +844,7 @@ namespace DocMgr.ViewModels.Cabinets
             string? summaryText,
             string sourceSlotText,
             CabinetSlotViewModel targetSlot,
-            string locationRoutesText,
-            string containerCodesText,
-            string hardDiskCodesText,
-            string opticalDiscCodesText)
+            IReadOnlyList<CabinetOpenRelocationSessionItemRoute> itemRoutes)
         {
             ArgumentNullException.ThrowIfNull(targetSlot);
 
@@ -861,10 +858,7 @@ namespace DocMgr.ViewModels.Cabinets
                 SummaryText = summaryText?.Trim() ?? string.Empty,
                 SourceSlotText = string.IsNullOrWhiteSpace(sourceSlotText) ? "—" : sourceSlotText.Trim(),
                 TargetSlotText = FormatSlotDisplayText(Request.CabinetName, CurrentFaceDisplayName, targetSlot.SlotCode),
-                LocationRoutesText = locationRoutesText?.Trim() ?? string.Empty,
-                ContainerCodesText = containerCodesText?.Trim() ?? string.Empty,
-                HardDiskCodesText = hardDiskCodesText?.Trim() ?? string.Empty,
-                OpticalDiscCodesText = opticalDiscCodesText?.Trim() ?? string.Empty
+                ItemRoutes = itemRoutes
             });
         }
 
@@ -904,28 +898,6 @@ namespace DocMgr.ViewModels.Cabinets
 
         private CabinetSlotViewModel? FindSlotByLayerColumn(int row, int column)
             => Slots.FirstOrDefault(slot => slot.LayerIndex == row && slot.ColumnIndex == column);
-
-        private static string JoinCodes(IEnumerable<string?> codes)
-        {
-            var normalized = codes
-                .Select(code => code?.Trim() ?? string.Empty)
-                .Where(code => !string.IsNullOrWhiteSpace(code)
-                    && !string.Equals(code, "未编号", StringComparison.Ordinal)
-                    && !string.Equals(code, "—", StringComparison.Ordinal))
-                .Distinct(StringComparer.Ordinal)
-                .ToList();
-            return normalized.Count == 0 ? string.Empty : string.Join("、", normalized);
-        }
-
-        /// <summary>
-        /// 物理位置迁移路线：完整位置编码，如「辛甲-1-1-01->辛甲-1-2-01」。
-        /// </summary>
-        private static string FormatLocationRoute(string? sourceLocation, string? targetLocation)
-        {
-            string from = string.IsNullOrWhiteSpace(sourceLocation) ? "—" : sourceLocation.Trim();
-            string to = string.IsNullOrWhiteSpace(targetLocation) ? "—" : targetLocation.Trim();
-            return $"{from}->{to}";
-        }
 
         private static string BuildFullLocation(
             string cabinetName,
@@ -990,7 +962,7 @@ namespace DocMgr.ViewModels.Cabinets
             return BuildFullLocation(cabinetName, faceCode, row, column, ResolveMediumSlotSequence(medium));
         }
 
-        private (string LocationRoutes, string ContainerCodes, string HardDiskCodes, string OpticalDiscCodes) CollectBatchItemCodes(
+        private List<CabinetOpenRelocationSessionItemRoute> CollectBatchItemCodes(
             BatchSlotRelocationEndpoint source,
             CabinetSlotViewModel? sourceSlot,
             CabinetSlotViewModel targetSlot)
@@ -1009,7 +981,15 @@ namespace DocMgr.ViewModels.Cabinets
                     ResolveFaceCode(targetSlot.Face),
                     targetSlot.LayerIndex,
                     targetSlot.ColumnIndex);
-                return (FormatLocationRoute(sourceSlotKey, targetSlotKey), string.Empty, string.Empty, string.Empty);
+                return
+                [
+                    new CabinetOpenRelocationSessionItemRoute
+                    {
+                        EntityKindLabel = string.Empty,
+                        SourceLocation = sourceSlotKey,
+                        TargetLocation = targetSlotKey
+                    }
+                ];
             }
 
             string targetFace = ResolveFaceCode(targetSlot.Face);
@@ -1024,13 +1004,12 @@ namespace DocMgr.ViewModels.Cabinets
                     ArchiveRegisterDomainValues.MediaKindHistory,
                     StringComparison.Ordinal);
                 var boxes = sourceSlot.ArchiveBoxes
-                    .Where(box => !historyOnly || (!box.IsMixedPlacement && box.IsHistoryArchiveDisplay))
+                    .Where(box => !historyOnly || box.IsHistoryArchiveDisplay)
                     .OrderBy(box => box.SequenceIndex <= 0 ? int.MaxValue : box.SequenceIndex)
                     .ThenBy(box => box.BoxCode, StringComparer.OrdinalIgnoreCase)
                     .ToList();
                 var occupied = new List<int>();
-                var routes = new List<string>();
-                var containerCodes = new List<string>();
+                var routes = new List<CabinetOpenRelocationSessionItemRoute>();
                 foreach (var box in boxes)
                 {
                     int targetSequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupied);
@@ -1047,11 +1026,16 @@ namespace DocMgr.ViewModels.Cabinets
                         targetRow,
                         targetColumn,
                         targetSequence);
-                    routes.Add(FormatLocationRoute(sourceLocation, targetLocation));
-                    containerCodes.Add(box.BoxCode);
+                    routes.Add(new CabinetOpenRelocationSessionItemRoute
+                    {
+                        EntityKindLabel = CabinetOpenRelocationSessionItemRoute.ArchiveBoxLabel,
+                        EntityCode = box.BoxCode,
+                        SourceLocation = sourceLocation,
+                        TargetLocation = targetLocation
+                    });
                 }
 
-                return (JoinCodes(routes), JoinCodes(containerCodes), string.Empty, string.Empty);
+                return routes;
             }
 
             if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
@@ -1068,10 +1052,7 @@ namespace DocMgr.ViewModels.Cabinets
                     .ToList();
 
                 var occupied = new List<int>();
-                var routes = new List<string>();
-                var containerCodes = new List<string>();
-                var hardDiskCodes = new List<string>();
-                var opticalDiscCodes = new List<string>();
+                var routes = new List<CabinetOpenRelocationSessionItemRoute>();
                 foreach (var item in media)
                 {
                     int targetSequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupied);
@@ -1088,19 +1069,16 @@ namespace DocMgr.ViewModels.Cabinets
                         targetRow,
                         targetColumn,
                         targetSequence);
-                    routes.Add(FormatLocationRoute(sourceLocation, targetLocation));
-                    containerCodes.Add(item.ElectronicArchiveNoText);
-                    if (item.IsOpticalDiscMedia)
+                    routes.Add(new CabinetOpenRelocationSessionItemRoute
                     {
-                        opticalDiscCodes.Add(item.DiskCodeText);
-                    }
-                    else
-                    {
-                        hardDiskCodes.Add(item.DiskCodeText);
-                    }
+                        EntityKindLabel = CabinetOpenRelocationSessionItemRoute.ElectronicBagLabel,
+                        EntityCode = BuildElectronicBagEntityCode(item.ElectronicArchiveNoText, item.DiskCodeText, item.IsOpticalDiscMedia),
+                        SourceLocation = sourceLocation,
+                        TargetLocation = targetLocation
+                    });
                 }
 
-                return (JoinCodes(routes), JoinCodes(containerCodes), JoinCodes(hardDiskCodes), JoinCodes(opticalDiscCodes));
+                return routes;
             }
 
             string sourceKey = ArchiveSlotLocationSupport.BuildSlotKey(
@@ -1113,51 +1091,86 @@ namespace DocMgr.ViewModels.Cabinets
                 targetFace,
                 targetRow,
                 targetColumn);
-            string sharedRoute = FormatLocationRoute(sourceKey, targetKey);
 
-            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal))
+            if (!string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindBlankHardDisk, StringComparison.Ordinal)
+                && !string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindDamagedHardDisk, StringComparison.Ordinal)
+                && !string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc, StringComparison.Ordinal))
             {
-                var codes = sourceSlot.HardDiskMediaItems
-                    .Where(item => item.IsBlankHardDiskRelocationCandidate)
-                    .Select(item => item.DiskCodeText)
-                    .ToList();
-                return (
-                    codes.Count == 0 ? string.Empty : sharedRoute,
-                    string.Empty,
-                    JoinCodes(codes),
-                    string.Empty);
+                return
+                [
+                    new CabinetOpenRelocationSessionItemRoute
+                    {
+                        EntityKindLabel = string.Empty,
+                        SourceLocation = sourceKey,
+                        TargetLocation = targetKey
+                    }
+                ];
             }
 
-            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindDamagedHardDisk, StringComparison.Ordinal))
-            {
-                var codes = sourceSlot.HardDiskMediaItems
-                    .Where(item => item.IsDamagedHardDiskRelocationCandidate)
-                    .Select(item => item.DiskCodeText)
-                    .ToList();
-                return (
-                    codes.Count == 0 ? string.Empty : sharedRoute,
-                    string.Empty,
-                    JoinCodes(codes),
-                    string.Empty);
-            }
-
-            if (string.Equals(source.MediaKind, ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc, StringComparison.Ordinal))
-            {
-                var codes = sourceSlot.HardDiskMediaItems
-                    .Where(item => item.IsDamagedOpticalDiscRelocationCandidate)
-                    .Select(item => item.DiskCodeText)
-                    .ToList();
-                return (
-                    codes.Count == 0 ? string.Empty : sharedRoute,
-                    string.Empty,
-                    string.Empty,
-                    JoinCodes(codes));
-            }
-
-            return (sharedRoute, string.Empty, string.Empty, string.Empty);
+            return CollectBareMediumRoutes(
+                sourceSlot,
+                sourceKey,
+                targetKey,
+                source.MediaKind);
         }
 
-        private (string SourceSlotText, string LocationRoutes, string ContainerCodes, string HardDiskCodes, string OpticalDiscCodes) CollectInteractiveItemCodes(
+        /// <summary>
+        /// 空白盘/损坏盘/损坏光盘等裸介质：逐盘生成「盘号 原位置->新位置」路线。
+        /// </summary>
+        private static List<CabinetOpenRelocationSessionItemRoute> CollectBareMediumRoutes(
+            CabinetSlotViewModel sourceSlot,
+            string sourceSlotKey,
+            string targetSlotKey,
+            string mediaKind)
+        {
+            bool isDamagedOpticalDisc = string.Equals(
+                mediaKind,
+                ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc,
+                StringComparison.Ordinal);
+            var media = sourceSlot.HardDiskMediaItems
+                .Where(item => isDamagedOpticalDisc
+                    ? item.IsDamagedOpticalDiscRelocationCandidate
+                    : (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindDamagedHardDisk, StringComparison.Ordinal)
+                        ? item.IsDamagedHardDiskRelocationCandidate
+                        : item.IsBlankHardDiskRelocationCandidate))
+                .Select(item => item.DiskCodeText)
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            return media
+                .Select(code => new CabinetOpenRelocationSessionItemRoute
+                {
+                    EntityKindLabel = isDamagedOpticalDisc
+                        ? CabinetOpenRelocationSessionItemRoute.OpticalDiscLabel
+                        : CabinetOpenRelocationSessionItemRoute.HardDiskLabel,
+                    EntityCode = code,
+                    SourceLocation = sourceSlotKey,
+                    TargetLocation = targetSlotKey
+                })
+                .ToList();
+        }
+
+        /// <summary>
+        /// 介质袋实体文本：袋号（硬盘 盘号）/（光盘 盘号）；无袋号时仅盘号。
+        /// </summary>
+        private static string BuildElectronicBagEntityCode(string bagNo, string diskCode, bool isOpticalDisc)
+        {
+            string bag = bagNo?.Trim() ?? string.Empty;
+            string disk = diskCode?.Trim() ?? string.Empty;
+            string kindToken = isOpticalDisc
+                ? CabinetOpenRelocationSessionItemRoute.OpticalDiscLabel
+                : CabinetOpenRelocationSessionItemRoute.HardDiskLabel;
+            if (string.IsNullOrWhiteSpace(bag))
+            {
+                return disk.Length == 0 ? kindToken : $"{kindToken} {disk}";
+            }
+
+            return string.IsNullOrWhiteSpace(disk)
+                ? bag
+                : $"{bag}（{kindToken} {disk}）";
+        }
+
+        private (string SourceSlotText, List<CabinetOpenRelocationSessionItemRoute> ItemRoutes) CollectInteractiveItemCodes(
             IReadOnlyList<InteractiveItemRelocationSource> sources,
             CabinetSlotViewModel targetSlot)
         {
@@ -1165,7 +1178,7 @@ namespace DocMgr.ViewModels.Cabinets
 
             if (sources.Count == 0)
             {
-                return ("—", string.Empty, string.Empty, string.Empty, string.Empty);
+                return ("—", []);
             }
 
             string sourceSlotText = ResolveInteractiveSourceSlotText(sources[0]);
@@ -1192,7 +1205,7 @@ namespace DocMgr.ViewModels.Cabinets
                     .Where(seq => seq > 0)
                     .ToList();
 
-                var routes = new List<string>();
+                var routes = new List<CabinetOpenRelocationSessionItemRoute>();
                 foreach (string sourceCode in sourceCodes)
                 {
                     int targetSequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupied);
@@ -1203,10 +1216,16 @@ namespace DocMgr.ViewModels.Cabinets
                         targetRow,
                         targetColumn,
                         targetSequence);
-                    routes.Add(FormatLocationRoute(sourceCode, targetLocation));
+                    routes.Add(new CabinetOpenRelocationSessionItemRoute
+                    {
+                        EntityKindLabel = CabinetOpenRelocationSessionItemRoute.ArchiveBoxLabel,
+                        EntityCode = sourceCode,
+                        SourceLocation = sourceCode,
+                        TargetLocation = targetLocation
+                    });
                 }
 
-                return (sourceSlotText, JoinCodes(routes), JoinCodes(sourceCodes), string.Empty, string.Empty);
+                return (sourceSlotText, routes);
             }
 
             if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
@@ -1218,8 +1237,7 @@ namespace DocMgr.ViewModels.Cabinets
                     .Where(index => index > 0)
                     .ToList();
 
-                var routes = new List<string>();
-                var boxCodes = new List<string>();
+                var routes = new List<CabinetOpenRelocationSessionItemRoute>();
                 foreach (var source in sources)
                 {
                     var box = Slots.SelectMany(slot => slot.ArchiveBoxes)
@@ -1241,17 +1259,19 @@ namespace DocMgr.ViewModels.Cabinets
                         targetRow,
                         targetColumn,
                         targetSequence);
-                    routes.Add(FormatLocationRoute(sourceLocation, targetLocation));
-                    boxCodes.Add(code);
+                    routes.Add(new CabinetOpenRelocationSessionItemRoute
+                    {
+                        EntityKindLabel = CabinetOpenRelocationSessionItemRoute.ArchiveBoxLabel,
+                        EntityCode = code,
+                        SourceLocation = sourceLocation,
+                        TargetLocation = targetLocation
+                    });
                 }
 
-                return (sourceSlotText, JoinCodes(routes), JoinCodes(boxCodes), string.Empty, string.Empty);
+                return (sourceSlotText, routes);
             }
 
-            var containerCodes = new List<string>();
-            var hardDiskCodes = new List<string>();
-            var opticalDiscCodes = new List<string>();
-            var locationRoutes = new List<string>();
+            var itemRoutes = new List<CabinetOpenRelocationSessionItemRoute>();
 
             bool hasSlotSequence = string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal);
             var sourceUnitIds = sources.Select(item => item.SourceUnitId).Where(id => id > 0).ToHashSet();
@@ -1329,52 +1349,56 @@ namespace DocMgr.ViewModels.Cabinets
                     targetLocation = targetSlotKey;
                 }
 
-                locationRoutes.Add(FormatLocationRoute(sourceLocation, targetLocation));
-
+                string entityKindLabel;
+                string entityCode;
                 if (medium != null)
                 {
-                    if (!string.IsNullOrWhiteSpace(medium.ElectronicArchiveNoText))
-                    {
-                        containerCodes.Add(medium.ElectronicArchiveNoText);
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(medium.DiskCodeText))
-                    {
-                        if (medium.IsOpticalDiscMedia
-                            || string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc, StringComparison.Ordinal))
-                        {
-                            opticalDiscCodes.Add(medium.DiskCodeText);
-                        }
-                        else
-                        {
-                            hardDiskCodes.Add(medium.DiskCodeText);
-                        }
-                    }
+                    bool isOpticalDisc = medium.IsOpticalDiscMedia
+                        || string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc, StringComparison.Ordinal);
+                    entityKindLabel = string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
+                        ? CabinetOpenRelocationSessionItemRoute.ElectronicBagLabel
+                        : (isOpticalDisc
+                            ? CabinetOpenRelocationSessionItemRoute.OpticalDiscLabel
+                            : CabinetOpenRelocationSessionItemRoute.HardDiskLabel);
+                    entityCode = string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
+                        ? BuildElectronicBagEntityCode(medium.ElectronicArchiveNoText, medium.DiskCodeText, isOpticalDisc)
+                        : medium.DiskCodeText;
                 }
                 else if (!string.IsNullOrWhiteSpace(source.DisplayText))
                 {
                     if (string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal))
                     {
-                        containerCodes.Add(source.DisplayText);
+                        entityKindLabel = CabinetOpenRelocationSessionItemRoute.ElectronicBagLabel;
+                        entityCode = source.DisplayText;
                     }
                     else if (source.IsOpticalDiscMedia
                         || string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindDamagedOpticalDisc, StringComparison.Ordinal))
                     {
-                        opticalDiscCodes.Add(source.DisplayText);
+                        entityKindLabel = CabinetOpenRelocationSessionItemRoute.OpticalDiscLabel;
+                        entityCode = source.DisplayText;
                     }
                     else
                     {
-                        hardDiskCodes.Add(source.DisplayText);
+                        entityKindLabel = CabinetOpenRelocationSessionItemRoute.HardDiskLabel;
+                        entityCode = source.DisplayText;
                     }
                 }
+                else
+                {
+                    entityKindLabel = string.Empty;
+                    entityCode = string.Empty;
+                }
+
+                itemRoutes.Add(new CabinetOpenRelocationSessionItemRoute
+                {
+                    EntityKindLabel = entityKindLabel,
+                    EntityCode = entityCode,
+                    SourceLocation = sourceLocation,
+                    TargetLocation = targetLocation
+                });
             }
 
-            return (
-                sourceSlotText,
-                JoinCodes(locationRoutes),
-                JoinCodes(containerCodes),
-                JoinCodes(hardDiskCodes),
-                JoinCodes(opticalDiscCodes));
+            return (sourceSlotText, itemRoutes);
         }
 
         private static string BuildFullLocationFromSlotKey(string? slotKey, int sequenceIndex)
@@ -2324,6 +2348,41 @@ namespace DocMgr.ViewModels.Cabinets
             });
         }
 
+        /// <summary>
+        /// 跨柜迁档成功后，若源柜/源面与当前窗口不同，则额外广播源柜刷新，
+        /// 使并存的源柜开柜窗（非模态双窗场景）同步更新档口占用。
+        /// </summary>
+        private void BroadcastSourceCabinetRefresh(int sourceCabinetId, CabinetFace sourceCabinetFace)
+        {
+            if (sourceCabinetId <= 0
+                || sourceCabinetId == Request.CabinetId && sourceCabinetFace == Request.Face)
+            {
+                return;
+            }
+
+            _cabinetOpenLayoutRefreshNotifier.RequestRefresh(new CabinetOpenLayoutRefreshScope
+            {
+                CabinetId = sourceCabinetId,
+                Face = sourceCabinetFace
+            });
+        }
+
+        private void BroadcastSourceCabinetRefresh(IReadOnlyList<InteractiveItemRelocationSource> sources)
+        {
+            var first = sources.Count > 0 ? sources[0] : null;
+            if (first == null)
+            {
+                return;
+            }
+
+            BroadcastSourceCabinetRefresh(first.SourceCabinetId, first.SourceCabinetFace);
+        }
+
+        private void BroadcastSourceCabinetRefresh(BatchSlotRelocationEndpoint source)
+        {
+            BroadcastSourceCabinetRefresh(source.CabinetId, ParseFaceCode(source.FaceCode));
+        }
+
         private void OnLayoutRefreshRequested(CabinetOpenLayoutRefreshScope scope)
         {
             if (!MatchesLayoutRefreshScope(scope))
@@ -2693,6 +2752,7 @@ namespace DocMgr.ViewModels.Cabinets
                 _batchSlotRelocationSession.SetSource(new BatchSlotRelocationEndpoint
                 {
                     CabinetName = Request.CabinetName,
+                    CabinetId = Request.CabinetId,
                     FaceCode = ResolveFaceCode(slot.Face),
                     Row = slot.LayerIndex,
                     Column = slot.ColumnIndex,
@@ -2714,6 +2774,7 @@ namespace DocMgr.ViewModels.Cabinets
                 _batchSlotRelocationSession.SetSource(new BatchSlotRelocationEndpoint
                 {
                     CabinetName = Request.CabinetName,
+                    CabinetId = Request.CabinetId,
                     FaceCode = ResolveFaceCode(slot.Face),
                     Row = slot.LayerIndex,
                     Column = slot.ColumnIndex,
@@ -2735,6 +2796,7 @@ namespace DocMgr.ViewModels.Cabinets
                 _batchSlotRelocationSession.SetSource(new BatchSlotRelocationEndpoint
                 {
                     CabinetName = Request.CabinetName,
+                    CabinetId = Request.CabinetId,
                     FaceCode = ResolveFaceCode(slot.Face),
                     Row = slot.LayerIndex,
                     Column = slot.ColumnIndex,
@@ -2780,6 +2842,7 @@ namespace DocMgr.ViewModels.Cabinets
             _batchSlotRelocationSession.SetSource(new BatchSlotRelocationEndpoint
             {
                 CabinetName = Request.CabinetName,
+                CabinetId = Request.CabinetId,
                 FaceCode = ResolveFaceCode(slot.Face),
                 Row = slot.LayerIndex,
                 Column = slot.ColumnIndex,
@@ -2991,7 +3054,7 @@ namespace DocMgr.ViewModels.Cabinets
                 if (result.Success)
                 {
                     var sourceSlot = FindSlotByEndpoint(source);
-                    var (locationRoutes, containerCodes, hardDiskCodes, opticalDiscCodes) = CollectBatchItemCodes(source, sourceSlot, slot);
+                    List<CabinetOpenRelocationSessionItemRoute> itemRoutes = CollectBatchItemCodes(source, sourceSlot, slot);
                     string sourceSlotText = FormatBatchSourceSlotText(source);
                     RecordSessionRelocation(
                         mediaKind: source.MediaKind,
@@ -3000,13 +3063,11 @@ namespace DocMgr.ViewModels.Cabinets
                         summaryText: preview.SummaryText,
                         sourceSlotText: sourceSlotText,
                         targetSlot: slot,
-                        locationRoutesText: locationRoutes,
-                        containerCodesText: containerCodes,
-                        hardDiskCodesText: hardDiskCodes,
-                        opticalDiscCodesText: opticalDiscCodes);
+                        itemRoutes: itemRoutes);
                     _batchSlotRelocationSession.ClearSource();
                     _dialogService.ShowMessage($"{result.Message}\n迁档单号：{result.RelocationNo}", "批量搬迁完成");
                     ReloadSlotsAndBroadcast();
+                    BroadcastSourceCabinetRefresh(source);
                 }
                 else
                 {
@@ -3091,7 +3152,9 @@ namespace DocMgr.ViewModels.Cabinets
                 BoxSpecification = box.BoxSpecification,
                 SourceDedicatedSlotCategoryName = isHistory ? slot.DedicatedSlotCategoryName : string.Empty,
                 SourceStorageLocation = isHistory ? box.BoxCode : BuildFullLocationFromSlotKey(slotKey, box.SequenceIndex),
-                SourceSlotKey = slotKey
+                SourceSlotKey = slotKey,
+                SourceCabinetId = Request.CabinetId,
+                SourceCabinetFace = slot.Face
             }).ToList());
 
             string message = isHistory
@@ -3155,7 +3218,7 @@ namespace DocMgr.ViewModels.Cabinets
             _dialogService.ShowMessage(message, "交互式迁档");
         }
 
-        private static InteractiveItemRelocationSource BuildMediumRelocationSource(
+        private InteractiveItemRelocationSource BuildMediumRelocationSource(
             CabinetHardDiskMediumItemViewModel medium,
             CabinetSlotViewModel slot,
             string slotKey,
@@ -3173,6 +3236,8 @@ namespace DocMgr.ViewModels.Cabinets
                     SourceDedicatedSlotCategoryName = slot.DedicatedSlotCategoryName,
                     SourceStorageLocation = medium.CurrentLocationText,
                     SourceSlotKey = slotKey,
+                    SourceCabinetId = Request.CabinetId,
+                    SourceCabinetFace = slot.Face,
                     IsOpticalDiscMedia = medium.IsOpticalDiscMedia
                 };
             }
@@ -3188,6 +3253,8 @@ namespace DocMgr.ViewModels.Cabinets
                 SourceDedicatedSlotCategoryName = slot.DedicatedSlotCategoryName,
                 SourceStorageLocation = medium.CurrentLocationText,
                 SourceSlotKey = slotKey,
+                SourceCabinetId = Request.CabinetId,
+                SourceCabinetFace = slot.Face,
                 IsOpticalDiscMedia = medium.IsOpticalDiscMedia
             };
         }
@@ -3306,7 +3373,9 @@ namespace DocMgr.ViewModels.Cabinets
                 BoxSpecification = boxes[0].BoxSpecification,
                 SourceDedicatedSlotCategoryName = isHistory && slot != null ? slot.DedicatedSlotCategoryName : string.Empty,
                 SourceStorageLocation = boxes[0].BoxCode,
-                SourceSlotKey = slotKey
+                SourceSlotKey = slotKey,
+                SourceCabinetId = Request.CabinetId,
+                SourceCabinetFace = slot?.Face ?? Request.Face
             };
         }
 
@@ -3364,6 +3433,8 @@ namespace DocMgr.ViewModels.Cabinets
                 SourceDedicatedSlotCategoryName = slot.DedicatedSlotCategoryName,
                 SourceStorageLocation = first.SourceStorageLocation,
                 SourceSlotKey = slotKey,
+                SourceCabinetId = Request.CabinetId,
+                SourceCabinetFace = slot.Face,
                 IsOpticalDiscMedia = media[0].IsOpticalDiscMedia
             };
         }
@@ -3494,8 +3565,7 @@ namespace DocMgr.ViewModels.Cabinets
                     string modeLabel = sources.Count > 1
                         ? $"多选迁档（{sources.Count}项）"
                         : "单件迁档";
-                    var (sourceSlotText, locationRoutes, containerCodes, hardDiskCodes, opticalDiscCodes) =
-                        CollectInteractiveItemCodes(sources, slot);
+                    var (sourceSlotText, itemRoutes) = CollectInteractiveItemCodes(sources, slot);
                     RecordSessionRelocation(
                         mediaKind: request.MediaKind,
                         modeLabel: modeLabel,
@@ -3503,16 +3573,14 @@ namespace DocMgr.ViewModels.Cabinets
                         summaryText: preview.SummaryText,
                         sourceSlotText: sourceSlotText,
                         targetSlot: slot,
-                        locationRoutesText: locationRoutes,
-                        containerCodesText: containerCodes,
-                        hardDiskCodesText: hardDiskCodes,
-                        opticalDiscCodesText: opticalDiscCodes);
+                        itemRoutes: itemRoutes);
                     _interactiveItemRelocationSession.ClearSource();
                     string noText = string.IsNullOrWhiteSpace(result.RelocationNo)
                         ? string.Empty
                         : $"\n迁档单号：{result.RelocationNo}";
                     _dialogService.ShowMessage($"{result.Message}{noText}", "迁档完成");
                     ReloadSlotsAndBroadcast();
+                    BroadcastSourceCabinetRefresh(sources);
                 }
                 else
                 {

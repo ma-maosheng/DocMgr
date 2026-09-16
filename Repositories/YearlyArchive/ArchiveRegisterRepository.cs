@@ -45,35 +45,11 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ArchiveBoxLinks)
                         .ThenInclude(link => link.ArchiveBox)
+                            .ThenInclude(box => box!.MediaItemLinks)
+                                .ThenInclude(link => link.MediaItem)
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.ElectronicArchiveUnitLinks)
                     .ThenInclude(link => link.ElectronicArchiveUnit)
-            .Include(record => record.ArchiveBoxes)
-                .ThenInclude(box => box.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item!.MediaEntry)
-            .Include(record => record.ArchiveBoxes)
-                .ThenInclude(box => box.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item!.ElectronicDetail!)
-                            .ThenInclude(detail => detail.Entries)
-            .Include(record => record.ArchiveBoxes)
-                .ThenInclude(box => box.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item!.SimulatedDetail!)
-            .Include(record => record.ElectronicArchiveUnits)
-                .ThenInclude(unit => unit.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item!.MediaEntry)
-            .Include(record => record.ElectronicArchiveUnits)
-                .ThenInclude(unit => unit.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item!.ElectronicDetail!)
-                            .ThenInclude(detail => detail.Entries)
-            .Include(record => record.ElectronicArchiveUnits)
-                .ThenInclude(unit => unit.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item!.SimulatedDetail!)
             .FirstOrDefaultAsync(record => record.FormNo == formNo);
     }
 
@@ -91,44 +67,24 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ArchiveBoxLinks)
                         .ThenInclude(link => link.ArchiveBox)
+                            .ThenInclude(box => box!.MediaItemLinks)
+                                .ThenInclude(link => link.MediaItem)
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.ElectronicArchiveUnitLinks)
                     .ThenInclude(link => link.ElectronicArchiveUnit)
-            .Include(record => record.ArchiveBoxes)
-                .ThenInclude(box => box.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item!.MediaEntry)
-            .Include(record => record.ArchiveBoxes)
-                .ThenInclude(box => box.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item!.ElectronicDetail!)
-                            .ThenInclude(detail => detail.Entries)
-            .Include(record => record.ArchiveBoxes)
-                .ThenInclude(box => box.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item!.SimulatedDetail!)
-            .Include(record => record.ElectronicArchiveUnits)
-                .ThenInclude(unit => unit.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item!.MediaEntry)
-            .Include(record => record.ElectronicArchiveUnits)
-                .ThenInclude(unit => unit.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item!.ElectronicDetail!)
-                            .ThenInclude(detail => detail.Entries)
-            .Include(record => record.ElectronicArchiveUnits)
-                .ThenInclude(unit => unit.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item!.SimulatedDetail!)
             .FirstOrDefaultAsync(record => record.Id == id);
     }
 
     public Task<List<YearlyArchiveRegisterRecord>> SearchRecordsAsync(string keyword, int? year, int? status, int? projectId)
     {
         IQueryable<YearlyArchiveRegisterRecord> query = _dbContext.YearlyArchiveRegisterRecords
-            .Include(record => record.ArchiveBoxes)
-            .Include(record => record.ElectronicArchiveUnits)
             .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.Items)
+                    .ThenInclude(item => item.ArchiveBoxLinks)
+                        .ThenInclude(link => link.ArchiveBox)
+            .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.ElectronicArchiveUnitLinks)
+                    .ThenInclude(link => link.ElectronicArchiveUnit)
             .AsQueryable();
 
         if (year.HasValue && year.Value > 0)
@@ -154,12 +110,17 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                 (record.ApplicantName ?? string.Empty).Contains(keyword) ||
                 (record.ProjectName ?? string.Empty).Contains(keyword) ||
                 (record.ProvideUnit ?? string.Empty).Contains(keyword) ||
-                record.ArchiveBoxes.Any(box =>
-                    (box.ArchiveSequenceNo ?? string.Empty).Contains(keyword) ||
-                    (box.BoxLocationCode ?? string.Empty).Contains(keyword)) ||
-                record.ElectronicArchiveUnits.Any(unit =>
-                    (unit.ElectronicArchiveNo ?? string.Empty).Contains(keyword) ||
-                    (unit.StorageLocation ?? string.Empty).Contains(keyword)));
+                record.MediaEntries.Any(media =>
+                    media.Items.Any(item =>
+                        item.ArchiveBoxLinks.Any(boxLink =>
+                            (boxLink.ArchiveBox.ArchiveSequenceNo ?? string.Empty).Contains(keyword) ||
+                            (boxLink.ArchiveBox.BoxLocationCode ?? string.Empty).Contains(keyword))
+                        || item.ElectronicArchiveUnitMediaItemLinks.Any(unitLink =>
+                            (unitLink.ElectronicArchiveUnit.ElectronicArchiveNo ?? string.Empty).Contains(keyword) ||
+                            (unitLink.ElectronicArchiveUnit.StorageLocation ?? string.Empty).Contains(keyword)))
+                    || media.ElectronicArchiveUnitLinks.Any(unitLink =>
+                        (unitLink.ElectronicArchiveUnit.ElectronicArchiveNo ?? string.Empty).Contains(keyword) ||
+                        (unitLink.ElectronicArchiveUnit.StorageLocation ?? string.Empty).Contains(keyword))));
         }
 
         return query.OrderByDescending(record => record.CreatedDate).ToListAsync();
@@ -189,7 +150,6 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
             .Include(item => item.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(mediaItem => mediaItem.SimulatedDetail!)
-            .Include(item => item.ArchiveBoxes)
             .FirstOrDefaultAsync(item => item.Id == record.Id || (record.Id == 0 && item.FormNo == record.FormNo));
 
         if (existingRecord == null)
@@ -385,8 +345,13 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
     {
         return _dbContext.YearlyArchiveRegisterRecords
             .AsNoTracking()
-            .Include(record => record.ArchiveBoxes)
-            .Include(record => record.ElectronicArchiveUnits)
+            .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.Items)
+                    .ThenInclude(item => item.ArchiveBoxLinks)
+                        .ThenInclude(link => link.ArchiveBox)
+            .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.ElectronicArchiveUnitLinks)
+                    .ThenInclude(link => link.ElectronicArchiveUnit)
             .Where(record => record.ApplicantName == applicantName)
             .OrderByDescending(record => record.CreatedDate)
             .ToListAsync();
@@ -396,8 +361,13 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
     {
         return _dbContext.YearlyArchiveRegisterRecords
             .AsNoTracking()
-            .Include(record => record.ArchiveBoxes)
-            .Include(record => record.ElectronicArchiveUnits)
+            .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.Items)
+                    .ThenInclude(item => item.ArchiveBoxLinks)
+                        .ThenInclude(link => link.ArchiveBox)
+            .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.ElectronicArchiveUnitLinks)
+                    .ThenInclude(link => link.ElectronicArchiveUnit)
             .Where(record => record.CreatedDate.Year == year)
             .OrderBy(record => record.Status)
             .ThenByDescending(record => record.CreatedDate)

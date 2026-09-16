@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using DocMgr.Data;
 using DocMgr.Models.HistoryArchive;
+using Microsoft.EntityFrameworkCore;
 
 namespace DocMgr.Services.HistoryArchive
 {
@@ -71,12 +72,18 @@ namespace DocMgr.Services.HistoryArchive
             }
 
             List<int> recordIds = rows.Select(idSelector).Distinct().ToList();
+
+            // 投影水合必须绕开变更跟踪：长生命周期作用域的 DbContext 一旦跟踪过旧盒号实体，
+            // 跟踪查询会经身份解析返回内存中的过期 BoxCode（其他作用域迁档提交后不刷新），
+            // 导致迁档后按新盒号查询档案盒内容为空。此处为纯读投影，必须直读数据库最新值。
             var boxIdLookup = dbContext.HistoryArchiveBoxes
+                .AsNoTracking()
                 .ToDictionary(box => box.Id, box => box, EqualityComparer<int>.Default);
             var codesByRecordId = new Dictionary<int, List<string>>();
             var specByRecordId = new Dictionary<int, string>();
 
             foreach (var link in dbContext.HistoryArchiveBoxLedgerLinks
+                .AsNoTracking()
                 .Where(link => link.MaterialKind == materialKind && recordIds.Contains(link.RecordId))
                 .OrderBy(link => link.Id)
                 .ToList())

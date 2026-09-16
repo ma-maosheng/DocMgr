@@ -36,6 +36,12 @@ namespace DocMgr.Models.Cabinets
 
         public string SourceSlotKey { get; init; } = string.Empty;
 
+        /// <summary>源柜体 ID；用于跨柜迁档成功后定向刷新源柜开柜窗。</summary>
+        public int SourceCabinetId { get; init; }
+
+        /// <summary>源柜面；用于跨柜迁档成功后定向刷新源柜开柜窗。</summary>
+        public CabinetFace SourceCabinetFace { get; init; }
+
         public string DisplayText { get; init; } = string.Empty;
 
         public bool IsOpticalDiscMedia { get; init; }
@@ -61,7 +67,9 @@ namespace DocMgr.Models.Cabinets
                     BoxSpecification = BoxSpecification,
                     SourceDedicatedSlotCategoryName = SourceDedicatedSlotCategoryName,
                     SourceStorageLocation = SourceStorageLocation,
-                    SourceSlotKey = SourceSlotKey
+                    SourceSlotKey = SourceSlotKey,
+                    SourceCabinetId = SourceCabinetId,
+                    SourceCabinetFace = SourceCabinetFace
                 }).ToList();
             }
 
@@ -76,7 +84,9 @@ namespace DocMgr.Models.Cabinets
                     BoxSpecification = BoxSpecification,
                     SourceDedicatedSlotCategoryName = SourceDedicatedSlotCategoryName,
                     SourceStorageLocation = SourceStorageLocation,
-                    SourceSlotKey = SourceSlotKey
+                    SourceSlotKey = SourceSlotKey,
+                    SourceCabinetId = SourceCabinetId,
+                    SourceCabinetFace = SourceCabinetFace
                 }).ToList();
             }
 
@@ -91,6 +101,8 @@ namespace DocMgr.Models.Cabinets
                     SourceDedicatedSlotCategoryName = SourceDedicatedSlotCategoryName,
                     SourceStorageLocation = SourceStorageLocation,
                     SourceSlotKey = SourceSlotKey,
+                    SourceCabinetId = SourceCabinetId,
+                    SourceCabinetFace = SourceCabinetFace,
                     IsOpticalDiscMedia = IsOpticalDiscMedia
                 }).ToList();
             }
@@ -105,6 +117,8 @@ namespace DocMgr.Models.Cabinets
                     SourceDedicatedSlotCategoryName = SourceDedicatedSlotCategoryName,
                     SourceStorageLocation = SourceStorageLocation,
                     SourceSlotKey = SourceSlotKey,
+                    SourceCabinetId = SourceCabinetId,
+                    SourceCabinetFace = SourceCabinetFace,
                     IsOpticalDiscMedia = IsOpticalDiscMedia
                 }).ToList();
             }
@@ -123,6 +137,8 @@ namespace DocMgr.Models.Cabinets
                     SourceDedicatedSlotCategoryName = SourceDedicatedSlotCategoryName,
                     SourceStorageLocation = SourceStorageLocation,
                     SourceSlotKey = SourceSlotKey,
+                    SourceCabinetId = SourceCabinetId,
+                    SourceCabinetFace = SourceCabinetFace,
                     IsOpticalDiscMedia = IsOpticalDiscMedia
                 }
             ];

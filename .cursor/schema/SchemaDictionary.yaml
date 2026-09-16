@@ -2881,26 +2881,6 @@ tables:
         clrType: DateTime
         needsReview: false
         aliases: []
-  YearlyArchiveBoxYearlyArchiveRegisterRecord:
-    tableName: YearlyArchiveBoxYearlyArchiveRegisterRecord
-    chineseName: 档案盒-登记申请关联
-    description: 年度档案盒与年度资料登记申请的多对多关联（EF 隐式中间表）。
-    isView: false
-    deprecated: false
-    aliases: []
-    fields:
-      ArchiveBoxesId:
-        chineseName: 年度档案盒ID
-        description: ''
-        clrType: Int32
-        needsReview: false
-        aliases: []
-      RegisterRecordsId:
-        chineseName: 登记申请ID
-        description: ''
-        clrType: Int32
-        needsReview: false
-        aliases: []
   YearlyArchiveBox:
     tableName: YearlyArchiveBoxes
     chineseName: 年度档案盒
@@ -4787,26 +4767,6 @@ tables:
         chineseName: 部门审核日期
         description: ''
         clrType: DateTime?
-        needsReview: false
-        aliases: []
-  YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit:
-    tableName: YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit
-    chineseName: 登记申请-电子立档单元关联
-    description: 年度资料登记申请与电子立档单元的多对多关联（EF 隐式中间表）。
-    isView: false
-    deprecated: false
-    aliases: []
-    fields:
-      ElectronicArchiveUnitsId:
-        chineseName: 电子立档单元ID
-        description: ''
-        clrType: Int32
-        needsReview: false
-        aliases: []
-      RegisterRecordsId:
-        chineseName: 登记申请ID
-        description: ''
-        clrType: Int32
         needsReview: false
         aliases: []
   YearlyArchiveRelocationItem:

@@ -5,7 +5,7 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:vm="clr-namespace:DocMgr.ViewModels.SystemSettings"
       mc:Ignorable="d"
-      Title="业务逻辑设置" Background="White"
+      Title="逾期设置" Background="White"
       d:DataContext="{d:DesignInstance Type=vm:BusinessLogicSettingsViewModel}">
 
     <Grid Margin="20">
@@ -15,7 +15,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Text="业务逻辑设置" FontSize="20" FontWeight="Bold" Foreground="#333"/>
+        <TextBlock Text="逾期设置" FontSize="20" FontWeight="Bold" Foreground="#333"/>
 
         <StackPanel Grid.Row="1" Margin="0,20,0,0">
             <TextBlock Text="申请单逾期设置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>

@@ -332,15 +332,6 @@ namespace DocMgr.Services.YearlyArchive
                 entryLink.YearlyElectronicArchiveUnitId = target.Id;
             }
 
-            foreach (var record in source.RegisterRecords.ToList())
-            {
-                source.RegisterRecords.Remove(record);
-                if (!target.RegisterRecords.Any(item => item.Id == record.Id))
-                {
-                    target.RegisterRecords.Add(record);
-                }
-            }
-
             target.UnitLifecycleStatus = ArchiveContainerLifecycleStatus.InUse;
             target.MediaCount = target.MediaItemLinks.Count;
             if (string.IsNullOrWhiteSpace(target.ContentSummary) && !string.IsNullOrWhiteSpace(source.ContentSummary))
@@ -354,7 +345,6 @@ namespace DocMgr.Services.YearlyArchive
 
             source.UnitLifecycleStatus = ArchiveContainerLifecycleStatus.Relocated;
             source.MediaCount = 0;
-            source.RegisterRecords.Clear();
 
             var context = new ArchiveRelocationExecutionContext
             {

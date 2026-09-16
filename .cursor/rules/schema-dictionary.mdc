@@ -70,7 +70,6 @@ alwaysApply: true
 | 用户会话 | `UserSession` | `UserSessions` | 表 |
 | 年度档案盒 | `YearlyArchiveBox` | `YearlyArchiveBoxes` | 表 |
 | 档案盒-介质明细关联 | `YearlyArchiveBoxMediaItemLink` | `YearlyArchiveBoxMediaItemLinks` | 表 |
-| 档案盒-登记申请关联 | `YearlyArchiveBoxYearlyArchiveRegisterRecord` | `YearlyArchiveBoxYearlyArchiveRegisterRecord` | 表 |
 | 年度资料离库处置明细 | `YearlyArchiveDisposalItem` | `YearlyArchiveDisposalItems` | 表 |
 | 年度资料离库处置单 | `YearlyArchiveDisposalRecord` | `YearlyArchiveDisposalRecords` | 表 |
 | 立档事实 | `YearlyArchiveFilingFact` | `YearlyArchiveFilingFacts` | 表 |
@@ -85,7 +84,6 @@ alwaysApply: true
 | 登记介质条目 | `YearlyArchiveRegisterMedia` | `YearlyArchiveRegisterMedias` | 表 |
 | 登记介质明细 | `YearlyArchiveRegisterMediaItem` | `YearlyArchiveRegisterMediaItems` | 表 |
 | 年度资料登记申请 | `YearlyArchiveRegisterRecord` | `YearlyArchiveRegisterRecords` | 表 |
-| 登记申请-电子立档单元关联 | `YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit` | `YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit` | 表 |
 | 模拟介质明细扩展 | `YearlyArchiveRegisterSimulatedMediaItemDetail` | `YearlyArchiveRegisterSimulatedMediaItemDetails` | 表 |
 | 资料移库明细 | `YearlyArchiveRelocationItem` | `YearlyArchiveRelocationItems` | 表 |
 | 资料移库单 | `YearlyArchiveRelocationRecord` | `YearlyArchiveRelocationRecords` | 表 |
@@ -1057,13 +1055,6 @@ alwaysApply: true
 | 登记介质明细ID | `YearlyArchiveRegisterMediaItemId` | `Int32` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 
-### YearlyArchiveBoxYearlyArchiveRegisterRecord（档案盒-登记申请关联）
-
-| 中文字段 | Property | CLR 类型 | 待补全 |
-| --- | --- | --- | --- |
-| 年度档案盒ID | `ArchiveBoxesId` | `Int32` | 否 |
-| 登记申请ID | `RegisterRecordsId` | `Int32` | 否 |
-
 ### YearlyArchiveDisposalItem（年度资料离库处置明细）
 
 | 中文字段 | Property | CLR 类型 | 待补全 |
@@ -1471,13 +1462,6 @@ alwaysApply: true
 | 资料员日期 | `AdminDate` | `DateTime?` | 否 |
 | 部门负责人 | `DeptLeader` | `String` | 否 |
 | 部门审核日期 | `DeptDate` | `DateTime?` | 否 |
-
-### YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit（登记申请-电子立档单元关联）
-
-| 中文字段 | Property | CLR 类型 | 待补全 |
-| --- | --- | --- | --- |
-| 电子立档单元ID | `ElectronicArchiveUnitsId` | `Int32` | 否 |
-| 登记申请ID | `RegisterRecordsId` | `Int32` | 否 |
 
 ### YearlyArchiveRegisterSimulatedMediaItemDetail（模拟介质明细扩展）
 

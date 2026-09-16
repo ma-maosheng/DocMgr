@@ -235,7 +235,6 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
                 .ThenInclude(link => link.MediaItem)
                     .ThenInclude(item => item.MediaEntry)
                         .ThenInclude(media => media!.RegisterRecord)
-            .Include(box => box.RegisterRecords)
             .ToList();
     }
 

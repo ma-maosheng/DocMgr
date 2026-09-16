@@ -228,15 +228,7 @@ namespace DocMgr.Services.YearlyArchive
 
             AddArchiveSlotBoxCounts(
                 slotBoxCounts,
-                await _archiveFilingRepository.GetTopoMapBoxNumbersAsync());
-
-            AddArchiveSlotBoxCounts(
-                slotBoxCounts,
-                await _archiveFilingRepository.GetAerialPhotoBoxNumbersAsync());
-
-            AddArchiveSlotBoxCounts(
-                slotBoxCounts,
-                await _archiveFilingRepository.GetOtherMapBoxNumbersAsync());
+                await _archiveFilingRepository.GetInStockHistoryArchiveBoxCodesAsync());
 
             return slotBoxCounts;
         }
@@ -254,15 +246,7 @@ namespace DocMgr.Services.YearlyArchive
 
             AddArchiveSlotSequenceIndexes(
                 slotSequences,
-                await _archiveFilingRepository.GetTopoMapBoxNumbersAsync());
-
-            AddArchiveSlotSequenceIndexes(
-                slotSequences,
-                await _archiveFilingRepository.GetAerialPhotoBoxNumbersAsync());
-
-            AddArchiveSlotSequenceIndexes(
-                slotSequences,
-                await _archiveFilingRepository.GetOtherMapBoxNumbersAsync());
+                await _archiveFilingRepository.GetInStockHistoryArchiveBoxCodesAsync());
 
             return slotSequences;
         }

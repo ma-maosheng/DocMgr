@@ -576,6 +576,7 @@ namespace DocMgr.Services.Cabinets
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             string sourceSummaryText = BuildSourceSummaryText(sourceTypes, group);
+            var archiveBoxCategory = ResolveArchiveBoxCategory(sourceTypes, isMixedPlacement);
             string archiveIdentifierText = BuildArchiveIdentifierText(sourceSummaryText, group);
             bool isYearlyArchiveDisplay = string.Equals(sourceSummaryText, "年度资料", StringComparison.OrdinalIgnoreCase) && !isMixedPlacement;
             string archiveSequenceNoShortText = string.Empty;
@@ -602,6 +603,7 @@ namespace DocMgr.Services.Cabinets
                 CategoryText = isMixedPlacement ? "待梳理" : "历史存档",
                 ArchiveTypeText = sourceSummaryText,
                 ArchiveIdentifierText = archiveIdentifierText,
+                Category = archiveBoxCategory,
                 IsYearlyArchiveDisplay = isYearlyArchiveDisplay,
                 ArchiveSequenceNoShortText = archiveSequenceNoShortText,
                 YearText = yearlyYearText,
@@ -1657,7 +1659,9 @@ namespace DocMgr.Services.Cabinets
             string dateText = box.ArchivedDate == default ? string.Empty : box.ArchivedDate.ToString("yyyy-MM-dd");
             string boxSpec = string.IsNullOrWhiteSpace(box.Specs) ? string.Empty : box.Specs.Trim();
 
-            if (box.RegisterRecords.Count == 0)
+            var registerRecords = ArchiveContainerRegisterRecordProjectionSupport.ProjectBoxRegisterRecords(box);
+
+            if (registerRecords.Count == 0)
             {
                 yield return new ExpandedArchiveBoxAssignment(
                     parsed,
@@ -1684,7 +1688,7 @@ namespace DocMgr.Services.Cabinets
                 yield break;
             }
 
-            foreach (var record in box.RegisterRecords.OrderBy(item => item.FormNo, StringComparer.OrdinalIgnoreCase))
+            foreach (var record in registerRecords.OrderBy(item => item.FormNo, StringComparer.OrdinalIgnoreCase))
             {
                 string identifierText = string.IsNullOrWhiteSpace(record.FormNo) ? box.ArchiveSequenceNo : record.FormNo;
                 string titleText = string.IsNullOrWhiteSpace(record.MaterialName) ? box.ProjectName : record.MaterialName;
