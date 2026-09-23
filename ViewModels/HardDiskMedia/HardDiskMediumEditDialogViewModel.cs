@@ -92,7 +92,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public ObservableCollection<HardDiskMediaReturnTargetLocationOption> BlankSlotLocationOptions { get; } = new();
 
         public string BlankSlotLocationHintText =>
-            "系统按防磁磁盘柜空白专用档口用途与容量（10盘/档口）推荐可用档口，可使用“推荐档口”和“档口快照”辅助确认。";
+            "系统按防磁磁盘柜空白专用档口用途与各柜配置容量推荐可用档口，可使用“推荐档口”和“档口快照”辅助确认。";
 
         public bool CanRecommendBlankSlotLocation => IsNewMode;
 
@@ -497,7 +497,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 string locationSummary = string.IsNullOrWhiteSpace(medium.Ledger?.StorageLocation)
                     ? string.Empty
                     : $"\n存放档口：{medium.Ledger!.StorageLocation}";
-                _dialogService.ShowMessage($"硬盘信息已保存。{locationSummary}\n请资料室管理员前往【硬盘台账】核对并完成后续入库业务操作。");
+                _dialogService.ShowMessage($"硬盘信息已保存。{locationSummary}\n请资料管理员前往【硬盘台账】核对并完成后续入库业务操作。");
                 RequestClose?.Invoke(true);
             }
             catch (InvalidOperationException ex)

@@ -49,9 +49,6 @@ namespace DocMgr.Data.Configurations
             builder.Property(entry => entry.EntryName)
                 .HasMaxLength(500)
                 .HasDefaultValue(string.Empty);
-            builder.Property(entry => entry.RelativePath)
-                .HasMaxLength(1000)
-                .HasDefaultValue(string.Empty);
             builder.Property(entry => entry.SizeMb)
                 .HasPrecision(18, 2);
             builder.Property(entry => entry.CreatedAt);

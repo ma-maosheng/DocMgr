@@ -1,7 +1,9 @@
 using DocMgr.Models.NetworkTransfer;
+using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.SystemSettings;
 
 namespace DocMgr.Services.NetworkTransfer;
 
@@ -27,7 +29,13 @@ public sealed partial class NetworkTransferService
         string serverPhysicalPath = ResolveServerPhysicalPath(serverPathName);
         NetworkInboundItemPrintContext itemPrintContext = await BuildInboundItemPrintContextAsync(record);
 
-        return BuildInboundPrintData(record, blankApprovalSignatures, serverPathName, serverPhysicalPath, itemPrintContext);
+        return BuildInboundPrintData(
+            record,
+            blankApprovalSignatures,
+            serverPathName,
+            serverPhysicalPath,
+            itemPrintContext,
+            await ResolveInboundApprovalChainAsync(record));
     }
 
     private async Task<NetworkInboundItemPrintContext> BuildInboundItemPrintContextAsync(NetworkInboundRecord record)
@@ -88,7 +96,10 @@ public sealed partial class NetworkTransferService
 
         // 以数据库状态为准：已审批及之后预填审批签字；已确认实物交接后预填交接签字。
         bool effectiveBlankApproval = record.Status < NetworkOutboundRecord.StatusApproved;
-        return BuildOutboundPrintData(record, effectiveBlankApproval);
+        return BuildOutboundPrintData(
+            record,
+            effectiveBlankApproval,
+            await ResolveOutboundApprovalChainAsync(record));
     }
 
     public async Task RecordOutboundPrintAsync(int recordId)
@@ -107,7 +118,8 @@ public sealed partial class NetworkTransferService
         bool blankApprovalSignatures,
         string serverPathName,
         string serverPhysicalPath,
-        NetworkInboundItemPrintContext itemPrintContext)
+        NetworkInboundItemPrintContext itemPrintContext,
+        ApprovalChainResolution chain)
     {
         if (record.Status < NetworkInboundRecord.StatusSubmitted)
         {
@@ -143,18 +155,26 @@ public sealed partial class NetworkTransferService
             ServerPath = string.IsNullOrWhiteSpace(serverPathName) ? "(未指定)" : serverPathName,
             ServerPhysicalPath = serverPhysicalPath,
             ItemLines = NetworkInboundItemPrintSupport.BuildItemLines(record, itemPrintContext).ToList(),
-            DeptLeaderBlock = BuildApprovalBlock(
-                blankApprovalSignatures ? string.Empty : record.DeptLeader,
-                blankApprovalSignatures ? BlankDateText : FormatDate(record.DeptDate)),
-            ProdLeaderBlock = BuildApprovalBlock(
-                blankApprovalSignatures ? string.Empty : record.ProdLeader,
-                blankApprovalSignatures ? BlankDateText : FormatDate(record.ProdDate)),
-            RndLeaderBlock = BuildApprovalBlock(
-                blankApprovalSignatures ? string.Empty : record.RndLeader,
-                blankApprovalSignatures ? BlankDateText : FormatDate(record.RndDate)),
-            DeputyLeaderBlock = BuildApprovalBlock(
-                blankApprovalSignatures ? string.Empty : record.DeputyLeader,
-                blankApprovalSignatures ? BlankDateText : FormatDate(record.DeputyDate)),
+            EnableDeptHead = chain.DeptHead.IsEnabled,
+            EnableProductionHead = chain.ProductionHead.IsEnabled,
+            EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled,
+            EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled,
+            EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled,
+            DeptHeadBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.DeptHead,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.DeptHeadDate)),
+            ProductionHeadBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.ProductionHead,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.ProductionHeadDate)),
+            ArchiveRoomHeadBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.ArchiveRoomHead,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.ArchiveRoomHeadDate)),
+            ArchiveDeputyPresidentBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.ArchiveDeputyPresident,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.ArchiveDeputyPresidentDate)),
+            ProductionVicePresidentBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.ProductionVicePresident,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.ProductionVicePresidentDate)),
             HandoverSignatureBlock = blankHandover
                 ? BuildBlankInboundHandoverSignatureBlock()
                 : BuildFilledInboundHandoverSignatureBlock(record),
@@ -162,12 +182,8 @@ public sealed partial class NetworkTransferService
         };
     }
 
-    private static string BuildApprovalBlock(string signer, string dateText)
-    {
-        string signatureSlot = string.IsNullOrWhiteSpace(signer) ? "________________" : signer.Trim();
-        string renderedDate = string.IsNullOrWhiteSpace(dateText) ? BlankDateText : dateText;
-        return $"签字：{signatureSlot}    日期：{renderedDate}";
-    }
+    private static string BuildApprovalBlock(string signer, string dateText) =>
+        PrintApprovalSignatureSupport.FormatInline(signer, dateText);
 
     private static string BuildBlankInboundHandoverSignatureBlock() =>
         "移交人签字：                                            日期:______年___月___日\n" +
@@ -186,7 +202,8 @@ public sealed partial class NetworkTransferService
 
     private static NetworkOutboundPrintData BuildOutboundPrintData(
         NetworkOutboundRecord record,
-        bool blankApprovalSignatures)
+        bool blankApprovalSignatures,
+        ApprovalChainResolution chain)
     {
         if (record.Status < NetworkOutboundRecord.StatusSubmitted)
         {
@@ -219,19 +236,26 @@ public sealed partial class NetworkTransferService
             ProofMaterialNote = proofMaterial,
             ItemLines = NetworkOutboundItemPrintSupport.BuildItemLines(record).ToList(),
             HasPendingItemDetailCapture = NetworkOutboundItemPrintSupport.HasPendingItemDetailCapture(record.MediaEntries),
-            DeptLeaderBlock = BuildApprovalBlock(
-                blankApprovalSignatures ? string.Empty : record.DeptLeader,
-                blankApprovalSignatures ? BlankDateText : FormatDate(record.DeptDate)),
-            ProdLeaderBlock = BuildApprovalBlock(
-                blankApprovalSignatures ? string.Empty : record.ProdLeader,
-                blankApprovalSignatures ? BlankDateText : FormatDate(record.ProdDate)),
-            RndLeaderBlock = BuildApprovalBlock(
-                blankApprovalSignatures ? string.Empty : record.RndLeader,
-                blankApprovalSignatures ? BlankDateText : FormatDate(record.RndDate)),
-            DeputyLeaderLabel = NetworkTransferDomainValues.ResolveOutboundDeputyLeaderRole(record.DestinationKind),
-            DeputyLeaderBlock = BuildApprovalBlock(
-                blankApprovalSignatures ? string.Empty : record.DeputyLeader,
-                blankApprovalSignatures ? BlankDateText : FormatDate(record.DeputyDate)),
+            EnableDeptHead = chain.DeptHead.IsEnabled,
+            EnableProductionHead = chain.ProductionHead.IsEnabled,
+            EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled,
+            EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled,
+            EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled,
+            DeptHeadBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.DeptHead,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.DeptHeadDate)),
+            ProductionHeadBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.ProductionHead,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.ProductionHeadDate)),
+            ArchiveRoomHeadBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.ArchiveRoomHead,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.ArchiveRoomHeadDate)),
+            ArchiveDeputyPresidentBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.ArchiveDeputyPresident,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.ArchiveDeputyPresidentDate)),
+            ProductionVicePresidentBlock = BuildApprovalBlock(
+                blankApprovalSignatures ? string.Empty : record.ProductionVicePresident,
+                blankApprovalSignatures ? BlankDateText : FormatDate(record.ProductionVicePresidentDate)),
             HandoverSignatureBlock = blankHandover
                 ? BuildBlankOutboundHandoverSignatureBlock()
                 : BuildFilledOutboundHandoverSignatureBlock(record),
@@ -295,6 +319,14 @@ public sealed partial class NetworkTransferService
                 orderedItems.Select(item => item.OnNetAssetId).Where(id => id > 0).Distinct().ToList()))
             .ToDictionary(item => item.Id);
 
+        var chain = await _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.NetworkOnNetDisposal,
+                FieldValues = ApprovalChainApplySupport.BuildNetworkOnNetDisposalFieldValues(record)
+            },
+            _userService.GetAllUsers());
+
         return new NetworkOnNetDisposalPrintData
         {
             DisposalNo = record.DisposalNo,
@@ -311,10 +343,21 @@ public sealed partial class NetworkTransferService
             Remark = record.Remark,
             ApplicantName = record.ApplicantName,
             ApplicantDept = record.ApplicantDept,
+            DeptHead = record.DeptHead,
+            DeptHeadDateText = record.DeptHeadDate?.ToString("yyyy-MM-dd") ?? string.Empty,
             ArchiveRoomHead = record.ArchiveRoomHead,
             ArchiveRoomHeadDateText = record.ArchiveRoomHeadDate?.ToString("yyyy-MM-dd") ?? string.Empty,
+            ProductionHead = record.ProductionHead,
+            ProductionHeadDateText = record.ProductionHeadDate?.ToString("yyyy-MM-dd") ?? string.Empty,
             ArchiveDeputyPresident = record.ArchiveDeputyPresident,
             ArchiveDeputyPresidentDateText = record.ArchiveDeputyPresidentDate?.ToString("yyyy-MM-dd") ?? string.Empty,
+            ProductionVicePresident = record.ProductionVicePresident,
+            ProductionVicePresidentDateText = record.ProductionVicePresidentDate?.ToString("yyyy-MM-dd") ?? string.Empty,
+            EnableDeptHead = chain.DeptHead.IsEnabled,
+            EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled,
+            EnableProductionHead = chain.ProductionHead.IsEnabled,
+            EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled,
+            EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled,
             CompletedBy = record.CompletedBy,
             CompletedDateText = record.CompletedAt?.ToString("yyyy-MM-dd") ?? string.Empty,
             IsCompleted = record.Status == NetworkOnNetDisposalRecord.StatusCompleted,

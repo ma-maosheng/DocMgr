@@ -1,6 +1,7 @@
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Services.SystemSettings;
 
 namespace DocMgr.Services.NetworkTransfer;
 
@@ -33,13 +34,14 @@ public static class NetworkOutboundApplicationValidationSupport
     public static IReadOnlyList<string> ValidateForHandoverConfirm(
         NetworkOutboundRecord record,
         NetworkOutboundRecord handoverInput,
-        IReadOnlyList<SystemAttachment> attachments)
+        IReadOnlyList<SystemAttachment> attachments,
+        ApprovalChainResolution? approvalChain = null)
     {
         ArgumentNullException.ThrowIfNull(record);
         ArgumentNullException.ThrowIfNull(handoverInput);
 
         var errors = new List<string>();
-        CollectApprovalSignerErrors(record, handoverInput, errors);
+        CollectApprovalSignerErrors(record, handoverInput, errors, approvalChain);
         NetworkOutboundExternalMediaValidationSupport.ValidateForHandoverConfirm(
             record.MediaEntries?.ToList(),
             errors);
@@ -49,9 +51,10 @@ public static class NetworkOutboundApplicationValidationSupport
     public static void EnsureValidForHandoverConfirm(
         NetworkOutboundRecord record,
         NetworkOutboundRecord handoverInput,
-        IReadOnlyList<SystemAttachment> attachments)
+        IReadOnlyList<SystemAttachment> attachments,
+        ApprovalChainResolution? approvalChain = null)
     {
-        IReadOnlyList<string> errors = ValidateForHandoverConfirm(record, handoverInput, attachments);
+        IReadOnlyList<string> errors = ValidateForHandoverConfirm(record, handoverInput, attachments, approvalChain);
         if (errors.Count > 0)
         {
             throw new InvalidOperationException(
@@ -104,10 +107,14 @@ public static class NetworkOutboundApplicationValidationSupport
 
     private static void CollectCompleteSignerErrors(NetworkOutboundRecord record, List<string> errors)
     {
-        CollectSignerAndDateErrors(record.DeptLeader, record.DeptDate, "部门负责人", errors);
-        CollectSignerAndDateErrors(record.ProdLeader, record.ProdDate, "生产管理科负责人", errors);
-        CollectSignerAndDateErrors(record.RndLeader, record.RndDate, "资料室负责人", errors);
-        CollectSignerAndDateErrors(record.DeputyLeader, record.DeputyDate, "分管领导", errors);
+        CollectSignerAndDateErrors(record.DeptHead, record.DeptHeadDate, ApprovalWorkflowDomainValues.DisplayDeptHead, errors);
+        CollectSignerAndDateErrors(record.ProductionHead, record.ProductionHeadDate, ApprovalWorkflowDomainValues.DisplayProductionHead, errors);
+        CollectSignerAndDateErrors(record.ArchiveRoomHead, record.ArchiveRoomHeadDate, ApprovalWorkflowDomainValues.DisplayArchiveRoomHead, errors);
+        CollectSignerAndDateErrors(
+            record.ArchiveDeputyPresident,
+            record.ArchiveDeputyPresidentDate,
+            NetworkTransferDomainValues.ResolveOutboundArchiveDeputyPresidentRole(record.DestinationKind),
+            errors);
         CollectSignerAndDateErrors(record.Deliverer, record.DeliverDate, "移交人", errors);
         CollectSignerAndDateErrors(record.Administrator, record.AdminDate, "资料员", errors);
     }
@@ -133,26 +140,36 @@ public static class NetworkOutboundApplicationValidationSupport
     private static void CollectApprovalSignerErrors(
         NetworkOutboundRecord record,
         NetworkOutboundRecord handoverInput,
-        List<string> errors)
+        List<string> errors,
+        ApprovalChainResolution? approvalChain)
     {
-        if (string.IsNullOrWhiteSpace(record.DeptLeader))
+        if (approvalChain != null)
         {
-            errors.Add("• 部门负责人签字缺失");
+            errors.AddRange(ApprovalChainApplySupport.CollectMissingSignerErrors(
+                approvalChain,
+                nodeKey => ApprovalChainApplySupport.ReadNetworkOutboundSigner(record, nodeKey)));
         }
-
-        if (string.IsNullOrWhiteSpace(record.ProdLeader))
+        else
         {
-            errors.Add("• 生产管理科负责人签字缺失");
-        }
+            if (string.IsNullOrWhiteSpace(record.DeptHead))
+            {
+                errors.Add($"• {ApprovalWorkflowDomainValues.DisplayDeptHead}签字缺失");
+            }
 
-        if (string.IsNullOrWhiteSpace(record.RndLeader))
-        {
-            errors.Add("• 资料室负责人签字缺失");
-        }
+            if (string.IsNullOrWhiteSpace(record.ProductionHead))
+            {
+                errors.Add($"• {ApprovalWorkflowDomainValues.DisplayProductionHead}签字缺失");
+            }
 
-        if (string.IsNullOrWhiteSpace(record.DeputyLeader))
-        {
-            errors.Add("• 分管领导签字缺失");
+            if (string.IsNullOrWhiteSpace(record.ArchiveRoomHead))
+            {
+                errors.Add($"• {ApprovalWorkflowDomainValues.DisplayArchiveRoomHead}签字缺失");
+            }
+
+            if (string.IsNullOrWhiteSpace(record.ArchiveDeputyPresident))
+            {
+                errors.Add($"• {NetworkTransferDomainValues.ResolveOutboundArchiveDeputyPresidentRole(record.DestinationKind)}签字缺失");
+            }
         }
 
         if (string.IsNullOrWhiteSpace(handoverInput.Deliverer))

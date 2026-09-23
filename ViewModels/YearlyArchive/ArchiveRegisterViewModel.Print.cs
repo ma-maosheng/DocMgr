@@ -2,6 +2,7 @@ using DocMgr.Views.Shared;
 using System;
 using System.Threading.Tasks;
 using System.Windows;
+using DocMgr.Services.Shared;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
 
@@ -18,10 +19,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 string blankDt = "______年___月___日";
 
                 // 2026-02-26 修改：申请人打印申请时，使用审批页的格式，但将审批签字内容置空。
-                data.DeptLeaderApproval = $"|{blankDt}";
+                data.DeptHeadApproval = $"|{blankDt}";
                 data.ProdFull = $"||{blankDt}";
                 data.RndFull = $"||{blankDt}";
-                data.DeputyFull = $"||{blankDt}";
+                data.ArchiveDeputyPresidentFull = $"||{blankDt}";
+                data.ProductionVicePresidentFull = $"||{blankDt}";
                 data.DeliverFull = $"|{blankDt}";
                 data.AdminFull = $"|{blankDt}";
                 data.ProdOpinion = "|";
@@ -94,15 +96,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             if (CurrentRecord == null) return new ArchiveRegisterPrintData();
 
-            var sourceType = string.IsNullOrWhiteSpace(CurrentRecord.SourceType)
-                ? (SelectedSourceType ?? ArchiveRegisterDomainValues.SourceTypeInternal)
-                : CurrentRecord.SourceType;
-
-            CurrentRecord.SourceType = sourceType;
-
             return _archiveRegisterService.BuildPrintData(
                 CurrentRecord,
-                SelectedSourceType,
                 BuildMediaEntries());
         }
 
@@ -153,7 +148,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 _archiveRegisterWordExportService.ExportToFile(data, path);
-                _dialogService.ShowMessage($"Word 文档已保存：\n{path}");
+                WordExportOpenPromptSupport.NotifySavedAndOfferOpen(path, _dialogService);
             }
             catch (Exception ex)
             {

@@ -20,9 +20,9 @@ namespace DocMgr.ViewModels.Cabinets
         private const double TitleTopSpacerHeight = 20;
         private const double TitleBlockHeight = 48;
         private const double HeaderInfoHeight = 28;
-        private const double StandardRowHeight = 32;
-        private const double SignatureRowHeight = 40;
-        private const double CellPadding = 4;
+        private const double StandardRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
+        private const double SignatureRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
+        private const double CellPadding = PrintPageLayoutSupport.TableCellPaddingDip;
         private const double BodyFontSize = 12;
 
         public static FlowDocument Create(CabinetOpenRelocationSessionPrintData data)
@@ -58,7 +58,8 @@ namespace DocMgr.ViewModels.Cabinets
                 $"柜体：{EmptyAsPlaceholder(data.CabinetName)}（{EmptyAsPlaceholder(data.CabinetTypeText)}）",
                 $"打印时间：{data.PrintedAt:yyyy-MM-dd HH:mm}"));
 
-            double detailRowHeight = CalculateDetailRowHeight();
+            string entryListText = BuildEntryList(data);
+            double detailRowHeight = CalculateDetailRowHeight(entryListText);
             var rowGroup = new TableRowGroup();
             rowGroup.Rows.Add(CreateDoubleRow(
                 "打开面别",
@@ -72,7 +73,7 @@ namespace DocMgr.ViewModels.Cabinets
                 "线下按清单完成实物迁档核对"));
             rowGroup.Rows.Add(CreateSingleRow(
                 "迁档明细",
-                BuildEntryList(data),
+                entryListText,
                 detailRowHeight,
                 verticalTop: true,
                 compactBody: true));
@@ -91,14 +92,22 @@ namespace DocMgr.ViewModels.Cabinets
             return document;
         }
 
-        private static double CalculateDetailRowHeight()
+        private static double CalculateDetailRowHeight(string entryListText)
         {
             // 固定行：面别/操作人、次数/用途、两行签字。
-            double fixedTableHeight =
-                PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 2
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(SignatureRowHeight, CellPadding) * 2;
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(
-                lineCount: 3,
+            const int fixedRowCount = 4;
+            double fixedContentHeight =
+                StandardRowHeight * 2
+                + SignatureRowHeight * 2;
+            double fixedTableHeight = fixedContentHeight
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
+                + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
+
+            string footerText = BuildFooterNoteText();
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
+                footerText,
+                PrintPageLayoutSupport.ContentWidthDip,
+                fontSizeDip: 10,
                 lineHeightDip: 16,
                 topMarginDip: 8);
             double reservedHeight =
@@ -107,10 +116,13 @@ namespace DocMgr.ViewModels.Cabinets
                 + HeaderInfoHeight
                 + footerHeight
                 + fixedTableHeight;
+            double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                entryListText,
+                maximumLineCount: 30);
             return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
                 reservedHeight,
-                minimumRowHeightDip: StandardRowHeight * 6,
-                stretchRowCellPaddingDip: CellPadding);
+                contentNeededHeight,
+                CellPadding);
         }
 
         private static string BuildEntryList(CabinetOpenRelocationSessionPrintData data)
@@ -175,6 +187,11 @@ namespace DocMgr.ViewModels.Cabinets
             return footer;
         }
 
+        /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
+        private static string BuildFooterNoteText() =>
+            "说明：" +
+            "1、请按「迁档明细」完成线下实物搬迁；2、核对方数、介质编号与档口用途；3、核对无误后由操作人、核对人签字确认。";
+
         private static Table CreateHeaderTable(string leftText, string rightText)
         {
             var headerTable = new Table { Margin = new Thickness(0, 0, 0, 6) };
@@ -211,10 +228,7 @@ namespace DocMgr.ViewModels.Cabinets
                 BorderThickness = new Thickness(2, 2, 0, 0)
             };
 
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
+            PrintPageLayoutSupport.ApplyApprovalFormMainTableColumns(table);
             table.RowGroups.Add(rowGroup);
             return table;
         }

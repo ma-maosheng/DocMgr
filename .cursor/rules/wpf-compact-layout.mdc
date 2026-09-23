@@ -16,6 +16,7 @@ alwaysApply: false
 4. **信息密度匹配业务**：若业务只需签字、不需签意见，UI 不得再放意见 ComboBox/大段意见区；查看态与编辑态字段集合保持一致。
 5. **提示从简**：说明性文案一行即可，字号可略小（11–12），勿用大段说明抬高版心。
 6. **与现有样式复用**：审批紧凑行样式见 `ArchiveRegisterResources.xaml` 中 `ArchiveRegisterApprovalCompact*`；新页面优先复用或抽取同类紧凑样式，禁止平行发明第二套留白更大的卡片。
+7. **标签勿截断**：只读/表单标签的固定 `Width` 须能完整显示最长中文文案（约「字数 × FontSize」）。堆叠标签（标签在上）优先不设固定宽，复用 `ArchiveRegisterApprovalReadOnlyLabelStyle`（已按文案自适应）。横排对齐标签可用固定宽，但禁止再用过窄值（如 64）截断「预计归还日期」等 6 字及以上标签；审批节点标题沿用 `ArchiveRegisterApprovalCompactStepTitleStyle`（120）。
 
 ## 推荐形态
 
@@ -27,7 +28,7 @@ alwaysApply: false
   </Grid.ColumnDefinitions>
   <Border Grid.Column="0" Padding="8,5" Margin="0,0,0,4">
     <DockPanel>
-      <TextBlock DockPanel.Dock="Left" Text="节点名" Width="78" VerticalAlignment="Center"/>
+      <TextBlock DockPanel.Dock="Left" Text="节点名" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
       <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
         <TextBlock Text="签字" VerticalAlignment="Center" Margin="0,0,4,0"/>
         <TextBox Width="90" Height="{StaticResource FormControlHeight}"/>

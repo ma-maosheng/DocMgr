@@ -42,8 +42,7 @@ namespace DocMgr.Models.YearlyArchive
         public static string FormatScopeDisplay(
             string selectionScopeKind,
             string contentEntryKind,
-            string contentEntryName,
-            string contentEntryRelativePath)
+            string contentEntryName)
         {
             if (string.Equals(
                     selectionScopeKind,
@@ -57,8 +56,7 @@ namespace DocMgr.Models.YearlyArchive
                 ? "条目"
                 : contentEntryKind.Trim();
 
-            string name = contentEntryName?.Trim() ?? string.Empty;
-            return $"{kindLabel}：{name}{ContentEntrySearchSupport.BuildRelativePathSuffix(name, contentEntryRelativePath)}";
+            return $"{kindLabel}：{contentEntryName?.Trim() ?? string.Empty}";
         }
 
         public static string FormatScopeDisplay(MatchedContentEntryInfo entry)
@@ -68,23 +66,21 @@ namespace DocMgr.Models.YearlyArchive
             return FormatScopeDisplay(
                 ArchiveSearchSelectionScopeKind.ContentEntry,
                 entry.EntryKind,
-                entry.EntryName,
-                entry.RelativePath);
+                entry.EntryName);
         }
 
         /// <summary>检索集明细筛选范围展示（与入网申请明细列表一致）。</summary>
         public static string ResolveSelectionScopeDisplay(
             string selectionScopeKind,
             string contentEntryKind,
-            string contentEntryName,
-            string contentEntryRelativePath)
+            string contentEntryName)
         {
             if (string.Equals(
                     selectionScopeKind,
                     ArchiveSearchSelectionScopeKind.WholeMediaItem,
                     StringComparison.Ordinal))
             {
-                return FormatScopeDisplay(selectionScopeKind, string.Empty, string.Empty, string.Empty);
+                return FormatScopeDisplay(selectionScopeKind, string.Empty, string.Empty);
             }
 
             if (string.Equals(
@@ -98,8 +94,7 @@ namespace DocMgr.Models.YearlyArchive
             return FormatScopeDisplay(
                 selectionScopeKind,
                 contentEntryKind,
-                contentEntryName,
-                contentEntryRelativePath);
+                contentEntryName);
         }
 
         /// <summary>检索集明细命中条目展示（整子项取检索命中摘要，部分子项取具体条目）。</summary>
@@ -107,7 +102,6 @@ namespace DocMgr.Models.YearlyArchive
             string selectionScopeKind,
             string contentEntryKind,
             string contentEntryName,
-            string contentEntryRelativePath,
             string matchedSummaryFromHit)
         {
             if (string.Equals(
@@ -118,33 +112,29 @@ namespace DocMgr.Models.YearlyArchive
                 return matchedSummaryFromHit;
             }
 
+            if (string.IsNullOrWhiteSpace(contentEntryName))
+            {
+                return ResolveSelectionScopeDisplay(
+                    selectionScopeKind,
+                    contentEntryKind,
+                    contentEntryName);
+            }
+
             if (string.Equals(
                     selectionScopeKind,
                     ArchiveSearchSelectionScopeKind.ContentEntry,
                     StringComparison.Ordinal))
             {
-                if (string.IsNullOrWhiteSpace(contentEntryName)
-                    && string.IsNullOrWhiteSpace(contentEntryRelativePath))
-                {
-                    return ResolveSelectionScopeDisplay(
-                        selectionScopeKind,
-                        contentEntryKind,
-                        contentEntryName,
-                        contentEntryRelativePath);
-                }
-
                 return FormatScopeDisplay(
                     selectionScopeKind,
                     contentEntryKind,
-                    contentEntryName,
-                    contentEntryRelativePath);
+                    contentEntryName);
             }
 
             return ResolveSelectionScopeDisplay(
                 selectionScopeKind,
                 contentEntryKind,
-                contentEntryName,
-                contentEntryRelativePath);
+                contentEntryName);
         }
 
         public sealed class MergeResult

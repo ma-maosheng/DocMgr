@@ -23,7 +23,7 @@ namespace DocMgr.Services.YearlyArchive
             if (!CanSubmitApplication(user))
             {
                 return new ArchiveOutboundSubmitPreviewResult(
-                    ["仅部门资料管理员可提交资料借出申请。"],
+                    ["仅部门资料员可提交资料借出申请。"],
                     string.Empty);
             }
 

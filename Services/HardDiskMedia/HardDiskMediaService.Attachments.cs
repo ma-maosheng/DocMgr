@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DocMgr.Models.HardDiskMedia;
 
 namespace DocMgr.Services.HardDiskMedia
 {
@@ -28,11 +29,43 @@ namespace DocMgr.Services.HardDiskMedia
         }
 
         /// <inheritdoc/>
-        public async Task<HardDiskMediaAttachmentFlowResult> UploadSignedAttachmentAsync(HardDiskMediaApplication? application, User? currentUser, string fileName, string extension, long fileSize, byte[] fileContent)
+        public Task<HardDiskMediaAttachmentFlowResult> UploadSignedAttachmentAsync(
+            HardDiskMediaApplication? application,
+            User? currentUser,
+            string fileName,
+            string extension,
+            long fileSize,
+            byte[] fileContent)
+        {
+            return UploadApplicationAttachmentAsync(
+                application,
+                currentUser,
+                HardDiskOutboundDomainValues.AttachmentCategorySignedHandover,
+                fileName,
+                extension,
+                fileSize,
+                fileContent);
+        }
+
+        /// <inheritdoc/>
+        public async Task<HardDiskMediaAttachmentFlowResult> UploadApplicationAttachmentAsync(
+            HardDiskMediaApplication? application,
+            User? currentUser,
+            string fileCategory,
+            string fileName,
+            string extension,
+            long fileSize,
+            byte[] fileContent)
         {
             if (application == null || application.Id == 0)
             {
-                return HardDiskMediaAttachmentFlowResult.Fail("请先保存业务申请后再上传签字件。");
+                return HardDiskMediaAttachmentFlowResult.Fail("请先保存业务申请后再上传附件。");
+            }
+
+            string category = fileCategory?.Trim() ?? string.Empty;
+            if (!HardDiskOutboundDomainValues.IsKnownAttachmentCategory(category))
+            {
+                return HardDiskMediaAttachmentFlowResult.Fail("附件分类无效。");
             }
 
             if (string.IsNullOrWhiteSpace(fileName) || fileContent == null || fileContent.Length == 0)
@@ -49,25 +82,50 @@ namespace DocMgr.Services.HardDiskMedia
             var existingApplication = await _hardDiskMediaRepository.GetApplicationByIdAsync(application.Id);
             if (existingApplication == null)
             {
-                return HardDiskMediaAttachmentFlowResult.Fail("未找到业务申请记录，无法上传签字件。");
+                return HardDiskMediaAttachmentFlowResult.Fail("未找到业务申请记录，无法上传附件。");
             }
 
             if (string.IsNullOrWhiteSpace(existingApplication.ApplicationNo))
             {
-                return HardDiskMediaAttachmentFlowResult.Fail("申请单编号为空，无法上传签字件。");
+                return HardDiskMediaAttachmentFlowResult.Fail("申请单编号为空，无法上传附件。");
             }
 
-            if (existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusCompleted ||
-                existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusCancelled ||
+            if (existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusCancelled ||
                 existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusWithdrawn ||
                 existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusForceWithdrawn)
             {
-                return HardDiskMediaAttachmentFlowResult.Fail("当前申请已完成或已作废，不允许上传签批交接单。");
+                return HardDiskMediaAttachmentFlowResult.Fail("当前申请已作废，不允许上传附件。");
             }
 
-            if (existingApplication.ApplicationStatus != HardDiskMediaApplication.StatusSignedUploaded)
+            if (existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)
             {
-                return HardDiskMediaAttachmentFlowResult.Fail("请先确认实物交接后再上传签批交接单。");
+                if (!string.Equals(category, HardDiskOutboundDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
+                {
+                    return HardDiskMediaAttachmentFlowResult.Fail("办结后仅可增补「其他附件」。");
+                }
+
+                if (!IsArchiveRoomMediaAdmin(currentUser))
+                {
+                    return HardDiskMediaAttachmentFlowResult.Fail("仅资料管理员可在办结后增补其他附件。");
+                }
+            }
+            else if (existingApplication.ApplicationStatus != HardDiskMediaApplication.StatusSignedUploaded)
+            {
+                return HardDiskMediaAttachmentFlowResult.Fail("请先确认实物交接后再上传附件。");
+            }
+            else
+            {
+                if (string.Equals(category, HardDiskOutboundDomainValues.AttachmentCategoryPhysicalPhoto, StringComparison.Ordinal)
+                    && !HardDiskOutboundDomainValues.RequiresPhysicalPhotoAttachment(existingApplication.ApplicationType))
+                {
+                    return HardDiskMediaAttachmentFlowResult.Fail("本单无实物流转，无需上传实物照片。");
+                }
+
+                if (string.Equals(category, HardDiskOutboundDomainValues.AttachmentCategoryProofMaterial, StringComparison.Ordinal)
+                    && !HardDiskOutboundDomainValues.RequiresProofMaterialAttachment(existingApplication.ProofMaterialNote))
+                {
+                    return HardDiskMediaAttachmentFlowResult.Fail("申请时未声明附有证明材料，无需上传证明材料。");
+                }
             }
 
             var attachment = new SystemAttachment
@@ -79,20 +137,24 @@ namespace DocMgr.Services.HardDiskMedia
                 Extension = extension ?? string.Empty,
                 FileSize = fileSize,
                 FileContent = fileContent,
-                FileCategory = GetSignedAttachmentCategory(existingApplication.ApplicationType),
+                FileCategory = category,
                 UploadTime = DateTime.Now,
                 UploaderName = currentUser?.RealName?.Trim() ?? string.Empty
             };
 
             _hardDiskMediaRepository.AddSystemAttachment(attachment);
 
-            existingApplication.SignedAttachmentUploaded = true;
-            existingApplication.SignedAttachmentUploadedTime = attachment.UploadTime;
-            existingApplication.SignedAttachmentUploader = attachment.UploaderName;
+            if (HardDiskOutboundDomainValues.IsSignedHandoverCategory(category))
+            {
+                existingApplication.SignedAttachmentUploaded = true;
+                existingApplication.SignedAttachmentUploadedTime = attachment.UploadTime;
+                existingApplication.SignedAttachmentUploader = attachment.UploaderName;
+            }
+
             existingApplication.UpdatedTime = attachment.UploadTime;
 
             await _hardDiskMediaRepository.SaveChangesAsync();
-            return HardDiskMediaAttachmentFlowResult.Ok("签批交接单上传成功。", attachment);
+            return HardDiskMediaAttachmentFlowResult.Ok($"{category}上传成功。", attachment);
         }
 
         /// <inheritdoc/>
@@ -110,6 +172,12 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             var relatedApplication = await _hardDiskMediaRepository.GetApplicationByIdAsync(existingAttachment.BusinessId);
+            if (relatedApplication != null
+                && relatedApplication.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)
+            {
+                return HardDiskMediaAttachmentFlowResult.Fail("办结后不允许删除附件。");
+            }
+
             if (relatedApplication != null &&
                 string.Equals(
                     existingAttachment.FileCategory,
@@ -122,25 +190,28 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaAttachmentFlowResult.Ok("附件删除成功。");
             }
 
+            string deletedCategory = existingAttachment.FileCategory?.Trim() ?? string.Empty;
             _hardDiskMediaRepository.RemoveSystemAttachment(existingAttachment);
 
             if (relatedApplication != null)
             {
-                // 排除当前待删除附件后再判断，避免未提交删除时误判“仍有附件”。
-                bool hasAnyAttachment = await _hardDiskMediaRepository.HasOtherSignedAttachmentsAsync(
-                    ApplicationAttachmentBusinessType,
-                    relatedApplication.Id,
-                    existingAttachment.Id,
-                    GetSignedAttachmentCategory(relatedApplication.ApplicationType));
-
-                if (!hasAnyAttachment)
-                {
-                    relatedApplication.SignedAttachmentUploaded = false;
-                    relatedApplication.SignedAttachmentUploadedTime = null;
-                    relatedApplication.SignedAttachmentUploader = string.Empty;
-                }
-
                 relatedApplication.UpdatedTime = DateTime.Now;
+
+                if (HardDiskOutboundDomainValues.IsSignedHandoverCategory(deletedCategory))
+                {
+                    bool hasAnyAttachment = await _hardDiskMediaRepository.HasOtherSignedAttachmentsAsync(
+                        ApplicationAttachmentBusinessType,
+                        relatedApplication.Id,
+                        existingAttachment.Id,
+                        HardDiskOutboundDomainValues.AttachmentCategorySignedHandover);
+
+                    if (!hasAnyAttachment)
+                    {
+                        relatedApplication.SignedAttachmentUploaded = false;
+                        relatedApplication.SignedAttachmentUploadedTime = null;
+                        relatedApplication.SignedAttachmentUploader = string.Empty;
+                    }
+                }
             }
 
             await _hardDiskMediaRepository.SaveChangesAsync();
@@ -162,11 +233,6 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             return HardDiskMediaAttachmentFlowResult.Ok("附件已就绪。", fullAttachment);
-        }
-
-        private static string GetSignedAttachmentCategory(string applicationType)
-        {
-            return SignedAttachmentCategory;
         }
     }
 }

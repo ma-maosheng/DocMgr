@@ -282,7 +282,8 @@ namespace DocMgr.Services.YearlyArchive
 
         /// <summary>
         /// 解析登记单在电子介质立档中的“所属项目”键（与袋上 ProjectName 对齐）。
-        /// 内部项目用 <see cref="YearlyArchiveRegisterRecord.ProjectName"/>；外来资料无项目时用提供单位。
+        /// 内部项目用 <see cref="YearlyArchiveRegisterRecord.ProjectName"/>；
+        /// 外来资料无项目时，取第一个外部来源子项的提供单位。
         /// </summary>
         internal static string ResolveElectronicArchiveProjectName(YearlyArchiveRegisterRecord record)
         {
@@ -293,13 +294,14 @@ namespace DocMgr.Services.YearlyArchive
                 return record.ProjectName.Trim();
             }
 
-            if (string.Equals(record.SourceType?.Trim(), ArchiveRegisterDomainValues.SourceTypeExternal, StringComparison.Ordinal)
-                && !string.IsNullOrWhiteSpace(record.ProvideUnit))
-            {
-                return record.ProvideUnit.Trim();
-            }
+            var externalItem = record.MediaEntries?
+                .Where(media => media.Items != null)
+                .SelectMany(media => media.Items!)
+                .FirstOrDefault(item =>
+                    string.Equals(item.SourceType?.Trim(), ArchiveRegisterDomainValues.SourceTypeExternal, StringComparison.Ordinal)
+                    && !string.IsNullOrWhiteSpace(item.ProvideUnit));
 
-            return string.Empty;
+            return externalItem?.ProvideUnit.Trim() ?? string.Empty;
         }
     }
 }

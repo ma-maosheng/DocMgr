@@ -17,13 +17,26 @@ namespace DocMgr.Models.YearlyArchive
         public string Date { get; set; } = string.Empty;
         public string ProdOpinion { get; set; } = string.Empty;
         public string RndOpinion { get; set; } = string.Empty;
-        public string DeptLeaderApproval { get; set; } = string.Empty;
+        public string DeptHeadApproval { get; set; } = string.Empty;
         public string DeputyOpinion { get; set; } = string.Empty;
         public string ProdFull { get; set; } = string.Empty;
         public string RndFull { get; set; } = string.Empty;
-        public string DeputyFull { get; set; } = string.Empty;
+        /// <summary>分管资料院长签字：意见|姓名|日期。</summary>
+        public string ArchiveDeputyPresidentFull { get; set; } = string.Empty;
+        /// <summary>分管生产院长签字：意见|姓名|日期。</summary>
+        public string ProductionVicePresidentFull { get; set; } = string.Empty;
         public string DeliverFull { get; set; } = string.Empty;
         public string AdminFull { get; set; } = string.Empty;
         public string OpticalDiscLedgerSummary { get; set; } = string.Empty;
+
+        public bool EnableDeptHead { get; set; } = true;
+
+        public bool EnableProductionHead { get; set; } = true;
+
+        public bool EnableArchiveRoomHead { get; set; } = true;
+
+        public bool EnableArchiveDeputyPresident { get; set; } = true;
+
+        public bool EnableProductionVicePresident { get; set; } = true;
     }
 }

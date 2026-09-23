@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Input;
 using DocMgr.Models.Shared;
 using DocMgr.Services.HardDiskMedia;
+using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
 
@@ -21,7 +22,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly IHardDiskMediaService _hardDiskMediaService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IUserService _userService;
         private readonly HardDiskMediaApplication _sourceApplication;
+        private readonly List<string> _instituteDepartmentNames = new();
         private bool _isInitialized;
         private bool _isUpdatingMediumSelection;
         private string _applicationNo = string.Empty;
@@ -32,13 +35,17 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private string _reason = string.Empty;
         private string _currentLocation = string.Empty;
         private string _targetLocation = string.Empty;
+        private string _destinationKind = HardDiskMediaOutboundReturnSupport.DestinationKindInternal;
         private DateTime? _expectedReturnDate;
+        private bool _hasProofMaterial;
+        private string _proofMaterialName = string.Empty;
         private bool _hasCommittedChanges;
 
         public HardDiskMediaOutboundApplicationEditDialogViewModel(
             IHardDiskMediaService hardDiskMediaService,
             IDialogService dialogService,
             IUserContextService userContextService,
+            IUserService userService,
             HardDiskMediaApplication applicationToEdit)
         {
             ArgumentNullException.ThrowIfNull(applicationToEdit);
@@ -46,6 +53,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _hardDiskMediaService = hardDiskMediaService;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _userService = userService;
             _sourceApplication = applicationToEdit;
 
             SaveDraftCommand = new RelayCommand(async _ => await SaveAsync(HardDiskMediaApplication.StatusDraft), _ => CanSaveApplicationDraft);
@@ -68,6 +76,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public ObservableCollection<string> ApplicationTypeOptions { get; } = new();
 
+        public ObservableCollection<string> DestinationKindOptions { get; } = new(
+            HardDiskMediaOutboundReturnSupport.PermanentDestinationKindOptions);
+
         public string SaveButtonText => "保存草稿";
 
         public string SubmitButtonText => "提交申请";
@@ -80,14 +91,22 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public bool CanPrintApplication => ResolveApplicationFormActions().CanPrintApplication;
 
+        /// <summary>仅草稿可编辑申请信息；已提交后只读（可打印/撤回）。</summary>
+        public bool CanEditApplicationForm =>
+            _sourceApplication.Id == 0
+            || _sourceApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft;
+
         public string ApplicationTypeGuidanceText =>
             "临时出库归还期限为1个月，可提前填写预计归还日期；长期出库不设归还期限；永久出库表示硬盘另有他用无需归还。";
 
         public bool CanEditExpectedReturnDate =>
-            HardDiskMediaOutboundReturnSupport.RequiresExpectedReturnDate(ApplicationType);
+            CanEditApplicationForm
+            && HardDiskMediaOutboundReturnSupport.RequiresExpectedReturnDate(ApplicationType);
 
         public bool ShowExpectedReturnDateAsDash =>
-            HardDiskMediaOutboundReturnSupport.IsNonReturnableOutboundType(ApplicationType);
+            HardDiskMediaOutboundReturnSupport.IsNonReturnableOutboundType(ApplicationType)
+            || (!CanEditApplicationForm
+                && HardDiskMediaOutboundReturnSupport.RequiresExpectedReturnDate(ApplicationType));
 
         public string ExpectedReturnDateDisplay =>
             HardDiskMediaOutboundReturnSupport.FormatExpectedReturnDateDisplay(ApplicationType, ExpectedReturnDate);
@@ -105,6 +124,28 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return $"归还期限至 {deadline:yyyy-MM-dd}，可填写不晚于该日期的预计归还日期。";
             }
         }
+
+        /// <summary>永久出库时显示目标去向类别切换。</summary>
+        public bool ShowDestinationKind =>
+            HardDiskMediaOutboundReturnSupport.RequiresDestinationKind(ApplicationType);
+
+        /// <summary>仅永久出库且选外单位时可编辑「目标位置/去向」。</summary>
+        public bool IsTargetLocationReadOnly =>
+            !CanEditApplicationForm
+            || !ShowDestinationKind
+            || HardDiskMediaOutboundReturnSupport.IsInternalDestination(DestinationKind);
+
+        public string TargetLocationFieldLabel =>
+            ShowDestinationKind
+            && HardDiskMediaOutboundReturnSupport.IsExternalDestination(DestinationKind)
+                ? "目标位置/去向 *"
+                : "目标位置/去向";
+
+        public string TargetLocationToolTip =>
+            ShowDestinationKind
+            && HardDiskMediaOutboundReturnSupport.IsExternalDestination(DestinationKind)
+                ? "请填写外单位名称，不能填写本院部门名称"
+                : string.Empty;
 
         public string MediumSelectionGuidanceText =>
             $"关联介质最多选择 {MaxSelectableMediumCount} 块硬盘，每块硬盘对应一份申请单，归还时可分别办理。";
@@ -136,10 +177,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 if (SetProperty(ref _selectedApplicant, value))
                 {
                     ApplicantDept = value?.ApplicantDept ?? string.Empty;
-                    if (string.IsNullOrWhiteSpace(TargetLocation))
-                    {
-                        TargetLocation = ApplicantDept;
-                    }
+                    SyncTargetLocationFromDestination();
                 }
             }
         }
@@ -153,6 +191,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 {
                     SyncExpectedReturnDate(preferExistingValue: false);
                     NotifyExpectedReturnDatePresentationChanged();
+                    NotifyDestinationPresentationChanged();
+                    SyncTargetLocationFromDestination();
                 }
             }
         }
@@ -160,7 +200,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string ApplicantDept
         {
             get => _applicantDept;
-            set => SetProperty(ref _applicantDept, value);
+            set
+            {
+                if (SetProperty(ref _applicantDept, value))
+                {
+                    SyncTargetLocationFromDestination();
+                }
+            }
         }
 
         public DateTime ApplyTime
@@ -194,6 +240,22 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _targetLocation, value);
         }
 
+        public string DestinationKind
+        {
+            get => _destinationKind;
+            set
+            {
+                string normalized = string.IsNullOrWhiteSpace(value)
+                    ? HardDiskMediaOutboundReturnSupport.DestinationKindInternal
+                    : value.Trim();
+                if (SetProperty(ref _destinationKind, normalized))
+                {
+                    NotifyDestinationPresentationChanged();
+                    SyncTargetLocationFromDestination(clearExternalWhenSwitching: true);
+                }
+            }
+        }
+
         public DateTime? ExpectedReturnDate
         {
             get => _expectedReturnDate;
@@ -203,6 +265,45 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 {
                     OnPropertyChanged(nameof(ExpectedReturnDateDisplay));
                 }
+            }
+        }
+
+        /// <summary>申请时是否声明附有证明材料。</summary>
+        public bool HasProofMaterial
+        {
+            get => _hasProofMaterial;
+            set
+            {
+                if (_hasProofMaterial == value)
+                {
+                    return;
+                }
+
+                _hasProofMaterial = value;
+                if (!_hasProofMaterial)
+                {
+                    ProofMaterialName = string.Empty;
+                }
+
+                OnPropertyChanged(nameof(HasProofMaterial));
+                OnPropertyChanged(nameof(ProofMaterialName));
+            }
+        }
+
+        /// <summary>证明材料名称（仅 HasProofMaterial 为 true 时有效）。</summary>
+        public string ProofMaterialName
+        {
+            get => _hasProofMaterial ? _proofMaterialName : string.Empty;
+            set
+            {
+                string normalized = value?.Trim() ?? string.Empty;
+                if (string.Equals(_proofMaterialName, normalized, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _proofMaterialName = normalized;
+                OnPropertyChanged(nameof(ProofMaterialName));
             }
         }
 
@@ -241,6 +342,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             var media = await _hardDiskMediaService.GetSelectableMediaAsync();
             var applications = await _hardDiskMediaService.SearchApplicationsAsync(null, null, null);
+
+            _instituteDepartmentNames.Clear();
+            _instituteDepartmentNames.AddRange(
+                _userService.GetAllDepartments()
+                    .Select(item => item.Name?.Trim() ?? string.Empty)
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct(StringComparer.Ordinal));
 
             var lockedMediumIds = applications
                 .Where(item => item.Id != _sourceApplication.Id)
@@ -333,18 +441,28 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 : SelectedApplicant?.ApplicantDept ?? string.Empty;
             ApplyTime = _sourceApplication.ApplyTime == default ? DateTime.Today : _sourceApplication.ApplyTime;
             Reason = _sourceApplication.Reason;
-            TargetLocation = !string.IsNullOrWhiteSpace(_sourceApplication.TargetLocation)
-                ? _sourceApplication.TargetLocation
-                : ApplicantDept;
+            RestoreProofMaterialFromSource();
+            RestoreDestinationFromSource();
             UpdateSelectedMediumPresentation();
             ExpectedReturnDate = _sourceApplication.ExpectedReturnDate;
             SyncExpectedReturnDate(preferExistingValue: _sourceApplication.ExpectedReturnDate.HasValue);
             NotifyExpectedReturnDatePresentationChanged();
+            NotifyDestinationPresentationChanged();
+        }
+
+        private void RestoreProofMaterialFromSource()
+        {
+            _hasProofMaterial = HardDiskOutboundDomainValues.HasProofMaterial(_sourceApplication.ProofMaterialNote);
+            _proofMaterialName = _hasProofMaterial
+                ? (_sourceApplication.ProofMaterialNote?.Trim() ?? string.Empty)
+                : string.Empty;
+            OnPropertyChanged(nameof(HasProofMaterial));
+            OnPropertyChanged(nameof(ProofMaterialName));
         }
 
         private async Task SaveAsync(int targetStatus)
         {
-            if (!TryValidateForm(out var selectedMedia))
+            if (!TryValidateForm(targetStatus, out var selectedMedia))
             {
                 return;
             }
@@ -376,7 +494,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task PrintAsync()
         {
-            if (!TryValidateForm(out var selectedMedia))
+            if (!TryValidateForm(HardDiskMediaApplication.StatusSubmitted, out var selectedMedia))
             {
                 return;
             }
@@ -448,7 +566,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
             RequestClose?.Invoke(true);
         }
 
-        private bool TryValidateForm(out IReadOnlyList<HardDiskMediaOutboundMediumOption> selectedMedia)
+        private bool TryValidateForm(
+            int targetStatus,
+            out IReadOnlyList<HardDiskMediaOutboundMediumOption> selectedMedia)
         {
             selectedMedia = GetSelectedMedia();
 
@@ -483,6 +603,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return false;
             }
 
+            if (HasProofMaterial && string.IsNullOrWhiteSpace(ProofMaterialName))
+            {
+                _dialogService.ShowMessage("请填写证明材料名称。");
+                return false;
+            }
+
             try
             {
                 HardDiskMediaOutboundReturnSupport.ValidateExpectedReturnDate(ApplicationType, ApplyTime, ExpectedReturnDate);
@@ -493,11 +619,37 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return false;
             }
 
+            // 提交（及打印）时强制校验永久出库目标去向；草稿仅在已选永久类型时同步校验，避免脏数据入库。
+            if (targetStatus == HardDiskMediaApplication.StatusSubmitted
+                && HardDiskMediaOutboundReturnSupport.RequiresDestinationKind(ApplicationType))
+            {
+                try
+                {
+                    HardDiskMediaOutboundReturnSupport.ValidatePermanentDestination(
+                        ApplicationType,
+                        DestinationKind,
+                        ApplicantDept,
+                        ResolveTargetLocationForSave(),
+                        _instituteDepartmentNames);
+                }
+                catch (ArgumentException ex)
+                {
+                    _dialogService.ShowMessage(ex.Message);
+                    return false;
+                }
+            }
+
             return true;
         }
 
         private HardDiskMediaApplication BuildApplicationForSave(int targetStatus, HardDiskMediaOutboundMediumOption medium)
         {
+            string destinationKind = HardDiskMediaOutboundReturnSupport.RequiresDestinationKind(ApplicationType)
+                ? DestinationKind.Trim()
+                : string.Empty;
+            // 目标位置/去向与打印「目标去向」、台账持有单位共用同一文本（TargetLocation）。
+            string targetLocation = ResolveTargetLocationForSave();
+
             return new HardDiskMediaApplication
             {
                 Id = _sourceApplication.Id,
@@ -510,9 +662,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 ApplicantDept = ApplicantDept.Trim(),
                 ApplyTime = ApplyTime,
                 Reason = Reason.Trim(),
-                TargetPersonOrUnit = string.Empty,
+                ProofMaterialNote = HardDiskOutboundDomainValues.NormalizeProofMaterialNote(HasProofMaterial, ProofMaterialName),
+                DestinationKind = destinationKind,
+                TargetPersonOrUnit = targetLocation,
                 CurrentLocation = string.IsNullOrWhiteSpace(medium.CurrentLocation) ? CurrentLocation.Trim() : medium.CurrentLocation.Trim(),
-                TargetLocation = TargetLocation.Trim(),
+                TargetLocation = targetLocation,
                 ExpectedReturnDate = HardDiskMediaOutboundReturnSupport.ResolveExpectedReturnDateForSave(
                     ApplicationType,
                     ApplyTime,
@@ -525,8 +679,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 SignedAttachmentUploaded = _sourceApplication.SignedAttachmentUploaded,
                 SignedAttachmentUploadedTime = _sourceApplication.SignedAttachmentUploadedTime,
                 SignedAttachmentUploader = _sourceApplication.SignedAttachmentUploader,
-                ApprovedBy = _sourceApplication.ApprovedBy,
-                ApprovedTime = _sourceApplication.ApprovedTime,
+                ArchiveRoomHead = _sourceApplication.ArchiveRoomHead,
+                ArchiveRoomHeadDate = _sourceApplication.ArchiveRoomHeadDate,
+                ArchiveDeputyPresident = _sourceApplication.ArchiveDeputyPresident,
+                ArchiveDeputyPresidentDate = _sourceApplication.ArchiveDeputyPresidentDate,
                 ApprovalOpinion = _sourceApplication.ApprovalOpinion,
                 ExecutedBy = _sourceApplication.ExecutedBy,
                 ExecutedTime = _sourceApplication.ExecutedTime
@@ -545,10 +701,81 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _sourceApplication.ApplicantDept = savedApplication.ApplicantDept;
             _sourceApplication.ApplyTime = savedApplication.ApplyTime;
             _sourceApplication.Reason = savedApplication.Reason;
+            _sourceApplication.ProofMaterialNote = savedApplication.ProofMaterialNote;
+            _sourceApplication.DestinationKind = savedApplication.DestinationKind;
+            _sourceApplication.TargetPersonOrUnit = savedApplication.TargetPersonOrUnit;
             _sourceApplication.CurrentLocation = savedApplication.CurrentLocation;
             _sourceApplication.TargetLocation = savedApplication.TargetLocation;
             _sourceApplication.ExpectedReturnDate = savedApplication.ExpectedReturnDate;
             _sourceApplication.RelatedBatch = savedApplication.RelatedBatch;
+        }
+
+        private string ResolveTargetLocationForSave() =>
+            HardDiskMediaOutboundReturnSupport.ResolveTargetPersonOrUnitForSave(
+                ApplicationType,
+                DestinationKind,
+                ApplicantDept,
+                TargetLocation);
+
+        private void RestoreDestinationFromSource()
+        {
+            if (!HardDiskMediaOutboundReturnSupport.RequiresDestinationKind(_sourceApplication.ApplicationType)
+                && !HardDiskMediaOutboundReturnSupport.RequiresDestinationKind(ApplicationType))
+            {
+                DestinationKind = HardDiskMediaOutboundReturnSupport.DestinationKindInternal;
+                TargetLocation = !string.IsNullOrWhiteSpace(_sourceApplication.TargetLocation)
+                    ? _sourceApplication.TargetLocation
+                    : ApplicantDept;
+                return;
+            }
+
+            string storedKind = _sourceApplication.DestinationKind?.Trim() ?? string.Empty;
+            string storedTarget = !string.IsNullOrWhiteSpace(_sourceApplication.TargetLocation)
+                ? _sourceApplication.TargetLocation.Trim()
+                : (_sourceApplication.TargetPersonOrUnit?.Trim() ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(storedKind))
+            {
+                if (!string.IsNullOrWhiteSpace(storedTarget)
+                    && !string.Equals(storedTarget, ApplicantDept.Trim(), StringComparison.Ordinal))
+                {
+                    storedKind = HardDiskMediaOutboundReturnSupport.DestinationKindExternal;
+                }
+                else
+                {
+                    storedKind = HardDiskMediaOutboundReturnSupport.DestinationKindInternal;
+                }
+            }
+
+            DestinationKind = storedKind;
+            if (HardDiskMediaOutboundReturnSupport.IsExternalDestination(storedKind))
+            {
+                TargetLocation = storedTarget;
+            }
+            else
+            {
+                SyncTargetLocationFromDestination(clearExternalWhenSwitching: false);
+            }
+        }
+
+        private void SyncTargetLocationFromDestination(bool clearExternalWhenSwitching = false)
+        {
+            if (!HardDiskMediaOutboundReturnSupport.RequiresDestinationKind(ApplicationType))
+            {
+                TargetLocation = ApplicantDept;
+                return;
+            }
+
+            if (HardDiskMediaOutboundReturnSupport.IsInternalDestination(DestinationKind))
+            {
+                TargetLocation = ApplicantDept;
+                return;
+            }
+
+            if (clearExternalWhenSwitching
+                && string.Equals(TargetLocation.Trim(), ApplicantDept.Trim(), StringComparison.Ordinal))
+            {
+                TargetLocation = string.Empty;
+            }
         }
 
         private void SyncExpectedReturnDate(bool preferExistingValue)
@@ -574,6 +801,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(ShowExpectedReturnDateAsDash));
             OnPropertyChanged(nameof(ExpectedReturnDateDisplay));
             OnPropertyChanged(nameof(ExpectedReturnDateHint));
+        }
+
+        private void NotifyDestinationPresentationChanged()
+        {
+            OnPropertyChanged(nameof(ShowDestinationKind));
+            OnPropertyChanged(nameof(IsTargetLocationReadOnly));
+            OnPropertyChanged(nameof(TargetLocationFieldLabel));
+            OnPropertyChanged(nameof(TargetLocationToolTip));
         }
 
         private IReadOnlyList<HardDiskMediaOutboundMediumOption> GetSelectedMedia()
@@ -642,9 +877,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private void RefreshApplicationActionCommandStates()
         {
+            OnPropertyChanged(nameof(CanEditApplicationForm));
             OnPropertyChanged(nameof(CanSaveApplicationDraft));
             OnPropertyChanged(nameof(CanSubmitApplication));
             OnPropertyChanged(nameof(CanPrintApplication));
+            OnPropertyChanged(nameof(CanEditExpectedReturnDate));
+            OnPropertyChanged(nameof(ShowExpectedReturnDateAsDash));
+            OnPropertyChanged(nameof(ExpectedReturnDateDisplay));
+            OnPropertyChanged(nameof(ExpectedReturnDateHint));
+            NotifyDestinationPresentationChanged();
             CommandManager.InvalidateRequerySuggested();
         }
     }

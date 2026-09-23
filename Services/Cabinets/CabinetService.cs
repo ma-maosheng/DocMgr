@@ -48,17 +48,21 @@ namespace DocMgr.Services.Cabinets
             return _cabinetRepository.GetById(cabinetId);
         }
 
-        public void AddCabinet(Cabinet cabinet)
+        public void UpdateCabinet(Cabinet cabinet)
         {
+            ArgumentNullException.ThrowIfNull(cabinet);
             CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
-            _cabinetRepository.Add(cabinet);
+            EnsureMagneticSlotCapacitiesAllowCurrentOccupancy(cabinet);
+            _cabinetRepository.Update(cabinet);
             _cabinetRepository.SaveChanges();
         }
 
-        public void UpdateCabinet(Cabinet cabinet)
+        public void AddCabinet(Cabinet cabinet)
         {
+            ArgumentNullException.ThrowIfNull(cabinet);
             CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
-            _cabinetRepository.Update(cabinet);
+            NormalizeMagneticSlotCapacities(cabinet);
+            _cabinetRepository.Add(cabinet);
             _cabinetRepository.SaveChanges();
         }
 
@@ -649,5 +653,49 @@ namespace DocMgr.Services.Cabinets
 
         private static string BuildSlotCategoryKey(string faceCode, string slotCode)
             => $"{faceCode.Trim()}:{slotCode.Trim()}";
+
+        private static void NormalizeMagneticSlotCapacities(Cabinet cabinet)
+        {
+            ArgumentNullException.ThrowIfNull(cabinet);
+            if (cabinet.Type != CabinetType.MagneticDisk)
+            {
+                cabinet.HardDiskSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
+                cabinet.OpticalDiscSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedOpticalDiscSlotCapacity;
+                return;
+            }
+
+            if (cabinet.HardDiskSlotCapacity <= 0)
+            {
+                cabinet.HardDiskSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
+            }
+
+            if (cabinet.OpticalDiscSlotCapacity <= 0)
+            {
+                cabinet.OpticalDiscSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedOpticalDiscSlotCapacity;
+            }
+        }
+
+        private void EnsureMagneticSlotCapacitiesAllowCurrentOccupancy(Cabinet cabinet)
+        {
+            ArgumentNullException.ThrowIfNull(cabinet);
+            NormalizeMagneticSlotCapacities(cabinet);
+            if (cabinet.Type != CabinetType.MagneticDisk || cabinet.Id <= 0)
+            {
+                return;
+            }
+
+            var (maxHardDiskOccupancy, maxOpticalDiscOccupancy) = _cabinetRepository.GetMaxMagneticSlotOccupancy(cabinet);
+            if (cabinet.HardDiskSlotCapacity < maxHardDiskOccupancy)
+            {
+                throw new InvalidOperationException(
+                    $"硬盘档口最大容量不能小于当前已占用数（当前最高占用 {maxHardDiskOccupancy} 块/格，拟设为 {cabinet.HardDiskSlotCapacity}）。");
+            }
+
+            if (cabinet.OpticalDiscSlotCapacity < maxOpticalDiscOccupancy)
+            {
+                throw new InvalidOperationException(
+                    $"光盘档口最大容量不能小于当前已占用数（当前最高占用 {maxOpticalDiscOccupancy} 张/格，拟设为 {cabinet.OpticalDiscSlotCapacity}）。");
+            }
+        }
     }
 }

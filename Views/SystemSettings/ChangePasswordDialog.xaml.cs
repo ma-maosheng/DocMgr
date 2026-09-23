@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using DocMgr.ViewModels.SystemSettings;
+using DocMgr.Views.Shared;
 
 namespace DocMgr.Views.SystemSettings
 {
@@ -9,6 +10,7 @@ namespace DocMgr.Views.SystemSettings
         public ChangePasswordDialog()
         {
             InitializeComponent();
+            EnterAsTabNavigationSupport.Attach(this);
         }
 
         private void PwdCurrent_PasswordChanged(object sender, RoutedEventArgs e)

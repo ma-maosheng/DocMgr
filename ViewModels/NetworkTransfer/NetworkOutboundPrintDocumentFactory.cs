@@ -4,6 +4,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 
 namespace DocMgr.ViewModels.NetworkTransfer;
 
@@ -13,20 +14,32 @@ internal static class NetworkOutboundPrintDocumentFactory
     private static readonly FontFamily LabelFont = new("SimHei");
     private static readonly FontFamily BodyFont = new("SimSun");
 
-    private const double TitleBlockHeight = 48;
     private const double HeaderInfoHeight = 28;
-    private const double StandardRowHeight = 32;
-    private const double ReasonRowHeight = 38;
+    private const double StandardRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
     /// <summary>出网交接栏：固定 2 行行高。</summary>
-    private const double HandoverRowHeight = StandardRowHeight * 2;
-    private const double CellPadding = 4;
+    private const double HandoverRowHeight = PrintPageLayoutSupport.TableRowContentHeightTwoLinesDip;
+    private const double CellPadding = PrintPageLayoutSupport.TableCellPaddingDip;
     private const double BodyFontSize = 12;
+
+    /// <summary>申请说明按正文估行后的上限。</summary>
+    private const int ReasonMaxLines = 5;
+
+    /// <summary>具体资料明细按正文估行后的上限（撑满下限）。</summary>
+    private const int DetailMaxLines = 20;
 
     internal static FlowDocument Create(NetworkOutboundPrintData data)
     {
         ArgumentNullException.ThrowIfNull(data);
 
-        double itemDetailRowHeight = CalculateItemDetailRowHeight(data);
+        string reasonText = EmptyAsPlaceholder(data.Reason);
+        string itemDetailText = BuildItemText(data);
+        bool hasArchivePurpose = !string.IsNullOrWhiteSpace(data.ArchivePurposeText);
+        double reasonRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(reasonText, ReasonMaxLines);
+        double itemDetailRowHeight = CalculateItemDetailRowHeight(
+            data,
+            reasonRowHeight,
+            hasArchivePurpose,
+            itemDetailText);
 
         var document = CreateDocumentSkeleton();
         document.Blocks.Add(CreateTitleBlock());
@@ -35,26 +48,49 @@ internal static class NetworkOutboundPrintDocumentFactory
             $"申请日期：{data.ApplyDateText}"));
 
         var rowGroup = new TableRowGroup();
-        rowGroup.Rows.Add(CreateDoubleRow("申请部门", data.ApplicantDept, "申请人", data.ApplicantName));
+        rowGroup.Rows.Add(CreateDoubleRow("申请人", data.ApplicantName, "申请部门", data.ApplicantDept));
         rowGroup.Rows.Add(CreateDoubleRow("年度", EmptyAsPlaceholder(data.YearText), "项目", EmptyAsPlaceholder(data.ProjectName)));
         rowGroup.Rows.Add(CreateSingleRow("目的地", EmptyAsPlaceholder(data.DestinationKindText)));
-        if (!string.IsNullOrWhiteSpace(data.ArchivePurposeText))
+        if (hasArchivePurpose)
         {
             rowGroup.Rows.Add(CreateSingleRow("库管模式", EmptyAsPlaceholder(data.ArchivePurposeText)));
         }
-        rowGroup.Rows.Add(CreateSingleRow("申请说明", EmptyAsPlaceholder(data.Reason), ReasonRowHeight, CellVerticalAlignment.ContentTop));
+        rowGroup.Rows.Add(CreateSingleRow("申请说明", reasonText, reasonRowHeight, CellVerticalAlignment.ContentTop));
         rowGroup.Rows.Add(CreateSingleRow("证明材料名称", EmptyAsPlaceholder(data.ProofMaterialNote)));
         rowGroup.Rows.Add(CreateSingleRow(
             "具体资料明细",
-            BuildItemText(data),
+            itemDetailText,
             itemDetailRowHeight,
             CellVerticalAlignment.ContentTop));
-        rowGroup.Rows.Add(CreateSingleRow("申请部门", data.DeptLeaderBlock));
-        rowGroup.Rows.Add(CreateSingleRow("生产管理科", data.ProdLeaderBlock));
-        rowGroup.Rows.Add(CreateSingleRow("资料室", data.RndLeaderBlock));
-        rowGroup.Rows.Add(CreateSingleRow(
-            string.IsNullOrWhiteSpace(data.DeputyLeaderLabel) ? "分管领导" : data.DeputyLeaderLabel.Trim(),
-            data.DeputyLeaderBlock));
+        if (data.EnableDeptHead)
+        {
+            rowGroup.Rows.Add(CreateSingleRow(ApprovalWorkflowDomainValues.DisplayDeptHead, data.DeptHeadBlock));
+        }
+
+        if (data.EnableProductionHead)
+        {
+            rowGroup.Rows.Add(CreateSingleRow(ApprovalWorkflowDomainValues.DisplayProductionHead, data.ProductionHeadBlock));
+        }
+
+        if (data.EnableArchiveRoomHead)
+        {
+            rowGroup.Rows.Add(CreateSingleRow(ApprovalWorkflowDomainValues.DisplayArchiveRoomHead, data.ArchiveRoomHeadBlock));
+        }
+
+        if (data.EnableArchiveDeputyPresident)
+        {
+            rowGroup.Rows.Add(CreateSingleRow(
+                ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident,
+                data.ArchiveDeputyPresidentBlock));
+        }
+
+        if (data.EnableProductionVicePresident)
+        {
+            rowGroup.Rows.Add(CreateSingleRow(
+                ApprovalWorkflowDomainValues.DisplayProductionVicePresident,
+                data.ProductionVicePresidentBlock));
+        }
+
         rowGroup.Rows.Add(CreateSingleRow(
             "出网交接",
             data.HandoverSignatureBlock,
@@ -67,31 +103,87 @@ internal static class NetworkOutboundPrintDocumentFactory
         return document;
     }
 
-    private static double CalculateItemDetailRowHeight(NetworkOutboundPrintData data)
+    private static double CalculateItemDetailRowHeight(
+        NetworkOutboundPrintData data,
+        double reasonRowHeight,
+        bool hasArchivePurpose,
+        string itemDetailText)
     {
         ArgumentNullException.ThrowIfNull(data);
 
-        double fixedTableHeight =
-            PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 8
-            + PrintPageLayoutSupport.GetTableRowOuterHeightDip(ReasonRowHeight, CellPadding)
-            + PrintPageLayoutSupport.GetTableRowOuterHeightDip(HandoverRowHeight, CellPadding);
-        int footerLineCount = data.HasPendingItemDetailCapture ? 4 : 3;
-        double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: footerLineCount, lineHeightDip: 16, topMarginDip: 8);
-        double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
+        int approvalCount = CountEnabledApprovalRows(data);
+        // 固定行（不含具体资料明细）：申请人/年度/目的地/[库管]/证明 + 签批 + 申请说明 + 交接。
+        int oneLineRows = 4 + (hasArchivePurpose ? 1 : 0) + approvalCount;
+        double fixedContentHeight =
+            StandardRowHeight * oneLineRows
+            + reasonRowHeight
+            + HandoverRowHeight;
+        int fixedRowCount = oneLineRows + 2; // 申请说明 + 交接
+        double fixedTableHeight = fixedContentHeight
+            + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
+            + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
+
+        string footerText = BuildFooterNoteText(data);
+        double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
+            footerText,
+            PrintPageLayoutSupport.ContentWidthDip,
+            fontSizeDip: 10,
+            lineHeightDip: 16,
+            topMarginDip: 8);
+        double reservedHeight =
+            PrintPageLayoutSupport.ApprovalFormTitleBlockHeightDip
+            + HeaderInfoHeight
+            + PrintPageLayoutSupport.ApprovalFormHeaderToTableGapDip
+            + footerHeight
+            + fixedTableHeight;
+        double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+            itemDetailText,
+            DetailMaxLines);
         return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
             reservedHeight,
-            StandardRowHeight * 4,
+            contentNeededHeight,
             CellPadding);
+    }
+
+    private static int CountEnabledApprovalRows(NetworkOutboundPrintData data)
+    {
+        int count = 0;
+        if (data.EnableDeptHead)
+        {
+            count++;
+        }
+
+        if (data.EnableProductionHead)
+        {
+            count++;
+        }
+
+        if (data.EnableArchiveRoomHead)
+        {
+            count++;
+        }
+
+        if (data.EnableArchiveDeputyPresident)
+        {
+            count++;
+        }
+
+        if (data.EnableProductionVicePresident)
+        {
+            count++;
+        }
+
+        return count;
     }
 
     private static Block CreateTitleBlock() =>
         new Paragraph(new Run("河北省第三测绘院资料室年度资料出网申请审批单"))
         {
             FontFamily = TitleFont,
-            FontSize = 20,
+            FontSize = PrintPageLayoutSupport.ApprovalFormTitleFontSize,
             FontWeight = FontWeights.Bold,
             TextAlignment = TextAlignment.Center,
-            Margin = new Thickness(0, 0, 0, 10)
+            Margin = PrintPageLayoutSupport.ApprovalFormTitleMargin
         };
 
     private static FlowDocument CreateDocumentSkeleton()
@@ -100,7 +192,7 @@ internal static class NetworkOutboundPrintDocumentFactory
         {
             FontFamily = BodyFont,
             FontSize = BodyFontSize,
-            LineHeight = 18,
+            LineHeight = PrintPageLayoutSupport.ApprovalFormLineHeightDip,
             ColumnWidth = double.PositiveInfinity
         };
         PrintPageLayoutSupport.ApplyA4MediumMargins(document);
@@ -109,7 +201,7 @@ internal static class NetworkOutboundPrintDocumentFactory
 
     private static Table CreateHeaderTable(string leftText, string rightText)
     {
-        var headerTable = new Table { Margin = new Thickness(0, 0, 0, 6) };
+        var headerTable = new Table { Margin = PrintPageLayoutSupport.ApprovalFormHeaderTableMargin };
         headerTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
         headerTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -144,10 +236,7 @@ internal static class NetworkOutboundPrintDocumentFactory
             BorderThickness = new Thickness(2, 2, 0, 0)
         };
 
-        table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-        table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
-        table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-        table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
+        PrintPageLayoutSupport.ApplyApprovalFormMainTableColumns(table);
         table.RowGroups.Add(rowGroup);
 
         return table;
@@ -178,6 +267,25 @@ internal static class NetworkOutboundPrintDocumentFactory
         footer.Inlines.Add(new Run($"      {noteIndex}、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
 
         return footer;
+    }
+
+    /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
+    private static string BuildFooterNoteText(NetworkOutboundPrintData data)
+    {
+        var sb = new System.Text.StringBuilder("备注：");
+        int noteIndex = 1;
+        if (data.HasPendingItemDetailCapture)
+        {
+            sb.Append($"{noteIndex}、本单子项资料的目录、数据量等具体信息尚未录入，资料室办理前需从离线拷贝介质读取并补录。\n");
+            noteIndex++;
+        }
+
+        sb.Append($"      {noteIndex}、申请提交后，按“线上申请、打印表单、线下审批签字、上传签批单、确认出网交接”的流程办理。\n");
+        noteIndex++;
+        sb.Append($"      {noteIndex}、签字后的审批单应回传系统，作为办理依据和归档附件。\n");
+        noteIndex++;
+        sb.Append($"      {noteIndex}、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。");
+        return sb.ToString();
     }
 
     private static string BuildItemText(NetworkOutboundPrintData data) =>
@@ -237,9 +345,9 @@ internal static class NetworkOutboundPrintDocumentFactory
         grid.Children.Add(new TextBlock
         {
             Text = text,
-            TextWrapping = TextWrapping.Wrap,
+            TextWrapping = label ? TextWrapping.NoWrap : TextWrapping.Wrap,
             VerticalAlignment = ToVerticalAlignment(verticalAlignment),
-            HorizontalAlignment = label ? HorizontalAlignment.Left : HorizontalAlignment.Left,
+            HorizontalAlignment = label ? HorizontalAlignment.Center : HorizontalAlignment.Left,
             TextAlignment = label ? TextAlignment.Center : TextAlignment.Left,
             FontFamily = label ? LabelFont : BodyFont,
             FontWeight = label ? FontWeights.Bold : FontWeights.Normal,

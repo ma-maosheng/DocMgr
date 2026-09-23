@@ -155,8 +155,8 @@ namespace DocMgr.Infrastructure.DebugUi
 
             // SS
             Add<UserManagementPage>("SS-USER", "用户管理");
-            Add<RoleSettingPage>("SS-ROLE", "角色设置");
-            Add<PermissionSettingPage>("SS-PERM", "权限设置");
+            Add<RoleSettingPage>("SS-ROLE", "角色概览");
+            Add<ApprovalWorkflowSettingsPage>("SS-APPR", "审核审批");
             Add<ServerPathSettingPage>("SS-SRVPATH", "服务器路径设置");
             Add<DeptSettingPage>("SS-DEPT", "部门设置");
             Add<UserPreferencePage>("SS-PREF", "个人设置");
@@ -165,7 +165,6 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<HelpPage>("SS-HELP", "操作手册");
             Add<DbOperationLogPage>("SS-DBLOG", "数据库操作日志");
             Add<UserEditDialog>("SS-USER-ED", "用户编辑");
-            Add<RoleEditDialog>("SS-ROLE-ED", "角色编辑");
             Add<ServerPathSettingEditDialog>("SS-SRVPATH-ED", "服务器路径编辑");
             Add<DeptEditDialog>("SS-DEPT-ED", "部门编辑");
 

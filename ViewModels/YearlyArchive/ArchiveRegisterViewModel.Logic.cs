@@ -22,7 +22,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             var newRecord = _archiveRegisterService.CreateDraftRecord(_userContextService.CurrentUser);
             CurrentRecord = newRecord;
             SelectedProject = null;
-            SelectedSourceType = GetDefaultSourceType();
             SelectedArchivePurpose = GetDefaultArchivePurpose();
             HasProofMaterial = false;
 
@@ -53,22 +52,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             if (CurrentRecord == null) return;
             UpdateUIState();
             SyncCollectionsFromRecord();
-            try
-            {
-                _suppressProvideUnitDefault = true;
-                SelectedSourceType = string.IsNullOrWhiteSpace(CurrentRecord.SourceType)
-                    ? GetDefaultSourceType()
-                    : CurrentRecord.SourceType;
-            }
-            finally
-            {
-                _suppressProvideUnitDefault = false;
-            }
-
-            ApplyDefaultProvideUnitForInternalSource(onlyWhenEmpty: true);
-            SelectedArchivePurpose = string.IsNullOrWhiteSpace(CurrentRecord.ArchivePurpose)
-                ? GetDefaultArchivePurpose()
-                : CurrentRecord.ArchivePurpose;
+            ApplyArchivePurposeSelection();
             if (CurrentRecord.ProjectId.HasValue)
             {
                 var proj = Projects.FirstOrDefault(p => p.Id == CurrentRecord.ProjectId.Value);
@@ -77,6 +61,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             await LoadAttachments();
             await RefreshAttachmentRequirementsAsync();
             OnPropertyChanged(nameof(WindowTitle));
+            OnPropertyChanged(nameof(IsExternalSource));
             NotifyNetworkOutboundTransferUiState();
             if (_userContextService.CurrentUser != null)
             {
@@ -107,7 +92,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 CurrentRecord = await _archiveRegisterService.CreateDraftRecordWithNextFormNoAsync(_userContextService.CurrentUser);
                 SelectedProject = null;
-                SelectedSourceType = GetDefaultSourceType();
                 SelectedArchivePurpose = GetDefaultArchivePurpose();
                 HasProofMaterial = false;
                 MediaEntries.Clear();
@@ -127,7 +111,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (CurrentRecord != null)
                 {
-                    CurrentRecord.SourceType = SelectedSourceType ?? string.Empty;
                     CurrentRecord.ArchivePurpose = SelectedArchivePurpose ?? string.Empty;
                     ApplyProofMaterialNoteToRecord();
                 }
@@ -311,7 +294,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            CurrentRecord.SourceType = SelectedSourceType ?? string.Empty;
             CurrentRecord.ArchivePurpose = SelectedArchivePurpose ?? string.Empty;
             ApplyProofMaterialNoteToRecord();
             if (!ValidateProofMaterialInput())
@@ -385,7 +367,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(IsNetworkOutboundTransferRegister));
             OnPropertyChanged(nameof(IsElectronicMediaTypeEditable));
             OnPropertyChanged(nameof(IsElectronicDispositionEditable));
-            OnPropertyChanged(nameof(IsSourceTypeEditable));
             OnPropertyChanged(nameof(NetworkOutboundTransferHint));
         }
 
@@ -440,42 +421,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _dialogService.ShowMessage(ex.Message);
             }
         }
-        /// <summary>
-        /// 资料来源为「内部」时，将提供部门默认设为申请人所在部门。
-        /// </summary>
-        private void ApplyDefaultProvideUnitForInternalSource(bool onlyWhenEmpty)
-        {
-            if (CurrentRecord == null || IsExternalSource)
-            {
-                return;
-            }
-
-            if (onlyWhenEmpty && !string.IsNullOrWhiteSpace(CurrentRecord.ProvideUnit))
-            {
-                return;
-            }
-
-            string applicantDept = ResolveApplicantDepartment();
-            if (string.IsNullOrEmpty(applicantDept))
-            {
-                return;
-            }
-
-            CurrentRecord.ProvideUnit = applicantDept;
-            OnPropertyChanged(nameof(CurrentRecord));
-        }
-
-        private string ResolveApplicantDepartment()
-        {
-            string dept = CurrentRecord?.ApplicantDept?.Trim() ?? string.Empty;
-            if (dept.Length > 0)
-            {
-                return dept;
-            }
-
-            return _userContextService.CurrentUser?.Department?.Trim() ?? string.Empty;
-        }
-
         // Helpers
         private void LoadDepartments()
         {

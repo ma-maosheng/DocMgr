@@ -523,7 +523,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 MediaKind = context.MediaKind,
                 RegisterMediaId = context.RegisterMediaId,
                 MediaItemId = context.MediaItemId,
-                ItemType = context.ItemType,
                 ItemName = context.ItemName,
                 ContainerCode = context.ContainerCode,
                 ContentEntryKeyword = context.ContentEntryKeyword,

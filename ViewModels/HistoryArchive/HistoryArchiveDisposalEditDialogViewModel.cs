@@ -4,8 +4,10 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
 using DocMgr.Models.HistoryArchive;
+using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
@@ -20,6 +22,8 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
     private readonly IHistoryArchiveDisposalService _service;
     private readonly IDialogService _dialogService;
     private readonly IUserContextService _userContextService;
+    private readonly IUserService _userService;
+    private readonly IApprovalWorkflowService _approvalWorkflowService;
     private HistoryArchiveDisposalRecord _record;
     private bool _hasCommittedChanges;
     private bool _suppressReviewSignerPersist;
@@ -30,10 +34,21 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
     private string _otherRemark = string.Empty;
     private string _reason = string.Empty;
     private string _remark = string.Empty;
+    private string _deptHead = string.Empty;
+    private DateTime? _deptHeadDate;
     private string _archiveRoomHead = string.Empty;
     private DateTime? _archiveRoomHeadDate;
+    private string _productionHead = string.Empty;
+    private DateTime? _productionHeadDate;
     private string _archiveDeputyPresident = string.Empty;
     private DateTime? _archiveDeputyPresidentDate;
+    private string _productionVicePresident = string.Empty;
+    private DateTime? _productionVicePresidentDate;
+    private bool _enableDeptHead;
+    private bool _enableArchiveRoomHead = true;
+    private bool _enableProductionHead;
+    private bool _enableArchiveDeputyPresident = true;
+    private bool _enableProductionVicePresident;
     private string _uploadCategory = HistoryArchiveDisposalDomainValues.AttachmentCategorySignedForm;
     private HistoryArchiveDisposalBoxCandidateRow? _selectedCandidate;
     private HistoryArchiveDisposalItemRow? _selectedItem;
@@ -42,12 +57,16 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
         IHistoryArchiveDisposalService service,
         IDialogService dialogService,
         IUserContextService userContextService,
+        IUserService userService,
+        IApprovalWorkflowService approvalWorkflowService,
         HistoryArchiveDisposalRecord record)
     {
         ArgumentNullException.ThrowIfNull(record);
         _service = service;
         _dialogService = dialogService;
         _userContextService = userContextService;
+        _userService = userService;
+        _approvalWorkflowService = approvalWorkflowService;
         _record = record;
 
         RefreshCandidatesCommand = new RelayCommand(async _ => await LoadCandidatesAsync(), _ => CanEditHeader);
@@ -66,6 +85,24 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
         CaptureFromDocumentCameraCommand = new RelayCommand(
             async _ => await CaptureFromDocumentCameraAsync(),
             _ => CanUploadAttachment);
+        UploadSignedFormAttachmentCommand = new RelayCommand(
+            async _ => await UploadAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategorySignedForm),
+            _ => CanUploadMandatoryAttachment);
+        CaptureSignedFormAttachmentCommand = new RelayCommand(
+            async _ => await CaptureAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategorySignedForm),
+            _ => CanUploadMandatoryAttachment);
+        UploadScenePhotoAttachmentCommand = new RelayCommand(
+            async _ => await UploadAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategoryScenePhoto),
+            _ => CanUploadMandatoryAttachment && RequiresScenePhoto);
+        CaptureScenePhotoAttachmentCommand = new RelayCommand(
+            async _ => await CaptureAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategoryScenePhoto),
+            _ => CanUploadMandatoryAttachment && RequiresScenePhoto);
+        UploadOtherAttachmentCommand = new RelayCommand(
+            async _ => await UploadAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategoryOther),
+            _ => CanUploadOtherAttachment);
+        CaptureOtherAttachmentCommand = new RelayCommand(
+            async _ => await CaptureAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategoryOther),
+            _ => CanUploadOtherAttachment);
         DeleteAttachmentCommand = new RelayCommand(async item =>
         {
             if (item is not SystemAttachment att)
@@ -82,7 +119,7 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
 
             _hasCommittedChanges = true;
             await ReloadAttachmentsAsync();
-        }, item => item is SystemAttachment && CanUploadAttachment);
+        }, item => item is SystemAttachment && CanUploadMandatoryAttachment);
         ViewAttachmentCommand = new RelayCommand(item =>
         {
             if (item is SystemAttachment att)
@@ -110,6 +147,9 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
     public ObservableCollection<HistoryArchiveDisposalBoxCandidateRow> AvailableBoxes { get; } = new();
     public ObservableCollection<HistoryArchiveDisposalItemRow> Items { get; } = new();
     public ObservableCollection<SystemAttachment> Attachments { get; } = new();
+    public ObservableCollection<SystemAttachment> SignedFormAttachments { get; } = new();
+    public ObservableCollection<SystemAttachment> ScenePhotoAttachments { get; } = new();
+    public ObservableCollection<SystemAttachment> OtherAttachments { get; } = new();
 
     public HistoryArchiveDisposalBoxCandidateRow? SelectedCandidate
     {
@@ -178,10 +218,46 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
     public bool CanConfirmUpload =>
         _record.Status == HistoryArchiveDisposalRecord.StatusApproved
         && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+
+    /// <summary>办结后资料管理员可增补「其他附件」。</summary>
+    public bool CanSupplementOtherAttachments =>
+        ApprovalWorkflowButtonSupport.CanSupplementOtherAttachments(
+            _record.Status == HistoryArchiveDisposalRecord.StatusCompleted,
+            ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser));
+
     public bool CanUploadAttachment =>
-        _record.Status is HistoryArchiveDisposalRecord.StatusApproved
-            or HistoryArchiveDisposalRecord.StatusSignedUploaded
-        && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+        ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser)
+        && (CanSupplementOtherAttachments
+            || _record.Status is HistoryArchiveDisposalRecord.StatusApproved
+                or HistoryArchiveDisposalRecord.StatusSignedUploaded);
+
+    /// <summary>签批单/处置资料照片：仅确认可上传后、办结前可传。</summary>
+    public bool CanUploadMandatoryAttachment =>
+        CanUploadAttachment && !CanSupplementOtherAttachments;
+
+    /// <summary>其他附件：确认可上传后及办结后均可增补。</summary>
+    public bool CanUploadOtherAttachment => CanUploadAttachment;
+
+    /// <summary>当前处置方式是否须上传处置资料照片。</summary>
+    public bool RequiresScenePhoto =>
+        HistoryArchiveDisposalDomainValues.RequiresScenePhoto(DispositionMethod);
+
+    public string UploadAttachmentHintText => CanSupplementOtherAttachments
+        ? "办结后仅可增补「其他附件」；不可删除已有附件。"
+        : "请在「确认可上传」后分区上传签批单与处置资料照片；办结前仍可继续补传。";
+
+    public string ApproveHintText => CanApprove
+        ? "请按线下签批结果执行审批通过；通过后点击「确认可上传」。"
+        : "仅「已提交」状态可审批通过。";
+
+    public string ConfirmUploadHintText => CanConfirmUpload
+        ? "确认后可分区上传签批单与处置资料照片。"
+        : "请先执行「审批通过」。";
+
+    public string CompleteHintText => CanComplete
+        ? "确认办结后更新历史台账并撤柜。"
+        : "请先上传签批单（销毁须处置资料照片）后再确认办结。";
+
     public bool CanComplete =>
         _record.Status == HistoryArchiveDisposalRecord.StatusSignedUploaded
         && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
@@ -226,6 +302,7 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
 
             OnPropertyChanged(nameof(ShowTransferTarget));
             OnPropertyChanged(nameof(ShowOtherRemark));
+            OnPropertyChanged(nameof(RequiresScenePhoto));
         }
     }
 
@@ -233,6 +310,30 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
     public string OtherRemark { get => _otherRemark; set => SetProperty(ref _otherRemark, value); }
     public string Reason { get => _reason; set => SetProperty(ref _reason, value); }
     public string Remark { get => _remark; set => SetProperty(ref _remark, value); }
+
+    public bool ShowDeptHead => _enableDeptHead;
+    public bool ShowArchiveRoomHead => _enableArchiveRoomHead;
+    public bool ShowProductionHead => _enableProductionHead;
+    public bool ShowArchiveDeputyPresident => _enableArchiveDeputyPresident;
+    public bool ShowProductionVicePresident => _enableProductionVicePresident;
+    public bool ShowReviewSignerSection => ShowDeptHead || ShowArchiveRoomHead || ShowProductionHead;
+    public bool ShowApproveSignerSection => ShowArchiveDeputyPresident || ShowProductionVicePresident;
+
+    public string DeptHead
+    {
+        get => _deptHead;
+        set
+        {
+            if (!SetProperty(ref _deptHead, value ?? string.Empty))
+            {
+                return;
+            }
+
+            _ = PersistReviewSignersAsync();
+        }
+    }
+
+    public string DeptHeadDateDisplay => FormatDate(_deptHeadDate);
 
     public string ArchiveRoomHead
     {
@@ -250,6 +351,22 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
 
     public string ArchiveRoomHeadDateDisplay => FormatDate(_archiveRoomHeadDate);
 
+    public string ProductionHead
+    {
+        get => _productionHead;
+        set
+        {
+            if (!SetProperty(ref _productionHead, value ?? string.Empty))
+            {
+                return;
+            }
+
+            _ = PersistReviewSignersAsync();
+        }
+    }
+
+    public string ProductionHeadDateDisplay => FormatDate(_productionHeadDate);
+
     public string ArchiveDeputyPresident
     {
         get => _archiveDeputyPresident;
@@ -265,6 +382,23 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
     }
 
     public string ArchiveDeputyPresidentDateDisplay => FormatDate(_archiveDeputyPresidentDate);
+
+    public string ProductionVicePresident
+    {
+        get => _productionVicePresident;
+        set
+        {
+            if (!SetProperty(ref _productionVicePresident, value ?? string.Empty))
+            {
+                return;
+            }
+
+            _ = PersistReviewSignersAsync();
+        }
+    }
+
+    public string ProductionVicePresidentDateDisplay => FormatDate(_productionVicePresidentDate);
+
     public string UploadCategory { get => _uploadCategory; set => SetProperty(ref _uploadCategory, value); }
 
     public RelayCommand RefreshCandidatesCommand { get; }
@@ -279,6 +413,12 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
     public RelayCommand ConfirmUploadCommand { get; }
     public RelayCommand UploadAttachmentCommand { get; }
     public RelayCommand CaptureFromDocumentCameraCommand { get; }
+    public RelayCommand UploadSignedFormAttachmentCommand { get; }
+    public RelayCommand CaptureSignedFormAttachmentCommand { get; }
+    public RelayCommand UploadScenePhotoAttachmentCommand { get; }
+    public RelayCommand CaptureScenePhotoAttachmentCommand { get; }
+    public RelayCommand UploadOtherAttachmentCommand { get; }
+    public RelayCommand CaptureOtherAttachmentCommand { get; }
     public RelayCommand DeleteAttachmentCommand { get; }
     public RelayCommand ViewAttachmentCommand { get; }
     public RelayCommand CompleteCommand { get; }
@@ -302,6 +442,7 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
             }
 
             BindFromRecord();
+            await ReloadSignerEnableFlagsAsync();
             if (CanEditHeader)
             {
                 await LoadCandidatesAsync();
@@ -329,10 +470,16 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
         _suppressReviewSignerPersist = true;
         try
         {
+            _deptHead = _record.DeptHead;
+            _deptHeadDate = _record.DeptHeadDate;
             _archiveRoomHead = _record.ArchiveRoomHead;
             _archiveRoomHeadDate = _record.ArchiveRoomHeadDate;
+            _productionHead = _record.ProductionHead;
+            _productionHeadDate = _record.ProductionHeadDate;
             _archiveDeputyPresident = _record.ArchiveDeputyPresident;
             _archiveDeputyPresidentDate = _record.ArchiveDeputyPresidentDate;
+            _productionVicePresident = _record.ProductionVicePresident;
+            _productionVicePresidentDate = _record.ProductionVicePresidentDate;
             RebuildItemsFromRecord();
             OnPropertyChanged(nameof(WindowTitle));
             OnPropertyChanged(nameof(StatusDisplay));
@@ -342,16 +489,35 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
             OnPropertyChanged(nameof(CanPrint));
             OnPropertyChanged(nameof(CanApprove));
             OnPropertyChanged(nameof(CanConfirmUpload));
+            OnPropertyChanged(nameof(CanSupplementOtherAttachments));
             OnPropertyChanged(nameof(CanUploadAttachment));
+            OnPropertyChanged(nameof(CanUploadMandatoryAttachment));
+            OnPropertyChanged(nameof(CanUploadOtherAttachment));
+            OnPropertyChanged(nameof(RequiresScenePhoto));
+            OnPropertyChanged(nameof(UploadAttachmentHintText));
+            OnPropertyChanged(nameof(ApproveHintText));
+            OnPropertyChanged(nameof(ConfirmUploadHintText));
+            OnPropertyChanged(nameof(CompleteHintText));
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(CanEditReviewSigners));
             OnPropertyChanged(nameof(CanAddSelected));
             OnPropertyChanged(nameof(CanAddAll));
             OnPropertyChanged(nameof(CanClearItems));
+
+            if (CanSupplementOtherAttachments)
+            {
+                UploadCategory = HistoryArchiveDisposalDomainValues.AttachmentCategoryOther;
+            }
+            OnPropertyChanged(nameof(DeptHead));
+            OnPropertyChanged(nameof(DeptHeadDateDisplay));
             OnPropertyChanged(nameof(ArchiveRoomHead));
             OnPropertyChanged(nameof(ArchiveRoomHeadDateDisplay));
+            OnPropertyChanged(nameof(ProductionHead));
+            OnPropertyChanged(nameof(ProductionHeadDateDisplay));
             OnPropertyChanged(nameof(ArchiveDeputyPresident));
             OnPropertyChanged(nameof(ArchiveDeputyPresidentDateDisplay));
+            OnPropertyChanged(nameof(ProductionVicePresident));
+            OnPropertyChanged(nameof(ProductionVicePresidentDateDisplay));
             NotifyItemListsChanged();
         }
         finally
@@ -650,7 +816,7 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
     {
         try
         {
-            if (!_dialogService.ShowConfirm("确认审批通过？将自动填写资料室负责人、分管资料副院长的姓名与日期。"))
+            if (!_dialogService.ShowConfirm("确认审批通过？将自动填写资料室签字、分管资料院长签字的姓名与日期。"))
             {
                 return;
             }
@@ -679,15 +845,48 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
         try
         {
             await _service.UpdateReviewSignersAsync(
-                _record.Id, _archiveRoomHead, _archiveDeputyPresident, RequireUser());
+                _record.Id,
+                _deptHead,
+                _archiveRoomHead,
+                _productionHead,
+                _archiveDeputyPresident,
+                _productionVicePresident,
+                RequireUser());
             _hasCommittedChanges = true;
+            _record.DeptHead = _deptHead.Trim();
             _record.ArchiveRoomHead = _archiveRoomHead.Trim();
+            _record.ProductionHead = _productionHead.Trim();
             _record.ArchiveDeputyPresident = _archiveDeputyPresident.Trim();
+            _record.ProductionVicePresident = _productionVicePresident.Trim();
         }
         catch (Exception ex)
         {
             _dialogService.ShowError(ex.Message);
         }
+    }
+
+    private async Task ReloadSignerEnableFlagsAsync()
+    {
+        var users = _userService.GetAllUsers();
+        var chain = await _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.HistoryArchiveDisposal,
+                FieldValues = ApprovalChainApplySupport.BuildHistoryDisposalFieldValues(_record)
+            },
+            users);
+        _enableDeptHead = chain.DeptHead.IsEnabled;
+        _enableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled;
+        _enableProductionHead = chain.ProductionHead.IsEnabled;
+        _enableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled;
+        _enableProductionVicePresident = chain.ProductionVicePresident.IsEnabled;
+        OnPropertyChanged(nameof(ShowDeptHead));
+        OnPropertyChanged(nameof(ShowArchiveRoomHead));
+        OnPropertyChanged(nameof(ShowProductionHead));
+        OnPropertyChanged(nameof(ShowArchiveDeputyPresident));
+        OnPropertyChanged(nameof(ShowProductionVicePresident));
+        OnPropertyChanged(nameof(ShowReviewSignerSection));
+        OnPropertyChanged(nameof(ShowApproveSignerSection));
     }
 
     private async Task ConfirmUploadAsync()
@@ -725,10 +924,21 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
                 OtherRemark,
                 Reason,
                 BuildItems(),
+                _enableDeptHead,
+                DeptHead,
+                _deptHeadDate,
+                _enableArchiveRoomHead,
                 ArchiveRoomHead,
                 _archiveRoomHeadDate,
+                _enableProductionHead,
+                ProductionHead,
+                _productionHeadDate,
+                _enableArchiveDeputyPresident,
                 ArchiveDeputyPresident,
                 _archiveDeputyPresidentDate,
+                _enableProductionVicePresident,
+                ProductionVicePresident,
+                _productionVicePresidentDate,
                 Attachments.ToList(),
                 physicalRemovalConfirmed: true);
             if (validationErrors.Count > 0)
@@ -754,6 +964,11 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
     {
         try
         {
+            if (CanSupplementOtherAttachments)
+            {
+                UploadCategory = HistoryArchiveDisposalDomainValues.AttachmentCategoryOther;
+            }
+
             string? path = _dialogService.OpenFileDialog("所有文件|*.*", "选择附件");
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             {
@@ -790,6 +1005,11 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
     {
         try
         {
+            if (CanSupplementOtherAttachments)
+            {
+                UploadCategory = HistoryArchiveDisposalDomainValues.AttachmentCategoryOther;
+            }
+
             if (string.IsNullOrWhiteSpace(UploadCategory))
             {
                 _dialogService.ShowMessage("请先选择附件分类。");
@@ -831,6 +1051,9 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
     private async Task ReloadAttachmentsAsync()
     {
         Attachments.Clear();
+        SignedFormAttachments.Clear();
+        ScenePhotoAttachments.Clear();
+        OtherAttachments.Clear();
         if (string.IsNullOrWhiteSpace(_record.DisposalNo))
         {
             return;
@@ -839,7 +1062,32 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
         foreach (var item in await _service.GetAttachmentsAsync(_record.DisposalNo))
         {
             Attachments.Add(item);
+            string category = item.FileCategory?.Trim() ?? string.Empty;
+            if (string.Equals(category, HistoryArchiveDisposalDomainValues.AttachmentCategorySignedForm, StringComparison.Ordinal))
+            {
+                SignedFormAttachments.Add(item);
+            }
+            else if (HistoryArchiveDisposalDomainValues.IsScenePhotoCategory(category))
+            {
+                ScenePhotoAttachments.Add(item);
+            }
+            else
+            {
+                OtherAttachments.Add(item);
+            }
         }
+    }
+
+    private async Task UploadAttachmentByCategoryAsync(string category)
+    {
+        UploadCategory = category;
+        await UploadAttachmentAsync();
+    }
+
+    private async Task CaptureAttachmentByCategoryAsync(string category)
+    {
+        UploadCategory = category;
+        await CaptureFromDocumentCameraAsync();
     }
 
     private async Task ReloadAsync()
@@ -852,6 +1100,7 @@ public sealed class HistoryArchiveDisposalEditDialogViewModel : ViewModelBase
 
         _record = latest;
         BindFromRecord();
+        await ReloadSignerEnableFlagsAsync();
         if (CanEditHeader)
         {
             await LoadCandidatesAsync();

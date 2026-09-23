@@ -3,8 +3,12 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
+using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.SystemSettings;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
 
@@ -20,6 +24,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly IHardDiskDisposalService _disposalService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IUserService _userService;
+        private readonly IApprovalWorkflowService _approvalWorkflowService;
         private readonly List<HardDiskDisposalCandidateViewModel> _mediaPool = new();
         private HardDiskDisposalRecord _record;
         private bool _hasCommittedChanges;
@@ -39,17 +45,31 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private string _filterCapacity = AllFilterText;
         private DateTime? _filterFactoryDateFrom;
         private DateTime? _filterFactoryDateTo;
+        private string _defaultDeptHead = string.Empty;
+        private string _defaultArchiveRoomHead = string.Empty;
+        private string _defaultProductionHead = string.Empty;
+        private string _defaultArchiveDeputyPresident = string.Empty;
+        private string _defaultProductionVicePresident = string.Empty;
+        private bool _enableDeptHead;
+        private bool _enableArchiveRoomHead = true;
+        private bool _enableProductionHead;
+        private bool _enableArchiveDeputyPresident = true;
+        private bool _enableProductionVicePresident;
 
         public HardDiskDisposalEditDialogViewModel(
             IHardDiskDisposalService disposalService,
             IDialogService dialogService,
             IUserContextService userContextService,
+            IUserService userService,
+            IApprovalWorkflowService approvalWorkflowService,
             HardDiskDisposalRecord record)
         {
             ArgumentNullException.ThrowIfNull(record);
             _disposalService = disposalService;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _userService = userService;
+            _approvalWorkflowService = approvalWorkflowService;
             _record = record;
 
             MoveToDisposalCommand = new RelayCommand(_ => MoveToDisposal(), _ => CanEditHeader && AvailableDisks.Any(item => item.IsSelected));
@@ -68,7 +88,27 @@ namespace DocMgr.ViewModels.HardDiskMedia
             CaptureFromDocumentCameraCommand = new RelayCommand(
                 async _ => await CaptureFromDocumentCameraAsync(),
                 _ => CanUploadAttachment);
-            DeleteAttachmentCommand = new RelayCommand(async item => await DeleteAttachmentAsync(item as SystemAttachment), item => item is SystemAttachment && CanUploadAttachment);
+            UploadSignedFormAttachmentCommand = new RelayCommand(
+                async _ => await UploadAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategorySignedForm),
+                _ => CanUploadMandatoryAttachment);
+            CaptureSignedFormAttachmentCommand = new RelayCommand(
+                async _ => await CaptureAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategorySignedForm),
+                _ => CanUploadMandatoryAttachment);
+            UploadDiskPhotoAttachmentCommand = new RelayCommand(
+                async _ => await UploadAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategoryDiskPhoto),
+                _ => CanUploadMandatoryAttachment);
+            CaptureDiskPhotoAttachmentCommand = new RelayCommand(
+                async _ => await CaptureAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategoryDiskPhoto),
+                _ => CanUploadMandatoryAttachment);
+            UploadOtherAttachmentCommand = new RelayCommand(
+                async _ => await UploadAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategoryOther),
+                _ => CanUploadOtherAttachment);
+            CaptureOtherAttachmentCommand = new RelayCommand(
+                async _ => await CaptureAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategoryOther),
+                _ => CanUploadOtherAttachment);
+            DeleteAttachmentCommand = new RelayCommand(
+                async item => await DeleteAttachmentAsync(item as SystemAttachment),
+                item => item is SystemAttachment && CanUploadMandatoryAttachment);
             ViewAttachmentCommand = new RelayCommand(async item => await ViewAttachmentAsync(item as SystemAttachment), item => item is SystemAttachment);
             CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
             PrintCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrint);
@@ -88,7 +128,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string StatusDisplay => HardDiskDisposalDomainValues.ToStatusDisplay(_record.Status);
 
         public string BannerText =>
-            "仅「在库(空盘)」「在库(损坏)」「在库(盘失)」「在库(拟销)」可离库处置；移入后按状态自动带出离库原因（空盘→淘汰、损坏→损坏、盘失→盘失、拟销→拟销），盘失/拟销自动带出处置方式「库内注销」。其余盘请勾选后在上方选择处置方式赋值。流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批通过 → 确认可上传 → 上传签批单与硬盘照片 → 办结。";
+            "仅「在库(空盘)」「在库(损坏)」「在库(盘失)」「在库(拟销)」可离库处置。流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批通过 → 确认可上传 → 分区上传签批单/硬盘照片 → 确认办结。";
 
         public ObservableCollection<string> DispositionMethodOptions { get; } = new(HardDiskDisposalDomainValues.DispositionMethodOptions);
 
@@ -99,6 +139,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public ObservableCollection<HardDiskDisposalItemViewModel> Items { get; } = new();
 
         public ObservableCollection<SystemAttachment> Attachments { get; } = new();
+
+        public ObservableCollection<SystemAttachment> SignedFormAttachments { get; } = new();
+
+        public ObservableCollection<SystemAttachment> DiskPhotoAttachments { get; } = new();
+
+        public ObservableCollection<SystemAttachment> OtherAttachments { get; } = new();
 
         public ObservableCollection<string> InterfaceTypeFilterOptions { get; } = new();
 
@@ -244,6 +290,21 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _approvalOpinion, value);
         }
 
+        public string DefaultDeptHeadDisplay => EmptyAsDash(_defaultDeptHead);
+        public string DefaultArchiveRoomHeadDisplay => EmptyAsDash(_defaultArchiveRoomHead);
+        public string DefaultProductionHeadDisplay => EmptyAsDash(_defaultProductionHead);
+        public string DefaultArchiveDeputyPresidentDisplay => EmptyAsDash(_defaultArchiveDeputyPresident);
+        public string DefaultProductionVicePresidentDisplay => EmptyAsDash(_defaultProductionVicePresident);
+        public bool ShowDeptHeadApprover => _enableDeptHead;
+        public bool ShowArchiveRoomHeadApprover => _enableArchiveRoomHead;
+        public bool ShowProductionHeadApprover => _enableProductionHead;
+        public bool ShowArchiveDeputyPresidentApprover => _enableArchiveDeputyPresident;
+        public bool ShowProductionVicePresidentApprover => _enableProductionVicePresident;
+        public bool ShowReviewApproverSection =>
+            ShowDeptHeadApprover || ShowArchiveRoomHeadApprover || ShowProductionHeadApprover;
+        public bool ShowApproveApproverSection =>
+            ShowArchiveDeputyPresidentApprover || ShowProductionVicePresidentApprover;
+
         public string UploadCategory
         {
             get => _uploadCategory;
@@ -256,19 +317,58 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _selectedAttachment, value);
         }
 
-        public bool CanEditHeader => _record.Status == HardDiskDisposalRecord.StatusDraft;
+        public bool CanOperate =>
+            ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
 
-        public bool CanSubmit => _record.Status == HardDiskDisposalRecord.StatusDraft;
+        public bool CanEditHeader =>
+            CanOperate && _record.Status == HardDiskDisposalRecord.StatusDraft;
 
-        public bool CanApprove => _record.Status == HardDiskDisposalRecord.StatusSubmitted;
+        public bool CanSubmit => CanEditHeader;
 
-        public bool CanConfirmUpload => _record.Status == HardDiskDisposalRecord.StatusApproved;
+        public bool CanApprove =>
+            CanOperate && _record.Status == HardDiskDisposalRecord.StatusSubmitted;
+
+        public bool CanConfirmUpload =>
+            CanOperate && _record.Status == HardDiskDisposalRecord.StatusApproved;
+
+        /// <summary>办结后资料管理员可增补「其他附件」。</summary>
+        public bool CanSupplementOtherAttachments =>
+            ApprovalWorkflowButtonSupport.CanSupplementOtherAttachments(
+                _record.Status == HardDiskDisposalRecord.StatusCompleted,
+                CanOperate);
 
         public bool CanUploadAttachment =>
-            _record.Status is HardDiskDisposalRecord.StatusSignedUploaded or HardDiskDisposalRecord.StatusApproved;
+            CanOperate
+            && (_record.Status is HardDiskDisposalRecord.StatusSignedUploaded or HardDiskDisposalRecord.StatusApproved
+                || CanSupplementOtherAttachments);
+
+        /// <summary>签批单/硬盘照片：仅确认可上传后、办结前可传。</summary>
+        public bool CanUploadMandatoryAttachment =>
+            CanUploadAttachment && !CanSupplementOtherAttachments;
+
+        /// <summary>其他附件：确认可上传后及办结后均可增补。</summary>
+        public bool CanUploadOtherAttachment => CanUploadAttachment;
+
+        public bool RequiresDiskPhotoAttachment => true;
+
+        public string UploadAttachmentHintText => CanSupplementOtherAttachments
+            ? "办结后仅可增补「其他附件」；不可删除已有附件。"
+            : "请在「确认可上传」后分区上传签批单与硬盘照片；办结前仍可继续补传。";
+
+        public string ApproveHintText => CanApprove
+            ? "请按线下签批结果执行审批通过；通过后点击「确认可上传」。"
+            : "仅「已提交」状态可审批通过。";
+
+        public string ConfirmUploadHintText => CanConfirmUpload
+            ? "确认后可分区上传签批单与硬盘照片。"
+            : "请先执行「审批通过」。";
+
+        public string CompleteHintText => CanComplete
+            ? "确认办结后更新硬盘台账并释放档口。"
+            : "请先上传签批单与硬盘照片后再确认办结。";
 
         public bool CanComplete =>
-            _record.Status == HardDiskDisposalRecord.StatusSignedUploaded;
+            CanOperate && _record.Status == HardDiskDisposalRecord.StatusSignedUploaded;
 
         public bool CanPrint =>
             _record.Id > 0
@@ -277,7 +377,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 and not HardDiskDisposalRecord.StatusForceWithdrawn;
 
         public bool CanWithdraw =>
-            _record.Id > 0
+            CanOperate
+            && _record.Id > 0
             && _record.Status is not HardDiskDisposalRecord.StatusCompleted
                 and not HardDiskDisposalRecord.StatusWithdrawn
                 and not HardDiskDisposalRecord.StatusForceWithdrawn;
@@ -292,6 +393,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public RelayCommand ConfirmUploadCommand { get; }
         public RelayCommand UploadAttachmentCommand { get; }
         public RelayCommand CaptureFromDocumentCameraCommand { get; }
+        public RelayCommand UploadSignedFormAttachmentCommand { get; }
+        public RelayCommand CaptureSignedFormAttachmentCommand { get; }
+        public RelayCommand UploadDiskPhotoAttachmentCommand { get; }
+        public RelayCommand CaptureDiskPhotoAttachmentCommand { get; }
+        public RelayCommand UploadOtherAttachmentCommand { get; }
+        public RelayCommand CaptureOtherAttachmentCommand { get; }
         public RelayCommand DeleteAttachmentCommand { get; }
         public RelayCommand ViewAttachmentCommand { get; }
         public RelayCommand CompleteCommand { get; }
@@ -318,8 +425,54 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 await ReloadAttachmentsAsync();
             }
 
+            await ReloadDefaultApproversAsync();
             RaiseCommandStates();
         }
+
+        private async Task ReloadDefaultApproversAsync()
+        {
+            var users = _userService.GetAllUsers();
+            var chain = await _approvalWorkflowService.ResolveAsync(
+                new ApprovalChainResolveRequest
+                {
+                    BusinessType = ApprovalWorkflowBusinessTypes.HardDiskDisposal,
+                    ApplicantDept = _record.ApplicantDept,
+                    FieldValues = ApprovalChainApplySupport.BuildHardDiskDisposalFieldValues(
+                        _record,
+                        item => item.DisposalReason,
+                        item => item.DispositionMethod)
+                },
+                users);
+            var approvers = ArchiveDisposalDefaultApproverSupport.FromChain(chain);
+            _defaultDeptHead = PreferNonEmpty(_record.DeptHead, approvers.DeptHead);
+            _defaultArchiveRoomHead = PreferNonEmpty(_record.ArchiveRoomHead, approvers.ArchiveRoomHead);
+            _defaultProductionHead = PreferNonEmpty(_record.ProductionHead, approvers.ProductionHead);
+            _defaultArchiveDeputyPresident = PreferNonEmpty(_record.ArchiveDeputyPresident, approvers.ArchiveDeputyPresident);
+            _defaultProductionVicePresident = PreferNonEmpty(_record.ProductionVicePresident, approvers.ProductionVicePresident);
+            _enableDeptHead = approvers.EnableDeptHead;
+            _enableArchiveRoomHead = approvers.EnableArchiveRoomHead;
+            _enableProductionHead = approvers.EnableProductionHead;
+            _enableArchiveDeputyPresident = approvers.EnableArchiveDeputyPresident;
+            _enableProductionVicePresident = approvers.EnableProductionVicePresident;
+            OnPropertyChanged(nameof(DefaultDeptHeadDisplay));
+            OnPropertyChanged(nameof(DefaultArchiveRoomHeadDisplay));
+            OnPropertyChanged(nameof(DefaultProductionHeadDisplay));
+            OnPropertyChanged(nameof(DefaultArchiveDeputyPresidentDisplay));
+            OnPropertyChanged(nameof(DefaultProductionVicePresidentDisplay));
+            OnPropertyChanged(nameof(ShowDeptHeadApprover));
+            OnPropertyChanged(nameof(ShowArchiveRoomHeadApprover));
+            OnPropertyChanged(nameof(ShowProductionHeadApprover));
+            OnPropertyChanged(nameof(ShowArchiveDeputyPresidentApprover));
+            OnPropertyChanged(nameof(ShowProductionVicePresidentApprover));
+            OnPropertyChanged(nameof(ShowReviewApproverSection));
+            OnPropertyChanged(nameof(ShowApproveApproverSection));
+        }
+
+        private static string EmptyAsDash(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? "—" : value.Trim();
+
+        private static string PreferNonEmpty(string? primary, string? fallback) =>
+            !string.IsNullOrWhiteSpace(primary) ? primary.Trim() : (fallback?.Trim() ?? string.Empty);
 
         private void ApplyRecordToForm(HardDiskDisposalRecord record)
         {
@@ -351,12 +504,24 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(CanSubmit));
             OnPropertyChanged(nameof(CanApprove));
             OnPropertyChanged(nameof(CanConfirmUpload));
+            OnPropertyChanged(nameof(CanSupplementOtherAttachments));
             OnPropertyChanged(nameof(CanUploadAttachment));
+            OnPropertyChanged(nameof(CanUploadMandatoryAttachment));
+            OnPropertyChanged(nameof(CanUploadOtherAttachment));
+            OnPropertyChanged(nameof(UploadAttachmentHintText));
+            OnPropertyChanged(nameof(ApproveHintText));
+            OnPropertyChanged(nameof(ConfirmUploadHintText));
+            OnPropertyChanged(nameof(CompleteHintText));
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(CanPrint));
             OnPropertyChanged(nameof(CanWithdraw));
             OnPropertyChanged(nameof(RequiresOtherRemark));
             OnPropertyChanged(nameof(DisposalDisksTitle));
+
+            if (CanSupplementOtherAttachments)
+            {
+                UploadCategory = HardDiskDisposalDomainValues.AttachmentCategoryOther;
+            }
         }
 
         private void RebuildItemsFromRecord(
@@ -836,7 +1001,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             try
             {
-                if (_record.Status == HardDiskDisposalRecord.StatusApproved
+                if (CanSupplementOtherAttachments)
+                {
+                    UploadCategory = HardDiskDisposalDomainValues.AttachmentCategoryOther;
+                }
+                else if (_record.Status == HardDiskDisposalRecord.StatusApproved
                     && !string.Equals(UploadCategory, HardDiskDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
                 {
                     _dialogService.ShowMessage("请先点击「确认可上传」，再上传签批单或硬盘照片。");
@@ -890,7 +1059,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return;
                 }
 
-                if (_record.Status == HardDiskDisposalRecord.StatusApproved
+                if (CanSupplementOtherAttachments)
+                {
+                    UploadCategory = HardDiskDisposalDomainValues.AttachmentCategoryOther;
+                }
+                else if (_record.Status == HardDiskDisposalRecord.StatusApproved
                     && !string.Equals(UploadCategory, HardDiskDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
                 {
                     _dialogService.ShowMessage("请先点击「确认可上传」，再上传签批单或硬盘照片。");
@@ -994,12 +1167,16 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 await ReloadMediaPoolAsync();
             }
 
+            await ReloadDefaultApproversAsync();
             RaiseCommandStates();
         }
 
         private async Task ReloadAttachmentsAsync()
         {
             Attachments.Clear();
+            SignedFormAttachments.Clear();
+            DiskPhotoAttachments.Clear();
+            OtherAttachments.Clear();
             if (string.IsNullOrWhiteSpace(_record.DisposalNo))
             {
                 return;
@@ -1009,7 +1186,32 @@ namespace DocMgr.ViewModels.HardDiskMedia
             foreach (var item in list)
             {
                 Attachments.Add(item);
+                string category = item.FileCategory?.Trim() ?? string.Empty;
+                if (string.Equals(category, HardDiskDisposalDomainValues.AttachmentCategorySignedForm, StringComparison.Ordinal))
+                {
+                    SignedFormAttachments.Add(item);
+                }
+                else if (string.Equals(category, HardDiskDisposalDomainValues.AttachmentCategoryDiskPhoto, StringComparison.Ordinal))
+                {
+                    DiskPhotoAttachments.Add(item);
+                }
+                else
+                {
+                    OtherAttachments.Add(item);
+                }
             }
+        }
+
+        private async Task UploadAttachmentByCategoryAsync(string category)
+        {
+            UploadCategory = category;
+            await UploadAttachmentAsync();
+        }
+
+        private async Task CaptureAttachmentByCategoryAsync(string category)
+        {
+            UploadCategory = category;
+            await CaptureFromDocumentCameraAsync();
         }
 
         private HardDiskDisposalRecord BuildDraftPayload()

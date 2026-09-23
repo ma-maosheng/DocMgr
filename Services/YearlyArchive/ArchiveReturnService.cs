@@ -3,6 +3,7 @@ using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.SystemSettings;
 
 namespace DocMgr.Services.YearlyArchive
 {
@@ -22,6 +23,8 @@ namespace DocMgr.Services.YearlyArchive
         private readonly IArchiveMaterialTransactionWriter _materialTransactionWriter;
         private readonly IArchiveSimulatedBoxSlotSyncService _simulatedBoxSlotSyncService;
         private readonly IArchiveElectronicBagSlotSyncService _electronicBagSlotSyncService;
+        private readonly IApprovalWorkflowService _approvalWorkflowService;
+        private readonly IUserService _userService;
 
         public ArchiveReturnService(
             IArchiveReturnRepository returnRepository,
@@ -34,7 +37,9 @@ namespace DocMgr.Services.YearlyArchive
             IBusinessLogicSettingsService businessLogicSettingsService,
             IArchiveMaterialTransactionWriter materialTransactionWriter,
             IArchiveSimulatedBoxSlotSyncService simulatedBoxSlotSyncService,
-            IArchiveElectronicBagSlotSyncService electronicBagSlotSyncService)
+            IArchiveElectronicBagSlotSyncService electronicBagSlotSyncService,
+            IApprovalWorkflowService approvalWorkflowService,
+            IUserService userService)
         {
             _returnRepository = returnRepository;
             _outboundRepository = outboundRepository;
@@ -47,6 +52,31 @@ namespace DocMgr.Services.YearlyArchive
             _materialTransactionWriter = materialTransactionWriter;
             _simulatedBoxSlotSyncService = simulatedBoxSlotSyncService;
             _electronicBagSlotSyncService = electronicBagSlotSyncService;
+            _approvalWorkflowService = approvalWorkflowService;
+            _userService = userService;
+        }
+
+        /// <summary>解析归还单签批链（按是否灭失等字段匹配规则）。</summary>
+        public async Task<ApprovalChainResolution> ResolveApprovalChainAsync(
+            YearlyArchiveReturnRecord record,
+            string? applicantDept = null)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            string? sourceDestinationKind = null;
+            if (record.SourceOutboundRecordId > 0)
+            {
+                var outbound = await _outboundRepository.GetByIdWithDetailsAsync(record.SourceOutboundRecordId);
+                sourceDestinationKind = outbound?.DestinationKind;
+            }
+
+            return await _approvalWorkflowService.ResolveAsync(
+                new ApprovalChainResolveRequest
+                {
+                    BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveReturn,
+                    ApplicantDept = applicantDept ?? record.BorrowerDept,
+                    FieldValues = ApprovalChainApplySupport.BuildReturnFieldValues(record, sourceDestinationKind)
+                },
+                _userService.GetAllUsers());
         }
 
         public bool IsArchiveAdminUser(User? user) => _archiveRegisterService.IsArchiveAdminUser(user);
@@ -99,7 +129,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!CanSubmitApplication(registrar))
             {
-                throw new InvalidOperationException("仅部门资料管理员可发起资料归还申请。");
+                throw new InvalidOperationException("仅部门资料员可发起资料归还申请。");
             }
 
             var outbound = await _outboundRepository.GetByIdWithDetailsAsync(outboundRecordId)
@@ -183,7 +213,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!CanSubmitApplication(user))
             {
-                return ArchiveReturnFlowResult.Fail("仅部门资料管理员可保存或提交资料归还申请。");
+                return ArchiveReturnFlowResult.Fail("仅部门资料员可保存或提交资料归还申请。");
             }
 
             var record = request.Record;
@@ -296,7 +326,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(admin))
             {
-                return ArchiveReturnFlowResult.Fail("仅资料室管理员可审批归还申请。");
+                return ArchiveReturnFlowResult.Fail("仅资料管理员可审批归还申请。");
             }
 
             var record = await _returnRepository.GetByIdWithDetailsAsync(recordId);
@@ -313,45 +343,80 @@ namespace DocMgr.Services.YearlyArchive
             DateTime now = DateTime.Now;
             var input = approvalInput ?? new ArchiveReturnApprovalInput();
 
-            if (string.IsNullOrWhiteSpace(input.ReviewerName))
-            {
-                return ArchiveReturnFlowResult.Fail("请填写部门负责人。");
-            }
+            // 先把 UI 输入写回记录，再按签批链校验必填节点。
+            record.DeptHead = input.DeptHead?.Trim() ?? string.Empty;
+            record.DeptHeadDate = input.DeptHeadDate;
+            record.ArchiveRoomHead = input.ArchiveRoomHead?.Trim() ?? string.Empty;
+            record.ArchiveRoomHeadDate = input.ArchiveRoomHeadDate;
+            record.ProductionHead = input.ProductionHeadName?.Trim() ?? string.Empty;
+            record.ProductionHeadDate = input.ProductionHeadDate;
+            record.ArchiveDeputyPresident = input.ArchiveDeputyPresidentName?.Trim() ?? string.Empty;
+            record.ArchiveDeputyPresidentDate = input.ArchiveDeputyPresidentDate;
+            record.ProductionVicePresident = input.ProductionVicePresidentName?.Trim() ?? string.Empty;
+            record.ProductionVicePresidentDate = input.ProductionVicePresidentDate;
 
-            bool hasLoss = ArchiveReturnDomainValues.HasAbnormalReturnItems(record.Items);
-            if (hasLoss && string.IsNullOrWhiteSpace(input.ApproverName))
+            var chain = await ResolveApprovalChainAsync(record);
+            var missing = ApprovalChainApplySupport.CollectMissingSignerErrors(
+                chain,
+                nodeKey => ApprovalChainApplySupport.ReadReturnSigner(record, nodeKey));
+            if (missing.Count > 0)
             {
-                return ArchiveReturnFlowResult.Fail("存在灭失时请填写资料室负责人。");
-            }
-
-            if (hasLoss && string.IsNullOrWhiteSpace(input.ProductionHeadName))
-            {
-                return ArchiveReturnFlowResult.Fail("存在灭失时请填写生产科负责人。");
-            }
-
-            if (hasLoss && string.IsNullOrWhiteSpace(input.VicePresidentName))
-            {
-                return ArchiveReturnFlowResult.Fail("存在灭失时请填写生产副院长。");
+                return ArchiveReturnFlowResult.Fail(string.Join(Environment.NewLine, missing));
             }
 
             record.MarkAsApproved();
-            record.ReviewerName = input.ReviewerName.Trim();
-            record.ReviewerDate = input.ReviewerDate ?? now;
-            // 完好归还不录资料室负责人及其他审批人；灭失时录借出时全部四级审核审批人。
-            record.ApprovedBy = hasLoss
-                ? (input.ApproverName?.Trim() ?? string.Empty)
-                : string.Empty;
-            record.ApprovedAt = hasLoss
-                ? (input.ApproverDate ?? now)
-                : input.ReviewerDate ?? now;
-            record.ProductionHead = hasLoss
-                ? (input.ProductionHeadName?.Trim() ?? string.Empty)
-                : string.Empty;
-            record.ProductionHeadDate = hasLoss ? input.ProductionHeadDate ?? now : null;
-            record.VicePresident = hasLoss
-                ? (input.VicePresidentName?.Trim() ?? string.Empty)
-                : string.Empty;
-            record.VicePresidentDate = hasLoss ? input.VicePresidentDate ?? now : null;
+            if (chain.DeptHead.IsEnabled)
+            {
+                record.DeptHeadDate ??= now;
+            }
+            else
+            {
+                record.DeptHead = string.Empty;
+                record.DeptHeadDate = null;
+            }
+
+            if (chain.ArchiveRoomHead.IsEnabled)
+            {
+                record.ArchiveRoomHeadDate ??= now;
+                record.ApprovedAt ??= record.ArchiveRoomHeadDate ?? now;
+            }
+            else
+            {
+                record.ArchiveRoomHead = string.Empty;
+                record.ArchiveRoomHeadDate = null;
+                record.ApprovedAt = input.DeptHeadDate ?? now;
+            }
+
+            if (chain.ProductionHead.IsEnabled)
+            {
+                record.ProductionHeadDate ??= now;
+            }
+            else
+            {
+                record.ProductionHead = string.Empty;
+                record.ProductionHeadDate = null;
+            }
+
+            if (chain.ArchiveDeputyPresident.IsEnabled)
+            {
+                record.ArchiveDeputyPresidentDate ??= now;
+            }
+            else
+            {
+                record.ArchiveDeputyPresident = string.Empty;
+                record.ArchiveDeputyPresidentDate = null;
+            }
+
+            if (chain.ProductionVicePresident.IsEnabled)
+            {
+                record.ProductionVicePresidentDate ??= now;
+            }
+            else
+            {
+                record.ProductionVicePresident = string.Empty;
+                record.ProductionVicePresidentDate = null;
+            }
+
             record.ApprovalOpinion = string.IsNullOrWhiteSpace(input.ApprovalOpinion)
                 ? "同意"
                 : input.ApprovalOpinion.Trim();
@@ -372,7 +437,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(admin))
             {
-                return ArchiveReturnFlowResult.Fail("仅资料室管理员可确认实物交接。");
+                return ArchiveReturnFlowResult.Fail("仅资料管理员可确认实物交接。");
             }
 
             var record = await _returnRepository.GetByIdWithDetailsAsync(recordId);
@@ -430,7 +495,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(admin))
             {
-                return ArchiveReturnFlowResult.Fail("仅资料室管理员可办结资料归还。");
+                return ArchiveReturnFlowResult.Fail("仅资料管理员可办结资料归还。");
             }
 
             var record = await _returnRepository.GetByIdWithDetailsAsync(recordId);
@@ -610,7 +675,7 @@ namespace DocMgr.Services.YearlyArchive
             bool isApplicantSide = CanSubmitApplication(user) && record.RegisteredByUserId == user.Id;
             if (!isRoomAdmin && !isApplicantSide)
             {
-                return ArchiveReturnFlowResult.Fail("仅登记人（部门资料管理员）或资料室管理员可作废该归还单。");
+                return ArchiveReturnFlowResult.Fail("仅登记人（部门资料员）或资料管理员可作废该归还单。");
             }
 
             if (record.Status is YearlyArchiveReturnRecord.Completed
@@ -647,7 +712,7 @@ namespace DocMgr.Services.YearlyArchive
                 }
 
                 record.MarkAsForceVoided(
-                    string.IsNullOrWhiteSpace(reason) ? "资料室管理员强制撤回作废" : reason);
+                    string.IsNullOrWhiteSpace(reason) ? "资料管理员强制撤回作废" : reason);
                 record.UpdatedAt = DateTime.Now;
                 await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
                 return ArchiveReturnFlowResult.Ok($"归还单 {record.ReturnNo} 已强制作废。", record.Id);

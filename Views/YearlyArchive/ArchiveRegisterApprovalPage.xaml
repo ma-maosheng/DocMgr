@@ -1,4 +1,4 @@
-﻿<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveRegisterApprovalPage"
+<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveRegisterApprovalPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -151,7 +151,7 @@
                     <DataGridTextColumn Header="申请部门" Binding="{Binding ApplicantDept}" Width="120"/>
                     <DataGridTextColumn Header="申请日期" Binding="{Binding ApplicantDate, StringFormat=yyyy-MM-dd}" Width="110"/>
                     <DataGridTextColumn Header="状态" Binding="{Binding StatusStr}" Width="110"/>
-                    <DataGridTextColumn Header="部门负责人" Binding="{Binding DeptLeader}" Width="110"/>
+                    <DataGridTextColumn Header="部门负责人" Binding="{Binding DeptHead}" Width="110"/>
                     <DataGridTextColumn Header="资料管理员" Binding="{Binding Administrator}" Width="110"/>
                     <DataGridTextColumn Header="归档盒/编号" Binding="{Binding ArchiveBoxNos}" Width="220"/>
                     <DataGridTextColumn Header="归档位置" Binding="{Binding ArchiveBoxLocations}" Width="220"/>

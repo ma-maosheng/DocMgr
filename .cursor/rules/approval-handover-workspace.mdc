@@ -1,0 +1,76 @@
+---
+description: 资料管理员审批录入与办结工作区统一交互（对齐 HD-OB-APV-ED；含离库处置与办结后附件后补）
+globs: Views/**/*Approval*.xaml,Views/**/*EditDialog*.xaml,Views/**/*Workbench*.xaml,Views/**/*Return*.xaml,Views/**/*Disposal*.xaml,Views/**/*ViewDialog*.xaml,ViewModels/**/*Approval*.cs,ViewModels/**/*EditDialog*.cs,ViewModels/**/*Workbench*.cs,ViewModels/**/*Return*.cs,ViewModels/**/*Disposal*.cs,ViewModels/**/*ViewDialog*.cs,Models/Shared/ApprovalWorkflowButtonSupport.cs,Services/**/*Attachment*.cs,Services/**/*Disposal*.cs,Services/NetworkTransfer/**
+alwaysApply: false
+---
+
+# 审批与交接工作区统一交互
+
+标杆：`HD-OB-APV-ED`（`HardDiskMediaApprovalEditDialog`）+ 办结后查看窗 `HD-OB-VW`。
+
+凡「申请人提出申请 → 资料管理员审批信息录入与确认办结」的办理界面，以及四处离库处置办理界面，均按本规则对齐。
+
+## 两类流程（状态机不同，壳一致）
+
+### A. 申请审批类（交接流）
+
+适用：建档 / 资料出库 / 资料归还 / 入网 / 出网 / 硬盘出库 / 硬盘归还。
+
+阶段（`ApprovalWorkflowButtonSupport.Phase`）：
+
+1. 审批通过  
+2. 确认实物交接  
+3. 分区上传附件（必备齐后仍可继续传）  
+4. 确认办结  
+5. 打印交接单（办结前后均可，按打印规则）
+
+按钮可用态一律走 `ApprovalWorkflowButtonSupport.Resolve`，禁止平行发明第二套阶段判断。
+
+### B. 离库处置类（确认可上传流）
+
+适用：`YA-DSP-ED` / `HD-DSP-ED` / `NT-DSP-ED` / `HA-DSP-ED`。
+
+阶段映射（对标交接解锁，**按钮文案保留业务语义**）：
+
+| 处置阶段 | 对标 Phase | 主按钮文案 |
+|---|---|---|
+| 已审批，待解锁上传 | `PendingPhysicalHandover` | **确认可上传**（不是「确认实物交接」） |
+| 已确认可上传，待传签批 | `PendingSignedUpload` | 分区上传 |
+| 必备附件齐，待办结 | `PendingComplete` | 确认办结（仍可继续传） |
+| 已办结 | `Completed` | 打印 |
+
+处置业务效应（撤柜、低格留盘、台账终态等）仍以各 `*-disposal.mdc` 为准；本规则只统一**办理壳**（卡片、分区附件、底栏、后补传）。
+
+## UI 壳（强制）
+
+办理区须具备：
+
+1. **「审批与交接信息」** 标题区（可用紧凑双列签字卡，见 `wpf-compact-layout.mdc`；禁止再拆成互不关联的多套大卡片且无统一标题）。  
+2. **「附件材料」** 分区上传：签批交接单/签批单、实物/现场照片（按业务可「无需上传」）、证明材料（按声明）、其他附件。每区：上传 + 高影仪直拍 + 列表（查看/删除）。  
+3. **底栏**：打印交接单（或签批单）→ 确认办结 → 关闭；办结前提示条说明未办结原因。  
+4. 流程提示顺序与标杆一致（申请类写「审批通过→确认实物交接→…」；处置类写「审批通过→确认可上传→…」）。
+
+## 办结后附件后补（强制 · 2B）
+
+1. **办理窗**：`Completed` 后关闭常规上传/删除（与 `ApprovalWorkflowButtonSupport` 一致）。  
+2. **查看窗或办结后打开态**：资料管理员可**仅增补「其他附件」**（不可删已有；不可改签批/照片/证明分类）。  
+3. 服务层必须校验：办结后非「其他附件」一律拒绝；非资料管理员拒绝。  
+4. 标杆实现：`HardDiskMediaApplicationViewDialog` + `HardDiskMediaService.Attachments`（Completed 分支）。新建业务须复用同一语义，禁止只开 UI 不校服务层。
+
+## 改造清单（短码）
+
+| 短码 | 类型 | 目标 |
+|---|---|---|
+| HD-OB-APV-ED / HD-OB-VW | A | 标杆（已齐） |
+| HD-RTN | A | 卡片已近；补办结后其他附件入口 |
+| YA-REG-APV/ED / YA-REG-VW | A | 标题与壳对齐；VW 已有后补 |
+| YA-OB-APV/HND / YA-OB-VW | A | 标题与壳对齐；VW 已有后补 |
+| YA-RTN | A | 壳对齐；补办结后其他附件 |
+| NT-IB-APV/ED、NT-OB-APV/ED | A | 标题对齐；办结后打开态可补其他附件 |
+| YA/HD/NT/HA-DSP-ED | B | 壳对齐「确认可上传」；分区附件；办结后可补其他附件 |
+
+## 禁止
+
+- 办理窗办结后仍开放删附件或改传签批/照片。  
+- 处置流强行改名为「确认实物交接」导致业务歧义。  
+- 平行复制第二套五按钮阶段枚举，不走 `ApprovalWorkflowButtonSupport`（处置可用等价映射，但阶段语义须可对照上表）。

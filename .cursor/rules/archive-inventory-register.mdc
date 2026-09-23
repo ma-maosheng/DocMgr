@@ -25,7 +25,7 @@ alwaysApply: false
 
 ## 流程
 
-- 草稿 → 确认登记办结（无审批、无签批）；权限：资料室资料管理员。
+- 草稿 → 确认登记办结（无审批、无签批）；权限：资料管理员。
 - 编号前缀：`资盘-登`（`BusinessNoCategory.ArchiveInventoryRegister`）。
 
 ## 份数公式（模拟）

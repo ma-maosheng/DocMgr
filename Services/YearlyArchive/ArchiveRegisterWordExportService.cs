@@ -1,7 +1,9 @@
 using System.IO;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.Shared;
 using NPOI.OpenXmlFormats.Wordprocessing;
 using NPOI.XWPF.UserModel;
 
@@ -12,29 +14,23 @@ namespace DocMgr.Services.YearlyArchive
     /// </summary>
     public class ArchiveRegisterWordExportService : IArchiveRegisterWordExportService
     {
-        // NPOI XWPFRun.FontSize 单位为磅（pt）。
-        private const int BodyFontPoints = 10;
-        private const int LabelFontPoints = 10;
-        private const int TitleFontPoints = 15;
-        private const int FooterFontPoints = 9;
-        private const int CellMarginDxa = 28;
-        private const int CellLineSpacingTwips = 220;
+        private const int CellMarginDxa = PrintPageLayoutSupport.TableCellPaddingTwips;
+        private const int CellLineSpacingTwips = 240;
 
-        /// <summary>单行表格行高 0.6cm（twips）。</summary>
-        private const int SingleRowHeightTwips = 340;
+        /// <summary>单行表格行高（twips）。</summary>
+        private const int SingleRowHeightTwips = PrintPageLayoutSupport.TableRowContentHeightOneLineTwips;
 
-        /// <summary>双列签字区两行高度 1.2cm（twips）。</summary>
-        private const int SignatureBlockRowHeightTwips = 680;
+        /// <summary>双列签字区两行高度（twips）。</summary>
+        private const int SignatureBlockRowHeightTwips = PrintPageLayoutSupport.TableRowContentHeightTwoLinesTwips;
 
         /// <summary>多行摘要类行高（留存硬盘/光盘台账）。</summary>
-        private const int MultiLineRowHeightTwips = 680;
+        private const int MultiLineRowHeightTwips = PrintPageLayoutSupport.TableRowContentHeightTwoLinesTwips;
 
-        private const int TitleBlockHeightTwips = 720;
+        private const int TitleBlockHeightTwips = PrintPageLayoutSupport.ApprovalFormTitleBlockHeightTwips;
         private const int HeaderInfoHeightTwips = 360;
-        private const int TableWidthDxa = PrintPageLayoutSupport.ContentWidthTwips;
-
-        // 标签列略宽，避免「资料名称」「开发室分管领导」等被截断；四列合计等于 ContentWidthTwips。
-        private static readonly int[] ColumnWidthsDxa = { 2044, 2829, 2044, 2829 };
+        // 与打印预览一致：两侧标签列固定 8 字符宽。
+        private static readonly int[] ColumnWidthsDxa =
+            WordExportTableLayoutSupport.ApprovalFormMainColumnWidthsTwips;
 
         public void ExportToFile(ArchiveRegisterPrintData data, string filePath)
         {
@@ -66,6 +62,7 @@ namespace DocMgr.Services.YearlyArchive
             ConfigureTableGrid(table);
 
             int rowIndex = 0;
+            AddDoubleRow(table, ref rowIndex, "申请人", data.Applicant, "申请部门", data.Dept, WordTableRowStyle.SingleLine);
             AddSingleRow(table, ref rowIndex, "资料名称", data.MaterialName, WordTableRowStyle.SingleLine);
             AddDoubleRow(table, ref rowIndex, "所属项目", data.ProjectName, "资料来源", data.SourceType, WordTableRowStyle.SingleLine);
             AddSingleRow(table, ref rowIndex, "提供单位", data.ProvideUnit, WordTableRowStyle.SingleLine);
@@ -80,7 +77,7 @@ namespace DocMgr.Services.YearlyArchive
             var proofStyle = data.ProofLines.Count <= 1 ? WordTableRowStyle.SingleLine : WordTableRowStyle.MultiLine;
             AddSingleRow(table, ref rowIndex, "证明材料", proofText, proofStyle);
 
-            AddDoubleRow(table, ref rowIndex, "库管模式", data.Purpose, "申请部门", data.Dept, WordTableRowStyle.SingleLine);
+            AddSingleRow(table, ref rowIndex, "库管模式", data.Purpose, WordTableRowStyle.SingleLine);
 
             if (hasRetainedHardDisk)
             {
@@ -94,34 +91,92 @@ namespace DocMgr.Services.YearlyArchive
 
             string otherRequests = string.IsNullOrWhiteSpace(data.OtherRequests) ? "(无)" : data.OtherRequests;
             AddSingleRow(table, ref rowIndex, "其他要求", otherRequests, WordTableRowStyle.SingleLine);
-            AddDoubleRow(table, ref rowIndex, "申请人", data.Applicant, "申请日期", data.Date, WordTableRowStyle.SingleLine);
 
-            var deptParts = data.DeptLeaderApproval.Split('|');
-            string deptName = deptParts.ElementAtOrDefault(0) ?? string.Empty;
-            string deptDate = deptParts.ElementAtOrDefault(1) ?? "______年___月___日";
-            AddSingleRow(table, ref rowIndex, "部门审核", FormatSignatureInline(deptName, deptDate), WordTableRowStyle.SingleLine);
+            if (data.EnableDeptHead)
+            {
+                var deptParts = data.DeptHeadApproval.Split('|');
+                string deptName = deptParts.ElementAtOrDefault(0) ?? string.Empty;
+                string deptDate = deptParts.ElementAtOrDefault(1) ?? "______年___月___日";
+                AddSingleRow(table, ref rowIndex, ApprovalWorkflowDomainValues.DisplayDeptHead, FormatSignatureInline(deptName, deptDate), WordTableRowStyle.SingleLine);
+            }
 
-            var prodParts = data.ProdFull.Split('|');
-            string prodLeader = prodParts.ElementAtOrDefault(1) ?? string.Empty;
-            string prodDate = prodParts.ElementAtOrDefault(2) ?? "______年___月___日";
+            if (data.EnableProductionHead || data.EnableArchiveRoomHead)
+            {
+                string prodLeader = string.Empty;
+                string prodDate = "______年___月___日";
+                string rndLeader = string.Empty;
+                string rndDate = "______年___月___日";
+                if (data.EnableProductionHead)
+                {
+                    var prodParts = data.ProdFull.Split('|');
+                    prodLeader = prodParts.ElementAtOrDefault(1) ?? string.Empty;
+                    prodDate = prodParts.ElementAtOrDefault(2) ?? "______年___月___日";
+                }
 
-            var rndParts = data.RndFull.Split('|');
-            string rndLeader = rndParts.ElementAtOrDefault(1) ?? string.Empty;
-            string rndDate = rndParts.ElementAtOrDefault(2) ?? "______年___月___日";
-            AddSignatureDoubleRow(
-                table,
-                ref rowIndex,
-                "生产管理科\n审批",
-                prodLeader,
-                prodDate,
-                "科研开发室\n审批",
-                rndLeader,
-                rndDate);
+                if (data.EnableArchiveRoomHead)
+                {
+                    var rndParts = data.RndFull.Split('|');
+                    rndLeader = rndParts.ElementAtOrDefault(1) ?? string.Empty;
+                    rndDate = rndParts.ElementAtOrDefault(2) ?? "______年___月___日";
+                }
 
-            var depParts = data.DeputyFull.Split('|');
-            string depLeader = depParts.ElementAtOrDefault(1) ?? string.Empty;
-            string depDate = depParts.ElementAtOrDefault(2) ?? "______年___月___日";
-            AddSingleRow(table, ref rowIndex, "开发室分管领导", FormatSignatureInline(depLeader, depDate), WordTableRowStyle.SingleLine);
+                if (data.EnableProductionHead && data.EnableArchiveRoomHead)
+                {
+                    AddSignatureDoubleRow(
+                        table,
+                        ref rowIndex,
+                        ApprovalWorkflowDomainValues.DisplayProductionHead,
+                        prodLeader,
+                        prodDate,
+                        ApprovalWorkflowDomainValues.DisplayArchiveRoomHead,
+                        rndLeader,
+                        rndDate);
+                }
+                else if (data.EnableProductionHead)
+                {
+                    AddSingleRow(
+                        table,
+                        ref rowIndex,
+                        ApprovalWorkflowDomainValues.DisplayProductionHead,
+                        FormatSignatureInline(prodLeader, prodDate),
+                        WordTableRowStyle.SingleLine);
+                }
+                else
+                {
+                    AddSingleRow(
+                        table,
+                        ref rowIndex,
+                        ApprovalWorkflowDomainValues.DisplayArchiveRoomHead,
+                        FormatSignatureInline(rndLeader, rndDate),
+                        WordTableRowStyle.SingleLine);
+                }
+            }
+
+            if (data.EnableArchiveDeputyPresident)
+            {
+                var depParts = data.ArchiveDeputyPresidentFull.Split('|');
+                string depLeader = depParts.ElementAtOrDefault(1) ?? string.Empty;
+                string depDate = depParts.ElementAtOrDefault(2) ?? "______年___月___日";
+                AddSingleRow(
+                    table,
+                    ref rowIndex,
+                    ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident,
+                    FormatSignatureInline(depLeader, depDate),
+                    WordTableRowStyle.SingleLine);
+            }
+
+            if (data.EnableProductionVicePresident)
+            {
+                var vpParts = data.ProductionVicePresidentFull.Split('|');
+                string vpLeader = vpParts.ElementAtOrDefault(1) ?? string.Empty;
+                string vpDate = vpParts.ElementAtOrDefault(2) ?? "______年___月___日";
+                AddSingleRow(
+                    table,
+                    ref rowIndex,
+                    ApprovalWorkflowDomainValues.DisplayProductionVicePresident,
+                    FormatSignatureInline(vpLeader, vpDate),
+                    WordTableRowStyle.SingleLine);
+            }
 
             var deliverParts = data.DeliverFull.Split('|');
             string deliverer = deliverParts.ElementAtOrDefault(0) ?? string.Empty;
@@ -170,41 +225,29 @@ namespace DocMgr.Services.YearlyArchive
         {
             var paragraph = document.CreateParagraph();
             paragraph.Alignment = ParagraphAlignment.CENTER;
-            ApplyDocumentParagraph(paragraph, spacingBeforeTwips: 0, spacingAfterTwips: 40);
+            ApplyDocumentParagraph(paragraph);
             var run = paragraph.CreateRun();
             run.SetText("河北省第三测绘院资料室年度资料入档申请审批单");
-            run.IsBold = true;
-            run.FontFamily = "黑体";
-            run.FontSize = TitleFontPoints;
+            WordExportFontSupport.ApplyTitle(run);
         }
 
         private static void AddHeaderInfo(XWPFDocument document, ArchiveRegisterPrintData data)
         {
-            var leftParagraph = document.CreateParagraph();
-            ApplyDocumentParagraph(leftParagraph);
-            var leftRun = leftParagraph.CreateRun();
-            leftRun.SetText($"申请单编号：{data.FormNo}");
-            leftRun.FontFamily = "宋体";
-            leftRun.FontSize = BodyFontPoints;
+            var headerTable = document.CreateTable(1, 2);
+            ConfigureHeaderTable(headerTable);
 
-            var rightParagraph = document.CreateParagraph();
-            rightParagraph.Alignment = ParagraphAlignment.RIGHT;
-            ApplyDocumentParagraph(rightParagraph, spacingAfterTwips: 40);
-            var rightRun = rightParagraph.CreateRun();
-            rightRun.SetText($"申请日期：{data.Date}");
-            rightRun.FontFamily = "宋体";
-            rightRun.FontSize = BodyFontPoints;
+            XWPFTableRow row = headerTable.GetRow(0);
+            WriteOutsideHeaderCell(row.GetCell(0), $"申请单编号：{data.FormNo}", ParagraphAlignment.LEFT);
+            WriteOutsideHeaderCell(row.GetCell(1), $"申请日期：{data.Date}", ParagraphAlignment.RIGHT);
         }
 
         private static void AddFooterNotes(XWPFDocument document)
         {
             var titleParagraph = document.CreateParagraph();
-            ApplyDocumentParagraph(titleParagraph, spacingBeforeTwips: 80, spacingAfterTwips: 0);
+            ApplyDocumentParagraph(titleParagraph);
             var titleRun = titleParagraph.CreateRun();
             titleRun.SetText("备注：");
-            titleRun.IsBold = true;
-            titleRun.FontFamily = "宋体";
-            titleRun.FontSize = FooterFontPoints;
+            WordExportFontSupport.ApplyFooter(titleRun, bold: true);
             AddFooterParagraph(document, "1、审核、审批时，生产科负责人必须在各资料子项的[密级]处手签具体密级和本人姓名。");
             AddFooterParagraph(document, "      2、审批完成后，申请人（交接人）携带拟归档所有资料、材料(包括本表单、相关附件等）到资料室办理登记、交接工作。");
             AddFooterParagraph(document, "      3、交接人、资料管理员应对照本表单中的各项内容共同完成归档资料、材料的查验和拍照，确认账实相符后分别在表单上签名确认。");
@@ -217,8 +260,7 @@ namespace DocMgr.Services.YearlyArchive
             ApplyDocumentParagraph(paragraph);
             var run = paragraph.CreateRun();
             run.SetText(text);
-            run.FontFamily = "宋体";
-            run.FontSize = FooterFontPoints;
+            WordExportFontSupport.ApplyFooter(run);
         }
 
         private static int CalculateContentRowHeightTwips(bool hasRetainedHardDisk, bool hasOpticalDiscLedger)
@@ -238,7 +280,11 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             int footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightTwips(lineCount: 4, lineHeightTwips: 270, topMarginTwips: 220);
-            int reservedHeight = TitleBlockHeightTwips + HeaderInfoHeightTwips + footerHeight + fixedTableHeight;
+            int reservedHeight =
+                TitleBlockHeightTwips
+                + HeaderInfoHeightTwips
+                + footerHeight
+                + fixedTableHeight;
             int stretchHeight = PrintPageLayoutSupport.CalculateStretchRowHeightTwips(
                 reservedHeight,
                 SingleRowHeightTwips * 4,
@@ -271,6 +317,7 @@ namespace DocMgr.Services.YearlyArchive
             WriteLabelCell(row.GetCell(0), label, rowStyle);
             WriteBodyCell(row.GetCell(1), content, rowStyle);
             row.MergeCells(1, 3);
+            WordExportTableLayoutSupport.ApplyRowCellWidths(row, ColumnWidthsDxa);
 
             rowIndex++;
         }
@@ -292,6 +339,7 @@ namespace DocMgr.Services.YearlyArchive
             WriteBodyCell(row.GetCell(1), content1, rowStyle);
             WriteLabelCell(row.GetCell(2), label2, rowStyle);
             WriteBodyCell(row.GetCell(3), content2, rowStyle);
+            WordExportTableLayoutSupport.ApplyRowCellWidths(row, ColumnWidthsDxa);
 
             rowIndex++;
         }
@@ -314,6 +362,7 @@ namespace DocMgr.Services.YearlyArchive
             WriteSignatureBlockCell(row.GetCell(1), signer1, date1);
             WriteLabelCell(row.GetCell(2), label2, WordTableRowStyle.SignatureBlock);
             WriteSignatureBlockCell(row.GetCell(3), signer2, date2);
+            WordExportTableLayoutSupport.ApplyRowCellWidths(row, ColumnWidthsDxa);
 
             rowIndex++;
         }
@@ -352,20 +401,7 @@ namespace DocMgr.Services.YearlyArchive
 
         private static void ConfigureTableGrid(XWPFTable table)
         {
-            table.Width = 5000;
-            var tbl = table.GetCTTbl();
-            var tblPr = tbl.tblPr ?? tbl.AddNewTblPr();
-            var tblW = tblPr.tblW ?? tblPr.AddNewTblW();
-            tblW.type = ST_TblWidth.dxa;
-            tblW.w = TableWidthDxa.ToString();
-
-            var grid = tbl.tblGrid ?? tbl.AddNewTblGrid();
-            grid.gridCol.Clear();
-            foreach (int width in ColumnWidthsDxa)
-            {
-                var gridCol = grid.AddNewGridCol();
-                gridCol.w = (ulong)width;
-            }
+            WordExportTableLayoutSupport.ApplyFixedTableLayout(table, ColumnWidthsDxa);
         }
 
         private static void EnsureCellCount(XWPFTableRow row, int cellCount)
@@ -394,17 +430,16 @@ namespace DocMgr.Services.YearlyArchive
         }
 
         /// <summary>
-        /// 签字区：签字、日期各占一个段落（Word 硬回车），不使用软换行。
+        /// 签字区：单行「签字：…    日期：…」，与 FlowDocument / PrintApprovalSignatureSupport 一致。
         /// </summary>
         private static void WriteSignatureBlockCell(XWPFTableCell cell, string signer, string date)
         {
             ResetCell(cell, WordTableRowStyle.SignatureBlock);
-
-            string signatureSlot = string.IsNullOrWhiteSpace(signer) ? "________________" : signer;
-            string dateText = string.IsNullOrWhiteSpace(date) ? "______年___月___日" : date;
-
-            AddCellParagraph(cell, $"签字：{signatureSlot}", label: false, ParagraphAlignment.LEFT);
-            AddCellParagraph(cell, $"日期：{dateText}", label: false, ParagraphAlignment.LEFT);
+            AddCellParagraph(
+                cell,
+                PrintApprovalSignatureSupport.FormatInline(signer, date),
+                label: false,
+                ParagraphAlignment.LEFT);
         }
 
         private static void ResetCell(XWPFTableCell cell, WordTableRowStyle rowStyle)
@@ -437,9 +472,14 @@ namespace DocMgr.Services.YearlyArchive
 
             var run = paragraph.CreateRun();
             run.SetText(text);
-            run.FontFamily = label ? "黑体" : "宋体";
-            run.FontSize = label ? LabelFontPoints : BodyFontPoints;
-            run.IsBold = label;
+            if (label)
+            {
+                WordExportFontSupport.ApplyLabel(run);
+            }
+            else
+            {
+                WordExportFontSupport.ApplyBody(run);
+            }
         }
 
         private static void ApplyCellVerticalAlignment(XWPFTableCell cell, WordTableRowStyle rowStyle)
@@ -458,31 +498,77 @@ namespace DocMgr.Services.YearlyArchive
 
         private static void ApplyCellParagraph(XWPFParagraph paragraph)
         {
-            paragraph.SpacingBefore = 0;
-            paragraph.SpacingAfter = 0;
+            WordExportFontSupport.ApplyHalfLineParagraphSpacing(paragraph);
 
             var pPr = paragraph.GetCTP().pPr ?? paragraph.GetCTP().AddNewPPr();
             var spacing = pPr.spacing ?? pPr.AddNewSpacing();
-            spacing.before = 0;
-            spacing.after = 0;
             spacing.line = CellLineSpacingTwips.ToString();
             spacing.lineRule = ST_LineSpacingRule.exact;
         }
 
-        private static void ApplyDocumentParagraph(
-            XWPFParagraph paragraph,
-            int spacingBeforeTwips = 0,
-            int spacingAfterTwips = 0)
+        private static void ApplyDocumentParagraph(XWPFParagraph paragraph)
         {
-            paragraph.SpacingBefore = spacingBeforeTwips;
-            paragraph.SpacingAfter = spacingAfterTwips;
+            WordExportFontSupport.ApplyHalfLineParagraphSpacing(paragraph);
 
             var pPr = paragraph.GetCTP().pPr ?? paragraph.GetCTP().AddNewPPr();
             var spacing = pPr.spacing ?? pPr.AddNewSpacing();
-            spacing.before = (ulong)spacingBeforeTwips;
-            spacing.after = (ulong)spacingAfterTwips;
             spacing.line = "240";
             spacing.lineRule = ST_LineSpacingRule.auto;
+        }
+
+        private static void ConfigureHeaderTable(XWPFTable table)
+        {
+            int[] widths = WordExportTableLayoutSupport.DistributeEqualWidths(
+                PrintPageLayoutSupport.ContentWidthTwips,
+                2);
+            WordExportTableLayoutSupport.ApplyFixedTableLayout(table, widths);
+            ApplyNilTableOuterBorder(table);
+            WordExportTableLayoutSupport.ApplyRowCellWidths(table.GetRow(0), widths);
+        }
+
+        private static void ApplyNilTableOuterBorder(XWPFTable table)
+        {
+            var tblPr = table.GetCTTbl().tblPr ?? table.GetCTTbl().AddNewTblPr();
+            var borders = tblPr.tblBorders ?? tblPr.AddNewTblBorders();
+            borders.top = CreateNilBorder();
+            borders.left = CreateNilBorder();
+            borders.bottom = CreateNilBorder();
+            borders.right = CreateNilBorder();
+            borders.insideH = CreateNilBorder();
+            borders.insideV = CreateNilBorder();
+        }
+
+        private static void WriteOutsideHeaderCell(XWPFTableCell cell, string text, ParagraphAlignment alignment)
+        {
+            ClearCellParagraphs(cell);
+            ApplyNilCellBorder(cell);
+
+            var paragraph = cell.AddParagraph();
+            paragraph.Alignment = alignment;
+            ApplyDocumentParagraph(paragraph);
+            var run = paragraph.CreateRun();
+            run.SetText(text);
+            WordExportFontSupport.ApplyBody(run);
+        }
+
+        private static void ApplyNilCellBorder(XWPFTableCell cell)
+        {
+            var tcPr = cell.GetCTTc().tcPr ?? cell.GetCTTc().AddNewTcPr();
+            var borders = tcPr.tcBorders ?? tcPr.AddNewTcBorders();
+            borders.top = CreateNilBorder();
+            borders.left = CreateNilBorder();
+            borders.bottom = CreateNilBorder();
+            borders.right = CreateNilBorder();
+
+            if (tcPr.tcMar == null)
+            {
+                tcPr.tcMar = new CT_TcMar();
+            }
+
+            tcPr.tcMar.top = CreateMargin(0);
+            tcPr.tcMar.bottom = CreateMargin(0);
+            tcPr.tcMar.left = CreateMargin(0);
+            tcPr.tcMar.right = CreateMargin(0);
         }
 
         private static string[] SplitLines(string? text)
@@ -542,6 +628,16 @@ namespace DocMgr.Services.YearlyArchive
             };
         }
 
+        private static CT_Border CreateNilBorder()
+        {
+            return new CT_Border
+            {
+                val = ST_Border.nil,
+                sz = 0,
+                color = "auto"
+            };
+        }
+
         private static void ApplyTableOuterBorder(XWPFTable table)
         {
             var tblPr = table.GetCTTbl().tblPr ?? table.GetCTTbl().AddNewTblPr();
@@ -554,10 +650,7 @@ namespace DocMgr.Services.YearlyArchive
             borders.insideV = CreateBorder();
         }
 
-        private static string FormatSignatureInline(string signer, string date)
-        {
-            string signatureSlot = string.IsNullOrWhiteSpace(signer) ? "________________" : signer;
-            return $"签字：{signatureSlot}    日期：{date}";
-        }
+        private static string FormatSignatureInline(string signer, string date) =>
+            PrintApprovalSignatureSupport.FormatInline(signer, date);
     }
 }

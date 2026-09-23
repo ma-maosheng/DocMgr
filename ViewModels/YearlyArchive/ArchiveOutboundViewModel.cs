@@ -52,7 +52,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ExpandAllItemDetailsCommand = new RelayCommand(_ => SetAllItemDetailsExpanded(true), _ => HasContainerUnits);
             CollapseAllItemDetailsCommand = new RelayCommand(_ => SetAllItemDetailsExpanded(false), _ => HasContainerUnits);
             SaveApprovalCommand = new RelayCommand(async _ => await SaveApprovalAsync(), _ => CanSaveApproval);
-            PrintApprovalCommand = new RelayCommand(async _ => await PrintHandoverAsync(), _ => CanPrintHandover);
+            PrintApprovalCommand = new RelayCommand(async _ => await PrintApprovalAsync(), _ => CanPrintApproval);
             UploadSignedApprovalCommand = new RelayCommand(
                 async _ => await UploadAttachmentAsync(ArchiveOutboundDomainValues.AttachmentKindSignedApprovalForm),
                 _ => CanUploadSignedAttachment);
@@ -289,8 +289,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             : "请先执行「确认实物交接」，再上传签批交接单。";
 
         public string PrintApprovalHintText => CanPrintApproval
-            ? "可打印交接单供线下核对签字。"
-            : "请先完成「确认实物交接」，再打印交接单。";
+            ? "可打印申请审批单；已审批及之后阶段预填审核/审批责任人。"
+            : "当前状态不允许打印审批单。";
+
+        public string PrintHandoverHintText => CanPrintHandover
+            ? "可打印交接单；已审批责任人预填，办结后同步预填交接双方。"
+            : "当前状态不允许打印交接单。";
 
         public string CompleteHintText => CanCompleteHandover
             ? "办结后将同步台账与立档事实，业务闭环。"
@@ -695,7 +699,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 MediaKind = context.MediaKind,
                 RegisterMediaId = context.RegisterMediaId,
                 MediaItemId = context.MediaItemId,
-                ItemType = context.ItemType,
                 ItemName = context.ItemName,
                 ContainerCode = context.ContainerCode,
                 ContentEntryKeyword = context.ContentEntryKeyword,
@@ -943,14 +946,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             && (_record.IsSubmitted || _record.IsApproved || _record.IsSignedUploaded || _record.IsCompleted);
 
         private bool IsInMemoryApprovalComplete() =>
-            !string.IsNullOrWhiteSpace(Record.DeptAuditor)
-            && Record.DeptAuditDate.HasValue
+            !string.IsNullOrWhiteSpace(Record.DeptHead)
+            && Record.DeptHeadDate.HasValue
             && !string.IsNullOrWhiteSpace(Record.ArchiveRoomHead)
             && Record.ArchiveRoomHeadDate.HasValue
             && !string.IsNullOrWhiteSpace(Record.ProductionHead)
             && Record.ProductionHeadDate.HasValue
-            && !string.IsNullOrWhiteSpace(Record.VicePresident)
-            && Record.VicePresidentDate.HasValue;
+            && !string.IsNullOrWhiteSpace(Record.ProductionVicePresident)
+            && Record.ProductionVicePresidentDate.HasValue;
 
         private bool IsApprovalAttachmentsReadyForComplete()
         {
@@ -993,6 +996,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ConfirmHandoverHintText));
             OnPropertyChanged(nameof(UploadHintText));
             OnPropertyChanged(nameof(PrintApprovalHintText));
+            OnPropertyChanged(nameof(PrintHandoverHintText));
             OnPropertyChanged(nameof(CompleteHintText));
             OnPropertyChanged(nameof(StatusDisplay));
             OnPropertyChanged(nameof(RequiresProofMaterialScanUpload));
@@ -1238,7 +1242,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 _outboundWordExportService.ExportToFile(data, path);
-                _dialogService.ShowMessage($"Word 文档已保存：\n{path}");
+                WordExportOpenPromptSupport.NotifySavedAndOfferOpen(path, _dialogService);
             }
             catch (Exception ex)
             {

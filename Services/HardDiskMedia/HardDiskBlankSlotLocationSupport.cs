@@ -9,7 +9,10 @@ namespace DocMgr.Services.HardDiskMedia
     /// </summary>
     public static class HardDiskBlankSlotLocationSupport
     {
-        public const int DefaultSlotCapacity = 10;
+        /// <summary>
+        /// 默认硬盘档口容量（与柜体未配置时回退值一致）。
+        /// </summary>
+        public const int DefaultSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
 
         public static string NormalizeToSlotCode(string? location)
         {

@@ -624,8 +624,8 @@ public partial class HardDiskMediaRepository : IHardDiskMediaRepository
             .Where(record => record.Id == outboundRecordId)
             .Select(record => new HardDiskMediaBorrowApprovalSnapshot
             {
-                DeptAuditor = record.DeptAuditor,
-                DeptAuditDate = record.DeptAuditDate,
+                DeptHead = record.DeptHead,
+                DeptHeadDate = record.DeptHeadDate,
                 ArchiveRoomHead = record.ArchiveRoomHead,
                 ArchiveRoomHeadDate = record.ArchiveRoomHeadDate
             })

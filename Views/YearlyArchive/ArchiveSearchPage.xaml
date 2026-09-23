@@ -116,7 +116,6 @@
 
                     <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="*"/>
                     <DataGridTextColumn Header="所属项目" Binding="{Binding ProjectName}" Width="200"/>
-                    <DataGridTextColumn Header="提供单位" Binding="{Binding ProvideUnit}" Width="150"/>
                     <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="100"/>
                     <DataGridTextColumn Header="申请日期" Binding="{Binding CreatedDate, StringFormat=yyyy-MM-dd}" Width="110"/>
                     <DataGridTextColumn Header="登记状态" Binding="{Binding StatusStr}" Width="100">

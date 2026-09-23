@@ -53,8 +53,6 @@ namespace DocMgr.Models.YearlyArchive
 
         public string EntryName { get; set; } = string.Empty;
 
-        public string RelativePath { get; set; } = string.Empty;
-
         public decimal? SizeMb { get; set; }
 
         public DateTime? CreatedAt { get; set; }

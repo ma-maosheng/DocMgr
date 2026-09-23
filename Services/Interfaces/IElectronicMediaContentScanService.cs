@@ -8,11 +8,9 @@ namespace DocMgr.Services.Interfaces
     public interface IElectronicMediaContentScanService
     {
         /// <summary>
-        /// 将所选目录视为子项根目录，扫描其直接子项：一级子目录记为「目录」，根下散文件记为「文件」。
-        /// 目录型允许二者同时存在。数据量与文件个数按各根目录整棵树统计。
+        /// 将所选目录视为子项父目录，扫描其直接子项：一级子目录记为「目录」，父目录下散文件记为「文件」。
+        /// 二者可同时存在。数据量与文件个数按各父目录整棵树统计。支持直接选择盘符根目录。
         /// </summary>
         ElectronicMediaContentScanResult ScanDirectories(IReadOnlyList<string> directoryPaths, string? storageRootDirectory = null);
-
-        ElectronicMediaContentScanResult ScanFiles(IReadOnlyList<string> filePaths, string? storageRootDirectory = null);
     }
 }

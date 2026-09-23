@@ -49,8 +49,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
         // 审批模式专用录入字段：审批通过 / 确认实物交接。
         private string _reviewerName = string.Empty;
         private DateTime _reviewerDate;
-        private string _approverName = string.Empty;
-        private DateTime _approverDate;
+        private string _archiveRoomHeadName = string.Empty;
+        private DateTime _archiveRoomHeadDateValue;
+        private string _archiveDeputyPresident = string.Empty;
+        private DateTime _archiveDeputyPresidentDate;
+        private bool _enableDeptHead = true;
+        private bool _enableArchiveRoomHead = true;
+        private bool _enableArchiveDeputyPresident;
         private string _approvalOpinion = "同意";
         private string _handoverApplicant = string.Empty;
         private string _handoverAdmin = string.Empty;
@@ -119,6 +124,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _editingApplication is { Id: > 0, ApplicationStatus: HardDiskMediaApplication.StatusSignedUploaded } &&
             IsCurrentUserArchiveAdmin();
 
+        /// <summary>办结后资料管理员可增补「其他附件」。</summary>
+        public bool CanSupplementOtherAttachments =>
+            ShowApprovalActions
+            && ApprovalWorkflowButtonSupport.CanSupplementOtherAttachments(
+                _editingApplication?.ApplicationStatus == HardDiskMediaApplication.StatusCompleted,
+                IsCurrentUserArchiveAdmin());
+
         public bool HasAbnormalReturnItems =>
             IsEditing && (
                 IsSpecialSituationInspectionResult ||
@@ -185,7 +197,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return "请填写具体情况说明，打印签批交接单并完成线下签字后提交申请。";
                 }
 
-                return "下一步：填写归还信息后，请保存草稿、打印签批交接单或提交申请。归还位置由资料室管理员在审批办理时指定。";
+                return "下一步：填写归还信息后，请保存草稿、打印签批交接单或提交申请。归还位置由资料管理员在审批办理时指定。";
             }
         }
 
@@ -209,7 +221,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public string UploadHintText => CanUploadSignedAttachment
             ? "后续：上传签批交接单后，请点击“确认办结”。"
-            : "请先确认实物交接，再上传签批交接单。";
+            : (CanSupplementOtherAttachments
+                ? "办结后仅可增补「其他附件」；不可删除已有附件。"
+                : "请先确认实物交接，再上传签批交接单。");
 
         public string CompleteHintText => CanComplete
             ? "下一步：确认办结，完成介质收回入库。"
@@ -222,7 +236,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public bool IsTargetLocationRequired => !IsLossInspectionScenario;
 
-        /// <summary>资料室管理员在审批办理阶段可指定归还位置。</summary>
+        /// <summary>资料管理员在审批办理阶段可指定归还位置。</summary>
         public bool CanEditTargetLocation =>
             ShowApprovalActions &&
             IsCurrentUserArchiveAdmin() &&
@@ -293,12 +307,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             var value when HardDiskMediaReturnDomainValues.IsDamagedReturnInspection(value) =>
                 CanEditTargetLocation
-                    ? "损坏归还请由资料室管理员指定损坏硬盘专用档口，可使用“推荐档口”和“档口快照”。"
-                    : "损坏归还的入柜位置由资料室管理员在审批办理时指定。",
+                    ? "损坏归还请由资料管理员指定损坏硬盘专用档口，可使用“推荐档口”和“档口快照”。"
+                    : "损坏归还的入柜位置由资料管理员在审批办理时指定。",
             HardDiskMediaReturnDomainValues.RegistrationKindLossRegistration => "挂失登记无需归位档口。",
             _ => CanEditTargetLocation
-                ? "正常归还请由资料室管理员指定空白硬盘专用档口，可使用“推荐档口”和“档口快照”。"
-                : "归还位置由资料室管理员在审批办理时指定。"
+                ? "正常归还请由资料管理员指定空白硬盘专用档口，可使用“推荐档口”和“档口快照”。"
+                : "归还位置由资料管理员在审批办理时指定。"
         };
 
         public string ApplicationNo
@@ -448,7 +462,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     OnPropertyChanged(nameof(CanPrintAbnormalReport));
                     OnPropertyChanged(nameof(CanManageAbnormalReportAttachments));
                     RebuildFormatConfirmationOptions(forceSelection: true);
-                    // 仅资料室管理员编辑归还位置时自动推荐；申请侧不预填档口。
+                    // 仅资料管理员编辑归还位置时自动推荐；申请侧不预填档口。
                     _preferRecommendedTargetLocationForCurrentKind = CanEditTargetLocation;
                     RefreshReturnTargetLocationAsync();
                     NotifyTargetLocationSelectionChanged();
@@ -481,31 +495,66 @@ namespace DocMgr.ViewModels.HardDiskMedia
         }
 
         /// <summary>审核人（审批模式）。</summary>
-        public string ReviewerName
+        public string DeptHead
         {
             get => _reviewerName;
             set => SetProperty(ref _reviewerName, value);
         }
 
         /// <summary>审核日期（审批模式）。</summary>
-        public DateTime ReviewerDate
+        public DateTime DeptHeadDate
         {
             get => _reviewerDate;
             set => SetProperty(ref _reviewerDate, value);
         }
 
         /// <summary>审批人（审批模式）。</summary>
-        public string ApproverName
+        public string ArchiveRoomHead
         {
-            get => _approverName;
-            set => SetProperty(ref _approverName, value);
+            get => _archiveRoomHeadName;
+            set => SetProperty(ref _archiveRoomHeadName, value);
         }
 
         /// <summary>审批日期（审批模式）。</summary>
-        public DateTime ApproverDate
+        public DateTime ArchiveRoomHeadDate
         {
-            get => _approverDate;
-            set => SetProperty(ref _approverDate, value);
+            get => _archiveRoomHeadDateValue;
+            set => SetProperty(ref _archiveRoomHeadDateValue, value);
+        }
+
+        /// <summary>分管资料院长签字（审批模式）。</summary>
+        public string ArchiveDeputyPresident
+        {
+            get => _archiveDeputyPresident;
+            set => SetProperty(ref _archiveDeputyPresident, value);
+        }
+
+        /// <summary>分管资料院长签字日期（审批模式）。</summary>
+        public DateTime ArchiveDeputyPresidentDate
+        {
+            get => _archiveDeputyPresidentDate;
+            set => SetProperty(ref _archiveDeputyPresidentDate, value);
+        }
+
+        /// <summary>是否启用部门审核签字栏。</summary>
+        public bool EnableDeptHead
+        {
+            get => _enableDeptHead;
+            private set => SetProperty(ref _enableDeptHead, value);
+        }
+
+        /// <summary>是否启用资料室签字栏。</summary>
+        public bool EnableArchiveRoomHead
+        {
+            get => _enableArchiveRoomHead;
+            private set => SetProperty(ref _enableArchiveRoomHead, value);
+        }
+
+        /// <summary>是否启用分管资料院长签字栏。</summary>
+        public bool EnableArchiveDeputyPresident
+        {
+            get => _enableArchiveDeputyPresident;
+            private set => SetProperty(ref _enableArchiveDeputyPresident, value);
         }
 
         /// <summary>审批意见（审批模式）。</summary>
@@ -522,7 +571,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _handoverApplicant, value);
         }
 
-        /// <summary>办理交接人：资料室资料管理员（审批模式）。</summary>
+        /// <summary>办理交接人：资料管理员（审批模式）。</summary>
         public string HandoverAdmin
         {
             get => _handoverAdmin;
@@ -745,7 +794,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             if (_editingApplication.Id == 0)
             {
-                // 申请新建不预填归还档口，由资料室管理员在审批时指定。
+                // 申请新建不预填归还档口，由资料管理员在审批时指定。
                 _preferRecommendedTargetLocationForCurrentKind = false;
             }
             else if (ShowApprovalActions &&
@@ -756,7 +805,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
 
             await UpdateReturnTargetLocationAsync();
-            InitializeApprovalInputsFromApplication();
+            await InitializeApprovalInputsFromApplicationAsync();
         }
 
         /// <summary>
@@ -781,7 +830,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         /// <summary>
         /// 审批模式下，为审批通过/确认实物交接的录入字段填充默认值。
         /// </summary>
-        private void InitializeApprovalInputsFromApplication()
+        private async Task InitializeApprovalInputsFromApplicationAsync()
         {
             if (_workspaceMode != HardDiskReturnWorkspaceMode.Approval || _editingApplication == null)
             {
@@ -793,14 +842,30 @@ namespace DocMgr.ViewModels.HardDiskMedia
             string currentUserName = currentUser?.RealName?.Trim() ?? string.Empty;
             var users = _userService.GetAllUsers();
 
-            // 默认：审核人 = 申请人所属部门负责人；审批人 = 资料室负责人
-            ReviewerName = HardDiskMediaApplicationViewModelHelper.ResolveDefaultReviewerName(
-                _editingApplication, users, currentUser);
-            ReviewerDate = _editingApplication.ApplyTime == default ? today : _editingApplication.ApplyTime.Date;
+            await HardDiskMediaApplicationViewModelHelper.ApplyDefaultApprovalFromWorkflowAsync(
+                _editingApplication,
+                _approvalWorkflowService,
+                users,
+                currentUser);
 
-            ApproverName = HardDiskMediaApplicationViewModelHelper.ResolveDefaultApproverName(
-                _editingApplication, users, currentUser);
-            ApproverDate = (_editingApplication.ApprovedTime ?? today).Date;
+            var chain = await _approvalWorkflowService.ResolveAsync(
+                new ApprovalChainResolveRequest
+                {
+                    BusinessType = ApprovalChainApplySupport.ResolveHardDiskApplicationBusinessType(_editingApplication),
+                    ApplicantDept = _editingApplication.ApplicantDept,
+                    FieldValues = ApprovalChainApplySupport.BuildHardDiskApplicationFieldValues(_editingApplication)
+                },
+                users);
+            EnableDeptHead = chain.DeptHead.IsEnabled;
+            EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled;
+            EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled;
+
+            DeptHead = _editingApplication.DeptHead;
+            DeptHeadDate = _editingApplication.ApplyTime == default ? today : _editingApplication.ApplyTime.Date;
+            ArchiveRoomHead = _editingApplication.ArchiveRoomHead;
+            ArchiveRoomHeadDate = (_editingApplication.ArchiveRoomHeadDate ?? today).Date;
+            ArchiveDeputyPresident = _editingApplication.ArchiveDeputyPresident;
+            ArchiveDeputyPresidentDate = (_editingApplication.ArchiveDeputyPresidentDate ?? today).Date;
 
             ApprovalOpinion = string.IsNullOrWhiteSpace(_editingApplication.ApprovalOpinion)
                 ? "同意"
@@ -906,8 +971,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     SignedAttachmentUploaded = _editingApplication.SignedAttachmentUploaded,
                     SignedAttachmentUploadedTime = _editingApplication.SignedAttachmentUploadedTime,
                     SignedAttachmentUploader = _editingApplication.SignedAttachmentUploader,
-                    ApprovedBy = _editingApplication.ApprovedBy,
-                    ApprovedTime = _editingApplication.ApprovedTime,
+                    ArchiveRoomHead = _editingApplication.ArchiveRoomHead,
+                    ArchiveRoomHeadDate = _editingApplication.ArchiveRoomHeadDate,
+                    ArchiveDeputyPresident = _editingApplication.ArchiveDeputyPresident,
+                    ArchiveDeputyPresidentDate = _editingApplication.ArchiveDeputyPresidentDate,
                     ApprovalOpinion = _editingApplication.ApprovalOpinion,
                     ExecutedBy = _editingApplication.ExecutedBy,
                     ExecutedTime = _editingApplication.ExecutedTime
@@ -995,31 +1062,55 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(ReviewerName))
+            if (EnableDeptHead && string.IsNullOrWhiteSpace(DeptHead))
             {
                 _dialogService.ShowMessage("请填写审核人。");
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(ApproverName))
+            if (EnableArchiveRoomHead && string.IsNullOrWhiteSpace(ArchiveRoomHead))
             {
                 _dialogService.ShowMessage("请填写审批人。");
+                return;
+            }
+
+            if (EnableArchiveDeputyPresident && string.IsNullOrWhiteSpace(ArchiveDeputyPresident))
+            {
+                _dialogService.ShowMessage($"请填写{ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident}。");
                 return;
             }
 
             if (IsTargetLocationRequired &&
                 string.IsNullOrWhiteSpace(SelectedReturnTargetLocationOption?.Location ?? TargetLocation))
             {
-                _dialogService.ShowMessage("请先指定归还位置（由资料室管理员确定）。");
+                _dialogService.ShowMessage("请先指定归还位置（由资料管理员确定）。");
                 return;
+            }
+
+            if (_editingApplication != null)
+            {
+                _editingApplication.DeptHead = DeptHead?.Trim() ?? string.Empty;
+                _editingApplication.ArchiveRoomHead = ArchiveRoomHead?.Trim() ?? string.Empty;
+                _editingApplication.ArchiveDeputyPresident = ArchiveDeputyPresident?.Trim() ?? string.Empty;
+                var missing = await HardDiskMediaApplicationViewModelHelper.CollectMissingApprovalErrorsAsync(
+                    _editingApplication,
+                    _approvalWorkflowService,
+                    _userService.GetAllUsers());
+                if (missing.Count > 0)
+                {
+                    _dialogService.ShowMessage(string.Join(Environment.NewLine, missing));
+                    return;
+                }
             }
 
             var input = new HardDiskMediaApprovalInput
             {
-                ReviewerName = ReviewerName.Trim(),
-                ReviewerDate = ReviewerDate,
-                ApproverName = ApproverName.Trim(),
-                ApproverDate = ApproverDate,
+                DeptHead = DeptHead.Trim(),
+                DeptHeadDate = DeptHeadDate,
+                ArchiveRoomHead = ArchiveRoomHead.Trim(),
+                ArchiveRoomHeadDate = ArchiveRoomHeadDate,
+                ArchiveDeputyPresident = ArchiveDeputyPresident.Trim(),
+                ArchiveDeputyPresidentDate = ArchiveDeputyPresidentDate,
                 ApprovalOpinion = string.IsNullOrWhiteSpace(ApprovalOpinion) ? "同意" : ApprovalOpinion.Trim(),
                 TargetLocation = ResolveTargetLocationForSave(ResolveApplicationTypeByInspectionResult())
             };
@@ -1052,14 +1143,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             if (string.IsNullOrWhiteSpace(HandoverAdmin))
             {
-                _dialogService.ShowMessage("请填写办理交接人（资料室资料管理员）。");
+                _dialogService.ShowMessage("请填写办理交接人（资料管理员）。");
                 return;
             }
 
             if (IsTargetLocationRequired &&
                 string.IsNullOrWhiteSpace(SelectedReturnTargetLocationOption?.Location ?? TargetLocation))
             {
-                _dialogService.ShowMessage("请先指定归还位置（由资料室管理员确定）。");
+                _dialogService.ShowMessage("请先指定归还位置（由资料管理员确定）。");
                 return;
             }
 
@@ -1170,6 +1261,96 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
         }
 
+        private async Task SupplementOtherAttachmentAsync()
+        {
+            if (!CanSupplementOtherAttachments)
+            {
+                _dialogService.ShowMessage("办结后仅资料管理员可增补「其他附件」。");
+                return;
+            }
+
+            var filePath = _dialogService.OpenFileDialog(
+                SystemAttachmentUploadSupport.OpenFileDialogFilter,
+                "选择其他附件");
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return;
+            }
+
+            try
+            {
+                var fileInfo = new FileInfo(filePath);
+                var fileContent = await File.ReadAllBytesAsync(filePath);
+                var uploadResult = await _hardDiskMediaService.UploadApplicationAttachmentAsync(
+                    _editingApplication,
+                    _userContextService.CurrentUser,
+                    HardDiskOutboundDomainValues.AttachmentCategoryOther,
+                    fileInfo.Name,
+                    fileInfo.Extension,
+                    fileInfo.Length,
+                    fileContent);
+                _dialogService.ShowMessage(uploadResult.Message);
+                if (!uploadResult.Success)
+                {
+                    return;
+                }
+
+                await RefreshEditingApplicationAsync();
+                await LoadEditorAttachmentsAsync();
+                await RefreshListsKeepingEditorAsync();
+                NotifyEditorStateChanged();
+            }
+            catch (IOException ex)
+            {
+                _dialogService.ShowError($"读取附件失败：{ex.Message}");
+            }
+        }
+
+        private async Task CaptureOtherAttachmentAsync()
+        {
+            if (!CanSupplementOtherAttachments)
+            {
+                _dialogService.ShowMessage("办结后仅资料管理员可增补「其他附件」。");
+                return;
+            }
+
+            DocumentCameraCaptureResult? captured = DocumentCameraAttachmentCaptureSupport.Capture(_dialogService);
+            if (captured == null)
+            {
+                return;
+            }
+
+            try
+            {
+                string fileName = DocumentCameraAttachmentCaptureSupport.BuildFileName(
+                    _editingApplication?.ApplicationNo ?? ApplicationNo,
+                    "其他附件",
+                    "盘归还");
+                var uploadResult = await _hardDiskMediaService.UploadApplicationAttachmentAsync(
+                    _editingApplication,
+                    _userContextService.CurrentUser,
+                    HardDiskOutboundDomainValues.AttachmentCategoryOther,
+                    fileName,
+                    ".jpg",
+                    captured.JpegContent.LongLength,
+                    captured.JpegContent);
+                _dialogService.ShowMessage(uploadResult.Message);
+                if (!uploadResult.Success)
+                {
+                    return;
+                }
+
+                await RefreshEditingApplicationAsync();
+                await LoadEditorAttachmentsAsync();
+                await RefreshListsKeepingEditorAsync();
+                NotifyEditorStateChanged();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"上传失败：{ex.Message}");
+            }
+        }
+
         private async Task CompleteAsync()
         {
             if (!CanComplete)
@@ -1253,6 +1434,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(CanApprove));
             OnPropertyChanged(nameof(CanConfirmHandover));
             OnPropertyChanged(nameof(CanUploadSignedAttachment));
+            OnPropertyChanged(nameof(CanSupplementOtherAttachments));
             OnPropertyChanged(nameof(HasAbnormalReturnItems));
             OnPropertyChanged(nameof(ShowAbnormalReturnPanel));
             OnPropertyChanged(nameof(ShowNormalReturnReasonField));
@@ -1381,8 +1563,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _editingApplication.SignedAttachmentUploaded = savedApplication.SignedAttachmentUploaded;
             _editingApplication.SignedAttachmentUploadedTime = savedApplication.SignedAttachmentUploadedTime;
             _editingApplication.SignedAttachmentUploader = savedApplication.SignedAttachmentUploader;
-            _editingApplication.ApprovedBy = savedApplication.ApprovedBy;
-            _editingApplication.ApprovedTime = savedApplication.ApprovedTime;
+            _editingApplication.ArchiveRoomHead = savedApplication.ArchiveRoomHead;
+            _editingApplication.ArchiveRoomHeadDate = savedApplication.ArchiveRoomHeadDate;
+            _editingApplication.ArchiveDeputyPresident = savedApplication.ArchiveDeputyPresident;
+            _editingApplication.ArchiveDeputyPresidentDate = savedApplication.ArchiveDeputyPresidentDate;
             _editingApplication.ApprovalOpinion = savedApplication.ApprovalOpinion;
             _editingApplication.ExecutedBy = savedApplication.ExecutedBy;
             _editingApplication.ExecutedTime = savedApplication.ExecutedTime;

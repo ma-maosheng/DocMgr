@@ -144,18 +144,45 @@ namespace DocMgr.Models.Cabinets
         }
 
         /// <summary>
-        /// 按专用档口类别返回物理可存放数量；未知类别默认按硬盘档口容量处理。
+        /// 是否为光盘类专用档口（容量取柜体光盘档口容量）。
         /// </summary>
-        public static int ResolveDedicatedSlotCapacity(string? categoryName)
+        public static bool IsOpticalDiscDedicatedCategory(string? categoryName)
         {
-            if (MatchesCategory(categoryName, CategoryDataOpticalDisc)
+            return MatchesCategory(categoryName, CategoryDataOpticalDisc)
                 || MatchesCategory(categoryName, CategoryHistoricalDataOpticalDisc)
-                || MatchesCategory(categoryName, CategoryDamagedOpticalDisc))
+                || MatchesCategory(categoryName, CategoryDamagedOpticalDisc);
+        }
+
+        /// <summary>
+        /// 解析柜体硬盘档口容量；未配置或非法时回退默认值。
+        /// </summary>
+        public static int ResolveHardDiskSlotCapacity(Cabinet? cabinet)
+        {
+            int capacity = cabinet?.HardDiskSlotCapacity ?? DedicatedHardDiskSlotCapacity;
+            return capacity > 0 ? capacity : DedicatedHardDiskSlotCapacity;
+        }
+
+        /// <summary>
+        /// 解析柜体光盘档口容量；未配置或非法时回退默认值。
+        /// </summary>
+        public static int ResolveOpticalDiscSlotCapacity(Cabinet? cabinet)
+        {
+            int capacity = cabinet?.OpticalDiscSlotCapacity ?? DedicatedOpticalDiscSlotCapacity;
+            return capacity > 0 ? capacity : DedicatedOpticalDiscSlotCapacity;
+        }
+
+        /// <summary>
+        /// 按专用档口类别返回物理可存放数量；未知类别默认按硬盘档口容量处理。
+        /// 传入 <paramref name="cabinet"/> 时使用该柜配置容量，否则使用系统默认（硬盘 10 / 光盘 20）。
+        /// </summary>
+        public static int ResolveDedicatedSlotCapacity(string? categoryName, Cabinet? cabinet = null)
+        {
+            if (IsOpticalDiscDedicatedCategory(categoryName))
             {
-                return DedicatedOpticalDiscSlotCapacity;
+                return ResolveOpticalDiscSlotCapacity(cabinet);
             }
 
-            return DedicatedHardDiskSlotCapacity;
+            return ResolveHardDiskSlotCapacity(cabinet);
         }
 
         /// <summary>

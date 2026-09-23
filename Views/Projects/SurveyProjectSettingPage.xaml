@@ -1,4 +1,4 @@
-﻿<Page x:Class="DocMgr.Views.Projects.ProjectSettingPage"
+<Page x:Class="DocMgr.Views.Projects.ProjectSettingPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -28,7 +28,7 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- 左侧按钮组：增删改仅资料室资料管理员可见 -->
+                    <!-- 左侧按钮组：增删改仅资料管理员可见 -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <Button Content="新增项目" Command="{Binding AddCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}" Margin="0,0,10,0"
                                 Visibility="{Binding CanMaintainProjects, Converter={StaticResource BooleanToVisibilityConverter}}"/>

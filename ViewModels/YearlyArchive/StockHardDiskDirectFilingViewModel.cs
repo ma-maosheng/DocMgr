@@ -45,12 +45,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _businessNumberHint = "确认立档后：每份资料生成一条建档单号，整盘生成一个电子袋号。";
         private string _previewElectronicArchiveNo = string.Empty;
         private int _archiveNoPreviewToken;
-        private readonly string _sourceType = ArchiveRegisterDomainValues.SourceTypeStockDirect;
+        private string _sourceType = ArchiveRegisterDomainValues.SourceTypeInternal;
         private string _archivePurpose = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
-        private string _confidentialLevel = "秘密";
-        private readonly string _provideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
-        private string _materialCategory = ArchiveRegisterDomainValues.ElectronicMaterialCategoryData;
-        private string _subCategory = ArchiveRegisterDomainValues.DefaultStockDirectSubCategory;
+        private string _provideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
         private HardDiskMediaReturnTargetLocationOption? _selectedSlotOption;
         private string _storageLocation = string.Empty;
         private string _scanWarningText = string.Empty;
@@ -89,9 +86,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<string> YearOptions { get; } = new();
         public ObservableCollection<string> ProjectNameOptions { get; } = new();
         public ObservableCollection<string> ArchivePurposeOptions { get; } = new();
+        public ObservableCollection<string> SourceTypeOptions { get; } = new();
         public ObservableCollection<string> ConfidentialLevelOptions { get; } = new();
         public ObservableCollection<string> MaterialCategoryOptions { get; } = new();
-        public ObservableCollection<string> SubCategoryOptions { get; } = new();
         public ObservableCollection<HardDiskMediaReturnTargetLocationOption> SlotOptions { get; } = new();
         public ObservableCollection<StockHardDiskPreviewRow> PreviewRows { get; } = new();
 
@@ -267,7 +264,29 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        public string SourceType => _sourceType;
+        public string SourceType
+        {
+            get => _sourceType;
+            set
+            {
+                string normalized = value?.Trim() ?? string.Empty;
+                if (!SetProperty(ref _sourceType, normalized))
+                {
+                    return;
+                }
+
+                OnPropertyChanged(nameof(IsExternalSource));
+                OnPropertyChanged(nameof(IsProvideUnitReadOnly));
+                ApplyProvideUnitForSourceType();
+            }
+        }
+
+        /// <summary>资料来源是否为「外来」。</summary>
+        public bool IsExternalSource =>
+            string.Equals(SourceType, ArchiveRegisterDomainValues.SourceTypeExternal, StringComparison.Ordinal);
+
+        /// <summary>内部来源时提供单位固定为资料室，不可编辑。</summary>
+        public bool IsProvideUnitReadOnly => !IsExternalSource;
 
         public string ArchivePurpose
         {
@@ -275,30 +294,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             set => SetProperty(ref _archivePurpose, value);
         }
 
-        public string ConfidentialLevel
+        public string ProvideUnit
         {
-            get => _confidentialLevel;
-            set => SetProperty(ref _confidentialLevel, value);
-        }
-
-        public string ProvideUnit => _provideUnit;
-
-        public string MaterialCategory
-        {
-            get => _materialCategory;
-            set
-            {
-                if (SetProperty(ref _materialCategory, value))
-                {
-                    RefreshSubCategoryOptions();
-                }
-            }
-        }
-
-        public string SubCategory
-        {
-            get => _subCategory;
-            set => SetProperty(ref _subCategory, value);
+            get => _provideUnit;
+            set => SetProperty(ref _provideUnit, value ?? string.Empty);
         }
 
         public HardDiskMediaReturnTargetLocationOption? SelectedSlotOption
@@ -352,6 +351,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             _pageDomainOptions = await _archiveRegisterService.GetPageDomainOptionsAsync();
             var options = _pageDomainOptions;
             Replace(ArchivePurposeOptions, options.ArchivePurposes, ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage);
+            Replace(
+                SourceTypeOptions,
+                options.SourceTypes.Count > 0
+                    ? options.SourceTypes
+                    : new[]
+                    {
+                        ArchiveRegisterDomainValues.SourceTypeInternal,
+                        ArchiveRegisterDomainValues.SourceTypeExternal
+                    },
+                ArchiveRegisterDomainValues.SourceTypeInternal);
             Replace(ConfidentialLevelOptions, options.ConfidentialLevels, "秘密");
             Replace(MaterialCategoryOptions, options.ElectronicMaterialCategories, ArchiveRegisterDomainValues.ElectronicMaterialCategoryData);
             RefreshYearOptions();
@@ -369,17 +378,21 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ArchivePurpose = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
             }
 
-            if (string.IsNullOrWhiteSpace(ConfidentialLevel) || !ConfidentialLevelOptions.Contains(ConfidentialLevel))
+            if (string.IsNullOrWhiteSpace(SourceType) || !SourceTypeOptions.Contains(SourceType))
             {
-                ConfidentialLevel = ConfidentialLevelOptions.Contains("秘密") ? "秘密" : ConfidentialLevelOptions.FirstOrDefault() ?? "秘密";
+                SourceType = SourceTypeOptions.FirstOrDefault()
+                    ?? ArchiveRegisterDomainValues.SourceTypeInternal;
+            }
+            else
+            {
+                ApplyProvideUnitForSourceType();
             }
 
-            if (string.IsNullOrWhiteSpace(MaterialCategory))
+            foreach (var row in PreviewRows)
             {
-                MaterialCategory = ArchiveRegisterDomainValues.ElectronicMaterialCategoryData;
+                row.EnsureDefaultsFromOwner();
             }
 
-            RefreshSubCategoryOptions();
             RegistrationMethod = HardDiskMedium.RegistrationMethodArchive;
             await LoadSlotOptionsAsync();
             await RecommendSlotAsync();
@@ -522,7 +535,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     foreach (var item in material.Items)
                     {
-                        PreviewRows.Add(new StockHardDiskPreviewRow(material, item));
+                        PreviewRows.Add(new StockHardDiskPreviewRow(this, material, item));
                     }
                 }
 
@@ -748,7 +761,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             if (!_archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser))
             {
-                _dialogService.ShowMessage("仅资料室资料管理员可执行存量硬盘直办立档。");
+                _dialogService.ShowMessage("仅资料管理员可执行存量硬盘直办立档。");
                 return;
             }
 
@@ -812,10 +825,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             _archiveNoPreviewToken++;
 
             ClearUserInputsForNextRound();
+            SourceType = ArchiveRegisterDomainValues.SourceTypeInternal;
+            ProvideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
             ArchivePurpose = string.Empty;
-            ConfidentialLevel = string.Empty;
-            MaterialCategory = string.Empty;
-            SubCategory = string.Empty;
 
             _suppressSlotResolve = true;
             try
@@ -919,39 +931,70 @@ namespace DocMgr.ViewModels.YearlyArchive
                 InterfaceType = InterfaceType,
                 FactoryDate = FactoryDate,
                 StorageLocation = StorageLocation,
-                SourceType = ArchiveRegisterDomainValues.SourceTypeStockDirect,
-                ArchivePurpose = ArchivePurpose,
-                ConfidentialLevel = ConfidentialLevel,
-                ProvideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom,
-                MaterialCategory = MaterialCategory,
-                SubCategory = SubCategory,
+                SourceType = SourceType?.Trim() ?? string.Empty,
+                ArchivePurpose = ArchivePurpose?.Trim() ?? string.Empty,
+                ProvideUnit = ProvideUnit?.Trim() ?? string.Empty,
                 Materials = materials
             };
         }
 
-        private void RefreshSubCategoryOptions()
+        /// <summary>
+        /// 内部：提供单位固定为资料室；外来：若仍为资料室则清空以便用户填写。
+        /// </summary>
+        private void ApplyProvideUnitForSourceType()
         {
-            IReadOnlyList<string> options = _pageDomainOptions == null
-                ? Array.Empty<string>()
-                : string.Equals(MaterialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocument, StringComparison.Ordinal)
-                    ? _pageDomainOptions.ElectronicDocumentSubCategories
-                    : string.Equals(MaterialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategoryData, StringComparison.Ordinal)
-                        ? _pageDomainOptions.ElectronicDataSubCategories
-                        : string.Equals(MaterialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftware, StringComparison.Ordinal)
-                            ? _pageDomainOptions.ElectronicSoftwareSubCategories
-                            : Array.Empty<string>();
-
-            string preferred = string.Equals(
-                    MaterialCategory,
-                    ArchiveRegisterDomainValues.ElectronicMaterialCategoryData,
-                    StringComparison.Ordinal)
-                ? ArchiveRegisterDomainValues.DefaultStockDirectSubCategory
-                : SubCategory;
-            Replace(SubCategoryOptions, options, preferred);
-            if (string.IsNullOrWhiteSpace(SubCategory) || !SubCategoryOptions.Contains(SubCategory))
+            if (IsExternalSource)
             {
-                SubCategory = SubCategoryOptions.FirstOrDefault() ?? string.Empty;
+                if (string.Equals(
+                        ProvideUnit,
+                        ArchiveRegisterDomainValues.ProvideUnitArchiveRoom,
+                        StringComparison.Ordinal))
+                {
+                    ProvideUnit = string.Empty;
+                }
+
+                return;
             }
+
+            ProvideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
+        }
+
+        /// <summary>
+        /// 按资料类型解析所属子类域值。
+        /// </summary>
+        internal IReadOnlyList<string> ResolveSubCategoryOptions(string? materialCategory)
+        {
+            if (_pageDomainOptions == null)
+            {
+                return Array.Empty<string>();
+            }
+
+            if (string.Equals(materialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocument, StringComparison.Ordinal))
+            {
+                return _pageDomainOptions.ElectronicDocumentSubCategories;
+            }
+
+            if (string.Equals(materialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategoryData, StringComparison.Ordinal))
+            {
+                return _pageDomainOptions.ElectronicDataSubCategories;
+            }
+
+            if (string.Equals(materialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftware, StringComparison.Ordinal))
+            {
+                return _pageDomainOptions.ElectronicSoftwareSubCategories;
+            }
+
+            return Array.Empty<string>();
+        }
+
+        /// <summary>
+        /// 扫描预览行的默认密级。
+        /// </summary>
+        internal string ResolveDefaultConfidentialLevel()
+        {
+            return ConfidentialLevelOptions.Contains("秘密")
+                ? "秘密"
+                : ConfidentialLevelOptions.FirstOrDefault() ?? "秘密";
         }
 
         private static void EnsureOption(ObservableCollection<string> target, string? value)
@@ -968,19 +1011,28 @@ namespace DocMgr.ViewModels.YearlyArchive
     }
 
     /// <summary>
-    /// 扫描预览行。
+    /// 扫描预览行（资料类型 / 子类 / 密级可按子项编辑）。
     /// </summary>
-    public sealed class StockHardDiskPreviewRow
+    public sealed class StockHardDiskPreviewRow : ViewModelBase
     {
-        public StockHardDiskPreviewRow(StockHardDiskMaterialDraft material, StockHardDiskItemDraft item)
+        private readonly StockHardDiskDirectFilingViewModel _owner;
+
+        public StockHardDiskPreviewRow(
+            StockHardDiskDirectFilingViewModel owner,
+            StockHardDiskMaterialDraft material,
+            StockHardDiskItemDraft item)
         {
-            Material = material;
-            Item = item;
+            _owner = owner ?? throw new ArgumentNullException(nameof(owner));
+            Material = material ?? throw new ArgumentNullException(nameof(material));
+            Item = item ?? throw new ArgumentNullException(nameof(item));
+            EnsureDefaultsFromOwner();
         }
 
         public StockHardDiskMaterialDraft Material { get; }
 
         public StockHardDiskItemDraft Item { get; }
+
+        public ObservableCollection<string> AvailableSubCategories { get; } = new();
 
         public string MaterialName => Material.MaterialName;
 
@@ -993,5 +1045,110 @@ namespace DocMgr.ViewModels.YearlyArchive
         public int FileCount => Item.FileCount;
 
         public string FilingStoragePath => Item.FilingStoragePath;
+
+        public string MaterialCategory
+        {
+            get => Item.MaterialCategory;
+            set
+            {
+                string trimmed = value?.Trim() ?? string.Empty;
+                if (string.Equals(Item.MaterialCategory, trimmed, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                Item.MaterialCategory = trimmed;
+                OnPropertyChanged();
+                RefreshSubCategoryOptions(preferDefaultForDataCategory: false);
+            }
+        }
+
+        public string SubCategory
+        {
+            get => Item.SubCategory;
+            set
+            {
+                string trimmed = value?.Trim() ?? string.Empty;
+                if (string.Equals(Item.SubCategory, trimmed, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                Item.SubCategory = trimmed;
+                OnPropertyChanged();
+            }
+        }
+
+        public string ConfidentialLevel
+        {
+            get => Item.ConfidentialLevel;
+            set
+            {
+                string trimmed = value?.Trim() ?? string.Empty;
+                if (string.Equals(Item.ConfidentialLevel, trimmed, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                Item.ConfidentialLevel = trimmed;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// 按页面域值补齐默认密级 / 资料类型 / 子类，并刷新子类下拉。
+        /// </summary>
+        public void EnsureDefaultsFromOwner()
+        {
+            if (string.IsNullOrWhiteSpace(Item.ConfidentialLevel)
+                || (_owner.ConfidentialLevelOptions.Count > 0
+                    && !_owner.ConfidentialLevelOptions.Contains(Item.ConfidentialLevel)))
+            {
+                Item.ConfidentialLevel = _owner.ResolveDefaultConfidentialLevel();
+                OnPropertyChanged(nameof(ConfidentialLevel));
+            }
+
+            if (string.IsNullOrWhiteSpace(Item.MaterialCategory)
+                || (_owner.MaterialCategoryOptions.Count > 0
+                    && !_owner.MaterialCategoryOptions.Contains(Item.MaterialCategory)))
+            {
+                Item.MaterialCategory = ArchiveRegisterDomainValues.ElectronicMaterialCategoryData;
+                OnPropertyChanged(nameof(MaterialCategory));
+            }
+
+            RefreshSubCategoryOptions(preferDefaultForDataCategory: true);
+        }
+
+        private void RefreshSubCategoryOptions(bool preferDefaultForDataCategory)
+        {
+            IReadOnlyList<string> options = _owner.ResolveSubCategoryOptions(Item.MaterialCategory);
+            AvailableSubCategories.Clear();
+            foreach (string option in options.Where(item => !string.IsNullOrWhiteSpace(item)).Select(item => item.Trim()).Distinct(StringComparer.Ordinal))
+            {
+                AvailableSubCategories.Add(option);
+            }
+
+            string preferred = preferDefaultForDataCategory
+                && string.Equals(
+                    Item.MaterialCategory,
+                    ArchiveRegisterDomainValues.ElectronicMaterialCategoryData,
+                    StringComparison.Ordinal)
+                && (string.IsNullOrWhiteSpace(Item.SubCategory) || !AvailableSubCategories.Contains(Item.SubCategory))
+                    ? ArchiveRegisterDomainValues.DefaultStockDirectSubCategory
+                    : Item.SubCategory;
+
+            if (!string.IsNullOrWhiteSpace(preferred) && !AvailableSubCategories.Contains(preferred))
+            {
+                AvailableSubCategories.Insert(0, preferred);
+            }
+
+            if (string.IsNullOrWhiteSpace(Item.SubCategory) || !AvailableSubCategories.Contains(Item.SubCategory))
+            {
+                Item.SubCategory = !string.IsNullOrWhiteSpace(preferred) && AvailableSubCategories.Contains(preferred)
+                    ? preferred
+                    : AvailableSubCategories.FirstOrDefault() ?? string.Empty;
+                OnPropertyChanged(nameof(SubCategory));
+            }
+        }
     }
 }

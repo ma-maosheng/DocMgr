@@ -6,14 +6,14 @@
     <Page.Resources>
         <Style x:Key="LabelStyle" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Width" Value="64"/>
+            <Setter Property="Width" Value="72"/>
             <Setter Property="Margin" Value="0,0,6,0"/>
             <Setter Property="Foreground" Value="#37474F"/>
         </Style>
         <Style x:Key="HintStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Margin" Value="70,2,0,0"/>
+            <Setter Property="Margin" Value="78,2,0,0"/>
         </Style>
         <Style x:Key="InlineActionButtonStyle" TargetType="Button" BasedOn="{StaticResource FormInlineButtonStyle}">
             <Setter Property="Padding" Value="10,4"/>
@@ -36,7 +36,7 @@
                            FontSize="18"
                            FontWeight="Bold"
                            Foreground="#37474F"/>
-                <TextBlock Text="读取硬盘参数并扫描「年度/项目/资料名称/子项」目录后，由资料室资料管理员直接完成硬盘登记与电子立档，无需申请审批。"
+                <TextBlock Text="读取硬盘参数并扫描「年度/项目/资料名称/子项」目录后，由资料管理员直接完成硬盘登记与电子立档，无需申请审批。"
                            Margin="0,6,0,0"
                            FontSize="12"
                            Foreground="#546E7A"
@@ -185,32 +185,29 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="来源" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="1" Text="{Binding SourceType, Mode=OneWay}" IsReadOnly="True"
-                                     Height="{StaticResource FormControlHeight}" Margin="0,0,12,0" Background="#F9F9F9"/>
-                            <TextBlock Grid.Column="2" Text="库管模式" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Column="3" ItemsSource="{Binding ArchivePurposeOptions}" SelectedItem="{Binding ArchivePurpose}"
-                                      Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"/>
-                            <TextBlock Grid.Column="4" Text="密级" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Column="5" ItemsSource="{Binding ConfidentialLevelOptions}" SelectedItem="{Binding ConfidentialLevel}"
-                                      Height="{StaticResource FormControlHeight}"/>
-                        </Grid>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="提供单位" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="1" Text="{Binding ProvideUnit, Mode=OneWay}" IsReadOnly="True"
-                                     Height="{StaticResource FormControlHeight}" Margin="0,0,12,0" Background="#F9F9F9"/>
-                            <TextBlock Grid.Column="2" Text="资料类型" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Column="3" ItemsSource="{Binding MaterialCategoryOptions}" SelectedItem="{Binding MaterialCategory}"
-                                      Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"/>
-                            <TextBlock Grid.Column="4" Text="子类" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Column="5" ItemsSource="{Binding SubCategoryOptions}" SelectedItem="{Binding SubCategory}"
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding SourceTypeOptions}"
+                                      SelectedItem="{Binding SourceType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
+                                      ToolTip="内部：提供单位固定为资料室；外来：请填写具体提供单位"/>
+                            <TextBlock Grid.Column="2" Text="提供单位" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Column="3"
+                                     Text="{Binding ProvideUnit, UpdateSourceTrigger=PropertyChanged}"
+                                     IsReadOnly="{Binding IsProvideUnitReadOnly, Mode=OneWay}"
+                                     Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
+                                     ToolTip="内部固定为资料室；外来时填写来源单位">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBoxStyle}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsProvideUnitReadOnly, Mode=OneWay}" Value="True">
+                                                <Setter Property="Background" Value="#F9F9F9"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
+                            <TextBlock Grid.Column="4" Text="库管模式" Style="{StaticResource LabelStyle}"/>
+                            <ComboBox Grid.Column="5" ItemsSource="{Binding ArchivePurposeOptions}" SelectedItem="{Binding ArchivePurpose}"
                                       Height="{StaticResource FormControlHeight}"/>
                         </Grid>
                         <Grid>
@@ -237,16 +234,45 @@
                 <GroupBox Header="4. 扫描预览" Padding="8,5">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top" Text="{Binding PreviewSummary, Mode=OneWay}"
-                                   FontSize="12" Foreground="#546E7A" Margin="0,0,0,4"/>
-                        <DataGrid ItemsSource="{Binding PreviewRows}" AutoGenerateColumns="False" IsReadOnly="True"
-                                  CanUserAddRows="False" HeadersVisibility="Column" MaxHeight="280">
+                                   FontSize="12" Foreground="#546E7A" Margin="0,0,0,4"
+                                   ToolTip="资料类型、子类、密级可按子项分别修改；其余列为扫描结果只读。"/>
+                        <DataGrid ItemsSource="{Binding PreviewRows}" AutoGenerateColumns="False" IsReadOnly="False"
+                                  CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
+                                  SelectionUnit="Cell" MaxHeight="320">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName}" Width="*"/>
-                                <DataGridTextColumn Header="子项" Binding="{Binding ItemName}" Width="*"/>
-                                <DataGridTextColumn Header="组织形式" Binding="{Binding OrganizationForm}" Width="90"/>
-                                <DataGridTextColumn Header="数据量" Binding="{Binding DataSizeText}" Width="90"/>
-                                <DataGridTextColumn Header="文件数" Binding="{Binding FileCount}" Width="70"/>
-                                <DataGridTextColumn Header="立档路径" Binding="{Binding FilingStoragePath}" Width="2*"/>
+                                <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="*" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="子项" Binding="{Binding ItemName, Mode=OneWay}" Width="*" IsReadOnly="True"/>
+                                <DataGridTemplateColumn Header="资料类型" Width="100">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.MaterialCategoryOptions, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                      SelectedItem="{Binding MaterialCategory, UpdateSourceTrigger=PropertyChanged}"
+                                                      Height="{StaticResource FormControlHeight}" Margin="1"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="子类" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding AvailableSubCategories}"
+                                                      SelectedItem="{Binding SubCategory, UpdateSourceTrigger=PropertyChanged}"
+                                                      Height="{StaticResource FormControlHeight}" Margin="1"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="密级" Width="90">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.ConfidentialLevelOptions, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                      SelectedItem="{Binding ConfidentialLevel, UpdateSourceTrigger=PropertyChanged}"
+                                                      Height="{StaticResource FormControlHeight}" Margin="1"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="组织形式" Binding="{Binding OrganizationForm, Mode=OneWay}" Width="90" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="数据量" Binding="{Binding DataSizeText, Mode=OneWay}" Width="90" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="文件数" Binding="{Binding FileCount, Mode=OneWay}" Width="70" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="立档路径" Binding="{Binding FilingStoragePath, Mode=OneWay}" Width="2*" IsReadOnly="True"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </DockPanel>

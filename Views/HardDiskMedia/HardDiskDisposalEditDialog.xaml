@@ -1,7 +1,8 @@
-<Window x:Class="DocMgr.Views.HardDiskMedia.HardDiskDisposalEditDialog"
+﻿<Window x:Class="DocMgr.Views.HardDiskMedia.HardDiskDisposalEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="{Binding WindowTitle}"
+        xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
+        Title="{Binding WindowTitle, Mode=OneWay}"
         Width="1200"
         Height="820"
         MinWidth="1040"
@@ -9,58 +10,65 @@
         WindowStartupLocation="CenterOwner"
         Background="#F0F2F5">
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../YearlyArchive/ArchiveRegisterResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            <viewShared:InverseBoolToVisConverter x:Key="InverseBoolToVisConverter"/>
 
-        <Style x:Key="DisposalSectionTitleStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#1E293B"/>
-            <Setter Property="Margin" Value="0,0,0,8"/>
-        </Style>
-        <Style x:Key="DisposalFieldLabelStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#64748B"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Margin" Value="0,0,0,4"/>
-        </Style>
-        <Style x:Key="DisposalFilterLabelStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#64748B"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Margin" Value="0,0,6,0"/>
-        </Style>
-        <Style x:Key="DisposalCardBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="BorderBrush" Value="#E0E0E0"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="4"/>
-            <Setter Property="Padding" Value="12"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-        </Style>
-        <Style x:Key="DisposalFooterButtonStyle" TargetType="Button" BasedOn="{StaticResource DialogPrimaryActionButtonStyle}">
-            <Setter Property="Width" Value="Auto"/>
-            <Setter Property="MinWidth" Value="96"/>
-            <Setter Property="Padding" Value="12,0"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
-        </Style>
-        <Style x:Key="DisposalFooterDangerButtonStyle" TargetType="Button" BasedOn="{StaticResource DialogDangerActionButtonStyle}">
-            <Setter Property="Width" Value="Auto"/>
-            <Setter Property="MinWidth" Value="96"/>
-            <Setter Property="Padding" Value="12,0"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
-        </Style>
-        <Style x:Key="DisposalTransferButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarActionButtonStyle}">
-            <Setter Property="Width" Value="82"/>
-            <Setter Property="Height" Value="{StaticResource DialogFormControlHeight}"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Padding" Value="6,0"/>
-        </Style>
+            <Style x:Key="DisposalSectionTitleStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="#1E293B"/>
+                <Setter Property="Margin" Value="0,0,0,8"/>
+            </Style>
+            <Style x:Key="DisposalFieldLabelStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="#64748B"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Margin" Value="0,0,0,4"/>
+            </Style>
+            <Style x:Key="DisposalFilterLabelStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="#64748B"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Margin" Value="0,0,6,0"/>
+            </Style>
+            <Style x:Key="DisposalCardBorderStyle" TargetType="Border">
+                <Setter Property="Background" Value="White"/>
+                <Setter Property="BorderBrush" Value="#E0E0E0"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="Padding" Value="12"/>
+                <Setter Property="Margin" Value="0,0,0,10"/>
+            </Style>
+            <Style x:Key="DisposalFooterButtonStyle" TargetType="Button" BasedOn="{StaticResource DialogPrimaryActionButtonStyle}">
+                <Setter Property="Width" Value="Auto"/>
+                <Setter Property="MinWidth" Value="96"/>
+                <Setter Property="Padding" Value="12,0"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+            </Style>
+            <Style x:Key="DisposalFooterDangerButtonStyle" TargetType="Button" BasedOn="{StaticResource DialogDangerActionButtonStyle}">
+                <Setter Property="Width" Value="Auto"/>
+                <Setter Property="MinWidth" Value="96"/>
+                <Setter Property="Padding" Value="12,0"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+            </Style>
+            <Style x:Key="DisposalTransferButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarActionButtonStyle}">
+                <Setter Property="Width" Value="82"/>
+                <Setter Property="Height" Value="{StaticResource DialogFormControlHeight}"/>
+                <Setter Property="Margin" Value="0,0,0,10"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Padding" Value="6,0"/>
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0"
@@ -69,11 +77,11 @@
                 BorderThickness="0,0,0,1"
                 Padding="16,14">
             <StackPanel>
-                <TextBlock Text="{Binding WindowTitle}"
+                <TextBlock Text="{Binding WindowTitle, Mode=OneWay}"
                            FontSize="18"
                            FontWeight="Bold"
                            Foreground="#37474F"/>
-                <TextBlock Text="{Binding BannerText}"
+                <TextBlock Text="{Binding BannerText, Mode=OneWay}"
                            Margin="0,6,0,0"
                            Foreground="#546E7A"
                            FontSize="12"
@@ -81,80 +89,71 @@
             </StackPanel>
         </Border>
 
-        <Grid Grid.Row="1" Margin="12">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="1"
+                      Margin="12,12,12,0"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- 处置信息 -->
+                <Border Style="{StaticResource DisposalCardBorderStyle}">
+                    <StackPanel>
+                        <TextBlock Text="处置信息" Style="{StaticResource DisposalSectionTitleStyle}"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="申请人" Style="{StaticResource DisposalFieldLabelStyle}"/>
+                                <TextBox Text="{Binding ApplicantName, Mode=OneWay}"
+                                         IsReadOnly="True"
+                                         Background="#F9FAFB"
+                                         Height="{StaticResource DialogFormControlHeight}"
+                                         Padding="8,0"
+                                         VerticalContentAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="申请部门" Style="{StaticResource DisposalFieldLabelStyle}"/>
+                                <TextBox Text="{Binding ApplicantDept, Mode=OneWay}"
+                                         IsReadOnly="True"
+                                         Background="#F9FAFB"
+                                         Height="{StaticResource DialogFormControlHeight}"
+                                         Padding="8,0"
+                                         VerticalContentAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
 
-            <!-- 处置信息 -->
-            <Border Grid.Row="0" Style="{StaticResource DisposalCardBorderStyle}">
-                <StackPanel>
-                    <TextBlock Text="处置信息" Style="{StaticResource DisposalSectionTitleStyle}"/>
-                    <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="申请人" Style="{StaticResource DisposalFieldLabelStyle}"/>
-                            <TextBox Text="{Binding ApplicantName, Mode=OneWay}"
-                                     IsReadOnly="True"
-                                     Background="#F9FAFB"
-                                     Height="{StaticResource DialogFormControlHeight}"
-                                     Padding="8,0"
-                                     VerticalContentAlignment="Center"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="申请部门" Style="{StaticResource DisposalFieldLabelStyle}"/>
-                            <TextBox Text="{Binding ApplicantDept, Mode=OneWay}"
-                                     IsReadOnly="True"
-                                     Background="#F9FAFB"
-                                     Height="{StaticResource DialogFormControlHeight}"
-                                     Padding="8,0"
-                                     VerticalContentAlignment="Center"/>
-                        </StackPanel>
-                    </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="申请说明 *" Style="{StaticResource DisposalFieldLabelStyle}"/>
+                                <TextBox Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding CanEditHeader}"
+                                         Height="44"
+                                         Padding="8,6"
+                                         TextWrapping="Wrap"
+                                         AcceptsReturn="True"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="备注" Style="{StaticResource DisposalFieldLabelStyle}"/>
+                                <TextBox Text="{Binding Remark, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding CanEditHeader}"
+                                         Height="44"
+                                         Padding="8,6"
+                                         TextWrapping="Wrap"
+                                         AcceptsReturn="True"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
 
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="申请说明 *" Style="{StaticResource DisposalFieldLabelStyle}"/>
-                            <TextBox Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
-                                     IsEnabled="{Binding CanEditHeader}"
-                                     Height="44"
-                                     Padding="8,6"
-                                     TextWrapping="Wrap"
-                                     AcceptsReturn="True"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="备注" Style="{StaticResource DisposalFieldLabelStyle}"/>
-                            <TextBox Text="{Binding Remark, UpdateSourceTrigger=PropertyChanged}"
-                                     IsEnabled="{Binding CanEditHeader}"
-                                     Height="44"
-                                     Padding="8,6"
-                                     TextWrapping="Wrap"
-                                     AcceptsReturn="True"/>
-                        </StackPanel>
-                    </Grid>
-                </StackPanel>
-            </Border>
-
-            <!-- 硬盘选取：三列共享行高（标题 / 控件 / 表格），左右表单顶边对齐 -->
-            <Grid Grid.Row="1" Margin="0,0,0,10">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                <!-- 硬盘选取 -->
+                <DockPanel Margin="0,0,0,8">
                     <TextBlock Text="硬盘选取" Style="{StaticResource DisposalSectionTitleStyle}" Margin="0"/>
                     <TextBlock DockPanel.Dock="Right"
                                Text="空盘→淘汰 / 损坏→损坏 / 盘失→盘失+库内注销；提交后征用锁定"
@@ -163,7 +162,7 @@
                                VerticalAlignment="Center"/>
                 </DockPanel>
 
-                <Grid Grid.Row="1">
+                <Grid Height="360" Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="96"/>
@@ -175,7 +174,6 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- 左右卡片背景（跨三行） -->
                     <Border Grid.Column="0"
                             Grid.Row="0"
                             Grid.RowSpan="3"
@@ -193,13 +191,13 @@
 
                     <TextBlock Grid.Column="0"
                                Grid.Row="0"
-                               Text="{Binding AvailableDisksTitle}"
+                               Text="{Binding AvailableDisksTitle, Mode=OneWay}"
                                FontWeight="SemiBold"
                                Foreground="#37474F"
                                Margin="12,12,12,8"/>
                     <TextBlock Grid.Column="2"
                                Grid.Row="0"
-                               Text="{Binding DisposalDisksTitle}"
+                               Text="{Binding DisposalDisksTitle, Mode=OneWay}"
                                FontWeight="SemiBold"
                                Foreground="#37474F"
                                Margin="12,12,12,8"/>
@@ -355,96 +353,246 @@
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
-            </Grid>
 
-            <!-- 审批与附件 -->
-            <Border Grid.Row="2" Style="{StaticResource DisposalCardBorderStyle}">
-                <StackPanel>
-                    <TextBlock Text="审批与附件" Style="{StaticResource DisposalSectionTitleStyle}"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="审批意见" Style="{StaticResource DisposalFilterLabelStyle}"/>
-                        <TextBox Width="240"
-                                 Height="{StaticResource DialogFormControlHeight}"
-                                 Padding="8,0"
-                                 VerticalContentAlignment="Center"
-                                 Text="{Binding ApprovalOpinion, UpdateSourceTrigger=PropertyChanged}"
-                                 IsEnabled="{Binding CanApprove}"
-                                 Margin="0,0,16,0"/>
-                        <TextBlock Text="上传分类" Style="{StaticResource DisposalFilterLabelStyle}"/>
-                        <ComboBox Width="140"
-                                  Height="{StaticResource DialogFormControlHeight}"
-                                  VerticalContentAlignment="Center"
-                                  ItemsSource="{Binding UploadCategoryOptions}"
-                                  SelectedItem="{Binding UploadCategory}"
-                                  Margin="0,0,8,0"/>
-                        <Button Content="上传附件"
-                                Command="{Binding UploadAttachmentCommand}"
-                                Style="{StaticResource ToolbarActionButtonStyle}"
-                                Height="{StaticResource DialogFormControlHeight}"/>
-                        <Button Content="高影仪直拍"
-                                Command="{Binding CaptureFromDocumentCameraCommand}"
-                                Style="{StaticResource ToolbarActionButtonStyle}"
-                                Height="{StaticResource DialogFormControlHeight}"
-                                Margin="8,0,0,0"/>
-                    </StackPanel>
-                    <DataGrid ItemsSource="{Binding Attachments}"
-                              SelectedItem="{Binding SelectedAttachment}"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True"
-                              CanUserAddRows="False"
-                              Height="188"
-                              RowHeight="38"
-                              ColumnHeaderHeight="36"
-                              HeadersVisibility="Column">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="分类" Binding="{Binding FileCategory}" Width="90"/>
-                            <DataGridTextColumn Header="文件名" Binding="{Binding FileName}" Width="*"/>
-                            <DataGridTextColumn Header="上传人" Binding="{Binding UploaderName}" Width="90"/>
-                            <DataGridTextColumn Header="上传时间" Binding="{Binding UploadTime, StringFormat=yyyy-MM-dd HH:mm}" Width="130"/>
-                            <DataGridTemplateColumn Header="操作" Width="150">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Button Content="查看"
-                                                    Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding}"
-                                                    Style="{StaticResource ToolbarActionButtonStyle}"
-                                                    Height="{StaticResource DialogFormControlHeight}"
-                                                    MinWidth="56"
-                                                    Margin="0,0,6,0"/>
-                                            <Button Content="删除"
-                                                    Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding}"
-                                                    Style="{StaticResource ToolbarDangerButtonStyle}"
-                                                    Height="{StaticResource DialogFormControlHeight}"
-                                                    MinWidth="56"/>
+                <!-- 审批与交接信息 -->
+                <Border Background="#F1F8FF" BorderBrush="#90CAF9" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="审批与交接信息" FontWeight="SemiBold" Foreground="#1565C0" Margin="0,0,0,8"/>
+                        <TextBlock Text="默认审批人（线下签批参考；审批通过后写入单据）"
+                                   Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6"/>
+
+                        <TextBlock Text="审核" Style="{StaticResource ArchiveRegisterApprovalCompactSectionTitleStyle}"
+                                   Visibility="{Binding ShowReviewApproverSection, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,6"
+                                     Visibility="{Binding ShowReviewApproverSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                                    Visibility="{Binding ShowDeptHeadApprover, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Text="部门审核" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                                    <TextBlock Text="{Binding DefaultDeptHeadDisplay, Mode=OneWay}" VerticalAlignment="Center" Foreground="#1E293B"/>
+                                </DockPanel>
+                            </Border>
+                            <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                                    Visibility="{Binding ShowArchiveRoomHeadApprover, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Text="资料室签字" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                                    <TextBlock Text="{Binding DefaultArchiveRoomHeadDisplay, Mode=OneWay}" VerticalAlignment="Center" Foreground="#1E293B"/>
+                                </DockPanel>
+                            </Border>
+                            <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                                    Visibility="{Binding ShowProductionHeadApprover, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Text="生产科签字" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                                    <TextBlock Text="{Binding DefaultProductionHeadDisplay, Mode=OneWay}" VerticalAlignment="Center" Foreground="#1E293B"/>
+                                </DockPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <TextBlock Text="审批" Style="{StaticResource ArchiveRegisterApprovalCompactSectionTitleStyle}"
+                                   Visibility="{Binding ShowApproveApproverSection, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,8"
+                                     Visibility="{Binding ShowApproveApproverSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                                    Visibility="{Binding ShowArchiveDeputyPresidentApprover, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Text="分管资料院长签字" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                                    <TextBlock Text="{Binding DefaultArchiveDeputyPresidentDisplay, Mode=OneWay}" VerticalAlignment="Center" Foreground="#1E293B"/>
+                                </DockPanel>
+                            </Border>
+                            <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                                    Visibility="{Binding ShowProductionVicePresidentApprover, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Text="分管生产院长签字" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                                    <TextBlock Text="{Binding DefaultProductionVicePresidentDisplay, Mode=OneWay}" VerticalAlignment="Center" Foreground="#1E293B"/>
+                                </DockPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="审批意见" Width="72" VerticalAlignment="Center" Foreground="#64748B" FontSize="12"/>
+                            <TextBox Width="280"
+                                     Height="{StaticResource DialogFormControlHeight}"
+                                     Padding="8,0"
+                                     VerticalContentAlignment="Center"
+                                     Text="{Binding ApprovalOpinion, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEnabled="{Binding CanApprove}"/>
+                        </StackPanel>
+
+                        <Button Content="审批通过" Command="{Binding ApproveCommand}" ToolTip="{Binding ApproveHintText, Mode=OneWay}"
+                                HorizontalAlignment="Left" Width="112" Height="30" Margin="0,0,0,4"
+                                Style="{StaticResource FormInlineButtonStyle}"/>
+                        <TextBlock Text="{Binding ApproveHintText, Mode=OneWay}" TextWrapping="Wrap" Foreground="#1565C0" Margin="0,0,0,8" FontSize="11"/>
+
+                        <Separator Margin="0,0,0,8"/>
+                        <Button Content="确认可上传" Command="{Binding ConfirmUploadCommand}" ToolTip="{Binding ConfirmUploadHintText, Mode=OneWay}"
+                                HorizontalAlignment="Left" Width="112" Height="30" Margin="0,0,0,4"
+                                Style="{StaticResource FormInlineButtonStyle}"/>
+                        <TextBlock Text="{Binding ConfirmUploadHintText, Mode=OneWay}" TextWrapping="Wrap" Foreground="#1565C0" Margin="0,0,0,8" FontSize="11"/>
+
+                        <Separator Margin="0,0,0,8"/>
+                        <TextBlock Text="附件材料" FontWeight="SemiBold" Foreground="#1565C0" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding UploadAttachmentHintText, Mode=OneWay}"
+                                   Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.Row="0" Grid.Column="0" Margin="0,0,0,8" Padding="8,6"
+                                    Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
+                                <DockPanel LastChildFill="True">
+                                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                            <Button Content="上传" Command="{Binding UploadSignedFormAttachmentCommand}"
+                                                    Padding="8,2" Margin="0,0,8,0" Style="{StaticResource FormInlineButtonStyle}"
+                                                    IsEnabled="{Binding CanUploadMandatoryAttachment}"/>
+                                            <Button Content="高影仪直拍" Command="{Binding CaptureSignedFormAttachmentCommand}"
+                                                    Padding="8,2" Style="{StaticResource FormInlineButtonStyle}"
+                                                    IsEnabled="{Binding CanUploadMandatoryAttachment}"/>
                                         </StackPanel>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </StackPanel>
-            </Border>
+                                        <TextBlock Text="签批单" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <ListView ItemsSource="{Binding SignedFormAttachments}" Height="72" BorderBrush="#EEE" BorderThickness="1">
+                                        <ListView.View>
+                                            <GridView>
+                                                <GridViewColumn Header="文件名" Width="140" DisplayMemberBinding="{Binding FileName}"/>
+                                                <GridViewColumn Header="操作" Width="100">
+                                                    <GridViewColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <Button Content="查看" Padding="4,1" Margin="0,0,4,0"
+                                                                        Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"/>
+                                                                <Button Content="删除" Padding="4,1"
+                                                                        Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </GridViewColumn.CellTemplate>
+                                                </GridViewColumn>
+                                            </GridView>
+                                        </ListView.View>
+                                    </ListView>
+                                </DockPanel>
+                            </Border>
 
-            <!-- 底栏 -->
-            <Border Grid.Row="3"
-                    Background="White"
-                    BorderBrush="#E0E0E0"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    Padding="10,8">
+                            <Border Grid.Row="0" Grid.Column="2" Margin="0,0,0,8" Padding="8,6"
+                                    Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3"
+                                    Visibility="{Binding RequiresDiskPhotoAttachment, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <DockPanel LastChildFill="True">
+                                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                            <Button Content="上传" Command="{Binding UploadDiskPhotoAttachmentCommand}"
+                                                    Padding="8,2" Margin="0,0,8,0" Style="{StaticResource FormInlineButtonStyle}"
+                                                    IsEnabled="{Binding CanUploadMandatoryAttachment}"/>
+                                            <Button Content="高影仪直拍" Command="{Binding CaptureDiskPhotoAttachmentCommand}"
+                                                    Padding="8,2" Style="{StaticResource FormInlineButtonStyle}"
+                                                    IsEnabled="{Binding CanUploadMandatoryAttachment}"/>
+                                        </StackPanel>
+                                        <TextBlock Text="硬盘照片" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <ListView ItemsSource="{Binding DiskPhotoAttachments}" Height="72" BorderBrush="#EEE" BorderThickness="1">
+                                        <ListView.View>
+                                            <GridView>
+                                                <GridViewColumn Header="文件名" Width="140" DisplayMemberBinding="{Binding FileName}"/>
+                                                <GridViewColumn Header="操作" Width="100">
+                                                    <GridViewColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <Button Content="查看" Padding="4,1" Margin="0,0,4,0"
+                                                                        Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"/>
+                                                                <Button Content="删除" Padding="4,1"
+                                                                        Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </GridViewColumn.CellTemplate>
+                                                </GridViewColumn>
+                                            </GridView>
+                                        </ListView.View>
+                                    </ListView>
+                                </DockPanel>
+                            </Border>
+
+                            <Border Grid.Row="1" Grid.Column="0" Padding="8,6"
+                                    Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
+                                <DockPanel LastChildFill="True">
+                                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                            <Button Content="上传" Command="{Binding UploadOtherAttachmentCommand}"
+                                                    Padding="8,2" Margin="0,0,8,0" Style="{StaticResource FormInlineButtonStyle}"
+                                                    IsEnabled="{Binding CanUploadOtherAttachment}"/>
+                                            <Button Content="高影仪直拍" Command="{Binding CaptureOtherAttachmentCommand}"
+                                                    Padding="8,2" Style="{StaticResource FormInlineButtonStyle}"
+                                                    IsEnabled="{Binding CanUploadOtherAttachment}"/>
+                                        </StackPanel>
+                                        <TextBlock Text="其他附件" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <ListView ItemsSource="{Binding OtherAttachments}" Height="72" BorderBrush="#EEE" BorderThickness="1">
+                                        <ListView.View>
+                                            <GridView>
+                                                <GridViewColumn Header="文件名" Width="140" DisplayMemberBinding="{Binding FileName}"/>
+                                                <GridViewColumn Header="操作" Width="100">
+                                                    <GridViewColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <Button Content="查看" Padding="4,1" Margin="0,0,4,0"
+                                                                        Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"/>
+                                                                <Button Content="删除" Padding="4,1"
+                                                                        Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </GridViewColumn.CellTemplate>
+                                                </GridViewColumn>
+                                            </GridView>
+                                        </ListView.View>
+                                    </ListView>
+                                </DockPanel>
+                            </Border>
+
+                            <Border Grid.Row="1" Grid.Column="2" Padding="8,6"
+                                    Background="#FAFBFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="3">
+                                <StackPanel>
+                                    <TextBlock Text="证明材料" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,4"/>
+                                    <TextBlock Text="本业务无需上传证明材料。" Foreground="#94A3B8" FontSize="11"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 底栏 -->
+        <Border Grid.Row="2" Margin="12,12,12,12" Padding="10,8"
+                Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1" CornerRadius="4">
+            <DockPanel LastChildFill="True">
+                <TextBlock DockPanel.Dock="Left" Text="{Binding CompleteHintText, Mode=OneWay}"
+                           TextWrapping="Wrap" Foreground="#E65100" VerticalAlignment="Center"
+                           Margin="0,0,12,0" MaxWidth="420"/>
                 <WrapPanel HorizontalAlignment="Right">
-                    <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Style="{StaticResource DisposalFooterButtonStyle}"/>
-                    <Button Content="提交" Command="{Binding SubmitCommand}" Style="{StaticResource DisposalFooterButtonStyle}"/>
-                    <Button Content="打印签批单" Command="{Binding PrintCommand}" Style="{StaticResource DisposalFooterButtonStyle}"/>
-                    <Button Content="审批通过" Command="{Binding ApproveCommand}" Style="{StaticResource DisposalFooterButtonStyle}"/>
-                    <Button Content="确认可上传" Command="{Binding ConfirmUploadCommand}" Style="{StaticResource DisposalFooterButtonStyle}"/>
-                    <Button Content="办结" Command="{Binding CompleteCommand}" Style="{StaticResource DisposalFooterButtonStyle}"/>
-                    <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Style="{StaticResource DisposalFooterDangerButtonStyle}"/>
-                    <Button Content="关闭" Command="{Binding CloseCommand}" Style="{StaticResource DisposalFooterButtonStyle}" Margin="0"/>
+                    <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Margin="0,0,8,0" Padding="12,6"
+                            Visibility="{Binding CanEditHeader, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Button Content="提交" Command="{Binding SubmitCommand}" Margin="0,0,8,0" Padding="12,6"
+                            Visibility="{Binding CanSubmit, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Button Content="打印签批单" Command="{Binding PrintCommand}" Margin="0,0,8,0" Padding="12,6"/>
+                    <Button Content="确认办结" Command="{Binding CompleteCommand}" Margin="0,0,8,0" Padding="12,6"
+                            ToolTip="{Binding CompleteHintText, Mode=OneWay}"/>
+                    <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Margin="0,0,8,0" Padding="12,6"
+                            Style="{StaticResource DisposalFooterDangerButtonStyle}"
+                            Visibility="{Binding CanWithdraw, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Button Content="关闭" Command="{Binding CloseCommand}" Padding="16,6"/>
                 </WrapPanel>
-            </Border>
-        </Grid>
+            </DockPanel>
+        </Border>
     </Grid>
 </Window>

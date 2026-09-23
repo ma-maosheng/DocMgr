@@ -57,6 +57,26 @@ namespace DocMgr.Models.HardDiskMedia
 
         public string ApprovalOpinion { get; set; } = string.Empty;
 
+        public string DeptHead { get; set; } = string.Empty;
+
+        public DateTime? DeptHeadDate { get; set; }
+
+        public string ArchiveRoomHead { get; set; } = string.Empty;
+
+        public DateTime? ArchiveRoomHeadDate { get; set; }
+
+        public string ProductionHead { get; set; } = string.Empty;
+
+        public DateTime? ProductionHeadDate { get; set; }
+
+        public string ArchiveDeputyPresident { get; set; } = string.Empty;
+
+        public DateTime? ArchiveDeputyPresidentDate { get; set; }
+
+        public string ProductionVicePresident { get; set; } = string.Empty;
+
+        public DateTime? ProductionVicePresidentDate { get; set; }
+
         /// <summary>确认可上传签批单的办理人。</summary>
         public string ConfirmedBy { get; set; } = string.Empty;
 

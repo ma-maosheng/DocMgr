@@ -170,6 +170,76 @@ public class CabinetRepository : ICabinetRepository
         return opticalDiscLocations.Any(location => IsSameMagneticDiskSlot(location, slotKey));
     }
 
+    public (int MaxHardDiskOccupancy, int MaxOpticalDiscOccupancy) GetMaxMagneticSlotOccupancy(Cabinet cabinet)
+    {
+        ArgumentNullException.ThrowIfNull(cabinet);
+        if (cabinet.Type != CabinetType.MagneticDisk || cabinet.Id <= 0 || string.IsNullOrWhiteSpace(cabinet.Name))
+        {
+            return (0, 0);
+        }
+
+        var assignments = GetSlotCategoryAssignmentsByCabinetId(cabinet.Id);
+        if (assignments.Count == 0)
+        {
+            return (0, 0);
+        }
+
+        string cabinetName = cabinet.Name.Trim();
+        var hardDiskLocations = _dbContext.HardDiskMedia
+            .AsNoTracking()
+            .Where(item => !item.IsDeleted && item.Ledger != null)
+            .Where(item => item.Ledger!.MediaStatus == HardDiskMedium.StatusInStockBlank
+                || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockData
+                || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockDamaged)
+            .Select(item => item.Ledger!.StorageLocation)
+            .ToList();
+
+        var opticalDiscLocations = _dbContext.OpticalDiscMedia
+            .AsNoTracking()
+            .Where(item => !item.IsDeleted && item.Ledger != null)
+            .Where(item => item.Ledger!.MediaStatus == OpticalDiscMedium.StatusInStock
+                || item.Ledger.MediaStatus == OpticalDiscMedium.StatusDamaged)
+            .Select(item => item.Ledger!.StorageLocation)
+            .ToList();
+
+        var electronicLocations = _dbContext.YearlyElectronicArchiveUnits
+            .AsNoTracking()
+            .Where(unit => unit.UnitLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+            .Select(unit => unit.StorageLocation)
+            .ToList();
+
+        int maxHardDisk = 0;
+        int maxOpticalDisc = 0;
+        foreach (var assignment in assignments)
+        {
+            if (!TryParseMagneticDiskSlotRowColumn(assignment.SlotCode, out int row, out int column))
+            {
+                continue;
+            }
+
+            string slotKey = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, assignment.FaceCode, row, column);
+            if (string.IsNullOrWhiteSpace(slotKey))
+            {
+                continue;
+            }
+
+            int occupancy = hardDiskLocations.Count(location => IsSameMagneticDiskSlot(location, slotKey))
+                + opticalDiscLocations.Count(location => IsSameMagneticDiskSlot(location, slotKey))
+                + electronicLocations.Count(location => IsSameMagneticDiskSlot(location, slotKey));
+
+            if (CabinetHardDiskSlotCategoryAssignment.IsOpticalDiscDedicatedCategory(assignment.CategoryName))
+            {
+                maxOpticalDisc = Math.Max(maxOpticalDisc, occupancy);
+            }
+            else
+            {
+                maxHardDisk = Math.Max(maxHardDisk, occupancy);
+            }
+        }
+
+        return (maxHardDisk, maxOpticalDisc);
+    }
+
     public bool HasArchiveBoxesInStandardSlot(string cabinetName, string faceCode, string slotCode)
     {
         if (string.IsNullOrWhiteSpace(cabinetName)

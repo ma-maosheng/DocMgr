@@ -47,7 +47,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         /// <summary>是否可编辑申请表头（对齐 YA <c>CanEditForm</c>）。</summary>
         public bool CanEditForm => CanEditHeader;
 
-        /// <summary>数据来源是否可编辑（对齐 YA <c>IsSourceTypeEditable</c>）。</summary>
+        /// <summary>数据来源是否可编辑。</summary>
         public bool IsSourceKindEditable => CanEditForm;
 
         /// <summary>跨域业务链进度摘要。</summary>
@@ -76,6 +76,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private DateTime? _rndDate = DateTime.Today;
         private string _deputyLeader = string.Empty;
         private DateTime? _deputyDate = DateTime.Today;
+        private string _productionVicePresident = string.Empty;
+        private DateTime? _productionVicePresidentDate = DateTime.Today;
         private string _deliverer = string.Empty;
         private DateTime? _deliverDate = DateTime.Today;
         private string _administrator = string.Empty;
@@ -216,7 +218,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         /// <summary>当前是否为档外资料来源（明细展示与录入口径）。</summary>
         public bool IsExternalSource => !IsArchivedSource;
 
-        /// <summary>资料室资料管理员在审批通过前可补录服务器路径与资料路径。</summary>
+        /// <summary>资料管理员在审批通过前可补录服务器路径与资料路径。</summary>
         public bool CanEditApprovalPaths =>
             _mode == NetworkTransferWorkspaceMode.Approval
             && _record.Status == NetworkInboundRecord.StatusSubmitted
@@ -477,18 +479,20 @@ namespace DocMgr.ViewModels.NetworkTransfer
             }
         }
 
-        public string ProdLeader { get => _prodLeader; set => SetProperty(ref _prodLeader, value); }
-        public DateTime? ProdDate { get => _prodDate; set => SetProperty(ref _prodDate, value); }
-        public string RndLeader { get => _rndLeader; set => SetProperty(ref _rndLeader, value); }
-        public DateTime? RndDate { get => _rndDate; set => SetProperty(ref _rndDate, value); }
-        public string DeputyLeader { get => _deputyLeader; set => SetProperty(ref _deputyLeader, value); }
-        public DateTime? DeputyDate { get => _deputyDate; set => SetProperty(ref _deputyDate, value); }
+        public string ProductionHead { get => _prodLeader; set => SetProperty(ref _prodLeader, value); }
+        public DateTime? ProductionHeadDate { get => _prodDate; set => SetProperty(ref _prodDate, value); }
+        public string ArchiveRoomHead { get => _rndLeader; set => SetProperty(ref _rndLeader, value); }
+        public DateTime? ArchiveRoomHeadDate { get => _rndDate; set => SetProperty(ref _rndDate, value); }
+        public string ArchiveDeputyPresident { get => _deputyLeader; set => SetProperty(ref _deputyLeader, value); }
+        public DateTime? ArchiveDeputyPresidentDate { get => _deputyDate; set => SetProperty(ref _deputyDate, value); }
+        public string ProductionVicePresident { get => _productionVicePresident; set => SetProperty(ref _productionVicePresident, value); }
+        public DateTime? ProductionVicePresidentDate { get => _productionVicePresidentDate; set => SetProperty(ref _productionVicePresidentDate, value); }
         public string Deliverer { get => _deliverer; set => SetProperty(ref _deliverer, value); }
         public DateTime? DeliverDate { get => _deliverDate; set => SetProperty(ref _deliverDate, value); }
         public string Administrator { get => _administrator; set => SetProperty(ref _administrator, value); }
         public DateTime? AdminDate { get => _adminDate; set => SetProperty(ref _adminDate, value); }
-        public string DeptLeader { get => _deptLeader; set => SetProperty(ref _deptLeader, value); }
-        public DateTime? DeptDate { get => _deptDate; set => SetProperty(ref _deptDate, value); }
+        public string DeptHead { get => _deptLeader; set => SetProperty(ref _deptLeader, value); }
+        public DateTime? DeptHeadDate { get => _deptDate; set => SetProperty(ref _deptDate, value); }
 
         public string UploadCategory
         {
@@ -579,14 +583,16 @@ namespace DocMgr.ViewModels.NetworkTransfer
             ApplicantName = _record.ApplicantName;
             ApplicantDept = _record.ApplicantDept;
             ApplyTime = _record.ApplyTime == default ? DateTime.Now : _record.ApplyTime;
-            ProdLeader = _record.ProdLeader;
-            ProdDate = _record.ProdDate ?? DateTime.Today;
-            RndLeader = _record.RndLeader;
-            RndDate = _record.RndDate ?? DateTime.Today;
-            DeputyLeader = _record.DeputyLeader;
-            DeputyDate = _record.DeputyDate ?? DateTime.Today;
-            DeptLeader = _record.DeptLeader;
-            DeptDate = _record.DeptDate ?? DateTime.Today;
+            ProductionHead = _record.ProductionHead;
+            ProductionHeadDate = _record.ProductionHeadDate ?? DateTime.Today;
+            ArchiveRoomHead = _record.ArchiveRoomHead;
+            ArchiveRoomHeadDate = _record.ArchiveRoomHeadDate ?? DateTime.Today;
+            ArchiveDeputyPresident = _record.ArchiveDeputyPresident;
+            ArchiveDeputyPresidentDate = _record.ArchiveDeputyPresidentDate ?? DateTime.Today;
+            ProductionVicePresident = _record.ProductionVicePresident;
+            ProductionVicePresidentDate = _record.ProductionVicePresidentDate ?? DateTime.Today;
+            DeptHead = _record.DeptHead;
+            DeptHeadDate = _record.DeptHeadDate ?? DateTime.Today;
             BindHandoverFieldsFromRecord();
             _hasProofMaterialSelected = ArchiveRegisterDomainValues.HasProofMaterial(_record.ProofMaterialNote);
             if (!_hasProofMaterialSelected
@@ -687,14 +693,16 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         private void SyncApprovalFieldsFromRecord()
         {
-            DeptLeader = _record.DeptLeader;
-            DeptDate = _record.DeptDate ?? DateTime.Today;
-            ProdLeader = _record.ProdLeader;
-            ProdDate = _record.ProdDate ?? DateTime.Today;
-            RndLeader = _record.RndLeader;
-            RndDate = _record.RndDate ?? DateTime.Today;
-            DeputyLeader = _record.DeputyLeader;
-            DeputyDate = _record.DeputyDate ?? DateTime.Today;
+            DeptHead = _record.DeptHead;
+            DeptHeadDate = _record.DeptHeadDate ?? DateTime.Today;
+            ProductionHead = _record.ProductionHead;
+            ProductionHeadDate = _record.ProductionHeadDate ?? DateTime.Today;
+            ArchiveRoomHead = _record.ArchiveRoomHead;
+            ArchiveRoomHeadDate = _record.ArchiveRoomHeadDate ?? DateTime.Today;
+            ArchiveDeputyPresident = _record.ArchiveDeputyPresident;
+            ArchiveDeputyPresidentDate = _record.ArchiveDeputyPresidentDate ?? DateTime.Today;
+            ProductionVicePresident = _record.ProductionVicePresident;
+            ProductionVicePresidentDate = _record.ProductionVicePresidentDate ?? DateTime.Today;
             BindHandoverFieldsFromRecord();
             OnPropertyChanged(nameof(CurrentRecord));
         }
@@ -1019,7 +1027,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             if (_mode == NetworkTransferWorkspaceMode.Approval
                 && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser))
             {
-                // 审批办理按资料室资料管理员可见路径加载，便于跨部门申请单补录。
+                // 审批办理按资料管理员可见路径加载，便于跨部门申请单补录。
                 department = _userContextService.CurrentUser?.Department?.Trim() ?? string.Empty;
             }
             else
@@ -1466,14 +1474,16 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 await _service.ApproveInboundAsync(new NetworkInboundRecord
                 {
                     Id = _record.Id,
-                    DeptLeader = DeptLeader,
-                    DeptDate = DeptDate,
-                    ProdLeader = ProdLeader,
-                    ProdDate = ProdDate,
-                    RndLeader = RndLeader,
-                    RndDate = RndDate,
-                    DeputyLeader = DeputyLeader,
-                    DeputyDate = DeputyDate
+                    DeptHead = DeptHead,
+                    DeptHeadDate = DeptHeadDate,
+                    ProductionHead = ProductionHead,
+                    ProductionHeadDate = ProductionHeadDate,
+                    ArchiveRoomHead = ArchiveRoomHead,
+                    ArchiveRoomHeadDate = ArchiveRoomHeadDate,
+                    ArchiveDeputyPresident = ArchiveDeputyPresident,
+                    ArchiveDeputyPresidentDate = ArchiveDeputyPresidentDate,
+                    ProductionVicePresident = ProductionVicePresident,
+                    ProductionVicePresidentDate = ProductionVicePresidentDate
                 }, RequireUser());
                 _hasCommittedChanges = true;
                 _dialogService.ShowMessage("审批已通过。");

@@ -31,16 +31,25 @@ public sealed class NetworkOutboundPrintData
     public bool HasPendingItemDetailCapture { get; init; }
 
     /// <summary>申请部门负责人签字栏。</summary>
-    public string DeptLeaderBlock { get; init; } = string.Empty;
+    public string DeptHeadBlock { get; init; } = string.Empty;
 
-    public string ProdLeaderBlock { get; init; } = string.Empty;
+    public string ProductionHeadBlock { get; init; } = string.Empty;
 
-    public string RndLeaderBlock { get; init; } = string.Empty;
+    public string ArchiveRoomHeadBlock { get; init; } = string.Empty;
 
-    /// <summary>分管领导签字栏标签（分管生产副院长 / 分管资料副院长）。</summary>
-    public string DeputyLeaderLabel { get; init; } = string.Empty;
+    public string ArchiveDeputyPresidentBlock { get; init; } = string.Empty;
 
-    public string DeputyLeaderBlock { get; init; } = string.Empty;
+    public string ProductionVicePresidentBlock { get; init; } = string.Empty;
+
+    public bool EnableDeptHead { get; init; } = true;
+
+    public bool EnableProductionHead { get; init; } = true;
+
+    public bool EnableArchiveRoomHead { get; init; } = true;
+
+    public bool EnableArchiveDeputyPresident { get; init; } = true;
+
+    public bool EnableProductionVicePresident { get; init; } = true;
 
     /// <summary>出网交接签字栏（移交人、资料员）。</summary>
     public string HandoverSignatureBlock { get; init; } = string.Empty;

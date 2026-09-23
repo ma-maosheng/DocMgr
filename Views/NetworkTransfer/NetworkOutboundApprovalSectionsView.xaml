@@ -10,8 +10,9 @@
         </ResourceDictionary>
     </UserControl.Resources>
     <StackPanel>
-        <GroupBox Header="4. 审批流程" Style="{StaticResource Level1GroupBoxStyle}" Padding="8">
+        <Border Background="#F1F8FF" BorderBrush="#90CAF9" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,10">
             <StackPanel>
+                <TextBlock Text="审批与交接信息" FontWeight="SemiBold" Foreground="#1565C0" Margin="0,0,0,8"/>
                 <DockPanel Margin="0,0,0,6" LastChildFill="True">
                     <Button DockPanel.Dock="Right" Content="回填默认审批信息" Command="{Binding FillDefaultApprovalInfoCommand}"
                             Padding="10,4" Margin="0,0,0,0" ToolTip="按当前用户与业务规则回填审批签字及资料交接默认值"/>
@@ -64,10 +65,10 @@
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                                 <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
-                                         Text="{Binding DeptLeader, UpdateSourceTrigger=PropertyChanged}"/>
+                                         Text="{Binding DeptHead, UpdateSourceTrigger=PropertyChanged}"/>
                                 <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
                                 <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
-                                            SelectedDate="{Binding DeptDate}"/>
+                                            SelectedDate="{Binding DeptHeadDate}"/>
                             </StackPanel>
                         </DockPanel>
                     </Border>
@@ -75,14 +76,14 @@
                     <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
                             IsEnabled="{Binding CanApproveProd}">
                         <DockPanel LastChildFill="True">
-                            <TextBlock DockPanel.Dock="Left" Text="生产管理科" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                            <TextBlock DockPanel.Dock="Left" Text="生产科签字" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                                 <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
-                                         Text="{Binding ProdLeader, UpdateSourceTrigger=PropertyChanged}"/>
+                                         Text="{Binding ProductionHead, UpdateSourceTrigger=PropertyChanged}"/>
                                 <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
                                 <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
-                                            SelectedDate="{Binding ProdDate}"/>
+                                            SelectedDate="{Binding ProductionHeadDate}"/>
                             </StackPanel>
                         </DockPanel>
                     </Border>
@@ -90,14 +91,14 @@
                     <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
                             IsEnabled="{Binding CanApproveRnd}">
                         <DockPanel LastChildFill="True">
-                            <TextBlock DockPanel.Dock="Left" Text="资料室" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                            <TextBlock DockPanel.Dock="Left" Text="资料室签字" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                                 <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
-                                         Text="{Binding RndLeader, UpdateSourceTrigger=PropertyChanged}"/>
+                                         Text="{Binding ArchiveRoomHead, UpdateSourceTrigger=PropertyChanged}"/>
                                 <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
                                 <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
-                                            SelectedDate="{Binding RndDate}"/>
+                                            SelectedDate="{Binding ArchiveRoomHeadDate}"/>
                             </StackPanel>
                         </DockPanel>
                     </Border>
@@ -105,18 +106,33 @@
                     <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
                             IsEnabled="{Binding CanApproveDeputy}">
                         <DockPanel LastChildFill="True">
-                            <TextBlock DockPanel.Dock="Left" Text="分管领导" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                            <TextBlock DockPanel.Dock="Left" Text="分管资料院长签字" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                                 <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
-                                         Text="{Binding DeputyLeader, UpdateSourceTrigger=PropertyChanged}"/>
+                                         Text="{Binding ArchiveDeputyPresident, UpdateSourceTrigger=PropertyChanged}"/>
                                 <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
                                 <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
-                                            SelectedDate="{Binding DeputyDate}"/>
+                                            SelectedDate="{Binding ArchiveDeputyPresidentDate}"/>
                             </StackPanel>
                         </DockPanel>
                     </Border>
                 </Grid>
+
+                <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}" Margin="0,8,0,0"
+                        IsEnabled="{Binding CanApproveDeputy}">
+                    <DockPanel LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Left" Text="分管生产院长签字" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                            <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                     Text="{Binding ProductionVicePresident, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="10,0,4,0"/>
+                            <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                        SelectedDate="{Binding ProductionVicePresidentDate}"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
 
                 <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}" Margin="0,8,0,0"
                         IsEnabled="{Binding CanConfirmPhysicalHandover}">
@@ -143,7 +159,7 @@
                     </DockPanel>
                 </Border>
             </StackPanel>
-        </GroupBox>
+        </Border>
 
         <GroupBox Header="附件材料" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
             <StackPanel>
@@ -262,14 +278,15 @@
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                     <Button Content="上传"
                                             Command="{Binding UploadOtherAttachmentCommand}"
-                                            Padding="8,2" Margin="0,0,8,0" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                            Padding="8,2" Margin="0,0,8,0" IsEnabled="{Binding CanUploadOtherAttachment}"/>
                                     <Button Content="高影仪直拍"
                                             Command="{Binding CaptureOtherAttachmentCommand}"
-                                            Padding="8,2" IsEnabled="{Binding CanUploadSignedAttachment}"/>
+                                            Padding="8,2" IsEnabled="{Binding CanUploadOtherAttachment}"/>
                                 </StackPanel>
                                 <TextBlock Text="其他附件（可选）" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
                             </DockPanel>
-                            <TextBlock DockPanel.Dock="Bottom" Text="非办结必备，按需上传即可。"
+                            <TextBlock DockPanel.Dock="Bottom"
+                                       Text="{Binding UploadHintText, Mode=OneWay}"
                                        Margin="0,4,0,0" Foreground="#64748B" TextWrapping="Wrap" FontSize="11"/>
                             <ListView ItemsSource="{Binding OtherAttachments}" Height="72" BorderBrush="#EEE" BorderThickness="1">
                                 <ListView.View>

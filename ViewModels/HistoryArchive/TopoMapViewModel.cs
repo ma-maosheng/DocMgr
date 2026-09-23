@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
+using DocMgr.Services.HistoryArchive;
 using DocMgr.ViewModels.Base;
 
 
@@ -202,6 +203,7 @@ namespace DocMgr.ViewModels.HistoryArchive
 
         // === Commands ===
         public RelayCommand ImportCommand { get; }
+        public RelayCommand ExportImportTemplateCommand { get; }
         public RelayCommand BrowseCommand { get; }
         public RelayCommand DeleteCurrentRowCommand { get; }
         public RelayCommand DeleteTableCommand { get; }
@@ -214,7 +216,7 @@ namespace DocMgr.ViewModels.HistoryArchive
         public RelayCommand NextPageCommand { get; }
         public RelayCommand LastPageCommand { get; }
 
-        /// <summary>资料室资料管理员可导入、编辑、删除；其他部门资料管理员仅浏览与检索。</summary>
+        /// <summary>资料管理员可导入、编辑、删除；其他部门资料员仅浏览与检索。</summary>
         public bool CanMaintainLedger =>
             HistoryArchiveLedgerPermissionSupport.CanMaintain(_userContextService.CurrentUser);
 
@@ -228,6 +230,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             _userContextService = userContextService; // 保存引用
 
             ImportCommand = new RelayCommand(async _ => await ImportAsync(), _ => CanMaintainLedger);
+            ExportImportTemplateCommand = new RelayCommand(_ => ExportImportTemplate(), _ => CanMaintainLedger);
             BrowseCommand = new RelayCommand(async _ => await BrowseAsync());
             DeleteCurrentRowCommand = new RelayCommand(async _ => await DeleteCurrentRowAsync(),
                 _ => CanMaintainLedger
@@ -373,6 +376,33 @@ namespace DocMgr.ViewModels.HistoryArchive
         {
             _hasFullCache = false;
             _cachedAllMaps = new List<TopoMap>();
+        }
+
+        private void ExportImportTemplate()
+        {
+            if (!EnsureCanMaintainLedger())
+            {
+                return;
+            }
+
+            string? filePath = _dialogService.SaveFileDialog(
+                "Excel Files|*.xlsx",
+                "导出地形图导入模板",
+                "地形图导入模板.xlsx");
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return;
+            }
+
+            try
+            {
+                HistoryArchiveExcelImportTemplateSupport.ExportTopoMapTemplate(filePath);
+                _dialogService.ShowMessage($"模板导出完成：\n{filePath}", "完成");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError("导出模板失败：" + ex.Message);
+            }
         }
 
         private async Task ImportAsync()

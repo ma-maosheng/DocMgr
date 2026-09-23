@@ -38,6 +38,8 @@ namespace DocMgr.ViewModels.Cabinets
         private double _editableWidth;
         private double _editableHeight;
         private double _editableDepth;
+        private int _hardDiskSlotCapacity;
+        private int _opticalDiscSlotCapacity;
 
         public CabinetEditDialogViewModel(Cabinet cabinetToEdit, IDialogService dialogService)
         {
@@ -75,6 +77,8 @@ namespace DocMgr.ViewModels.Cabinets
             _selectedMagneticDrawerCount = _cabinet.Type == CabinetType.MagneticDisk && _cabinet.LayerCount > 0 ? _cabinet.LayerCount : 9;
             _selectedMagneticColumnCount = _cabinet.Type == CabinetType.MagneticDisk && _cabinet.ColumnCount > 0 ? _cabinet.ColumnCount : 6;
             (_editableWidth, _editableHeight, _editableDepth) = ResolveInitialDimensions(_cabinet, _selectedCabinetType, _selectedMagneticDoorCount);
+            _hardDiskSlotCapacity = ResolveInitialHardDiskSlotCapacity(_cabinet);
+            _opticalDiscSlotCapacity = ResolveInitialOpticalDiscSlotCapacity(_cabinet);
 
             SyncDisplayFromType(_selectedCabinetType, preserveDimensions: true);
 
@@ -217,6 +221,20 @@ namespace DocMgr.ViewModels.Cabinets
             }
         }
 
+        /// <summary>防磁磁盘柜：硬盘类档口每格最大块数。</summary>
+        public int HardDiskSlotCapacity
+        {
+            get => _hardDiskSlotCapacity;
+            set => SetProperty(ref _hardDiskSlotCapacity, value);
+        }
+
+        /// <summary>防磁磁盘柜：光盘类档口每格最大张数。</summary>
+        public int OpticalDiscSlotCapacity
+        {
+            get => _opticalDiscSlotCapacity;
+            set => SetProperty(ref _opticalDiscSlotCapacity, value);
+        }
+
         public bool IsMagneticDiskCabinetSelected => SelectedCabinetType == CabinetType.MagneticDisk;
 
         public Visibility DefaultSpecificationVisibility => IsMagneticDiskCabinetSelected ? Visibility.Collapsed : Visibility.Visible;
@@ -249,11 +267,36 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
+            if (IsMagneticDiskCabinetSelected)
+            {
+                if (HardDiskSlotCapacity <= 0 || OpticalDiscSlotCapacity <= 0)
+                {
+                    _dialogService.ShowMessage("档口最大容量必须为大于 0 的整数。", "提示");
+                    return;
+                }
+
+                if (HardDiskSlotCapacity > 200 || OpticalDiscSlotCapacity > 200)
+                {
+                    _dialogService.ShowMessage("档口最大容量不宜超过 200，请核对后重试。", "提示");
+                    return;
+                }
+            }
+
             _cabinet.Name = SelectedName;
             ApplyTypeRules(_cabinet, SelectedCabinetType, SelectedMagneticDoorCount, SelectedMagneticDrawerCount, SelectedMagneticColumnCount);
             _cabinet.Width = EditableWidth;
             _cabinet.Height = EditableHeight;
             _cabinet.Depth = EditableDepth;
+            if (IsMagneticDiskCabinetSelected)
+            {
+                _cabinet.HardDiskSlotCapacity = HardDiskSlotCapacity;
+                _cabinet.OpticalDiscSlotCapacity = OpticalDiscSlotCapacity;
+            }
+            else
+            {
+                _cabinet.HardDiskSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
+                _cabinet.OpticalDiscSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedOpticalDiscSlotCapacity;
+            }
 
             RequestClose?.Invoke(true);
         }
@@ -335,13 +378,18 @@ namespace DocMgr.ViewModels.Cabinets
                 CabinetType.Standard => "双面密集架，容量大，底座带导轨标识。",
                 CabinetType.Vertical => "单面立式柜，常规办公文件存储。",
                 CabinetType.Horizontal => "单面卧式柜，适用于图纸或特殊资料平铺。",
-                CabinetType.MagneticDisk => "防磁磁盘柜按门数对应左门/右门，按抽屉层数与每抽屉格数生成开柜格口；可在下方继续微调柜体尺寸。",
+                CabinetType.MagneticDisk => "防磁磁盘柜按门数对应左门/右门，按抽屉层数与每抽屉格数生成开柜格口；可设置硬盘/光盘档口最大容量，并在下方微调柜体尺寸。",
                 _ => string.Empty
             };
 
             if (!preserveDimensions)
             {
                 ApplyDefaultDimensions(type);
+                if (type == CabinetType.MagneticDisk)
+                {
+                    HardDiskSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
+                    OpticalDiscSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedOpticalDiscSlotCapacity;
+                }
             }
 
             OnPropertyChanged(nameof(DimensionSummary));
@@ -405,6 +453,22 @@ namespace DocMgr.ViewModels.Cabinets
         private static double ResolveMagneticDiskWidth(int magneticDoorCount)
         {
             return magneticDoorCount <= 1 ? MagneticDiskSingleDoorWidth : MagneticDiskDoubleDoorWidth;
+        }
+
+        private static int ResolveInitialHardDiskSlotCapacity(Cabinet cabinet)
+        {
+            ArgumentNullException.ThrowIfNull(cabinet);
+            return cabinet.HardDiskSlotCapacity > 0
+                ? cabinet.HardDiskSlotCapacity
+                : CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
+        }
+
+        private static int ResolveInitialOpticalDiscSlotCapacity(Cabinet cabinet)
+        {
+            ArgumentNullException.ThrowIfNull(cabinet);
+            return cabinet.OpticalDiscSlotCapacity > 0
+                ? cabinet.OpticalDiscSlotCapacity
+                : CabinetHardDiskSlotCategoryAssignment.DedicatedOpticalDiscSlotCapacity;
         }
     }
 }

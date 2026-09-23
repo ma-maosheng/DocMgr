@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DocMgr.Models.NetworkTransfer;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Services.YearlyArchive
@@ -26,15 +27,7 @@ namespace DocMgr.Services.YearlyArchive
                 return false;
             }
 
-            if (record.SourceNetworkOutboundRecordId is int outboundRecordId && outboundRecordId > 0)
-            {
-                return true;
-            }
-
-            return string.Equals(
-                record.SourceType?.Trim(),
-                NetworkTransferDomainValues.RegisterSourceTypeNetworkOutbound,
-                StringComparison.Ordinal);
+            return record.SourceNetworkOutboundRecordId is int outboundRecordId && outboundRecordId > 0;
         }
 
         /// <summary>
@@ -91,8 +84,7 @@ namespace DocMgr.Services.YearlyArchive
             => ArchiveRegisterDomainValues.NormalizeConfidentialLevel(value);
 
         /// <summary>
-        /// 资料室资料管理员：所属部门为「资料室」的部门资料管理员。
-        /// 仅用于审批及后续办理（交接/办结等）。系统管理员不替代本角色。
+        /// 资料管理员：审批及后续办理（交接/办结/立档等）。仅认角色，系统管理员不替代本角色。
         /// </summary>
         public static bool IsArchiveAdminUser(User? user)
         {
@@ -102,15 +94,11 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             string role = user.Role?.Trim() ?? string.Empty;
-            string dept = user.Department?.Trim() ?? string.Empty;
-            return string.Equals(dept, "资料室", StringComparison.Ordinal)
-                   && (string.Equals(role, "部门资料管理员", StringComparison.Ordinal)
-                       || string.Equals(role, "资料室资料管理员", StringComparison.Ordinal)
-                       || string.Equals(role, "资料室管理员", StringComparison.Ordinal));
+            return string.Equals(role, UserRoleDomainValues.ArchiveAdmin, StringComparison.Ordinal);
         }
 
         /// <summary>
-        /// 部门资料管理员（不含资料室）：仅可发起各类申请业务。
+        /// 部门资料员：仅可发起各类申请业务。仅认角色。
         /// </summary>
         public static bool IsDepartmentArchiveAdmin(User? user)
         {
@@ -120,29 +108,22 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             string role = user.Role?.Trim() ?? string.Empty;
-            if (!string.Equals(role, "部门资料管理员", StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            // 资料室部门的「部门资料管理员」即资料室资料管理员，不得发起申请。
-            string dept = user.Department?.Trim() ?? string.Empty;
-            return !string.Equals(dept, "资料室", StringComparison.Ordinal);
+            return string.Equals(role, UserRoleDomainValues.DepartmentArchiveClerk, StringComparison.Ordinal);
         }
 
         /// <summary>
-        /// 申请侧操作人：部门资料管理员（不含资料室）。
+        /// 申请侧操作人：部门资料员。
         /// </summary>
         public static bool IsApplicantUser(User? user) => IsDepartmentArchiveAdmin(user);
 
         /// <summary>
-        /// 是否允许发起申请：仅部门资料管理员（不含资料室）。系统管理员不替代本角色。
+        /// 是否允许发起申请：仅部门资料员。系统管理员不替代本角色。
         /// </summary>
         public static bool CanSubmitApplication(User? user) =>
             IsDepartmentArchiveAdmin(user);
 
         /// <summary>
-        /// 系统管理员：仅系统设置等运维，不替代资料室/部门资料管理员办理资料业务。
+        /// 系统管理员：仅系统设置等运维，不替代资料管理员/部门资料员办理资料业务。
         /// </summary>
         public static bool IsSystemAdministrator(User? user)
         {
@@ -172,7 +153,8 @@ namespace DocMgr.Services.YearlyArchive
             bool isArchiveAdmin = IsArchiveAdminUser(user);
             bool isApplicant = IsDepartmentArchiveAdmin(user);
 
-            bool canEditForm = isApplicant && (isDraft || isSubmitted);
+            // 已提交待审批：申请信息冻结，仅草稿可改；密级仍允许资料管理员在审批态补录。
+            bool canEditForm = isApplicant && isDraft;
             bool canApprove = isArchiveAdmin && isSubmitted;
             bool canUpload = isArchiveAdmin && (isApproved || isSignedUploaded);
             bool canEditItemConfidentialLevel = !isCompleted
@@ -238,18 +220,18 @@ namespace DocMgr.Services.YearlyArchive
             ArgumentNullException.ThrowIfNull(target);
             ArgumentNullException.ThrowIfNull(source);
 
-            target.DeptLeader = source.DeptLeader?.Trim() ?? string.Empty;
-            target.DeptDate = source.DeptDate;
+            target.DeptHead = source.DeptHead?.Trim() ?? string.Empty;
+            target.DeptHeadDate = source.DeptHeadDate;
             // 登记审批 UI 为「仅签字、无需意见」；落库时统一清空意见，避免部分节点残留「同意」。
             target.ProdDeptOpinion = string.Empty;
-            target.ProdLeader = source.ProdLeader?.Trim() ?? string.Empty;
-            target.ProdDate = source.ProdDate;
+            target.ProductionHead = source.ProductionHead?.Trim() ?? string.Empty;
+            target.ProductionHeadDate = source.ProductionHeadDate;
             target.RndDeptOpinion = string.Empty;
-            target.RndLeader = source.RndLeader?.Trim() ?? string.Empty;
-            target.RndDate = source.RndDate;
+            target.ArchiveRoomHead = source.ArchiveRoomHead?.Trim() ?? string.Empty;
+            target.ArchiveRoomHeadDate = source.ArchiveRoomHeadDate;
             target.DeputyOpinion = string.Empty;
-            target.DeputyLeader = source.DeputyLeader?.Trim() ?? string.Empty;
-            target.DeputyDate = source.DeputyDate;
+            target.ArchiveDeputyPresident = source.ArchiveDeputyPresident?.Trim() ?? string.Empty;
+            target.ArchiveDeputyPresidentDate = source.ArchiveDeputyPresidentDate;
             target.Deliverer = source.Deliverer?.Trim() ?? string.Empty;
             target.DeliverDate = source.DeliverDate;
             target.Administrator = source.Administrator?.Trim() ?? string.Empty;

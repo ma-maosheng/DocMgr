@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using DocMgr.Models.NetworkTransfer;
 
@@ -44,7 +44,7 @@ namespace DocMgr.Services.Interfaces
         // 规范化密级值
         string NormalizeConfidentialLevel(string? value);
 
-        // 流程编排：保存草稿（仅部门资料管理员）
+        // 流程编排：保存草稿（仅部门资料员）
         Task<ArchiveRegisterFlowResult> SaveDraftFlowAsync(
             YearlyArchiveRegisterRecord? record,
             IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries,
@@ -59,7 +59,7 @@ namespace DocMgr.Services.Interfaces
         // 流程编排：确认办结
         Task<ArchiveRegisterFlowResult> CompleteRegisterFlowAsync(YearlyArchiveRegisterRecord? record, IReadOnlyCollection<SystemAttachment> attachments, User? currentUser);
 
-        // 流程编排：提交申请（仅部门资料管理员）
+        // 流程编排：提交申请（仅部门资料员）
         Task<ArchiveRegisterFlowResult> SubmitApplicationFlowAsync(
             YearlyArchiveRegisterRecord? record,
             IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries,
@@ -125,16 +125,16 @@ namespace DocMgr.Services.Interfaces
             YearlyArchiveRegisterRecord record,
             IReadOnlyCollection<SystemAttachment> attachments);
 
-        // 填充审批默认信息（仅资料室资料管理员可执行）
+        // 填充审批默认信息（仅资料管理员可执行）
         Task ApplyDefaultApprovalInfoAsync(YearlyArchiveRegisterRecord record, User currentUser);
 
-        // 填充入网申请审批默认信息（仅资料室资料管理员可执行）
+        // 填充入网申请审批默认信息（仅资料管理员可执行）
         Task ApplyDefaultInboundApprovalInfoAsync(NetworkInboundRecord record, User currentUser);
 
-        // 填充出网申请审批默认信息（仅资料室资料管理员可执行）
+        // 填充出网申请审批默认信息（仅资料管理员可执行）
         Task ApplyDefaultNetworkOutboundApprovalInfoAsync(NetworkOutboundRecord record, User currentUser);
 
-        // 填充资料借出申请审批默认信息（仅资料室资料管理员可执行）
+        // 填充资料借出申请审批默认信息（仅资料管理员可执行）
         Task ApplyDefaultOutboundApprovalInfoAsync(YearlyArchiveOutboundRecord record, User currentUser);
 
         // 校验提交申请所需业务规则（含域值与介质完整性）
@@ -150,16 +150,16 @@ namespace DocMgr.Services.Interfaces
             string? rndOpinion,
             string? deputyOpinion);
 
-        // 角色判定：资料室资料管理员（审批及后续办理；不含系统管理员）
+        // 角色判定：资料管理员（审批及后续办理；不含系统管理员）
         bool IsArchiveAdminUser(User? user);
 
-        // 角色判定：部门资料管理员（不含资料室，仅可发起申请）
+        // 角色判定：部门资料员（不含资料室，仅可发起申请）
         bool IsDepartmentArchiveAdmin(User? user);
 
         // 角色判定：申请侧操作人（同 IsDepartmentArchiveAdmin）
         bool IsApplicantUser(User? user);
 
-        // 角色判定：是否允许发起申请（仅部门资料管理员）
+        // 角色判定：是否允许发起申请（仅部门资料员）
         bool CanSubmitApplication(User? user);
 
         // 计算登记页界面权限状态
@@ -168,7 +168,6 @@ namespace DocMgr.Services.Interfaces
         // 组装打印 DTO（审批页/申请页通用数据）
         ArchiveRegisterPrintData BuildPrintData(
             YearlyArchiveRegisterRecord record,
-            string? selectedSourceType,
             IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries);
 
         /// <summary>

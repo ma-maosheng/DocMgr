@@ -4,6 +4,7 @@ using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 
 namespace DocMgr.Services.YearlyArchive;
@@ -17,17 +18,20 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
     private readonly IBusinessRuleService _businessRuleService;
     private readonly IHardDiskMediaService _hardDiskMediaService;
     private readonly IUserService _userService;
+    private readonly IApprovalWorkflowService _approvalWorkflowService;
 
     public ArchiveDisposalService(
         IArchiveDisposalRepository repository,
         IBusinessRuleService businessRuleService,
         IHardDiskMediaService hardDiskMediaService,
-        IUserService userService)
+        IUserService userService,
+        IApprovalWorkflowService approvalWorkflowService)
     {
         _repository = repository;
         _businessRuleService = businessRuleService;
         _hardDiskMediaService = hardDiskMediaService;
         _userService = userService;
+        _approvalWorkflowService = approvalWorkflowService;
     }
 
     /// <inheritdoc />
@@ -203,6 +207,27 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
         }
 
         DateTime now = DateTime.Now;
+        var users = _userService.GetAllUsers();
+        var chain = await _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveDisposal,
+                FieldValues = ApprovalChainApplySupport.BuildYearlyDisposalFieldValues(existing)
+            },
+            users);
+        ApprovalChainApplySupport.ApplyToYearlyDisposal(existing, chain, now);
+
+        var missing = ApprovalChainApplySupport.CollectMissingSignerErrors(
+            chain,
+            nodeKey => ApprovalChainApplySupport.ReadYearlyDisposalSigner(existing, nodeKey));
+        if (missing.Count > 0)
+        {
+            throw new InvalidOperationException(
+                string.Join(Environment.NewLine, missing)
+                + Environment.NewLine
+                + "请在「审核审批」中配置或在用户管理中维护对应角色后再审批通过。");
+        }
+
         existing.Status = YearlyArchiveDisposalRecord.StatusApproved;
         existing.ApprovedBy = ResolveUserDisplayName(currentUser);
         existing.ApprovedTime = now;
@@ -302,7 +327,17 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
                 .ToDictionary(item => item.Id);
         }
 
-        var defaultApprovers = ArchiveDisposalDefaultApproverSupport.Resolve(_userService.GetAllUsers());
+        var users = _userService.GetAllUsers();
+        var chain = await _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveDisposal,
+                FieldValues = ApprovalChainApplySupport.BuildYearlyDisposalFieldValues(record)
+            },
+            users);
+        var defaultApprovers = chain.MatchedRuleId == null
+            ? ArchiveDisposalDefaultApproverSupport.Resolve(users)
+            : ArchiveDisposalDefaultApproverSupport.FromChain(chain);
 
         return new YearlyArchiveDisposalPrintData
         {
@@ -326,10 +361,16 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
             CompletedBy = record.CompletedBy,
             CompletedDateText = record.CompletedAt?.ToString("yyyy-MM-dd") ?? string.Empty,
             IsCompleted = record.IsCompleted,
-            ArchiveRoomHead = defaultApprovers.ArchiveRoomHead,
-            ProductionHead = defaultApprovers.ProductionHead,
-            ArchiveDeputyPresident = defaultApprovers.ArchiveDeputyPresident,
-            ProductionVicePresident = defaultApprovers.ProductionVicePresident,
+            DeptHead = PreferNonEmpty(record.DeptHead, defaultApprovers.DeptHead),
+            ArchiveRoomHead = PreferNonEmpty(record.ArchiveRoomHead, defaultApprovers.ArchiveRoomHead),
+            ProductionHead = PreferNonEmpty(record.ProductionHead, defaultApprovers.ProductionHead),
+            ArchiveDeputyPresident = PreferNonEmpty(record.ArchiveDeputyPresident, defaultApprovers.ArchiveDeputyPresident),
+            ProductionVicePresident = PreferNonEmpty(record.ProductionVicePresident, defaultApprovers.ProductionVicePresident),
+            EnableDeptHead = defaultApprovers.EnableDeptHead,
+            EnableArchiveRoomHead = defaultApprovers.EnableArchiveRoomHead,
+            EnableProductionHead = defaultApprovers.EnableProductionHead,
+            EnableArchiveDeputyPresident = defaultApprovers.EnableArchiveDeputyPresident,
+            EnableProductionVicePresident = defaultApprovers.EnableProductionVicePresident,
             PrintCount = record.PrintCount,
             Items = orderedItems
                 .Select(item => BuildPrintItemRow(record, item, factsById, boxesById, unitsById))
@@ -484,13 +525,19 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
         if (existing.Status is YearlyArchiveDisposalRecord.StatusDraft
             or YearlyArchiveDisposalRecord.StatusSubmitted
             or YearlyArchiveDisposalRecord.StatusWithdrawn
-            or YearlyArchiveDisposalRecord.StatusForceWithdrawn
-            or YearlyArchiveDisposalRecord.StatusCompleted)
+            or YearlyArchiveDisposalRecord.StatusForceWithdrawn)
         {
             return (false, "当前状态不允许上传附件（请在审批通过并确认可上传后操作）。", null);
         }
 
-        if (existing.Status == YearlyArchiveDisposalRecord.StatusApproved
+        if (existing.Status == YearlyArchiveDisposalRecord.StatusCompleted)
+        {
+            if (!string.Equals(category, ArchiveDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
+            {
+                return (false, "办结后仅可增补「其他附件」。", null);
+            }
+        }
+        else if (existing.Status == YearlyArchiveDisposalRecord.StatusApproved
             && !string.Equals(category, ArchiveDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
         {
             return (false, "请先确认可上传签批单，再上传签批单或处置资料照片。", null);
@@ -580,4 +627,7 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
         await _repository.SaveChangesAsync();
         return (true, "附件已删除。");
     }
+
+    private static string PreferNonEmpty(string? primary, string? fallback) =>
+        !string.IsNullOrWhiteSpace(primary) ? primary.Trim() : (fallback?.Trim() ?? string.Empty);
 }

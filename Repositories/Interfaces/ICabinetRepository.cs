@@ -51,6 +51,11 @@ public interface ICabinetRepository
     /// </summary>
     bool HasArchiveBoxesInStandardSlot(string cabinetName, string faceCode, string slotCode);
 
+    /// <summary>
+    /// 统计防磁磁盘柜各档口当前在库占用的最大值（按硬盘类 / 光盘类分列）。
+    /// </summary>
+    (int MaxHardDiskOccupancy, int MaxOpticalDiscOccupancy) GetMaxMagneticSlotOccupancy(Cabinet cabinet);
+
     int SaveChanges();
 
     Task<int> SaveChangesAsync();

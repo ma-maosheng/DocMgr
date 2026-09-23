@@ -286,7 +286,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(user))
             {
-                return ArchiveReturnFlowResult.Fail("仅资料室管理员可指定归还目标盒。");
+                return ArchiveReturnFlowResult.Fail("仅资料管理员可指定归还目标盒。");
             }
 
             var record = await _returnRepository.GetByIdWithDetailsAsync(returnRecordId);
@@ -340,7 +340,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(user))
             {
-                return ArchiveReturnFlowResult.Fail("仅资料室管理员可新建归还目标盒。");
+                return ArchiveReturnFlowResult.Fail("仅资料管理员可新建归还目标盒。");
             }
 
             var record = await _returnRepository.GetByIdWithDetailsAsync(returnRecordId);

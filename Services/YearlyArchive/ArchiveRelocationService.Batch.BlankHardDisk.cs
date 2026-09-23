@@ -314,7 +314,8 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
-                CabinetHardDiskSlotCategoryAssignment.CategoryBlank);
+                CabinetHardDiskSlotCategoryAssignment.CategoryBlank,
+                targetCabinet);
             if (targetBlankMedia.Count + incomingCount > slotCapacity)
             {
                 return $"目标档口容量不足（迁入后需 {targetBlankMedia.Count + incomingCount} 盘，档口容量 {slotCapacity} 盘）。";

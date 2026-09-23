@@ -1236,7 +1236,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 
 
-                var result = await _outboundService.ForceVoidByAdminFlowAsync(SelectedRecord.Id, "资料室管理员强制作废", user);
+                var result = await _outboundService.ForceVoidByAdminFlowAsync(SelectedRecord.Id, "资料管理员强制作废", user);
 
                 if (result.Success)
 

@@ -38,8 +38,6 @@ namespace DocMgr.ViewModels.Cabinets
 
             ProvideUnit = descriptor.ProvideUnit;
 
-            ItemType = descriptor.ItemType;
-
             ConfidentialLevel = descriptor.ConfidentialLevel;
 
             ApprovedCopyCount = descriptor.ApprovedCopyCount;
@@ -169,10 +167,6 @@ namespace DocMgr.ViewModels.Cabinets
 
 
         public string ProvideUnit { get; }
-
-
-
-        public string ItemType { get; }
 
 
 

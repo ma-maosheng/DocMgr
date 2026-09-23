@@ -168,48 +168,6 @@ namespace DocMgr.Models.YearlyArchive
         private string _materialName = string.Empty;
 
         /// <summary>
-        /// 资料来源
-        /// </summary>
-        public string SourceType
-        {
-            get => _sourceType;
-            set
-            {
-                string v = value ?? string.Empty;
-                if (string.Equals(_sourceType, v, StringComparison.Ordinal))
-                {
-                    return;
-                }
-
-                _sourceType = v;
-                NotifyPropertyChanged();
-            }
-        }
-
-        private string _sourceType = string.Empty;
-
-        /// <summary>
-        /// 提供单位
-        /// </summary>
-        public string ProvideUnit
-        {
-            get => _provideUnit;
-            set
-            {
-                string v = value ?? string.Empty;
-                if (string.Equals(_provideUnit, v, StringComparison.Ordinal))
-                {
-                    return;
-                }
-
-                _provideUnit = v;
-                NotifyPropertyChanged();
-            }
-        }
-
-        private string _provideUnit = string.Empty;
-
-        /// <summary>
         /// 存档目的
         /// </summary>
         public string ArchivePurpose
@@ -340,44 +298,54 @@ namespace DocMgr.Models.YearlyArchive
         public string ProdDeptOpinion { get; set; } = string.Empty;
 
         /// <summary>
-        /// 生产管理科签字
+        /// 生产科签字。
         /// </summary>
-        public string ProdLeader { get; set; } = string.Empty;
+        public string ProductionHead { get; set; } = string.Empty;
 
         /// <summary>
-        /// 生产管理科日期
+        /// 生产科签字日期。
         /// </summary>
-        public DateTime? ProdDate { get; set; }
+        public DateTime? ProductionHeadDate { get; set; }
 
         /// <summary>
-        /// 科研开发室意见
+        /// 科研开发室意见（历史栏位名；签字位已迁至 ArchiveRoomHead）。
         /// </summary>
         public string RndDeptOpinion { get; set; } = string.Empty;
 
         /// <summary>
-        /// 科研开发室签字
+        /// 资料室签字。
         /// </summary>
-        public string RndLeader { get; set; } = string.Empty;
+        public string ArchiveRoomHead { get; set; } = string.Empty;
 
         /// <summary>
-        /// 科研开发室日期
+        /// 资料室签字日期。
         /// </summary>
-        public DateTime? RndDate { get; set; }
+        public DateTime? ArchiveRoomHeadDate { get; set; }
 
         /// <summary>
-        /// 分管领导意见
+        /// 分管领导意见（院级）。
         /// </summary>
         public string DeputyOpinion { get; set; } = string.Empty;
 
         /// <summary>
-        /// 分管领导签字
+        /// 分管资料院长签字。
         /// </summary>
-        public string DeputyLeader { get; set; } = string.Empty;
+        public string ArchiveDeputyPresident { get; set; } = string.Empty;
 
         /// <summary>
-        /// 分管领导日期
+        /// 分管资料院长签字日期。
         /// </summary>
-        public DateTime? DeputyDate { get; set; }
+        public DateTime? ArchiveDeputyPresidentDate { get; set; }
+
+        /// <summary>
+        /// 分管生产院长签字。
+        /// </summary>
+        public string ProductionVicePresident { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 分管生产院长签字日期。
+        /// </summary>
+        public DateTime? ProductionVicePresidentDate { get; set; }
 
         /// <summary>
         /// 移交人
@@ -400,14 +368,14 @@ namespace DocMgr.Models.YearlyArchive
         public DateTime? AdminDate { get; set; }
 
         /// <summary>
-        /// 部门负责人
+        /// 部门审核签字。
         /// </summary>
-        public string DeptLeader { get; set; } = string.Empty;
+        public string DeptHead { get; set; } = string.Empty;
 
         /// <summary>
-        /// 部门审核日期
+        /// 部门审核日期。
         /// </summary>
-        public DateTime? DeptDate { get; set; }
+        public DateTime? DeptHeadDate { get; set; }
 
         [NotMapped]
         public bool IsDraft => Status == Unsubmitted;
@@ -448,23 +416,26 @@ namespace DocMgr.Models.YearlyArchive
         [NotMapped]
         public bool HasApprovalInput =>
             !string.IsNullOrWhiteSpace(ProdDeptOpinion)
-            || !string.IsNullOrWhiteSpace(ProdLeader)
-            || ProdDate.HasValue
+            || !string.IsNullOrWhiteSpace(ProductionHead)
+            || ProductionHeadDate.HasValue
             || !string.IsNullOrWhiteSpace(RndDeptOpinion)
-            || !string.IsNullOrWhiteSpace(RndLeader)
-            || RndDate.HasValue
+            || !string.IsNullOrWhiteSpace(ArchiveRoomHead)
+            || ArchiveRoomHeadDate.HasValue
             || !string.IsNullOrWhiteSpace(DeputyOpinion)
-            || !string.IsNullOrWhiteSpace(DeputyLeader)
-            || DeputyDate.HasValue
+            || !string.IsNullOrWhiteSpace(ArchiveDeputyPresident)
+            || ArchiveDeputyPresidentDate.HasValue
+            || !string.IsNullOrWhiteSpace(ProductionVicePresident)
+            || ProductionVicePresidentDate.HasValue
             || !string.IsNullOrWhiteSpace(Deliverer)
             || DeliverDate.HasValue
             || !string.IsNullOrWhiteSpace(Administrator)
             || AdminDate.HasValue
-            || !string.IsNullOrWhiteSpace(DeptLeader)
-            || DeptDate.HasValue;
+            || !string.IsNullOrWhiteSpace(DeptHead)
+            || DeptHeadDate.HasValue;
 
         [NotMapped]
-        public bool CanApplicantModifyOrDelete => IsDraft || IsSubmitted;
+        /// <summary>申请人仅草稿可改删申请内容；已提交后须撤回作废再新建。</summary>
+        public bool CanApplicantModifyOrDelete => IsDraft;
 
         [NotMapped]
         public bool CanCancelRegister => Id > 0 && (IsDraft || IsSubmitted) && !HasApprovalInput;

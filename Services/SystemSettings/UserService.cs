@@ -1,4 +1,5 @@
-﻿using DocMgr.Repositories.Interfaces;
+﻿using DocMgr.Models.SystemSettings;
+using DocMgr.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocMgr.Services.SystemSettings
@@ -271,6 +272,7 @@ namespace DocMgr.Services.SystemSettings
             user.RealName = user.RealName?.Trim() ?? string.Empty;
             user.Department = user.Department?.Trim() ?? string.Empty;
             user.Role = user.Role?.Trim() ?? string.Empty;
+            EnsureRoleDepartmentConsistent(user.Role, user.Department);
             user.Password = PasswordHashingSupport.Hash(password);
             user.MustChangePassword = true;
             user.FailedLoginCount = 0;
@@ -293,6 +295,7 @@ namespace DocMgr.Services.SystemSettings
             existing.RealName = user.RealName?.Trim() ?? string.Empty;
             existing.Department = user.Department?.Trim() ?? string.Empty;
             existing.Role = user.Role?.Trim() ?? string.Empty;
+            EnsureRoleDepartmentConsistent(existing.Role, existing.Department);
 
             if (!string.IsNullOrEmpty(newPassword))
             {
@@ -479,6 +482,15 @@ namespace DocMgr.Services.SystemSettings
         {
             user.FailedLoginCount = 0;
             user.LockoutUntil = null;
+        }
+
+        private static void EnsureRoleDepartmentConsistent(string role, string department)
+        {
+            string? error = UserRoleDomainValues.ValidateRoleDepartment(role, department);
+            if (error != null)
+            {
+                throw new ArgumentException(error);
+            }
         }
 
         private static UserLoginResult CreateInvalidCredentialsResult()

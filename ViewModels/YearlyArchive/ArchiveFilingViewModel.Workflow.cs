@@ -249,7 +249,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             var selectionKeys = SimulatedRecordItems
                 .Where(item => item.IsSelected)
-                .Select(item => (item.FormNo, item.MediaType, item.ItemType, item.ContentDesc))
+                .Select(item => (item.FormNo, item.MediaType, item.ContentDesc))
                 .ToHashSet();
 
             var recordIds = SelectedRecords
@@ -284,7 +284,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 RebuildSimulatedRecordItems();
                 foreach (var item in SimulatedRecordItems)
                 {
-                    item.IsSelected = selectionKeys.Contains((item.FormNo, item.MediaType, item.ItemType, item.ContentDesc));
+                    item.IsSelected = selectionKeys.Contains((item.FormNo, item.MediaType, item.ContentDesc));
                 }
 
                 UpdateSummaryText();
@@ -370,6 +370,12 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task Submit()
         {
+            if (!CanOperate)
+            {
+                MessageBox.Show("仅资料管理员可办理资料立档。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             if (SelectedRecords.Count == 0)
             {
                 MessageBox.Show("请先在左侧选择要归档的资料。");

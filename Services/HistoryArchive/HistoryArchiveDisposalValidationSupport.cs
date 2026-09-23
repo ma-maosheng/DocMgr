@@ -85,7 +85,7 @@ public static class HistoryArchiveDisposalValidationSupport
         }
     }
 
-    /// <summary>办结校验：提交项 + 审核审批人 + 签批单 + 销毁资料照片。</summary>
+    /// <summary>办结校验：提交项 + 启用的审核审批人 + 签批单 + 销毁资料照片。</summary>
     public static IReadOnlyList<string> ValidateForComplete(
         string? materialKind,
         string? dispositionMethod,
@@ -93,10 +93,21 @@ public static class HistoryArchiveDisposalValidationSupport
         string? otherRemark,
         string? reason,
         IReadOnlyList<HistoryArchiveDisposalItem> items,
+        bool enableDeptHead,
+        string? deptHead,
+        DateTime? deptHeadDate,
+        bool enableArchiveRoomHead,
         string? archiveRoomHead,
         DateTime? archiveRoomHeadDate,
+        bool enableProductionHead,
+        string? productionHead,
+        DateTime? productionHeadDate,
+        bool enableArchiveDeputyPresident,
         string? archiveDeputyPresident,
         DateTime? archiveDeputyPresidentDate,
+        bool enableProductionVicePresident,
+        string? productionVicePresident,
+        DateTime? productionVicePresidentDate,
         IReadOnlyList<SystemAttachment>? attachments,
         bool physicalRemovalConfirmed)
     {
@@ -112,8 +123,30 @@ public static class HistoryArchiveDisposalValidationSupport
             errors.Add(error.StartsWith("• ", StringComparison.Ordinal) ? error : "• " + error);
         }
 
-        CollectSignerAndDateErrors(archiveRoomHead, archiveRoomHeadDate, "资料室负责人", errors);
-        CollectSignerAndDateErrors(archiveDeputyPresident, archiveDeputyPresidentDate, "分管资料副院长", errors);
+        if (enableDeptHead)
+        {
+            CollectSignerAndDateErrors(deptHead, deptHeadDate, ApprovalWorkflowDomainValues.DisplayDeptHead, errors);
+        }
+
+        if (enableArchiveRoomHead)
+        {
+            CollectSignerAndDateErrors(archiveRoomHead, archiveRoomHeadDate, ApprovalWorkflowDomainValues.DisplayArchiveRoomHead, errors);
+        }
+
+        if (enableProductionHead)
+        {
+            CollectSignerAndDateErrors(productionHead, productionHeadDate, ApprovalWorkflowDomainValues.DisplayProductionHead, errors);
+        }
+
+        if (enableArchiveDeputyPresident)
+        {
+            CollectSignerAndDateErrors(archiveDeputyPresident, archiveDeputyPresidentDate, ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident, errors);
+        }
+
+        if (enableProductionVicePresident)
+        {
+            CollectSignerAndDateErrors(productionVicePresident, productionVicePresidentDate, ApprovalWorkflowDomainValues.DisplayProductionVicePresident, errors);
+        }
 
         IReadOnlyList<SystemAttachment> files = attachments ?? Array.Empty<SystemAttachment>();
         if (!files.Any(item => string.Equals(
@@ -145,10 +178,21 @@ public static class HistoryArchiveDisposalValidationSupport
         string? otherRemark,
         string? reason,
         IReadOnlyList<HistoryArchiveDisposalItem> items,
+        bool enableDeptHead,
+        string? deptHead,
+        DateTime? deptHeadDate,
+        bool enableArchiveRoomHead,
         string? archiveRoomHead,
         DateTime? archiveRoomHeadDate,
+        bool enableProductionHead,
+        string? productionHead,
+        DateTime? productionHeadDate,
+        bool enableArchiveDeputyPresident,
         string? archiveDeputyPresident,
         DateTime? archiveDeputyPresidentDate,
+        bool enableProductionVicePresident,
+        string? productionVicePresident,
+        DateTime? productionVicePresidentDate,
         IReadOnlyList<SystemAttachment>? attachments,
         bool physicalRemovalConfirmed)
     {
@@ -159,10 +203,21 @@ public static class HistoryArchiveDisposalValidationSupport
             otherRemark,
             reason,
             items,
+            enableDeptHead,
+            deptHead,
+            deptHeadDate,
+            enableArchiveRoomHead,
             archiveRoomHead,
             archiveRoomHeadDate,
+            enableProductionHead,
+            productionHead,
+            productionHeadDate,
+            enableArchiveDeputyPresident,
             archiveDeputyPresident,
             archiveDeputyPresidentDate,
+            enableProductionVicePresident,
+            productionVicePresident,
+            productionVicePresidentDate,
             attachments,
             physicalRemovalConfirmed);
         if (errors.Count > 0)

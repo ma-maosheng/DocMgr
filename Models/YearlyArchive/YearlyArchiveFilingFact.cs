@@ -38,8 +38,6 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ApplicantName { get; set; } = string.Empty;
 
-        public string ItemType { get; set; } = string.Empty;
-
         public string ItemName { get; set; } = string.Empty;
 
         public string ConfidentialLevel { get; set; } = ArchiveRegisterDomainValues.ConfidentialLevelNone;

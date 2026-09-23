@@ -67,8 +67,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             BoxSpecifications = new ObservableCollection<string> { "标准(10cm)", "标准(5cm)", "标准(3cm)", "标准(2cm)", "非标(10cm)" };
 
             RefreshTargetsCommand = new RelayCommand(async _ => await RefreshTargetsAsync(), _ => !IsBusy && SourceSummary != null && IsContainerMode);
-            PreviewCommand = new RelayCommand(async _ => await PreviewAsync(), _ => !IsBusy && SourceSummary != null);
-            ExecuteCommand = new RelayCommand(async _ => await ExecuteAsync(), _ => !IsBusy && SourceSummary != null && !string.IsNullOrWhiteSpace(PreviewText));
+            PreviewCommand = new RelayCommand(async _ => await PreviewAsync(), _ => !IsBusy && IsArchiveAdmin && SourceSummary != null);
+            ExecuteCommand = new RelayCommand(async _ => await ExecuteAsync(), _ => !IsBusy && IsArchiveAdmin && SourceSummary != null && !string.IsNullOrWhiteSpace(PreviewText));
         }
 
         public string PageTitle => "模拟介质资料迁档";
@@ -328,7 +328,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             if (!IsArchiveAdmin)
             {
-                _dialogService.ShowMessage("仅资料室管理员可执行资料迁档。", "权限不足");
+                _dialogService.ShowMessage("仅资料管理员可执行资料迁档。", "权限不足");
             }
 
             await LoadYearsAsync();

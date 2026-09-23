@@ -155,5 +155,17 @@ namespace DocMgr.Models.HardDiskMedia
             return IsDamagedReturnInspection(inspectionResult) ||
                    IsLossRegistrationInspection(inspectionResult);
         }
+
+        /// <summary>
+        /// 是否为归还登记工作台产生的申请类型（空盘/资料/损坏/挂失）。
+        /// </summary>
+        public static bool IsReturnRegistrationApplicationType(string? applicationType)
+        {
+            string normalized = applicationType?.Trim() ?? string.Empty;
+            return string.Equals(normalized, HardDiskMediaApplication.TypeReturnBlankRegistration, StringComparison.Ordinal)
+                || string.Equals(normalized, HardDiskMediaApplication.TypeReturnDataRegistration, StringComparison.Ordinal)
+                || string.Equals(normalized, HardDiskMediaApplication.TypeReturnDamagedRegistration, StringComparison.Ordinal)
+                || string.Equals(normalized, HardDiskMediaApplication.TypeLossRegistration, StringComparison.Ordinal);
+        }
     }
 }

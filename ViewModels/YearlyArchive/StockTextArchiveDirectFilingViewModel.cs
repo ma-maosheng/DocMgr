@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -37,9 +38,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _businessNumberHint = "确认立档后：生成一条建档单号，并新建一个模拟档案盒。";
         private string _previewArchiveSequenceNo = string.Empty;
         private int _archiveNoPreviewToken;
-        private readonly string _sourceType = ArchiveRegisterDomainValues.SourceTypeStockDirect;
+        private string _sourceType = ArchiveRegisterDomainValues.SourceTypeInternal;
         private string _archivePurpose = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
-        private readonly string _provideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
+        private string _provideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
         private string _selectedSpec = "标准(5cm)";
         private ArchiveBoxTargetLocationOption? _selectedSlotOption;
         private string _boxLocationPreview = string.Empty;
@@ -83,9 +84,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             ConfirmCommand = new RelayCommand(async _ => await ConfirmAsync(), _ => !IsBusy);
             RefreshSlotOptionsCommand = new RelayCommand(async _ => await LoadSlotOptionsAsync(), _ => !IsBusy);
             ImportExcelCommand = new RelayCommand(async _ => await ImportExcelAsync(), _ => !IsBusy);
+            ExportExcelTemplateCommand = new RelayCommand(_ => ExportExcelTemplate(), _ => !IsBusy);
         }
 
         public ObservableCollection<string> ArchivePurposeOptions { get; } = new();
+        public ObservableCollection<string> SourceTypeOptions { get; } = new();
         public ObservableCollection<string> ConfidentialLevelOptions { get; } = new();
         public ObservableCollection<string> YearOptions { get; } = new();
         public ObservableCollection<string> ProjectNameOptions { get; } = new();
@@ -110,6 +113,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ICommand RefreshSlotOptionsCommand { get; }
 
         public ICommand ImportExcelCommand { get; }
+
+        public ICommand ExportExcelTemplateCommand { get; }
 
         public bool IsBusy
         {
@@ -211,7 +216,29 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        public string SourceType => _sourceType;
+        public string SourceType
+        {
+            get => _sourceType;
+            set
+            {
+                string normalized = value?.Trim() ?? string.Empty;
+                if (!SetProperty(ref _sourceType, normalized))
+                {
+                    return;
+                }
+
+                OnPropertyChanged(nameof(IsExternalSource));
+                OnPropertyChanged(nameof(IsProvideUnitReadOnly));
+                ApplyProvideUnitForSourceType();
+            }
+        }
+
+        /// <summary>资料来源是否为「外来」。</summary>
+        public bool IsExternalSource =>
+            string.Equals(SourceType, ArchiveRegisterDomainValues.SourceTypeExternal, StringComparison.Ordinal);
+
+        /// <summary>内部来源时提供单位固定为资料室，不可编辑。</summary>
+        public bool IsProvideUnitReadOnly => !IsExternalSource;
 
         public string ArchivePurpose
         {
@@ -234,7 +261,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        public string ProvideUnit => _provideUnit;
+        public string ProvideUnit
+        {
+            get => _provideUnit;
+            set => SetProperty(ref _provideUnit, value ?? string.Empty);
+        }
 
         public string SelectedSpec
         {
@@ -298,6 +329,16 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             var options = await _archiveRegisterService.GetPageDomainOptionsAsync();
             Replace(ArchivePurposeOptions, options.ArchivePurposes, ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage);
+            Replace(
+                SourceTypeOptions,
+                options.SourceTypes.Count > 0
+                    ? options.SourceTypes
+                    : new[]
+                    {
+                        ArchiveRegisterDomainValues.SourceTypeInternal,
+                        ArchiveRegisterDomainValues.SourceTypeExternal
+                    },
+                ArchiveRegisterDomainValues.SourceTypeInternal);
             Replace(ConfidentialLevelOptions, options.ConfidentialLevels, "秘密");
             Replace(MediaTypeOptions, options.DataSimulatedMediaTypes, ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper);
             Replace(MaterialCategoryOptions, options.SimulatedMaterialCategories, ArchiveRegisterDomainValues.SimulatedMaterialCategoryText);
@@ -323,6 +364,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             if (string.IsNullOrWhiteSpace(ArchivePurpose) || !ArchivePurposeOptions.Contains(ArchivePurpose))
             {
                 ArchivePurpose = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
+            }
+
+            if (string.IsNullOrWhiteSpace(SourceType) || !SourceTypeOptions.Contains(SourceType))
+            {
+                SourceType = SourceTypeOptions.FirstOrDefault()
+                    ?? ArchiveRegisterDomainValues.SourceTypeInternal;
+            }
+            else
+            {
+                ApplyProvideUnitForSourceType();
             }
 
             if (MediaGroups.Count == 0)
@@ -736,11 +787,51 @@ namespace DocMgr.ViewModels.YearlyArchive
                 $"确认立档后将生成 1 条建档单号，档案盒号预计为 [{previewBoxNo}]（确认写入时按当时库内最大号顺延；建档单号、盒号、立档编号的年度均取自项目实施年度）。{MediaSummary}";
         }
 
+        private void ExportExcelTemplate()
+        {
+            if (!_archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser))
+            {
+                _dialogService.ShowMessage("仅资料管理员可导出存档文本直办导入模板。");
+                return;
+            }
+
+            string? filePath = _dialogService.SaveFileDialog(
+                "Excel Files|*.xlsx",
+                "导出存档文本直办导入模板",
+                "存档文本直办导入模板.xlsx");
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return;
+            }
+
+            try
+            {
+                _filingService.ExportExcelImportTemplate(filePath);
+                _dialogService.ShowMessage($"模板导出完成：\n{filePath}", "完成");
+            }
+            catch (ArgumentException ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _dialogService.ShowError($"没有权限写入目标文件：{ex.Message}");
+            }
+            catch (IOException ex)
+            {
+                _dialogService.ShowError($"写入模板文件失败：{ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError("导出模板失败：" + ex.Message);
+            }
+        }
+
         private async Task ImportExcelAsync()
         {
             if (!_archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser))
             {
-                _dialogService.ShowMessage("仅资料室资料管理员可执行存档文本直办立档。");
+                _dialogService.ShowMessage("仅资料管理员可执行存档文本直办立档。");
                 return;
             }
 
@@ -822,7 +913,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             if (!_archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser))
             {
-                _dialogService.ShowMessage("仅资料室资料管理员可执行存档文本直办立档。");
+                _dialogService.ShowMessage("仅资料管理员可执行存档文本直办立档。");
                 return;
             }
 
@@ -892,9 +983,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ProjectName = ProjectName?.Trim() ?? string.Empty,
                 ProjectCode = ProjectCode?.Trim() ?? string.Empty,
                 MaterialName = MaterialName?.Trim() ?? string.Empty,
-                SourceType = SourceType,
+                SourceType = SourceType?.Trim() ?? string.Empty,
                 ArchivePurpose = ArchivePurpose?.Trim() ?? string.Empty,
-                ProvideUnit = ProvideUnit,
+                ProvideUnit = ProvideUnit?.Trim() ?? string.Empty,
                 BoxSpecification = SelectedSpec?.Trim() ?? string.Empty,
                 CabinetName = SelectedSlotOption?.CabinetName?.Trim() ?? string.Empty,
                 Side = SelectedSlotOption?.Side?.Trim() ?? string.Empty,
@@ -912,6 +1003,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             ProjectCode = string.Empty;
             MaterialName = string.Empty;
             _previousProjectNameForMaterialDefault = string.Empty;
+            SourceType = ArchiveRegisterDomainValues.SourceTypeInternal;
+            ProvideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
             Remarks = string.Empty;
             PreviewArchiveSequenceNo = string.Empty;
             ProjectHint = "请填写实施年度与项目名称。";
@@ -942,6 +1035,27 @@ namespace DocMgr.ViewModels.YearlyArchive
             RefreshYearOptions();
             RefreshProjectNameOptions();
             await InitializeAsync();
+        }
+
+        /// <summary>
+        /// 内部：提供单位固定为资料室；外来：若仍为资料室则清空以便用户填写。
+        /// </summary>
+        private void ApplyProvideUnitForSourceType()
+        {
+            if (IsExternalSource)
+            {
+                if (string.Equals(
+                        ProvideUnit,
+                        ArchiveRegisterDomainValues.ProvideUnitArchiveRoom,
+                        StringComparison.Ordinal))
+                {
+                    ProvideUnit = string.Empty;
+                }
+
+                return;
+            }
+
+            ProvideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
         }
 
         private static void EnsureOption(ObservableCollection<string> target, string? value)

@@ -1,9 +1,9 @@
 namespace DocMgr.Services.SystemSettings;
 
 /// <summary>
-/// 权限设置页支撑：汇总各角色类别可访问的菜单分组。
-/// 权限由「部门 + 角色」按业务规则判定（见 ArchiveRegisterBusinessRules 与各 *PermissionSupport），
-/// 本矩阵仅作查阅展示，修改入口为「用户管理」「角色设置」。
+/// 角色概览页权限矩阵支撑：汇总各角色类别可访问的菜单分组。
+/// 导航全员可进浏览；写入/办理仍按角色；业务列表范围仍为仅本人/本部门（资料管理员看全库）。
+/// 本矩阵仅作查阅展示，调整入口为「用户管理」。
 /// </summary>
 public static class PermissionSettingSupport
 {
@@ -17,44 +17,44 @@ public static class PermissionSettingSupport
         bool NetworkManager,
         bool Others);
 
-    /// <summary>按主界面导航分组的权限矩阵。</summary>
+    /// <summary>按主界面导航分组的权限矩阵（浏览=全员；办理/维护=角色）。</summary>
     public static IReadOnlyList<PermissionMatrixRow> BuildMatrix() => new[]
     {
         new PermissionMatrixRow(
-            "年度资料·申请", "建档申请、资料借出（出库）申请、归还申请",
+            "全员可浏览", "左侧全部业务与系统设置菜单可进入查看；业务列表仍按「仅本人/本部门」过滤（资料管理员看全库）",
+            SystemAdmin: true, ArchiveRoomAdmin: true, DepartmentAdmin: true, NetworkManager: true, Others: true),
+        new PermissionMatrixRow(
+            "年度资料·申请办理", "建档/借出/归还申请的新增与提交（部门资料员）",
             SystemAdmin: false, ArchiveRoomAdmin: false, DepartmentAdmin: true, NetworkManager: false, Others: false),
         new PermissionMatrixRow(
-            "年度资料·办理", "申请审批、资料立档、库存硬盘/存档文本直办立档、立档/迁档/流转/跨域流转台账、出库审批、归还审批、模拟/电子迁档、模拟/电子盘库、离库处置",
+            "年度资料·审批办理", "申请审批、立档、直办立档、台账维护、出库/归还审批、迁档、盘库、离库处置等写入",
             SystemAdmin: false, ArchiveRoomAdmin: true, DepartmentAdmin: false, NetworkManager: false, Others: false),
         new PermissionMatrixRow(
-            "跨域出入网·申请", "入网申请、出网申请",
+            "跨域出入网·申请办理", "入网/出网申请的新增与提交（部门资料员）",
             SystemAdmin: false, ArchiveRoomAdmin: false, DepartmentAdmin: true, NetworkManager: false, Others: false),
         new PermissionMatrixRow(
-            "跨域出入网·办理", "入网审批、出网审批、在网数据处置",
+            "跨域出入网·审批办理", "入网/出网审批、在网数据处置写入",
             SystemAdmin: false, ArchiveRoomAdmin: true, DepartmentAdmin: false, NetworkManager: false, Others: false),
         new PermissionMatrixRow(
-            "硬盘·申请", "硬盘出库申请、硬盘归还申请",
+            "硬盘·申请办理", "硬盘出库/归还申请的新增与提交（部门资料员）",
             SystemAdmin: false, ArchiveRoomAdmin: false, DepartmentAdmin: true, NetworkManager: false, Others: false),
         new PermissionMatrixRow(
-            "硬盘·办理", "硬盘初始登记（台账）、出库审批、归还审批、盘库登记、离库处置",
+            "硬盘·审批办理", "硬盘初始登记、出库/归还审批、盘库、离库处置写入",
             SystemAdmin: false, ArchiveRoomAdmin: true, DepartmentAdmin: false, NetworkManager: false, Others: false),
         new PermissionMatrixRow(
-            "历史存档", "地形图、航摄、其他图件的导入、编辑、删除",
+            "历史存档·维护", "地形图、航摄、其他图件的导入、编辑、删除；历史离库处置办理",
             SystemAdmin: false, ArchiveRoomAdmin: true, DepartmentAdmin: false, NetworkManager: false, Others: false),
         new PermissionMatrixRow(
-            "档案柜", "档案柜登记、开柜改档口用途/迁档/摆放",
+            "档案柜·维护", "档案柜登记、开柜改档口用途/迁档/摆放",
             SystemAdmin: false, ArchiveRoomAdmin: true, DepartmentAdmin: false, NetworkManager: false, Others: false),
         new PermissionMatrixRow(
-            "项目信息", "新增、编辑、删除项目",
+            "项目信息·维护", "新增、编辑、删除项目",
             SystemAdmin: false, ArchiveRoomAdmin: true, DepartmentAdmin: false, NetworkManager: false, Others: false),
         new PermissionMatrixRow(
-            "服务器路径设置", "维护服务器路径（新增、编辑、删除）",
+            "服务器路径·维护", "维护服务器路径（新增、编辑、删除）",
             SystemAdmin: false, ArchiveRoomAdmin: false, DepartmentAdmin: false, NetworkManager: true, Others: false),
         new PermissionMatrixRow(
-            "系统运维", "用户管理、部门设置、角色设置、权限设置、高级数据管理（全量维护）、逾期设置、数据库操作日志",
+            "系统运维·维护", "用户/部门/审核审批/逾期设置/库日志清除与启停、高级数据高危维护",
             SystemAdmin: true, ArchiveRoomAdmin: false, DepartmentAdmin: false, NetworkManager: false, Others: false),
-        new PermissionMatrixRow(
-            "全员浏览", "操作手册、个人设置、资料检索与检索池、历史三页浏览、档案柜检索、硬盘/光盘概览与台账、高级数据管理（仅浏览）",
-            SystemAdmin: true, ArchiveRoomAdmin: true, DepartmentAdmin: true, NetworkManager: true, Others: true),
     };
 }

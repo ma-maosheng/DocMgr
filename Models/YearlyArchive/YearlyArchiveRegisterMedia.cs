@@ -57,11 +57,20 @@ namespace DocMgr.Models.YearlyArchive
     {
         public int Id { get; set; }
         public int YearlyArchiveRegisterMediaId { get; set; }
-        public string ItemType { get; set; } = "????";
         public string ContentDesc { get; set; } = string.Empty;
         public int ContentCount { get; set; }
         public string StoragePath { get; set; } = string.Empty;
         public string Note { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 资料来源（内部产生 / 外部提供 / 存量直办），按资料子项分别登记。
+        /// </summary>
+        public string SourceType { get; set; } = ArchiveRegisterDomainValues.SourceTypeInternal;
+
+        /// <summary>
+        /// 提供单位（资料来源为内部产生时默认为资料室；外部提供时填写来源单位），按资料子项分别登记。
+        /// </summary>
+        public string ProvideUnit { get; set; } = string.Empty;
 
         /// <summary>
         /// 资料子项密级（由申请人填写，审批时可由资料室同步修正）。

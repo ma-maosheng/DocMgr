@@ -23,6 +23,12 @@
         <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Background="#F5F7FA" BorderBrush="#E0E0E0" BorderThickness="1" Margin="0,0,0,10">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Horizontal">
+                    <Button Content="下载导入模板"
+                            Command="{Binding ExportImportTemplateCommand}"
+                            Margin="0,0,10,0"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            ToolTip="导出与导入字段一致的 Excel 模板"
+                            Visibility="{Binding CanMaintainLedger, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     <Button Content="📥 导入Excel表"
                             Command="{Binding ImportCommand}"
                             Margin="0,0,10,0"

@@ -5,9 +5,9 @@ namespace DocMgr.Models.HardDiskMedia
     /// </summary>
     public sealed class HardDiskMediaBorrowApprovalSnapshot
     {
-        public string DeptAuditor { get; init; } = string.Empty;
+        public string DeptHead { get; init; } = string.Empty;
 
-        public DateTime? DeptAuditDate { get; init; }
+        public DateTime? DeptHeadDate { get; init; }
 
         public string ArchiveRoomHead { get; init; } = string.Empty;
 

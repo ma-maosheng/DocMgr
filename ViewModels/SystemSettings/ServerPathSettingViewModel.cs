@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using DocMgr.Services.SystemSettings;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.SystemSettings
@@ -7,6 +8,7 @@ namespace DocMgr.ViewModels.SystemSettings
     {
         private readonly IServerPathSettingService _serverPathSettingService;
         private readonly IDialogService _dialogService;
+        private readonly IUserContextService _userContextService;
 
         private ObservableCollection<ServerPathSetting> _settings = new();
         public ObservableCollection<ServerPathSetting> Settings
@@ -28,6 +30,9 @@ namespace DocMgr.ViewModels.SystemSettings
             }
         }
 
+        /// <summary>网管负责人可维护；其余角色仅浏览列表。</summary>
+        public bool CanMaintain { get; }
+
         public RelayCommand RefreshCommand { get; }
         public RelayCommand AddCommand { get; }
         public RelayCommand EditCommand { get; }
@@ -35,15 +40,18 @@ namespace DocMgr.ViewModels.SystemSettings
 
         public ServerPathSettingViewModel(
             IServerPathSettingService serverPathSettingService,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            IUserContextService userContextService)
         {
             _serverPathSettingService = serverPathSettingService;
             _dialogService = dialogService;
+            _userContextService = userContextService;
+            CanMaintain = ServerPathSettingPermissionSupport.CanMaintain(_userContextService.CurrentUser);
 
             RefreshCommand = new RelayCommand(_ => LoadData());
-            AddCommand = new RelayCommand(_ => Add());
-            EditCommand = new RelayCommand(_ => Edit(), _ => SelectedSetting != null);
-            DeleteCommand = new RelayCommand(_ => Delete(), _ => SelectedSetting != null);
+            AddCommand = new RelayCommand(_ => Add(), _ => CanMaintain);
+            EditCommand = new RelayCommand(_ => Edit(), _ => CanMaintain && SelectedSetting != null);
+            DeleteCommand = new RelayCommand(_ => Delete(), _ => CanMaintain && SelectedSetting != null);
 
             LoadData();
         }
@@ -56,6 +64,11 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private void Add()
         {
+            if (!EnsureCanMaintain())
+            {
+                return;
+            }
+
             if (_dialogService.ShowServerPathSettingEditDialog(null))
             {
                 LoadData();
@@ -64,7 +77,7 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private void Edit()
         {
-            if (SelectedSetting == null)
+            if (!EnsureCanMaintain() || SelectedSetting == null)
             {
                 return;
             }
@@ -77,7 +90,7 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private void Delete()
         {
-            if (SelectedSetting == null)
+            if (!EnsureCanMaintain() || SelectedSetting == null)
             {
                 return;
             }
@@ -96,6 +109,17 @@ namespace DocMgr.ViewModels.SystemSettings
                     _dialogService.ShowError($"删除失败：{ex.Message}");
                 }
             }
+        }
+
+        private bool EnsureCanMaintain()
+        {
+            if (CanMaintain)
+            {
+                return true;
+            }
+
+            _dialogService.ShowError(ServerPathSettingPermissionSupport.DeniedMessage);
+            return false;
         }
     }
 }

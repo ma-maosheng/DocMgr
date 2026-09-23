@@ -96,11 +96,7 @@ namespace DocMgr.ViewModels.Shared
             }
 
             FlowDocumentWordExportSupport.ExportToFile(_sourceDocument, path);
-            MessageBox.Show(
-                $"Word 文档已保存：\n{path}",
-                "导出 Word",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            WordExportOpenPromptSupport.NotifySavedAndOfferOpen(path);
         }
 
         /// <summary>

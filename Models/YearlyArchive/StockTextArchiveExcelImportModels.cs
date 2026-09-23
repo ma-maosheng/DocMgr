@@ -17,9 +17,21 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ProjectName { get; init; } = string.Empty;
 
+        public string ProjectCode { get; init; } = string.Empty;
+
         public string MaterialName { get; init; } = string.Empty;
 
+        public string SourceType { get; init; } = ArchiveRegisterDomainValues.SourceTypeInternal;
+
+        public string ProvideUnit { get; init; } = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
+
+        public string ArchivePurpose { get; init; } = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
+
+        public string MediaType { get; init; } = ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper;
+
         public string BoxSpecification { get; init; } = string.Empty;
+
+        public string Remarks { get; init; } = "Excel导入";
 
         public string SourceBoxLocationCode { get; init; } = string.Empty;
 
@@ -50,7 +62,11 @@ namespace DocMgr.Models.YearlyArchive
             {
                 Year = Year,
                 ProjectName = ProjectName,
+                ProjectCode = ProjectCode,
                 MaterialName = MaterialName,
+                SourceType = SourceType,
+                ProvideUnit = ProvideUnit,
+                ArchivePurpose = ArchivePurpose,
                 BoxSpecification = BoxSpecification,
                 CabinetName = CabinetName,
                 Side = Side,
@@ -58,12 +74,14 @@ namespace DocMgr.Models.YearlyArchive
                 Column = Column,
                 SpecifiedBoxIndex = BoxIndex > 0 ? BoxIndex : null,
                 SyncUnsetSlotCategoryOnCommit = true,
-                Remarks = "Excel导入",
+                Remarks = Remarks,
                 MediaGroups = new[]
                 {
                     new StockTextArchiveMediaGroupDraft
                     {
-                        MediaType = ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper,
+                        MediaType = string.IsNullOrWhiteSpace(MediaType)
+                            ? ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper
+                            : MediaType,
                         Items = Items
                     }
                 }

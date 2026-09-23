@@ -98,6 +98,11 @@ namespace DocMgr.Data.Migrations
                     b.Property<int>("FaceCount")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("HardDiskSlotCapacity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(10);
+
                     b.Property<double>("Height")
                         .HasColumnType("REAL");
 
@@ -107,6 +112,11 @@ namespace DocMgr.Data.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("OpticalDiscSlotCapacity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(20);
 
                     b.Property<double>("RotationAngle")
                         .HasColumnType("REAL");
@@ -365,6 +375,20 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("ApprovedTime")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ArchiveDeputyPresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveDeputyPresidentDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArchiveRoomHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveRoomHeadDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("TEXT");
 
@@ -380,6 +404,13 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeptHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeptHeadDate")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("DiskPhotoUploaded")
@@ -406,6 +437,20 @@ namespace DocMgr.Data.Migrations
 
                     b.Property<int>("PrintCount")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProductionHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionHeadDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProductionVicePresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionVicePresidentDate")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Reason")
                         .IsRequired()
@@ -670,17 +715,35 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ApprovedBy")
+                    b.Property<string>("ArchiveDeputyPresident")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("ApprovedTime")
+                    b.Property<DateTime?>("ArchiveDeputyPresidentDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArchiveRoomHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveRoomHeadDate")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedTime")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("CurrentLocation")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeptHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeptHeadDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DestinationKind")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -711,6 +774,24 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("PrintedTime")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ProductionHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionHeadDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProductionVicePresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionVicePresidentDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProofMaterialNote")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -724,13 +805,6 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Remark")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ReviewerDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ReviewerName")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -1230,6 +1304,13 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DeptHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeptHeadDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("DisposalNo")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1261,6 +1342,20 @@ namespace DocMgr.Data.Migrations
 
                     b.Property<int>("PrintCount")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProductionHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionHeadDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProductionVicePresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionVicePresidentDate")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Reason")
                         .IsRequired()
@@ -1680,6 +1775,20 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("ApprovedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ArchiveDeputyPresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveDeputyPresidentDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArchiveRoomHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveRoomHeadDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("BusinessChainId")
                         .HasColumnType("INTEGER");
 
@@ -1700,18 +1809,11 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("DeptDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DeptLeader")
+                    b.Property<string>("DeptHead")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("DeputyDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DeputyLeader")
-                        .IsRequired()
+                    b.Property<DateTime?>("DeptHeadDate")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("HandoverConfirmedAt")
@@ -1739,11 +1841,18 @@ namespace DocMgr.Data.Migrations
                     b.Property<int>("PrintCount")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("ProdDate")
+                    b.Property<string>("ProductionHead")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ProdLeader")
+                    b.Property<DateTime?>("ProductionHeadDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProductionVicePresident")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionVicePresidentDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProjectName")
@@ -1768,13 +1877,6 @@ namespace DocMgr.Data.Migrations
 
                     b.Property<bool>("ReturnBorrowedHardDiskWithInbound")
                         .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("RndDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RndLeader")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
 
                     b.Property<bool>("SignedAttachmentUploaded")
                         .HasColumnType("INTEGER");
@@ -2105,6 +2207,13 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DeptHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeptHeadDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("DisposalNo")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -2122,6 +2231,20 @@ namespace DocMgr.Data.Migrations
 
                     b.Property<int>("PrintCount")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProductionHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionHeadDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProductionVicePresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionVicePresidentDate")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Reason")
                         .IsRequired()
@@ -2265,8 +2388,22 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("ApprovedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ArchiveDeputyPresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveDeputyPresidentDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ArchivePurpose")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArchiveRoomHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveRoomHeadDate")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("BusinessChainId")
@@ -2289,18 +2426,11 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("DeptDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DeptLeader")
+                    b.Property<string>("DeptHead")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("DeputyDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DeputyLeader")
-                        .IsRequired()
+                    b.Property<DateTime?>("DeptHeadDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("DestinationKind")
@@ -2332,11 +2462,18 @@ namespace DocMgr.Data.Migrations
                     b.Property<int>("PrintCount")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("ProdDate")
+                    b.Property<string>("ProductionHead")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ProdLeader")
+                    b.Property<DateTime?>("ProductionHeadDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProductionVicePresident")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionVicePresidentDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProjectName")
@@ -2352,13 +2489,6 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Remark")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("RndDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RndLeader")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -2706,6 +2836,96 @@ namespace DocMgr.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("UserPreferences");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.SystemSettings.ApprovalWorkflowRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BusinessType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Condition1FieldKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Condition1Value")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Condition2FieldKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Condition2Value")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConditionLogic")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DefaultArchiveDeputyPresidentUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DefaultArchiveRoomHeadUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DefaultDeptHeadUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DefaultProductionHeadUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DefaultProductionVicePresidentUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("EnableArchiveDeputyPresident")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("EnableArchiveRoomHead")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("EnableDeptHead")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("EnableProductionHead")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("EnableProductionVicePresident")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RuleName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessType", "Priority", "IsEnabled");
+
+                    b.ToTable("ApprovalWorkflowRules", (string)null);
                 });
 
             modelBuilder.Entity("DocMgr.Models.SystemSettings.BusinessLogicSettings", b =>
@@ -3307,6 +3527,20 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("ApprovedTime")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ArchiveDeputyPresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveDeputyPresidentDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArchiveRoomHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveRoomHeadDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("TEXT");
 
@@ -3322,6 +3556,13 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeptHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeptHeadDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("DisposalNo")
@@ -3365,6 +3606,20 @@ namespace DocMgr.Data.Migrations
 
                     b.Property<int>("PrintCount")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProductionHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionHeadDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProductionVicePresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionVicePresidentDate")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Reason")
                         .IsRequired()
@@ -3532,11 +3787,6 @@ namespace DocMgr.Data.Migrations
                     b.Property<string>("ItemName")
                         .IsRequired()
                         .HasMaxLength(512)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ItemType")
-                        .IsRequired()
-                        .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("LifecycleRemark")
@@ -3945,10 +4195,6 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ContentEntryRelativePath")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<int?>("CopyCount")
                         .HasColumnType("INTEGER");
 
@@ -4123,6 +4369,13 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("ApprovedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ArchiveDeputyPresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveDeputyPresidentDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ArchiveRoomHead")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -4143,14 +4396,14 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("DeptAuditDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DeptAuditOpinion")
+                    b.Property<string>("DeptHead")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("DeptAuditor")
+                    b.Property<DateTime?>("DeptHeadDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeptHeadOpinion")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -4217,6 +4470,13 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ProductionVicePresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionVicePresidentDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("ProjectId")
                         .HasColumnType("INTEGER");
 
@@ -4256,13 +4516,6 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("VicePresident")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("VicePresidentDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("VicePresidentOpinion")
@@ -4402,13 +4655,6 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("ModifiedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("RelativePath")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue("");
-
                     b.Property<decimal?>("SizeMb")
                         .HasPrecision(18, 2)
                         .HasColumnType("TEXT");
@@ -4512,12 +4758,18 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ItemType")
+                    b.Property<string>("Note")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Note")
+                    b.Property<string>("ProvideUnit")
                         .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("StoragePath")
@@ -4558,8 +4810,22 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ArchiveDeputyPresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveDeputyPresidentDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ArchivePurpose")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArchiveRoomHead")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveRoomHeadDate")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("ArchivedDate")
@@ -4578,18 +4844,11 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("DeptDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DeptLeader")
+                    b.Property<string>("DeptHead")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("DeputyDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DeputyLeader")
-                        .IsRequired()
+                    b.Property<DateTime?>("DeptHeadDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("DeputyOpinion")
@@ -4611,15 +4870,22 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("ProdDate")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("ProdDeptOpinion")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ProdLeader")
+                    b.Property<string>("ProductionHead")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionHeadDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProductionVicePresident")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionVicePresidentDate")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("ProjectId")
@@ -4632,18 +4898,7 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ProvideUnit")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("RndDate")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("RndDeptOpinion")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RndLeader")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -4656,10 +4911,6 @@ namespace DocMgr.Data.Migrations
 
                     b.Property<int?>("SourceNetworkOutboundRecordId")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("SourceType")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
@@ -4928,9 +5179,20 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("ApprovedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ApprovedBy")
+                    b.Property<string>("ArchiveDeputyPresident")
                         .IsRequired()
                         .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveDeputyPresidentDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArchiveRoomHead")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchiveRoomHeadDate")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("ArchiveYear")
@@ -4950,6 +5212,14 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeptHead")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeptHeadDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ForceVoidReason")
@@ -4997,6 +5267,14 @@ namespace DocMgr.Data.Migrations
                     b.Property<DateTime?>("ProductionHeadDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ProductionVicePresident")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ProductionVicePresidentDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("ProjectId")
                         .HasColumnType("INTEGER");
 
@@ -5039,14 +5317,6 @@ namespace DocMgr.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("ReviewerDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ReviewerName")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
                     b.Property<bool>("SignedAttachmentUploaded")
                         .HasColumnType("INTEGER");
 
@@ -5076,14 +5346,6 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("VicePresident")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("VicePresidentDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("VoidReason")
@@ -5200,11 +5462,6 @@ namespace DocMgr.Data.Migrations
                     b.Property<string>("ContentEntryName")
                         .IsRequired()
                         .HasMaxLength(512)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ContentEntryRelativePath")
-                        .IsRequired()
-                        .HasMaxLength(1024)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("FilingFactId")

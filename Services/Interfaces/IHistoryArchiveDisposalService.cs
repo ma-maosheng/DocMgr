@@ -34,8 +34,11 @@ public interface IHistoryArchiveDisposalService
 
     Task UpdateReviewSignersAsync(
         int recordId,
+        string? deptHead,
         string? archiveRoomHead,
+        string? productionHead,
         string? archiveDeputyPresident,
+        string? productionVicePresident,
         User currentUser);
 
     Task ConfirmReadyForUploadAsync(int recordId, User currentUser);

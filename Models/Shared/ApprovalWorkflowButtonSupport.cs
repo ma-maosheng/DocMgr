@@ -2,8 +2,10 @@ namespace DocMgr.Models.Shared
 {
     /// <summary>
     /// 审批弹窗五按钮统一规则（与硬盘出库审批对齐）：
-    /// 审批通过 → 确认实物交接 → 上传签批交接单 → 确认办结 → 打印交接单。
-    /// 「待确认办结」阶段仍允许继续上传附件，确认办结后才关闭上传。
+    /// 申请类：审批通过 → 确认实物交接 → 上传签批交接单 → 确认办结 → 打印交接单。
+    /// 处置类：审批通过 → 确认可上传 → 上传签批 → 确认办结 → 打印（对标交接解锁态，文案保留「确认可上传」）。
+    /// 「待确认办结」阶段仍允许继续上传附件，确认办结后办理窗关闭上传；
+    /// 办结后仅允许资料管理员在查看窗/打开态增补「其他附件」（见 CanSupplementOtherAttachments）。
     /// </summary>
     public static class ApprovalWorkflowButtonSupport
     {
@@ -112,5 +114,11 @@ namespace DocMgr.Models.Shared
 
             return Phase.PendingApproval;
         }
+
+        /// <summary>
+        /// 办结后是否允许资料管理员增补「其他附件」（仅新增、不可删除；服务层须同步校验分类）。
+        /// </summary>
+        public static bool CanSupplementOtherAttachments(bool isCompleted, bool isArchiveAdmin)
+            => isCompleted && isArchiveAdmin;
     }
 }

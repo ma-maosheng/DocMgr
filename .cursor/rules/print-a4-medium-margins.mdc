@@ -9,12 +9,57 @@ globs: **/*Print*.cs,**/*Printing*.cs,**/*WordExport*.cs
 
 1. 纸张固定为 **A4**。
 2. 页边距采用 Word「中等」预设：**上下 2.54cm、左右 1.91cm**。
-3. **一单一页**：内容偏少时增高明细类行；**「撑满一页」= 表单主体 + 表后说明同处一页**。
-4. **所有打印预览均提供「导出 Word」**：有专用导出（登记/出库审批单）优先用专用；否则用 `FlowDocumentWordExportSupport` 通用导出。
+3. **一单一页**：内容偏少时增高明细类行；**「撑满一页」= 表单主体 + 表后说明同处一页**。可伸缩行高度取剩余页高，**不得超过**剩余空间（正文下限更大时仍封顶，优先保证表后说明同页）。表后说明预留宜按实际文案估高（`EstimateNoteBlockHeightFromTextWithSafetyDip`），避免长句折行被低估。
+4. **所有打印预览均提供「导出 Word」**：有专用导出（登记/出库审批单）优先用专用；否则用 `FlowDocumentWordExportSupport` 通用导出。导出成功后须询问是否用 Word 打开（`WordExportOpenPromptSupport`）。
 5. 禁止在各单据工厂内再写一套独立页宽/页高/页边距或撑满算法。
+
+## 申请审批单统一版式
+
+凡标题含「申请审批单」的单据（入档/出库/入网/出网/硬盘出库等）：
+
+1. **标题距页顶**：可打印区顶插 `ApprovalFormTitleTopInsetDip`（当前 0）+ 上页边距，各单一致；禁止再加空段落或标题前换行。
+2. **表格首行**：固定为「申请人 | 申请部门」（左右双列）。
+3. **编号/日期与主表间距**：`ApprovalFormHeaderToTableGapDip` = `ApprovalFormLineHeightDip × 0.3`。
+4. **主表标签列宽**：两侧标签列 Star 权重 `1.6`（约占可打印宽的 8 汉字份额，覆盖「分管生产院长签字」），内容列 `3.4`。统一调用 `PrintPageLayoutSupport.ApplyApprovalFormMainTableColumns`。**禁止** Absolute 列宽（会被整页拉伸），**禁止** Star 权重用 DIP 原值等大数（总和过大时 FlowDocument 会错乱成左列占满整页）。Word 导出用 `WordExportTableLayoutSupport.ApprovalFormMainColumnWidthsTwips`。
+
+## 表格行高（按正文占用行数）
+
+内容区高度按「基准行高 × 行数」统一，禁止各工厂再写 28/36/40/50/72 等散落魔法数：
+
+| 占用行数 | DIP 常量 | Twips 常量 |
+| --- | --- | --- |
+| 1 行 | `TableRowContentHeightOneLineDip` (32) | `TableRowContentHeightOneLineTwips` (480) |
+| 2 行 | `TableRowContentHeightTwoLinesDip` | `TableRowContentHeightTwoLinesTwips` |
+| 3 行 | `TableRowContentHeightThreeLinesDip` | `TableRowContentHeightThreeLinesTwips` |
+| N 行 | `GetTableRowContentHeightDip(N)` | `GetTableRowContentHeightTwips(N)` |
+
+单元格内边距统一 `TableCellPaddingDip` / `TableCellPaddingTwips`。
+
+可变文本行（原因/申请说明/备注/其他要求等）：用 `ResolveSpannedContentRowHeightDip`（申请审批单合并内容列）或 `ResolveRowContentHeightDip`（其它列宽），按正文估行并设上限（说明类通常 max 5，备注类 max 3）。
+
+表后说明预留：按与 `CreateFooterParagraph` 一致的实际文案，调用 `EstimateNoteBlockHeightFromTextWithSafetyDip`（匹配该工厂 FontSize / LineHeight / Margin）；勿仅用固定行数估算。
+
+可伸缩明细行：`CalculateStretchRowHeightDip(reserved, contentNeeded, cellPadding)`，其中 `contentNeeded` 来自明细正文的 `ResolveSpannedContentRowHeightDip`（或等价估高），**不得**用 `StandardRowHeight * N` 之类魔法下限代替。撑满高度取剩余页高，**不得超过**剩余空间（`LayoutSlackDip` 当前为 **12**），优先保证表后说明同页。
+
+固定结构行（交接签字 2 行、手写栏、审核/审批多签人块等）保持设计行高，不按可变正文伸缩。累计固定表高时另加 `EstimateTableBottomBorderHeightDip(fixedRowCount)`。
+
+## 审核/审批签字栏
+
+打印表单**不输出意见正文**（「同意」等），仅保留「签字」与「日期」；签名即代表同意。统一用 `PrintApprovalSignatureSupport.FormatInline`（或 `FormatLabeledInline`）。
+
+## Word 导出字体
+
+相对 FlowDocument 预览**统一缩小一号**（中文字号）：
+- 标题：二号(22pt) → **小二(18pt)**
+- 正文/标签：小四(12pt) → **五号(10.5pt)**
+- 表后说明：五号(10.5pt) → **小五(9pt)**
+
+必须通过 `WordExportFontSupport.Apply*` 同时设置 ascii/eastAsia/hAnsi 与 sz/szCs，禁止仅设 `FontFamily`/`FontSize`。
 
 ## 实现入口
 
-- 页边距/撑满：`PrintPageLayoutSupport`
+- 页边距/撑满/申请审批单版式/行高：`PrintPageLayoutSupport`
+- 审批签字格式：`PrintApprovalSignatureSupport`
+- Word 字体：`WordExportFontSupport`
 - 通用 Word 导出：`FlowDocumentWordExportSupport`（由 `PrintPreviewWindowViewModel` 默认调用）
 - 专用 Word 导出：通过 `PrintPreviewExportOptions.ExportAsync` 传入

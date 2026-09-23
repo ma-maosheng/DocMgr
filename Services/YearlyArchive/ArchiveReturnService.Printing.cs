@@ -48,7 +48,8 @@ namespace DocMgr.Services.YearlyArchive
                 : DocumentTitleHandoverSheet;
             IReadOnlyDictionary<int, string> classificationByFilingFactId = await LoadClassificationByFilingFactIdsAsync(
                 record.Items.Select(item => item.FilingFactId));
-            return BuildReceiptPrintData(record, outbound, blankHandoverSignatures, documentTitle, classificationByFilingFactId);
+            var chain = await ResolveApprovalChainAsync(record);
+            return BuildReceiptPrintData(record, outbound, blankHandoverSignatures, documentTitle, classificationByFilingFactId, chain);
         }
 
         public async Task RecordPrintAsync(int recordId)
@@ -62,12 +63,13 @@ namespace DocMgr.Services.YearlyArchive
             await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
         }
 
-        private static ArchiveReturnReceiptPrintData BuildReceiptPrintData(
+        private ArchiveReturnReceiptPrintData BuildReceiptPrintData(
             YearlyArchiveReturnRecord record,
             YearlyArchiveOutboundRecord? outbound,
             bool blankHandoverSignatures,
             string documentTitle,
-            IReadOnlyDictionary<int, string> classificationByFilingFactId)
+            IReadOnlyDictionary<int, string> classificationByFilingFactId,
+            ApprovalChainResolution chain)
         {
             string returnDate = record.ReturnDate == default
                 ? string.Empty
@@ -78,6 +80,11 @@ namespace DocMgr.Services.YearlyArchive
             ArchiveReturnItemDisplaySupport.EnrichFromOutbound(record, outbound);
             string materialSummary = ArchiveReturnItemDescription.BuildMaterialSummary(record.Items);
             bool hasLossReturn = ArchiveReturnDomainValues.HasAbnormalReturnItems(record.Items);
+            // 审核/审批：已审批及之后预填；交接双方：仍由 blankHandoverSignatures（办结前留白）控制。
+            bool blankApproval = record.Status is not (
+                YearlyArchiveReturnRecord.Approved
+                or YearlyArchiveReturnRecord.SignedUploaded
+                or YearlyArchiveReturnRecord.Completed);
 
             string handoverDate = blankHandoverSignatures
                 ? BlankDateText
@@ -97,10 +104,10 @@ namespace DocMgr.Services.YearlyArchive
                 ItemLines = ArchiveReturnItemDescription.BuildPrintDetailLines(record.Items, classificationByFilingFactId).ToList(),
                 HandoverSignatureLines = BuildHandoverSignatureLines(record, blankHandoverSignatures, handoverDate),
                 ApprovalSignatureLines = BuildReturnFormApprovalSignatureLines(
+                    chain,
                     record,
                     outbound,
-                    blankHandoverSignatures,
-                    hasLossReturn),
+                    blankApproval),
                 Remark = record.Remark?.Trim() ?? string.Empty,
                 LossDescription = hasLossReturn ? record.LossDescription?.Trim() ?? string.Empty : string.Empty,
                 HasLossReturn = hasLossReturn,
@@ -109,31 +116,17 @@ namespace DocMgr.Services.YearlyArchive
         }
 
         /// <summary>
-        /// 签批交接单审核审批签字：正常归还仅部门负责人；灭失时含全部审核审批人。
-        /// 表单左侧标签去掉「借出时」前缀，保证单行显示；说明栏仍提示为借出时签字人。
-        /// 已审批后优先使用归还单录入值，否则回退出库单借出时签字。
+        /// 签批交接单审核审批签字：按审核审批配置启用节点输出。
         /// </summary>
         private static List<ArchiveReturnApprovalSignatureLine> BuildReturnFormApprovalSignatureLines(
+            ApprovalChainResolution chain,
             YearlyArchiveReturnRecord record,
             YearlyArchiveOutboundRecord? outbound,
-            bool blankSignatures,
-            bool hasLossReturn)
+            bool blankSignatures)
         {
-            var allLines = BuildReturnApprovalLines(record, outbound, blankSignatures)
+            return BuildReturnApprovalLines(chain, record, outbound, blankSignatures, roleLabelPrefix: string.Empty)
                 .Select(ToReturnFormApprovalLine)
                 .ToList();
-            if (hasLossReturn)
-            {
-                return allLines;
-            }
-
-            // 正常归还：仅部门负责人。
-            return allLines.Count > 0
-                ? new List<ArchiveReturnApprovalSignatureLine> { allLines[0] }
-                : new List<ArchiveReturnApprovalSignatureLine>
-                {
-                    CreateBlankApprovalLine("部门负责人")
-                };
         }
 
         /// <summary>去掉「借出时」前缀，使签批交接单左侧标签可单行放下。</summary>
@@ -172,7 +165,7 @@ namespace DocMgr.Services.YearlyArchive
                     },
                     new()
                     {
-                        RoleLabel = "资料室资料管理员签字：",
+                        RoleLabel = "资料管理员签字：",
                         SignerSlot = string.Empty,
                         DateText = BlankDateText
                     }
@@ -197,7 +190,7 @@ namespace DocMgr.Services.YearlyArchive
                 },
                 new()
                 {
-                    RoleLabel = "资料室资料管理员签字：",
+                    RoleLabel = "资料管理员签字：",
                     SignerSlot = admin,
                     DateText = string.IsNullOrWhiteSpace(adminDate) ? BlankDateText : adminDate
                 }

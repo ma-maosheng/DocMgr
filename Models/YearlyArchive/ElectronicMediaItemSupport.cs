@@ -26,7 +26,19 @@ namespace DocMgr.Models.YearlyArchive
             new(@"^\\[^\\]+(\\[^\\]+)*$", RegexOptions.CultureInvariant);
 
         /// <summary>
-        /// 目录型：子项有统一根目录；根下可同时有文件与一级子目录，明细 <c>EntryKind</c> 允许混合。
+        /// 递归枚举选项：跳过无权限目录（如盘符根下的 $RECYCLE.BIN、System Volume Information）。
+        /// <see cref="SearchOption.AllDirectories"/> 遇无权限目录会终止整个枚举，
+        /// 导致盘符作为父目录时数据量统计为 0、日期解析抛异常。
+        /// </summary>
+        public static readonly EnumerationOptions RecursiveIgnoreInaccessibleEnumerationOptions = new()
+        {
+            RecurseSubdirectories = true,
+            IgnoreInaccessible = true,
+            AttributesToSkip = FileAttributes.None
+        };
+
+        /// <summary>
+        /// 目录型：子项有统一父目录；父目录下可同时有文件与一级子目录，明细 <c>EntryKind</c> 允许混合。
         /// </summary>
         public static bool IsDirectoryOrganizationForm(string? dataOrganizationForm) =>
             string.Equals(
@@ -35,50 +47,26 @@ namespace DocMgr.Models.YearlyArchive
                 StringComparison.Ordinal);
 
         /// <summary>
-        /// 文件型：无统一根目录，仅登记散文件；全部明细必须为文件。
-        /// </summary>
-        public static bool IsFileOrganizationForm(string? dataOrganizationForm) =>
-            string.Equals(
-                dataOrganizationForm?.Trim(),
-                ArchiveRegisterDomainValues.ElectronicDataOrganizationFormFile,
-                StringComparison.Ordinal);
-
-        /// <summary>
         /// 缺省条目类型提示值。目录型允许混合，不得用本方法强制覆盖已扫描的 <c>EntryKind</c>。
         /// </summary>
         public static string ResolveEntryKind(string? dataOrganizationForm)
         {
-            if (IsDirectoryOrganizationForm(dataOrganizationForm))
-            {
-                return ArchiveRegisterDomainValues.ElectronicEntryKindDirectory;
-            }
-
-            if (IsFileOrganizationForm(dataOrganizationForm))
-            {
-                return ArchiveRegisterDomainValues.ElectronicEntryKindFile;
-            }
-
-            return string.Empty;
+            return IsDirectoryOrganizationForm(dataOrganizationForm)
+                ? ArchiveRegisterDomainValues.ElectronicEntryKindDirectory
+                : string.Empty;
         }
 
         /// <summary>
-        /// 明细未填 <c>EntryKind</c> 时的补全：文件型补「文件」；目录型不猜测（允许目录/文件混合）。
+        /// 明细未填 <c>EntryKind</c> 时不猜测（允许目录/文件混合）。
         /// </summary>
         public static string ResolveMissingEntryKindFallback(string? dataOrganizationForm)
         {
-            return IsFileOrganizationForm(dataOrganizationForm)
-                ? ArchiveRegisterDomainValues.ElectronicEntryKindFile
-                : string.Empty;
+            return string.Empty;
         }
 
         public static bool IsAllowedEntryKind(string? dataOrganizationForm, string? entryKind)
         {
             string kind = entryKind?.Trim() ?? string.Empty;
-            if (IsFileOrganizationForm(dataOrganizationForm))
-            {
-                return string.Equals(kind, ArchiveRegisterDomainValues.ElectronicEntryKindFile, StringComparison.Ordinal);
-            }
-
             if (IsDirectoryOrganizationForm(dataOrganizationForm))
             {
                 return string.Equals(kind, ArchiveRegisterDomainValues.ElectronicEntryKindDirectory, StringComparison.Ordinal)
@@ -109,19 +97,6 @@ namespace DocMgr.Models.YearlyArchive
 
             if (list.Count == 0 || string.IsNullOrWhiteSpace(form))
             {
-                return errors;
-            }
-
-            if (IsFileOrganizationForm(form))
-            {
-                if (list.Any(entry => !string.Equals(
-                        entry.EntryKind?.Trim(),
-                        ArchiveRegisterDomainValues.ElectronicEntryKindFile,
-                        StringComparison.Ordinal)))
-                {
-                    errors.Add($"{itemPrefix}文件型仅允许文件明细，不能包含目录");
-                }
-
                 return errors;
             }
 
@@ -203,6 +178,22 @@ namespace DocMgr.Models.YearlyArchive
             }
 
             return detail.Entries.Sum(entry => entry.SizeMb ?? 0);
+        }
+
+        /// <summary>
+        /// 是否为盘符根目录（如 D:\）。
+        /// </summary>
+        public static bool IsDriveRoot(string? path)
+        {
+            string trimmed = path?.Trim() ?? string.Empty;
+            if (trimmed.Length != 3)
+            {
+                return false;
+            }
+
+            return char.IsLetter(trimmed[0])
+                && trimmed[1] == ':'
+                && (trimmed[2] == '\\' || trimmed[2] == '/');
         }
 
         /// <summary>
@@ -358,8 +349,7 @@ namespace DocMgr.Models.YearlyArchive
             IEnumerable<YearlyArchiveRegisterMediaItem> items)
         {
             return items
-                .OrderBy(item => item.ItemType, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(item => item.ContentDesc, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(item => item.ContentDesc, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(item => item.Id);
         }
 
@@ -451,7 +441,7 @@ namespace DocMgr.Models.YearlyArchive
             string root = item.StoragePath?.Trim() ?? string.Empty;
             foreach (var entry in item.ElectronicDetail.Entries.OrderBy(e => e.SortOrder))
             {
-                string relative = entry.RelativePath?.Trim() ?? string.Empty;
+                string relative = entry.EntryName?.Trim() ?? string.Empty;
                 if (string.IsNullOrWhiteSpace(relative))
                 {
                     continue;
@@ -601,7 +591,7 @@ namespace DocMgr.Models.YearlyArchive
             }
 
             DateTime? earliest = null;
-            foreach (var filePath in Directory.EnumerateFiles(fullPath, "*", SearchOption.AllDirectories))
+            foreach (var filePath in Directory.EnumerateFiles(fullPath, "*", RecursiveIgnoreInaccessibleEnumerationOptions))
             {
                 try
                 {
@@ -663,7 +653,7 @@ namespace DocMgr.Models.YearlyArchive
             }
 
             DateTime? latest = null;
-            foreach (var filePath in Directory.EnumerateFiles(fullPath, "*", SearchOption.AllDirectories))
+            foreach (var filePath in Directory.EnumerateFiles(fullPath, "*", RecursiveIgnoreInaccessibleEnumerationOptions))
             {
                 try
                 {
@@ -716,11 +706,6 @@ namespace DocMgr.Models.YearlyArchive
             }
 
             string sizeText = FormatSizeMb(totalSizeMb);
-            if (IsFileOrganizationForm(dataOrganizationForm))
-            {
-                return $"已扫描 {entryCount} 个文件，合计 {sizeText}";
-            }
-
             if (IsDirectoryOrganizationForm(dataOrganizationForm))
             {
                 string nested = nestedFileCount > 0 ? $"，包含 {nestedFileCount} 个文件" : string.Empty;
@@ -738,12 +723,7 @@ namespace DocMgr.Models.YearlyArchive
             var list = entries?.ToList() ?? [];
             if (treatAsUnknown && list.Count == 0)
             {
-                return IsFileOrganizationForm(dataOrganizationForm) ? "文件个数：未知" : "明细个数：未知";
-            }
-
-            if (IsFileOrganizationForm(dataOrganizationForm))
-            {
-                return $"文件个数：{list.Count}";
+                return "明细个数：未知";
             }
 
             int directoryCount = CountDirectoryEntries(list);

@@ -260,7 +260,9 @@ namespace DocMgr.Services.YearlyArchive
                 return $"目标档口专用类别须与源档口一致（源：{ResolveMagneticSlotCategoryDisplay(normalizedSourceCategory)}）。";
             }
 
-            int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(normalizedTargetCategory);
+            int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
+                normalizedTargetCategory,
+                targetCabinet);
             if (sourceUnits.Count > slotCapacity)
             {
                 return $"目标档口容量不足（需要 {sourceUnits.Count} 个盘位，档口容量 {slotCapacity} 个）。";

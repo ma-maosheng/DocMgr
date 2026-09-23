@@ -33,7 +33,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(user))
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("仅资料室管理员可上传签批交接单。");
+                return ArchiveReturnAttachmentFlowResult.Fail("仅资料管理员可上传签批交接单。");
             }
 
             var record = await _returnRepository.GetByIdWithDetailsAsync(recordId);
@@ -72,6 +72,54 @@ namespace DocMgr.Services.YearlyArchive
             return ArchiveReturnAttachmentFlowResult.Ok("签批交接单上传成功。", attachment);
         }
 
+        /// <summary>办结后增补「其他附件」。</summary>
+        public async Task<ArchiveReturnAttachmentFlowResult> UploadOtherAttachmentFlowAsync(
+            int recordId,
+            SystemAttachment attachment,
+            User user)
+        {
+            ArgumentNullException.ThrowIfNull(attachment);
+            ArgumentNullException.ThrowIfNull(user);
+
+            string? formatError = SystemAttachmentUploadSupport.ValidateUploadFormat(
+                attachment.FileName,
+                attachment.Extension,
+                attachment.FileContent);
+            if (!string.IsNullOrWhiteSpace(formatError))
+            {
+                return ArchiveReturnAttachmentFlowResult.Fail(formatError);
+            }
+
+            if (!IsArchiveAdminUser(user))
+            {
+                return ArchiveReturnAttachmentFlowResult.Fail("仅资料管理员可在办结后增补其他附件。");
+            }
+
+            var record = await _returnRepository.GetByIdWithDetailsAsync(recordId);
+            if (record == null)
+            {
+                return ArchiveReturnAttachmentFlowResult.Fail("未找到指定的归还单。");
+            }
+
+            if (record.Status != YearlyArchiveReturnRecord.Completed)
+            {
+                return ArchiveReturnAttachmentFlowResult.Fail("仅已办结归还单可增补「其他附件」。");
+            }
+
+            attachment.BusinessType = ArchiveReturnDomainValues.BusinessTypeAttachment;
+            attachment.BusinessNo = record.ReturnNo;
+            attachment.BusinessId = record.Id;
+            attachment.FileCategory = ArchiveReturnDomainValues.AttachmentKindOther;
+            attachment.UploaderName = ResolveUserName(user);
+            attachment.UploadTime = DateTime.Now;
+
+            _returnRepository.AddAttachment(attachment);
+            record.UpdatedAt = attachment.UploadTime;
+            await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
+
+            return ArchiveReturnAttachmentFlowResult.Ok("其他附件已增补。", attachment);
+        }
+
         public async Task<ArchiveReturnAttachmentFlowResult> DeleteSignedHandoverAttachmentFlowAsync(
             int recordId,
             SystemAttachment attachment,
@@ -82,7 +130,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(user))
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("仅资料室管理员可删除签批交接单。");
+                return ArchiveReturnAttachmentFlowResult.Fail("仅资料管理员可删除签批交接单。");
             }
 
             var record = await _returnRepository.GetByIdWithDetailsAsync(recordId);

@@ -18,7 +18,6 @@ namespace DocMgr.Data.Configurations
             builder.Property(fact => fact.ProjectName).HasMaxLength(256);
             builder.Property(fact => fact.ProvideUnit).HasMaxLength(128);
             builder.Property(fact => fact.ApplicantName).HasMaxLength(64);
-            builder.Property(fact => fact.ItemType).HasMaxLength(16);
             builder.Property(fact => fact.ItemName).HasMaxLength(512);
             builder.Property(fact => fact.ContainerCode).HasMaxLength(64);
             builder.Property(fact => fact.StorageLocation).HasMaxLength(128);

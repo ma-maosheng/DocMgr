@@ -1,6 +1,7 @@
 ﻿<Window x:Class="DocMgr.Views.HardDiskMedia.HardDiskMediaOutboundApplicationEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
         Width="1280"
         Height="780"
         MinWidth="1100"
@@ -9,6 +10,7 @@
         Background="#F5F7FA">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <viewShared:InverseBoolRadioConverter x:Key="InverseBoolRadioConverter"/>
         <Style x:Key="OutboundFieldLabelStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#64748B"/>
             <Setter Property="FontSize" Value="12"/>
@@ -25,6 +27,16 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="4"/>
             <Setter Property="Padding" Value="12"/>
+        </Style>
+        <Style x:Key="OutboundTargetLocationTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="{StaticResource DialogFormControlHeight}"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Background" Value="White"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsTargetLocationReadOnly}" Value="True">
+                    <Setter Property="Background" Value="#F8FAFC"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
     <Grid Margin="16">
@@ -50,7 +62,7 @@
             <!-- 左侧：申请信息 -->
             <Border Grid.Column="0" Style="{StaticResource OutboundCardBorderStyle}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel>
+                    <StackPanel IsEnabled="{Binding CanEditApplicationForm}">
                         <TextBlock Text="申请信息" Style="{StaticResource OutboundSectionTitleStyle}" Margin="0,0,0,10"/>
 
                         <StackPanel Margin="0,0,0,10">
@@ -132,22 +144,60 @@
                                          VerticalContentAlignment="Center"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="目标位置/去向" Style="{StaticResource OutboundFieldLabelStyle}"/>
-                                <TextBox Text="{Binding TargetLocation, Mode=OneWay}"
-                                         Height="{StaticResource DialogFormControlHeight}"
-                                         IsReadOnly="True"
-                                         Background="#F8FAFC"
-                                         VerticalContentAlignment="Center"/>
+                                <TextBlock Text="{Binding TargetLocationFieldLabel}" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                <TextBox Text="{Binding TargetLocation, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource OutboundTargetLocationTextBoxStyle}"
+                                         IsReadOnly="{Binding IsTargetLocationReadOnly}"
+                                         ToolTip="{Binding TargetLocationToolTip}"/>
                             </StackPanel>
                         </Grid>
 
+                        <StackPanel Margin="0,0,0,10"
+                                    Visibility="{Binding ShowDestinationKind, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Text="目标去向 *" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                            <ComboBox ItemsSource="{Binding DestinationKindOptions}"
+                                      SelectedItem="{Binding DestinationKind}"
+                                      Height="{StaticResource DialogFormControlHeight}"/>
+                        </StackPanel>
+
                         <TextBlock Text="申请原因 *" Style="{StaticResource OutboundFieldLabelStyle}"/>
                         <TextBox Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
-                                 MinHeight="120"
+                                 MinHeight="80"
                                  AcceptsReturn="True"
                                  TextWrapping="Wrap"
                                  VerticalContentAlignment="Top"
-                                 Padding="6,4"/>
+                                 Padding="6,4"
+                                 Margin="0,0,0,10"/>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <TextBlock Text="附有证明材料" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                <StackPanel Orientation="Horizontal" Height="{StaticResource DialogFormControlHeight}">
+                                    <RadioButton Content="是"
+                                                 GroupName="HardDiskOutboundProofMaterialHas"
+                                                 VerticalAlignment="Center"
+                                                 Margin="0,0,12,0"
+                                                 IsChecked="{Binding HasProofMaterial, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <RadioButton Content="否"
+                                                 GroupName="HardDiskOutboundProofMaterialHas"
+                                                 VerticalAlignment="Center"
+                                                 IsChecked="{Binding HasProofMaterial, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2"
+                                        Visibility="{Binding HasProofMaterial, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="证明材料名称 *" Style="{StaticResource OutboundFieldLabelStyle}"/>
+                                <TextBox Text="{Binding ProofMaterialName, UpdateSourceTrigger=PropertyChanged}"
+                                         Height="{StaticResource DialogFormControlHeight}"
+                                         VerticalContentAlignment="Center"
+                                         ToolTip="填写证明材料名称；审批环节由资料管理员上传扫描件"/>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
@@ -199,6 +249,7 @@
                               Background="#FAFBFC"
                               RowHeight="34"
                               ColumnHeaderHeight="34"
+                              IsEnabled="{Binding CanEditApplicationForm}"
                               IsReadOnly="False"
                               EnableRowVirtualization="True"
                               HorizontalScrollBarVisibility="Auto"

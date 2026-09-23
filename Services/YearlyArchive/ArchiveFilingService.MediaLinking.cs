@@ -129,7 +129,7 @@ namespace DocMgr.Services.YearlyArchive
 
             SyncLinkedMedia(unit, linkedMedia, archivedAt, borrowedHardDiskCandidate);
 
-            string operatorName = unit.ArchivedBy?.Trim() ?? "资料室管理员";
+            string operatorName = unit.ArchivedBy?.Trim() ?? "资料管理员";
             string relatedBatch = unit.ElectronicArchiveNo.Trim();
             string relatedArchiveTitle = string.IsNullOrWhiteSpace(unit.ContentSummary)
                 ? relatedBatch

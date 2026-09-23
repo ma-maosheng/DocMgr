@@ -1,4 +1,4 @@
-﻿<Window x:Class="DocMgr.Views.YearlyArchive.ArchiveOutboundApplicationViewDialog"
+<Window x:Class="DocMgr.Views.YearlyArchive.ArchiveOutboundApplicationViewDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Width="1150"
@@ -115,17 +115,17 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,10">
-                                <TextBlock Text="申请部门审核意见" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                                <TextBlock Text="{Binding DeptAuditOpinion}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                                <TextBlock Text="部门审核" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                <TextBlock Text="{Binding DeptHeadOpinion}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                 <TextBlock Margin="0,4,0,0">
                                     <Run Text="审核人：" Foreground="#64748B"/>
-                                    <Run Text="{Binding DeptAuditor, Mode=OneWay}"/>
+                                    <Run Text="{Binding DeptHead, Mode=OneWay}"/>
                                     <Run Text="  日期：" Foreground="#64748B"/>
-                                    <Run Text="{Binding DeptAuditDateDisplay, Mode=OneWay}"/>
+                                    <Run Text="{Binding DeptHeadDateDisplay, Mode=OneWay}"/>
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,10">
-                                <TextBlock Text="资料室负责人意见" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                <TextBlock Text="资料室签字" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                 <TextBlock Text="{Binding ArchiveRoomHeadOpinion}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                 <TextBlock Margin="0,4,0,0">
                                     <Run Text="负责人：" Foreground="#64748B"/>
@@ -135,7 +135,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
-                                <TextBlock Text="生产科负责人意见" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                <TextBlock Text="生产科签字" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                 <TextBlock Text="{Binding ProductionHeadOpinion}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                 <TextBlock Margin="0,4,0,0">
                                     <Run Text="负责人：" Foreground="#64748B"/>
@@ -145,13 +145,13 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,0">
-                                <TextBlock Text="生产副院长意见" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                <TextBlock Text="分管生产院长签字" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                 <TextBlock Text="{Binding VicePresidentOpinion}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                 <TextBlock Margin="0,4,0,0">
                                     <Run Text="签字：" Foreground="#64748B"/>
-                                    <Run Text="{Binding VicePresident, Mode=OneWay}"/>
+                                    <Run Text="{Binding ProductionVicePresident, Mode=OneWay}"/>
                                     <Run Text="  日期：" Foreground="#64748B"/>
-                                    <Run Text="{Binding VicePresidentDateDisplay, Mode=OneWay}"/>
+                                    <Run Text="{Binding ProductionVicePresidentDateDisplay, Mode=OneWay}"/>
                                 </TextBlock>
                             </StackPanel>
                         </Grid>

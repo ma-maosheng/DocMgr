@@ -91,7 +91,7 @@ namespace DocMgr.Models.HardDiskMedia
         public string TargetLocation { get; init; } = string.Empty;
 
         /// <summary>
-        /// 对方人员或单位。
+        /// 目标去向（本部门名称或外单位名称）。
         /// </summary>
         public string TargetPersonOrUnit { get; init; } = string.Empty;
 
@@ -120,25 +120,50 @@ namespace DocMgr.Models.HardDiskMedia
         /// </summary>
         public string Remark { get; init; } = string.Empty;
 
-        /// <summary>
-        /// 审核人。
-        /// </summary>
-        public string ReviewerName { get; init; } = string.Empty;
+        /// <summary>部门审核签字。</summary>
+        public string DeptHead { get; init; } = string.Empty;
 
-        /// <summary>
-        /// 审核日期文本。
-        /// </summary>
-        public string ReviewerDateText { get; init; } = string.Empty;
+        /// <summary>部门审核日期文本。</summary>
+        public string DeptHeadDateText { get; init; } = string.Empty;
 
-        /// <summary>
-        /// 审批人。
-        /// </summary>
-        public string ApproverName { get; init; } = string.Empty;
+        /// <summary>资料室签字。</summary>
+        public string ArchiveRoomHead { get; init; } = string.Empty;
 
-        /// <summary>
-        /// 审批日期文本。
-        /// </summary>
-        public string ApproverDateText { get; init; } = string.Empty;
+        /// <summary>资料室签字日期文本。</summary>
+        public string ArchiveRoomHeadDateText { get; init; } = string.Empty;
+
+        /// <summary>生产科签字。</summary>
+        public string ProductionHead { get; init; } = string.Empty;
+
+        /// <summary>生产科签字日期文本。</summary>
+        public string ProductionHeadDateText { get; init; } = string.Empty;
+
+        /// <summary>分管资料院长签字。</summary>
+        public string ArchiveDeputyPresident { get; init; } = string.Empty;
+
+        /// <summary>分管资料院长签字日期文本。</summary>
+        public string ArchiveDeputyPresidentDateText { get; init; } = string.Empty;
+
+        /// <summary>分管生产院长签字。</summary>
+        public string ProductionVicePresident { get; init; } = string.Empty;
+
+        /// <summary>分管生产院长签字日期文本。</summary>
+        public string ProductionVicePresidentDateText { get; init; } = string.Empty;
+
+        /// <summary>是否启用部门审核签字栏。</summary>
+        public bool EnableDeptHead { get; init; } = true;
+
+        /// <summary>是否启用资料室签字栏。</summary>
+        public bool EnableArchiveRoomHead { get; init; } = true;
+
+        /// <summary>是否启用生产科签字栏。</summary>
+        public bool EnableProductionHead { get; init; } = true;
+
+        /// <summary>是否启用分管资料院长签字栏。</summary>
+        public bool EnableArchiveDeputyPresident { get; init; }
+
+        /// <summary>是否启用分管生产院长签字栏。</summary>
+        public bool EnableProductionVicePresident { get; init; }
 
         /// <summary>
         /// 经办（申请侧）人员。

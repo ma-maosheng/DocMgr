@@ -39,7 +39,8 @@ internal static class Program
 
         Assert(
             "域值·文本子类非空",
-            ArchiveRegisterDomainValues.SimulatedTextSubCategories.Count >= 5,
+            ArchiveRegisterDomainValues.SimulatedTextSubCategories.Count >= 4
+            && !ArchiveRegisterDomainValues.SimulatedTextSubCategories.Contains("外来资料类"),
             $"count={ArchiveRegisterDomainValues.SimulatedTextSubCategories.Count}");
 
         Assert(
@@ -54,14 +55,16 @@ internal static class Program
         var emptyOptions = ArchiveRegisterDomainValues.GetSimulatedSubCategories(null);
 
         Assert(
-            "域值·GetSimulatedSubCategories(文本)",
+            "域值·GetSimulatedSubCategories(文本类)",
             textOptions.Count > 0
-            && textOptions.Contains(ArchiveRegisterDomainValues.SimulatedSubCategoryExternalMaterial),
+            && textOptions.Contains(ArchiveRegisterDomainValues.SimulatedSubCategoryPlanningDesign)
+            && !textOptions.Contains("外来资料类"),
             $"count={textOptions.Count}");
         Assert(
-            "域值·GetSimulatedSubCategories(图件)",
+            "域值·GetSimulatedSubCategories(图件类)",
             mapOptions.Count > 0
-            && mapOptions.Contains(ArchiveRegisterDomainValues.SimulatedSubCategoryExternalMap),
+            && mapOptions.Contains(ArchiveRegisterDomainValues.SimulatedSubCategoryOriginalMap)
+            && !mapOptions.Contains("外来图件类"),
             $"count={mapOptions.Count}");
         Assert(
             "域值·GetSimulatedSubCategories(空)为空列表",
@@ -125,7 +128,7 @@ internal static class Program
 
         item.SimulatedDetail = SimulatedMediaItemClassificationSupport.CreateDetail(
             ArchiveRegisterDomainValues.SimulatedMaterialCategoryText,
-            ArchiveRegisterDomainValues.SimulatedSubCategoryExternalMap,
+            ArchiveRegisterDomainValues.SimulatedSubCategoryResultMap,
             ArchiveRegisterDomainValues.SimulatedOrganizationFormBound);
         var mismatchErrors = SimulatedMediaItemClassificationSupport.CollectValidationErrors(item, 1, 1, pageOptions);
         Assert(
@@ -139,7 +142,7 @@ internal static class Program
             detail.OrganizationForm);
         Assert(
             "展示·分类摘要格式",
-            summary == "文本/策划设计类/装订",
+            summary == "文本类/策划设计类/装订",
             summary);
 
         var resolveItem = new YearlyArchiveRegisterMediaItem { SimulatedDetail = detail };
@@ -169,9 +172,9 @@ internal static class Program
             domainText: Array.Empty<string>(),
             domainMap: Array.Empty<string>());
         Assert(
-            "回归·模拟刷新对「文本」应回退内置子类",
+            "回归·模拟刷新对「文本类」应回退内置子类",
             simulatedOptions.Count > 0
-            && simulatedOptions.Contains(ArchiveRegisterDomainValues.SimulatedSubCategoryExternalMaterial),
+            && simulatedOptions.Contains(ArchiveRegisterDomainValues.SimulatedSubCategoryPlanningDesign),
             $"count={simulatedOptions.Count}, first={simulatedOptions.FirstOrDefault()}");
 
         var item = new MediaItemViewModel
@@ -209,8 +212,8 @@ internal static class Program
             Array.Empty<string>(),
             ArchiveRegisterDomainValues.SimulatedMapSubCategories);
         Assert(
-            "回退·图件类型使用图件子类",
-            item.AvailableSubCategories.Contains(ArchiveRegisterDomainValues.SimulatedSubCategoryExternalMap),
+            "回退·图件类类型使用图件子类",
+            item.AvailableSubCategories.Contains(ArchiveRegisterDomainValues.SimulatedSubCategoryOriginalMap),
             string.Join(",", item.AvailableSubCategories));
     }
 
@@ -218,7 +221,7 @@ internal static class Program
     {
         if (string.Equals(materialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocument, StringComparison.Ordinal))
         {
-            return ["外来资料类"];
+            return ["策划设计类"];
         }
 
         if (string.Equals(materialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategoryData, StringComparison.Ordinal))

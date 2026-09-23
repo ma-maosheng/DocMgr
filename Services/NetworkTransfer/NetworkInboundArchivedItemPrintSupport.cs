@@ -149,15 +149,13 @@ public static class NetworkInboundArchivedItemPrintSupport
         string scopeDisplay = ArchiveSearchPoolSupport.ResolveSelectionScopeDisplay(
             resultSetItem.SelectionScopeKind,
             resultSetItem.ContentEntryKind,
-            resultSetItem.ContentEntryName,
-            resultSetItem.ContentEntryRelativePath);
+            resultSetItem.ContentEntryName);
         AppendSegment(segments, "范围", scopeDisplay);
 
         string matchedSummary = ArchiveSearchPoolSupport.ResolveMatchedContentEntrySummary(
             resultSetItem.SelectionScopeKind,
             resultSetItem.ContentEntryKind,
             resultSetItem.ContentEntryName,
-            resultSetItem.ContentEntryRelativePath,
             hit.MatchedContentEntrySummary);
         if (!string.IsNullOrWhiteSpace(matchedSummary)
             && !string.Equals(matchedSummary, scopeDisplay, StringComparison.Ordinal))

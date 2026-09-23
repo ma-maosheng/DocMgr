@@ -11,12 +11,13 @@ namespace DocMgr.Services.YearlyArchive
             var clone = new YearlyArchiveRegisterMediaItem
             {
                 YearlyArchiveRegisterMediaId = source.YearlyArchiveRegisterMediaId,
-                ItemType = source.ItemType,
                 ContentDesc = source.ContentDesc,
                 ContentCount = source.ContentCount,
                 StoragePath = source.StoragePath,
                 Note = source.Note,
-                ConfidentialLevel = source.ConfidentialLevel
+                ConfidentialLevel = source.ConfidentialLevel,
+                SourceType = source.SourceType,
+                ProvideUnit = source.ProvideUnit
             };
 
             if (source.ElectronicDetail != null)
@@ -32,7 +33,6 @@ namespace DocMgr.Services.YearlyArchive
                         {
                             EntryKind = entry.EntryKind,
                             EntryName = entry.EntryName,
-                            RelativePath = entry.RelativePath,
                             SizeMb = entry.SizeMb,
                             SortOrder = entry.SortOrder
                         })

@@ -31,8 +31,6 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ApplicantName { get; init; } = string.Empty;
 
-        public string ItemType { get; init; } = string.Empty;
-
         public string ItemName { get; init; } = string.Empty;
 
         public string ConfidentialLevel { get; init; } = string.Empty;
@@ -393,8 +391,6 @@ namespace DocMgr.Models.YearlyArchive
         public string ProvideUnit { get; init; } = string.Empty;
 
         public string ApplicantName { get; init; } = string.Empty;
-
-        public string ItemType { get; init; } = string.Empty;
 
         public string ItemName { get; init; } = string.Empty;
 

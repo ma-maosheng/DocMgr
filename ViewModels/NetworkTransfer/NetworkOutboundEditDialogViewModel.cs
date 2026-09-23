@@ -48,6 +48,8 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
     private DateTime? _rndDate = DateTime.Today;
     private string _deputyLeader = string.Empty;
     private DateTime? _deputyDate = DateTime.Today;
+    private string _productionVicePresident = string.Empty;
+    private DateTime? _productionVicePresidentDate = DateTime.Today;
     private string _deliverer = string.Empty;
     private DateTime? _deliverDate = DateTime.Today;
     private string _administrator = string.Empty;
@@ -149,7 +151,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
 
     /// <summary>
-    /// 审批通过后、确认实物交接前，资料室管理员可从离线介质补录目录/文件并回写数据量与文件个数。
+    /// 审批通过后、确认实物交接前，资料管理员可从离线介质补录目录/文件并回写数据量与文件个数。
     /// </summary>
     public bool CanSupplementElectronicContentScan =>
         _mode == NetworkTransferWorkspaceMode.Approval
@@ -382,18 +384,20 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         }
     }
 
-    public string ProdLeader { get => _prodLeader; set => SetProperty(ref _prodLeader, value); }
-    public DateTime? ProdDate { get => _prodDate; set => SetProperty(ref _prodDate, value); }
-    public string RndLeader { get => _rndLeader; set => SetProperty(ref _rndLeader, value); }
-    public DateTime? RndDate { get => _rndDate; set => SetProperty(ref _rndDate, value); }
-    public string DeputyLeader { get => _deputyLeader; set => SetProperty(ref _deputyLeader, value); }
-    public DateTime? DeputyDate { get => _deputyDate; set => SetProperty(ref _deputyDate, value); }
+    public string ProductionHead { get => _prodLeader; set => SetProperty(ref _prodLeader, value); }
+    public DateTime? ProductionHeadDate { get => _prodDate; set => SetProperty(ref _prodDate, value); }
+    public string ArchiveRoomHead { get => _rndLeader; set => SetProperty(ref _rndLeader, value); }
+    public DateTime? ArchiveRoomHeadDate { get => _rndDate; set => SetProperty(ref _rndDate, value); }
+    public string ArchiveDeputyPresident { get => _deputyLeader; set => SetProperty(ref _deputyLeader, value); }
+    public DateTime? ArchiveDeputyPresidentDate { get => _deputyDate; set => SetProperty(ref _deputyDate, value); }
+    public string ProductionVicePresident { get => _productionVicePresident; set => SetProperty(ref _productionVicePresident, value); }
+    public DateTime? ProductionVicePresidentDate { get => _productionVicePresidentDate; set => SetProperty(ref _productionVicePresidentDate, value); }
     public string Deliverer { get => _deliverer; set => SetProperty(ref _deliverer, value); }
     public DateTime? DeliverDate { get => _deliverDate; set => SetProperty(ref _deliverDate, value); }
     public string Administrator { get => _administrator; set => SetProperty(ref _administrator, value); }
     public DateTime? AdminDate { get => _adminDate; set => SetProperty(ref _adminDate, value); }
-    public string DeptLeader { get => _deptLeader; set => SetProperty(ref _deptLeader, value); }
-    public DateTime? DeptDate { get => _deptDate; set => SetProperty(ref _deptDate, value); }
+    public string DeptHead { get => _deptLeader; set => SetProperty(ref _deptLeader, value); }
+    public DateTime? DeptHeadDate { get => _deptDate; set => SetProperty(ref _deptDate, value); }
 
     public RelayCommand SaveDraftCommand { get; }
     public RelayCommand DeleteAttachmentCommand { get; }
@@ -444,14 +448,16 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         ApplicantName = _record.ApplicantName;
         ApplicantDept = _record.ApplicantDept;
         ApplyTime = _record.ApplyTime == default ? DateTime.Now : _record.ApplyTime;
-        ProdLeader = _record.ProdLeader;
-        ProdDate = _record.ProdDate ?? DateTime.Today;
-        RndLeader = _record.RndLeader;
-        RndDate = _record.RndDate ?? DateTime.Today;
-        DeputyLeader = _record.DeputyLeader;
-        DeputyDate = _record.DeputyDate ?? DateTime.Today;
-        DeptLeader = _record.DeptLeader;
-        DeptDate = _record.DeptDate ?? DateTime.Today;
+        ProductionHead = _record.ProductionHead;
+        ProductionHeadDate = _record.ProductionHeadDate ?? DateTime.Today;
+        ArchiveRoomHead = _record.ArchiveRoomHead;
+        ArchiveRoomHeadDate = _record.ArchiveRoomHeadDate ?? DateTime.Today;
+        ArchiveDeputyPresident = _record.ArchiveDeputyPresident;
+        ArchiveDeputyPresidentDate = _record.ArchiveDeputyPresidentDate ?? DateTime.Today;
+        ProductionVicePresident = _record.ProductionVicePresident;
+        ProductionVicePresidentDate = _record.ProductionVicePresidentDate ?? DateTime.Today;
+        DeptHead = _record.DeptHead;
+        DeptHeadDate = _record.DeptHeadDate ?? DateTime.Today;
         BindHandoverFieldsFromRecord();
         _hasProofMaterialSelected = ArchiveRegisterDomainValues.RequiresProofMaterialAttachment(_record.ProofMaterialNote);
         OnPropertyChanged(nameof(HasProofMaterial));
@@ -734,14 +740,16 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
             await _service.ApproveOutboundAsync(new NetworkOutboundRecord
             {
                 Id = _record.Id,
-                DeptLeader = DeptLeader,
-                DeptDate = DeptDate,
-                ProdLeader = ProdLeader,
-                ProdDate = ProdDate,
-                RndLeader = RndLeader,
-                RndDate = RndDate,
-                DeputyLeader = DeputyLeader,
-                DeputyDate = DeputyDate
+                DeptHead = DeptHead,
+                DeptHeadDate = DeptHeadDate,
+                ProductionHead = ProductionHead,
+                ProductionHeadDate = ProductionHeadDate,
+                ArchiveRoomHead = ArchiveRoomHead,
+                ArchiveRoomHeadDate = ArchiveRoomHeadDate,
+                ArchiveDeputyPresident = ArchiveDeputyPresident,
+                ArchiveDeputyPresidentDate = ArchiveDeputyPresidentDate,
+                ProductionVicePresident = ProductionVicePresident,
+                ProductionVicePresidentDate = ProductionVicePresidentDate
             }, RequireUser());
             _hasCommittedChanges = true;
             _dialogService.ShowMessage("审批已通过。");
@@ -937,14 +945,16 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
     /// </summary>
     private void SyncApprovalFieldsFromRecord()
     {
-        ProdLeader = _record.ProdLeader;
-        ProdDate = _record.ProdDate ?? DateTime.Today;
-        RndLeader = _record.RndLeader;
-        RndDate = _record.RndDate ?? DateTime.Today;
-        DeputyLeader = _record.DeputyLeader;
-        DeputyDate = _record.DeputyDate ?? DateTime.Today;
-        DeptLeader = _record.DeptLeader;
-        DeptDate = _record.DeptDate ?? DateTime.Today;
+        ProductionHead = _record.ProductionHead;
+        ProductionHeadDate = _record.ProductionHeadDate ?? DateTime.Today;
+        ArchiveRoomHead = _record.ArchiveRoomHead;
+        ArchiveRoomHeadDate = _record.ArchiveRoomHeadDate ?? DateTime.Today;
+        ArchiveDeputyPresident = _record.ArchiveDeputyPresident;
+        ArchiveDeputyPresidentDate = _record.ArchiveDeputyPresidentDate ?? DateTime.Today;
+        ProductionVicePresident = _record.ProductionVicePresident;
+        ProductionVicePresidentDate = _record.ProductionVicePresidentDate ?? DateTime.Today;
+        DeptHead = _record.DeptHead;
+        DeptHeadDate = _record.DeptHeadDate ?? DateTime.Today;
         BindHandoverFieldsFromRecord();
         OnPropertyChanged(nameof(CurrentRecord));
     }

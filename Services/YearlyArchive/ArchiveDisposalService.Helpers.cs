@@ -24,7 +24,7 @@ public sealed partial class ArchiveDisposalService
     {
         if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
         {
-            throw new InvalidOperationException("仅资料室资料管理员可办理资料离库处置。");
+            throw new InvalidOperationException("仅资料管理员可办理资料离库处置。");
         }
     }
 

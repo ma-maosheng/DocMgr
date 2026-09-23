@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.SystemSettings;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.SystemSettings
@@ -23,13 +24,17 @@ namespace DocMgr.ViewModels.SystemSettings
             _businessLogicSettingsService = businessLogicSettingsService;
             _userContextService = userContextService;
             _dialogService = dialogService;
+            CanMaintain = ArchiveRegisterBusinessRules.IsSystemAdministrator(_userContextService.CurrentUser);
 
             ApplicationOverdueOptions = new ObservableCollection<ApplicationOverdueOption>(
                 _businessLogicSettingsService.GetApplicationOverdueOptions());
 
-            SaveCommand = new RelayCommand(async _ => await SaveAsync());
-            ResetDefaultCommand = new RelayCommand(_ => ResetDefault());
+            SaveCommand = new RelayCommand(async _ => await SaveAsync(), _ => CanMaintain);
+            ResetDefaultCommand = new RelayCommand(_ => ResetDefault(), _ => CanMaintain);
         }
+
+        /// <summary>系统管理员可保存；其余角色仅浏览当前设置。</summary>
+        public bool CanMaintain { get; }
 
         public ObservableCollection<ApplicationOverdueOption> ApplicationOverdueOptions { get; }
 
@@ -72,12 +77,22 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private void ResetDefault()
         {
+            if (!EnsureCanMaintain())
+            {
+                return;
+            }
+
             SelectedApplicationOverdueOption = ApplicationOverdueOptions
                 .FirstOrDefault(option => string.Equals(option.Code, ApplicationOverdueDomainValues.Default, StringComparison.Ordinal));
         }
 
         private async Task SaveAsync()
         {
+            if (!EnsureCanMaintain())
+            {
+                return;
+            }
+
             var user = _userContextService.CurrentUser;
             if (user == null)
             {
@@ -110,6 +125,17 @@ namespace DocMgr.ViewModels.SystemSettings
             {
                 _dialogService.ShowError($"保存失败：{ex.Message}");
             }
+        }
+
+        private bool EnsureCanMaintain()
+        {
+            if (CanMaintain)
+            {
+                return true;
+            }
+
+            _dialogService.ShowError("仅系统管理员可修改逾期设置。");
+            return false;
         }
     }
 }

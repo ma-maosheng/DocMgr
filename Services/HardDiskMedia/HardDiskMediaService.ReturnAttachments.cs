@@ -87,8 +87,8 @@ namespace DocMgr.Services.HardDiskMedia
                 if (outbound != null)
                 {
                     return (
-                        outbound.DeptAuditor,
-                        FormatApprovalDate(outbound.DeptAuditDate),
+                        outbound.DeptHead,
+                        FormatApprovalDate(outbound.DeptHeadDate),
                         outbound.ArchiveRoomHead,
                         FormatApprovalDate(outbound.ArchiveRoomHeadDate),
                         false);
@@ -101,10 +101,10 @@ namespace DocMgr.Services.HardDiskMedia
                 if (sourceApplication != null)
                 {
                     return (
-                        sourceApplication.ReviewerName,
-                        FormatApprovalDate(sourceApplication.ReviewerDate),
-                        sourceApplication.ApprovedBy,
-                        FormatApprovalDate(sourceApplication.ApprovedTime),
+                        sourceApplication.DeptHead,
+                        FormatApprovalDate(sourceApplication.DeptHeadDate),
+                        sourceApplication.ArchiveRoomHead,
+                        FormatApprovalDate(sourceApplication.ArchiveRoomHeadDate),
                         false);
                 }
             }
@@ -131,7 +131,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             if (!IsArchiveRoomMediaAdmin(currentUser))
             {
-                return HardDiskMediaAttachmentFlowResult.Fail("仅资料室资料管理员可上传非正常归还情况表扫描件。");
+                return HardDiskMediaAttachmentFlowResult.Fail("仅资料管理员可上传非正常归还情况表扫描件。");
             }
 
             if (string.IsNullOrWhiteSpace(fileName) || fileContent == null || fileContent.Length == 0)

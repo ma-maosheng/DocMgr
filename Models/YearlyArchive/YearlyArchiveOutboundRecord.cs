@@ -88,11 +88,11 @@ namespace DocMgr.Models.YearlyArchive
 
         public string PhysicallyCompletedBy { get; set; } = string.Empty;
 
-        public string DeptAuditOpinion { get; set; } = string.Empty;
+        public string DeptHeadOpinion { get; set; } = string.Empty;
 
-        public string DeptAuditor { get; set; } = string.Empty;
+        public string DeptHead { get; set; } = string.Empty;
 
-        public DateTime? DeptAuditDate { get; set; }
+        public DateTime? DeptHeadDate { get; set; }
 
         public string ArchiveRoomHeadOpinion { get; set; } = string.Empty;
 
@@ -108,9 +108,13 @@ namespace DocMgr.Models.YearlyArchive
 
         public string VicePresidentOpinion { get; set; } = string.Empty;
 
-        public string VicePresident { get; set; } = string.Empty;
+        public string ArchiveDeputyPresident { get; set; } = string.Empty;
 
-        public DateTime? VicePresidentDate { get; set; }
+        public DateTime? ArchiveDeputyPresidentDate { get; set; }
+
+        public string ProductionVicePresident { get; set; } = string.Empty;
+
+        public DateTime? ProductionVicePresidentDate { get; set; }
 
         public DateTime CreatedAt { get; set; }
 
@@ -168,14 +172,16 @@ namespace DocMgr.Models.YearlyArchive
 
         [NotMapped]
         public bool HasApprovalInput =>
-            !string.IsNullOrWhiteSpace(DeptAuditor)
-            || DeptAuditDate.HasValue
+            !string.IsNullOrWhiteSpace(DeptHead)
+            || DeptHeadDate.HasValue
             || !string.IsNullOrWhiteSpace(ArchiveRoomHead)
             || ArchiveRoomHeadDate.HasValue
             || !string.IsNullOrWhiteSpace(ProductionHead)
             || ProductionHeadDate.HasValue
-            || !string.IsNullOrWhiteSpace(VicePresident)
-            || VicePresidentDate.HasValue;
+            || !string.IsNullOrWhiteSpace(ArchiveDeputyPresident)
+            || ArchiveDeputyPresidentDate.HasValue
+            || !string.IsNullOrWhiteSpace(ProductionVicePresident)
+            || ProductionVicePresidentDate.HasValue;
 
         [NotMapped]
         public bool CanApplicantWithdraw => Id > 0 && (IsDraft || IsSubmitted) && !HasApprovalInput;

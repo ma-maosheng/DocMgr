@@ -1,7 +1,9 @@
 using System.IO;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.Shared;
 using NPOI.OpenXmlFormats.Wordprocessing;
 using NPOI.XWPF.UserModel;
 
@@ -12,19 +14,15 @@ namespace DocMgr.Services.YearlyArchive
     /// </summary>
     public sealed class ArchiveOutboundWordExportService : IArchiveOutboundWordExportService
     {
-        private const int BodyFontPoints = 10;
-        private const int LabelFontPoints = 10;
-        private const int TitleFontPoints = 15;
-        private const int FooterFontPoints = 9;
-        private const int CellMarginDxa = 28;
-        private const int CellLineSpacingTwips = 220;
-        private const int SingleRowHeightTwips = 340;
-        private const int ReasonRowHeightTwips = 400;
-        private const int SignatureRowHeightTwips = 620;
-        private const int TitleBlockHeightTwips = 520;
+        private const int CellMarginDxa = PrintPageLayoutSupport.TableCellPaddingTwips;
+        private const int CellLineSpacingTwips = 240;
+        private const int SingleRowHeightTwips = PrintPageLayoutSupport.TableRowContentHeightOneLineTwips;
+        private const int ReasonRowHeightTwips = PrintPageLayoutSupport.TableRowContentHeightOneLineTwips;
+        private const int SignatureRowHeightTwips = PrintPageLayoutSupport.TableRowContentHeightTwoLinesTwips;
+        private const int TitleBlockHeightTwips = PrintPageLayoutSupport.ApprovalFormTitleBlockHeightTwips;
         private const int HeaderInfoHeightTwips = 380;
-        private const int TableWidthDxa = PrintPageLayoutSupport.ContentWidthTwips;
-        private static readonly int[] ColumnWidthsDxa = { 2044, 2829, 2044, 2829 };
+        private static readonly int[] ColumnWidthsDxa =
+            WordExportTableLayoutSupport.ApprovalFormMainColumnWidthsTwips;
 
         public void ExportToFile(ArchiveOutboundPrintData data, string filePath)
         {
@@ -57,7 +55,7 @@ namespace DocMgr.Services.YearlyArchive
             int itemDetailRowHeightTwips = CalculateItemDetailRowHeightTwips(
                 !string.IsNullOrWhiteSpace(data.LongTermSimulatedStockDepletionNoticeText));
             int rowIndex = 0;
-            AddDoubleRow(table, ref rowIndex, "申请部门", data.ApplicantDept, "申请人", data.ApplicantName, WordTableRowStyle.SingleLine);
+            AddDoubleRow(table, ref rowIndex, "申请人", data.ApplicantName, "申请部门", data.ApplicantDept, WordTableRowStyle.SingleLine);
             AddSingleRow(table, ref rowIndex, "原由", data.Reason, WordTableRowStyle.ReasonLine);
             AddSingleRow(table, ref rowIndex, "去向", data.DestinationText, WordTableRowStyle.SingleLine);
             AddSingleRow(table, ref rowIndex, "证明材料名称", data.ProofMaterialNote, WordTableRowStyle.SingleLine);
@@ -77,10 +75,41 @@ namespace DocMgr.Services.YearlyArchive
 
             string itemText = data.ItemLines.Count > 0 ? string.Join("\n", data.ItemLines) : "(无)";
             AddSingleRow(table, ref rowIndex, "具体资料明细", itemText, WordTableRowStyle.ItemDetail, itemDetailRowHeightTwips);
-            AddSingleRow(table, ref rowIndex, "申请部门审核", data.DeptAuditBlock, WordTableRowStyle.SingleLine);
-            AddSingleRow(table, ref rowIndex, "资料室负责人", data.ArchiveRoomHeadBlock, WordTableRowStyle.SingleLine);
-            AddSingleRow(table, ref rowIndex, "生产科负责人", data.ProductionHeadBlock, WordTableRowStyle.SingleLine);
-            AddSingleRow(table, ref rowIndex, "生产副院长", data.VicePresidentBlock, WordTableRowStyle.SingleLine);
+            if (data.EnableDeptHead)
+            {
+                AddSingleRow(table, ref rowIndex, ApprovalWorkflowDomainValues.DisplayDeptHead, data.DeptHeadBlock, WordTableRowStyle.SingleLine);
+            }
+
+            if (data.EnableArchiveRoomHead)
+            {
+                AddSingleRow(table, ref rowIndex, ApprovalWorkflowDomainValues.DisplayArchiveRoomHead, data.ArchiveRoomHeadBlock, WordTableRowStyle.SingleLine);
+            }
+
+            if (data.EnableProductionHead)
+            {
+                AddSingleRow(table, ref rowIndex, ApprovalWorkflowDomainValues.DisplayProductionHead, data.ProductionHeadBlock, WordTableRowStyle.SingleLine);
+            }
+
+            if (data.EnableArchiveDeputyPresident)
+            {
+                AddSingleRow(
+                    table,
+                    ref rowIndex,
+                    ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident,
+                    data.ArchiveDeputyPresidentBlock,
+                    WordTableRowStyle.SingleLine);
+            }
+
+            if (data.EnableProductionVicePresident)
+            {
+                AddSingleRow(
+                    table,
+                    ref rowIndex,
+                    ApprovalWorkflowDomainValues.DisplayProductionVicePresident,
+                    data.ProductionVicePresidentBlock,
+                    WordTableRowStyle.SingleLine);
+            }
+
             AddSingleRow(
                 table,
                 ref rowIndex,
@@ -108,7 +137,11 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             int footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightTwips(lineCount: 3, lineHeightTwips: 240, topMarginTwips: 120);
-            int reservedHeight = TitleBlockHeightTwips + HeaderInfoHeightTwips + footerHeight + fixedTableHeight;
+            int reservedHeight =
+                TitleBlockHeightTwips
+                + HeaderInfoHeightTwips
+                + footerHeight
+                + fixedTableHeight;
             return PrintPageLayoutSupport.CalculateStretchRowHeightTwips(
                 reservedHeight,
                 SingleRowHeightTwips * 4,
@@ -138,41 +171,29 @@ namespace DocMgr.Services.YearlyArchive
         {
             var paragraph = document.CreateParagraph();
             paragraph.Alignment = ParagraphAlignment.CENTER;
-            ApplyDocumentParagraph(paragraph, spacingAfterTwips: 24);
+            ApplyDocumentParagraph(paragraph);
             var run = paragraph.CreateRun();
             run.SetText("河北省第三测绘院资料室年度资料出库申请审批单");
-            run.IsBold = true;
-            run.FontFamily = "黑体";
-            run.FontSize = TitleFontPoints;
+            WordExportFontSupport.ApplyTitle(run);
         }
 
         private static void AddHeaderInfo(XWPFDocument document, ArchiveOutboundPrintData data)
         {
-            var leftParagraph = document.CreateParagraph();
-            ApplyDocumentParagraph(leftParagraph);
-            var leftRun = leftParagraph.CreateRun();
-            leftRun.SetText($"申请单编号：{data.OutboundNo}");
-            leftRun.FontFamily = "宋体";
-            leftRun.FontSize = BodyFontPoints;
+            var headerTable = document.CreateTable(1, 2);
+            ConfigureHeaderTable(headerTable);
 
-            var rightParagraph = document.CreateParagraph();
-            rightParagraph.Alignment = ParagraphAlignment.RIGHT;
-            ApplyDocumentParagraph(rightParagraph, spacingAfterTwips: 24);
-            var rightRun = rightParagraph.CreateRun();
-            rightRun.SetText($"申请日期：{data.ApplyDateText}");
-            rightRun.FontFamily = "宋体";
-            rightRun.FontSize = BodyFontPoints;
+            XWPFTableRow row = headerTable.GetRow(0);
+            WriteOutsideHeaderCell(row.GetCell(0), $"申请单编号：{data.OutboundNo}", ParagraphAlignment.LEFT);
+            WriteOutsideHeaderCell(row.GetCell(1), $"申请日期：{data.ApplyDateText}", ParagraphAlignment.RIGHT);
         }
 
         private static void AddFooterNotes(XWPFDocument document, int printSequence)
         {
             var titleParagraph = document.CreateParagraph();
-            ApplyDocumentParagraph(titleParagraph, spacingBeforeTwips: 40);
+            ApplyDocumentParagraph(titleParagraph);
             var titleRun = titleParagraph.CreateRun();
             titleRun.SetText("备注：");
-            titleRun.IsBold = true;
-            titleRun.FontFamily = "宋体";
-            titleRun.FontSize = FooterFontPoints;
+            WordExportFontSupport.ApplyFooter(titleRun, bold: true);
 
             AddFooterParagraph(document, "1、申请提交后，按“线上申请、打印表单、线下审批签字、上传签字件、资料出库交接”的流程办理。");
             AddFooterParagraph(document, "      2、签字后的审批单应回传系统，作为办理依据和归档附件。");
@@ -185,8 +206,7 @@ namespace DocMgr.Services.YearlyArchive
             ApplyDocumentParagraph(paragraph);
             var run = paragraph.CreateRun();
             run.SetText(text);
-            run.FontFamily = "宋体";
-            run.FontSize = FooterFontPoints;
+            WordExportFontSupport.ApplyFooter(run);
         }
 
         private enum WordTableRowStyle
@@ -211,6 +231,7 @@ namespace DocMgr.Services.YearlyArchive
             WriteLabelCell(row.GetCell(0), label, rowStyle);
             WriteBodyCell(row.GetCell(1), content, rowStyle);
             row.MergeCells(1, 3);
+            WordExportTableLayoutSupport.ApplyRowCellWidths(row, ColumnWidthsDxa);
             rowIndex++;
         }
 
@@ -230,6 +251,7 @@ namespace DocMgr.Services.YearlyArchive
             WriteBodyCell(row.GetCell(1), content1, rowStyle);
             WriteLabelCell(row.GetCell(2), label2, rowStyle);
             WriteBodyCell(row.GetCell(3), content2, rowStyle);
+            WordExportTableLayoutSupport.ApplyRowCellWidths(row, ColumnWidthsDxa);
             rowIndex++;
         }
 
@@ -259,20 +281,7 @@ namespace DocMgr.Services.YearlyArchive
 
         private static void ConfigureTableGrid(XWPFTable table)
         {
-            table.Width = 5000;
-            var tbl = table.GetCTTbl();
-            var tblPr = tbl.tblPr ?? tbl.AddNewTblPr();
-            var tblW = tblPr.tblW ?? tblPr.AddNewTblW();
-            tblW.type = ST_TblWidth.dxa;
-            tblW.w = TableWidthDxa.ToString();
-
-            var grid = tbl.tblGrid ?? tbl.AddNewTblGrid();
-            grid.gridCol.Clear();
-            foreach (int width in ColumnWidthsDxa)
-            {
-                var gridCol = grid.AddNewGridCol();
-                gridCol.w = (ulong)width;
-            }
+            WordExportTableLayoutSupport.ApplyFixedTableLayout(table, ColumnWidthsDxa);
         }
 
         private static void EnsureCellCount(XWPFTableRow row, int cellCount)
@@ -330,9 +339,14 @@ namespace DocMgr.Services.YearlyArchive
 
             var run = paragraph.CreateRun();
             run.SetText(text);
-            run.FontFamily = label ? "黑体" : "宋体";
-            run.FontSize = label ? LabelFontPoints : BodyFontPoints;
-            run.IsBold = label;
+            if (label)
+            {
+                WordExportFontSupport.ApplyLabel(run);
+            }
+            else
+            {
+                WordExportFontSupport.ApplyBody(run);
+            }
         }
 
         private static void ApplyCellVerticalAlignment(XWPFTableCell cell, WordTableRowStyle rowStyle)
@@ -351,31 +365,77 @@ namespace DocMgr.Services.YearlyArchive
 
         private static void ApplyCellParagraph(XWPFParagraph paragraph)
         {
-            paragraph.SpacingBefore = 0;
-            paragraph.SpacingAfter = 0;
+            WordExportFontSupport.ApplyHalfLineParagraphSpacing(paragraph);
 
             var pPr = paragraph.GetCTP().pPr ?? paragraph.GetCTP().AddNewPPr();
             var spacing = pPr.spacing ?? pPr.AddNewSpacing();
-            spacing.before = 0;
-            spacing.after = 0;
             spacing.line = CellLineSpacingTwips.ToString();
             spacing.lineRule = ST_LineSpacingRule.exact;
         }
 
-        private static void ApplyDocumentParagraph(
-            XWPFParagraph paragraph,
-            int spacingBeforeTwips = 0,
-            int spacingAfterTwips = 0)
+        private static void ApplyDocumentParagraph(XWPFParagraph paragraph)
         {
-            paragraph.SpacingBefore = spacingBeforeTwips;
-            paragraph.SpacingAfter = spacingAfterTwips;
+            WordExportFontSupport.ApplyHalfLineParagraphSpacing(paragraph);
 
             var pPr = paragraph.GetCTP().pPr ?? paragraph.GetCTP().AddNewPPr();
             var spacing = pPr.spacing ?? pPr.AddNewSpacing();
-            spacing.before = (ulong)spacingBeforeTwips;
-            spacing.after = (ulong)spacingAfterTwips;
             spacing.line = "240";
             spacing.lineRule = ST_LineSpacingRule.auto;
+        }
+
+        private static void ConfigureHeaderTable(XWPFTable table)
+        {
+            int[] widths = WordExportTableLayoutSupport.DistributeEqualWidths(
+                PrintPageLayoutSupport.ContentWidthTwips,
+                2);
+            WordExportTableLayoutSupport.ApplyFixedTableLayout(table, widths);
+            ApplyNilTableOuterBorder(table);
+            WordExportTableLayoutSupport.ApplyRowCellWidths(table.GetRow(0), widths);
+        }
+
+        private static void ApplyNilTableOuterBorder(XWPFTable table)
+        {
+            var tblPr = table.GetCTTbl().tblPr ?? table.GetCTTbl().AddNewTblPr();
+            var borders = tblPr.tblBorders ?? tblPr.AddNewTblBorders();
+            borders.top = CreateNilBorder();
+            borders.left = CreateNilBorder();
+            borders.bottom = CreateNilBorder();
+            borders.right = CreateNilBorder();
+            borders.insideH = CreateNilBorder();
+            borders.insideV = CreateNilBorder();
+        }
+
+        private static void WriteOutsideHeaderCell(XWPFTableCell cell, string text, ParagraphAlignment alignment)
+        {
+            ClearCellParagraphs(cell);
+            ApplyNilCellBorder(cell);
+
+            var paragraph = cell.AddParagraph();
+            paragraph.Alignment = alignment;
+            ApplyDocumentParagraph(paragraph);
+            var run = paragraph.CreateRun();
+            run.SetText(text);
+            WordExportFontSupport.ApplyBody(run);
+        }
+
+        private static void ApplyNilCellBorder(XWPFTableCell cell)
+        {
+            var tcPr = cell.GetCTTc().tcPr ?? cell.GetCTTc().AddNewTcPr();
+            var borders = tcPr.tcBorders ?? tcPr.AddNewTcBorders();
+            borders.top = CreateNilBorder();
+            borders.left = CreateNilBorder();
+            borders.bottom = CreateNilBorder();
+            borders.right = CreateNilBorder();
+
+            if (tcPr.tcMar == null)
+            {
+                tcPr.tcMar = new CT_TcMar();
+            }
+
+            tcPr.tcMar.top = CreateMargin(0);
+            tcPr.tcMar.bottom = CreateMargin(0);
+            tcPr.tcMar.left = CreateMargin(0);
+            tcPr.tcMar.right = CreateMargin(0);
         }
 
         private static string[] SplitLines(string? text) =>
@@ -414,6 +474,9 @@ namespace DocMgr.Services.YearlyArchive
 
         private static CT_Border CreateBorder() =>
             new() { val = ST_Border.single, sz = 4, color = "000000" };
+
+        private static CT_Border CreateNilBorder() =>
+            new() { val = ST_Border.nil, sz = 0, color = "auto" };
 
         private static void ApplyTableOuterBorder(XWPFTable table)
         {

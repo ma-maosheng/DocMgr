@@ -38,8 +38,6 @@ namespace DocMgr.Models.YearlyArchive
         public string FormNo { get; init; } = string.Empty;
 
         public string ItemName { get; init; } = string.Empty;
-
-        public string ItemType { get; init; } = string.Empty;
     }
 
     public sealed class ArchiveRelocationTargetOption

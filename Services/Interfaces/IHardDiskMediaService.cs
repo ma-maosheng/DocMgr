@@ -85,7 +85,7 @@ namespace DocMgr.Services.Interfaces
         Task<IReadOnlyList<HardDiskMediaReturnCandidate>> GetBorrowedHardDiskReturnCandidatesForUserAsync(User? user);
 
         /// <summary>
-        /// 资料入网办结后，由资料室管理员代办办结借出硬盘空盘归还登记（不走部门管理员申请流程）。
+        /// 资料入网办结后，由资料管理员代办办结借出硬盘空盘归还登记（不走部门管理员申请流程）。
         /// </summary>
         Task CompleteBlankReturnFromNetworkInboundAsync(
             HardDiskMediaReturnCandidate candidate,
@@ -191,9 +191,21 @@ namespace DocMgr.Services.Interfaces
         Task<SystemAttachment?> GetAttachmentByIdAsync(int attachmentId);
 
         /// <summary>
-        /// 上传签字件。
+        /// 上传签字件（签批交接单）。
         /// </summary>
         Task<HardDiskMediaAttachmentFlowResult> UploadSignedAttachmentAsync(HardDiskMediaApplication? application, User? currentUser, string fileName, string extension, long fileSize, byte[] fileContent);
+
+        /// <summary>
+        /// 按附件分类上传出库/借出审批交接附件。
+        /// </summary>
+        Task<HardDiskMediaAttachmentFlowResult> UploadApplicationAttachmentAsync(
+            HardDiskMediaApplication? application,
+            User? currentUser,
+            string fileCategory,
+            string fileName,
+            string extension,
+            long fileSize,
+            byte[] fileContent);
 
         /// <summary>
         /// 删除申请附件。
@@ -249,7 +261,7 @@ namespace DocMgr.Services.Interfaces
         Task<HardDiskMediaFlowResult> WithdrawApplicationAsync(HardDiskMediaApplication? application, User? currentUser, string? opinion);
 
         /// <summary>
-        /// 资料室资料管理员强制撤回作废申请。
+        /// 资料管理员强制撤回作废申请。
         /// </summary>
         Task<HardDiskMediaFlowResult> ForceWithdrawApplicationAsync(HardDiskMediaApplication? application, User? currentUser, string? opinion);
 
@@ -279,18 +291,20 @@ namespace DocMgr.Services.Interfaces
         Task<IReadOnlyList<HardDiskMediaReturnTargetLocationOption>> GetDedicatedTargetLocationOptionsAsync(string categoryName);
 
         /// <summary>
-        /// 按空白专用档口从小到大返回候选位置（含当前在库空盘数量）。
+        /// 按空白专用档口从小到大返回候选位置（含当前在库空盘数量与柜体配置容量）。
+        /// <paramref name="slotCapacity"/> 大于 0 时覆盖各柜配置，统一按该值判断。
         /// </summary>
-        Task<IReadOnlyList<HardDiskMediaReturnTargetLocationOption>> GetOrderedBlankDedicatedSlotLocationOptionsAsync(int slotCapacity = 10);
+        Task<IReadOnlyList<HardDiskMediaReturnTargetLocationOption>> GetOrderedBlankDedicatedSlotLocationOptionsAsync(int slotCapacity = 0);
 
         /// <summary>
         /// 推荐第一个仍有容量的空白专用档口（按档口编号从小到大）。
+        /// <paramref name="slotCapacity"/> 大于 0 时覆盖各柜配置。
         /// </summary>
-        Task<string?> RecommendBlankDedicatedSlotLocationAsync(int slotCapacity = 10);
+        Task<string?> RecommendBlankDedicatedSlotLocationAsync(int slotCapacity = 0);
 
         /// <summary>
         /// 在指定专用档口类别中分配带档内序号的完整存放位置（如 壬A-1-2-01）。不用于空白专用档口。
-        /// <paramref name="slotCapacity"/> 为 0 时按类别自动解析（硬盘 10、光盘 20）。
+        /// <paramref name="slotCapacity"/> 为 0 时按各柜配置解析（硬盘/光盘容量取自柜体）。
         /// </summary>
         Task<string?> AllocateNextDedicatedFullLocationAsync(
             string categoryName,

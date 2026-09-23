@@ -17,6 +17,26 @@ namespace DocMgr.Models.YearlyArchive
 
         public List<string> ItemLines { get; init; } = new();
 
+        public bool EnableDeptHead { get; init; }
+
+        public bool EnableArchiveRoomHead { get; init; }
+
+        public bool EnableProductionHead { get; init; }
+
+        public bool EnableArchiveDeputyPresident { get; init; }
+
+        public bool EnableProductionVicePresident { get; init; }
+
+        public string DeptHeadBlock { get; init; } = string.Empty;
+
+        public string ArchiveRoomHeadBlock { get; init; } = string.Empty;
+
+        public string ProductionHeadBlock { get; init; } = string.Empty;
+
+        public string ArchiveDeputyPresidentBlock { get; init; } = string.Empty;
+
+        public string ProductionVicePresidentBlock { get; init; } = string.Empty;
+
         public string HandoverSignatureBlock { get; init; } = string.Empty;
 
         public string HandoverRemark { get; init; } = string.Empty;

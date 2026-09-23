@@ -40,7 +40,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
             SearchCommand = new RelayCommand(async _ => await RefreshAsync());
             AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanOperate);
-            OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null && CanOperate);
+            OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null);
             WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => CanWithdrawSelected);
         }
 
@@ -303,7 +303,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             if (!CanOperate)
             {
-                _dialogService.ShowError("仅资料室资料管理员可办理盘库登记。");
+                _dialogService.ShowError("仅资料管理员可办理盘库登记。");
                 return;
             }
 

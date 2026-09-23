@@ -8,7 +8,7 @@ using DocMgr.Models.SystemSettings;
 namespace DocMgr.Services.Interfaces
 {
     /// <summary>
-    /// 存量硬盘直办立档：读取硬盘参数与四级目录后，由资料室资料管理员直接完成硬盘登记与电子立档。
+    /// 存量硬盘直办立档：读取硬盘参数与四级目录后，由资料管理员直接完成硬盘登记与电子立档。
     /// </summary>
     public interface IStockHardDiskDirectFilingService
     {
@@ -74,7 +74,7 @@ namespace DocMgr.Services.Interfaces
         Task<IReadOnlyList<string>> CollectCommitErrorsAsync(StockHardDiskDirectFilingRequest request, User? currentUser);
 
         /// <summary>
-        /// 资料室资料管理员一次完成硬盘登记与电子立档。
+        /// 资料管理员一次完成硬盘登记与电子立档。
         /// </summary>
         Task<StockHardDiskDirectFilingResult> CommitAsync(StockHardDiskDirectFilingRequest request, User? currentUser);
     }

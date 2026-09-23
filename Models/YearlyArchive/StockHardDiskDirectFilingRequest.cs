@@ -35,18 +35,15 @@ namespace DocMgr.Models.YearlyArchive
 
         public string StorageLocation { get; init; } = string.Empty;
 
-        public string SourceType { get; init; } = ArchiveRegisterDomainValues.SourceTypeStockDirect;
+        public string SourceType { get; init; } = ArchiveRegisterDomainValues.SourceTypeInternal;
 
         public string ArchivePurpose { get; init; } = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
 
-        public string ConfidentialLevel { get; init; } = "秘密";
-
         public string ProvideUnit { get; init; } = string.Empty;
 
-        public string MaterialCategory { get; init; } = ArchiveRegisterDomainValues.ElectronicMaterialCategoryData;
-
-        public string SubCategory { get; init; } = ArchiveRegisterDomainValues.DefaultStockDirectSubCategory;
-
+        /// <summary>
+        /// 扫描资料明细；密级 / 资料类型 / 所属子类在各子项上分别填写。
+        /// </summary>
         public IReadOnlyList<StockHardDiskMaterialDraft> Materials { get; init; } = Array.Empty<StockHardDiskMaterialDraft>();
     }
 

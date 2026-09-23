@@ -3,6 +3,7 @@ using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 
 namespace DocMgr.Services.HistoryArchive;
@@ -15,15 +16,18 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
     private readonly IHistoryArchiveDisposalRepository _repository;
     private readonly IBusinessRuleService _businessRuleService;
     private readonly IUserService _userService;
+    private readonly IApprovalWorkflowService _approvalWorkflowService;
 
     public HistoryArchiveDisposalService(
         IHistoryArchiveDisposalRepository repository,
         IBusinessRuleService businessRuleService,
-        IUserService userService)
+        IUserService userService,
+        IApprovalWorkflowService approvalWorkflowService)
     {
         _repository = repository;
         _businessRuleService = businessRuleService;
         _userService = userService;
+        _approvalWorkflowService = approvalWorkflowService;
     }
 
     /// <inheritdoc />
@@ -195,21 +199,56 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             throw new InvalidOperationException("仅已提交状态可审批。");
         }
 
-        ArchiveDisposalDefaultApprovers approvers = ArchiveDisposalDefaultApproverSupport.Resolve(_userService.GetAllUsers());
-        if (string.IsNullOrWhiteSpace(approvers.ArchiveRoomHead)
-            || string.IsNullOrWhiteSpace(approvers.ArchiveDeputyPresident))
+        var users = _userService.GetAllUsers();
+        var chain = await _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.HistoryArchiveDisposal,
+                FieldValues = ApprovalChainApplySupport.BuildHistoryDisposalFieldValues(existing)
+            },
+            users);
+        ApprovalChainApplySupport.ApplyToHistoryArchiveDisposal(existing, chain, DateTime.Now);
+
+        var missing = ApprovalChainApplySupport.CollectMissingSignerErrors(
+            chain,
+            nodeKey => ApprovalChainApplySupport.ReadHistoryDisposalSigner(existing, nodeKey));
+        if (missing.Count > 0)
         {
-            throw new InvalidOperationException("未找到资料室负责人或分管资料副院长，请先在用户管理中维护对应角色后再审批通过。");
+            throw new InvalidOperationException(
+                string.Join(Environment.NewLine, missing)
+                + Environment.NewLine
+                + "请在「审核审批」中配置或在用户管理中维护对应角色后再审批通过。");
         }
 
         DateTime now = DateTime.Now;
         existing.ApprovedBy = ResolveUserDisplayName(currentUser);
         existing.ApprovedTime = now;
         existing.ApprovalOpinion = string.Empty;
-        existing.ArchiveRoomHead = approvers.ArchiveRoomHead.Trim();
-        existing.ArchiveRoomHeadDate = now.Date;
-        existing.ArchiveDeputyPresident = approvers.ArchiveDeputyPresident.Trim();
-        existing.ArchiveDeputyPresidentDate = now.Date;
+        if (chain.DeptHead.IsEnabled)
+        {
+            existing.DeptHeadDate ??= now.Date;
+        }
+
+        if (chain.ArchiveRoomHead.IsEnabled)
+        {
+            existing.ArchiveRoomHeadDate ??= now.Date;
+        }
+
+        if (chain.ProductionHead.IsEnabled)
+        {
+            existing.ProductionHeadDate ??= now.Date;
+        }
+
+        if (chain.ArchiveDeputyPresident.IsEnabled)
+        {
+            existing.ArchiveDeputyPresidentDate ??= now.Date;
+        }
+
+        if (chain.ProductionVicePresident.IsEnabled)
+        {
+            existing.ProductionVicePresidentDate ??= now.Date;
+        }
+
         existing.Status = HistoryArchiveDisposalRecord.StatusApproved;
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
@@ -218,8 +257,11 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
     /// <inheritdoc />
     public async Task UpdateReviewSignersAsync(
         int recordId,
+        string? deptHead,
         string? archiveRoomHead,
+        string? productionHead,
         string? archiveDeputyPresident,
+        string? productionVicePresident,
         User currentUser)
     {
         EnsureArchiveAdmin(currentUser);
@@ -232,8 +274,11 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             throw new InvalidOperationException("仅已审批或已确认可上传状态可修改审核审批人。");
         }
 
+        existing.DeptHead = deptHead?.Trim() ?? string.Empty;
         existing.ArchiveRoomHead = archiveRoomHead?.Trim() ?? string.Empty;
+        existing.ProductionHead = productionHead?.Trim() ?? string.Empty;
         existing.ArchiveDeputyPresident = archiveDeputyPresident?.Trim() ?? string.Empty;
+        existing.ProductionVicePresident = productionVicePresident?.Trim() ?? string.Empty;
         existing.UpdatedAt = DateTime.Now;
         await _repository.SaveChangesAsync();
     }
@@ -271,6 +316,14 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         }
 
         var attachments = await _repository.GetAttachmentsAsync(existing.DisposalNo);
+        var users = _userService.GetAllUsers();
+        var chain = await _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.HistoryArchiveDisposal,
+                FieldValues = ApprovalChainApplySupport.BuildHistoryDisposalFieldValues(existing)
+            },
+            users);
         HistoryArchiveDisposalValidationSupport.EnsureValidForComplete(
             existing.MaterialKind,
             existing.DispositionMethod,
@@ -278,10 +331,21 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             existing.OtherRemark,
             existing.Reason,
             existing.Items.ToList(),
+            chain.DeptHead.IsEnabled,
+            existing.DeptHead,
+            existing.DeptHeadDate,
+            chain.ArchiveRoomHead.IsEnabled,
             existing.ArchiveRoomHead,
             existing.ArchiveRoomHeadDate,
+            chain.ProductionHead.IsEnabled,
+            existing.ProductionHead,
+            existing.ProductionHeadDate,
+            chain.ArchiveDeputyPresident.IsEnabled,
             existing.ArchiveDeputyPresident,
             existing.ArchiveDeputyPresidentDate,
+            chain.ProductionVicePresident.IsEnabled,
+            existing.ProductionVicePresident,
+            existing.ProductionVicePresidentDate,
             attachments,
             physicalRemovalConfirmed);
 
@@ -375,6 +439,15 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         }
 
         bool completed = record.Status == HistoryArchiveDisposalRecord.StatusCompleted;
+        var users = _userService.GetAllUsers();
+        var chain = await _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.HistoryArchiveDisposal,
+                FieldValues = ApprovalChainApplySupport.BuildHistoryDisposalFieldValues(record)
+            },
+            users);
+
         return new HistoryArchiveDisposalPrintData
         {
             DisposalNo = record.DisposalNo,
@@ -387,10 +460,21 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             Remark = record.Remark,
             ApplicantName = record.ApplicantName,
             ApplicantDept = record.ApplicantDept,
+            DeptHead = record.DeptHead,
+            DeptHeadDateText = FormatDate(record.DeptHeadDate),
             ArchiveRoomHead = record.ArchiveRoomHead,
             ArchiveRoomHeadDateText = FormatDate(record.ArchiveRoomHeadDate),
+            ProductionHead = record.ProductionHead,
+            ProductionHeadDateText = FormatDate(record.ProductionHeadDate),
             ArchiveDeputyPresident = record.ArchiveDeputyPresident,
             ArchiveDeputyPresidentDateText = FormatDate(record.ArchiveDeputyPresidentDate),
+            ProductionVicePresident = record.ProductionVicePresident,
+            ProductionVicePresidentDateText = FormatDate(record.ProductionVicePresidentDate),
+            EnableDeptHead = chain.DeptHead.IsEnabled,
+            EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled,
+            EnableProductionHead = chain.ProductionHead.IsEnabled,
+            EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled,
+            EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled,
             CompletedBy = record.CompletedBy,
             CompletedDateText = FormatDate(record.CompletedAt),
             IsCompleted = completed,
@@ -428,7 +512,17 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         var existing = await _repository.GetRecordByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到历史存档离库处置单。");
 
-        if (existing.Status is not (HistoryArchiveDisposalRecord.StatusApproved
+        if (existing.Status == HistoryArchiveDisposalRecord.StatusCompleted)
+        {
+            if (!string.Equals(
+                    fileCategory?.Trim(),
+                    HistoryArchiveDisposalDomainValues.AttachmentCategoryOther,
+                    StringComparison.Ordinal))
+            {
+                return (false, "办结后仅可增补「其他附件」。", null);
+            }
+        }
+        else if (existing.Status is not (HistoryArchiveDisposalRecord.StatusApproved
             or HistoryArchiveDisposalRecord.StatusSignedUploaded))
         {
             return (false, "仅已审批或已确认可上传状态可上传附件。", null);
@@ -487,6 +581,12 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         if (attachment == null)
         {
             return (false, "未找到附件。");
+        }
+
+        var existing = await _repository.GetRecordByIdAsync(attachment.BusinessId, tracking: false);
+        if (existing?.Status == HistoryArchiveDisposalRecord.StatusCompleted)
+        {
+            return (false, "办结后不允许删除附件。");
         }
 
         _repository.RemoveAttachment(attachment);
@@ -887,7 +987,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
     {
         if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
         {
-            throw new InvalidOperationException("仅资料室资料管理员可办理历史存档离库处置。");
+            throw new InvalidOperationException("仅资料管理员可办理历史存档离库处置。");
         }
     }
 

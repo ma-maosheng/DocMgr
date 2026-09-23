@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -13,19 +14,27 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static readonly FontFamily LabelFont = new("SimHei");
         private static readonly FontFamily BodyFont = new("SimSun");
 
-        private const double StandardRowHeight = 32;
-        private const double SignatureRowHeight = 56;
-        private const double RemarkRowHeight = 56;
+        private const double StandardRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
+        private const double SignatureRowHeight = PrintPageLayoutSupport.TableRowContentHeightTwoLinesDip;
         private const double TitleBlockHeight = 48;
         private const double HeaderInfoHeight = 28;
-        private const double CellPadding = 4;
+        private const double CellPadding = PrintPageLayoutSupport.TableCellPaddingDip;
         private const double BodyFontSize = 12;
+
+        /// <summary>备注按正文估行后的上限。</summary>
+        private const int RemarkMaxLines = 3;
+
+        /// <summary>具体资料明细按正文估行后的上限（撑满下限）。</summary>
+        private const int DetailMaxLines = 20;
 
         internal static FlowDocument Create(ArchiveOutboundHandoverPrintData data)
         {
             ArgumentNullException.ThrowIfNull(data);
 
-            double itemDetailRowHeight = CalculateItemDetailRowHeight();
+            string remarkText = EmptyAsPlaceholder(data.HandoverRemark);
+            string itemDetailText = BuildItemText(data);
+            double remarkRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(remarkText, RemarkMaxLines);
+            double itemDetailRowHeight = CalculateItemDetailRowHeight(data, remarkRowHeight, itemDetailText);
 
             var document = new FlowDocument
             {
@@ -54,14 +63,15 @@ namespace DocMgr.ViewModels.YearlyArchive
             rowGroup.Rows.Add(CreateSingleRow("资料摘要", EmptyAsPlaceholder(data.MaterialSummary)));
             rowGroup.Rows.Add(CreateSingleRow(
                 "具体资料明细",
-                BuildItemText(data),
+                itemDetailText,
                 itemDetailRowHeight,
                 verticalTop: true));
+            AppendApprovalSignatureRows(rowGroup, data);
             rowGroup.Rows.Add(CreateSingleRow("交接签字", data.HandoverSignatureBlock, SignatureRowHeight, verticalTop: true));
             rowGroup.Rows.Add(CreateSingleRow(
                 "备注",
-                EmptyAsPlaceholder(data.HandoverRemark),
-                RemarkRowHeight,
+                remarkText,
+                remarkRowHeight,
                 verticalTop: true));
 
             document.Blocks.Add(CreateMainTable(rowGroup));
@@ -70,18 +80,103 @@ namespace DocMgr.ViewModels.YearlyArchive
             return document;
         }
 
-        private static double CalculateItemDetailRowHeight()
+        private static void AppendApprovalSignatureRows(TableRowGroup rowGroup, ArchiveOutboundHandoverPrintData data)
         {
-            // 固定行：申请部门、资料摘要、交接签字、备注（外高含内边距）。
-            double fixedTableHeight =
-                PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 2
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(SignatureRowHeight, CellPadding)
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(RemarkRowHeight, CellPadding);
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 3, lineHeightDip: 16, topMarginDip: 8);
+            if (data.EnableDeptHead)
+            {
+                rowGroup.Rows.Add(CreateSingleRow(ApprovalWorkflowDomainValues.DisplayDeptHead, data.DeptHeadBlock));
+            }
+
+            if (data.EnableArchiveRoomHead)
+            {
+                rowGroup.Rows.Add(CreateSingleRow(
+                    ApprovalWorkflowDomainValues.DisplayArchiveRoomHead,
+                    data.ArchiveRoomHeadBlock));
+            }
+
+            if (data.EnableProductionHead)
+            {
+                rowGroup.Rows.Add(CreateSingleRow(
+                    ApprovalWorkflowDomainValues.DisplayProductionHead,
+                    data.ProductionHeadBlock));
+            }
+
+            if (data.EnableArchiveDeputyPresident)
+            {
+                rowGroup.Rows.Add(CreateSingleRow(
+                    ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident,
+                    data.ArchiveDeputyPresidentBlock));
+            }
+
+            if (data.EnableProductionVicePresident)
+            {
+                rowGroup.Rows.Add(CreateSingleRow(
+                    ApprovalWorkflowDomainValues.DisplayProductionVicePresident,
+                    data.ProductionVicePresidentBlock));
+            }
+        }
+
+        private static int CountEnabledApprovalRows(ArchiveOutboundHandoverPrintData data)
+        {
+            int count = 0;
+            if (data.EnableDeptHead)
+            {
+                count++;
+            }
+
+            if (data.EnableArchiveRoomHead)
+            {
+                count++;
+            }
+
+            if (data.EnableProductionHead)
+            {
+                count++;
+            }
+
+            if (data.EnableArchiveDeputyPresident)
+            {
+                count++;
+            }
+
+            if (data.EnableProductionVicePresident)
+            {
+                count++;
+            }
+
+            return count;
+        }
+
+        private static double CalculateItemDetailRowHeight(
+            ArchiveOutboundHandoverPrintData data,
+            double remarkRowHeight,
+            string itemDetailText)
+        {
+            // 固定行：申请部门、资料摘要、审批(按启用)、交接签字、备注。
+            int approvalCount = CountEnabledApprovalRows(data);
+            double fixedContentHeight =
+                StandardRowHeight * (2 + approvalCount)
+                + SignatureRowHeight
+                + remarkRowHeight;
+            int fixedRowCount = 2 + approvalCount + 2; // 申请部门/摘要 + 签批 + 交接 + 备注
+            double fixedTableHeight = fixedContentHeight
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
+                + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
+
+            string footerText = BuildFooterNoteText(data);
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
+                footerText,
+                PrintPageLayoutSupport.ContentWidthDip,
+                fontSizeDip: 10,
+                lineHeightDip: 16,
+                topMarginDip: 8);
             double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
+            double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                itemDetailText,
+                DetailMaxLines);
             return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
                 reservedHeight,
-                StandardRowHeight * 4,
+                contentNeededHeight,
                 CellPadding);
         }
 
@@ -150,6 +245,13 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             return footer;
         }
+
+        /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
+        private static string BuildFooterNoteText(ArchiveOutboundHandoverPrintData data) =>
+            "说明：" +
+            "1、实物交接完成后，领用人与资料室资料员须在交接单上签字确认。\n" +
+            "      2、签字后的交接单及资料照片应上传系统，作为出库办结依据。\n" +
+            $"      3、本交接单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。";
 
         private static TableRow CreateSingleRow(
             string label,

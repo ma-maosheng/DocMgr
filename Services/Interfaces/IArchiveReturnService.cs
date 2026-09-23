@@ -12,10 +12,10 @@ namespace DocMgr.Services.Interfaces
     {
         bool IsArchiveAdminUser(User? user);
 
-        /// <summary>部门资料管理员（不含资料室），仅可发起申请。</summary>
+        /// <summary>部门资料员（不含资料室），仅可发起申请。</summary>
         bool IsDepartmentArchiveAdmin(User? user);
 
-        /// <summary>是否允许发起申请（仅部门资料管理员）。</summary>
+        /// <summary>是否允许发起申请（仅部门资料员）。</summary>
         bool CanSubmitApplication(User? user);
 
         /// <summary>列出可发起归还的出库单（已办结出库、存在未归还提档项、且无有效归还单）。</summary>
@@ -25,6 +25,11 @@ namespace DocMgr.Services.Interfaces
         Task<List<YearlyArchiveReturnRecord>> ListReturnsAsync(int year, User user);
 
         Task<YearlyArchiveReturnRecord?> GetReturnAsync(int id);
+
+        /// <summary>按审核审批配置解析归还单签批链。</summary>
+        Task<ApprovalChainResolution> ResolveApprovalChainAsync(
+            YearlyArchiveReturnRecord record,
+            string? applicantDept = null);
 
         Task<string> GenerateNextReturnNoAsync();
 
@@ -42,6 +47,12 @@ namespace DocMgr.Services.Interfaces
 
         /// <summary>上传签批交接单：仅「已实物交接-待上传签批交接单」状态可上传。</summary>
         Task<ArchiveReturnAttachmentFlowResult> UploadSignedHandoverAttachmentFlowAsync(
+            int recordId,
+            SystemAttachment attachment,
+            User user);
+
+        /// <summary>办结后增补「其他附件」（仅资料管理员，不可删）。</summary>
+        Task<ArchiveReturnAttachmentFlowResult> UploadOtherAttachmentFlowAsync(
             int recordId,
             SystemAttachment attachment,
             User user);

@@ -1,6 +1,7 @@
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.Shared;
 using DocMgr.Repositories.Interfaces;
+using DocMgr.Services.YearlyArchive;
 
 namespace DocMgr.Services.HardDiskMedia
 {
@@ -167,12 +168,8 @@ namespace DocMgr.Services.HardDiskMedia
 
         private static bool IsArchiveRoomAdmin(User user)
         {
-            var dept = user.Department?.Trim() ?? string.Empty;
-            var role = user.Role?.Trim() ?? string.Empty;
-
-            return (string.Equals(dept, "资料室", StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(role, "部门资料管理员", StringComparison.OrdinalIgnoreCase))
-                   || string.Equals(role, "Administrator", StringComparison.OrdinalIgnoreCase);
+            return ArchiveRegisterBusinessRules.IsArchiveAdminUser(user)
+                   || ArchiveRegisterBusinessRules.IsSystemAdministrator(user);
         }
     }
 }

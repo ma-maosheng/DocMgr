@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -13,20 +14,46 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static readonly FontFamily LabelFont = new("SimHei");
         private static readonly FontFamily BodyFont = new("SimSun");
 
-        private const double TitleBlockHeight = 48;
         private const double HeaderInfoHeight = 28;
-        private const double StandardRowHeight = 32;
-        private const double ReasonRowHeight = 38;
-        private const double SignatureRowHeight = 56;
-        private const double CellPadding = 4;
+        private const double StandardRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
+        private const double SignatureRowHeight = PrintPageLayoutSupport.TableRowContentHeightTwoLinesDip;
+        private const double CellPadding = PrintPageLayoutSupport.TableCellPaddingDip;
         private const double BodyFontSize = 12;
+
+        /// <summary>原由/重点提示按正文估行后的上限。</summary>
+        private const int ReasonMaxLines = 5;
+
+        /// <summary>证明材料/资料摘要按正文估行后的上限。</summary>
+        private const int ShortTextMaxLines = 3;
+
+        /// <summary>具体资料明细按正文估行后的上限（撑满下限）。</summary>
+        private const int DetailMaxLines = 20;
 
         internal static FlowDocument Create(ArchiveOutboundPrintData data)
         {
             ArgumentNullException.ThrowIfNull(data);
 
+            string reasonText = EmptyAsPlaceholder(data.Reason);
+            string proofText = EmptyAsPlaceholder(data.ProofMaterialNote);
+            string summaryText = EmptyAsPlaceholder(data.MaterialSummary);
+            string noticeText = data.LongTermSimulatedStockDepletionNoticeText?.Trim() ?? string.Empty;
+            bool hasNotice = !string.IsNullOrWhiteSpace(noticeText);
+            string itemDetailText = BuildItemText(data);
+
+            double reasonRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(reasonText, ReasonMaxLines);
+            double proofRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(proofText, ShortTextMaxLines);
+            double summaryRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(summaryText, ShortTextMaxLines);
+            double noticeRowHeight = hasNotice
+                ? PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(noticeText, ReasonMaxLines)
+                : 0;
             double itemDetailRowHeight = CalculateItemDetailRowHeight(
-                !string.IsNullOrWhiteSpace(data.LongTermSimulatedStockDepletionNoticeText));
+                data,
+                reasonRowHeight,
+                proofRowHeight,
+                summaryRowHeight,
+                noticeRowHeight,
+                hasNotice,
+                itemDetailText);
 
             var document = CreateDocumentSkeleton();
 
@@ -37,31 +64,56 @@ namespace DocMgr.ViewModels.YearlyArchive
                 $"申请日期：{data.ApplyDateText}"));
 
             var rowGroup = new TableRowGroup();
-            rowGroup.Rows.Add(CreateDoubleRow("申请部门", data.ApplicantDept, "申请人", data.ApplicantName));
-            rowGroup.Rows.Add(CreateSingleRow("原由", EmptyAsPlaceholder(data.Reason), ReasonRowHeight, CellVerticalAlignment.ContentTop));
+            rowGroup.Rows.Add(CreateDoubleRow("申请人", data.ApplicantName, "申请部门", data.ApplicantDept));
+            rowGroup.Rows.Add(CreateSingleRow("原由", reasonText, reasonRowHeight, CellVerticalAlignment.ContentTop));
             rowGroup.Rows.Add(CreateSingleRow("去向", data.DestinationText));
-            rowGroup.Rows.Add(CreateSingleRow("证明材料名称", EmptyAsPlaceholder(data.ProofMaterialNote)));
+            rowGroup.Rows.Add(CreateSingleRow("证明材料名称", proofText, proofRowHeight, CellVerticalAlignment.ContentTop));
             rowGroup.Rows.Add(CreateSingleRow("预计归还日期", data.ExpectedReturnDateText));
             rowGroup.Rows.Add(CreateSingleRow("涉密资料处置", data.ConfidentialMaterialDispositionText));
-            if (!string.IsNullOrWhiteSpace(data.LongTermSimulatedStockDepletionNoticeText))
+            if (hasNotice)
             {
                 rowGroup.Rows.Add(CreateSingleRow(
                     "重点提示",
-                    data.LongTermSimulatedStockDepletionNoticeText,
-                    ReasonRowHeight,
+                    noticeText,
+                    noticeRowHeight,
                     CellVerticalAlignment.ContentTop));
             }
 
-            rowGroup.Rows.Add(CreateSingleRow("资料摘要", EmptyAsPlaceholder(data.MaterialSummary)));
+            rowGroup.Rows.Add(CreateSingleRow("资料摘要", summaryText, summaryRowHeight, CellVerticalAlignment.ContentTop));
             rowGroup.Rows.Add(CreateSingleRow(
                 "具体资料明细",
-                BuildItemText(data),
+                itemDetailText,
                 itemDetailRowHeight,
                 CellVerticalAlignment.ContentTop));
-            rowGroup.Rows.Add(CreateSingleRow("申请部门审核", data.DeptAuditBlock));
-            rowGroup.Rows.Add(CreateSingleRow("资料室负责人", data.ArchiveRoomHeadBlock));
-            rowGroup.Rows.Add(CreateSingleRow("生产科负责人", data.ProductionHeadBlock));
-            rowGroup.Rows.Add(CreateSingleRow("生产副院长", data.VicePresidentBlock));
+            if (data.EnableDeptHead)
+            {
+                rowGroup.Rows.Add(CreateSingleRow(ApprovalWorkflowDomainValues.DisplayDeptHead, data.DeptHeadBlock));
+            }
+
+            if (data.EnableArchiveRoomHead)
+            {
+                rowGroup.Rows.Add(CreateSingleRow(ApprovalWorkflowDomainValues.DisplayArchiveRoomHead, data.ArchiveRoomHeadBlock));
+            }
+
+            if (data.EnableProductionHead)
+            {
+                rowGroup.Rows.Add(CreateSingleRow(ApprovalWorkflowDomainValues.DisplayProductionHead, data.ProductionHeadBlock));
+            }
+
+            if (data.EnableArchiveDeputyPresident)
+            {
+                rowGroup.Rows.Add(CreateSingleRow(
+                    ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident,
+                    data.ArchiveDeputyPresidentBlock));
+            }
+
+            if (data.EnableProductionVicePresident)
+            {
+                rowGroup.Rows.Add(CreateSingleRow(
+                    ApprovalWorkflowDomainValues.DisplayProductionVicePresident,
+                    data.ProductionVicePresidentBlock));
+            }
+
             rowGroup.Rows.Add(CreateSingleRow(
                 "交接签字",
                 data.HandoverSignatureBlock,
@@ -74,24 +126,83 @@ namespace DocMgr.ViewModels.YearlyArchive
             return document;
         }
 
-        private static double CalculateItemDetailRowHeight(bool hasLongTermDepletionNotice)
+        private static double CalculateItemDetailRowHeight(
+            ArchiveOutboundPrintData data,
+            double reasonRowHeight,
+            double proofRowHeight,
+            double summaryRowHeight,
+            double noticeRowHeight,
+            bool hasNotice,
+            string itemDetailText)
         {
-            // 固定行外高：申请部门 + 去向/证明/归还/涉密/摘要(5) + 四级审批(4) = 10；原由、交接另计；重点提示可选。
-            double fixedTableHeight =
-                PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 10
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(ReasonRowHeight, CellPadding)
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(SignatureRowHeight, CellPadding);
-            if (hasLongTermDepletionNotice)
-            {
-                fixedTableHeight += PrintPageLayoutSupport.GetTableRowOuterHeightDip(ReasonRowHeight, CellPadding);
-            }
+            int approvalCount = CountEnabledApprovalRows(data);
+            // 固定行（不含具体资料明细撑满行）：
+            // 申请人、去向、预计归还、涉密(4) + 原由/证明/摘要(+重点提示) + 签批(N) + 交接。
+            int oneLineRows = 4 + approvalCount;
+            double fixedContentHeight =
+                StandardRowHeight * oneLineRows
+                + reasonRowHeight
+                + proofRowHeight
+                + summaryRowHeight
+                + (hasNotice ? noticeRowHeight : 0)
+                + SignatureRowHeight;
+            int variableTextRows = 3 + (hasNotice ? 1 : 0); // 原由、证明、摘要、[重点提示]
+            int fixedRowCount = oneLineRows + variableTextRows + 1; // +交接
+            double fixedTableHeight = fixedContentHeight
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
+                + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
 
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 3, lineHeightDip: 16, topMarginDip: 8);
-            double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
+            string footerText = BuildFooterNoteText(data);
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
+                footerText,
+                PrintPageLayoutSupport.ContentWidthDip,
+                fontSizeDip: 10,
+                lineHeightDip: 16,
+                topMarginDip: 8);
+            double reservedHeight =
+                PrintPageLayoutSupport.ApprovalFormTitleBlockHeightDip
+                + HeaderInfoHeight
+                + PrintPageLayoutSupport.ApprovalFormHeaderToTableGapDip
+                + footerHeight
+                + fixedTableHeight;
+            double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                itemDetailText,
+                DetailMaxLines);
             return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
                 reservedHeight,
-                StandardRowHeight * 4,
+                contentNeededHeight,
                 CellPadding);
+        }
+
+        private static int CountEnabledApprovalRows(ArchiveOutboundPrintData data)
+        {
+            int count = 0;
+            if (data.EnableDeptHead)
+            {
+                count++;
+            }
+
+            if (data.EnableArchiveRoomHead)
+            {
+                count++;
+            }
+
+            if (data.EnableProductionHead)
+            {
+                count++;
+            }
+
+            if (data.EnableArchiveDeputyPresident)
+            {
+                count++;
+            }
+
+            if (data.EnableProductionVicePresident)
+            {
+                count++;
+            }
+
+            return count;
         }
 
         private static Block CreateTitleBlock()
@@ -99,10 +210,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             return new Paragraph(new Run("河北省第三测绘院资料室年度资料出库申请审批单"))
             {
                 FontFamily = TitleFont,
-                FontSize = 20,
+                FontSize = PrintPageLayoutSupport.ApprovalFormTitleFontSize,
                 FontWeight = FontWeights.Bold,
                 TextAlignment = TextAlignment.Center,
-                Margin = new Thickness(0, 0, 0, 10)
+                Margin = PrintPageLayoutSupport.ApprovalFormTitleMargin
             };
         }
 
@@ -112,7 +223,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 FontFamily = BodyFont,
                 FontSize = BodyFontSize,
-                LineHeight = 18,
+                LineHeight = PrintPageLayoutSupport.ApprovalFormLineHeightDip,
                 ColumnWidth = double.PositiveInfinity
             };
             PrintPageLayoutSupport.ApplyA4MediumMargins(document);
@@ -121,7 +232,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private static Table CreateHeaderTable(string leftText, string rightText)
         {
-            var headerTable = new Table { Margin = new Thickness(0, 0, 0, 6) };
+            var headerTable = new Table { Margin = PrintPageLayoutSupport.ApprovalFormHeaderTableMargin };
             headerTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
             headerTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -158,10 +269,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 BorderThickness = new Thickness(2, 2, 0, 0)
             };
 
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
+            PrintPageLayoutSupport.ApplyApprovalFormMainTableColumns(table);
             table.RowGroups.Add(rowGroup);
 
             return table;
@@ -183,6 +291,13 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             return footer;
         }
+
+        /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
+        private static string BuildFooterNoteText(ArchiveOutboundPrintData data) =>
+            "备注：" +
+            "1、申请提交后，按“线上申请、打印表单、线下审批签字、上传签字件、资料出库交接”的流程办理。\n" +
+            "      2、签字后的审批单应回传系统，作为办理依据和归档附件。\n" +
+            $"      3、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。";
 
         private static string BuildItemText(ArchiveOutboundPrintData data) =>
             data.ItemLines.Count > 0 ? string.Join("\n", data.ItemLines) : "(无)";
@@ -245,7 +360,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             grid.Children.Add(new TextBlock
             {
                 Text = text,
-                TextWrapping = TextWrapping.Wrap,
+                TextWrapping = label ? TextWrapping.NoWrap : TextWrapping.Wrap,
                 VerticalAlignment = ToVerticalAlignment(verticalAlignment),
                 HorizontalAlignment = label ? HorizontalAlignment.Center : HorizontalAlignment.Left,
                 TextAlignment = label ? TextAlignment.Center : TextAlignment.Left,

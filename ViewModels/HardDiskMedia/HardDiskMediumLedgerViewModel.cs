@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.HardDiskMedia
@@ -27,13 +28,17 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
-            ImportCommand = new RelayCommand(async _ => await ImportAsync());
+            ImportCommand = new RelayCommand(async _ => await ImportAsync(), _ => CanOperate);
             ExportTemplateCommand = new RelayCommand(async _ => await ExportTemplateAsync());
             ShowImportTemplateHelpCommand = new RelayCommand(_ => ShowImportTemplateHelp());
-            AddCommand = new RelayCommand(async _ => await AddMediumAsync());
-            EditCommand = new RelayCommand(async _ => await EditMediumAsync(), _ => SelectedMedium != null);
-            DeleteCommand = new RelayCommand(async _ => await DeleteMediumAsync(), _ => SelectedMedium != null);
+            AddCommand = new RelayCommand(async _ => await AddMediumAsync(), _ => CanOperate);
+            EditCommand = new RelayCommand(async _ => await EditMediumAsync(), _ => CanOperate && SelectedMedium != null);
+            DeleteCommand = new RelayCommand(async _ => await DeleteMediumAsync(), _ => CanOperate && SelectedMedium != null);
         }
+
+        /// <summary>资料管理员可登记/导入/编辑/删除；其余角色仅浏览台账。</summary>
+        public bool CanOperate =>
+            ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
 
         public ObservableCollection<HardDiskMedium> MediaItems { get; } = new();
         public ObservableCollection<string> StatusOptions { get; } = new();
@@ -134,6 +139,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task AddMediumAsync()
         {
+            if (!EnsureCanOperate())
+            {
+                return;
+            }
+
             await OpenAndReopenMediumDialogAsync(new HardDiskMedium
             {
                 RegistrationMethod = HardDiskMedium.RegistrationMethodManual
@@ -184,6 +194,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task ImportAsync()
         {
+            if (!EnsureCanOperate())
+            {
+                return;
+            }
+
             string? filePath = _dialogService.OpenFileDialog("Excel Files|*.xlsx;*.xls", "选择硬盘初始登记导入文件");
             if (string.IsNullOrWhiteSpace(filePath))
             {
@@ -232,7 +247,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     ? $"\n\n已为 {result.AssignedSlotCount} 块无存放位置的空白硬盘，按防磁磁盘柜空白专用档口用途与容量自动入位。"
                     : string.Empty;
 
-                string ledgerReminder = "\n\n请资料室管理员前往【硬盘台账】核对存放位置，并按入库后台账完成后续业务操作。";
+                string ledgerReminder = "\n\n请资料管理员前往【硬盘台账】核对存放位置，并按入库后台账完成后续业务操作。";
                 _dialogService.ShowMessage(modeSummary + slotSummary + ledgerReminder, "完成");
             }
             catch (HardDiskMediaImportException ex)
@@ -255,7 +270,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task EditMediumAsync()
         {
-            if (SelectedMedium == null)
+            if (!EnsureCanOperate() || SelectedMedium == null)
             {
                 return;
             }
@@ -288,7 +303,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task DeleteMediumAsync()
         {
-            if (SelectedMedium == null)
+            if (!EnsureCanOperate() || SelectedMedium == null)
             {
                 return;
             }
@@ -350,6 +365,17 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 target.Add(value);
             }
+        }
+
+        private bool EnsureCanOperate()
+        {
+            if (CanOperate)
+            {
+                return true;
+            }
+
+            _dialogService.ShowError("仅资料管理员可维护硬盘初始登记。");
+            return false;
         }
     }
 }

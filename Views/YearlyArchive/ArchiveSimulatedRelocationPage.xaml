@@ -241,8 +241,7 @@
                                 </Style>
                             </DataGrid.Style>
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="表单号" Binding="{Binding FormNo}" Width="140"/>
-                                <DataGridTextColumn Header="子项类型" Binding="{Binding ItemType}" Width="120"/>
+                                <DataGridTextColumn Header="表单号" Binding="{Binding FormNo}" Width="160"/>
                                 <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName}" Width="*"/>
                             </DataGrid.Columns>
                         </DataGrid>

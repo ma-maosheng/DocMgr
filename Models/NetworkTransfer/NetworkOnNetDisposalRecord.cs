@@ -48,17 +48,27 @@ namespace DocMgr.Models.NetworkTransfer
 
         public string ApprovalOpinion { get; set; } = string.Empty;
 
-        /// <summary>资料室负责人（审核签字）。</summary>
+        public string DeptHead { get; set; } = string.Empty;
+
+        public DateTime? DeptHeadDate { get; set; }
+
+        /// <summary>资料室签字。</summary>
         public string ArchiveRoomHead { get; set; } = string.Empty;
 
-        /// <summary>资料室负责人审核日期。</summary>
         public DateTime? ArchiveRoomHeadDate { get; set; }
 
-        /// <summary>分管资料副院长（审批签字）。</summary>
+        public string ProductionHead { get; set; } = string.Empty;
+
+        public DateTime? ProductionHeadDate { get; set; }
+
+        /// <summary>分管资料院长签字。</summary>
         public string ArchiveDeputyPresident { get; set; } = string.Empty;
 
-        /// <summary>分管资料副院长审批日期。</summary>
         public DateTime? ArchiveDeputyPresidentDate { get; set; }
+
+        public string ProductionVicePresident { get; set; } = string.Empty;
+
+        public DateTime? ProductionVicePresidentDate { get; set; }
 
         public string ConfirmedBy { get; set; } = string.Empty;
 

@@ -41,7 +41,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             $"领用人：{_record.ApplicantName}    部门：{_record.ApplicantDept}    状态：{_record.StatusStr}";
 
         public string IntroText =>
-            "请资料室资料管理员在办理实物出库时逐项核对以下事项，勾选确认后可打印留存。";
+            "请资料管理员在办理实物出库时逐项核对以下事项，勾选确认后可打印留存。";
 
         public RelayCommand PrintCommand { get; }
 

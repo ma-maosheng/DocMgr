@@ -1,4 +1,5 @@
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Services.YearlyArchive
@@ -33,7 +34,8 @@ namespace DocMgr.Services.YearlyArchive
             var depletedFilingFactIds = await ResolveDepletedFilingFactIdsForPrintAsync(record);
             var classificationByFilingFactId = await LoadClassificationByFilingFactIdsAsync(
                 record.Items.Select(item => item.FilingFactId));
-            return BuildPrintData(record, blankApprovalSignatures, depletedFilingFactIds, classificationByFilingFactId);
+            var chain = await ResolveOutboundApprovalChainAsync(record);
+            return BuildPrintData(record, blankApprovalSignatures, depletedFilingFactIds, classificationByFilingFactId, chain);
         }
 
         public async Task RecordPrintAsync(int recordId)
@@ -77,15 +79,30 @@ namespace DocMgr.Services.YearlyArchive
                 .ToList();
             var factsById = await _outboundRepository.GetFilingFactsByIdsForUpdateAsync(factIds);
             var classificationByFilingFactId = await LoadClassificationByFilingFactIdsAsync(factIds);
-            return BuildHandoverPrintData(record, handoverRemark, blankHandoverSignatures, factsById, classificationByFilingFactId);
+            var chain = await ResolveOutboundApprovalChainAsync(record);
+            // 交接单可打时已是「已审批及之后」：审核/审批责任人一律预填；交接双方仍按办结与否留白/预填。
+            bool blankApprovalSignatures = record.Status is not (
+                YearlyArchiveOutboundRecord.Approved
+                or YearlyArchiveOutboundRecord.SignedUploaded
+                or YearlyArchiveOutboundRecord.Completed);
+            return BuildHandoverPrintData(
+                record,
+                handoverRemark,
+                blankHandoverSignatures,
+                blankApprovalSignatures,
+                factsById,
+                classificationByFilingFactId,
+                chain);
         }
 
         private static ArchiveOutboundHandoverPrintData BuildHandoverPrintData(
             YearlyArchiveOutboundRecord record,
             string? handoverRemark,
             bool blankHandoverSignatures,
+            bool blankApprovalSignatures,
             IReadOnlyDictionary<int, YearlyArchiveFilingFact> factsById,
-            IReadOnlyDictionary<int, string> classificationByFilingFactId)
+            IReadOnlyDictionary<int, string> classificationByFilingFactId,
+            ApprovalChainResolution chain)
         {
             string remark = string.IsNullOrWhiteSpace(handoverRemark)
                 ? record.HandoverRemark?.Trim() ?? string.Empty
@@ -103,6 +120,26 @@ namespace DocMgr.Services.YearlyArchive
                 ItemLines = ArchiveOutboundItemDescription
                     .BuildHandoverPrintDetailLines(record.Items, factsById, classificationByFilingFactId)
                     .ToList(),
+                EnableDeptHead = chain.DeptHead.IsEnabled,
+                EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled,
+                EnableProductionHead = chain.ProductionHead.IsEnabled,
+                EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled,
+                EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled,
+                DeptHeadBlock = BuildApprovalBlock(
+                    blankApprovalSignatures ? string.Empty : record.DeptHead,
+                    blankApprovalSignatures ? BlankDateText : FormatDate(record.DeptHeadDate)),
+                ArchiveRoomHeadBlock = BuildApprovalBlock(
+                    blankApprovalSignatures ? string.Empty : record.ArchiveRoomHead,
+                    blankApprovalSignatures ? BlankDateText : FormatDate(record.ArchiveRoomHeadDate)),
+                ProductionHeadBlock = BuildApprovalBlock(
+                    blankApprovalSignatures ? string.Empty : record.ProductionHead,
+                    blankApprovalSignatures ? BlankDateText : FormatDate(record.ProductionHeadDate)),
+                ArchiveDeputyPresidentBlock = BuildApprovalBlock(
+                    blankApprovalSignatures ? string.Empty : record.ArchiveDeputyPresident,
+                    blankApprovalSignatures ? BlankDateText : FormatDate(record.ArchiveDeputyPresidentDate)),
+                ProductionVicePresidentBlock = BuildApprovalBlock(
+                    blankApprovalSignatures ? string.Empty : record.ProductionVicePresident,
+                    blankApprovalSignatures ? BlankDateText : FormatDate(record.ProductionVicePresidentDate)),
                 HandoverSignatureBlock = blankHandoverSignatures
                     ? BuildBlankHandoverSignatureBlock()
                     : BuildFilledHandoverSignatureBlock(record),
@@ -131,7 +168,8 @@ namespace DocMgr.Services.YearlyArchive
             YearlyArchiveOutboundRecord record,
             bool blankApprovalSignatures,
             IReadOnlySet<int> depletedFilingFactIds,
-            IReadOnlyDictionary<int, string> classificationByFilingFactId)
+            IReadOnlyDictionary<int, string> classificationByFilingFactId,
+            ApprovalChainResolution chain)
         {
             string applyDate = record.ApplyDate == default
                 ? string.Empty
@@ -142,13 +180,7 @@ namespace DocMgr.Services.YearlyArchive
                 ? ArchiveSimulatedLongTermWithdrawalDepletionSupport.BuildPrintReviewNoticeText()
                 : string.Empty;
 
-            // 历史数据可能仅部分节点有「同意」；打印前规范为全有或全无。
-            var opinions = ApprovalOpinionUniformitySupport.NormalizeUniform(
-                blankApprovalSignatures ? string.Empty : record.DeptAuditOpinion,
-                blankApprovalSignatures ? string.Empty : record.ArchiveRoomHeadOpinion,
-                blankApprovalSignatures ? string.Empty : record.ProductionHeadOpinion,
-                blankApprovalSignatures ? string.Empty : record.VicePresidentOpinion);
-
+            // 打印不输出意见正文：签字即代表同意。
             return new ArchiveOutboundPrintData
             {
                 OutboundNo = record.OutboundNo,
@@ -167,22 +199,26 @@ namespace DocMgr.Services.YearlyArchive
                 ItemLines = ArchiveOutboundItemDescription
                     .BuildPrintDetailLines(record.Items, depletedFilingFactIds, classificationByFilingFactId)
                     .ToList(),
-                DeptAuditBlock = BuildApprovalBlock(
-                    opinions[0],
-                    blankApprovalSignatures ? string.Empty : record.DeptAuditor,
-                    blankApprovalSignatures ? BlankDateText : FormatDate(record.DeptAuditDate)),
+                EnableDeptHead = chain.DeptHead.IsEnabled,
+                EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled,
+                EnableProductionHead = chain.ProductionHead.IsEnabled,
+                EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled,
+                EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled,
+                DeptHeadBlock = BuildApprovalBlock(
+                    blankApprovalSignatures ? string.Empty : record.DeptHead,
+                    blankApprovalSignatures ? BlankDateText : FormatDate(record.DeptHeadDate)),
                 ArchiveRoomHeadBlock = BuildApprovalBlock(
-                    opinions[1],
                     blankApprovalSignatures ? string.Empty : record.ArchiveRoomHead,
                     blankApprovalSignatures ? BlankDateText : FormatDate(record.ArchiveRoomHeadDate)),
                 ProductionHeadBlock = BuildApprovalBlock(
-                    opinions[2],
                     blankApprovalSignatures ? string.Empty : record.ProductionHead,
                     blankApprovalSignatures ? BlankDateText : FormatDate(record.ProductionHeadDate)),
-                VicePresidentBlock = BuildApprovalBlock(
-                    opinions[3],
-                    blankApprovalSignatures ? string.Empty : record.VicePresident,
-                    blankApprovalSignatures ? BlankDateText : FormatDate(record.VicePresidentDate)),
+                ArchiveDeputyPresidentBlock = BuildApprovalBlock(
+                    blankApprovalSignatures ? string.Empty : record.ArchiveDeputyPresident,
+                    blankApprovalSignatures ? BlankDateText : FormatDate(record.ArchiveDeputyPresidentDate)),
+                ProductionVicePresidentBlock = BuildApprovalBlock(
+                    blankApprovalSignatures ? string.Empty : record.ProductionVicePresident,
+                    blankApprovalSignatures ? BlankDateText : FormatDate(record.ProductionVicePresidentDate)),
                 // 办结前留白供手签；已办结重打时预填交接人（见 handover-signature-print-blank）。
                 HandoverSignatureBlock = record.IsCompleted
                     ? BuildFilledHandoverSignatureBlock(record)
@@ -267,13 +303,8 @@ namespace DocMgr.Services.YearlyArchive
                 && !string.Equals(level, ArchiveRegisterDomainValues.ConfidentialLevelNone, StringComparison.Ordinal);
         }
 
-        private static string BuildApprovalBlock(string opinion, string signer, string dateText)
-        {
-            string renderedOpinion = string.IsNullOrWhiteSpace(opinion) ? string.Empty : $"意见：{opinion.Trim()}  ";
-            string signatureSlot = string.IsNullOrWhiteSpace(signer) ? "________________" : signer.Trim();
-            string renderedDate = string.IsNullOrWhiteSpace(dateText) ? BlankDateText : dateText;
-            return $"{renderedOpinion}签字：{signatureSlot}    日期：{renderedDate}";
-        }
+        private static string BuildApprovalBlock(string signer, string dateText) =>
+            PrintApprovalSignatureSupport.FormatInline(signer, dateText);
 
         private static string FormatDate(DateTime? value) =>
             value.HasValue ? value.Value.ToString("yyyy-MM-dd") : BlankDateText;

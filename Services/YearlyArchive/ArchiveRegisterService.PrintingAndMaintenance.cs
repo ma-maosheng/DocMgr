@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DocMgr.Models.SystemSettings;
+using DocMgr.Services.SystemSettings;
 
 namespace DocMgr.Services.YearlyArchive
 {
@@ -57,7 +59,6 @@ namespace DocMgr.Services.YearlyArchive
 
         public ArchiveRegisterPrintData BuildPrintData(
             YearlyArchiveRegisterRecord record,
-            string? selectedSourceType,
             IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries)
         {
             ArgumentNullException.ThrowIfNull(record);
@@ -74,13 +75,43 @@ namespace DocMgr.Services.YearlyArchive
                 record.RndDeptOpinion,
                 record.DeputyOpinion);
 
-            var sourceType = string.IsNullOrWhiteSpace(record.SourceType)
-                ? (selectedSourceType ?? string.Empty)
-                : record.SourceType;
-
             var entries = mediaEntries?.ToList() ?? new List<YearlyArchiveRegisterMedia>();
+            var itemSourceInfos = entries
+                .SelectMany(media => media.Items ?? [])
+                .Select(item => (SourceType: item.SourceType?.Trim() ?? string.Empty, ProvideUnit: item.ProvideUnit?.Trim() ?? string.Empty))
+                .Where(info => info.SourceType.Length > 0 || info.ProvideUnit.Length > 0)
+                .ToList();
+
+            var distinctSourceTypes = itemSourceInfos
+                .Select(info => info.SourceType)
+                .Where(v => v.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            var distinctProvideUnits = itemSourceInfos
+                .Select(info => info.ProvideUnit)
+                .Where(v => v.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            // 来源或提供单位任一字段跨子项不唯一时：表头写「详见资料内容」，明细下沉到资料子项行。
+            bool sinkSourceToItems = distinctSourceTypes.Count > 1 || distinctProvideUnits.Count > 1;
+            string sourceType = sinkSourceToItems
+                ? ArchiveRegisterDomainValues.PrintSourceDetailInItemContentHint
+                : (distinctSourceTypes.Count == 0 ? string.Empty : distinctSourceTypes[0]);
+            string provideUnit = sinkSourceToItems
+                ? ArchiveRegisterDomainValues.PrintSourceDetailInItemContentHint
+                : (distinctProvideUnits.Count == 0 ? string.Empty : distinctProvideUnits[0]);
             string retainedHardDiskRegistration = BuildRetainedHardDiskRegistrationText(entries);
             var pageDomainOptions = CreatePageDomainOptions(GetPageDomainDefinitions());
+            var users = _archiveRegisterRepository.GetUsersAsync().GetAwaiter().GetResult();
+            var chain = _approvalWorkflowService.ResolveAsync(
+                new ApprovalChainResolveRequest
+                {
+                    BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveRegister,
+                    ApplicantDept = record.ApplicantDept,
+                    FieldValues = ApprovalChainApplySupport.BuildRegisterFieldValues(record)
+                },
+                users).GetAwaiter().GetResult();
 
             return new ArchiveRegisterPrintData
             {
@@ -88,25 +119,31 @@ namespace DocMgr.Services.YearlyArchive
                 MaterialName = record.MaterialName,
                 ProjectName = record.ProjectName ?? string.Empty,
                 SourceType = sourceType,
-                ProvideUnit = record.ProvideUnit ?? string.Empty,
+                ProvideUnit = provideUnit,
                 Purpose = record.ArchivePurpose,
                 OtherRequests = record.OtherRequests,
                 Dept = record.ApplicantDept,
                 Applicant = record.ApplicantName,
                 Date = dateStr,
-                ProdOpinion = $"{normalizedPrint.ProdOpinion}|{record.ProdDate?.ToString("yyyy-MM-dd") ?? blankDt}",
-                RndOpinion = $"{normalizedPrint.RndOpinion}|{record.RndDate?.ToString("yyyy-MM-dd") ?? blankDt}",
-                DeptLeaderApproval = $"{record.DeptLeader}|{record.DeptDate?.ToString("yyyy-MM-dd") ?? blankDt}",
+                ProdOpinion = $"{normalizedPrint.ProdOpinion}|{record.ProductionHeadDate?.ToString("yyyy-MM-dd") ?? blankDt}",
+                RndOpinion = $"{normalizedPrint.RndOpinion}|{record.ArchiveRoomHeadDate?.ToString("yyyy-MM-dd") ?? blankDt}",
+                DeptHeadApproval = $"{record.DeptHead}|{record.DeptHeadDate?.ToString("yyyy-MM-dd") ?? blankDt}",
                 DeputyOpinion = normalizedPrint.DeputyOpinion,
-                ProdFull = $"{normalizedPrint.ProdOpinion}|{record.ProdLeader}|{record.ProdDate?.ToString("yyyy-MM-dd") ?? blankDt}",
-                RndFull = $"{normalizedPrint.RndOpinion}|{record.RndLeader}|{record.RndDate?.ToString("yyyy-MM-dd") ?? blankDt}",
-                DeputyFull = $"{normalizedPrint.DeputyOpinion}|{record.DeputyLeader}|{record.DeputyDate?.ToString("yyyy-MM-dd") ?? blankDt}",
+                ProdFull = $"{normalizedPrint.ProdOpinion}|{record.ProductionHead}|{record.ProductionHeadDate?.ToString("yyyy-MM-dd") ?? blankDt}",
+                RndFull = $"{normalizedPrint.RndOpinion}|{record.ArchiveRoomHead}|{record.ArchiveRoomHeadDate?.ToString("yyyy-MM-dd") ?? blankDt}",
+                ArchiveDeputyPresidentFull = $"{normalizedPrint.DeputyOpinion}|{record.ArchiveDeputyPresident}|{record.ArchiveDeputyPresidentDate?.ToString("yyyy-MM-dd") ?? blankDt}",
+                ProductionVicePresidentFull = $"|{record.ProductionVicePresident}|{record.ProductionVicePresidentDate?.ToString("yyyy-MM-dd") ?? blankDt}",
                 DeliverFull = $"{record.Deliverer}|{record.DeliverDate?.ToString("yyyy-MM-dd") ?? blankDt}",
                 AdminFull = $"{record.Administrator}|{record.AdminDate?.ToString("yyyy-MM-dd") ?? blankDt}",
                 RetainedHardDiskRegistration = retainedHardDiskRegistration,
                 OpticalDiscLedgerSummary = string.Empty,
-                ItemLines = BuildItemLinesForPrint(entries, "资料", pageDomainOptions.ConfidentialLevels),
-                ProofLines = BuildProofLinesForPrint(record)
+                ItemLines = BuildItemLinesForPrint(entries, pageDomainOptions.ConfidentialLevels, sinkSourceToItems),
+                ProofLines = BuildProofLinesForPrint(record),
+                EnableDeptHead = chain.DeptHead.IsEnabled,
+                EnableProductionHead = chain.ProductionHead.IsEnabled,
+                EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled,
+                EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled,
+                EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled
             };
         }
 
@@ -165,8 +202,8 @@ namespace DocMgr.Services.YearlyArchive
 
         private static List<string> BuildItemLinesForPrint(
             IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries,
-            string itemType,
-            IReadOnlyCollection<string> confidentialLevels)
+            IReadOnlyCollection<string> confidentialLevels,
+            bool sinkSourceToItems)
         {
             var lines = new List<string>();
             int mediaIndex = 1;
@@ -174,7 +211,6 @@ namespace DocMgr.Services.YearlyArchive
             foreach (var media in mediaEntries)
             {
                 var matchedItems = media.Items
-                    .Where(i => string.Equals(i.ItemType ?? ArchiveRegisterDomainValues.ItemTypeData, itemType, StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
                 if (matchedItems.Count == 0)
@@ -189,6 +225,21 @@ namespace DocMgr.Services.YearlyArchive
                 {
                     var countLabel = item.ContentCount > 0 ? $"{item.ContentCount}份" : string.Empty;
                     var extras = new List<string>();
+                    if (sinkSourceToItems)
+                    {
+                        string itemSourceType = item.SourceType?.Trim() ?? string.Empty;
+                        if (itemSourceType.Length > 0)
+                        {
+                            extras.Add($"来源：{itemSourceType}");
+                        }
+
+                        string itemProvideUnit = item.ProvideUnit?.Trim() ?? string.Empty;
+                        if (itemProvideUnit.Length > 0)
+                        {
+                            extras.Add($"提供单位：{itemProvideUnit}");
+                        }
+                    }
+
                     extras.AddRange(ElectronicMediaItemSupport.BuildElectronicItemPrintExtraParts(item));
                     string simulatedClassification = SimulatedMediaItemClassificationSupport.FormatClassification(
                         item.SimulatedDetail?.MaterialCategory,
@@ -363,14 +414,11 @@ namespace DocMgr.Services.YearlyArchive
         {
             return new ArchiveRegisterPageDomainOptions
             {
-                SourceTypes = GetDomainOptionValues(definitions, RegisterRecordEntityName, nameof(YearlyArchiveRegisterRecord.SourceType), EmptyScope),
+                SourceTypes = GetDomainOptionValues(definitions, RegisterMediaItemEntityName, nameof(YearlyArchiveRegisterMediaItem.SourceType), EmptyScope),
                 ArchivePurposes = GetDomainOptionValues(definitions, RegisterRecordEntityName, nameof(YearlyArchiveRegisterRecord.ArchivePurpose), EmptyScope),
                 SimulatedMediaKinds = GetDomainOptionValues(definitions, RegisterMediaEntityName, nameof(YearlyArchiveRegisterMedia.MediaKind), SimulatedMediaKindScope),
-                DataItemTypes = GetDomainOptionValues(definitions, RegisterMediaItemEntityName, nameof(YearlyArchiveRegisterMediaItem.ItemType), DataItemTypeScope),
-                ProofItemTypes = GetDomainOptionValues(definitions, RegisterMediaItemEntityName, nameof(YearlyArchiveRegisterMediaItem.ItemType), ProofItemTypeScope),
                 DataElectronicMediaTypes = GetDomainOptionValues(definitions, RegisterMediaEntityName, nameof(YearlyArchiveRegisterMedia.MediaType), MediaKindElectronicScope),
-                DataSimulatedMediaTypes = GetDomainOptionValues(definitions, RegisterMediaEntityName, nameof(YearlyArchiveRegisterMedia.MediaType), MediaKindSimulatedDataScope),
-                ProofSimulatedMediaTypes = GetDomainOptionValues(definitions, RegisterMediaEntityName, nameof(YearlyArchiveRegisterMedia.MediaType), MediaKindSimulatedProofScope),
+                DataSimulatedMediaTypes = GetDomainOptionValues(definitions, RegisterMediaEntityName, nameof(YearlyArchiveRegisterMedia.MediaType), MediaKindSimulatedScope),
                 DataElectronicDispositions = GetDomainOptionValues(definitions, RegisterMediaEntityName, nameof(YearlyArchiveRegisterMedia.Disposition), MediaKindElectronicScope),
                 DataSimulatedDispositions = GetDomainOptionValues(definitions, RegisterMediaEntityName, nameof(YearlyArchiveRegisterMedia.Disposition), MediaKindSimulatedScope),
                 ElectronicMaterialCategories = GetDomainOptionValues(definitions, RegisterElectronicDetailEntityName, nameof(YearlyArchiveRegisterElectronicMediaItemDetail.MaterialCategory), EmptyScope),
@@ -418,11 +466,8 @@ namespace DocMgr.Services.YearlyArchive
             return options.SourceTypes.Count > 0
                 && options.ArchivePurposes.Count > 0
                 && options.SimulatedMediaKinds.Count > 0
-                && options.DataItemTypes.Count > 0
-                && options.ProofItemTypes.Count > 0
                 && options.DataElectronicMediaTypes.Count > 0
                 && options.DataSimulatedMediaTypes.Count > 0
-                && options.ProofSimulatedMediaTypes.Count > 0
                 && options.DataElectronicDispositions.Count > 0
                 && options.DataSimulatedDispositions.Count > 0
                 && options.ElectronicMaterialCategories.Count > 0

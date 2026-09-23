@@ -112,7 +112,9 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                 (record.FormNo ?? string.Empty).Contains(keyword) ||
                 (record.ApplicantName ?? string.Empty).Contains(keyword) ||
                 (record.ProjectName ?? string.Empty).Contains(keyword) ||
-                (record.ProvideUnit ?? string.Empty).Contains(keyword) ||
+                record.MediaEntries.Any(media =>
+                    media.Items.Any(item =>
+                        (item.ProvideUnit ?? string.Empty).Contains(keyword))) ||
                 record.MediaEntries.Any(media =>
                     media.Items.Any(item =>
                         item.ArchiveBoxLinks.Any(boxLink =>
@@ -557,12 +559,13 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
         var mapped = new YearlyArchiveRegisterMediaItem
         {
             Id = 0,
-            ItemType = source.ItemType,
             ContentDesc = source.ContentDesc,
             ContentCount = source.ContentCount,
             StoragePath = source.StoragePath,
             Note = source.Note,
-            ConfidentialLevel = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(source.ConfidentialLevel)
+            ConfidentialLevel = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(source.ConfidentialLevel),
+            SourceType = source.SourceType,
+            ProvideUnit = source.ProvideUnit
         };
 
         if (!string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.OrdinalIgnoreCase)
@@ -594,7 +597,6 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
                     Id = 0,
                     EntryKind = entry.EntryKind,
                     EntryName = entry.EntryName,
-                    RelativePath = entry.RelativePath,
                     SizeMb = entry.SizeMb,
                     CreatedAt = entry.CreatedAt,
                     ModifiedAt = entry.ModifiedAt,

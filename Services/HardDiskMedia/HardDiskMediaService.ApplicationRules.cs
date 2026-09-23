@@ -315,6 +315,16 @@ namespace DocMgr.Services.HardDiskMedia
             }
         }
 
+        private static string NormalizeProofMaterialNote(string? proofMaterialNote)
+        {
+            if (HardDiskOutboundDomainValues.HasProofMaterial(proofMaterialNote))
+            {
+                return proofMaterialNote!.Trim();
+            }
+
+            return HardDiskOutboundDomainValues.ProofMaterialNoneText;
+        }
+
         private static bool IsReturnRegistrationType(string applicationType)
         {
             return applicationType == HardDiskMediaApplication.TypeReturnBlankRegistration ||
@@ -343,7 +353,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             if ((isOutboundApply || isReturnApply) && !CanSubmitHardDiskApplication(currentUser))
             {
-                throw new InvalidOperationException("仅部门资料管理员可发起硬盘借出/归还申请。");
+                throw new InvalidOperationException("仅部门资料员可发起硬盘借出/归还申请。");
             }
 
             if (applicationType == HardDiskMediaApplication.TypeOutboundTemporary ||

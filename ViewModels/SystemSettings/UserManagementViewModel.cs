@@ -1,7 +1,6 @@
 ﻿using System.Collections.ObjectModel;
-using System.Windows;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
-using DocMgr.Views; // for ImportMode if needed
 
 namespace DocMgr.ViewModels.SystemSettings
 {
@@ -9,8 +8,8 @@ namespace DocMgr.ViewModels.SystemSettings
     {
         private readonly IUserService _userService;
         private readonly IDialogService _dialogService;
+        private readonly IUserContextService _userContextService;
 
-        // === Properties ===
         private ObservableCollection<User> _users = new();
         public ObservableCollection<User> Users
         {
@@ -22,27 +21,39 @@ namespace DocMgr.ViewModels.SystemSettings
         public User? SelectedUser
         {
             get => _selectedUser;
-            set => SetProperty(ref _selectedUser, value);
+            set
+            {
+                if (SetProperty(ref _selectedUser, value))
+                {
+                    System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+                }
+            }
         }
 
-        // === Commands ===
+        /// <summary>系统管理员可维护；其余角色仅浏览列表。</summary>
+        public bool CanMaintain { get; }
+
         public RelayCommand RefreshCommand { get; }
         public RelayCommand AddCommand { get; }
         public RelayCommand EditCommand { get; }
         public RelayCommand DeleteCommand { get; }
 
-        public UserManagementViewModel(IUserService userService, IDialogService dialogService)
+        public UserManagementViewModel(
+            IUserService userService,
+            IDialogService dialogService,
+            IUserContextService userContextService)
         {
             _userService = userService;
             _dialogService = dialogService;
+            _userContextService = userContextService;
+            CanMaintain = ArchiveRegisterBusinessRules.IsSystemAdministrator(_userContextService.CurrentUser);
 
             RefreshCommand = new RelayCommand(_ => LoadData());
-            AddCommand = new RelayCommand(_ => AddUser());
-            // Edit/Delete 需要选中项
-            EditCommand = new RelayCommand(_ => EditUser(), _ => SelectedUser != null);
-            DeleteCommand = new RelayCommand(_ => DeleteUser(), _ => SelectedUser != null);
+            AddCommand = new RelayCommand(_ => AddUser(), _ => CanMaintain);
+            EditCommand = new RelayCommand(_ => EditUser(), _ => CanMaintain && SelectedUser != null);
+            DeleteCommand = new RelayCommand(_ => DeleteUser(), _ => CanMaintain && SelectedUser != null);
 
-            LoadData(); // 初始加载
+            LoadData();
         }
 
         private void LoadData()
@@ -53,30 +64,38 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private void AddUser()
         {
-            // 弹出新增窗口
-            // 这里的 ShowUserEditDialog 内部（目前）完成了存库逻辑
+            if (!EnsureCanMaintain())
+            {
+                return;
+            }
+
             if (_dialogService.ShowUserEditDialog(null))
             {
-                LoadData(); // 刷新
+                LoadData();
                 _dialogService.ShowMessage("用户添加成功！");
             }
         }
 
         private void EditUser()
         {
-            if (SelectedUser == null) return;
+            if (!EnsureCanMaintain() || SelectedUser == null)
+            {
+                return;
+            }
 
-            // 弹出编辑窗口
             if (_dialogService.ShowUserEditDialog(SelectedUser))
             {
-                LoadData(); // 刷新
+                LoadData();
                 _dialogService.ShowMessage("用户更新成功！");
             }
         }
 
         private void DeleteUser()
         {
-            if (SelectedUser == null) return;
+            if (!EnsureCanMaintain() || SelectedUser == null)
+            {
+                return;
+            }
 
             if (SelectedUser.LoginName == "admin")
             {
@@ -90,6 +109,17 @@ namespace DocMgr.ViewModels.SystemSettings
                 LoadData();
                 _dialogService.ShowMessage("用户已删除。");
             }
+        }
+
+        private bool EnsureCanMaintain()
+        {
+            if (CanMaintain)
+            {
+                return true;
+            }
+
+            _dialogService.ShowError("仅系统管理员可维护用户。");
+            return false;
         }
     }
 }

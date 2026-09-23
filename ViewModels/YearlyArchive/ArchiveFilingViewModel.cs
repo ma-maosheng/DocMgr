@@ -122,16 +122,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             ElectronicFilingPendingDetailRowsPanel.RefreshItems(ElectronicFilingPendingDetailRows);
 
             RefreshPendingCommand = new RelayCommand(async _ => await RefreshPendingList());
-            GenSeqCommand = new RelayCommand(async _ => await GenerateSequence());
-            SubmitCommand = new RelayCommand(async _ => await Submit());
+            GenSeqCommand = new RelayCommand(async _ => await GenerateSequence(), _ => CanOperate);
+            SubmitCommand = new RelayCommand(async _ => await Submit(), _ => CanOperate);
             PreviewElectronicSubmissionCommand = new RelayCommand(async _ => await PreviewElectronicSubmissionAsync());
-            SuggestSimulatedLocationCommand = new RelayCommand(async _ => await SuggestSimulatedLocationAsync());
+            SuggestSimulatedLocationCommand = new RelayCommand(async _ => await SuggestSimulatedLocationAsync(), _ => CanOperate);
             ShowSimulatedSlotSnapshotCommand = new RelayCommand(_ => ShowSimulatedSlotSnapshot());
-            SuggestElectronicLocationCommand = new RelayCommand(async _ => await SuggestElectronicLocationAsync());
+            SuggestElectronicLocationCommand = new RelayCommand(async _ => await SuggestElectronicLocationAsync(), _ => CanOperate);
             ShowElectronicSlotSnapshotCommand = new RelayCommand(_ => ShowElectronicSlotSnapshot());
-            SelectElectronicMediaCommand = new RelayCommand(_ => SelectElectronicMedia());
-            RegisterExternalHardDiskCommand = new RelayCommand(async _ => await RegisterExternalHardDiskAsync());
-            RecommendExternalHardDiskBlankTargetLocationCommand = new RelayCommand(async _ => await RecommendExternalHardDiskBlankTargetLocationAsync());
+            SelectElectronicMediaCommand = new RelayCommand(_ => SelectElectronicMedia(), _ => CanOperate);
+            RegisterExternalHardDiskCommand = new RelayCommand(async _ => await RegisterExternalHardDiskAsync(), _ => CanOperate);
+            RecommendExternalHardDiskBlankTargetLocationCommand = new RelayCommand(async _ => await RecommendExternalHardDiskBlankTargetLocationAsync(), _ => CanOperate);
             ShowExternalHardDiskBlankTargetSlotSnapshotCommand = new RelayCommand(_ => ShowExternalHardDiskBlankTargetSlotSnapshot());
 
             InitializePendingYears();
@@ -140,6 +140,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             SelectedTrackIndex = 0;
             ResetPanelState();
         }
+
+        /// <summary>资料管理员可立档办理；其余角色可浏览待办与区位快照。</summary>
+        public bool CanOperate =>
+            ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
 
         public ObservableCollection<string> PendingYears { get; }
         public ObservableCollection<YearlyArchiveRegisterRecord> SimulatedPendingRecords { get; }

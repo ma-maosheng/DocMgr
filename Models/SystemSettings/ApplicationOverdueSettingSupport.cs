@@ -38,7 +38,7 @@ namespace DocMgr.Models.SystemSettings
         }
 
         /// <summary>
-        /// 获取资料室管理员可强制作废前需等待的自然日天数。
+        /// 获取资料管理员可强制作废前需等待的自然日天数。
         /// 当天=0，7天=6，30天=29。
         /// </summary>
         public static int GetAdminForceVoidWaitDays(string? settingCode)
@@ -52,7 +52,7 @@ namespace DocMgr.Models.SystemSettings
         }
 
         /// <summary>
-        /// 判断申请单是否已达到资料室管理员强制作废时限。
+        /// 判断申请单是否已达到资料管理员强制作废时限。
         /// </summary>
         public static bool IsEligibleForAdminForceVoid(DateTime applyDate, string? settingCode, DateTime? asOf = null)
         {

@@ -279,7 +279,7 @@
                                                 </Style>
                                             </Separator.Style>
                                         </Separator>
-                                        <MenuItem Header="✏️ 编号设置..."
+                                        <MenuItem Header="✏️ 柜体参数设置..."
                                                   Command="{Binding PlacementTarget.Tag.EditCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Style>

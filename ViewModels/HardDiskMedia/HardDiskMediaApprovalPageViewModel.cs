@@ -361,7 +361,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return SelectedApplication != null &&
                    !IsRegistrationWithoutApprovalType(SelectedApplication.ApplicationType) &&
                    IsApprovalProcessingStatus(SelectedApplication.ApplicationStatus) &&
-                   IsArchiveRoomAdminUser(_userContextService.CurrentUser);
+                   HardDiskMediaApplicationViewModelHelper.IsArchiveRoomMediaAdmin(_userContextService.CurrentUser);
         }
 
         private static bool IsApprovalProcessingStatus(int? applicationStatus)
@@ -381,7 +381,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private bool CanForceWithdraw()
         {
-            if (SelectedApplication == null || !IsArchiveRoomAdminUser(_userContextService.CurrentUser))
+            if (SelectedApplication == null
+                || !HardDiskMediaApplicationViewModelHelper.IsArchiveRoomMediaAdmin(_userContextService.CurrentUser))
             {
                 return false;
             }
@@ -536,15 +537,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
         }
 
-        private static bool IsArchiveRoomAdminUser(User? user)
-        {
-            string dept = user?.Department?.Trim() ?? string.Empty;
-            string role = user?.Role?.Trim() ?? string.Empty;
-
-            return (string.Equals(dept, "资料室", StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(role, "部门资料管理员", StringComparison.OrdinalIgnoreCase)) ||
-                   string.Equals(role, "Administrator", StringComparison.OrdinalIgnoreCase);
-        }
     }
 
     public sealed class HardDiskMediaStatusOptionViewModel : ViewModelBase

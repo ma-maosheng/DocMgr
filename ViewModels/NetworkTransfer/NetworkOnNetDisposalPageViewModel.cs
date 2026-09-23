@@ -51,7 +51,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             ViewAssetDetailCommand = new RelayCommand(async item => await ViewAssetDetailAsync(item), item =>
                 NetworkOnNetAssetDetailTextSupport.Resolve(item, SelectedAsset) != null);
             AddDisposalCommand = new RelayCommand(async _ => await AddDisposalAsync(), _ => CanOperate);
-            OpenDisposalCommand = new RelayCommand(async _ => await OpenDisposalAsync(), _ => SelectedRecord != null && CanOperate);
+            OpenDisposalCommand = new RelayCommand(async _ => await OpenDisposalAsync(), _ => SelectedRecord != null);
             WithdrawDisposalCommand = new RelayCommand(async _ => await WithdrawDisposalAsync(), _ => CanWithdrawSelected);
         }
 

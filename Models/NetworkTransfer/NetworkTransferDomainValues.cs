@@ -87,8 +87,6 @@ namespace DocMgr.Models.NetworkTransfer
         /// <summary>历史出网目的地（兼容旧数据）。</summary>
         public const string LegacyDestinationKindArchiveFiling = "资料室立档";
 
-        public const string RegisterSourceTypeNetworkOutbound = "出网转入";
-
         public const string BusinessTypeInbound = "NetworkInbound";
         public const string BusinessTypeOutbound = "NetworkOutbound";
         public const string BusinessTypeArchiveRegister = "YearlyArchiveRegister";
@@ -328,11 +326,11 @@ namespace DocMgr.Models.NetworkTransfer
         public static bool IsOutboundExternalDestination(string? destinationKind) =>
             string.Equals(destinationKind?.Trim(), DestinationKindOutboundExternal, StringComparison.Ordinal);
 
-        /// <summary>出网单分管领导默认审批角色：出网（院内/院外）→分管生产副院长，否则→分管资料副院长。</summary>
-        public static string ResolveOutboundDeputyLeaderRole(string? destinationKind) =>
+        /// <summary>出网单分管领导默认审批角色：出网（院内/院外）→分管生产院长签字，否则→分管资料院长签字。</summary>
+        public static string ResolveOutboundArchiveDeputyPresidentRole(string? destinationKind) =>
             IsExternalOfflineDestination(destinationKind)
-                ? "分管生产副院长"
-                : "分管资料副院长";
+                ? SystemSettings.ApprovalWorkflowDomainValues.DisplayProductionVicePresident
+                : SystemSettings.ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident;
 
         /// <summary>将历史出网目的地归一化为当前选项值。</summary>
         public static string NormalizeOutboundDestinationKind(string? destinationKind)

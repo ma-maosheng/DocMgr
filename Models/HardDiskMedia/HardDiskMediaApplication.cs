@@ -51,6 +51,12 @@ namespace DocMgr.Models.HardDiskMedia
         public const string TypeReturnDamagedRegistration = "归还登记(损坏)";
         public const string TypeLossRegistration = "挂失登记";
 
+        /// <summary>永久出库目标去向：本部门。</summary>
+        public const string DestinationKindInternal = "本部门";
+
+        /// <summary>永久出库目标去向：外单位。</summary>
+        public const string DestinationKindExternal = "外单位";
+
         public const string TypeBorrow = TypeOutboundTemporary;
         public const string TypeReturn = TypeReturnBlankRegistration;
         public const string TypeConvertCarrier = TypeReturnDataRegistration;
@@ -124,9 +130,19 @@ namespace DocMgr.Models.HardDiskMedia
         public string Reason { get; set; } = string.Empty;
 
         /// <summary>
-        /// 对方人员或单位。
+        /// 证明材料备注：申请时声明是否附有证明材料；「无」表示未附，有材料时填写名称。
+        /// </summary>
+        public string ProofMaterialNote { get; set; } = HardDiskOutboundDomainValues.ProofMaterialNoneText;
+
+        /// <summary>
+        /// 目标去向明细（本部门名称或外单位名称）。
         /// </summary>
         public string TargetPersonOrUnit { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 目标去向类别（永久出库：本部门 / 外单位）。
+        /// </summary>
+        public string DestinationKind { get; set; } = string.Empty;
 
         /// <summary>
         /// 当前存放位置。
@@ -179,24 +195,54 @@ namespace DocMgr.Models.HardDiskMedia
         public string SignedAttachmentUploader { get; set; } = string.Empty;
 
         /// <summary>
-        /// 审核人。
+        /// 部门审核签字。
         /// </summary>
-        public string ReviewerName { get; set; } = string.Empty;
+        public string DeptHead { get; set; } = string.Empty;
 
         /// <summary>
-        /// 审核时间。
+        /// 部门审核日期。
         /// </summary>
-        public DateTime? ReviewerDate { get; set; }
+        public DateTime? DeptHeadDate { get; set; }
 
         /// <summary>
-        /// 审批人。
+        /// 资料室签字。
         /// </summary>
-        public string ApprovedBy { get; set; } = string.Empty;
+        public string ArchiveRoomHead { get; set; } = string.Empty;
 
         /// <summary>
-        /// 审批时间。
+        /// 资料室签字日期。
         /// </summary>
-        public DateTime? ApprovedTime { get; set; }
+        public DateTime? ArchiveRoomHeadDate { get; set; }
+
+        /// <summary>
+        /// 生产科签字。
+        /// </summary>
+        public string ProductionHead { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 生产科签字日期。
+        /// </summary>
+        public DateTime? ProductionHeadDate { get; set; }
+
+        /// <summary>
+        /// 分管资料院长签字。
+        /// </summary>
+        public string ArchiveDeputyPresident { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 分管资料院长签字日期。
+        /// </summary>
+        public DateTime? ArchiveDeputyPresidentDate { get; set; }
+
+        /// <summary>
+        /// 分管生产院长签字。
+        /// </summary>
+        public string ProductionVicePresident { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 分管生产院长签字日期。
+        /// </summary>
+        public DateTime? ProductionVicePresidentDate { get; set; }
 
         /// <summary>
         /// 审批意见。

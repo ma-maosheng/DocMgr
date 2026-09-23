@@ -12,8 +12,6 @@ namespace DocMgr.Models.YearlyArchive
 
         public string EntryName { get; init; } = string.Empty;
 
-        public string RelativePath { get; init; } = string.Empty;
-
         /// <summary>立档时写入目标介质的条目路径。</summary>
         public string FilingPath { get; init; } = string.Empty;
 
@@ -95,10 +93,9 @@ namespace DocMgr.Models.YearlyArchive
                 EntryId = entry.Id,
                 EntryKind = entry.EntryKind?.Trim() ?? string.Empty,
                 EntryName = entry.EntryName?.Trim() ?? string.Empty,
-                RelativePath = entry.RelativePath?.Trim() ?? string.Empty,
                 FilingPath = ElectronicFilingStoragePathSupport.BuildEntryFilingPath(
                     filingStoragePath,
-                    entry.RelativePath),
+                    entry.EntryName),
                 CreatedDateText = ElectronicContentEntryDisplaySupport.FormatEntryDate(entry.CreatedAt),
                 ModifiedDateText = ElectronicContentEntryDisplaySupport.FormatEntryDate(entry.ModifiedAt),
                 SizeText = ElectronicContentEntryDisplaySupport.FormatEntrySize(entry.SizeMb)
@@ -144,21 +141,6 @@ namespace DocMgr.Models.YearlyArchive
             return joined;
         }
 
-        /// <summary>
-        /// 相对路径与条目名称相同时不重复展示（常见于根目录文件）。
-        /// </summary>
-        public static string BuildRelativePathSuffix(string entryName, string? relativePath)
-        {
-            string name = entryName?.Trim() ?? string.Empty;
-            string path = relativePath?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(path) || string.Equals(name, path, StringComparison.Ordinal))
-            {
-                return string.Empty;
-            }
-
-            return $"（{path}）";
-        }
-
         public static RegisterDirectionSearchCriteria CreateCriteria(
             string contentEntryKeyword,
             string? contentEntryKindFilter)
@@ -174,13 +156,7 @@ namespace DocMgr.Models.YearlyArchive
         {
             ArgumentNullException.ThrowIfNull(entry);
 
-            string name = entry.EntryName?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                return string.Empty;
-            }
-
-            return $"{name}{BuildRelativePathSuffix(name, entry.RelativePath)}";
+            return entry.EntryName?.Trim() ?? string.Empty;
         }
 
         private static bool MatchesField(string? value, string sqlLikePattern)

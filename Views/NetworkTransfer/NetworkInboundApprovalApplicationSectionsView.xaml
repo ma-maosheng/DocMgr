@@ -12,7 +12,7 @@
     </UserControl.Resources>
     <StackPanel>
         <Border Margin="0,0,0,12" Padding="10" Background="#EEF3F8" BorderBrush="#C5D3E0" BorderThickness="1">
-            <TextBlock Text="以下为申请人提交信息（只读）。资料室资料管理员可在「审批通过」前编辑各明细密级，以及本单服务器路径与资料路径；其余申请内容不可修改。"
+            <TextBlock Text="以下为申请人提交信息（只读）。资料管理员可在「审批通过」前编辑各明细密级，以及本单服务器路径与资料路径；其余申请内容不可修改。"
                        Foreground="#475569" TextWrapping="Wrap"/>
         </Border>
 

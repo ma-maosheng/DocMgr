@@ -280,7 +280,7 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
     {
         if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
         {
-            throw new InvalidOperationException("仅资料室资料管理员可办理年度资料盘库登记。");
+            throw new InvalidOperationException("仅资料管理员可办理年度资料盘库登记。");
         }
     }
 

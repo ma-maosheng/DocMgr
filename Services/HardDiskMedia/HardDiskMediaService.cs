@@ -5,6 +5,9 @@ using DocMgr.Models.Cabinets;
 using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Repositories.Interfaces;
+using DocMgr.Services.Interfaces;
+using DocMgr.Services.SystemSettings;
+using DocMgr.Services.YearlyArchive;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 
@@ -16,24 +19,32 @@ namespace DocMgr.Services.HardDiskMedia
     public partial class HardDiskMediaService : IHardDiskMediaService
     {
         private const string ApplicationAttachmentBusinessType = "HardDiskMediaApplication";
-        private const string SignedAttachmentCategory = "签批交接单";
         private static readonly Regex DiskCodeSequenceRegex = new(@"^(?<prefix>[A-Za-z]+)(?<sequence>\d+)$", RegexOptions.Compiled);
 
         private readonly IHardDiskMediaRepository _hardDiskMediaRepository;
         private readonly IArchiveFilingRepository _archiveFilingRepository;
         private readonly IBusinessRuleService _businessRuleService;
         private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
+        private readonly IDepartmentRepository _departmentRepository;
+        private readonly IApprovalWorkflowService _approvalWorkflowService;
+        private readonly IUserService _userService;
 
         public HardDiskMediaService(
             IHardDiskMediaRepository hardDiskMediaRepository,
             IArchiveFilingRepository archiveFilingRepository,
             IBusinessRuleService businessRuleService,
-            IBusinessLogicSettingsService businessLogicSettingsService)
+            IBusinessLogicSettingsService businessLogicSettingsService,
+            IDepartmentRepository departmentRepository,
+            IApprovalWorkflowService approvalWorkflowService,
+            IUserService userService)
         {
             _hardDiskMediaRepository = hardDiskMediaRepository;
             _archiveFilingRepository = archiveFilingRepository;
             _businessRuleService = businessRuleService;
             _businessLogicSettingsService = businessLogicSettingsService;
+            _departmentRepository = departmentRepository;
+            _approvalWorkflowService = approvalWorkflowService;
+            _userService = userService;
         }
 
         /// <inheritdoc/>
@@ -516,6 +527,11 @@ namespace DocMgr.Services.HardDiskMedia
         {
             ArgumentNullException.ThrowIfNull(medium);
 
+            if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
+            {
+                throw new InvalidOperationException("仅资料管理员可维护硬盘初始登记。");
+            }
+
             if (string.IsNullOrWhiteSpace(medium.DiskCode))
             {
                 throw new ArgumentException("硬盘编号不能为空。", nameof(medium));
@@ -724,6 +740,22 @@ namespace DocMgr.Services.HardDiskMedia
                     application.ExpectedReturnDate);
             }
 
+            if (application.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted
+                && HardDiskMediaOutboundReturnSupport.RequiresDestinationKind(application.ApplicationType))
+            {
+                var instituteDepartments = _departmentRepository.GetAll()
+                    .Select(item => item.Name?.Trim() ?? string.Empty)
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
+                HardDiskMediaOutboundReturnSupport.ValidatePermanentDestination(
+                    application.ApplicationType,
+                    application.DestinationKind,
+                    application.ApplicantDept,
+                    application.TargetPersonOrUnit,
+                    instituteDepartments);
+            }
+
             await ValidateAbnormalReturnRegistrationSubmitAsync(application);
 
             var medium = await _hardDiskMediaRepository.GetActiveMediumWithLedgerByIdAsync(application.MediumId);
@@ -756,6 +788,9 @@ namespace DocMgr.Services.HardDiskMedia
             string currentLocation = string.IsNullOrWhiteSpace(application.CurrentLocation) ? ledger?.StorageLocation ?? string.Empty : application.CurrentLocation.Trim();
             string targetLocation = application.TargetLocation.Trim();
             string targetPersonOrUnit = application.TargetPersonOrUnit.Trim();
+            string destinationKind = HardDiskMediaOutboundReturnSupport.RequiresDestinationKind(application.ApplicationType)
+                ? (application.DestinationKind?.Trim() ?? string.Empty)
+                : string.Empty;
             DateTime? expectedReturnDate = application.ExpectedReturnDate;
             if (returnCandidate == null && HardDiskMediaOutboundReturnSupport.IsSelectableOutboundApplicationType(application.ApplicationType))
             {
@@ -781,7 +816,7 @@ namespace DocMgr.Services.HardDiskMedia
                 sourceOutboundRecordId = returnCandidate.SourceOutboundRecordId;
                 sourceNetworkOutboundRecordId = returnCandidate.SourceNetworkOutboundRecordId;
 
-                // 归还位置改由资料室管理员在审批办理时确定；申请保存/提交允许空位置。
+                // 归还位置改由资料管理员在审批办理时确定；申请保存/提交允许空位置。
                 if (application.ApplicationType == HardDiskMediaApplication.TypeLossRegistration)
                 {
                     targetLocation = string.Empty;
@@ -832,16 +867,19 @@ namespace DocMgr.Services.HardDiskMedia
                     ? currentUser?.Department?.Trim() ?? string.Empty
                     : applicantDept;
                 application.ApplyTime = application.ApplyTime == default ? now : application.ApplyTime;
+                application.DestinationKind = destinationKind;
                 application.TargetPersonOrUnit = targetPersonOrUnit;
                 application.CurrentLocation = currentLocation;
                 application.TargetLocation = targetLocation;
                 application.Reason = application.Reason.Trim();
+                application.ProofMaterialNote = NormalizeProofMaterialNote(application.ProofMaterialNote);
                 application.RelatedBatch = application.RelatedBatch.Trim();
                 application.RelatedArchiveTitle = application.RelatedArchiveTitle.Trim();
                 application.ApprovalOpinion = application.ApprovalOpinion.Trim();
                 application.InspectionResult = application.InspectionResult.Trim();
                 application.FormatConfirmation = application.FormatConfirmation.Trim();
-                application.ApprovedBy = application.ApprovedBy.Trim();
+                application.ArchiveRoomHead = application.ArchiveRoomHead.Trim();
+                application.ArchiveDeputyPresident = application.ArchiveDeputyPresident.Trim();
                 application.ExecutedBy = application.ExecutedBy.Trim();
                 application.Remark = application.Remark.Trim();
                 application.CreatedTime = now;
@@ -898,6 +936,8 @@ namespace DocMgr.Services.HardDiskMedia
                 existing.ApplicantDept = applicantDept;
                 existing.ApplyTime = application.ApplyTime;
                 existing.Reason = application.Reason.Trim();
+                existing.ProofMaterialNote = NormalizeProofMaterialNote(application.ProofMaterialNote);
+                existing.DestinationKind = destinationKind;
                 existing.TargetPersonOrUnit = targetPersonOrUnit;
                 existing.CurrentLocation = currentLocation;
                 existing.TargetLocation = targetLocation;
@@ -909,8 +949,10 @@ namespace DocMgr.Services.HardDiskMedia
                 existing.SignedAttachmentUploaded = application.SignedAttachmentUploaded;
                 existing.SignedAttachmentUploadedTime = application.SignedAttachmentUploadedTime;
                 existing.SignedAttachmentUploader = application.SignedAttachmentUploader.Trim();
-                existing.ApprovedBy = application.ApprovedBy.Trim();
-                existing.ApprovedTime = application.ApprovedTime;
+                existing.ArchiveRoomHead = application.ArchiveRoomHead.Trim();
+                existing.ArchiveRoomHeadDate = application.ArchiveRoomHeadDate;
+                existing.ArchiveDeputyPresident = application.ArchiveDeputyPresident.Trim();
+                existing.ArchiveDeputyPresidentDate = application.ArchiveDeputyPresidentDate;
                 existing.ApprovalOpinion = application.ApprovalOpinion.Trim();
                 existing.InspectionResult = application.InspectionResult.Trim();
                 existing.FormatConfirmation = application.FormatConfirmation.Trim();

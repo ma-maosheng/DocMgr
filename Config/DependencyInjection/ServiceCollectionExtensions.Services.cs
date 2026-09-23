@@ -63,7 +63,6 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IArchiveMaterialTransactionWriter, ArchiveMaterialTransactionWriter>();
         services.AddScoped<IArchiveSimulatedBoxSlotSyncService, ArchiveSimulatedBoxSlotSyncService>();
         services.AddScoped<IArchiveElectronicBagSlotSyncService, ArchiveElectronicBagSlotSyncService>();
-        services.AddScoped<IArchiveEmptiedContainerLegacyRepairService, ArchiveEmptiedContainerLegacyRepairService>();
         services.AddScoped<IArchiveOutboundPendingReturnContainerService, ArchiveOutboundPendingReturnContainerService>();
         services.AddSingleton<IArchiveFilingSearchPoolSession, ArchiveFilingSearchPoolSession>();
         services.AddScoped<IArchiveRelocationService, ArchiveRelocationService>();
@@ -79,6 +78,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IToDoService, ToDoAggregationService>();
         services.AddScoped<IUserPreferenceService, UserPreferenceService>();
         services.AddScoped<IBusinessLogicSettingsService, BusinessLogicSettingsService>();
+        services.AddScoped<IApprovalWorkflowService, ApprovalWorkflowService>();
         services.AddScoped<IDbOperationLogService, DbOperationLogService>();
         services.AddScoped<IBusinessNoGenerator, DefaultBusinessNoGenerator>();
         services.AddScoped<IBusinessPolicyProvider, DefaultBusinessPolicyProvider>();

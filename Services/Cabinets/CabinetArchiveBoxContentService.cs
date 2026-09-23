@@ -410,8 +410,6 @@ namespace DocMgr.Services.Cabinets
 
 
 
-            string itemType = string.IsNullOrWhiteSpace(fact.ItemType) ? "资料子项" : fact.ItemType.Trim();
-
             string itemName = string.IsNullOrWhiteSpace(fact.ItemName) ? fact.MaterialName : fact.ItemName;
 
             string identifier = string.IsNullOrWhiteSpace(fact.FormNo) ? fact.FilingFactNo : fact.FormNo;
@@ -461,8 +459,6 @@ namespace DocMgr.Services.Cabinets
                 ProjectName = fact.ProjectName?.Trim() ?? string.Empty,
 
                 ProvideUnit = fact.ProvideUnit?.Trim() ?? string.Empty,
-
-                ItemType = itemType,
 
                 ConfidentialLevel = string.IsNullOrWhiteSpace(fact.ConfidentialLevel)
 

@@ -70,6 +70,10 @@ public sealed partial class NetworkOutboundEditDialogViewModel
         private set => SetProperty(ref _canApproveDeputy, value);
     }
 
+    /// <summary>院级签字栏标题（随目的地在分管生产/资料院长之间切换）。</summary>
+    public string ArchiveDeputyPresidentTitle =>
+        NetworkTransferDomainValues.ResolveOutboundArchiveDeputyPresidentRole(DestinationKind);
+
     public bool CanUpload
     {
         get => _canUpload;
@@ -79,6 +83,16 @@ public sealed partial class NetworkOutboundEditDialogViewModel
     public bool CanApprovePass => ResolveApprovalButtonState().CanApprovePass;
     public bool CanConfirmPhysicalHandover => ResolveApprovalButtonState().CanConfirmPhysicalHandover;
     public bool CanUploadSignedAttachment => ResolveApprovalButtonState().CanUploadSignedAttachment;
+
+    /// <summary>办结后资料管理员可增补「其他附件」（仅新增）。</summary>
+    public bool CanSupplementOtherAttachments =>
+        ApprovalWorkflowButtonSupport.CanSupplementOtherAttachments(
+            _record.Status == NetworkOutboundRecord.StatusCompleted,
+            ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser));
+
+    /// <summary>办理窗分区上传或其他附件后补。</summary>
+    public bool CanUploadOtherAttachment => CanUploadSignedAttachment || CanSupplementOtherAttachments;
+
     public bool CanCompleteApproval => ResolveApprovalButtonState().CanConfirmComplete;
     public bool CanPrintHandoverSheet => ResolveApprovalButtonState().CanPrintHandoverSheet;
     public bool CanApprove => CanApprovePass;
@@ -109,7 +123,9 @@ public sealed partial class NetworkOutboundEditDialogViewModel
         ? "请在「附件材料」分区分别上传签批交接单"
             + (RequiresProofMaterialScanUpload ? "与证明材料" : string.Empty)
             + "（格式限 PDF/图像）。"
-        : "请先执行「审批通过」并确认实物交接。";
+        : (CanSupplementOtherAttachments
+            ? "办结后仅可增补「其他附件」；不可删除已有附件。"
+            : "请先执行「审批通过」并确认实物交接。");
 
     public bool RequiresProofMaterialScanUpload =>
         ArchiveRegisterDomainValues.RequiresProofMaterialAttachment(_record.ProofMaterialNote);
@@ -177,7 +193,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
             _ => CanUploadProofMaterialAttachment);
         UploadOtherAttachmentCommand = new RelayCommand(
             async _ => await UploadAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategoryOther),
-            _ => CanUploadSignedAttachment);
+            _ => CanUploadOtherAttachment);
         CaptureSignedHandoverAttachmentCommand = new RelayCommand(
             async _ => await CaptureAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategorySignedForm),
             _ => CanUploadSignedAttachment);
@@ -186,7 +202,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
             _ => CanUploadProofMaterialAttachment);
         CaptureOtherAttachmentCommand = new RelayCommand(
             async _ => await CaptureAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategoryOther),
-            _ => CanUploadSignedAttachment);
+            _ => CanUploadOtherAttachment);
         FillDefaultApprovalInfoCommand = new RelayCommand(
             async _ => await FillDefaultApprovalInfoAsync(),
             _ => CanApproveProd && _record.Id > 0);
@@ -251,6 +267,8 @@ public sealed partial class NetworkOutboundEditDialogViewModel
         OnPropertyChanged(nameof(CanApprovePass));
         OnPropertyChanged(nameof(CanConfirmPhysicalHandover));
         OnPropertyChanged(nameof(CanUploadSignedAttachment));
+        OnPropertyChanged(nameof(CanSupplementOtherAttachments));
+        OnPropertyChanged(nameof(CanUploadOtherAttachment));
         OnPropertyChanged(nameof(CanCompleteApproval));
         OnPropertyChanged(nameof(CanPrintHandoverSheet));
         OnPropertyChanged(nameof(ApproveHintText));
@@ -339,14 +357,16 @@ public sealed partial class NetworkOutboundEditDialogViewModel
             ServerPath = SelectedServerPath?.PathName ?? _record.ServerPath,
             MaterialPath = _record.MaterialPath,
             ProofMaterialNote = _record.ProofMaterialNote,
-            DeptLeader = DeptLeader,
-            DeptDate = DeptDate,
-            ProdLeader = ProdLeader,
-            ProdDate = ProdDate,
-            RndLeader = RndLeader,
-            RndDate = RndDate,
-            DeputyLeader = DeputyLeader,
-            DeputyDate = DeputyDate,
+            DeptHead = DeptHead,
+            DeptHeadDate = DeptHeadDate,
+            ProductionHead = ProductionHead,
+            ProductionHeadDate = ProductionHeadDate,
+            ArchiveRoomHead = ArchiveRoomHead,
+            ArchiveRoomHeadDate = ArchiveRoomHeadDate,
+            ArchiveDeputyPresident = ArchiveDeputyPresident,
+            ArchiveDeputyPresidentDate = ArchiveDeputyPresidentDate,
+            ProductionVicePresident = ProductionVicePresident,
+            ProductionVicePresidentDate = ProductionVicePresidentDate,
             Deliverer = Deliverer,
             DeliverDate = DeliverDate,
             Administrator = Administrator,
@@ -363,7 +383,11 @@ public sealed partial class NetworkOutboundEditDialogViewModel
             return;
         }
 
-        if (!CanUploadSignedAttachment)
+        bool isOther = string.Equals(
+            fileCategory,
+            NetworkTransferDomainValues.AttachmentCategoryOther,
+            StringComparison.Ordinal);
+        if (!CanUploadSignedAttachment && !(isOther && CanSupplementOtherAttachments))
         {
             _dialogService.ShowMessage(UploadHintText);
             return;
@@ -435,7 +459,11 @@ public sealed partial class NetworkOutboundEditDialogViewModel
             return;
         }
 
-        if (!CanUploadSignedAttachment)
+        bool isOther = string.Equals(
+            fileCategory,
+            NetworkTransferDomainValues.AttachmentCategoryOther,
+            StringComparison.Ordinal);
+        if (!CanUploadSignedAttachment && !(isOther && CanSupplementOtherAttachments))
         {
             _dialogService.ShowMessage(UploadHintText);
             return;

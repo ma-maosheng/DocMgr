@@ -11,18 +11,16 @@ public static partial class FieldDomainSeedService
         return new List<FieldDomainSeed>
             {
                 new(
-                    "YearlyArchiveRegisterRecord",
+                    "YearlyArchiveRegisterMediaItem",
                     "SourceType",
                     "资料来源",
-                    "登记申请中的资料来源选项。",
+                    "登记申请中各资料子项的资料来源选项。",
                     true,
                     10,
                     new List<FieldDomainOptionSeed>
                     {
                         new(string.Empty, "内部", "内部", true, 10),
                         new(string.Empty, "外来", "外来", true, 20),
-                        new(string.Empty, "出网转入", "出网转入", true, 30),
-                        new(string.Empty, ArchiveRegisterDomainValues.SourceTypeStockDirect, ArchiveRegisterDomainValues.SourceTypeStockDirect, true, 40),
                     }),
                 new(
                     "YearlyArchiveRegisterMedia",
@@ -34,18 +32,6 @@ public static partial class FieldDomainSeedService
                     new List<FieldDomainOptionSeed>
                     {
                         new("Template=Simulated", "模拟", "模拟", true, 10),
-                    }),
-                new(
-                    "YearlyArchiveRegisterMediaItem",
-                    "ItemType",
-                    "明细类型",
-                    "资料登记页子项模板使用的明细类型选项。",
-                    true,
-                    18,
-                    new List<FieldDomainOptionSeed>
-                    {
-                        new("Template=Data", "资料", "资料", true, 10),
-                        new("Template=Proof", "证明", "证明", true, 20),
                     }),
                 new(
                     nameof(YearlyArchiveRegisterElectronicMediaItemDetail),
@@ -69,11 +55,9 @@ public static partial class FieldDomainSeedService
                     20,
                     new List<FieldDomainOptionSeed>
                     {
-                        new(ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocumentScope, "外来资料类", "外来资料类", true, 10),
                         new(ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocumentScope, "策划设计类", "策划设计类", true, 20),
                         new(ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocumentScope, "检查记录类", "检查记录类", true, 30),
                         new(ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocumentScope, "总结报告类", "总结报告类", true, 40),
-                        new(ArchiveRegisterDomainValues.ElectronicMaterialCategoryDataScope, "外来收集数据", "外来收集数据", true, 110),
                         new(ArchiveRegisterDomainValues.ElectronicMaterialCategoryDataScope, "原始观测数据", "原始观测数据", true, 120),
                         new(ArchiveRegisterDomainValues.ElectronicMaterialCategoryDataScope, "过程处理数据", "过程处理数据", true, 130),
                         new(ArchiveRegisterDomainValues.ElectronicMaterialCategoryDataScope, "过程检查数据", "过程检查数据", true, 140),
@@ -87,13 +71,12 @@ public static partial class FieldDomainSeedService
                     nameof(YearlyArchiveRegisterElectronicMediaItemDetail),
                     nameof(YearlyArchiveRegisterElectronicMediaItemDetail.DataOrganizationForm),
                     "数据组织形式",
-                    "电子资料的数据组织形式：目录型表示子项有统一根目录（根下可同时有文件与子目录）；文件型表示无统一根目录、仅登记散文件。",
+                    "电子资料的数据组织形式：目录型表示子项有统一根目录（根下可同时有文件与子目录）。系统已固定为目录型，不再提供文件型。",
                     true,
                     21,
                     new List<FieldDomainOptionSeed>
                     {
                         new(string.Empty, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormDirectory, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormDirectory, true, 10),
-                        new(string.Empty, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormFile, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormFile, true, 20),
                     }),
                 new(
                     nameof(YearlyArchiveRegisterSimulatedMediaItemDetail),
@@ -116,12 +99,11 @@ public static partial class FieldDomainSeedService
                     23,
                     new List<FieldDomainOptionSeed>
                     {
-                        new(ArchiveRegisterDomainValues.SimulatedMaterialCategoryTextScope, ArchiveRegisterDomainValues.SimulatedSubCategoryExternalMaterial, ArchiveRegisterDomainValues.SimulatedSubCategoryExternalMaterial, true, 10),
                         new(ArchiveRegisterDomainValues.SimulatedMaterialCategoryTextScope, ArchiveRegisterDomainValues.SimulatedSubCategoryPlanningDesign, ArchiveRegisterDomainValues.SimulatedSubCategoryPlanningDesign, true, 20),
                         new(ArchiveRegisterDomainValues.SimulatedMaterialCategoryTextScope, ArchiveRegisterDomainValues.SimulatedSubCategoryInspectionRecord, ArchiveRegisterDomainValues.SimulatedSubCategoryInspectionRecord, true, 30),
                         new(ArchiveRegisterDomainValues.SimulatedMaterialCategoryTextScope, ArchiveRegisterDomainValues.SimulatedSubCategorySummaryReport, ArchiveRegisterDomainValues.SimulatedSubCategorySummaryReport, true, 40),
                         new(ArchiveRegisterDomainValues.SimulatedMaterialCategoryTextScope, ArchiveRegisterDomainValues.SimulatedSubCategoryOther, ArchiveRegisterDomainValues.SimulatedSubCategoryOther, true, 50),
-                        new(ArchiveRegisterDomainValues.SimulatedMaterialCategoryMapScope, ArchiveRegisterDomainValues.SimulatedSubCategoryExternalMap, ArchiveRegisterDomainValues.SimulatedSubCategoryExternalMap, true, 110),
+                        new(ArchiveRegisterDomainValues.SimulatedMaterialCategoryMapScope, ArchiveRegisterDomainValues.SimulatedSubCategoryOriginalMap, ArchiveRegisterDomainValues.SimulatedSubCategoryOriginalMap, true, 110),
                         new(ArchiveRegisterDomainValues.SimulatedMaterialCategoryMapScope, ArchiveRegisterDomainValues.SimulatedSubCategoryProcessMap, ArchiveRegisterDomainValues.SimulatedSubCategoryProcessMap, true, 120),
                         new(ArchiveRegisterDomainValues.SimulatedMaterialCategoryMapScope, ArchiveRegisterDomainValues.SimulatedSubCategoryResultMap, ArchiveRegisterDomainValues.SimulatedSubCategoryResultMap, true, 130),
                         new(ArchiveRegisterDomainValues.SimulatedMaterialCategoryMapScope, ArchiveRegisterDomainValues.SimulatedSubCategoryOtherMap, ArchiveRegisterDomainValues.SimulatedSubCategoryOtherMap, true, 140),
@@ -151,15 +133,11 @@ public static partial class FieldDomainSeedService
                         new("MediaKind=电子", "光盘", "光盘", true, 20),
                         new("MediaKind=电子", "硬盘", "硬盘", true, 30),
                         new("MediaKind=电子", "内网", "内网", true, 40),
-                        new("MediaKind=模拟;ItemType=资料", ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper, ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper, true, 50),
-                        new("MediaKind=模拟;ItemType=资料", ArchiveRegisterDomainValues.SimulatedMediaTypeDrawingPaper, ArchiveRegisterDomainValues.SimulatedMediaTypeDrawingPaper, true, 60),
-                        new("MediaKind=模拟;ItemType=资料", ArchiveRegisterDomainValues.SimulatedMediaTypePhotoPaper, ArchiveRegisterDomainValues.SimulatedMediaTypePhotoPaper, true, 70),
-                        new("MediaKind=模拟;ItemType=资料", ArchiveRegisterDomainValues.SimulatedMediaTypePhotosensitiveFilm, ArchiveRegisterDomainValues.SimulatedMediaTypePhotosensitiveFilm, true, 80),
-                        new("MediaKind=模拟;ItemType=资料", ArchiveRegisterDomainValues.SimulatedMediaTypePhotosensitivePaper, ArchiveRegisterDomainValues.SimulatedMediaTypePhotosensitivePaper, true, 90),
-                        new("MediaKind=模拟;ItemType=证明", "装订文本", "装订文本", true, 100),
-                        new("MediaKind=模拟;ItemType=证明", "散页文本", "散页文本", true, 110),
-                        new("MediaKind=模拟;ItemType=证明", "其他", "其他", true, 120),
-
+                        new("MediaKind=模拟", ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper, ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper, true, 50),
+                        new("MediaKind=模拟", ArchiveRegisterDomainValues.SimulatedMediaTypeDrawingPaper, ArchiveRegisterDomainValues.SimulatedMediaTypeDrawingPaper, true, 60),
+                        new("MediaKind=模拟", ArchiveRegisterDomainValues.SimulatedMediaTypePhotoPaper, ArchiveRegisterDomainValues.SimulatedMediaTypePhotoPaper, true, 70),
+                        new("MediaKind=模拟", ArchiveRegisterDomainValues.SimulatedMediaTypePhotosensitiveFilm, ArchiveRegisterDomainValues.SimulatedMediaTypePhotosensitiveFilm, true, 80),
+                        new("MediaKind=模拟", ArchiveRegisterDomainValues.SimulatedMediaTypePhotosensitivePaper, ArchiveRegisterDomainValues.SimulatedMediaTypePhotosensitivePaper, true, 90),
                     }),
                 new(
                     "YearlyArchiveRegisterMedia",

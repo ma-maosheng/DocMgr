@@ -15,9 +15,7 @@ namespace DocMgr.Services.Shared
     /// </summary>
     public static class FlowDocumentWordExportSupport
     {
-        private const int BodyFontPoints = 10;
-        private const int TitleFontPoints = 15;
-        private const int CellMarginDxa = 28;
+        private const int CellMarginDxa = PrintPageLayoutSupport.TableCellPaddingTwips;
 
         /// <summary>
         /// 导出 FlowDocument 到 .docx 文件。
@@ -93,7 +91,13 @@ namespace DocMgr.Services.Shared
                         AddTable(document, table);
                         break;
                     case BlockUIContainer uiContainer:
-                        AddPlainParagraph(document, ExtractUiElementText(uiContainer.Child), centered: false, bold: false, fontPoints: BodyFontPoints);
+                        AddPlainParagraph(
+                            document,
+                            ExtractUiElementText(uiContainer.Child),
+                            centered: false,
+                            bold: false,
+                            isTitle: false,
+                            isFooter: false);
                         break;
                 }
             }
@@ -123,26 +127,26 @@ namespace DocMgr.Services.Shared
         private static void AddParagraph(XWPFDocument document, Paragraph source)
         {
             string text = ExtractPlainText(source).Trim('\r', '\n');
-            if (string.IsNullOrWhiteSpace(text) && source.Margin.Bottom <= 0 && source.Margin.Top <= 0)
+            // 空段落一律跳过，避免编号行与主表之间出现多余空行。
+            if (string.IsNullOrWhiteSpace(text))
             {
                 return;
             }
 
-            bool isTitle = source.FontSize >= 18 || source.FontWeight == FontWeights.Bold && source.TextAlignment == System.Windows.TextAlignment.Center;
+            bool isTitle = source.FontSize >= 18
+                || (source.FontWeight == FontWeights.Bold
+                    && source.TextAlignment == System.Windows.TextAlignment.Center
+                    && source.FontSize >= 16);
+            bool isFooter = source.FontSize > 0 && source.FontSize <= 11;
             bool bold = source.FontWeight == FontWeights.Bold || isTitle;
-            int fontPoints = isTitle ? TitleFontPoints : BodyFontPoints;
-            if (source.FontSize > 0 && source.FontSize < 18)
-            {
-                fontPoints = (int)Math.Round(source.FontSize * 0.75);
-                fontPoints = Math.Clamp(fontPoints, 9, BodyFontPoints);
-            }
 
             AddPlainParagraph(
                 document,
                 text,
                 centered: source.TextAlignment == System.Windows.TextAlignment.Center,
                 bold: bold,
-                fontPoints: isTitle ? TitleFontPoints : fontPoints);
+                isTitle: isTitle,
+                isFooter: isFooter && !isTitle);
         }
 
         private static void AddPlainParagraph(
@@ -150,15 +154,31 @@ namespace DocMgr.Services.Shared
             string text,
             bool centered,
             bool bold,
-            int fontPoints)
+            bool isTitle,
+            bool isFooter)
         {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+
             var paragraph = document.CreateParagraph();
             paragraph.Alignment = centered ? ParagraphAlignment.CENTER : ParagraphAlignment.LEFT;
+            WordExportFontSupport.ApplyHalfLineParagraphSpacing(paragraph);
             var run = paragraph.CreateRun();
             run.SetText(text ?? string.Empty);
-            run.IsBold = bold;
-            run.FontSize = fontPoints;
-            run.FontFamily = bold ? "黑体" : "宋体";
+            if (isTitle)
+            {
+                WordExportFontSupport.ApplyTitle(run);
+            }
+            else if (isFooter)
+            {
+                WordExportFontSupport.ApplyFooter(run, bold);
+            }
+            else
+            {
+                WordExportFontSupport.ApplyBody(run, bold);
+            }
         }
 
         private static void AddTable(XWPFDocument document, Table source)
@@ -175,8 +195,12 @@ namespace DocMgr.Services.Shared
                 return;
             }
 
+            // 打印预览里「申请单编号/申请日期」等为无边框表头表，导出时不得加边框，避免看起来像主表内行。
+            bool isOutsideMetaHeader = !HasVisibleBorder(source);
+
             var table = document.CreateTable(rows.Count, columnCount);
-            ConfigureTableWidth(table, columnCount);
+            int[] columnWidths = ResolveColumnWidthsTwips(source, columnCount);
+            WordExportTableLayoutSupport.ApplyFixedTableLayout(table, columnWidths);
 
             for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
             {
@@ -196,7 +220,7 @@ namespace DocMgr.Services.Shared
                     span = Math.Min(span, columnCount - columnIndex);
 
                     XWPFTableCell targetCell = targetRow.GetCell(columnIndex);
-                    WriteCell(targetCell, sourceCell);
+                    WriteCell(targetCell, sourceCell, applyBorder: !isOutsideMetaHeader);
 
                     if (span > 1)
                     {
@@ -206,15 +230,46 @@ namespace DocMgr.Services.Shared
                     columnIndex += span;
                 }
 
-                // 未填满的右侧单元格保持空边框。
                 while (columnIndex < columnCount)
                 {
-                    ApplyCellBorder(targetRow.GetCell(columnIndex));
+                    XWPFTableCell emptyCell = targetRow.GetCell(columnIndex);
+                    if (isOutsideMetaHeader)
+                    {
+                        ApplyNilCellBorder(emptyCell);
+                    }
+                    else
+                    {
+                        ApplyCellBorder(emptyCell);
+                    }
+
                     columnIndex++;
                 }
+
+                WordExportTableLayoutSupport.ApplyRowCellWidths(targetRow, columnWidths);
             }
 
-            ApplyTableOuterBorder(table);
+            if (isOutsideMetaHeader)
+            {
+                ApplyNilTableOuterBorder(table);
+            }
+            else
+            {
+                ApplyTableOuterBorder(table);
+            }
+        }
+
+        private static bool HasVisibleBorder(Table source)
+        {
+            if (source.BorderBrush == null)
+            {
+                return false;
+            }
+
+            Thickness thickness = source.BorderThickness;
+            return thickness.Left > 0
+                || thickness.Top > 0
+                || thickness.Right > 0
+                || thickness.Bottom > 0;
         }
 
         private static int ResolveColumnCount(Table source)
@@ -239,23 +294,104 @@ namespace DocMgr.Services.Shared
             return max;
         }
 
-        private static void ConfigureTableWidth(XWPFTable table, int columnCount)
+        private static int[] ResolveColumnWidthsTwips(Table source, int columnCount)
         {
-            table.Width = 5000;
-            var tbl = table.GetCTTbl();
-            var tblPr = tbl.tblPr ?? tbl.AddNewTblPr();
-            var tblW = tblPr.tblW ?? tblPr.AddNewTblW();
-            tblW.type = ST_TblWidth.dxa;
-            tblW.w = PrintPageLayoutSupport.ContentWidthTwips.ToString();
+            if (source.Columns.Count != columnCount)
+            {
+                return WordExportTableLayoutSupport.DistributeEqualWidths(
+                    PrintPageLayoutSupport.ContentWidthTwips,
+                    columnCount);
+            }
 
-            int columnWidth = PrintPageLayoutSupport.ContentWidthTwips / Math.Max(1, columnCount);
-            var grid = tbl.tblGrid ?? tbl.AddNewTblGrid();
-            grid.gridCol.Clear();
+            int contentWidth = PrintPageLayoutSupport.ContentWidthTwips;
+            var fixedTwips = new int?[columnCount];
+            var stars = new double[columnCount];
+            int fixedSum = 0;
+            double starSum = 0;
+            bool anyStar = false;
+            bool anyFixed = false;
+
             for (int i = 0; i < columnCount; i++)
             {
-                var gridCol = grid.AddNewGridCol();
-                gridCol.w = (ulong)columnWidth;
+                GridLength width = source.Columns[i].Width;
+                if (width.GridUnitType == GridUnitType.Pixel && width.Value > 0)
+                {
+                    // DIP → twips：96 DPI 下 1 DIP = 15 twips。
+                    int twips = (int)Math.Round(width.Value * 1440.0 / 96.0);
+                    fixedTwips[i] = twips;
+                    fixedSum += twips;
+                    anyFixed = true;
+                }
+                else if (width.GridUnitType == GridUnitType.Star && width.Value > 0)
+                {
+                    stars[i] = width.Value;
+                    starSum += width.Value;
+                    anyStar = true;
+                }
+                else
+                {
+                    stars[i] = 1;
+                    starSum += 1;
+                    anyStar = true;
+                }
             }
+
+            if (!anyStar && !anyFixed)
+            {
+                return WordExportTableLayoutSupport.DistributeEqualWidths(contentWidth, columnCount);
+            }
+
+            if (!anyFixed)
+            {
+                return WordExportTableLayoutSupport.DistributeWidths(contentWidth, stars);
+            }
+
+            if (!anyStar)
+            {
+                var absolute = new int[columnCount];
+                for (int i = 0; i < columnCount; i++)
+                {
+                    absolute[i] = fixedTwips[i] ?? 0;
+                }
+
+                return absolute;
+            }
+
+            int remaining = Math.Max(0, contentWidth - fixedSum);
+            var result = new int[columnCount];
+            int allocatedStars = 0;
+            int lastStarIndex = -1;
+            for (int i = 0; i < columnCount; i++)
+            {
+                if (!fixedTwips[i].HasValue)
+                {
+                    lastStarIndex = i;
+                }
+            }
+
+            for (int i = 0; i < columnCount; i++)
+            {
+                if (fixedTwips[i].HasValue)
+                {
+                    result[i] = fixedTwips[i]!.Value;
+                    continue;
+                }
+
+                if (i == lastStarIndex)
+                {
+                    result[i] = Math.Max(0, remaining - allocatedStars);
+                }
+                else
+                {
+                    int share = starSum > 0
+                        ? (int)Math.Round(remaining * stars[i] / starSum)
+                        : 0;
+                    result[i] = share;
+                    allocatedStars += share;
+                }
+            }
+
+            return result;
         }
 
         private static void EnsureCellCount(XWPFTableRow row, int columnCount)
@@ -266,36 +402,70 @@ namespace DocMgr.Services.Shared
             }
         }
 
-        private static void WriteCell(XWPFTableCell targetCell, TableCell sourceCell)
+        private static void WriteCell(XWPFTableCell targetCell, TableCell sourceCell, bool applyBorder = true)
         {
-            ApplyCellBorder(targetCell);
+            if (applyBorder)
+            {
+                ApplyCellBorder(targetCell);
+            }
+            else
+            {
+                ApplyNilCellBorder(targetCell);
+            }
+
             targetCell.RemoveParagraph(0);
 
             string text = ExtractCellText(sourceCell);
-            bool isLabel = LooksLikeLabel(sourceCell, text);
+            bool isLabel = applyBorder && LooksLikeLabel(sourceCell, text);
 
             var paragraph = targetCell.AddParagraph();
-            paragraph.Alignment = isLabel ? ParagraphAlignment.CENTER : ParagraphAlignment.LEFT;
+            paragraph.Alignment = ResolveCellAlignment(sourceCell, isLabel);
+            WordExportFontSupport.ApplyHalfLineParagraphSpacing(paragraph);
             var run = paragraph.CreateRun();
             run.SetText(text);
-            run.IsBold = isLabel;
-            run.FontFamily = isLabel ? "黑体" : "宋体";
-            run.FontSize = BodyFontPoints;
+            if (isLabel)
+            {
+                WordExportFontSupport.ApplyLabel(run);
+            }
+            else
+            {
+                WordExportFontSupport.ApplyBody(run);
+            }
 
-            targetCell.SetVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
+            // 多行内容顶对齐，单行标签/正文居中；表外编号/日期顶对齐更接近预览。
+            bool alignTop = !applyBorder || text.Contains('\n', StringComparison.Ordinal);
+            targetCell.SetVerticalAlignment(alignTop
+                ? XWPFTableCell.XWPFVertAlign.TOP
+                : XWPFTableCell.XWPFVertAlign.CENTER);
             var tcPr = targetCell.GetCTTc().tcPr ?? targetCell.GetCTTc().AddNewTcPr();
             var vAlign = tcPr.vAlign ?? tcPr.AddNewVAlign();
-            vAlign.val = ST_VerticalJc.center;
+            vAlign.val = alignTop ? ST_VerticalJc.top : ST_VerticalJc.center;
 
             if (tcPr.tcMar == null)
             {
                 tcPr.tcMar = new CT_TcMar();
             }
 
-            tcPr.tcMar.top = CreateMargin(CellMarginDxa);
-            tcPr.tcMar.bottom = CreateMargin(CellMarginDxa);
-            tcPr.tcMar.left = CreateMargin(CellMarginDxa);
-            tcPr.tcMar.right = CreateMargin(CellMarginDxa);
+            int margin = applyBorder ? CellMarginDxa : 0;
+            tcPr.tcMar.top = CreateMargin(margin);
+            tcPr.tcMar.bottom = CreateMargin(margin);
+            tcPr.tcMar.left = CreateMargin(margin);
+            tcPr.tcMar.right = CreateMargin(margin);
+        }
+
+        private static ParagraphAlignment ResolveCellAlignment(TableCell sourceCell, bool isLabel)
+        {
+            if (!isLabel)
+            {
+                return sourceCell.TextAlignment switch
+                {
+                    System.Windows.TextAlignment.Right => ParagraphAlignment.RIGHT,
+                    System.Windows.TextAlignment.Center => ParagraphAlignment.CENTER,
+                    _ => ParagraphAlignment.LEFT
+                };
+            }
+
+            return ParagraphAlignment.CENTER;
         }
 
         private static CT_TblWidth CreateMargin(int dxa) =>
@@ -441,6 +611,16 @@ namespace DocMgr.Services.Shared
             SetBorder(borders.right ??= new CT_Border(), 4);
         }
 
+        private static void ApplyNilCellBorder(XWPFTableCell cell)
+        {
+            var tcPr = cell.GetCTTc().tcPr ?? cell.GetCTTc().AddNewTcPr();
+            var borders = tcPr.tcBorders ?? tcPr.AddNewTcBorders();
+            SetNilBorder(borders.top ??= new CT_Border());
+            SetNilBorder(borders.bottom ??= new CT_Border());
+            SetNilBorder(borders.left ??= new CT_Border());
+            SetNilBorder(borders.right ??= new CT_Border());
+        }
+
         private static void ApplyTableOuterBorder(XWPFTable table)
         {
             var tbl = table.GetCTTbl();
@@ -454,12 +634,33 @@ namespace DocMgr.Services.Shared
             SetBorder(borders.insideV ??= new CT_Border(), 4);
         }
 
+        private static void ApplyNilTableOuterBorder(XWPFTable table)
+        {
+            var tbl = table.GetCTTbl();
+            var tblPr = tbl.tblPr ?? tbl.AddNewTblPr();
+            var borders = tblPr.tblBorders ?? tblPr.AddNewTblBorders();
+            SetNilBorder(borders.top ??= new CT_Border());
+            SetNilBorder(borders.bottom ??= new CT_Border());
+            SetNilBorder(borders.left ??= new CT_Border());
+            SetNilBorder(borders.right ??= new CT_Border());
+            SetNilBorder(borders.insideH ??= new CT_Border());
+            SetNilBorder(borders.insideV ??= new CT_Border());
+        }
+
         private static void SetBorder(CT_Border border, ulong size)
         {
             border.val = ST_Border.single;
             border.sz = size;
             border.space = 0;
             border.color = "000000";
+        }
+
+        private static void SetNilBorder(CT_Border border)
+        {
+            border.val = ST_Border.nil;
+            border.sz = 0;
+            border.space = 0;
+            border.color = "auto";
         }
 
         private static string SanitizeFileName(string value)

@@ -130,11 +130,11 @@ namespace DocMgr.Models.YearlyArchive
         }
 
         /// <summary>
-        /// 将资料子项立档根路径与登记目录/文件相对路径合并为条目级立档路径。
+        /// 将资料子项立档根路径与登记目录/文件名称合并为条目级立档路径（单一父目录模型：名称即相对路径）。
         /// </summary>
-        public static string BuildEntryFilingPath(string? filingStoragePath, string? entryRelativePath)
+        public static string BuildEntryFilingPath(string? filingStoragePath, string? entryName)
         {
-            string relative = (entryRelativePath ?? string.Empty).Trim().Replace('/', '\\');
+            string relative = (entryName ?? string.Empty).Trim().Replace('/', '\\');
             string basePath = (filingStoragePath ?? string.Empty).Trim().Replace('/', '\\');
 
             if (string.IsNullOrWhiteSpace(basePath))

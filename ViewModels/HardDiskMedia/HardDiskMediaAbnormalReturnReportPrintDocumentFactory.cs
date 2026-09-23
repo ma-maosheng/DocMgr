@@ -4,6 +4,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 
 namespace DocMgr.ViewModels.HardDiskMedia
 {
@@ -14,14 +15,17 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private static readonly FontFamily BodyFont = new("SimSun");
 
         private const double TitleTopSpacerHeight = 20;
-        private const double StandardRowHeight = 32;
+        private const double StandardRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
         private const double HandwritingRowHeight = 112;
-        private const double ApprovalRowHeight = 32;
+        private const double ApprovalRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
         private const double TitleBlockHeight = 48;
         private const double HeaderInfoHeight = 28;
-        private const double CellPadding = 4;
+        private const double CellPadding = PrintPageLayoutSupport.TableCellPaddingDip;
         private const double BodyFontSize = 12;
         private const string BlankSignatureDateText = "______年___月___日";
+
+        /// <summary>具体情况说明按正文估行后的上限（撑满下限）。</summary>
+        private const int DetailMaxLines = 20;
 
         internal static FlowDocument Create(HardDiskMediaAbnormalReturnReportPrintData data)
         {
@@ -56,7 +60,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 $"登记单编号：{data.ApplicationNo}",
                 $"归还日期：{data.ReturnDateText}"));
 
-            double detailRowHeight = CalculateDetailRowHeight();
+            string reasonText = EmptyAsPlaceholder(data.Reason);
+            double detailRowHeight = CalculateDetailRowHeight(reasonText);
 
             var rowGroup = new TableRowGroup();
             rowGroup.Rows.Add(CreateDoubleRow("申请部门", data.ApplicantDept, "归还人", data.ApplicantName));
@@ -64,14 +69,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             rowGroup.Rows.Add(CreateDoubleRow("硬盘编号", data.DiskCode, "序列号", data.SerialNumber));
             rowGroup.Rows.Add(CreateSingleRow("借出位置", data.CurrentLocation));
             rowGroup.Rows.Add(CreateSingleRow("登记类型", data.InspectionResult));
-            rowGroup.Rows.Add(CreateSingleRow("具体情况说明", EmptyAsPlaceholder(data.Reason), detailRowHeight, verticalTop: true));
+            rowGroup.Rows.Add(CreateSingleRow("具体情况说明", reasonText, detailRowHeight, verticalTop: true));
             rowGroup.Rows.Add(CreateSingleRow("具体情况（手写补充）", string.Empty, HandwritingRowHeight, verticalTop: true));
             rowGroup.Rows.Add(CreateSignatureRow("归还人签字", BuildReturnerSignatureLine(data)));
             rowGroup.Rows.Add(CreateSignatureRow(
-                "申请人所属部门负责人",
+                ApprovalWorkflowDomainValues.DisplayDeptHead,
                 BuildApprovalSignatureLine(data.ApplicantDeptHeadSignerSlot, data.ApplicantDeptHeadSignatureDateText)));
             rowGroup.Rows.Add(CreateSignatureRow(
-                "资料室负责人",
+                ApprovalWorkflowDomainValues.DisplayArchiveRoomHead,
                 BuildApprovalSignatureLine(data.ArchiveRoomHeadSignerSlot, data.ArchiveRoomHeadSignatureDateText)));
             rowGroup.Rows.Add(CreateSignatureRow("资料室经办人签字", BuildBlankHandlerSignatureLine()));
             document.Blocks.Add(CreateMainTable(rowGroup));
@@ -80,23 +85,37 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return document;
         }
 
-        private static double CalculateDetailRowHeight()
+        private static double CalculateDetailRowHeight(string reasonText)
         {
             // 固定行：3 双列/单列信息行(5) + 手写补充 + 4 签字行；另计顶部留白。
-            double fixedTableHeight =
-                PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 5
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(HandwritingRowHeight, CellPadding)
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(ApprovalRowHeight, CellPadding) * 4;
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 2, lineHeightDip: 16, topMarginDip: 8);
+            const int fixedRowCount = 5 + 1 + 4;
+            double fixedContentHeight =
+                StandardRowHeight * 5
+                + HandwritingRowHeight
+                + ApprovalRowHeight * 4;
+            double fixedTableHeight = fixedContentHeight
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
+                + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
+
+            string footerText = BuildFooterNoteText();
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
+                footerText,
+                PrintPageLayoutSupport.ContentWidthDip,
+                fontSizeDip: 10,
+                lineHeightDip: 16,
+                topMarginDip: 8);
             double reservedHeight =
                 TitleTopSpacerHeight
                 + TitleBlockHeight
                 + HeaderInfoHeight
                 + footerHeight
                 + fixedTableHeight;
+            double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                reasonText,
+                DetailMaxLines);
             return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
                 reservedHeight,
-                StandardRowHeight * 3,
+                contentNeededHeight,
                 CellPadding);
         }
 
@@ -154,10 +173,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 BorderThickness = new Thickness(2, 2, 0, 0)
             };
 
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
+            PrintPageLayoutSupport.ApplyApprovalFormMainTableColumns(table);
             table.RowGroups.Add(rowGroup);
             return table;
         }
@@ -172,10 +188,16 @@ namespace DocMgr.ViewModels.HardDiskMedia
             };
 
             footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
-            footer.Inlines.Add(new Run("1、硬盘介质非正常归还须由归还人、申请人所属部门负责人、资料室负责人与资料室经办人手签确认。\n"));
+            footer.Inlines.Add(new Run("1、硬盘介质非正常归还须由归还人、部门审核、资料室签字与资料室经办人手签确认。\n"));
             footer.Inlines.Add(new Run("      2、签字后的情况表应上传系统留存，方可登记归还信息并办结入库。"));
             return footer;
         }
+
+        /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
+        private static string BuildFooterNoteText() =>
+            "说明：" +
+            "1、硬盘介质非正常归还须由归还人、部门审核、资料室签字与资料室经办人手签确认。\n" +
+            "      2、签字后的情况表应上传系统留存，方可登记归还信息并办结入库。";
 
         private static TableRow CreateSingleRow(string label, string content, double? rowHeight = null, bool verticalTop = false)
         {

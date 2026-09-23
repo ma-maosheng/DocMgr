@@ -129,6 +129,38 @@
                         <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="硬盘档口最大容量（块/格）" FontSize="12" Foreground="#666"/>
+                                <TextBox Margin="0,6,0,0"
+                                         Height="32"
+                                         Padding="5,0"
+                                         VerticalContentAlignment="Center"
+                                         Text="{Binding HardDiskSlotCapacity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="光盘档口最大容量（张/格）" FontSize="12" Foreground="#666"/>
+                                <TextBox Margin="0,6,0,0"
+                                         Height="32"
+                                         Padding="5,0"
+                                         VerticalContentAlignment="Center"
+                                         Text="{Binding OpticalDiscSlotCapacity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="默认硬盘 10 块、光盘 20 张；保存后立档、迁档、导入等容量校验均按此柜配置执行。"
+                                   FontSize="11"
+                                   Foreground="#94A3B8"
+                                   Margin="0,0,0,12"
+                                   TextWrapping="Wrap"/>
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>

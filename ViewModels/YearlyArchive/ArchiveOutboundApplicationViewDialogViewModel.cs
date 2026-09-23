@@ -7,6 +7,7 @@ using System.Windows.Input;
 using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.Shared;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
@@ -17,7 +18,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 {
     /// <summary>
     /// 资料借出（出库）申请单只读查看弹窗 ViewModel。仅展示申请、审批信息、出库明细与附件，支持打印与关闭。
-    /// 资料室资料管理员可在办结后增补「其他附件」（仅新增、不可删除）。
+    /// 资料管理员可在办结后增补「其他附件」（仅新增、不可删除）。
     /// </summary>
     public sealed class ArchiveOutboundApplicationViewDialogViewModel : ViewModelBase
     {
@@ -63,7 +64,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string WindowTitle => $"查看申请 · {OutboundNo} · {StatusDisplay}";
 
         public string WorkspaceBannerText => CanSupplementOtherAttachments
-            ? "本窗口以查看为主；办结后资料室资料管理员可增补「其他附件」，不可删除已有附件。"
+            ? "本窗口以查看为主；办结后资料管理员可增补「其他附件」，不可删除已有附件。"
             : "本窗口仅用于查看资料借出申请信息，不允许编辑。";
 
         // 1. 申请信息
@@ -84,9 +85,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string MaterialSummary => EmptyAsPlaceholder(_record.MaterialSummary);
 
         // 2. 审批信息（意见栏一致化：全有「同意」或全空，空意见不用「(无)」占位）
-        public string DeptAuditOpinion => _uniformOpinions[0];
-        public string DeptAuditor => EmptyAsPlaceholder(_record.DeptAuditor);
-        public string DeptAuditDateDisplay => FormatDate(_record.DeptAuditDate);
+        public string DeptHeadOpinion => _uniformOpinions[0];
+        public string DeptHead => EmptyAsPlaceholder(_record.DeptHead);
+        public string DeptHeadDateDisplay => FormatDate(_record.DeptHeadDate);
         public string ArchiveRoomHeadOpinion => _uniformOpinions[1];
         public string ArchiveRoomHead => EmptyAsPlaceholder(_record.ArchiveRoomHead);
         public string ArchiveRoomHeadDateDisplay => FormatDate(_record.ArchiveRoomHeadDate);
@@ -94,8 +95,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ProductionHead => EmptyAsPlaceholder(_record.ProductionHead);
         public string ProductionHeadDateDisplay => FormatDate(_record.ProductionHeadDate);
         public string VicePresidentOpinion => _uniformOpinions[3];
-        public string VicePresident => EmptyAsPlaceholder(_record.VicePresident);
-        public string VicePresidentDateDisplay => FormatDate(_record.VicePresidentDate);
+        public string ProductionVicePresident => EmptyAsPlaceholder(_record.ProductionVicePresident);
+        public string ProductionVicePresidentDateDisplay => FormatDate(_record.ProductionVicePresidentDate);
 
         // 3. 出库明细
         public ObservableCollection<YearlyArchiveOutboundItem> Items { get; } = new();
@@ -113,7 +114,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool CanPrint => _record.Id > 0;
 
-        /// <summary>办结后，资料室资料管理员可增补其他附件。</summary>
+        /// <summary>办结后，资料管理员可增补其他附件。</summary>
         public bool CanSupplementOtherAttachments =>
             _record.Id > 0
             && _record.IsCompleted
@@ -160,7 +161,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void RefreshUniformOpinions()
         {
             _uniformOpinions = ApprovalOpinionUniformitySupport.NormalizeUniform(
-                _record.DeptAuditOpinion,
+                _record.DeptHeadOpinion,
                 _record.ArchiveRoomHeadOpinion,
                 _record.ProductionHeadOpinion,
                 _record.VicePresidentOpinion);
@@ -359,7 +360,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 _outboundWordExportService.ExportToFile(data, path);
-                _dialogService.ShowMessage($"Word 文档已保存：\n{path}");
+                WordExportOpenPromptSupport.NotifySavedAndOfferOpen(path, _dialogService);
             }
             catch (Exception ex)
             {
@@ -384,9 +385,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ProofMaterialDisplay));
             OnPropertyChanged(nameof(ExpectedReturnDateDisplay));
             OnPropertyChanged(nameof(MaterialSummary));
-            OnPropertyChanged(nameof(DeptAuditOpinion));
-            OnPropertyChanged(nameof(DeptAuditor));
-            OnPropertyChanged(nameof(DeptAuditDateDisplay));
+            OnPropertyChanged(nameof(DeptHeadOpinion));
+            OnPropertyChanged(nameof(DeptHead));
+            OnPropertyChanged(nameof(DeptHeadDateDisplay));
             OnPropertyChanged(nameof(ArchiveRoomHeadOpinion));
             OnPropertyChanged(nameof(ArchiveRoomHead));
             OnPropertyChanged(nameof(ArchiveRoomHeadDateDisplay));
@@ -394,8 +395,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ProductionHead));
             OnPropertyChanged(nameof(ProductionHeadDateDisplay));
             OnPropertyChanged(nameof(VicePresidentOpinion));
-            OnPropertyChanged(nameof(VicePresident));
-            OnPropertyChanged(nameof(VicePresidentDateDisplay));
+            OnPropertyChanged(nameof(ProductionVicePresident));
+            OnPropertyChanged(nameof(ProductionVicePresidentDateDisplay));
             OnPropertyChanged(nameof(CanPrint));
             OnPropertyChanged(nameof(CanSupplementOtherAttachments));
         }

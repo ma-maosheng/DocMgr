@@ -247,8 +247,10 @@ namespace DocMgr.Services.YearlyArchive
                 targetSlotKey,
                 unlockedOnly: false)).Count;
             // 源盘若已在目标档口不会出现；此处目标与源不同
+            var targetCabinet = await _filingRepository.GetMagneticDiskCabinetByNameAsync(request.TargetCabinetName);
             int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
-                CabinetHardDiskSlotCategoryAssignment.CategoryBlank);
+                CabinetHardDiskSlotCategoryAssignment.CategoryBlank,
+                targetCabinet);
             string slotSpaceText = $"迁入后 {occupiedCount + media.Count} 盘 / 档口容量 {slotCapacity} 盘";
             string label = media.Count == 1 ? $"空白硬盘 [{media[0].DiskCode}]" : $"{media.Count} 块空白硬盘";
 
@@ -668,7 +670,9 @@ namespace DocMgr.Services.YearlyArchive
                 request.TargetRow,
                 request.TargetColumn,
                 excludeUnitIds: sourceIds);
-            int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(normalizedTargetCategory);
+            int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
+                normalizedTargetCategory,
+                targetCabinet);
             int countAfterMove = occupiedCount + sources.Count;
             string slotSpaceText = $"迁入后 {countAfterMove} 袋 / 档口容量 {slotCapacity} 袋";
             if (countAfterMove > slotCapacity)

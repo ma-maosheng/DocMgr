@@ -4,11 +4,16 @@ namespace DocMgr.Models.YearlyArchive
     {
         public const string SourceTypeInternal = "内部";
         public const string SourceTypeExternal = "外来";
-        /// <summary>资料室管理员对过往年度在库硬盘直接登记并立档，无需申请审批。</summary>
+        /// <summary>资料管理员对过往年度在库硬盘直接登记并立档，无需申请审批。</summary>
         public const string SourceTypeStockDirect = "存量直办";
 
-        /// <summary>存量直办提供单位，固定为资料室。</summary>
+        /// <summary>内部来源默认提供单位（资料室）。</summary>
         public const string ProvideUnitArchiveRoom = "资料室";
+
+        /// <summary>
+        /// 打印表头占位：子项间资料来源/提供单位不唯一时，表头写此文案，明细在资料内容行下沉展示。
+        /// </summary>
+        public const string PrintSourceDetailInItemContentHint = "详见资料内容";
 
         public const string MediaKindElectronic = "电子";
         public const string MediaKindSimulated = "模拟";
@@ -46,18 +51,17 @@ namespace DocMgr.Models.YearlyArchive
         public const string SimulatedMediaTypePhotosensitiveFilm = "感光胶片";
         public const string SimulatedMediaTypePhotosensitivePaper = "感光相纸";
 
-        public const string SimulatedMaterialCategoryText = "文本";
-        public const string SimulatedMaterialCategoryMap = "图件";
+        public const string SimulatedMaterialCategoryText = "文本类";
+        public const string SimulatedMaterialCategoryMap = "图件类";
 
         public const string SimulatedOrganizationFormLoose = "散页";
         public const string SimulatedOrganizationFormBound = "装订";
 
-        public const string SimulatedSubCategoryExternalMaterial = "外来资料类";
         public const string SimulatedSubCategoryPlanningDesign = "策划设计类";
         public const string SimulatedSubCategoryInspectionRecord = "检查记录类";
         public const string SimulatedSubCategorySummaryReport = "总结报告类";
         public const string SimulatedSubCategoryOther = "其他";
-        public const string SimulatedSubCategoryExternalMap = "外来图件类";
+        public const string SimulatedSubCategoryOriginalMap = "原始图件类";
         public const string SimulatedSubCategoryProcessMap = "过程图件类";
         public const string SimulatedSubCategoryResultMap = "成果图件类";
         public const string SimulatedSubCategoryOtherMap = "其他";
@@ -72,11 +76,15 @@ namespace DocMgr.Models.YearlyArchive
         public const string ElectronicDispositionNone = "无需处置";
         public const string SimulatedDispositionRetain = ElectronicDispositionRetain;
 
-        public const string ItemTypeData = "资料";
-        public const string ItemTypeProof = "证明";
-
         /// <summary>证明材料名称为「无」时表示未附证明材料。</summary>
         public const string ProofMaterialNoneText = "无";
+
+        /// <summary>库管模式：外部委托、代管代发（仅当全部资料子项来源均为「外来」时可选）。</summary>
+        public const string ArchivePurposeExternalEntrusted = "外部委托、代管代发";
+
+        /// <summary>库管模式是否为「外部委托、代管代发」。</summary>
+        public static bool IsExternalEntrustedArchivePurpose(string? archivePurpose) =>
+            string.Equals(archivePurpose?.Trim(), ArchivePurposeExternalEntrusted, StringComparison.Ordinal);
 
         /// <summary>附件类别：签批交接单。</summary>
         public const string AttachmentKindSignedHandoverForm = "SignedHandoverForm";
@@ -108,10 +116,8 @@ namespace DocMgr.Models.YearlyArchive
         public const string DefaultStockDirectSubCategory = "最终成果数据";
         public const string ElectronicMaterialCategorySoftware = "软件类";
 
-        /// <summary>目录型：子项有统一根目录；根下明细可为目录、文件或二者混合。</summary>
+        /// <summary>目录型：子项有统一根目录；根下明细可为目录、文件或二者混合。系统固定目录型（单一父目录模型）。</summary>
         public const string ElectronicDataOrganizationFormDirectory = "目录型";
-        /// <summary>文件型：无统一根目录，全部明细必须为文件。</summary>
-        public const string ElectronicDataOrganizationFormFile = "文件型";
 
         public const string ElectronicEntryKindDirectory = "目录";
         public const string ElectronicEntryKindFile = "文件";
@@ -136,8 +142,6 @@ namespace DocMgr.Models.YearlyArchive
 
         public static IReadOnlyList<string> ElectronicMediaKinds { get; } = [MediaKindElectronic];
         public static IReadOnlyList<string> SimulatedMediaKinds { get; } = [MediaKindSimulated];
-        public static IReadOnlyList<string> DataItemTypes { get; } = [ItemTypeData];
-        public static IReadOnlyList<string> ProofItemTypes { get; } = [ItemTypeProof];
 
         /// <summary>模拟资料载体类型（纸基/胶片）。</summary>
         public static IReadOnlyList<string> SimulatedDataMediaTypes { get; } =
@@ -157,7 +161,6 @@ namespace DocMgr.Models.YearlyArchive
 
         public static IReadOnlyList<string> SimulatedTextSubCategories { get; } =
         [
-            SimulatedSubCategoryExternalMaterial,
             SimulatedSubCategoryPlanningDesign,
             SimulatedSubCategoryInspectionRecord,
             SimulatedSubCategorySummaryReport,
@@ -166,7 +169,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public static IReadOnlyList<string> SimulatedMapSubCategories { get; } =
         [
-            SimulatedSubCategoryExternalMap,
+            SimulatedSubCategoryOriginalMap,
             SimulatedSubCategoryProcessMap,
             SimulatedSubCategoryResultMap,
             SimulatedSubCategoryOtherMap

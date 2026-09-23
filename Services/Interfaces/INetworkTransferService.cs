@@ -141,8 +141,11 @@ public interface INetworkTransferService
     /// <summary>已审批后更新审核审批人姓名（不含「签字」前缀）。</summary>
     Task UpdateDisposalReviewSignersAsync(
         int recordId,
+        string? deptHead,
         string? archiveRoomHead,
+        string? productionHead,
         string? archiveDeputyPresident,
+        string? productionVicePresident,
         User currentUser);
 
     Task ConfirmDisposalReadyForUploadAsync(int recordId, User currentUser);

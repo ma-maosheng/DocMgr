@@ -123,6 +123,15 @@ public sealed partial class NetworkInboundEditDialogViewModel
 
     public bool CanUploadSignedAttachment => ResolveApprovalButtonState().CanUploadSignedAttachment;
 
+    /// <summary>办结后资料管理员可增补「其他附件」（仅新增）。</summary>
+    public bool CanSupplementOtherAttachments =>
+        ApprovalWorkflowButtonSupport.CanSupplementOtherAttachments(
+            _record.Status == NetworkInboundRecord.StatusCompleted,
+            ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser));
+
+    /// <summary>办理窗分区上传或其他附件后补。</summary>
+    public bool CanUploadOtherAttachment => CanUploadSignedAttachment || CanSupplementOtherAttachments;
+
     public bool CanCompleteApproval => ResolveApprovalButtonState().CanConfirmComplete;
 
     public bool CanPrintHandoverSheet => ResolveApprovalButtonState().CanPrintHandoverSheet;
@@ -156,7 +165,9 @@ public sealed partial class NetworkInboundEditDialogViewModel
         ? "请在「附件材料」分区分别上传签批交接单"
             + (RequiresProofMaterialScanUpload ? "与证明材料" : string.Empty)
             + "（格式限 PDF/图像）。"
-        : "请先执行「审批通过」并确认实物交接。";
+        : (CanSupplementOtherAttachments
+            ? "办结后仅可增补「其他附件」；不可删除已有附件。"
+            : "请先执行「审批通过」并确认实物交接。");
 
     public bool RequiresProofMaterialScanUpload =>
         ArchiveRegisterDomainValues.RequiresProofMaterialAttachment(_record.ProofMaterialNote);
@@ -226,7 +237,7 @@ public sealed partial class NetworkInboundEditDialogViewModel
             _ => CanUploadProofMaterialAttachment);
         UploadOtherAttachmentCommand = new RelayCommand(
             async _ => await UploadAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategoryOther),
-            _ => CanUploadSignedAttachment);
+            _ => CanUploadOtherAttachment);
         CaptureSignedHandoverAttachmentCommand = new RelayCommand(
             async _ => await CaptureAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategorySignedForm),
             _ => CanUploadSignedAttachment);
@@ -235,7 +246,7 @@ public sealed partial class NetworkInboundEditDialogViewModel
             _ => CanUploadProofMaterialAttachment);
         CaptureOtherAttachmentCommand = new RelayCommand(
             async _ => await CaptureAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategoryOther),
-            _ => CanUploadSignedAttachment);
+            _ => CanUploadOtherAttachment);
         FillDefaultApprovalInfoCommand = new RelayCommand(
             async _ => await FillDefaultApprovalInfoAsync(),
             _ => CanApproveProd && _record.Id > 0);
@@ -312,6 +323,8 @@ public sealed partial class NetworkInboundEditDialogViewModel
         OnPropertyChanged(nameof(CanConfirmPhysicalHandover));
         OnPropertyChanged(nameof(CanConfirmHandover));
         OnPropertyChanged(nameof(CanUploadSignedAttachment));
+        OnPropertyChanged(nameof(CanSupplementOtherAttachments));
+        OnPropertyChanged(nameof(CanUploadOtherAttachment));
         OnPropertyChanged(nameof(CanUploadAttachment));
         OnPropertyChanged(nameof(CanCompleteApproval));
         OnPropertyChanged(nameof(CanComplete));
@@ -390,7 +403,11 @@ public sealed partial class NetworkInboundEditDialogViewModel
             return;
         }
 
-        if (!CanUploadSignedAttachment)
+        bool isOther = string.Equals(
+            fileCategory,
+            NetworkTransferDomainValues.AttachmentCategoryOther,
+            StringComparison.Ordinal);
+        if (!CanUploadSignedAttachment && !(isOther && CanSupplementOtherAttachments))
         {
             _dialogService.ShowMessage(UploadHintText);
             return;
@@ -477,7 +494,11 @@ public sealed partial class NetworkInboundEditDialogViewModel
             return;
         }
 
-        if (!CanUploadSignedAttachment)
+        bool isOther = string.Equals(
+            fileCategory,
+            NetworkTransferDomainValues.AttachmentCategoryOther,
+            StringComparison.Ordinal);
+        if (!CanUploadSignedAttachment && !(isOther && CanSupplementOtherAttachments))
         {
             _dialogService.ShowMessage(UploadHintText);
             return;

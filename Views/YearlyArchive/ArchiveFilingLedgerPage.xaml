@@ -295,7 +295,7 @@
         <StackPanel Grid.Row="0" Margin="0,0,0,12">
             <TextBlock Text="立档台账" Style="{StaticResource PageTitleStyle}"/>
             <TextBlock Style="{StaticResource PageSubtitleStyle}"
-                       Text="按立档编号中的档案年度浏览已立档资料，支持多条件筛选、详情查看与台账导出（资料室管理员）。"/>
+                       Text="按立档编号中的档案年度浏览已立档资料，支持多条件筛选、详情查看与台账导出（资料管理员）。"/>
         </StackPanel>
 
         <!-- 筛选区 -->
@@ -625,14 +625,10 @@
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="2" Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="子项类型"/>
-                                    <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding ItemType, Mode=OneWay}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Row="2" Grid.Column="1">
                                     <TextBlock Style="{StaticResource FieldLabelStyle}" Text="项目名称"/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding ProjectName, Mode=OneWay}"/>
                                 </StackPanel>
-                                <StackPanel Grid.Row="2" Grid.Column="2">
+                                <StackPanel Grid.Row="2" Grid.Column="1">
                                     <TextBlock Style="{StaticResource FieldLabelStyle}" Text="提供单位"/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding ProvideUnit, Mode=OneWay}"/>
                                 </StackPanel>

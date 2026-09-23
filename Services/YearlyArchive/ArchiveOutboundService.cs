@@ -4,6 +4,7 @@ using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.SystemSettings;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocMgr.Services.YearlyArchive
@@ -21,6 +22,8 @@ namespace DocMgr.Services.YearlyArchive
         private readonly IArchiveMaterialTransactionRepository _materialTransactionRepository;
         private readonly IArchiveSimulatedBoxSlotSyncService _simulatedBoxSlotSyncService;
         private readonly IArchiveElectronicBagSlotSyncService _electronicBagSlotSyncService;
+        private readonly IApprovalWorkflowService _approvalWorkflowService;
+        private readonly IUserService _userService;
 
         public ArchiveOutboundService(
             IArchiveOutboundRepository outboundRepository,
@@ -33,7 +36,9 @@ namespace DocMgr.Services.YearlyArchive
             IArchiveMaterialTransactionWriter materialTransactionWriter,
             IArchiveMaterialTransactionRepository materialTransactionRepository,
             IArchiveSimulatedBoxSlotSyncService simulatedBoxSlotSyncService,
-            IArchiveElectronicBagSlotSyncService electronicBagSlotSyncService)
+            IArchiveElectronicBagSlotSyncService electronicBagSlotSyncService,
+            IApprovalWorkflowService approvalWorkflowService,
+            IUserService userService)
         {
             _outboundRepository = outboundRepository;
             _searchService = searchService;
@@ -46,6 +51,8 @@ namespace DocMgr.Services.YearlyArchive
             _materialTransactionRepository = materialTransactionRepository;
             _simulatedBoxSlotSyncService = simulatedBoxSlotSyncService;
             _electronicBagSlotSyncService = electronicBagSlotSyncService;
+            _approvalWorkflowService = approvalWorkflowService;
+            _userService = userService;
         }
 
         public bool IsArchiveAdminUser(User? user) => _archiveRegisterService.IsArchiveAdminUser(user);
@@ -107,7 +114,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!CanSubmitApplication(applicant))
             {
-                throw new InvalidOperationException("仅部门资料管理员可发起资料借出申请。");
+                throw new InvalidOperationException("仅部门资料员可发起资料借出申请。");
             }
 
             DateTime now = DateTime.Now;
@@ -181,7 +188,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!CanSubmitApplication(user))
             {
-                return ArchiveOutboundFlowResult.Fail("仅部门资料管理员可保存资料借出申请草稿。");
+                return ArchiveOutboundFlowResult.Fail("仅部门资料员可保存资料借出申请草稿。");
             }
 
             var validation = ValidateDraft(request.Record, request.Items, user, requireSubmittedFields: false);
@@ -257,7 +264,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!CanSubmitApplication(user))
             {
-                return ArchiveOutboundFlowResult.Fail("仅部门资料管理员可提交资料借出申请。");
+                return ArchiveOutboundFlowResult.Fail("仅部门资料员可提交资料借出申请。");
             }
 
             if (record.ApplicantUserId != user.Id)
@@ -328,7 +335,7 @@ namespace DocMgr.Services.YearlyArchive
             {
                 await transaction.RollbackAsync();
                 return ArchiveOutboundFlowResult.Fail(
-                    "提交申请保存失败，请重启应用以完成数据库升级后重试。详情："
+                    "提交申请保存失败。详情："
                     + (ex.InnerException?.Message ?? ex.Message));
             }
             catch
@@ -352,7 +359,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!CanSubmitApplication(user))
             {
-                return ArchiveOutboundFlowResult.Fail("仅部门资料管理员可撤回资料借出申请。");
+                return ArchiveOutboundFlowResult.Fail("仅部门资料员可撤回资料借出申请。");
             }
 
             if (record.ApplicantUserId != user.Id)
@@ -390,7 +397,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(admin))
             {
-                return ArchiveOutboundFlowResult.Fail("仅资料室管理员可强制作废申请。");
+                return ArchiveOutboundFlowResult.Fail("仅资料管理员可强制作废申请。");
             }
 
             var record = await _outboundRepository.GetByIdWithDetailsAsync(recordId);
@@ -477,7 +484,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(operatorUser))
             {
-                return ArchiveOutboundFlowResult.Fail("仅资料室管理员可录入审批信息。");
+                return ArchiveOutboundFlowResult.Fail("仅资料管理员可录入审批信息。");
             }
 
             if (record.Status != YearlyArchiveOutboundRecord.Submitted)
@@ -494,7 +501,9 @@ namespace DocMgr.Services.YearlyArchive
             CopyApprovalFields(existing, record);
             existing.UpdatedAt = DateTime.Now;
 
-            if (IsApprovalComplete(existing))
+            var chain = await ResolveOutboundApprovalChainAsync(existing);
+            ClearDisabledOutboundSigners(existing, chain);
+            if (IsApprovalComplete(existing, chain))
             {
                 existing.MarkAsApproved();
             }
@@ -551,7 +560,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(user))
             {
-                return ArchiveOutboundFlowResult.Fail("仅资料室管理员可上传出库附件。");
+                return ArchiveOutboundFlowResult.Fail("仅资料管理员可上传出库附件。");
             }
 
             bool canUploadInWorkflow = record.Status == YearlyArchiveOutboundRecord.SignedUploaded;
@@ -602,7 +611,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(user))
             {
-                return ArchiveOutboundAttachmentFlowResult.Fail("仅资料室管理员可删除附件。");
+                return ArchiveOutboundAttachmentFlowResult.Fail("仅资料管理员可删除附件。");
             }
 
             var record = await _outboundRepository.GetByIdWithDetailsAsync(recordId);
@@ -660,7 +669,7 @@ namespace DocMgr.Services.YearlyArchive
         {
             ArgumentNullException.ThrowIfNull(record);
 
-            var errors = CollectApprovalPhaseErrors(record);
+            var errors = await CollectApprovalPhaseErrorsAsync(record);
             return new ArchiveOutboundApprovalValidationResult(errors);
         }
 
@@ -671,7 +680,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(user))
             {
-                return ArchiveOutboundFlowResult.Fail("仅资料室管理员可确认审批阶段办结。");
+                return ArchiveOutboundFlowResult.Fail("仅资料管理员可确认审批阶段办结。");
             }
 
             var existing = await _outboundRepository.GetByIdWithDetailsAsync(record.Id);
@@ -688,7 +697,9 @@ namespace DocMgr.Services.YearlyArchive
             CopyApprovalFields(existing, record);
             existing.UpdatedAt = DateTime.Now;
 
-            var errors = CollectApprovalPhaseErrors(existing);
+            var chain = await ResolveOutboundApprovalChainAsync(existing);
+            ClearDisabledOutboundSigners(existing, chain);
+            var errors = CollectApprovalPhaseErrors(existing, chain);
             if (errors.Count > 0)
             {
                 return ArchiveOutboundFlowResult.Fail("审批信息验证未通过：\n\n" + string.Join(Environment.NewLine, errors));
@@ -707,7 +718,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!IsArchiveAdminUser(admin))
             {
-                return ArchiveOutboundFlowResult.Fail("仅资料室管理员可办理资料出库。");
+                return ArchiveOutboundFlowResult.Fail("仅资料管理员可办理资料出库。");
             }
 
             var record = await _outboundRepository.GetByIdWithDetailsAsync(recordId);
@@ -1113,73 +1124,113 @@ namespace DocMgr.Services.YearlyArchive
             return errors;
         }
 
-        private static bool IsApprovalComplete(YearlyArchiveOutboundRecord record) =>
-            !string.IsNullOrWhiteSpace(record.DeptAuditor)
-            && record.DeptAuditDate.HasValue
-            && !string.IsNullOrWhiteSpace(record.ArchiveRoomHead)
-            && record.ArchiveRoomHeadDate.HasValue
-            && !string.IsNullOrWhiteSpace(record.ProductionHead)
-            && record.ProductionHeadDate.HasValue
-            && !string.IsNullOrWhiteSpace(record.VicePresident)
-            && VicePresidentDatePresent(record);
+        private Task<ApprovalChainResolution> ResolveOutboundApprovalChainAsync(YearlyArchiveOutboundRecord record) =>
+            _approvalWorkflowService.ResolveAsync(
+                new ApprovalChainResolveRequest
+                {
+                    BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveOutbound,
+                    ApplicantDept = record.ApplicantDept,
+                    FieldValues = ApprovalChainApplySupport.BuildOutboundFieldValues(record)
+                },
+                _userService.GetAllUsers());
 
-        private static bool VicePresidentDatePresent(YearlyArchiveOutboundRecord record) => record.VicePresidentDate.HasValue;
-
-        private static List<string> CollectApprovalPhaseErrors(YearlyArchiveOutboundRecord record)
+        private async Task<List<string>> CollectApprovalPhaseErrorsAsync(YearlyArchiveOutboundRecord record)
         {
-            var errors = new List<string>();
+            var chain = await ResolveOutboundApprovalChainAsync(record);
+            return CollectApprovalPhaseErrors(record, chain);
+        }
 
-            if (string.IsNullOrWhiteSpace(record.DeptAuditor))
+        private static bool IsApprovalComplete(YearlyArchiveOutboundRecord record, ApprovalChainResolution chain)
+        {
+            foreach (var signer in chain.EnabledSigners())
             {
-                errors.Add("• 请填写申请部门审核人。");
+                if (string.IsNullOrWhiteSpace(ApprovalChainApplySupport.ReadOutboundSigner(record, signer.NodeKey)))
+                {
+                    return false;
+                }
+
+                if (!ReadOutboundSignerDate(record, signer.NodeKey).HasValue)
+                {
+                    return false;
+                }
             }
 
-            if (!record.DeptAuditDate.HasValue)
-            {
-                errors.Add("• 请填写申请部门审核日期。");
-            }
+            return true;
+        }
 
-            if (string.IsNullOrWhiteSpace(record.ArchiveRoomHead))
-            {
-                errors.Add("• 请填写资料室负责人。");
-            }
+        private static List<string> CollectApprovalPhaseErrors(
+            YearlyArchiveOutboundRecord record,
+            ApprovalChainResolution chain)
+        {
+            var errors = new List<string>(
+                ApprovalChainApplySupport.CollectMissingSignerErrors(
+                    chain,
+                    nodeKey => ApprovalChainApplySupport.ReadOutboundSigner(record, nodeKey)));
 
-            if (!record.ArchiveRoomHeadDate.HasValue)
+            foreach (var signer in chain.EnabledSigners())
             {
-                errors.Add("• 请填写资料室负责人审核日期。");
-            }
-
-            if (string.IsNullOrWhiteSpace(record.ProductionHead))
-            {
-                errors.Add("• 请填写生产科负责人。");
-            }
-
-            if (!record.ProductionHeadDate.HasValue)
-            {
-                errors.Add("• 请填写生产科负责人审核日期。");
-            }
-
-            if (string.IsNullOrWhiteSpace(record.VicePresident))
-            {
-                errors.Add("• 请填写生产副院长。");
-            }
-
-            if (!record.VicePresidentDate.HasValue)
-            {
-                errors.Add("• 请填写生产副院长审核日期。");
+                if (!ReadOutboundSignerDate(record, signer.NodeKey).HasValue)
+                {
+                    errors.Add($"• 请填写{signer.DisplayName}审核日期。");
+                }
             }
 
             // 证明材料扫描件在确认实物交接后上传，办结前校验（与建档一致）。
-
             return errors;
+        }
+
+        private static DateTime? ReadOutboundSignerDate(YearlyArchiveOutboundRecord record, string nodeKey) =>
+            nodeKey switch
+            {
+                ApprovalWorkflowDomainValues.NodeDeptHead => record.DeptHeadDate,
+                ApprovalWorkflowDomainValues.NodeArchiveRoomHead => record.ArchiveRoomHeadDate,
+                ApprovalWorkflowDomainValues.NodeProductionHead => record.ProductionHeadDate,
+                ApprovalWorkflowDomainValues.NodeArchiveDeputyPresident => record.ArchiveDeputyPresidentDate,
+                ApprovalWorkflowDomainValues.NodeProductionVicePresident => record.ProductionVicePresidentDate,
+                _ => null
+            };
+
+        private static void ClearDisabledOutboundSigners(
+            YearlyArchiveOutboundRecord record,
+            ApprovalChainResolution chain)
+        {
+            if (!chain.DeptHead.IsEnabled)
+            {
+                record.DeptHead = string.Empty;
+                record.DeptHeadDate = null;
+            }
+
+            if (!chain.ArchiveRoomHead.IsEnabled)
+            {
+                record.ArchiveRoomHead = string.Empty;
+                record.ArchiveRoomHeadDate = null;
+            }
+
+            if (!chain.ProductionHead.IsEnabled)
+            {
+                record.ProductionHead = string.Empty;
+                record.ProductionHeadDate = null;
+            }
+
+            if (!chain.ArchiveDeputyPresident.IsEnabled)
+            {
+                record.ArchiveDeputyPresident = string.Empty;
+                record.ArchiveDeputyPresidentDate = null;
+            }
+
+            if (!chain.ProductionVicePresident.IsEnabled)
+            {
+                record.ProductionVicePresident = string.Empty;
+                record.ProductionVicePresidentDate = null;
+            }
         }
 
         private static void CopyApprovalFields(YearlyArchiveOutboundRecord target, YearlyArchiveOutboundRecord source)
         {
             // 出库审批 UI 为「仅签字、无需意见」；落库时统一清空意见，避免部分节点残留「同意」。
-            target.DeptAuditOpinion = string.Empty;
-            target.DeptAuditor = source.DeptAuditor?.Trim() ?? string.Empty;
-            target.DeptAuditDate = source.DeptAuditDate;
+            target.DeptHeadOpinion = string.Empty;
+            target.DeptHead = source.DeptHead?.Trim() ?? string.Empty;
+            target.DeptHeadDate = source.DeptHeadDate;
             target.ArchiveRoomHeadOpinion = string.Empty;
             target.ArchiveRoomHead = source.ArchiveRoomHead?.Trim() ?? string.Empty;
             target.ArchiveRoomHeadDate = source.ArchiveRoomHeadDate;
@@ -1187,8 +1238,10 @@ namespace DocMgr.Services.YearlyArchive
             target.ProductionHead = source.ProductionHead?.Trim() ?? string.Empty;
             target.ProductionHeadDate = source.ProductionHeadDate;
             target.VicePresidentOpinion = string.Empty;
-            target.VicePresident = source.VicePresident?.Trim() ?? string.Empty;
-            target.VicePresidentDate = source.VicePresidentDate;
+            target.ArchiveDeputyPresident = source.ArchiveDeputyPresident?.Trim() ?? string.Empty;
+            target.ArchiveDeputyPresidentDate = source.ArchiveDeputyPresidentDate;
+            target.ProductionVicePresident = source.ProductionVicePresident?.Trim() ?? string.Empty;
+            target.ProductionVicePresidentDate = source.ProductionVicePresidentDate;
         }
 
         private static string NormalizeProofMaterialNote(string? proofMaterialNote)

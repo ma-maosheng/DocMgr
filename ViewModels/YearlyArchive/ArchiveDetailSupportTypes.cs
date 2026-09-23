@@ -16,7 +16,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public ArchiveDetailMediaItem(
             int mediaItemId,
-            string itemType,
             string contentDesc,
             string contentCountText,
             string storagePath,
@@ -30,7 +29,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             IEnumerable<ArchiveDetailElectronicContentEntryItem> contentEntries)
         {
             MediaItemId = mediaItemId;
-            ItemType = itemType;
             ContentDesc = contentDesc;
             ContentCountText = contentCountText;
             StoragePath = storagePath;
@@ -45,8 +43,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         public int MediaItemId { get; }
-
-        public string ItemType { get; }
 
         public string ContentDesc { get; }
 
@@ -132,7 +128,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             int entryId,
             string entryKind,
             string entryName,
-            string relativePath,
             string createdDateText,
             string modifiedDateText,
             string sizeText)
@@ -140,7 +135,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             EntryId = entryId;
             EntryKind = entryKind;
             EntryName = entryName;
-            RelativePath = relativePath;
             CreatedDateText = createdDateText;
             ModifiedDateText = modifiedDateText;
             SizeText = sizeText;
@@ -152,16 +146,13 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string EntryName { get; }
 
-        public string RelativePath { get; }
-
         public string CreatedDateText { get; }
 
         public string ModifiedDateText { get; }
 
         public string SizeText { get; }
 
-        public string EntryDisplayName =>
-            ElectronicContentEntryDisplaySupport.FormatEntryDisplayName(EntryName, RelativePath);
+        public string EntryDisplayName => EntryName;
 
         public bool IsFilterSelected
         {
@@ -302,7 +293,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             string projectName,
             string materialName,
             string itemName,
-            string itemType,
             string confidentialLevel,
             string materialCategory,
             string subCategory,
@@ -318,7 +308,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             ProjectName = projectName;
             MaterialName = materialName;
             ItemName = itemName;
-            ItemType = itemType;
             ConfidentialLevel = confidentialLevel;
             MaterialCategory = materialCategory;
             SubCategory = subCategory;
@@ -340,8 +329,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string MaterialName { get; }
 
         public string ItemName { get; }
-
-        public string ItemType { get; }
 
         public string ConfidentialLevel { get; }
 

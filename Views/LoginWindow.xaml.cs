@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels;
+using DocMgr.Views.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DocMgr.Views
@@ -23,6 +24,7 @@ namespace DocMgr.Views
             _viewModel.RequestShutdown += OnRequestShutdown;
 
             DataContext = _viewModel;
+            EnterAsTabNavigationSupport.Attach(this);
 
             Loaded += LoginWindow_Loaded;
             Closed += (_, _) =>

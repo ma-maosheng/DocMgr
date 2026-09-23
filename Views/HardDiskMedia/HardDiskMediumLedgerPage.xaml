@@ -22,10 +22,11 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <Button Content="下载导入模板" Command="{Binding ExportTemplateCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="120" Margin="0,0,10,0"
+                                ToolTip="导出硬盘初始登记 Excel 导入模板"/>
                         <Button Content="批量式登记" Command="{Binding ImportCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="110" Margin="0,0,10,0"/>
                         <Button Content="交互式登记" Command="{Binding AddCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="110" Margin="0,0,10,0"/>
                         <Button Content="硬盘参数修正" Command="{Binding EditCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="120" Margin="0,0,10,0"/>
@@ -42,8 +43,7 @@
                     </StackPanel>
 
                     <Button Grid.Column="2" Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"  Margin="0,0,10,0"/>
-                    <Button Grid.Column="3" Content="导出台账" Command="{Binding ExportTemplateCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
-                    <Button Grid.Column="4" Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"/>
+                    <Button Grid.Column="3" Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"/>
                 </Grid>
             </ScrollViewer>
         </Border>

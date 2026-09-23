@@ -1,47 +1,219 @@
 ﻿<Page x:Class="DocMgr.Views.SystemSettings.RoleSettingPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-      xmlns:local="clr-namespace:DocMgr.Views.SystemSettings"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:vm="clr-namespace:DocMgr.ViewModels.SystemSettings"
-      mc:Ignorable="d" 
-      d:DesignHeight="600" d:DesignWidth="800"
-      Title="角色设置" Background="White"
+      mc:Ignorable="d"
+      d:DesignHeight="640" d:DesignWidth="960"
+      Title="角色概览" Background="White"
       d:DataContext="{d:DesignInstance Type=vm:RoleSettingViewModel}">
 
-    <Grid Margin="20">
+    <Page.Resources>
+        <Style x:Key="RoleOverviewPaneGridSplitterStyle" TargetType="GridSplitter">
+            <Setter Property="Height" Value="10"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="ResizeBehavior" Value="PreviousAndNext"/>
+            <Setter Property="ResizeDirection" Value="Rows"/>
+            <Setter Property="ShowsPreview" Value="False"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Cursor" Value="SizeNS"/>
+            <Setter Property="ToolTip" Value="拖动以调整角色列表与权限矩阵高度"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Grid Margin="0,1">
+                            <Border Background="#D1D5DB" Margin="0,0,0,1"/>
+                            <Border BorderThickness="0,1,0,1">
+                                <Border.BorderBrush>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#9CA3AF" Offset="0"/>
+                                        <GradientStop Color="#F9FAFB" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.BorderBrush>
+                                <Border x:Name="SplitterGroove"
+                                        Margin="0,1,0,1"
+                                        Background="#E5E7EB">
+                                    <Border x:Name="SplitterHandle"
+                                            Height="8"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
+                                            MinWidth="72"
+                                            MaxWidth="160"
+                                            Margin="24,0"
+                                            CornerRadius="3"
+                                            BorderThickness="1">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                <GradientStop Color="#F9FAFB" Offset="0"/>
+                                                <GradientStop Color="#D1D5DB" Offset="0.55"/>
+                                                <GradientStop Color="#9CA3AF" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <Border.BorderBrush>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                <GradientStop Color="#FFFFFF" Offset="0"/>
+                                                <GradientStop Color="#6B7280" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.BorderBrush>
+                                        <StackPanel Orientation="Vertical"
+                                                    VerticalAlignment="Center"
+                                                    HorizontalAlignment="Center">
+                                            <Rectangle Width="24" Height="2" RadiusX="1" RadiusY="1" Fill="#6B7280" Margin="0,1"/>
+                                            <Rectangle Width="24" Height="2" RadiusX="1" RadiusY="1" Fill="#6B7280" Margin="0,1"/>
+                                            <Rectangle Width="24" Height="2" RadiusX="1" RadiusY="1" Fill="#6B7280" Margin="0,1"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Border>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SplitterGroove" Property="Background" Value="#ECEFF1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- 顶部工具栏 -->
-        <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="0,0,0,10" Margin="0,0,0,20">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="新增角色" Command="{Binding AddCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
-                    <Button Content="编辑角色" Command="{Binding EditCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
-                    <Button Content="删除选中" Command="{Binding DeleteCommand}" Width="100" Margin="0,0,10,0" Style="{StaticResource ToolbarDangerButtonStyle}"/>
-                    <Button Content="刷新列表" Command="{Binding RefreshCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}"/>
-                </StackPanel>
-            </ScrollViewer>
+        <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}"
+                BorderBrush="#E0E0E0" BorderThickness="0,0,0,1"
+                Padding="0,0,0,8" Margin="0,0,0,10">
+            <TextBlock TextWrapping="Wrap" Foreground="#666" FontSize="12"
+                       Text="本页只读查阅。权限按用户角色判定；「部门资料员」所属部门不能是资料室，「资料管理员」必须是资料室。调整账号角色请到「用户管理」；角色定义以系统种子数据为准。"/>
         </Border>
 
-        <!-- 数据表格 -->
-        <!-- 绑定 ItemsSource 和 SelectedItem -->
-        <DataGrid x:Name="DgRoles" Grid.Row="1" AutoGenerateColumns="False" 
-                  CanUserAddRows="False" IsReadOnly="True"
-                  SelectionMode="Single"
-                  ItemsSource="{Binding Roles}"
-                  SelectedItem="{Binding SelectedRole}"
-                  BorderThickness="1" BorderBrush="#E0E0E0"
-                  RowHeight="35" ColumnHeaderHeight="40">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="80"/>
-                <DataGridTextColumn Header="角色名称" Binding="{Binding Name}" Width="200"/>
-                <DataGridTextColumn Header="描述" Binding="{Binding Description}" Width="*"/>
-            </DataGrid.Columns>
-        </DataGrid>
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="0.38*" MinHeight="100"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="0.62*" MinHeight="140"/>
+            </Grid.RowDefinitions>
+
+            <!-- 上：系统角色 -->
+            <Grid Grid.Row="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0" Margin="0,0,0,6" LastChildFill="True">
+                    <Button DockPanel.Dock="Right" Content="刷新" Command="{Binding RefreshCommand}"
+                            Width="72" Height="{StaticResource FormControlHeight}"
+                            Style="{StaticResource ToolbarActionButtonStyle}" Margin="8,0,0,0"/>
+                    <TextBlock Text="系统角色" FontWeight="SemiBold" FontSize="13"
+                               VerticalAlignment="Center" Foreground="#333"/>
+                </DockPanel>
+
+                <DataGrid Grid.Row="1"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          HeadersVisibility="Column"
+                          BorderThickness="1" BorderBrush="#E0E0E0"
+                          RowHeight="28" ColumnHeaderHeight="30"
+                          ItemsSource="{Binding Roles, Mode=OneWay}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="56"/>
+                        <DataGridTextColumn Header="角色名称" Binding="{Binding Name}" Width="160"/>
+                        <DataGridTextColumn Header="描述" Binding="{Binding Description}" Width="*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    <Setter Property="ToolTip" Value="{Binding Description}"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+
+            <GridSplitter Grid.Row="1" Style="{StaticResource RoleOverviewPaneGridSplitterStyle}"/>
+
+            <!-- 下：权限矩阵 -->
+            <Grid Grid.Row="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="菜单权限矩阵" FontWeight="SemiBold" FontSize="13"
+                           Margin="0,4,0,6" Foreground="#333"/>
+
+                <DataGrid Grid.Row="1"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          HeadersVisibility="Column"
+                          BorderThickness="1" BorderBrush="#E0E0E0"
+                          RowHeight="28" ColumnHeaderHeight="32"
+                          ItemsSource="{Binding PermissionRows, Mode=OneWay}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="业务分组" Binding="{Binding GroupName}" Width="120"/>
+                        <DataGridTextColumn Header="菜单范围" Binding="{Binding MenuSummary}" Width="*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="Margin" Value="2,2"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTemplateColumn Header="系统管理员" Width="78">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding SystemAdmin, Mode=OneWay}" IsEnabled="False"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="资料管理员" Width="78">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding ArchiveRoomAdmin, Mode=OneWay}" IsEnabled="False"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="部门资料员" Width="78">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding DepartmentAdmin, Mode=OneWay}" IsEnabled="False"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="网管负责人" Width="78">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding NetworkManager, Mode=OneWay}" IsEnabled="False"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="其他用户" Width="70">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding Others, Mode=OneWay}" IsEnabled="False"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Grid>
     </Grid>
 </Page>

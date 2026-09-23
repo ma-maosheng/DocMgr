@@ -46,7 +46,6 @@ namespace DocMgr.Data.Configurations
             builder.Property(item => item.SelectionScopeKind).HasMaxLength(32).IsRequired();
             builder.Property(item => item.ContentEntryKind).HasMaxLength(16);
             builder.Property(item => item.ContentEntryName).HasMaxLength(512);
-            builder.Property(item => item.ContentEntryRelativePath).HasMaxLength(1024);
 
             builder.HasIndex(item => new { item.ResultSetId, item.FilingFactId, item.SelectionScopeKind, item.ContentEntryId })
                 .IsUnique();

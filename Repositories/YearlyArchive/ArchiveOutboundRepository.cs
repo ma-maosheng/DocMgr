@@ -877,7 +877,6 @@ namespace DocMgr.Repositories.YearlyArchive
                         FormNo = record?.FormNo?.Trim() ?? string.Empty,
                         MaterialName = record?.MaterialName?.Trim() ?? box.ProjectName?.Trim() ?? string.Empty,
                         ProjectName = record?.ProjectName?.Trim() ?? box.ProjectName?.Trim() ?? string.Empty,
-                        ItemType = mediaItem.ItemType?.Trim() ?? string.Empty,
                         ItemName = mediaItem.ContentDesc?.Trim() ?? string.Empty,
                         ContentCount = mediaItem.ContentCount,
                         ContainerKind = ArchiveContainerKind.ArchiveBox,

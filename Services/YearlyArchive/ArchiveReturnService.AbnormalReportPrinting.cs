@@ -1,4 +1,6 @@
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Services.SystemSettings;
 
 namespace DocMgr.Services.YearlyArchive
 {
@@ -10,44 +12,77 @@ namespace DocMgr.Services.YearlyArchive
         private const string BlankApprovalDateText = "______年___月___日";
 
         /// <summary>
-        /// 归还单审批签字行：优先归还单已录入值，否则回退出库单借出时签字。
+        /// 归还单审批签字行：按签批链启用节点输出；优先归还单已录入值，否则回退出库单。
         /// </summary>
         private static List<ArchiveReturnApprovalSignatureLine> BuildReturnApprovalLines(
+            ApprovalChainResolution chain,
             YearlyArchiveReturnRecord record,
             YearlyArchiveOutboundRecord? outbound,
-            bool blankApprovalSignatures)
+            bool blankApprovalSignatures,
+            string roleLabelPrefix = "借出时")
         {
-            if (blankApprovalSignatures)
+            ArgumentNullException.ThrowIfNull(chain);
+            ArgumentNullException.ThrowIfNull(record);
+
+            var lines = new List<ArchiveReturnApprovalSignatureLine>();
+            foreach (var signer in chain.EnabledSigners())
             {
-                return
-                [
-                    CreateBlankApprovalLine("借出时部门负责人"),
-                    CreateBlankApprovalLine("借出时资料室负责人"),
-                    CreateBlankApprovalLine("借出时生产科负责人"),
-                    CreateBlankApprovalLine("借出时生产副院长")
-                ];
+                string roleLabel = roleLabelPrefix + signer.DisplayName;
+                if (blankApprovalSignatures)
+                {
+                    lines.Add(CreateBlankApprovalLine(roleLabel));
+                    continue;
+                }
+
+                string name = ResolveReturnSignerName(signer.NodeKey, record, outbound, signer.DefaultRealName);
+                DateTime? date = ResolveReturnSignerDate(signer.NodeKey, record, outbound);
+                lines.Add(CreateFilledApprovalLine(roleLabel, name, date));
             }
 
-            return
-            [
-                CreateFilledApprovalLine(
-                    "借出时部门负责人",
-                    FirstNonEmptySigner(record.ReviewerName, outbound?.DeptAuditor),
-                    record.ReviewerDate ?? outbound?.DeptAuditDate),
-                CreateFilledApprovalLine(
-                    "借出时资料室负责人",
-                    FirstNonEmptySigner(record.ApprovedBy, outbound?.ArchiveRoomHead),
-                    record.ApprovedAt ?? outbound?.ArchiveRoomHeadDate),
-                CreateFilledApprovalLine(
-                    "借出时生产科负责人",
-                    FirstNonEmptySigner(record.ProductionHead, outbound?.ProductionHead),
-                    record.ProductionHeadDate ?? outbound?.ProductionHeadDate),
-                CreateFilledApprovalLine(
-                    "借出时生产副院长",
-                    FirstNonEmptySigner(record.VicePresident, outbound?.VicePresident),
-                    record.VicePresidentDate ?? outbound?.VicePresidentDate)
-            ];
+            return lines;
         }
+
+        private static string ResolveReturnSignerName(
+            string nodeKey,
+            YearlyArchiveReturnRecord record,
+            YearlyArchiveOutboundRecord? outbound,
+            string chainDefault)
+        {
+            string fromRecord = ApprovalChainApplySupport.ReadReturnSigner(record, nodeKey)?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(fromRecord))
+            {
+                return fromRecord;
+            }
+
+            string? raw = nodeKey switch
+            {
+                ApprovalWorkflowDomainValues.NodeDeptHead => outbound?.DeptHead,
+                ApprovalWorkflowDomainValues.NodeArchiveRoomHead => outbound?.ArchiveRoomHead,
+                ApprovalWorkflowDomainValues.NodeProductionHead => outbound?.ProductionHead,
+                ApprovalWorkflowDomainValues.NodeArchiveDeputyPresident => outbound?.ArchiveDeputyPresident,
+                ApprovalWorkflowDomainValues.NodeProductionVicePresident => outbound?.ProductionVicePresident,
+                _ => null
+            };
+            string fromOutbound = raw?.Trim() ?? string.Empty;
+
+            return !string.IsNullOrWhiteSpace(fromOutbound)
+                ? fromOutbound
+                : (chainDefault?.Trim() ?? string.Empty);
+        }
+
+        private static DateTime? ResolveReturnSignerDate(
+            string nodeKey,
+            YearlyArchiveReturnRecord record,
+            YearlyArchiveOutboundRecord? outbound) =>
+            nodeKey switch
+            {
+                ApprovalWorkflowDomainValues.NodeDeptHead => record.DeptHeadDate ?? outbound?.DeptHeadDate,
+                ApprovalWorkflowDomainValues.NodeArchiveRoomHead => record.ArchiveRoomHeadDate ?? outbound?.ArchiveRoomHeadDate,
+                ApprovalWorkflowDomainValues.NodeProductionHead => record.ProductionHeadDate ?? outbound?.ProductionHeadDate,
+                ApprovalWorkflowDomainValues.NodeArchiveDeputyPresident => record.ArchiveDeputyPresidentDate ?? outbound?.ArchiveDeputyPresidentDate,
+                ApprovalWorkflowDomainValues.NodeProductionVicePresident => record.ProductionVicePresidentDate ?? outbound?.ProductionVicePresidentDate,
+                _ => null
+            };
 
         private static ArchiveReturnApprovalSignatureLine CreateBlankApprovalLine(string roleLabel) =>
             new()
@@ -67,18 +102,5 @@ namespace DocMgr.Services.YearlyArchive
                 SignerSlot = signer?.Trim() ?? string.Empty,
                 DateText = date.HasValue ? date.Value.ToString("yyyy-MM-dd") : BlankApprovalDateText
             };
-
-        private static string FirstNonEmptySigner(params string?[] values)
-        {
-            foreach (string? value in values)
-            {
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    return value.Trim();
-                }
-            }
-
-            return string.Empty;
-        }
     }
 }

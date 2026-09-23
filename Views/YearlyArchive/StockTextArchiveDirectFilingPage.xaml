@@ -57,7 +57,7 @@
                            FontSize="18"
                            FontWeight="Bold"
                            Foreground="#37474F"/>
-                <TextBlock Text="以档案盒为单位手工登记纸基模拟资料，由资料室资料管理员直接完成建档与模拟立档，无需申请审批。载体类型为打印纸、绘图纸、打印相纸、感光胶片或感光相纸；子项需填写资料类型、所属子类与组织形式。"
+                <TextBlock Text="以档案盒为单位手工登记纸基模拟资料，由资料管理员直接完成建档与模拟立档，无需申请审批。载体类型为打印纸、绘图纸、打印相纸、感光胶片或感光相纸；子项需填写资料类型、所属子类与组织形式。"
                            Margin="0,6,0,0"
                            FontSize="12"
                            Foreground="#546E7A"
@@ -66,6 +66,8 @@
         </Border>
 
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+            <Button Content="下载导入模板" Command="{Binding ExportExcelTemplateCommand}" Padding="16,6" MinHeight="28" Margin="0,0,8,0"
+                    ToolTip="导出与交互式录入字段一致的 Excel 模板"/>
             <Button Content="从 Excel 导入" Command="{Binding ImportExcelCommand}" Padding="16,6" MinHeight="28" Margin="0,0,8,0"/>
             <Button Content="确认立档" Command="{Binding ConfirmCommand}" Padding="16,6" MinHeight="28" FontWeight="SemiBold"/>
         </StackPanel>
@@ -119,7 +121,7 @@
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="600"/>
                                 <ColumnDefinition Width="12"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
@@ -131,16 +133,32 @@
                             <TextBox Grid.Column="1" Text="{Binding MaterialName, UpdateSourceTrigger=PropertyChanged}"
                                      Height="{StaticResource FormControlHeight}"/>
                             <TextBlock Grid.Column="3" Text="来源" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="4" Text="{Binding SourceType, Mode=OneWay}" IsReadOnly="True"
-                                     Height="{StaticResource FormControlHeight}" Background="#F9F9F9"/>
+                            <ComboBox Grid.Column="4"
+                                      ItemsSource="{Binding SourceTypeOptions}"
+                                      SelectedItem="{Binding SourceType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="{StaticResource FormControlHeight}"
+                                      ToolTip="内部：提供单位固定为资料室；外来：请填写具体提供单位"/>
                             <TextBlock Grid.Column="6" Text="提供单位" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="7" Text="{Binding ProvideUnit, Mode=OneWay}" IsReadOnly="True"
-                                     Height="{StaticResource FormControlHeight}" Background="#F9F9F9"/>
+                            <TextBox Grid.Column="7"
+                                     Text="{Binding ProvideUnit, UpdateSourceTrigger=PropertyChanged}"
+                                     IsReadOnly="{Binding IsProvideUnitReadOnly, Mode=OneWay}"
+                                     Height="{StaticResource FormControlHeight}"
+                                     ToolTip="内部固定为资料室；外来时填写来源单位">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBoxStyle}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsProvideUnitReadOnly, Mode=OneWay}" Value="True">
+                                                <Setter Property="Background" Value="#F9F9F9"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
                         </Grid>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="600"/>
                                 <ColumnDefinition Width="12"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>

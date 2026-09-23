@@ -318,7 +318,9 @@ namespace DocMgr.Services.YearlyArchive
                 request.TargetRow,
                 request.TargetColumn,
                 source.Id);
-            int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(normalizedTargetCategory);
+            int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
+                normalizedTargetCategory,
+                targetCabinet);
             int countAfterMove = occupiedCount + 1;
             slotSpaceText = $"迁入后 {countAfterMove} 袋 / 档口容量 {slotCapacity} 袋";
             if (countAfterMove > slotCapacity)

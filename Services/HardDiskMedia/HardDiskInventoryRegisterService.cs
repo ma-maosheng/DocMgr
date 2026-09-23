@@ -354,8 +354,6 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
             .GroupBy(option => HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(option.Location), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
-        int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
-            CabinetHardDiskSlotCategoryAssignment.CategoryDamaged);
         var netDeltaBySlot = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var medium in media)
@@ -388,7 +386,11 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
                 continue;
             }
 
-            int existing = optionBySlot[slotCode].ExistingMediumCount;
+            var option = optionBySlot[slotCode];
+            int slotCapacity = option.SlotCapacity > 0
+                ? option.SlotCapacity
+                : CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
+            int existing = option.ExistingMediumCount;
             int projected = existing + delta;
             if (projected > slotCapacity)
             {
@@ -533,7 +535,7 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
     {
         if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
         {
-            throw new InvalidOperationException("仅资料室资料管理员可办理硬盘盘库登记。");
+            throw new InvalidOperationException("仅资料管理员可办理硬盘盘库登记。");
         }
     }
 

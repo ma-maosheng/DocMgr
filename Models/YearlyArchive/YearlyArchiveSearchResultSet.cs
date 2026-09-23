@@ -55,8 +55,6 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ContentEntryName { get; set; } = string.Empty;
 
-        public string ContentEntryRelativePath { get; set; } = string.Empty;
-
         public int SortOrder { get; set; }
 
         public string FormNo { get; set; } = string.Empty;

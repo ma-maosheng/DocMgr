@@ -60,7 +60,6 @@ namespace DocMgr.Services.YearlyArchive
                     {
                         EntryKind = ArchiveRegisterDomainValues.ElectronicEntryKindDirectory,
                         EntryName = childDirectory.Name,
-                        RelativePath = Path.GetRelativePath(rootPath, childDirectory.FullName),
                         SizeMb = BytesToMb(childBytes),
                         CreatedAt = times.CreatedAt,
                         ModifiedAt = times.ModifiedAt
@@ -73,7 +72,6 @@ namespace DocMgr.Services.YearlyArchive
                     {
                         EntryKind = ArchiveRegisterDomainValues.ElectronicEntryKindFile,
                         EntryName = childFile.Name,
-                        RelativePath = Path.GetRelativePath(rootPath, childFile.FullName),
                         SizeMb = BytesToMb(childFile.Length),
                         CreatedAt = childFile.CreationTime,
                         ModifiedAt = childFile.LastWriteTime
@@ -91,70 +89,9 @@ namespace DocMgr.Services.YearlyArchive
                 RootPath = rootPath,
                 Entries = entries
                     .OrderBy(entry => entry.EntryKind, StringComparer.Ordinal)
-                    .ThenBy(entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(entry => entry.EntryName, StringComparer.OrdinalIgnoreCase)
                     .ToList(),
                 FileCount = totalFileCount,
-                TotalSizeMb = BytesToMb(totalBytes)
-            };
-        }
-
-        public ElectronicMediaContentScanResult ScanFiles(IReadOnlyList<string> filePaths, string? storageRootDirectory = null)
-        {
-            ArgumentNullException.ThrowIfNull(filePaths);
-
-            var normalizedFiles = filePaths
-                .Where(path => !string.IsNullOrWhiteSpace(path))
-                .Select(path => Path.GetFullPath(path.Trim()))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            if (normalizedFiles.Count == 0)
-            {
-                throw new InvalidOperationException("未选择任何文件。");
-            }
-
-            foreach (var filePath in normalizedFiles)
-            {
-                if (!File.Exists(filePath))
-                {
-                    throw new FileNotFoundException($"文件不存在：{filePath}", filePath);
-                }
-            }
-
-            string rootPath = string.IsNullOrWhiteSpace(storageRootDirectory)
-                ? ResolveCommonRootDirectory(normalizedFiles)
-                : Path.GetFullPath(storageRootDirectory.Trim());
-
-            if (!Directory.Exists(rootPath))
-            {
-                throw new DirectoryNotFoundException($"存储根目录不存在：{rootPath}");
-            }
-
-            var entries = new List<ElectronicMediaContentScanEntry>();
-            long totalBytes = 0;
-
-            foreach (var filePath in normalizedFiles)
-            {
-                var fileInfo = new FileInfo(filePath);
-                string relativePath = Path.GetRelativePath(rootPath, filePath);
-                entries.Add(new ElectronicMediaContentScanEntry
-                {
-                    EntryKind = ArchiveRegisterDomainValues.ElectronicEntryKindFile,
-                    EntryName = fileInfo.Name,
-                    RelativePath = relativePath,
-                    SizeMb = BytesToMb(fileInfo.Length),
-                    CreatedAt = fileInfo.CreationTime,
-                    ModifiedAt = fileInfo.LastWriteTime
-                });
-                totalBytes += fileInfo.Length;
-            }
-
-            return new ElectronicMediaContentScanResult
-            {
-                RootPath = rootPath,
-                Entries = entries,
-                FileCount = entries.Count,
                 TotalSizeMb = BytesToMb(totalBytes)
             };
         }
@@ -284,7 +221,7 @@ namespace DocMgr.Services.YearlyArchive
             int fileCount = 0;
             try
             {
-                foreach (var filePath in Directory.EnumerateFiles(directoryPath, "*", SearchOption.AllDirectories))
+                foreach (var filePath in Directory.EnumerateFiles(directoryPath, "*", ElectronicMediaItemSupport.RecursiveIgnoreInaccessibleEnumerationOptions))
                 {
                     try
                     {
@@ -317,7 +254,7 @@ namespace DocMgr.Services.YearlyArchive
             DateTime? earliestCreatedAt = null;
             try
             {
-                foreach (var filePath in Directory.EnumerateFiles(directoryPath, "*", SearchOption.AllDirectories))
+                foreach (var filePath in Directory.EnumerateFiles(directoryPath, "*", ElectronicMediaItemSupport.RecursiveIgnoreInaccessibleEnumerationOptions))
                 {
                     try
                     {

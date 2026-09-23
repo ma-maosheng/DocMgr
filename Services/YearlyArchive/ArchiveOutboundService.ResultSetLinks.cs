@@ -315,7 +315,6 @@ namespace DocMgr.Services.YearlyArchive
                 ContentEntryId = poolItem.ContentEntryId,
                 ContentEntryKind = poolItem.ContentEntryKind,
                 ContentEntryName = poolItem.ContentEntryName,
-                ContentEntryRelativePath = poolItem.ContentEntryRelativePath,
                 FormNo = poolItem.FormNo,
                 MaterialName = poolItem.MaterialName,
                 ItemName = poolItem.ItemName,

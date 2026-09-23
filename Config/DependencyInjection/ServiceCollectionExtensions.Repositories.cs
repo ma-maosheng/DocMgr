@@ -18,6 +18,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IAdvancedDataRepository, AdvancedDataRepository>();
         services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
         services.AddScoped<IBusinessLogicSettingsRepository, BusinessLogicSettingsRepository>();
+        services.AddScoped<IApprovalWorkflowRepository, ApprovalWorkflowRepository>();
         services.AddScoped<IFieldDomainSeedRepository, FieldDomainSeedRepository>();
         services.AddScoped<IDevSystemSettingsSeedRepository, DevSystemSettingsSeedRepository>();
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();

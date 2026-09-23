@@ -73,7 +73,7 @@ namespace DocMgr.ViewModels.HistoryArchive
         /// <summary>盒号为投影属性：禁止手编，只读展示（调整盒位请走迁档或重新导入）。</summary>
         public bool CanEditBoxNumber => false;
 
-        /// <summary>仅资料室资料管理员可保存编辑。</summary>
+        /// <summary>仅资料管理员可保存编辑。</summary>
         public bool CanSave =>
             HistoryArchiveLedgerPermissionSupport.CanMaintain(_userContextService.CurrentUser)
             && !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(_map.LifecycleStatus);

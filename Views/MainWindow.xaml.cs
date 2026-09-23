@@ -603,7 +603,7 @@ namespace DocMgr.Views
                 UserManagementPage => BtnUserMgr,
                 DeptSettingPage => BtnDeptMgr,
                 RoleSettingPage => BtnRoleMgr,
-                PermissionSettingPage => BtnPermissionMgr,
+                ApprovalWorkflowSettingsPage => BtnApprovalWorkflow,
                 ServerPathSettingPage => BtnServerPathMgr,
                 AdvancedDataPage => BtnAdvancedData,
                 BusinessLogicSettingsPage => BtnBusinessLogicSettings,
@@ -752,7 +752,8 @@ namespace DocMgr.Views
                 HardDiskMediaPage => "介质管理（硬盘·概览）",
                 UserManagementPage => "系统设置（用户管理）",
                 DeptSettingPage => "系统设置（部门设置）",
-                RoleSettingPage => "系统设置（角色设置）",
+                RoleSettingPage => "系统设置（角色概览）",
+                ApprovalWorkflowSettingsPage => "系统设置（审核审批）",
                 ServerPathSettingPage => "系统设置（服务器路径设置）",
                 UserPreferencePage => "系统设置（个人设置）",
                 BusinessLogicSettingsPage => "系统设置（业务逻辑设置）",
@@ -884,12 +885,8 @@ namespace DocMgr.Views
                 return;
             }
 
-            bool isSystemAdmin = IsSystemAdministrator();
-            bool isArchiveAdmin = CanAccessArchiveRelocation();
-            bool canFiling = CanAccessArchiveFiling();
-            bool canMediaAdmin = CanAccessArchiveMediaAdmin();
-            bool canSubmitApplication = CanAccessDepartmentArchiveApply();
-
+            // 左侧导航全员可进（含系统设置）；编辑/写入仍由各页面与 Service 按角色控制；
+            // 业务列表数据范围仍按现有「仅本人/本部门」逻辑，不因导航开放而放宽。
             SystemSettingsExpander.Visibility = Visibility.Visible;
             SystemSettingsExpander.IsEnabled = true;
 
@@ -900,65 +897,63 @@ namespace DocMgr.Views
             ExpMediaMgr.IsEnabled = true;
             ExpProjects.IsEnabled = true;
 
-            SetNavButton(BtnUserMgr, isSystemAdmin);
-            SetNavButton(BtnDeptMgr, isSystemAdmin);
-            SetNavButton(BtnRoleMgr, isSystemAdmin);
-            SetNavButton(BtnPermissionMgr, isSystemAdmin);
-            SetNavButton(BtnServerPathMgr, ServerPathSettingPermissionSupport.CanMaintain(CurrentUser));
-            // 数据浏览对全员开放；删除、清空、还原、字典维护等高危操作在页面内按角色控制。
+            SetNavButton(BtnUserMgr, true);
+            SetNavButton(BtnDeptMgr, true);
+            SetNavButton(BtnRoleMgr, true);
+            SetNavButton(BtnApprovalWorkflow, true);
+            SetNavButton(BtnServerPathMgr, true);
             SetNavButton(BtnAdvancedData, true);
-            SetNavButton(BtnBusinessLogicSettings, isSystemAdmin);
+            SetNavButton(BtnBusinessLogicSettings, true);
             SetNavButton(BtnUserPreference, true);
-            SetNavButton(BtnDbOperationLog, isSystemAdmin);
+            SetNavButton(BtnDbOperationLog, true);
 
             SetNavButton(BtnProjectInfo, true);
 
-            // 申请：部门资料管理员；审批及后续办理：资料室资料管理员。
-            SetNavButton(BtnArchiveRegisterApply, canSubmitApplication);
-            SetNavButton(BtnArchiveRegisterApprove, isArchiveAdmin);
-            SetNavButton(BtnArchiveFiling, canFiling);
-            SetNavButton(BtnStockHardDiskDirectFiling, canFiling);
-            SetNavButton(BtnStockTextArchiveDirectFiling, canFiling);
-            SetNavButton(BtnArchiveFilingLedger, canFiling);
-            SetNavButton(BtnArchiveRelocationLedger, canFiling);
-            SetNavButton(BtnArchiveCirculationLedger, canFiling);
-            SetNavButton(BtnArchiveCrossDomainTransferLedger, canFiling);
+            SetNavButton(BtnArchiveRegisterApply, true);
+            SetNavButton(BtnArchiveRegisterApprove, true);
+            SetNavButton(BtnArchiveFiling, true);
+            SetNavButton(BtnStockHardDiskDirectFiling, true);
+            SetNavButton(BtnStockTextArchiveDirectFiling, true);
+            SetNavButton(BtnArchiveFilingLedger, true);
+            SetNavButton(BtnArchiveRelocationLedger, true);
+            SetNavButton(BtnArchiveCirculationLedger, true);
+            SetNavButton(BtnArchiveCrossDomainTransferLedger, true);
             SetNavButton(BtnArchiveSearch, true);
             SetNavButton(BtnArchiveElectronicFilingSearch, true);
             SetNavButton(BtnArchiveSimulatedFilingSearch, true);
             SetNavButton(BtnArchiveFilingSearchPool, true);
-            SetNavButton(BtnArchiveOutboundApply, canSubmitApplication);
-            SetNavButton(BtnArchiveOutboundApproval, isArchiveAdmin);
-            SetNavButton(BtnArchiveReturnApply, canSubmitApplication);
-            SetNavButton(BtnArchiveReturnApproval, isArchiveAdmin);
-            SetNavButton(BtnArchiveSimulatedRelocation, isArchiveAdmin);
-            SetNavButton(BtnArchiveElectronicRelocation, isArchiveAdmin);
-            SetNavButton(BtnArchiveSimulatedInventoryRegister, isArchiveAdmin);
-            SetNavButton(BtnArchiveElectronicInventoryRegister, isArchiveAdmin);
+            SetNavButton(BtnArchiveOutboundApply, true);
+            SetNavButton(BtnArchiveOutboundApproval, true);
+            SetNavButton(BtnArchiveReturnApply, true);
+            SetNavButton(BtnArchiveReturnApproval, true);
+            SetNavButton(BtnArchiveSimulatedRelocation, true);
+            SetNavButton(BtnArchiveElectronicRelocation, true);
+            SetNavButton(BtnArchiveSimulatedInventoryRegister, true);
+            SetNavButton(BtnArchiveElectronicInventoryRegister, true);
             SetNavButton(BtnArchiveSimulatedDisposal, true);
             SetNavButton(BtnArchiveElectronicDisposal, true);
 
-            SetNavButton(BtnNetInboundApply, canSubmitApplication);
-            SetNavButton(BtnNetInboundApprove, isArchiveAdmin);
-            SetNavButton(BtnNetOutboundApply, canSubmitApplication);
-            SetNavButton(BtnNetOutboundApprove, isArchiveAdmin);
-            SetNavButton(BtnNetDispose, isArchiveAdmin);
+            SetNavButton(BtnNetInboundApply, true);
+            SetNavButton(BtnNetInboundApprove, true);
+            SetNavButton(BtnNetOutboundApply, true);
+            SetNavButton(BtnNetOutboundApprove, true);
+            SetNavButton(BtnNetDispose, true);
 
             SetNavButton(BtnHistMap, true);
             SetNavButton(BtnHistAerial, true);
             SetNavButton(BtnOtherData, true);
 
-            SetNavButton(BtnCabRegister, isArchiveAdmin);
+            SetNavButton(BtnCabRegister, true);
             SetNavButton(BtnCabSearch, true);
 
             SetNavButton(BtnDiskSearch, true);
-            SetNavButton(BtnDiskRegister, canMediaAdmin);
-            SetNavButton(BtnDiskBorrow, canSubmitApplication);
-            SetNavButton(BtnDiskApproval, canMediaAdmin);
-            SetNavButton(BtnDiskReturnApply, canSubmitApplication);
-            SetNavButton(BtnDiskReturnApproval, canMediaAdmin);
-            SetNavButton(BtnDiskInventoryRegister, canMediaAdmin);
-            SetNavButton(BtnDiskOffWarehouse, canMediaAdmin);
+            SetNavButton(BtnDiskRegister, true);
+            SetNavButton(BtnDiskBorrow, true);
+            SetNavButton(BtnDiskApproval, true);
+            SetNavButton(BtnDiskReturnApply, true);
+            SetNavButton(BtnDiskReturnApproval, true);
+            SetNavButton(BtnDiskInventoryRegister, true);
+            SetNavButton(BtnDiskOffWarehouse, true);
             SetNavButton(BtnDiskDispose, true);
             SetNavButton(BtnOpticalDiscOverview, true);
             SetNavButton(BtnOpticalDiscLedger, true);
@@ -972,127 +967,32 @@ namespace DocMgr.Views
             button.IsEnabled = isEnabled;
         }
 
-        private bool IsSystemAdministrator()
-        {
-            if (CurrentUser == null)
-            {
-                return false;
-            }
-
-            return CurrentUser.Role == "Administrator" || CurrentUser.Role == "管理员";
-        }
-
-        private bool EnsureServerPathSettingAccess()
-        {
-            if (ServerPathSettingPermissionSupport.CanMaintain(CurrentUser))
-            {
-                return true;
-            }
-
-            MessageBox.Show(ServerPathSettingPermissionSupport.DeniedMessage, "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-            return false;
-        }
-
-        private bool CanAccessArchiveMediaAdmin()
-        {
-            if (CurrentUser == null)
-            {
-                return false;
-            }
-
-            string dept = CurrentUser.Department?.Trim() ?? string.Empty;
-            string role = CurrentUser.Role?.Trim() ?? string.Empty;
-
-            return string.Equals(dept, "资料室", StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(role, "部门资料管理员", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private bool CanAccessArchiveFiling()
-        {
-            if (CurrentUser == null) return false;
-
-            return CurrentUser.Department == "资料室" &&
-                CurrentUser.Role == "部门资料管理员";
-        }
-
-        private bool CanAccessArchiveRelocation()
-        {
-            if (CurrentUser == null)
-            {
-                return false;
-            }
-
-            using var scope = _scopeFactory.CreateScope();
-            var registerService = scope.ServiceProvider.GetRequiredService<IArchiveRegisterService>();
-            return registerService.IsArchiveAdminUser(CurrentUser);
-        }
-
-        /// <summary>
-        /// 部门资料管理员（不含资料室）：各类申请业务操作人。
-        /// </summary>
-        private bool CanAccessDepartmentArchiveApply()
-        {
-            if (CurrentUser == null)
-            {
-                return false;
-            }
-
-            using var scope = _scopeFactory.CreateScope();
-            var registerService = scope.ServiceProvider.GetRequiredService<IArchiveRegisterService>();
-            return registerService.IsDepartmentArchiveAdmin(CurrentUser);
-        }
-
         private void BtnDeptSetting_Click(object sender, RoutedEventArgs e)
         {
-            if (!EnsureSystemSettingsAccess())
-            {
-                return;
-            }
-
             TxtPageTitle.Text = "系统设置（部门设置）";
             MainContentFrame.Navigate(new DeptSettingPage());
         }
 
         private void BtnRoleSetting_Click(object sender, RoutedEventArgs e)
         {
-            if (!EnsureSystemSettingsAccess())
-            {
-                return;
-            }
-
-            TxtPageTitle.Text = "系统设置（角色设置）";
+            TxtPageTitle.Text = "系统设置（角色概览）";
             MainContentFrame.Navigate(new RoleSettingPage());
         }
 
-        private void BtnPermissionSetting_Click(object sender, RoutedEventArgs e)
+        private void BtnApprovalWorkflow_Click(object sender, RoutedEventArgs e)
         {
-            if (!EnsureSystemSettingsAccess())
-            {
-                return;
-            }
-
-            TxtPageTitle.Text = "系统设置（权限设置）";
-            MainContentFrame.Navigate(new PermissionSettingPage());
+            TxtPageTitle.Text = "系统设置（审核审批）";
+            MainContentFrame.Navigate(new ApprovalWorkflowSettingsPage());
         }
 
         private void BtnServerPathSetting_Click(object sender, RoutedEventArgs e)
         {
-            if (!EnsureServerPathSettingAccess())
-            {
-                return;
-            }
-
             TxtPageTitle.Text = "系统设置（服务器路径设置）";
             MainContentFrame.Navigate(new ServerPathSettingPage());
         }
 
         private void BtnUserManagement_Click(object sender, RoutedEventArgs e)
         {
-            if (!EnsureSystemSettingsAccess())
-            {
-                return;
-            }
-
             TxtPageTitle.Text = "系统设置（用户管理）";
             MainContentFrame.Navigate(new UserManagementPage());
         }
@@ -1125,12 +1025,6 @@ namespace DocMgr.Views
 
         private void BtnCabRegister_Click(object sender, RoutedEventArgs e)
         {
-            if (!CanAccessArchiveRelocation())
-            {
-                MessageBox.Show(CabinetManagementPermissionSupport.RegisterDeniedMessage, "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
             TxtPageTitle.Text = "档案柜管理（档案柜登记）";
             MainContentFrame.Navigate(new CabinetLayoutPage());
         }
@@ -1143,12 +1037,6 @@ namespace DocMgr.Views
 
         private void BtnHistDisposal_Click(object sender, RoutedEventArgs e)
         {
-            if (!CanAccessArchiveRelocation())
-            {
-                MessageBox.Show("仅资料室管理员可办理历史存档资料离库处置。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
             TxtPageTitle.Text = "历史存档资料管理（资料离库处置）";
             MainContentFrame.Navigate(new HistoryArchiveDisposalPage());
         }
@@ -1189,51 +1077,19 @@ namespace DocMgr.Views
 
         private void BtnAdvancedData_Click(object sender, RoutedEventArgs e)
         {
-            // 所有用户均可进入：普通用户仅数据浏览，资料室资料管理员可另备份当前库，高危维护仅系统管理员（页面内按角色隐藏）。
+            // 所有用户均可进入：普通用户仅数据浏览，资料管理员可另备份当前库，高危维护仅系统管理员（页面内按角色隐藏）。
             TxtPageTitle.Text = "高级数据管理";
             MainContentFrame.Navigate(new AdvancedDataPage());
-        }
-
-        private bool EnsureSystemSettingsAccess()
-        {
-            if (IsSystemAdministrator())
-            {
-                return true;
-            }
-
-            MessageBox.Show("仅系统管理员可进入系统设置。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-            return false;
         }
 
         private void BtnArchiveFilingLedger_Click(object sender, RoutedEventArgs e)
         {
             TxtPageTitle.Text = "年度资料档案化管理（资料建档·立档台账）";
-
-            if (!CanAccessArchiveFiling())
-            {
-                MessageBox.Show(
-                    "抱歉，您没有【立档台账】的访问权限（仅资料室资料管理员可操作）。",
-                    "权限提示",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
             MainContentFrame.Navigate(new ArchiveFilingLedgerPage());
         }
 
         public void NavigateToArchiveFilingLedger(int filingFactId)
         {
-            if (!CanAccessArchiveFiling())
-            {
-                MessageBox.Show(
-                    "抱歉，您没有【立档台账】的访问权限（仅资料室资料管理员可操作）。",
-                    "权限提示",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
             ArchiveFilingLedgerNavigationState.PendingFilingFactId = filingFactId;
             TxtPageTitle.Text = "年度资料档案化管理（资料建档·立档台账）";
             MainContentFrame.Navigate(new ArchiveFilingLedgerPage());
@@ -1242,51 +1098,18 @@ namespace DocMgr.Views
         private void BtnArchiveRelocationLedger_Click(object sender, RoutedEventArgs e)
         {
             TxtPageTitle.Text = "年度资料档案化管理（资料迁档·迁档台账）";
-
-            if (!CanAccessArchiveFiling())
-            {
-                MessageBox.Show(
-                    "抱歉，您没有【迁档台账】的访问权限（仅资料室资料管理员可操作）。",
-                    "权限提示",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
             MainContentFrame.Navigate(new ArchiveRelocationLedgerPage());
         }
 
         private void BtnArchiveCirculationLedger_Click(object sender, RoutedEventArgs e)
         {
             TxtPageTitle.Text = "年度资料档案化管理（资料流转·流转台账）";
-
-            if (!CanAccessArchiveFiling())
-            {
-                MessageBox.Show(
-                    "抱歉，您没有【流转台账】的访问权限（仅资料室资料管理员可操作）。",
-                    "权限提示",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
             MainContentFrame.Navigate(new ArchiveCirculationLedgerPage());
         }
 
         private void BtnArchiveCrossDomainTransferLedger_Click(object sender, RoutedEventArgs e)
         {
             TxtPageTitle.Text = "年度资料档案化管理（资料流转·跨域流转台账）";
-
-            if (!CanAccessArchiveFiling())
-            {
-                MessageBox.Show(
-                    "抱歉，您没有【跨域流转台账】的访问权限（仅资料室资料管理员可操作）。",
-                    "权限提示",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
             MainContentFrame.Navigate(new ArchiveCrossDomainTransferLedgerPage());
         }
 
@@ -1302,12 +1125,6 @@ namespace DocMgr.Views
 
         private void NavigateToArchiveInventoryRegisterPage(string mediaKind)
         {
-            if (!CanAccessArchiveRelocation())
-            {
-                MessageBox.Show("仅资料室管理员可办理盘库登记。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
             bool isElectronic = string.Equals(
                 mediaKind,
                 ArchiveInventoryRegisterDomainValues.MediaKindElectronic,
@@ -1332,16 +1149,6 @@ namespace DocMgr.Views
         {
             TxtPageTitle.Text = "年度资料档案化管理（资料建档·资料立档）";
 
-            if (!CanAccessArchiveFiling())
-            {
-                MessageBox.Show(
-                    "抱歉，您没有【资料立档】的操作权限（仅资料室资料管理员可操作）。",
-                    "权限提示",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
             try
             {
                 MainContentFrame.Navigate(new ArchiveFilingPage());
@@ -1361,16 +1168,6 @@ namespace DocMgr.Views
         {
             TxtPageTitle.Text = "年度资料档案化管理（资料建档·存量硬盘直办立档）";
 
-            if (!CanAccessArchiveFiling())
-            {
-                MessageBox.Show(
-                    "抱歉，您没有【存量硬盘直办立档】的操作权限（仅资料室资料管理员可操作）。",
-                    "权限提示",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
             try
             {
                 MainContentFrame.Navigate(new StockHardDiskDirectFilingPage());
@@ -1389,16 +1186,6 @@ namespace DocMgr.Views
         private void BtnStockTextArchiveDirectFiling_Click(object sender, RoutedEventArgs e)
         {
             TxtPageTitle.Text = "年度资料档案化管理（资料建档·存档文本直办立档）";
-
-            if (!CanAccessArchiveFiling())
-            {
-                MessageBox.Show(
-                    "抱歉，您没有【存档文本直办立档】的操作权限（仅资料室资料管理员可操作）。",
-                    "权限提示",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
 
             try
             {
@@ -1459,12 +1246,6 @@ namespace DocMgr.Views
 
         private void BtnArchiveOutboundApproval_Click(object sender, RoutedEventArgs e)
         {
-            if (!CanAccessArchiveRelocation())
-            {
-                MessageBox.Show("仅资料室管理员可办理审批出库。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
             TxtPageTitle.Text = "年度资料档案化管理（资料流转·审批出库）";
             MainContentFrame.Navigate(new ArchiveOutboundApprovalPage());
         }
@@ -1476,12 +1257,6 @@ namespace DocMgr.Views
 
         private void BtnArchiveReturnApproval_Click(object sender, RoutedEventArgs e)
         {
-            if (!CanAccessArchiveRelocation())
-            {
-                MessageBox.Show("仅资料室管理员可办理归还审批入库。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
             NavigateToArchiveReturnPage(ArchiveReturnWorkspaceMode.Approval);
         }
 
@@ -1502,24 +1277,12 @@ namespace DocMgr.Views
         private void BtnArchiveSimulatedRelocation_Click(object sender, RoutedEventArgs e)
         {
             TxtPageTitle.Text = "年度资料档案化管理（资料流转·模拟介质资料迁档）";
-            if (!CanAccessArchiveRelocation())
-            {
-                MessageBox.Show("仅资料室管理员可执行资料迁档。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
             MainContentFrame.Navigate(new ArchiveSimulatedRelocationPage());
         }
 
         private void BtnArchiveElectronicRelocation_Click(object sender, RoutedEventArgs e)
         {
             TxtPageTitle.Text = "年度资料档案化管理（资料流转·电子介质资料迁档）";
-            if (!CanAccessArchiveRelocation())
-            {
-                MessageBox.Show("仅资料室管理员可执行资料迁档。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
             MainContentFrame.Navigate(new ArchiveElectronicRelocationPage());
         }
 
@@ -1563,59 +1326,29 @@ namespace DocMgr.Views
 
         private void BtnNetInboundApply_Click(object sender, RoutedEventArgs e)
         {
-            if (!CanAccessDepartmentArchiveApply())
-            {
-                MessageBox.Show("仅部门资料管理员可发起入网申请。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
             NavigateToNetworkInboundApplyPage();
         }
 
         private void BtnNetInboundApprove_Click(object sender, RoutedEventArgs e)
         {
-            if (!CanAccessArchiveRelocation())
-            {
-                MessageBox.Show("仅资料室管理员可办理入网审批。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
             TxtPageTitle.Text = "年度资料出入网管理（入网审批）";
             MainContentFrame.Navigate(new NetworkInboundApprovalPage());
         }
 
         private void BtnNetOutboundApply_Click(object sender, RoutedEventArgs e)
         {
-            if (!CanAccessDepartmentArchiveApply())
-            {
-                MessageBox.Show("仅部门资料管理员可发起出网申请。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
             TxtPageTitle.Text = "年度资料出入网管理（出网申请）";
             MainContentFrame.Navigate(new NetworkOutboundApplicationPage());
         }
 
         private void BtnNetOutboundApprove_Click(object sender, RoutedEventArgs e)
         {
-            if (!CanAccessArchiveRelocation())
-            {
-                MessageBox.Show("仅资料室管理员可办理出网审批。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
             TxtPageTitle.Text = "年度资料出入网管理（出网审批）";
             MainContentFrame.Navigate(new NetworkOutboundApprovalPage());
         }
 
         private void BtnNetDispose_Click(object sender, RoutedEventArgs e)
         {
-            if (!CanAccessArchiveRelocation())
-            {
-                MessageBox.Show("仅资料室管理员可办理在网数据处置。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
             TxtPageTitle.Text = "年度资料出入网管理（在网数据处置）";
             MainContentFrame.Navigate(new NetworkOnNetDisposalPage());
         }
@@ -1769,22 +1502,12 @@ namespace DocMgr.Views
 
         private void BtnBusinessLogicSettings_Click(object sender, RoutedEventArgs e)
         {
-            if (!EnsureSystemSettingsAccess())
-            {
-                return;
-            }
-
             TxtPageTitle.Text = "系统设置（逾期设置）";
             MainContentFrame.Navigate(new BusinessLogicSettingsPage());
         }
 
         private void BtnDbOperationLog_Click(object sender, RoutedEventArgs e)
         {
-            if (!EnsureSystemSettingsAccess())
-            {
-                return;
-            }
-
             TxtPageTitle.Text = "系统设置（数据库操作日志）";
             MainContentFrame.Navigate(new DbOperationLogPage());
         }

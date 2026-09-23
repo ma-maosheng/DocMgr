@@ -86,8 +86,12 @@
       "Description": ""
     },
     {
-      "Name": "部门资料管理员",
-      "Description": ""
+      "Name": "部门资料员",
+      "Description": "各部门申请经办；所属部门不能是资料室"
+    },
+    {
+      "Name": "资料管理员",
+      "Description": "资料室办理（审批/立档/盘库等）；所属部门必须是资料室"
     },
     {
       "Name": "网管负责人",
@@ -129,7 +133,7 @@
       "LoginName": "mxc",
       "RealName": "马小超",
       "Department": "航测外业室",
-      "Role": "部门资料管理员",
+      "Role": "部门资料员",
       "Password": "mxc"
     },
     {
@@ -143,7 +147,7 @@
       "LoginName": "zc",
       "RealName": "张琛",
       "Department": "地理信息室",
-      "Role": "部门资料管理员",
+      "Role": "部门资料员",
       "Password": "zc"
     },
     {
@@ -185,14 +189,14 @@
       "LoginName": "wxl",
       "RealName": "吴秀丽",
       "Department": "资料室",
-      "Role": "部门资料管理员",
+      "Role": "资料管理员",
       "Password": "wxl"
     },
     {
       "LoginName": "jn",
       "RealName": "及那",
       "Department": "资料室",
-      "Role": "部门资料管理员",
+      "Role": "资料管理员",
       "Password": "jn"
     },
     {
@@ -206,7 +210,7 @@
       "LoginName": "wxl_kf",
       "RealName": "吴秀丽",
       "Department": "科研开发室",
-      "Role": "部门资料管理员",
+      "Role": "部门资料员",
       "Password": "wxl_kf"
     }
 

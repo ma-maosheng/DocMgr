@@ -57,7 +57,7 @@ namespace DocMgr.ViewModels.Cabinets
             $"待还份数合计 {PendingReturnCopyCount} 份，追溯明细 {ItemDetailsPanel.ItemCount} 条（已办结出库、尚未归还的提档记录）。";
 
         public string ListHintText =>
-            "以下为本盒内资料子项出库待还明细，便于资料室管理员追溯借出单号、借用人、应还日期等信息。";
+            "以下为本盒内资料子项出库待还明细，便于资料管理员追溯借出单号、借用人、应还日期等信息。";
 
         public RelayCommand CloseCommand { get; }
     }

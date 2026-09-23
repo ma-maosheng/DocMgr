@@ -13,13 +13,14 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-09-14T12:04:20Z
+> 生成时间（UTC）：2026-09-23T02:24:09Z
 
 ## 表索引
 
 | 中文表名 | Entity | Table | 类型 |
 | --- | --- | --- | --- |
 | 航片 | `AerialPhoto` | `AerialPhotos` | 表 |
+| 审核审批规则 | `ApprovalWorkflowRule` | `ApprovalWorkflowRules` | 表 |
 | 档案盒规格 | `ArchiveBoxSpecification` | `ArchiveBoxSpecifications` | 表 |
 | 档案容器汇总视图 | `ArchiveContainerProjection` | `ArchiveContainerProjection` | 视图 |
 | 业务逻辑设置 | `BusinessLogicSettings` | `BusinessLogicSettings` | 表 |
@@ -117,6 +118,33 @@ alwaysApply: true
 | 生命周期状态 | `LifecycleStatus` | `String` | 否 |
 | 最后存储位置 | `LastStorageLocation` | `String` | 否 |
 
+### ApprovalWorkflowRule（审核审批规则）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 业务类型 | `BusinessType` | `String` | 否 |
+| 规则名称 | `RuleName` | `String` | 否 |
+| 优先级 | `Priority` | `Int32` | 否 |
+| 条件逻辑 | `ConditionLogic` | `String` | 否 |
+| 条件1字段 | `Condition1FieldKey` | `String` | 否 |
+| 条件1取值 | `Condition1Value` | `String` | 否 |
+| 条件2字段 | `Condition2FieldKey` | `String` | 否 |
+| 条件2取值 | `Condition2Value` | `String` | 否 |
+| 启用部门负责人 | `EnableDeptHead` | `Boolean` | 否 |
+| 启用资料室负责人 | `EnableArchiveRoomHead` | `Boolean` | 否 |
+| 启用生产科负责人 | `EnableProductionHead` | `Boolean` | 否 |
+| 启用分管资料副院长 | `EnableArchiveDeputyPresident` | `Boolean` | 否 |
+| 启用分管生产副院长 | `EnableProductionVicePresident` | `Boolean` | 否 |
+| 默认部门负责人用户ID | `DefaultDeptHeadUserId` | `Int32?` | 否 |
+| 默认资料室负责人用户ID | `DefaultArchiveRoomHeadUserId` | `Int32?` | 否 |
+| 默认生产科负责人用户ID | `DefaultProductionHeadUserId` | `Int32?` | 否 |
+| 默认分管资料副院长用户ID | `DefaultArchiveDeputyPresidentUserId` | `Int32?` | 否 |
+| 默认分管生产副院长用户ID | `DefaultProductionVicePresidentUserId` | `Int32?` | 否 |
+| 启用 | `IsEnabled` | `Boolean` | 否 |
+| 创建时间 | `CreatedAt` | `DateTime` | 否 |
+| 更新时间 | `UpdatedAt` | `DateTime` | 否 |
+
 ### ArchiveBoxSpecification（档案盒规格）
 
 | 中文字段 | Property | CLR 类型 | 待补全 |
@@ -164,6 +192,8 @@ alwaysApply: true
 | 层数 | `LayerCount` | `Int32` | 否 |
 | 列数 | `ColumnCount` | `Int32` | 否 |
 | 旋转角度 | `RotationAngle` | `Double` | 否 |
+| 硬盘档口最大容量 | `HardDiskSlotCapacity` | `Int32` | 否 |
+| 光盘档口最大容量 | `OpticalDiscSlotCapacity` | `Int32` | 否 |
 
 ### CabinetArchiveSlotCategoryAssignment（标准档案柜档口用途）
 
@@ -303,6 +333,16 @@ alwaysApply: true
 | 审批人 | `ApprovedBy` | `String` | 否 |
 | 审批时间 | `ApprovedTime` | `DateTime?` | 否 |
 | 审批意见 | `ApprovalOpinion` | `String` | 否 |
+| 部门审核签字 | `DeptHead` | `String` | 否 |
+| 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
+| 资料室签字 | `ArchiveRoomHead` | `String` | 否 |
+| 资料室签字日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
+| 生产科签字 | `ProductionHead` | `String` | 否 |
+| 生产科签字日期 | `ProductionHeadDate` | `DateTime?` | 否 |
+| 分管资料院长签字 | `ArchiveDeputyPresident` | `String` | 否 |
+| 分管资料院长签字日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 分管生产院长签字 | `ProductionVicePresident` | `String` | 否 |
+| 分管生产院长签字日期 | `ProductionVicePresidentDate` | `DateTime?` | 否 |
 | 确认可上传人 | `ConfirmedBy` | `String` | 否 |
 | 确认可上传时间 | `ConfirmedTime` | `DateTime?` | 否 |
 | 已上传签批单 | `SignedAttachmentUploaded` | `Boolean` | 否 |
@@ -390,7 +430,9 @@ alwaysApply: true
 | 申请部门 | `ApplicantDept` | `String` | 否 |
 | 申请时间 | `ApplyTime` | `DateTime` | 否 |
 | 申请原因 | `Reason` | `String` | 否 |
-| 对方人员或单位 | `TargetPersonOrUnit` | `String` | 否 |
+| 证明材料备注 | `ProofMaterialNote` | `String` | 否 |
+| 目标去向 | `TargetPersonOrUnit` | `String` | 否 |
+| 目标去向类别 | `DestinationKind` | `String` | 否 |
 | 当前位置 | `CurrentLocation` | `String` | 否 |
 | 目标位置 | `TargetLocation` | `String` | 否 |
 | 预计归还日期 | `ExpectedReturnDate` | `DateTime?` | 否 |
@@ -401,10 +443,16 @@ alwaysApply: true
 | 已上传签字件 | `SignedAttachmentUploaded` | `Boolean` | 否 |
 | 签字件上传时间 | `SignedAttachmentUploadedTime` | `DateTime?` | 否 |
 | 签字件上传人 | `SignedAttachmentUploader` | `String` | 否 |
-| 审核人 | `ReviewerName` | `String` | 否 |
-| 审核时间 | `ReviewerDate` | `DateTime?` | 否 |
-| 审批人 | `ApprovedBy` | `String` | 否 |
-| 审批时间 | `ApprovedTime` | `DateTime?` | 否 |
+| 部门审核签字 | `DeptHead` | `String` | 否 |
+| 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
+| 资料室签字 | `ArchiveRoomHead` | `String` | 否 |
+| 资料室签字日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
+| 生产科签字 | `ProductionHead` | `String` | 否 |
+| 生产科签字日期 | `ProductionHeadDate` | `DateTime?` | 否 |
+| 分管资料院长签字 | `ArchiveDeputyPresident` | `String` | 否 |
+| 分管资料院长签字日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 分管生产院长签字 | `ProductionVicePresident` | `String` | 否 |
+| 分管生产院长签字日期 | `ProductionVicePresidentDate` | `DateTime?` | 否 |
 | 审批意见 | `ApprovalOpinion` | `String` | 否 |
 | 查验结果 | `InspectionResult` | `String` | 否 |
 | 格式化确认 | `FormatConfirmation` | `String` | 否 |
@@ -532,10 +580,16 @@ alwaysApply: true
 | 审批人 | `ApprovedBy` | `String` | 否 |
 | 审批时间 | `ApprovedTime` | `DateTime?` | 否 |
 | 审批意见 | `ApprovalOpinion` | `String` | 否 |
+| 部门审核签字 | `DeptHead` | `String` | 否 |
+| 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
 | 资料室负责人 | `ArchiveRoomHead` | `String` | 否 |
 | 资料室负责人日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
+| 生产科签字 | `ProductionHead` | `String` | 否 |
+| 生产科签字日期 | `ProductionHeadDate` | `DateTime?` | 否 |
 | 分管资料副院长 | `ArchiveDeputyPresident` | `String` | 否 |
 | 分管资料副院长日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 分管生产院长签字 | `ProductionVicePresident` | `String` | 否 |
+| 分管生产院长签字日期 | `ProductionVicePresidentDate` | `DateTime?` | 否 |
 | 确认可上传人 | `ConfirmedBy` | `String` | 否 |
 | 确认可上传时间 | `ConfirmedTime` | `DateTime?` | 否 |
 | 已上传签批单 | `SignedAttachmentUploaded` | `Boolean` | 否 |
@@ -633,18 +687,20 @@ alwaysApply: true
 | 申请人 | `ApplicantName` | `String` | 否 |
 | 申请部门 | `ApplicantDept` | `String` | 否 |
 | 申请时间 | `ApplyTime` | `DateTime` | 否 |
-| 生产负责人 | `ProdLeader` | `String` | 否 |
-| 生产日期 | `ProdDate` | `DateTime?` | 否 |
-| 科研负责人 | `RndLeader` | `String` | 否 |
-| 科研日期 | `RndDate` | `DateTime?` | 否 |
-| 分管负责人 | `DeputyLeader` | `String` | 否 |
-| 分管日期 | `DeputyDate` | `DateTime?` | 否 |
+| 生产科签字 | `ProductionHead` | `String` | 否 |
+| 生产科签字日期 | `ProductionHeadDate` | `DateTime?` | 否 |
+| 资料室签字 | `ArchiveRoomHead` | `String` | 否 |
+| 资料室签字日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
+| 分管资料院长签字 | `ArchiveDeputyPresident` | `String` | 否 |
+| 分管资料院长签字日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 分管生产院长签字 | `ProductionVicePresident` | `String` | 否 |
+| 分管生产院长签字日期 | `ProductionVicePresidentDate` | `DateTime?` | 否 |
 | 移交人 | `Deliverer` | `String` | 否 |
 | 移交日期 | `DeliverDate` | `DateTime?` | 否 |
 | 管理员 | `Administrator` | `String` | 否 |
 | 管理员日期 | `AdminDate` | `DateTime?` | 否 |
-| 部门负责人 | `DeptLeader` | `String` | 否 |
-| 部门日期 | `DeptDate` | `DateTime?` | 否 |
+| 部门审核签字 | `DeptHead` | `String` | 否 |
+| 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
 | 已上传签批单 | `SignedAttachmentUploaded` | `Boolean` | 否 |
 | 签批单上传时间 | `SignedAttachmentUploadedTime` | `DateTime?` | 否 |
 | 签批单上传人 | `SignedAttachmentUploader` | `String` | 否 |
@@ -736,10 +792,16 @@ alwaysApply: true
 | 审批人 | `ApprovedBy` | `String` | 否 |
 | 审批时间 | `ApprovedTime` | `DateTime?` | 否 |
 | 审批意见 | `ApprovalOpinion` | `String` | 否 |
+| 部门审核签字 | `DeptHead` | `String` | 否 |
+| 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
 | 资料室负责人 | `ArchiveRoomHead` | `String` | 否 |
 | 资料室负责人日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
+| 生产科签字 | `ProductionHead` | `String` | 否 |
+| 生产科签字日期 | `ProductionHeadDate` | `DateTime?` | 否 |
 | 分管资料副院长 | `ArchiveDeputyPresident` | `String` | 否 |
 | 分管资料副院长日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 分管生产院长签字 | `ProductionVicePresident` | `String` | 否 |
+| 分管生产院长签字日期 | `ProductionVicePresidentDate` | `DateTime?` | 否 |
 | 确认可上传人 | `ConfirmedBy` | `String` | 否 |
 | 确认可上传时间 | `ConfirmedTime` | `DateTime?` | 否 |
 | 已上传签批单 | `SignedAttachmentUploaded` | `Boolean` | 否 |
@@ -799,18 +861,20 @@ alwaysApply: true
 | 申请人 | `ApplicantName` | `String` | 否 |
 | 申请部门 | `ApplicantDept` | `String` | 否 |
 | 申请时间 | `ApplyTime` | `DateTime` | 否 |
-| 生产负责人 | `ProdLeader` | `String` | 否 |
-| 生产日期 | `ProdDate` | `DateTime?` | 否 |
-| 科研负责人 | `RndLeader` | `String` | 否 |
-| 科研日期 | `RndDate` | `DateTime?` | 否 |
-| 分管负责人 | `DeputyLeader` | `String` | 否 |
-| 分管日期 | `DeputyDate` | `DateTime?` | 否 |
+| 生产科签字 | `ProductionHead` | `String` | 否 |
+| 生产科签字日期 | `ProductionHeadDate` | `DateTime?` | 否 |
+| 资料室签字 | `ArchiveRoomHead` | `String` | 否 |
+| 资料室签字日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
+| 分管资料院长签字 | `ArchiveDeputyPresident` | `String` | 否 |
+| 分管资料院长签字日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 分管生产院长签字 | `ProductionVicePresident` | `String` | 否 |
+| 分管生产院长签字日期 | `ProductionVicePresidentDate` | `DateTime?` | 否 |
 | 移交人 | `Deliverer` | `String` | 否 |
 | 移交日期 | `DeliverDate` | `DateTime?` | 否 |
 | 管理员 | `Administrator` | `String` | 否 |
 | 管理员日期 | `AdminDate` | `DateTime?` | 否 |
-| 部门负责人 | `DeptLeader` | `String` | 否 |
-| 部门日期 | `DeptDate` | `DateTime?` | 否 |
+| 部门审核签字 | `DeptHead` | `String` | 否 |
+| 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
 | 已上传签批单 | `SignedAttachmentUploaded` | `Boolean` | 否 |
 | 签批单上传时间 | `SignedAttachmentUploadedTime` | `DateTime?` | 否 |
 | 签批单上传人 | `SignedAttachmentUploader` | `String` | 否 |
@@ -1102,6 +1166,16 @@ alwaysApply: true
 | 审批人 | `ApprovedBy` | `String` | 否 |
 | 审批时间 | `ApprovedTime` | `DateTime?` | 否 |
 | 审批意见 | `ApprovalOpinion` | `String` | 否 |
+| 部门审核签字 | `DeptHead` | `String` | 否 |
+| 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
+| 资料室签字 | `ArchiveRoomHead` | `String` | 否 |
+| 资料室签字日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
+| 生产科签字 | `ProductionHead` | `String` | 否 |
+| 生产科签字日期 | `ProductionHeadDate` | `DateTime?` | 否 |
+| 分管资料院长签字 | `ArchiveDeputyPresident` | `String` | 否 |
+| 分管资料院长签字日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 分管生产院长签字 | `ProductionVicePresident` | `String` | 否 |
+| 分管生产院长签字日期 | `ProductionVicePresidentDate` | `DateTime?` | 否 |
 | 确认可上传人 | `ConfirmedBy` | `String` | 否 |
 | 确认可上传时间 | `ConfirmedTime` | `DateTime?` | 否 |
 | 已上传签批单 | `SignedAttachmentUploaded` | `Boolean` | 否 |
@@ -1140,7 +1214,6 @@ alwaysApply: true
 | 项目名称 | `ProjectName` | `String` | 否 |
 | 提供单位 | `ProvideUnit` | `String` | 否 |
 | 申请人 | `ApplicantName` | `String` | 否 |
-| 测绘资料/证明材料 | `ItemType` | `String` | 否 |
 | 明细名称 | `ItemName` | `String` | 否 |
 | 密级 | `ConfidentialLevel` | `String` | 否 |
 | 内容份数 | `ContentCount` | `Int32` | 否 |
@@ -1263,7 +1336,6 @@ alwaysApply: true
 | 内容条目ID | `ContentEntryId` | `Int32?` | 否 |
 | 内容条目类别 | `ContentEntryKind` | `String` | 否 |
 | 内容条目名称 | `ContentEntryName` | `String` | 否 |
-| 内容条目相对路径 | `ContentEntryRelativePath` | `String` | 否 |
 | 表单编号 | `FormNo` | `String` | 否 |
 | 资料名称 | `MaterialName` | `String` | 否 |
 | 明细名称 | `ItemName` | `String` | 否 |
@@ -1334,9 +1406,9 @@ alwaysApply: true
 | 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
 | 交接备注 | `HandoverRemark` | `String` | 否 |
 | 实物出库办理人 | `PhysicallyCompletedBy` | `String` | 否 |
-| 部门审核意见 | `DeptAuditOpinion` | `String` | 否 |
-| 部门审核人 | `DeptAuditor` | `String` | 否 |
-| 部门审核日期 | `DeptAuditDate` | `DateTime?` | 否 |
+| 部门审核意见 | `DeptHeadOpinion` | `String` | 否 |
+| 部门审核签字 | `DeptHead` | `String` | 否 |
+| 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
 | 资料室负责人意见 | `ArchiveRoomHeadOpinion` | `String` | 否 |
 | 资料室负责人 | `ArchiveRoomHead` | `String` | 否 |
 | 资料室负责人日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
@@ -1344,8 +1416,10 @@ alwaysApply: true
 | 生产管理科负责人 | `ProductionHead` | `String` | 否 |
 | 生产管理科负责人日期 | `ProductionHeadDate` | `DateTime?` | 否 |
 | 分管领导意见 | `VicePresidentOpinion` | `String` | 否 |
-| 分管领导 | `VicePresident` | `String` | 否 |
-| 分管领导日期 | `VicePresidentDate` | `DateTime?` | 否 |
+| 分管资料院长签字 | `ArchiveDeputyPresident` | `String` | 否 |
+| 分管资料院长签字日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 分管生产院长签字 | `ProductionVicePresident` | `String` | 否 |
+| 分管生产院长签字日期 | `ProductionVicePresidentDate` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 更新时间 | `UpdatedAt` | `DateTime` | 否 |
 
@@ -1382,7 +1456,6 @@ alwaysApply: true
 | 电子明细ID | `ElectronicMediaItemDetailId` | `Int32` | 否 |
 | 条目类型 | `EntryKind` | `String` | 否 |
 | 名称 | `EntryName` | `String` | 否 |
-| 相对路径 | `RelativePath` | `String` | 否 |
 | 大小(MB) | `SizeMb` | `Decimal?` | 否 |
 | 创建日期 | `CreatedAt` | `DateTime?` | 否 |
 | 修改日期 | `ModifiedAt` | `DateTime?` | 否 |
@@ -1414,11 +1487,12 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 介质ID | `YearlyArchiveRegisterMediaId` | `Int32` | 否 |
-| 测绘资料/证明材料 | `ItemType` | `String` | 否 |
 | 分项资料名称 | `ContentDesc` | `String` | 否 |
 | 份数 | `ContentCount` | `Int32` | 否 |
 | 提交时存储目录 | `StoragePath` | `String` | 否 |
 | 备注 | `Note` | `String` | 否 |
+| 资料来源 | `SourceType` | `String` | 否 |
+| 提供单位 | `ProvideUnit` | `String` | 否 |
 | 密级 | `ConfidentialLevel` | `String` | 否 |
 
 ### YearlyArchiveRegisterRecord（年度资料登记申请）
@@ -1438,8 +1512,6 @@ alwaysApply: true
 | 项目ID | `ProjectId` | `Int32?` | 否 |
 | 项目名称 | `ProjectName` | `String?` | 否 |
 | 资料名称 | `MaterialName` | `String` | 否 |
-| 资料来源 | `SourceType` | `String` | 否 |
-| 提供单位 | `ProvideUnit` | `String` | 否 |
 | 库管模式 | `ArchivePurpose` | `String` | 否 |
 | 证明材料备注 | `ProofMaterialNote` | `String` | 否 |
 | 其他要求 | `OtherRequests` | `String` | 否 |
@@ -1447,20 +1519,22 @@ alwaysApply: true
 | 申请部门 | `ApplicantDept` | `String` | 否 |
 | 申请日期 | `ApplicantDate` | `DateTime` | 否 |
 | 生产管理科意见 | `ProdDeptOpinion` | `String` | 否 |
-| 生产管理科负责人 | `ProdLeader` | `String` | 否 |
-| 生产管理科日期 | `ProdDate` | `DateTime?` | 否 |
+| 生产管理科负责人 | `ProductionHead` | `String` | 否 |
+| 生产管理科日期 | `ProductionHeadDate` | `DateTime?` | 否 |
 | 科研开发室意见 | `RndDeptOpinion` | `String` | 否 |
-| 科研开发室负责人 | `RndLeader` | `String` | 否 |
-| 科研开发室日期 | `RndDate` | `DateTime?` | 否 |
+| 科研开发室负责人 | `ArchiveRoomHead` | `String` | 否 |
+| 科研开发室日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
 | 分管领导意见 | `DeputyOpinion` | `String` | 否 |
-| 分管领导 | `DeputyLeader` | `String` | 否 |
-| 分管领导日期 | `DeputyDate` | `DateTime?` | 否 |
+| 分管领导签字 | `ArchiveDeputyPresident` | `String` | 否 |
+| 分管领导日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 分管生产院长签字 | `ProductionVicePresident` | `String` | 否 |
+| 分管生产院长签字日期 | `ProductionVicePresidentDate` | `DateTime?` | 否 |
 | 移交人 | `Deliverer` | `String` | 否 |
 | 移交日期 | `DeliverDate` | `DateTime?` | 否 |
 | 资料员 | `Administrator` | `String` | 否 |
 | 资料员日期 | `AdminDate` | `DateTime?` | 否 |
-| 部门负责人 | `DeptLeader` | `String` | 否 |
-| 部门审核日期 | `DeptDate` | `DateTime?` | 否 |
+| 部门负责人 | `DeptHead` | `String` | 否 |
+| 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
 
 ### YearlyArchiveRegisterSimulatedMediaItemDetail（模拟介质明细扩展）
 
@@ -1551,14 +1625,17 @@ alwaysApply: true
 | 备注 | `Remark` | `String` | 否 |
 | 灭失具体情况 | `LossDescription` | `String` | 否 |
 | 办结管理员 | `HandlerName` | `String` | 否 |
-| 审核人 | `ReviewerName` | `String` | 否 |
-| 审核日期 | `ReviewerDate` | `DateTime?` | 否 |
-| 审批人 | `ApprovedBy` | `String` | 否 |
+| 部门审核签字 | `DeptHead` | `String` | 否 |
+| 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
+| 资料室签字 | `ArchiveRoomHead` | `String` | 否 |
+| 资料室签字日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
 | 审批意见 | `ApprovalOpinion` | `String` | 否 |
 | 生产管理科负责人 | `ProductionHead` | `String` | 否 |
 | 生产管理科负责人日期 | `ProductionHeadDate` | `DateTime?` | 否 |
-| 分管领导 | `VicePresident` | `String` | 否 |
-| 分管领导日期 | `VicePresidentDate` | `DateTime?` | 否 |
+| 分管资料院长签字 | `ArchiveDeputyPresident` | `String` | 否 |
+| 分管资料院长签字日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 分管生产院长签字 | `ProductionVicePresident` | `String` | 否 |
+| 分管生产院长签字日期 | `ProductionVicePresidentDate` | `DateTime?` | 否 |
 | 办理交接人（归还人） | `HandoverApplicant` | `String` | 否 |
 | 办理交接人（资料管理员） | `HandoverAdmin` | `String` | 否 |
 | 办理交接日期 | `HandoverDate` | `DateTime?` | 否 |
@@ -1607,7 +1684,6 @@ alwaysApply: true
 | 内容条目ID | `ContentEntryId` | `Int32?` | 否 |
 | 内容条目类别 | `ContentEntryKind` | `String` | 否 |
 | 内容条目名称 | `ContentEntryName` | `String` | 否 |
-| 内容条目相对路径 | `ContentEntryRelativePath` | `String` | 否 |
 | 排序序号 | `SortOrder` | `Int32` | 否 |
 | 表单编号 | `FormNo` | `String` | 否 |
 | 资料名称 | `MaterialName` | `String` | 否 |
@@ -1677,7 +1753,4 @@ alwaysApply: true
 ## 已废弃（模型中已不存在）
 
 - `CabinetArchiveBoxPlacement`（档案盒柜位分配）
-- `YearlyArchiveBoxYearlyArchiveRegisterRecord`（档案盒-登记申请关联）
-- `YearlyArchiveRegisterRecordYearlyElectronicArchiveUnit`（登记申请-电子档案关联）
-- `YearlyElectronicArchiveUnitMediaLink`（电子档案-登记介质关联）
 

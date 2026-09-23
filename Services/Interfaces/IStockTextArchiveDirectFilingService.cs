@@ -8,7 +8,7 @@ using DocMgr.Models.YearlyArchive;
 namespace DocMgr.Services.Interfaces
 {
     /// <summary>
-    /// 存档文本资料直办立档：以档案盒为单位手工登记模拟介质，由资料室资料管理员直接完成建档与立档。
+    /// 存档文本资料直办立档：以档案盒为单位手工登记模拟介质，由资料管理员直接完成建档与立档。
     /// </summary>
     public interface IStockTextArchiveDirectFilingService
     {
@@ -61,7 +61,7 @@ namespace DocMgr.Services.Interfaces
             User? currentUser);
 
         /// <summary>
-        /// 资料室资料管理员一次完成建档单合成与模拟盒立档。
+        /// 资料管理员一次完成建档单合成与模拟盒立档。
         /// </summary>
         Task<StockTextArchiveDirectFilingResult> CommitAsync(
             StockTextArchiveDirectFilingRequest request,
@@ -71,6 +71,11 @@ namespace DocMgr.Services.Interfaces
         /// 列出 Excel 工作表名称，供导入前选择。
         /// </summary>
         IReadOnlyList<string> ListExcelSheetNames(string filePath);
+
+        /// <summary>
+        /// 导出存档文本直办 Excel 导入模板（含交互式录入全部字段）。
+        /// </summary>
+        void ExportExcelImportTemplate(string filePath);
 
         /// <summary>
         /// 解析指定工作表，按档案盒编号分组。
@@ -87,7 +92,7 @@ namespace DocMgr.Services.Interfaces
             IProgress<(int Current, int Total, string Status)>? progress = null);
 
         /// <summary>
-        /// 按盒循环提交；失败盒不阻断后续盒。
+        /// 整批复核通过后按盒循环提交；任一盒校验未通过则整批不开始导入。
         /// </summary>
         Task<StockTextArchiveExcelImportCommitResult> CommitExcelImportAsync(
             IReadOnlyList<StockTextArchiveExcelBoxDraft> boxes,

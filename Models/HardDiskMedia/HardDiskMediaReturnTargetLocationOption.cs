@@ -16,8 +16,15 @@ namespace DocMgr.Models.HardDiskMedia
         public int ExistingMediumCount { get; init; }
 
         /// <summary>
+        /// 该档口所属柜体配置的最大容量；0 表示未知（按默认硬盘容量处理）。
+        /// </summary>
+        public int SlotCapacity { get; init; }
+
+        /// <summary>
         /// 下拉展示文本。
         /// </summary>
-        public string DisplayText => $"{Location}（{ExistingMediumCount}盘）";
+        public string DisplayText => SlotCapacity > 0
+            ? $"{Location}（{ExistingMediumCount}/{SlotCapacity}盘）"
+            : $"{Location}（{ExistingMediumCount}盘）";
     }
 }

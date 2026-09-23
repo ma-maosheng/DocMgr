@@ -977,8 +977,6 @@ namespace DocMgr.ViewModels.Cabinets
 
                 MediaItemId = item.MediaItemId,
 
-                ItemType = string.IsNullOrWhiteSpace(item.ItemType) ? hit.ItemType : item.ItemType,
-
                 ItemName = string.IsNullOrWhiteSpace(item.TitleText) ? hit.ItemName : item.TitleText,
 
                 ContainerCode = string.IsNullOrWhiteSpace(item.ContainerCode) ? hit.ContainerCode : item.ContainerCode,

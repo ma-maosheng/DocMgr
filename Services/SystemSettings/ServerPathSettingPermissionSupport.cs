@@ -3,7 +3,7 @@ using DocMgr.Models.SystemSettings;
 namespace DocMgr.Services.SystemSettings;
 
 /// <summary>
-/// 服务器路径设置权限：仅角色「网管负责人」可进入维护页并增删改。
+/// 服务器路径设置权限：全员可浏览；仅角色「网管负责人」可增删改。
 /// 出入网申请中选择已有路径不走本校验。系统管理员不替代本角色。
 /// </summary>
 public static class ServerPathSettingPermissionSupport

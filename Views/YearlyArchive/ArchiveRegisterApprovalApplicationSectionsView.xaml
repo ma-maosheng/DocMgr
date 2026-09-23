@@ -34,9 +34,9 @@
                     <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding CurrentRecord.ProjectName}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" Margin="0,0,0,4"/>
 
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="资料来源" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding CurrentRecord.SourceType}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" Margin="0,0,12,0"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SourceTypeDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" Margin="0,0,12,0" TextTrimming="CharacterEllipsis"/>
                     <TextBlock Grid.Row="1" Grid.Column="2" Text="提供单位" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
-                    <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding CurrentRecord.ProvideUnit}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding ProvideUnitDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextTrimming="CharacterEllipsis"/>
                 </Grid>
 
                 <ItemsControl ItemsSource="{Binding DataElectronicMediaView}" ItemTemplate="{StaticResource MediaEntryReadOnlyTemplate_DataElectronic}"/>

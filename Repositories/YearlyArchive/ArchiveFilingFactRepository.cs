@@ -44,61 +44,6 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
         return _dbContext.SaveChangesAsync();
     }
 
-    public async Task BackfillFromExistingLinksAsync()
-    {
-        var existingKeys = await _dbContext.YearlyArchiveFilingFacts
-            .AsNoTracking()
-            .Select(fact => new { fact.SourceLinkType, fact.SourceLinkId })
-            .ToListAsync();
-        var existingSet = existingKeys
-            .Select(key => $"{key.SourceLinkType}:{key.SourceLinkId}")
-            .ToHashSet(StringComparer.Ordinal);
-
-        var boxLinks = await _dbContext.YearlyArchiveBoxMediaItemLinks
-            .AsNoTracking()
-            .Include(link => link.ArchiveBox)
-            .Include(link => link.MediaItem)
-                .ThenInclude(item => item!.MediaEntry)
-                    .ThenInclude(media => media!.RegisterRecord)
-            .ToListAsync();
-
-        foreach (var link in boxLinks)
-        {
-            string key = $"{FilingFactSourceLinkType.BoxMediaItemLink}:{link.Id}";
-            if (existingSet.Contains(key))
-            {
-                continue;
-            }
-
-            _dbContext.YearlyArchiveFilingFacts.Add(BuildSimulatedFactFromLink(link, link.ArchiveBox, link.MediaItem));
-            existingSet.Add(key);
-        }
-
-        var electronicLinks = await _dbContext.YearlyElectronicArchiveUnitMediaItemLinks
-            .AsNoTracking()
-            .Include(link => link.ElectronicArchiveUnit)
-            .Include(link => link.MediaItem)
-                .ThenInclude(item => item!.MediaEntry)
-                    .ThenInclude(media => media!.RegisterRecord)
-            .ToListAsync();
-
-        foreach (var link in electronicLinks)
-        {
-            string key = $"{FilingFactSourceLinkType.ElectronicMediaItemLink}:{link.Id}";
-            if (existingSet.Contains(key))
-            {
-                continue;
-            }
-
-            _dbContext.YearlyArchiveFilingFacts.Add(
-                BuildElectronicFactFromLink(link, link.ElectronicArchiveUnit, link.MediaItem));
-            existingSet.Add(key);
-        }
-
-        await AssignMissingFilingFactNumbersAsync();
-        await _dbContext.SaveChangesAsync();
-    }
-
     public Task<List<YearlyArchiveFilingFact>> SearchByRegisterCriteriaAsync(
         string mediaKind,
         RegisterDirectionSearchCriteria criteria)
@@ -801,40 +746,6 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
         _ => status
     };
 
-    private async Task AssignMissingFilingFactNumbersAsync()
-    {
-        var factsWithoutNo = await _dbContext.YearlyArchiveFilingFacts
-            .Where(fact => fact.FilingFactNo == string.Empty)
-            .OrderBy(fact => fact.FiledAt)
-            .ThenBy(fact => fact.Id)
-            .ToListAsync();
-
-        foreach (var group in factsWithoutNo.GroupBy(fact => new { fact.MediaKind, Year = fact.FiledAt.Year }))
-        {
-            string prefix = $"立档-{group.Key.MediaKind}-{group.Key.Year}-";
-            string? lastNo = await GetLastFilingFactNoByPrefixAsync(prefix);
-            int nextSequence = ParseSequence(lastNo, prefix);
-
-            foreach (var fact in group)
-            {
-                fact.FilingFactNo = $"{prefix}{nextSequence:D6}";
-                nextSequence++;
-            }
-        }
-    }
-
-    private static int ParseSequence(string? lastNo, string prefix)
-    {
-        if (string.IsNullOrWhiteSpace(lastNo) || lastNo.Length <= prefix.Length)
-        {
-            return 1;
-        }
-
-        return int.TryParse(lastNo[prefix.Length..], out int parsed) && parsed > 0
-            ? parsed + 1
-            : 1;
-    }
-
     internal static YearlyArchiveFilingFact BuildSimulatedFactFromLink(
         YearlyArchiveBoxMediaItemLink link,
         YearlyArchiveBox box,
@@ -858,9 +769,8 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             MaterialName = record?.MaterialName?.Trim() ?? string.Empty,
             ProjectId = record?.ProjectId,
             ProjectName = record?.ProjectName?.Trim() ?? box.ProjectName?.Trim() ?? string.Empty,
-            ProvideUnit = record?.ProvideUnit?.Trim() ?? string.Empty,
+            ProvideUnit = mediaItem.ProvideUnit?.Trim() ?? string.Empty,
             ApplicantName = record?.ApplicantName?.Trim() ?? string.Empty,
-            ItemType = mediaItem.ItemType?.Trim() ?? string.Empty,
             ItemName = mediaItem.ContentDesc?.Trim() ?? string.Empty,
             ConfidentialLevel = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(mediaItem.ConfidentialLevel),
             ContentCount = mediaItem.ContentCount,
@@ -904,9 +814,8 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             MaterialName = link.MaterialName?.Trim() ?? record?.MaterialName?.Trim() ?? string.Empty,
             ProjectId = record?.ProjectId,
             ProjectName = record?.ProjectName?.Trim() ?? unit.ProjectName?.Trim() ?? string.Empty,
-            ProvideUnit = record?.ProvideUnit?.Trim() ?? string.Empty,
+            ProvideUnit = mediaItem.ProvideUnit?.Trim() ?? string.Empty,
             ApplicantName = record?.ApplicantName?.Trim() ?? string.Empty,
-            ItemType = mediaItem.ItemType?.Trim() ?? string.Empty,
             ItemName = link.ItemName?.Trim() ?? mediaItem.ContentDesc?.Trim() ?? string.Empty,
             ConfidentialLevel = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(mediaItem.ConfidentialLevel),
             ContentCount = mediaItem.ContentCount,

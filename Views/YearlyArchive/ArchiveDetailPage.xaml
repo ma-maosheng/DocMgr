@@ -1,4 +1,4 @@
-﻿<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveDetailPage"
+<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveDetailPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -270,9 +270,9 @@
                         <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Record.ProjectName, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="资料来源" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Record.SourceType, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SourceTypeDisplay, Mode=OneWay, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
                         <TextBlock Grid.Row="2" Grid.Column="2" Text="提供单位" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding Record.ProvideUnit, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding ProvideUnitDisplay, Mode=OneWay, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="申请人" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Record.ApplicantName, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
@@ -367,12 +367,11 @@
                                                             </ItemsControl.ItemsPanel>
                                                             <ItemsControl.ItemTemplate>
                                                                 <DataTemplate>
-                                                                    <Expander IsExpanded="{Binding IsDetailsExpanded, Mode=TwoWay}"
+                                                                        <Expander IsExpanded="{Binding IsDetailsExpanded, Mode=TwoWay}"
                                                                               Margin="0,0,0,6"
                                                                               Style="{StaticResource SearchHighlightExpanderStyle}">
                                                                         <Expander.Header>
                                                                             <WrapPanel>
-                                                                                <TextBlock Text="{Binding ItemType}" FontWeight="SemiBold" Foreground="#00695C" Margin="0,0,12,2"/>
                                                                                 <TextBlock Text="子项资料名称：" Style="{StaticResource FieldLabelStyle}"/>
                                                                                 <TextBlock Text="{Binding ContentDesc}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
                                                                                 <TextBlock Text="密级：" Style="{StaticResource FieldLabelStyle}"/>
@@ -559,20 +558,18 @@
                                                                         <StackPanel>
                                                                             <Grid>
                                                                                 <Grid.ColumnDefinitions>
-                                                                                    <ColumnDefinition Width="120"/>
                                                                                     <ColumnDefinition Width="*"/>
                                                                                     <ColumnDefinition Width="100"/>
                                                                                     <ColumnDefinition Width="160"/>
                                                                                 </Grid.ColumnDefinitions>
                                                                                 <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                                                                    <TextBlock Text="{Binding ItemType}" FontWeight="SemiBold" Foreground="#00695C"/>
+                                                                                    <TextBlock Text="{Binding ContentDesc}" TextWrapping="Wrap" Margin="0,0,8,0"/>
                                                                                     <Border Style="{StaticResource SearchHitBadgeBorderStyle}" Margin="6,0,0,0">
                                                                                         <TextBlock Text="检索命中" Foreground="White" FontSize="11"/>
                                                                                     </Border>
                                                                                 </StackPanel>
-                                                                                <TextBlock Grid.Column="1" Text="{Binding ContentDesc}" TextWrapping="Wrap" Margin="8,0,8,0"/>
-                                                                                <TextBlock Grid.Column="2" Text="{Binding ContentCountText, StringFormat=份数：{0}}"/>
-                                                                                <TextBlock Grid.Column="3" Text="{Binding Note, StringFormat=备注：{0}}" TextWrapping="Wrap"/>
+                                                                                <TextBlock Grid.Column="1" Text="{Binding ContentCountText, StringFormat=份数：{0}}"/>
+                                                                                <TextBlock Grid.Column="2" Text="{Binding Note, StringFormat=备注：{0}}" TextWrapping="Wrap"/>
                                                                             </Grid>
                                                                             <WrapPanel Margin="0,4,0,0">
                                                                                 <TextBlock Text="介质类型：" Style="{StaticResource FieldLabelStyle}"/>
@@ -597,74 +594,7 @@
 
                         <GroupBox Header="证明材料" Style="{StaticResource SectionGroupBoxStyle}">
                             <StackPanel>
-                                <TextBlock Text="暂无证明材料。" Foreground="#888">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding ProofMediaEntries.Count}" Value="0">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <ItemsControl ItemsSource="{Binding ProofMediaEntries}">
-                                    <ItemsControl.Style>
-                                        <Style TargetType="ItemsControl">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding ProofMediaEntries.Count}" Value="0">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </ItemsControl.Style>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,8">
-                                                <StackPanel>
-                                                    <WrapPanel Margin="0,0,0,8">
-                                                        <TextBlock Text="介质类型：" Style="{StaticResource FieldLabelStyle}"/>
-                                                        <TextBlock Text="{Binding MediaType}" Style="{StaticResource FieldValueStyle}" Margin="0,0,16,8"/>
-                                                        <TextBlock Text="数量：" Style="{StaticResource FieldLabelStyle}"/>
-                                                        <TextBlock Text="{Binding MediaCountText}" Style="{StaticResource FieldValueStyle}"/>
-                                                    </WrapPanel>
-                                                    <viewShared:ItemDetailsPanelHeader DataContext="{Binding ItemDetailsPanel}" Margin="0,4,0,4"/>
-                                                    <ScrollViewer MaxHeight="{Binding RelativeSource={RelativeSource AncestorType=Page}, Path=GenericMediaItemsViewportHeight}"
-                                                                  Style="{StaticResource AdaptiveBoundedListScrollViewerStyle}">
-                                                        <ItemsControl ItemsSource="{Binding ItemDetailsPanel.PageItems}"
-                                                                      Style="{StaticResource ItemDetailsPanelItemsControlStyle}">
-                                                            <ItemsControl.ItemsPanel>
-                                                                <ItemsPanelTemplate>
-                                                                    <StackPanel/>
-                                                                </ItemsPanelTemplate>
-                                                            </ItemsControl.ItemsPanel>
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate>
-                                                                    <Border Background="#FAFAFA" BorderBrush="#EFEFEF" BorderThickness="1" CornerRadius="3" Padding="8" Margin="0,0,0,6">
-                                                                        <Grid>
-                                                                            <Grid.ColumnDefinitions>
-                                                                                <ColumnDefinition Width="140"/>
-                                                                                <ColumnDefinition Width="*"/>
-                                                                                <ColumnDefinition Width="100"/>
-                                                                                <ColumnDefinition Width="160"/>
-                                                                            </Grid.ColumnDefinitions>
-                                                                            <TextBlock Grid.Column="0" Text="{Binding ItemType}" FontWeight="SemiBold" Foreground="#00695C"/>
-                                                                            <TextBlock Grid.Column="1" Text="{Binding ContentDesc}" TextWrapping="Wrap" Margin="8,0,8,0"/>
-                                                                            <TextBlock Grid.Column="2" Text="{Binding ContentCountText, StringFormat=份数：{0}}"/>
-                                                                            <TextBlock Grid.Column="3" Text="{Binding Note, StringFormat=备注：{0}}" TextWrapping="Wrap"/>
-                                                                        </Grid>
-                                                                    </Border>
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-                                                    </ScrollViewer>
-                                                    <viewShared:ItemDetailsPanelPaginationBar DataContext="{Binding ItemDetailsPanel}"/>
-                                                </StackPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <TextBlock Text="证明材料以申请单「证明材料备注」与附件扫描件为准。" Foreground="#888" TextWrapping="Wrap"/>
                             </StackPanel>
                         </GroupBox>
                     </StackPanel>
@@ -686,19 +616,19 @@
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="部门审核" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Record.DeptLeader, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Record.DeptHead, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
                         <TextBlock Grid.Row="0" Grid.Column="2" Text="部门审核日期" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding Record.DeptDate, StringFormat=yyyy-MM-dd, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding Record.DeptHeadDate, StringFormat=yyyy-MM-dd, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="生产管理科" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="生产科签字" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Record.ProdDeptOpinion, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="生产管理科签字" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Record.ProdLeader, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="生产科签字人" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Record.ProductionHead, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="科研开发室" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="资料室签字" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Record.RndDeptOpinion, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="科研开发室签字" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding Record.RndLeader, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="资料室签字人" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding Record.ArchiveRoomHead, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="交接与接收" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Record.Deliverer, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
@@ -839,20 +769,18 @@
                                                                     <StackPanel>
                                                                         <Grid Margin="0,0,0,4">
                                                                             <Grid.ColumnDefinitions>
-                                                                                <ColumnDefinition Width="120"/>
                                                                                 <ColumnDefinition Width="*"/>
                                                                                 <ColumnDefinition Width="100"/>
                                                                                 <ColumnDefinition Width="160"/>
                                                                             </Grid.ColumnDefinitions>
                                                                             <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                                                                <TextBlock Text="{Binding ItemType}" FontWeight="SemiBold" Foreground="#00695C"/>
+                                                                                <TextBlock Text="{Binding ContentDesc}" TextWrapping="Wrap" Margin="0,0,8,0"/>
                                                                                 <Border Style="{StaticResource SearchHitBadgeBorderStyle}" Margin="6,0,0,0">
                                                                                     <TextBlock Text="检索命中" Foreground="White" FontSize="11"/>
                                                                                 </Border>
                                                                             </StackPanel>
-                                                                            <TextBlock Grid.Column="1" Text="{Binding ContentDesc}" TextWrapping="Wrap" Margin="8,0,8,0"/>
-                                                                            <TextBlock Grid.Column="2" Text="{Binding ContentCountText, StringFormat=份数：{0}}"/>
-                                                                            <TextBlock Grid.Column="3" Text="{Binding Note, StringFormat=备注：{0}}" TextWrapping="Wrap"/>
+                                                                            <TextBlock Grid.Column="1" Text="{Binding ContentCountText, StringFormat=份数：{0}}"/>
+                                                                            <TextBlock Grid.Column="2" Text="{Binding Note, StringFormat=备注：{0}}" TextWrapping="Wrap"/>
                                                                         </Grid>
                                                                         <WrapPanel>
                                                                             <TextBlock Text="介质类型：" Style="{StaticResource FieldLabelStyle}"/>

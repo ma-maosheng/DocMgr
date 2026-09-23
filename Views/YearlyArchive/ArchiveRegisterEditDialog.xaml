@@ -34,67 +34,6 @@
                                           SelectedItem="{Binding SelectedProject}"/>
                             </DockPanel>
 
-                            <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
-                                <Label DockPanel.Dock="Left" Style="{StaticResource ArchiveRegisterCardLabelStyle}" Content="资料来源 *："/>
-                                <ComboBox DockPanel.Dock="Left" Width="{StaticResource YaRegSourceTypeWidth}" Margin="{StaticResource YaRegFieldTrailingMargin}"
-                                          ItemsSource="{Binding SourceTypeOptions}" SelectedItem="{Binding SelectedSourceType}">
-                                    <ComboBox.Style>
-                                        <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsSourceTypeEditable}" Value="False">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </ComboBox.Style>
-                                </ComboBox>
-                                <TextBox DockPanel.Dock="Left" Width="{StaticResource YaRegSourceTypeWidth}" Margin="{StaticResource YaRegFieldTrailingMargin}"
-                                         Text="{Binding SelectedSourceType, Mode=OneWay}" IsReadOnly="True"
-                                         Background="#F5F5F5">
-                                    <TextBox.Style>
-                                        <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsSourceTypeEditable}" Value="False">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBox.Style>
-                                </TextBox>
-                                <Label DockPanel.Dock="Left" Style="{StaticResource ArchiveRegisterInlineLabelStyle}"
-                                       Content="提供单位 *："/>
-                                <ComboBox DockPanel.Dock="Left"
-                                          Width="{StaticResource YaRegProvideUnitWidth}"
-                                          HorizontalAlignment="Left"
-                                          ItemsSource="{Binding Departments}" DisplayMemberPath="Name" SelectedValuePath="Name"
-                                          SelectedValue="{Binding CurrentRecord.ProvideUnit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
-                                    <ComboBox.Style>
-                                        <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </ComboBox.Style>
-                                </ComboBox>
-                                <TextBox Text="{Binding CurrentRecord.ProvideUnit, UpdateSourceTrigger=PropertyChanged}">
-                                    <TextBox.Style>
-                                        <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBox.Style>
-                                </TextBox>
-                            </DockPanel>
-
                             <GroupBox Header="资料介质（电子） *" Style="{StaticResource Level2GroupBoxStyle}">
                                 <StackPanel>
                                     <Grid Margin="0,0,0,4">
@@ -243,7 +182,7 @@
 
                     <GroupBox Header="2. 申请信息" Style="{StaticResource Level1GroupBoxStyle}">
                         <StackPanel>
-                            <!-- 归档目的：左标签列宽统一 YaRegLabelWidth；「其他」时横排补充说明 -->
+                            <!-- 归档目的 + 附有证明材料 同一行：目的为「其他」时横排补充说明 -->
                             <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
                                 <Label DockPanel.Dock="Left"
                                        Style="{StaticResource ArchiveRegisterCardLabelStyle}"
@@ -254,7 +193,7 @@
                                           Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
                                           ItemsSource="{Binding ArchivePurposeOptions}"
                                           SelectedItem="{Binding SelectedArchivePurpose}"/>
-                                <StackPanel Orientation="Horizontal">
+                                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                                     <StackPanel.Style>
                                         <Style TargetType="StackPanel">
                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -267,21 +206,18 @@
                                     </StackPanel.Style>
                                     <Label Style="{StaticResource ArchiveRegisterInlineLabelStyle}" Content="说明："/>
                                     <TextBox Width="240"
+                                             Margin="{StaticResource YaRegFieldTrailingMargin}"
                                              Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
                                              Text="{Binding CurrentRecord.OtherRequests, UpdateSourceTrigger=PropertyChanged}"
                                              ToolTip="当目的为‘其他’时可在此补充说明"/>
                                 </StackPanel>
-                            </DockPanel>
-
-                            <!-- 证明材料：是/否 + 名称同行（与借出硬盘行内单选同构） -->
-                            <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
                                 <Label DockPanel.Dock="Left"
                                        Style="{StaticResource ArchiveRegisterCardLabelStyle}"
                                        Content="附有证明材料："/>
                                 <StackPanel DockPanel.Dock="Left"
                                             Orientation="Horizontal"
                                             Style="{StaticResource FormInlineRadioGroupStyle}"
-                                            Margin="0,0,8,0">
+                                            Margin="{StaticResource YaRegFieldTrailingMargin}">
                                     <RadioButton Content="是"
                                                  GroupName="RegisterProofMaterialHas"
                                                  Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
@@ -349,43 +285,26 @@
                                             Style="{StaticResource ArchiveRegisterFormDatePickerStyle}"/>
 
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="12,0,0,0">
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,8,0">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <MultiDataTrigger>
-                                                        <MultiDataTrigger.Conditions>
-                                                            <Condition Binding="{Binding ShowApplicationSubmitActions}" Value="True"/>
-                                                            <Condition Binding="{Binding ShowEmbeddedActionButtons}" Value="True"/>
-                                                        </MultiDataTrigger.Conditions>
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </MultiDataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-                                        <Button Content="💾 保存草稿" Command="{Binding SaveDraftCommand}"
-                                                Padding="10,0" FontSize="12" FontWeight="Bold" Cursor="Hand" Margin="0,0,8,0" Width="100" Style="{StaticResource ButtonNormalStyle}"/>
-                                        <Button Content="💾 提交申请" Command="{Binding SubmitApplicationsCommand}"
-                                                Padding="10,0" FontSize="12" FontWeight="Bold" Cursor="Hand" Width="100" Style="{StaticResource ButtonNormalStyle}"/>
-                                    </StackPanel>
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding ShowApplicationSubmitActions}" Value="True"/>
+                                                        <Condition Binding="{Binding ShowEmbeddedActionButtons}" Value="True"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <Button Content="💾 保存草稿" Command="{Binding SaveDraftCommand}"
+                                            Padding="10,0" Margin="0,0,8,0" Width="100" Style="{StaticResource ButtonNormalStyle}"/>
+                                    <Button Content="💾 提交申请" Command="{Binding SubmitApplicationsCommand}"
+                                            Padding="10,0" Margin="0,0,8,0" Width="100" Style="{StaticResource ButtonNormalStyle}"/>
                                     <Button Content="💾 打印申请" Command="{Binding PrintApplicationsCommand}"
-                                            Padding="10,0" FontSize="12" FontWeight="Bold" Cursor="Hand" Width="100">
-                                        <Button.Style>
-                                            <Style TargetType="Button" BasedOn="{StaticResource ButtonNormalStyle}">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <MultiDataTrigger>
-                                                        <MultiDataTrigger.Conditions>
-                                                            <Condition Binding="{Binding ShowApplicationSubmitActions}" Value="True"/>
-                                                            <Condition Binding="{Binding ShowEmbeddedActionButtons}" Value="True"/>
-                                                        </MultiDataTrigger.Conditions>
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </MultiDataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
-                                    </Button>
+                                            Padding="10,0" Width="100" Style="{StaticResource ButtonNormalStyle}"/>
                                 </StackPanel>
                             </DockPanel>
                         </StackPanel>
@@ -410,7 +329,7 @@
 
         <Border Grid.Row="1" BorderBrush="#D8E2EC" BorderThickness="1" CornerRadius="4" Background="White">
             <ScrollViewer x:Name="FormScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="8">
-                <StackPanel Margin="8" Orientation="Vertical">
+                <StackPanel Orientation="Vertical">
                     <ContentControl Content="{Binding}">
                         <ContentControl.Style>
                             <Style TargetType="ContentControl">
@@ -453,7 +372,7 @@
             </ScrollViewer>
         </Border>
 
-        <Border Grid.Row="2" Margin="0,8,0,0" Padding="10,8,0,0" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Background="#FAFBFC">
+        <Border Grid.Row="2" Margin="0,8,0,0" Padding="10,8" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Background="#FAFBFC">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>

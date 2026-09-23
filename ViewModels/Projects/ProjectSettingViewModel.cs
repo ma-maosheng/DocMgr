@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using DocMgr.Services.Projects;
 using DocMgr.ViewModels.Base;
@@ -47,7 +47,7 @@ namespace DocMgr.ViewModels.Projects
             set => SetProperty(ref _searchKeyword, value);
         }
 
-        /// <summary>资料室资料管理员可新增、编辑、删除；其他人仅浏览与检索。</summary>
+        /// <summary>资料管理员可新增、编辑、删除；其他人仅浏览与检索。</summary>
         public bool CanMaintainProjects =>
             ProjectSettingPermissionSupport.CanMaintain(_userContextService.CurrentUser);
 

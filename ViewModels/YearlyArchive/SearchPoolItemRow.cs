@@ -28,7 +28,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             ContentEntryId = item.ContentEntryId;
             ContentEntryKind = item.ContentEntryKind;
             ContentEntryName = item.ContentEntryName;
-            ContentEntryRelativePath = item.ContentEntryRelativePath;
             ConfidentialLevel = hit.ConfidentialLevel;
             RequestedCopyCount = item.RequestedCopyCount > 0 ? item.RequestedCopyCount : 1;
 
@@ -104,8 +103,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string ContentEntryName { get; }
 
-        public string ContentEntryRelativePath { get; }
-
         public bool IsWholeMediaItem => string.Equals(
             SelectionScopeKind,
             ArchiveSearchSelectionScopeKind.WholeMediaItem,
@@ -131,14 +128,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string SelectionScopeDisplay => ArchiveSearchPoolSupport.ResolveSelectionScopeDisplay(
             SelectionScopeKind,
             ContentEntryKind,
-            ContentEntryName,
-            ContentEntryRelativePath);
+            ContentEntryName);
 
         public string MatchedContentEntrySummary => ArchiveSearchPoolSupport.ResolveMatchedContentEntrySummary(
             SelectionScopeKind,
             ContentEntryKind,
             ContentEntryName,
-            ContentEntryRelativePath,
             _matchedContentEntrySummaryFromHit);
 
     }

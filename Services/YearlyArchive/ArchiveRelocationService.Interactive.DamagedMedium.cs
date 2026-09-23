@@ -57,8 +57,10 @@ namespace DocMgr.Services.YearlyArchive
             int occupiedCount = (await _hardDiskMediaRepository.GetInStockDamagedHardDisksInSlotAsync(
                 targetSlotKey,
                 unlockedOnly: false)).Count;
+            var targetCabinet = await _filingRepository.GetMagneticDiskCabinetByNameAsync(request.TargetCabinetName);
             int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
-                CabinetHardDiskSlotCategoryAssignment.CategoryDamaged);
+                CabinetHardDiskSlotCategoryAssignment.CategoryDamaged,
+                targetCabinet);
             string label = media.Count == 1 ? $"损坏硬盘 [{media[0].DiskCode}]" : $"{media.Count} 块损坏硬盘";
             return Ready(
                 $"【交互式物理迁档】{label} 将从 [{sourceSlotKey}] 迁至 [{targetSlotKey}]；硬盘台账存放位置将同步更新。\n档口用途：{ResolveMagneticSlotCategoryDisplay(CabinetHardDiskSlotCategoryAssignment.CategoryDamaged)}\n档口空间：迁入后 {occupiedCount + media.Count} 盘 / 档口容量 {slotCapacity} 盘",
@@ -112,8 +114,10 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             int occupiedCount = (await _hardDiskMediaRepository.GetInStockDamagedOpticalDiscsInSlotAsync(targetSlotKey)).Count;
+            var targetCabinet = await _filingRepository.GetMagneticDiskCabinetByNameAsync(request.TargetCabinetName);
             int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
-                CabinetHardDiskSlotCategoryAssignment.CategoryDamagedOpticalDisc);
+                CabinetHardDiskSlotCategoryAssignment.CategoryDamagedOpticalDisc,
+                targetCabinet);
             string label = media.Count == 1 ? $"损坏光盘 [{media[0].DiscCode}]" : $"{media.Count} 张损坏光盘";
             return Ready(
                 $"【交互式物理迁档】{label} 将从 [{sourceSlotKey}] 迁至 [{targetSlotKey}]；光盘台账存放位置将同步更新。\n档口用途：{ResolveMagneticSlotCategoryDisplay(CabinetHardDiskSlotCategoryAssignment.CategoryDamagedOpticalDisc)}\n档口空间：迁入后 {occupiedCount + media.Count} 盘 / 档口容量 {slotCapacity} 盘",
@@ -332,7 +336,8 @@ namespace DocMgr.Services.YearlyArchive
 
             int occupiedExcludingSources = damagedInTarget.Count(item => !excludeMediumIds.Contains(item.Id));
             int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
-                CabinetHardDiskSlotCategoryAssignment.CategoryDamaged);
+                CabinetHardDiskSlotCategoryAssignment.CategoryDamaged,
+                targetCabinet);
             if (occupiedExcludingSources + incomingCount > slotCapacity)
             {
                 return $"目标档口容量不足（迁入后需 {occupiedExcludingSources + incomingCount} 盘，档口容量 {slotCapacity} 盘）。";
@@ -389,7 +394,8 @@ namespace DocMgr.Services.YearlyArchive
             var damagedInTarget = await _hardDiskMediaRepository.GetInStockDamagedOpticalDiscsInSlotAsync(targetSlotKey);
             int occupiedExcludingSources = damagedInTarget.Count(item => !excludeMediumIds.Contains(item.Id));
             int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
-                CabinetHardDiskSlotCategoryAssignment.CategoryDamagedOpticalDisc);
+                CabinetHardDiskSlotCategoryAssignment.CategoryDamagedOpticalDisc,
+                targetCabinet);
             if (occupiedExcludingSources + incomingCount > slotCapacity)
             {
                 return $"目标档口容量不足（迁入后需 {occupiedExcludingSources + incomingCount} 盘，档口容量 {slotCapacity} 盘）。";

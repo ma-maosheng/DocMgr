@@ -41,6 +41,9 @@ namespace DocMgr.Models.YearlyArchive
 
         public bool IsCompleted { get; set; }
 
+        /// <summary>部门审核（办结后重打预填）。</summary>
+        public string DeptHead { get; set; } = string.Empty;
+
         /// <summary>资料室负责人（办结后重打预填）。</summary>
         public string ArchiveRoomHead { get; set; } = string.Empty;
 
@@ -52,6 +55,16 @@ namespace DocMgr.Models.YearlyArchive
 
         /// <summary>分管生产副院长（办结后重打预填）。</summary>
         public string ProductionVicePresident { get; set; } = string.Empty;
+
+        public bool EnableDeptHead { get; set; }
+
+        public bool EnableArchiveRoomHead { get; set; } = true;
+
+        public bool EnableProductionHead { get; set; } = true;
+
+        public bool EnableArchiveDeputyPresident { get; set; } = true;
+
+        public bool EnableProductionVicePresident { get; set; } = true;
 
         /// <summary>已累计打印次数（不含本次）。</summary>
         public int PrintCount { get; set; }

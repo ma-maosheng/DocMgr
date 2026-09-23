@@ -335,13 +335,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             set => SetProperty(ref _entryName, value);
         }
 
-        private string _relativePath = string.Empty;
-        public string RelativePath
-        {
-            get => _relativePath;
-            set => SetProperty(ref _relativePath, value);
-        }
-
         private decimal? _sizeMb;
         public decimal? SizeMb
         {
@@ -383,17 +376,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             RefreshContentScanSummary();
         }
 
-        public List<string> LastScannedFilePaths { get; } = new();
-
         public List<string> LastScannedDirectoryPaths { get; } = new();
 
         /// <summary>
         /// 扫描时的完整根目录（仅当前编辑会话内用于重新扫描，不入库）。
         /// </summary>
         internal string StorageRootFullPath { get; set; } = string.Empty;
-
-        private string _itemType = string.Empty;
-        public string ItemType { get => _itemType; set => SetProperty(ref _itemType, value); }
 
         private string _contentDesc = string.Empty;
         public string ContentDesc
@@ -485,6 +473,32 @@ namespace DocMgr.ViewModels.YearlyArchive
             set => SetProperty(ref _confidentialLevel, value);
         }
 
+        private string _sourceType = ArchiveRegisterDomainValues.SourceTypeInternal;
+        /// <summary>资料来源（内部/外来/存量直办），按子项分别登记。</summary>
+        public string SourceType
+        {
+            get => _sourceType;
+            set
+            {
+                if (SetProperty(ref _sourceType, value))
+                {
+                    OnPropertyChanged(nameof(IsExternalSource));
+                }
+            }
+        }
+
+        /// <summary>该子项资料来源是否为「外来」。</summary>
+        public bool IsExternalSource =>
+            string.Equals(SourceType?.Trim(), ArchiveRegisterDomainValues.SourceTypeExternal, StringComparison.Ordinal);
+
+        private string _provideUnit = string.Empty;
+        /// <summary>提供单位：内部/存量直办默认资料室；外来时填写来源单位。</summary>
+        public string ProvideUnit
+        {
+            get => _provideUnit;
+            set => SetProperty(ref _provideUnit, value);
+        }
+
         private bool _suppressElectronicDetailSideEffects;
         private bool _treatContentMetricsAsUnknown;
 
@@ -520,7 +534,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                     ClearScannedContent();
                     OnPropertyChanged(nameof(ContentEntryKindLabel));
                     OnPropertyChanged(nameof(IsDirectoryOrganizationForm));
-                    OnPropertyChanged(nameof(IsFileOrganizationForm));
                     OnPropertyChanged(nameof(ScannedEntryCountDisplay));
                 }
             }
@@ -563,7 +576,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             OnPropertyChanged(nameof(ContentEntryKindLabel));
             OnPropertyChanged(nameof(IsDirectoryOrganizationForm));
-            OnPropertyChanged(nameof(IsFileOrganizationForm));
             OnPropertyChanged(nameof(ScannedEntryCountDisplay));
             SubCategoryOptionsRefreshHandler?.Invoke(this);
         }
@@ -618,9 +630,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool IsDirectoryOrganizationForm =>
             string.Equals(DataOrganizationForm, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormDirectory, StringComparison.Ordinal);
 
-        public bool IsFileOrganizationForm =>
-            string.Equals(DataOrganizationForm, ArchiveRegisterDomainValues.ElectronicDataOrganizationFormFile, StringComparison.Ordinal);
-
         public bool HasScannedEntries => ContentEntries.Count > 0;
 
         public int ContentEntryCount => ContentEntries.Count;
@@ -637,12 +646,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             private set => SetProperty(ref _contentScanSummaryText, value);
         }
 
-        public string ContentEntryKindLabel =>
-            IsDirectoryOrganizationForm
-                ? "目录/文件"
-                : IsFileOrganizationForm
-                    ? ArchiveRegisterDomainValues.ElectronicEntryKindFile
-                    : "目录/文件";
+        public string ContentEntryKindLabel => "目录/文件";
 
         /// <summary>
         /// 扫描得到的目录或文件数量展示（非资料子项份数）。
@@ -678,7 +682,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public void RefreshContentScanSummary(int? fileCount = null)
         {
-            ContentFileCount = fileCount ?? (IsFileOrganizationForm ? ContentEntries.Count : ContentFileCount);
+            ContentFileCount = fileCount ?? ContentFileCount;
             if (TreatContentMetricsAsUnknown && ContentEntries.Count == 0)
             {
                 ContentScanSummaryText = "申请阶段尚不能读取具体目录或文件，数据量与文件个数均为未知。";
@@ -711,7 +715,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         public void ClearScannedContent()
         {
             ContentEntries.Clear();
-            LastScannedFilePaths.Clear();
             LastScannedDirectoryPaths.Clear();
             StorageRootFullPath = string.Empty;
             ContentFileCount = 0;

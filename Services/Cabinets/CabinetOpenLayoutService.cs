@@ -17,8 +17,7 @@ namespace DocMgr.Services.Cabinets
 {
     public partial class CabinetOpenLayoutService : ICabinetOpenLayoutService
     {
-        private const int MagneticDiskSlotCapacity = 10;
-        private const int MagneticDiskOpticalDiscSlotCapacity = 20;
+        private const int MagneticDiskFallbackSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
         private readonly ICabinetOpenLayoutRepository _cabinetOpenLayoutRepository;
 
         public CabinetOpenLayoutService(ICabinetOpenLayoutRepository cabinetOpenLayoutRepository)
@@ -340,7 +339,9 @@ namespace DocMgr.Services.Cabinets
                     bool isHistoricalDataSlot = CabinetHardDiskSlotCategoryAssignment.MatchesCategory(dedicatedSlotCategoryName, CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataHardDisk);
                     bool isHistoricalDataOpticalDiscSlot = CabinetHardDiskSlotCategoryAssignment.MatchesCategory(dedicatedSlotCategoryName, CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataOpticalDisc);
                     bool isBlankSlot = CabinetHardDiskSlotCategoryAssignment.MatchesCategory(dedicatedSlotCategoryName, CabinetHardDiskSlotCategoryAssignment.CategoryBlank);
-                    int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(dedicatedSlotCategoryName);
+                    int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
+                        dedicatedSlotCategoryName,
+                        cabinet);
                     slotMedia = OrderSlotMedia(slotMedia);
                     var metrics = BuildMagneticDiskSlotMetrics(slotCode, slotMedia, pendingMedia, dedicatedSlotCategoryName, slotCapacity);
 
@@ -770,10 +771,13 @@ namespace DocMgr.Services.Cabinets
         {
             int presentCount = presentMedia.Count;
             int pendingReturnCount = pendingReturnMedia.Count;
-            int safeSlotCapacity = slotCapacity <= 0 ? MagneticDiskSlotCapacity : slotCapacity;
+            int safeSlotCapacity = slotCapacity <= 0 ? MagneticDiskFallbackSlotCapacity : slotCapacity;
             double utilizationRatio = safeSlotCapacity <= 0 ? 0d : (double)presentCount / safeSlotCapacity;
             int remainingCount = Math.Max(safeSlotCapacity - presentCount, 0);
-            string matrixText = safeSlotCapacity == MagneticDiskOpticalDiscSlotCapacity ? "5×4矩阵展示" : "5×2矩阵展示";
+            bool isOpticalDiscSlot = CabinetHardDiskSlotCategoryAssignment.IsOpticalDiscDedicatedCategory(dedicatedSlotCategoryName);
+            string matrixText = isOpticalDiscSlot
+                ? $"光盘档口 · 容量 {safeSlotCapacity} 张"
+                : $"硬盘档口 · 容量 {safeSlotCapacity} 块";
             string layoutModeText = pendingReturnCount > 0
                 ? $"{matrixText} · 下方列出待归还介质"
                 : matrixText;

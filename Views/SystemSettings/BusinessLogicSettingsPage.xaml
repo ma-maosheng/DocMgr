@@ -20,7 +20,7 @@
         <StackPanel Grid.Row="1" Margin="0,20,0,0">
             <TextBlock Text="申请单逾期设置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
             <TextBlock TextWrapping="Wrap" Foreground="#666" Margin="0,0,0,12"
-                       Text="控制资料室管理员对未审批申请单执行强制作废的最早时限。当天：申请当天即可强制作废；7天：提交后第7天（满6个自然日）起可强制作废；30天：提交后第30天（满29个自然日）起可强制作废。"/>
+                       Text="控制资料管理员对未审批申请单执行强制作废的最早时限。当天：申请当天即可强制作废；7天：提交后第7天（满6个自然日）起可强制作废；30天：提交后第30天（满29个自然日）起可强制作废。"/>
 
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="逾期时限：" Width="100" VerticalAlignment="Center"/>
@@ -28,7 +28,8 @@
                           ItemsSource="{Binding ApplicationOverdueOptions}"
                           DisplayMemberPath="Label"
                           SelectedValuePath="Code"
-                          SelectedItem="{Binding SelectedApplicationOverdueOption}"/>
+                          SelectedItem="{Binding SelectedApplicationOverdueOption}"
+                          IsEnabled="{Binding CanMaintain}"/>
             </StackPanel>
         </StackPanel>
 

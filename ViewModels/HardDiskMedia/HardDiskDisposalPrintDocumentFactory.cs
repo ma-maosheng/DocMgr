@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 
 namespace DocMgr.ViewModels.HardDiskMedia
 {
@@ -20,19 +21,54 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private const double TitleChromeHeight = 90;
         private const double HeaderHeight = 28;
         /// <summary>单行内容统一行高（原因/方式、说明、申请人、备注等）。</summary>
-        private const double StandardRowHeight = 36;
-        /// <summary>资料室审批（意见+签字，约 2 行）。</summary>
-        private const double ApprovalRowHeight = 72;
-        /// <summary>签批签字（三方签字，约 3 行）。</summary>
-        private const double SignatureRowHeight = 96;
-        private const double RowChromeDip = 6;
-        private const string BlankDateSuffix = "日期:______年___月___日";
+        private const double StandardRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
+        /// <summary>审核栏（职能部门，约 3 行）。</summary>
+        private const double ReviewRowHeight = PrintPageLayoutSupport.TableRowContentHeightThreeLinesDip;
+        /// <summary>审批栏（院级，约 2 行）。</summary>
+        private const double ApproveRowHeight = PrintPageLayoutSupport.TableRowContentHeightTwoLinesDip;
+        private const double RowChromeDip = PrintPageLayoutSupport.TableCellPaddingDip;
+        private const string BlankDateSuffix = "日期：______年___月___日";
+
+        /// <summary>申请说明/其他说明按正文估行后的上限。</summary>
+        private const int ReasonMaxLines = 5;
+
+        /// <summary>备注按正文估行后的上限。</summary>
+        private const int RemarkMaxLines = 3;
+
+        /// <summary>待处置清单按正文估行后的上限（撑满下限）。</summary>
+        private const int DetailMaxLines = 20;
 
         internal static FlowDocument Create(HardDiskDisposalPrintData data)
         {
             ArgumentNullException.ThrowIfNull(data);
 
-            double itemRowHeight = CalculateItemRowHeight();
+            string otherRemarkText = EmptyAsPlaceholder(data.OtherRemark);
+            string reasonText = EmptyAsPlaceholder(data.Reason);
+            string remarkText = EmptyAsPlaceholder(data.Remark);
+            string itemListText = BuildItemList(data);
+            string reviewSection = BuildReviewSection(data);
+            string approveSection = BuildApproveSection(data);
+            bool hasReview = !string.IsNullOrWhiteSpace(reviewSection);
+            bool hasApprove = !string.IsNullOrWhiteSpace(approveSection);
+
+            double otherRemarkRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                otherRemarkText,
+                ReasonMaxLines);
+            double reasonRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                reasonText,
+                ReasonMaxLines);
+            double remarkRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                remarkText,
+                RemarkMaxLines);
+            double itemRowHeight = CalculateItemRowHeight(
+                data,
+                otherRemarkRowHeight,
+                reasonRowHeight,
+                remarkRowHeight,
+                hasReview,
+                hasApprove,
+                itemListText);
+
             var document = CreateDocumentSkeleton();
 
             document.Blocks.Add(new Paragraph(new Run(""))
@@ -57,20 +93,29 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 "离库原因", EmptyAsPlaceholder(data.DisposalReason),
                 "处置方式", EmptyAsPlaceholder(data.DispositionMethod),
                 StandardRowHeight));
-            rowGroup.Rows.Add(CreateSingleRow("其他说明", EmptyAsPlaceholder(data.OtherRemark), StandardRowHeight));
-            rowGroup.Rows.Add(CreateSingleRow("申请说明", EmptyAsPlaceholder(data.Reason), StandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("其他说明", otherRemarkText, otherRemarkRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("申请说明", reasonText, reasonRowHeight));
             rowGroup.Rows.Add(CreateSingleRow(
                 "待处置硬盘清单",
-                BuildItemList(data),
+                itemListText,
                 itemRowHeight,
                 verticalAlignTop: true));
             rowGroup.Rows.Add(CreateDoubleRow(
                 "申请人", EmptyAsPlaceholder(data.ApplicantName),
                 "申请部门", EmptyAsPlaceholder(data.ApplicantDept),
                 StandardRowHeight));
-            rowGroup.Rows.Add(CreateSingleRow("资料室审批", BuildApprovalSection(data), ApprovalRowHeight, verticalAlignTop: true));
-            rowGroup.Rows.Add(CreateSingleRow("签批签字", BuildSignatureSection(data), SignatureRowHeight, verticalAlignTop: true));
-            rowGroup.Rows.Add(CreateSingleRow("备注", EmptyAsPlaceholder(data.Remark), StandardRowHeight));
+
+            if (hasReview)
+            {
+                rowGroup.Rows.Add(CreateSingleRow("审核", reviewSection, ReviewRowHeight, verticalAlignTop: true));
+            }
+
+            if (hasApprove)
+            {
+                rowGroup.Rows.Add(CreateSingleRow("审批", approveSection, ApproveRowHeight, verticalAlignTop: true));
+            }
+
+            rowGroup.Rows.Add(CreateSingleRow("备注", remarkText, remarkRowHeight));
 
             document.Blocks.Add(CreateMainTable(rowGroup));
             document.Blocks.Add(CreateFooterParagraph(data));
@@ -78,25 +123,44 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return document;
         }
 
-        private static double CalculateItemRowHeight()
+        private static double CalculateItemRowHeight(
+            HardDiskDisposalPrintData data,
+            double otherRemarkRowHeight,
+            double reasonRowHeight,
+            double remarkRowHeight,
+            bool hasReview,
+            bool hasApprove,
+            string itemListText)
         {
-            // 固定行：原因方式、其他说明、申请说明、申请人、审批、签字、备注（前 5 行为统一单行高）。
+            // 固定行（不含清单撑满行）：原因方式/申请人(2) + 其他说明/申请说明/备注 + [审核]/[审批]。
+            int oneLineRows = 2;
             double fixedContentHeight =
-                StandardRowHeight * 5
-                + ApprovalRowHeight
-                + SignatureRowHeight;
-            const int fixedRowCount = 7;
+                StandardRowHeight * oneLineRows
+                + otherRemarkRowHeight
+                + reasonRowHeight
+                + remarkRowHeight
+                + (hasReview ? ReviewRowHeight : 0)
+                + (hasApprove ? ApproveRowHeight : 0);
+            int fixedRowCount = oneLineRows + 3 + (hasReview ? 1 : 0) + (hasApprove ? 1 : 0);
             double fixedTableHeight = fixedContentHeight
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, RowChromeDip) * fixedRowCount;
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(
-                lineCount: 4,
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, RowChromeDip) * fixedRowCount
+                + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
+
+            string footerText = BuildFooterNoteText(data);
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
+                footerText,
+                PrintPageLayoutSupport.ContentWidthDip,
+                fontSizeDip: 10.5,
                 lineHeightDip: 18,
                 topMarginDip: 15);
             double reservedHeight = TitleChromeHeight + HeaderHeight + footerHeight + fixedTableHeight;
+            double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                itemListText,
+                DetailMaxLines);
             return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
                 reservedHeight,
-                minimumRowHeightDip: 100,
-                stretchRowCellPaddingDip: RowChromeDip);
+                contentNeededHeight,
+                RowChromeDip);
         }
 
         private static FlowDocument CreateDocumentSkeleton()
@@ -138,70 +202,51 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return builder.ToString();
         }
 
-        private static string BuildApprovalSection(HardDiskDisposalPrintData data)
+        private static string BuildReviewSection(HardDiskDisposalPrintData data)
         {
-            bool hasApproval = !string.IsNullOrWhiteSpace(data.ApprovedBy)
-                || !string.IsNullOrWhiteSpace(data.ApprovalOpinion)
-                || !string.IsNullOrWhiteSpace(data.ApprovedDateText);
-
-            if (!hasApproval)
-            {
-                return "审批意见：\n                    签字：                              " + BlankDateSuffix;
-            }
-
-            string opinion = string.IsNullOrWhiteSpace(data.ApprovalOpinion)
-                ? string.Empty
-                : data.ApprovalOpinion.Trim();
-            string signature = BuildFilledSignatureLine(data.ApprovedBy, data.ApprovedDateText);
-            return string.IsNullOrWhiteSpace(opinion)
-                ? $"审批意见：\n{signature}"
-                : $"审批意见：{opinion}\n{signature}";
+            var lines = new List<string>();
+            AppendSignerLine(lines, data.EnableDeptHead, ApprovalWorkflowDomainValues.DisplayDeptHead,
+                data.IsCompleted, data.DeptHead, data.CompletedDateText);
+            AppendSignerLine(lines, data.EnableArchiveRoomHead, ApprovalWorkflowDomainValues.DisplayArchiveRoomHead,
+                data.IsCompleted, data.ArchiveRoomHead, data.CompletedDateText);
+            AppendSignerLine(lines, data.EnableProductionHead, ApprovalWorkflowDomainValues.DisplayProductionHead,
+                data.IsCompleted, data.ProductionHead, data.CompletedDateText);
+            return lines.Count == 0 ? string.Empty : string.Join("\n", lines);
         }
 
-        private static string BuildSignatureSection(HardDiskDisposalPrintData data)
+        private static string BuildApproveSection(HardDiskDisposalPrintData data)
         {
-            // 办结前供线下亲笔签名：签字栏与日期栏留白。
-            if (!data.IsCompleted)
-            {
-                return "申请人签字：                                            " + BlankDateSuffix + "\n"
-                     + "资料室负责人签字：                                      " + BlankDateSuffix + "\n"
-                     + "资料室分管领导签字：                                    " + BlankDateSuffix;
-            }
-
-            // 已办结重打：预填已知签字人；负责人/分管领导为线下签批，系统无独立字段，日期与办结日一致。
-            string dateText = string.IsNullOrWhiteSpace(data.CompletedDateText)
-                ? "______年___月___日"
-                : data.CompletedDateText.Trim();
-            string applicant = string.IsNullOrWhiteSpace(data.ApplicantName)
-                ? "________________"
-                : data.ApplicantName.Trim();
-
-            return $"申请人签字：{applicant}    日期：{dateText}\n"
-                 + $"资料室负责人签字：____________________    日期：{dateText}\n"
-                 + $"资料室分管领导签字：____________________    日期：{dateText}";
+            var lines = new List<string>();
+            AppendSignerLine(lines, data.EnableArchiveDeputyPresident, ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident,
+                data.IsCompleted, data.ArchiveDeputyPresident, data.CompletedDateText);
+            AppendSignerLine(lines, data.EnableProductionVicePresident, ApprovalWorkflowDomainValues.DisplayProductionVicePresident,
+                data.IsCompleted, data.ProductionVicePresident, data.CompletedDateText);
+            return lines.Count == 0 ? string.Empty : string.Join("\n", lines);
         }
 
-        private static string BuildFilledSignatureLine(string? name, string? dateText)
+        private static void AppendSignerLine(
+            List<string> lines,
+            bool enabled,
+            string label,
+            bool isCompleted,
+            string? name,
+            string? completedDateText)
         {
-            string normalizedName = name?.Trim() ?? string.Empty;
-            string normalizedDate = dateText?.Trim() ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(normalizedName) && string.IsNullOrWhiteSpace(normalizedDate))
+            if (!enabled)
             {
-                return "签字：                              " + BlankDateSuffix;
+                return;
             }
 
-            if (string.IsNullOrWhiteSpace(normalizedName))
+            if (!isCompleted)
             {
-                return $"签字：    日期：{normalizedDate}";
+                lines.Add(label + "：                              " + BlankDateSuffix);
+                return;
             }
 
-            if (string.IsNullOrWhiteSpace(normalizedDate))
-            {
-                return $"签字：{normalizedName}";
-            }
-
-            return $"签字：{normalizedName}    日期：{normalizedDate}";
+            string dateText = string.IsNullOrWhiteSpace(completedDateText)
+                ? PrintApprovalSignatureSupport.BlankDateText
+                : completedDateText.Trim();
+            lines.Add(PrintApprovalSignatureSupport.FormatLabeledInline(label, name, dateText));
         }
 
         private static Paragraph CreateFooterParagraph(HardDiskDisposalPrintData data)
@@ -215,14 +260,21 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
             footer.Inlines.Add(new Run(
-                "1、本单由资料室资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批、上传签批单与硬盘照片、办结”流程办理。\n"));
+                "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批、上传签批单与硬盘照片、办结”流程办理。\n"));
             footer.Inlines.Add(new Run(
-                "      2、请线下完成申请人、资料室负责人、资料室分管领导签字后回传系统；办结前须同时上传签批单与待处置硬盘照片。\n"));
+                "      2、请按启用的审核审批节点线下签字后回传系统；办结前须同时上传签批单与待处置硬盘照片。\n"));
             footer.Inlines.Add(new Run(
                 $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
 
             return footer;
         }
+
+        /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
+        private static string BuildFooterNoteText(HardDiskDisposalPrintData data) =>
+            "说明：" +
+            "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批、上传签批单与硬盘照片、办结”流程办理。\n" +
+            "      2、请按启用的审核审批节点线下签字后回传系统；办结前须同时上传签批单与待处置硬盘照片。\n" +
+            $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。";
 
         private static Table CreateHeaderTable(string left, string right)
         {
@@ -246,10 +298,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 BorderBrush = Brushes.Black,
                 BorderThickness = new Thickness(2, 2, 0, 0)
             };
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
+            PrintPageLayoutSupport.ApplyApprovalFormMainTableColumns(table);
             table.RowGroups.Add(rowGroup);
             return table;
         }
@@ -293,7 +342,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 BorderThickness = new Thickness(0, 0, 1, 1),
                 BorderBrush = Brushes.Black,
-                Padding = new Thickness(2, 6, 2, 2)
+                Padding = new Thickness(2, RowChromeDip, 2, RowChromeDip)
             };
         }
 

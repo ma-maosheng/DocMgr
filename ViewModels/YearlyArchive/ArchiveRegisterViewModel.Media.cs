@@ -154,7 +154,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             foreach (var item in media.Items)
             {
                 ConfigureMediaItem(media, item);
-                item.PropertyChanged += MediaItem_PropertyChanged;
             }
 
             RecalculateQuantities(media);
@@ -165,7 +164,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             media.Items.CollectionChanged -= MediaItems_CollectionChanged;
             foreach (var item in media.Items)
             {
-                item.PropertyChanged -= MediaItem_PropertyChanged;
                 DetachContentEntryQuantityHandler(item);
             }
         }
@@ -193,12 +191,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                     {
                         ConfigureMediaItem(media, item);
                     }
-
-                    item.PropertyChanged += MediaItem_PropertyChanged;
                 }
             }
-
-            if (e.OldItems != null) foreach (MediaItemViewModel item in e.OldItems) item.PropertyChanged -= MediaItem_PropertyChanged;
 
             if (media != null)
             {
@@ -206,11 +200,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             ScheduleRefreshMediaViews();
-        }
-        private void MediaItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(MediaItemViewModel.ItemType))
-                ScheduleRefreshMediaViews();
         }
         private void RefreshMediaViews()
         {
@@ -270,26 +259,23 @@ namespace DocMgr.ViewModels.YearlyArchive
             RecalculateQuantities();
         }
 
-        // Predicates（历史证明介质以 ItemType=证明 标识；新申请改用主表 ProofMaterialNote，不再录入证明介质）
-        private static bool IsProofMedia(MediaEntryViewModel? m) => m?.Items.Any(i => string.Equals(i.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.Ordinal)) == true;
-        private static bool IsProofMediaEntity(YearlyArchiveRegisterMedia? m) =>
-            m?.Items?.Any(i => string.Equals(i.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.Ordinal)) == true;
-        private static bool IsDataElectronic(MediaEntryViewModel? m) => m != null && string.Equals(m.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal) && !IsProofMedia(m);
-        private static bool IsDataSimulated(MediaEntryViewModel? m) => m != null && string.Equals(m.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal) && !IsProofMedia(m);
+        // Predicates
+        private static bool IsDataElectronic(MediaEntryViewModel? m) => m != null && string.Equals(m.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal);
+        private static bool IsDataSimulated(MediaEntryViewModel? m) => m != null && string.Equals(m.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal);
 
         // Actions
         private void AddDataElectronicMediaEntry()
         {
             EnsureElectronicMediaSelections();
-            AddMediaEntry(ArchiveRegisterDomainValues.MediaKindElectronic, ArchiveRegisterDomainValues.ItemTypeData);
+            AddMediaEntry(ArchiveRegisterDomainValues.MediaKindElectronic);
         }
         private void AddDataSimulatedMediaEntry()
         {
             EnsureSimulatedMediaSelections();
-            AddMediaEntry(ArchiveRegisterDomainValues.MediaKindSimulated, ArchiveRegisterDomainValues.ItemTypeData);
+            AddMediaEntry(ArchiveRegisterDomainValues.MediaKindSimulated);
         }
 
-        private void AddMediaEntry(string kind, string itemType)
+        private void AddMediaEntry(string kind)
         {
             bool isElectronic = string.Equals(kind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal);
             var entry = new MediaEntryViewModel
@@ -301,8 +287,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 BorrowedHardDiskCode = string.Empty
             };
             entry.Items.Add(isElectronic
-                ? CreateDefaultElectronicMediaItem(itemType)
-                : CreateDefaultSimulatedMediaItem(itemType));
+                ? CreateDefaultElectronicMediaItem()
+                : CreateDefaultSimulatedMediaItem());
             MediaEntries.Add(entry);
             RecalculateQuantities(entry);
 
@@ -324,8 +310,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             m.Items.Add(IsDataElectronic(m)
-                ? CreateDefaultElectronicMediaItem(ArchiveRegisterDomainValues.ItemTypeData)
-                : CreateDefaultSimulatedMediaItem(ArchiveRegisterDomainValues.ItemTypeData));
+                ? CreateDefaultElectronicMediaItem()
+                : CreateDefaultSimulatedMediaItem());
         }
         private void RemoveMediaItem(MediaItemViewModel? i) { if (i == null) return; var p = MediaEntries.FirstOrDefault(m => m.Items.Contains(i)); p?.Items.Remove(i); }
 
@@ -334,8 +320,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             MediaEntries.Clear();
             if (CurrentRecord?.MediaEntries != null)
             {
-                MigrateLegacyProofMediaToProofMaterialNote(CurrentRecord);
-                foreach (var m in CurrentRecord.MediaEntries.Where(media => !IsProofMediaEntity(media)))
+                foreach (var m in CurrentRecord.MediaEntries)
                 {
                     MediaEntries.Add(CreateMediaEntryViewModel(m));
                 }
@@ -346,34 +331,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             SyncSimulatedMediaSettingsFromEntries();
             RecalculateAllQuantities();
             EnsureUserBorrowedHardDiskListIncludesSelected();
-        }
-
-        /// <summary>
-        /// 将历史「证明材料介质」明细回填到主表 <see cref="YearlyArchiveRegisterRecord.ProofMaterialNote"/>。
-        /// </summary>
-        private static void MigrateLegacyProofMediaToProofMaterialNote(YearlyArchiveRegisterRecord record)
-        {
-            if (ArchiveRegisterDomainValues.HasProofMaterial(record.ProofMaterialNote))
-            {
-                return;
-            }
-
-            var proofNames = record.MediaEntries
-                .Where(IsProofMediaEntity)
-                .SelectMany(media => media.Items ?? [])
-                .Where(item => string.Equals(item.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.Ordinal))
-                .Select(item => item.ContentDesc?.Trim() ?? string.Empty)
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .Distinct(StringComparer.Ordinal)
-                .ToList();
-
-            if (proofNames.Count == 0)
-            {
-                record.ProofMaterialNote = ArchiveRegisterDomainValues.NormalizeProofMaterialNote(record.ProofMaterialNote);
-                return;
-            }
-
-            record.ProofMaterialNote = string.Join("；", proofNames);
         }
 
         private void SyncProofMaterialSelectionFromRecord()
@@ -451,13 +408,16 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     var itemVm = new MediaItemViewModel
                     {
-                        ItemType = item.ItemType,
                         ContentDesc = item.ContentDesc,
                         ContentCount = item.ContentCount > 0 ? item.ContentCount : 1,
                         StoragePath = ElectronicMediaItemSupport.FormatStoragePathForRegistration(item.StoragePath),
                         Note = item.Note,
-                        ConfidentialLevel = ResolveConfidentialLevelFromRecord(item.ConfidentialLevel)
+                        ConfidentialLevel = ResolveConfidentialLevelFromRecord(item.ConfidentialLevel),
+                        SourceType = ResolveSourceTypeFromRecord(item.SourceType),
+                        ProvideUnit = item.ProvideUnit?.Trim() ?? string.Empty
                     };
+
+                    ApplyDefaultProvideUnitForInternalItem(itemVm, onlyWhenEmpty: true);
 
                     if (item.ElectronicDetail != null)
                     {
@@ -473,7 +433,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                             {
                                 EntryKind = entry.EntryKind,
                                 EntryName = entry.EntryName,
-                                RelativePath = entry.RelativePath,
                                 SizeMb = entry.SizeMb,
                                 CreatedAt = entry.CreatedAt,
                                 ModifiedAt = entry.ModifiedAt
@@ -509,9 +468,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             EnsureElectronicMediaSelections();
             RecalculateAllQuantities();
 
-            // 证明材料已改为主表字段，保存时不再写入证明介质行。
+            // 证明材料由主表 ProofMaterialNote 承载，介质行不再区分证明类型。
             return MediaEntries
-                .Where(m => !IsProofMedia(m))
                 .Select(m => new YearlyArchiveRegisterMedia
                 {
                 MediaKind = m.MediaKind,
@@ -532,12 +490,13 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             var entity = new YearlyArchiveRegisterMediaItem
             {
-                ItemType = item.ItemType,
                 ContentDesc = item.ContentDesc,
                 ContentCount = isElectronic ? 1 : item.ContentCount,
                 StoragePath = ElectronicMediaItemSupport.FormatStoragePathForRegistration(item.StoragePath),
                 Note = item.Note,
-                ConfidentialLevel = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(item.ConfidentialLevel)
+                ConfidentialLevel = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(item.ConfidentialLevel),
+                SourceType = item.SourceType?.Trim() ?? string.Empty,
+                ProvideUnit = item.ProvideUnit?.Trim() ?? string.Empty
             };
 
             if (!isElectronic)
@@ -555,14 +514,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 SubCategory = item.SubCategory?.Trim() ?? string.Empty,
                 DataOrganizationForm = item.DataOrganizationForm?.Trim() ?? string.Empty,
                 DataSizeMb = item.DataSizeMb,
-                Entries = item.ContentEntries
+                    Entries = item.ContentEntries
                     .Select((entry, entryIndex) => new YearlyArchiveRegisterElectronicMediaItemEntry
                     {
                         EntryKind = string.IsNullOrWhiteSpace(entry.EntryKind)
                             ? ElectronicMediaItemSupport.ResolveMissingEntryKindFallback(item.DataOrganizationForm)
                             : entry.EntryKind,
                         EntryName = entry.EntryName?.Trim() ?? string.Empty,
-                        RelativePath = entry.RelativePath?.Trim() ?? string.Empty,
                         SizeMb = entry.SizeMb,
                         CreatedAt = entry.CreatedAt,
                         ModifiedAt = entry.ModifiedAt,
@@ -595,12 +553,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             ApplyOptions(SourceTypeOptions, domainOptions.SourceTypes);
             ApplyOptions(ArchivePurposeOptions, domainOptions.ArchivePurposes);
             ApplyOptions(SimulatedMediaKindOptions, domainOptions.SimulatedMediaKinds);
-            ApplyOptions(DataItemTypeOptions, domainOptions.DataItemTypes);
-            ApplyOptions(ProofItemTypeOptions, domainOptions.ProofItemTypes);
             ApplyOptions(DataElectronicMediaTypeOptions,
                 ArchiveRegisterBusinessRules.FilterManualSelectableElectronicMediaTypes(domainOptions.DataElectronicMediaTypes));
             ApplyOptions(DataSimulatedMediaTypeOptions, domainOptions.DataSimulatedMediaTypes);
-            ApplyOptions(ProofSimulatedMediaTypeOptions, domainOptions.ProofSimulatedMediaTypes);
             ApplyOptions(DataElectronicDispositionOptions, domainOptions.DataElectronicDispositions);
             _allElectronicDispositionOptions.Clear();
             _allElectronicDispositionOptions.AddRange(domainOptions.DataElectronicDispositions);
@@ -643,11 +598,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             EnsureSimulatedMediaSelections();
             foreach (var item in MediaEntries.SelectMany(entry => entry.Items))
             {
-                if (string.Equals(item.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
                 var owner = MediaEntries.FirstOrDefault(entry => entry.Items.Contains(item));
                 if (owner != null && IsDataSimulated(owner))
                 {
@@ -664,7 +614,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             SyncElectronicMediaSettingsFromEntries();
             SyncSimulatedMediaSettingsFromEntries();
-            ApplySourceTypeSelection();
             ApplyArchivePurposeSelection();
         }
 
@@ -901,25 +850,24 @@ namespace DocMgr.ViewModels.YearlyArchive
                 : SelectedSimulatedMediaType;
         }
 
-        private MediaItemViewModel CreateDefaultElectronicMediaItem(string itemType)
+        private MediaItemViewModel CreateDefaultElectronicMediaItem()
         {
             var item = new MediaItemViewModel
             {
-                ItemType = itemType,
                 MaterialCategory = ElectronicMaterialCategoryOptions.FirstOrDefault() ?? ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocument,
                 DataOrganizationForm = ElectronicDataOrganizationFormOptions.FirstOrDefault() ?? ArchiveRegisterDomainValues.ElectronicDataOrganizationFormDirectory,
                 ConfidentialLevel = ConfidentialLevelOptions.FirstOrDefault() ?? ArchiveRegisterDomainValues.ConfidentialLevelNone
             };
+            ApplyDefaultSourceInfoToNewItem(item);
 
             ConfigureElectronicMediaItem(item);
             return item;
         }
 
-        private MediaItemViewModel CreateDefaultSimulatedMediaItem(string itemType)
+        private MediaItemViewModel CreateDefaultSimulatedMediaItem()
         {
             var item = new MediaItemViewModel
             {
-                ItemType = itemType,
                 MaterialCategory = SimulatedMaterialCategoryOptions.FirstOrDefault()
                     ?? ArchiveRegisterDomainValues.SimulatedMaterialCategoryText,
                 OrganizationForm = SimulatedOrganizationFormOptions.Contains(ArchiveRegisterDomainValues.SimulatedOrganizationFormBound)
@@ -927,9 +875,75 @@ namespace DocMgr.ViewModels.YearlyArchive
                     : (SimulatedOrganizationFormOptions.FirstOrDefault() ?? ArchiveRegisterDomainValues.SimulatedOrganizationFormBound),
                 ConfidentialLevel = ConfidentialLevelOptions.FirstOrDefault() ?? ArchiveRegisterDomainValues.ConfidentialLevelNone
             };
+            ApplyDefaultSourceInfoToNewItem(item);
 
             ConfigureSimulatedMediaItem(item);
             return item;
+        }
+
+        /// <summary>
+        /// 新建子项默认：资料来源取域值首项（内部）；提供单位按来源默认（内部默认资料室）。
+        /// </summary>
+        private void ApplyDefaultSourceInfoToNewItem(MediaItemViewModel item)
+        {
+            item.SourceType = GetDefaultSourceType();
+            ApplyDefaultProvideUnitForInternalItem(item, onlyWhenEmpty: true);
+        }
+
+        /// <summary>
+        /// 从持久化子项还原资料来源，并与域值列表对齐，避免 ComboBox 绑定丢失。
+        /// </summary>
+        private string ResolveSourceTypeFromRecord(string? storedSourceType)
+        {
+            string normalized = storedSourceType?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return GetDefaultSourceType();
+            }
+
+            if (SourceTypeOptions.Contains(normalized))
+            {
+                return normalized;
+            }
+
+            string? matched = SourceTypeOptions.FirstOrDefault(option =>
+                string.Equals(option, normalized, StringComparison.OrdinalIgnoreCase));
+            return matched ?? GetDefaultSourceType();
+        }
+
+        /// <summary>
+        /// 资料来源非「外来」时，为空白的提供单位填入默认值（申请人部门，缺省为资料室）。
+        /// </summary>
+        private void ApplyDefaultProvideUnitForInternalItem(MediaItemViewModel item, bool onlyWhenEmpty)
+        {
+            if (item == null || item.IsExternalSource)
+            {
+                return;
+            }
+
+            if (onlyWhenEmpty && !string.IsNullOrWhiteSpace(item.ProvideUnit))
+            {
+                return;
+            }
+
+            string applicantDept = ResolveApplicantDepartment();
+            if (string.IsNullOrEmpty(applicantDept))
+            {
+                applicantDept = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
+            }
+
+            item.ProvideUnit = applicantDept;
+        }
+
+        private string ResolveApplicantDepartment()
+        {
+            string dept = CurrentRecord?.ApplicantDept?.Trim() ?? string.Empty;
+            if (dept.Length > 0)
+            {
+                return dept;
+            }
+
+            return _userContextService.CurrentUser?.Department?.Trim() ?? string.Empty;
         }
 
         private void ConfigureMediaItem(MediaEntryViewModel media, MediaItemViewModel item)
@@ -1047,7 +1061,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 EntryKind = entry.EntryKind,
                 EntryName = entry.EntryName,
-                RelativePath = entry.RelativePath,
                 SizeMb = entry.SizeMb,
                 CreatedAt = entry.CreatedAt,
                 ModifiedAt = entry.ModifiedAt
@@ -1057,7 +1070,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void ApplyScanResult(
             MediaItemViewModel item,
             ElectronicMediaContentScanResult result,
-            IReadOnlyList<string>? scannedFilePaths = null,
             IReadOnlyList<string>? scannedDirectoryPaths = null)
         {
             item.StorageRootFullPath = result.RootPath;
@@ -1066,12 +1078,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             foreach (var entry in result.Entries)
             {
                 item.ContentEntries.Add(CreateContentEntryViewModel(entry));
-            }
-
-            item.LastScannedFilePaths.Clear();
-            if (scannedFilePaths != null)
-            {
-                item.LastScannedFilePaths.AddRange(scannedFilePaths);
             }
 
             item.LastScannedDirectoryPaths.Clear();
@@ -1094,11 +1100,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                         && Directory.Exists(item.StorageRootFullPath));
             }
 
-            if (item.IsFileOrganizationForm)
-            {
-                return item.LastScannedFilePaths.Count > 0;
-            }
-
             return false;
         }
 
@@ -1109,41 +1110,26 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            var folders = _dialogService.PickFolders("选择子项根目录（扫描该目录下的文件与一级子目录）", multiselect: true);
-            if (folders == null || folders.Count == 0)
+            string? folder = _dialogService.PickFolder("选择子项父目录（扫描该目录下的文件与一级子目录，支持选择盘符）");
+            if (string.IsNullOrWhiteSpace(folder))
+            {
+                return;
+            }
+
+            if (ElectronicMediaItemSupport.IsDriveRoot(folder)
+                && !_dialogService.ShowConfirm(
+                    $"所选父目录为盘符根目录 {folder}，扫描将递归统计整盘数据量，可能耗时较长。是否继续？"))
             {
                 return;
             }
 
             if (item.HasScannedEntries
-                && !_dialogService.ShowConfirm("重新选择子项根目录将覆盖当前已扫描的目录/文件明细，是否继续？"))
+                && !_dialogService.ShowConfirm("重新选择子项父目录将覆盖当前已扫描的目录/文件明细，是否继续？"))
             {
                 return;
             }
 
-            await ScanDirectoriesContentAsync(item, folders);
-        }
-
-        private async Task PickFilesAndScanElectronicContentAsync(MediaItemViewModel? item)
-        {
-            if (item == null || !item.IsFileOrganizationForm)
-            {
-                return;
-            }
-
-            var files = _dialogService.PickFiles("选择电子资料文件", multiselect: true);
-            if (files == null || files.Count == 0)
-            {
-                return;
-            }
-
-            if (item.HasScannedEntries
-                && !_dialogService.ShowConfirm("重新选择文件将覆盖当前已扫描的目录/文件明细，是否继续？"))
-            {
-                return;
-            }
-
-            await ScanFileContentAsync(item, files);
+            await ScanDirectoriesContentAsync(item, [folder]);
         }
 
         private async Task RescanElectronicContentAsync(MediaItemViewModel? item)
@@ -1153,43 +1139,20 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            if (item.IsDirectoryOrganizationForm)
+            var directories = ResolveScannedDirectoryPaths(item);
+            if (directories.Count == 0)
             {
-                var directories = ResolveScannedDirectoryPaths(item);
-                if (directories.Count == 0)
-                {
-                    _dialogService.ShowMessage("原子项根目录已不存在，请重新选择目录。");
-                    return;
-                }
-
-                await ScanDirectoriesContentAsync(
-                    item,
-                    directories,
-                    string.IsNullOrWhiteSpace(item.StorageRootFullPath) ? null : item.StorageRootFullPath);
+                _dialogService.ShowMessage("原子项父目录已不存在，请重新选择目录。");
                 return;
             }
 
-            if (item.LastScannedFilePaths.Count > 0)
-            {
-                var existingFiles = item.LastScannedFilePaths
-                    .Where(File.Exists)
-                    .ToList();
-
-                if (existingFiles.Count == 0)
-                {
-                    _dialogService.ShowMessage("原扫描文件已不存在，请重新选择文件。");
-                    return;
-                }
-
-                await ScanFileContentAsync(
-                    item,
-                    existingFiles,
-                    string.IsNullOrWhiteSpace(item.StorageRootFullPath) ? null : item.StorageRootFullPath);
-                return;
-            }
-
-            _dialogService.ShowMessage("当前没有可重新扫描的文件来源，请重新选择文件。");
+            await ScanDirectoriesContentAsync(
+                item,
+                directories,
+                string.IsNullOrWhiteSpace(item.StorageRootFullPath) ? null : item.StorageRootFullPath);
         }
+
+        private static bool IsDriveRoot(string? path) => ElectronicMediaItemSupport.IsDriveRoot(path);
 
         private async Task ScanDirectoriesContentAsync(MediaItemViewModel item, IReadOnlyList<string> folders, string? storageRootDirectory = null)
         {
@@ -1224,24 +1187,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             return new List<string>();
-        }
-
-        private async Task ScanFileContentAsync(MediaItemViewModel item, IReadOnlyList<string> files, string? storageRootDirectory = null)
-        {
-            _dialogService.SetBusyState(true);
-            try
-            {
-                var result = await Task.Run(() => _electronicMediaContentScanService.ScanFiles(files, storageRootDirectory));
-                ApplyScanResult(item, result, files.ToList());
-            }
-            catch (Exception ex)
-            {
-                _dialogService.ShowError($"扫描失败：{ex.Message}");
-            }
-            finally
-            {
-                _dialogService.SetBusyState(false);
-            }
         }
 
         private void ClearElectronicContent(MediaItemViewModel? item)
@@ -1290,12 +1235,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return ElectronicMediaItemSupport.FormatModifiedDate(entry.CreatedAt);
             }
 
-            if (string.IsNullOrWhiteSpace(item.StorageRootFullPath) || string.IsNullOrWhiteSpace(entry.RelativePath))
+            if (string.IsNullOrWhiteSpace(item.StorageRootFullPath) || string.IsNullOrWhiteSpace(entry.EntryName))
             {
                 return "-";
             }
 
-            string fullPath = Path.GetFullPath(Path.Combine(item.StorageRootFullPath, entry.RelativePath));
+            string fullPath = Path.GetFullPath(Path.Combine(item.StorageRootFullPath, entry.EntryName));
             return ElectronicMediaItemSupport.FormatModifiedDate(
                 ElectronicMediaItemSupport.ResolveEntryCreatedAt(fullPath, entry.EntryKind));
         }
@@ -1307,12 +1252,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return ElectronicMediaItemSupport.FormatModifiedDate(entry.ModifiedAt);
             }
 
-            if (string.IsNullOrWhiteSpace(item.StorageRootFullPath) || string.IsNullOrWhiteSpace(entry.RelativePath))
+            if (string.IsNullOrWhiteSpace(item.StorageRootFullPath) || string.IsNullOrWhiteSpace(entry.EntryName))
             {
                 return "-";
             }
 
-            string fullPath = Path.GetFullPath(Path.Combine(item.StorageRootFullPath, entry.RelativePath));
+            string fullPath = Path.GetFullPath(Path.Combine(item.StorageRootFullPath, entry.EntryName));
             return ElectronicMediaItemSupport.FormatModifiedDate(
                 ElectronicMediaItemSupport.ResolveEntryModifiedAt(fullPath, entry.EntryKind));
         }
@@ -1325,23 +1270,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string GetDefaultArchivePurpose()
         {
             return ArchivePurposeOptions.FirstOrDefault() ?? string.Empty;
-        }
-
-        private void ApplySourceTypeSelection()
-        {
-            if (CurrentRecord == null)
-            {
-                if (string.IsNullOrWhiteSpace(SelectedSourceType))
-                {
-                    SelectedSourceType = GetDefaultSourceType();
-                }
-
-                return;
-            }
-
-            SelectedSourceType = string.IsNullOrWhiteSpace(CurrentRecord.SourceType)
-                ? GetDefaultSourceType()
-                : CurrentRecord.SourceType;
         }
 
         private void ApplyArchivePurposeSelection()

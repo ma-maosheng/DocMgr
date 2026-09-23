@@ -36,9 +36,28 @@ namespace DocMgr.ViewModels.YearlyArchive
             private set => SetProperty(ref _record, value);
         }
 
+        /// <summary>资料来源聚合展示（各子项唯一值直接显示，多个不同值以「、」连接）。</summary>
+        public string SourceTypeDisplay => AggregateRecordItemValues(item => item.SourceType);
+
+        /// <summary>提供单位聚合展示（各子项唯一值直接显示，多个不同值以「、」连接）。</summary>
+        public string ProvideUnitDisplay => AggregateRecordItemValues(item => item.ProvideUnit);
+
+        private string AggregateRecordItemValues(Func<YearlyArchiveRegisterMediaItem, string?> selector)
+        {
+            var distinct = (_record?.MediaEntries ?? [])
+                .Where(media => media.Items != null)
+                .SelectMany(media => media.Items!)
+                .Select(selector)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value!.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            return distinct.Count == 0 ? string.Empty : string.Join("、", distinct);
+        }
+
         public ObservableCollection<ArchiveDetailMediaEntryItem> ElectronicMediaEntries { get; } = new();
         public ObservableCollection<ArchiveDetailMediaEntryItem> SimulatedMediaEntries { get; } = new();
-        public ObservableCollection<ArchiveDetailMediaEntryItem> ProofMediaEntries { get; } = new();
         public ObservableCollection<ArchiveDetailArchiveBoxResult> ArchiveBoxResults { get; } = new();
         public ObservableCollection<ArchiveDetailElectronicUnitResult> ElectronicUnitResults { get; } = new();
         public ObservableCollection<SystemAttachment> Attachments { get; } = new();
@@ -175,6 +194,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ApplyDetailCollections(record);
                 await ApplyFilingFactBindingAsync(record);
                 ApplySearchHighlight();
+                OnPropertyChanged(nameof(SourceTypeDisplay));
+                OnPropertyChanged(nameof(ProvideUnitDisplay));
                 NotifyFilterSelectionStateChanged();
             }
             catch (Exception ex)
@@ -202,17 +223,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void ApplyDetailCollections(YearlyArchiveRegisterRecord record)
         {
             ReplaceCollection(ElectronicMediaEntries, record.MediaEntries
-                .Where(media => IsElectronicMedia(media) && !IsProofMedia(media))
+                .Where(IsElectronicMedia)
                 .Select(MapMediaEntry)
                 .ToList());
 
             ReplaceCollection(SimulatedMediaEntries, record.MediaEntries
-                .Where(media => IsSimulatedMedia(media) && !IsProofMedia(media))
-                .Select(MapMediaEntry)
-                .ToList());
-
-            ReplaceCollection(ProofMediaEntries, record.MediaEntries
-                .Where(IsProofMedia)
+                .Where(IsSimulatedMedia)
                 .Select(MapMediaEntry)
                 .ToList());
 
@@ -395,8 +411,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return false;
             }
 
-            return string.Equals(NormalizeMatchText(highlight.ItemType), NormalizeMatchText(item.ItemType), StringComparison.Ordinal)
-                && string.Equals(NormalizeMatchText(highlight.ItemName), NormalizeMatchText(item.ItemName), StringComparison.Ordinal);
+            return string.Equals(NormalizeMatchText(highlight.ItemName), NormalizeMatchText(item.ItemName), StringComparison.Ordinal);
         }
 
         private static bool MatchesMediaItem(ArchiveDetailHighlightContext highlight, ArchiveDetailMediaItem item)
@@ -411,11 +426,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return false;
             }
 
-            return string.Equals(NormalizeMatchText(highlight.ItemType), NormalizeMatchText(item.ItemType), StringComparison.Ordinal)
-                && string.Equals(NormalizeMatchText(highlight.ItemName), NormalizeMatchText(item.ContentDesc), StringComparison.Ordinal);
+            return string.Equals(NormalizeMatchText(highlight.ItemName), NormalizeMatchText(item.ContentDesc), StringComparison.Ordinal);
         }
 
-        private static bool MatchesContainerCode(string highlightContainerCode, string containerCode)
+        private static bool MatchesContainerCode(string? highlightContainerCode, string? containerCode)
         {
             string normalizedHighlight = NormalizeMatchText(highlightContainerCode);
             if (normalizedHighlight == "-" || string.IsNullOrEmpty(normalizedHighlight))
@@ -435,7 +449,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             ClearMediaHighlights(ElectronicMediaEntries);
             ClearMediaHighlights(SimulatedMediaEntries);
-            ClearMediaHighlights(ProofMediaEntries);
 
             foreach (var box in ArchiveBoxResults)
             {
@@ -488,8 +501,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static ArchiveDetailMediaEntryItem MapMediaEntry(YearlyArchiveRegisterMedia media)
         {
             var items = media.Items
-                .OrderBy(item => item.ItemType)
-                .ThenBy(item => item.ContentDesc)
+                .OrderBy(item => item.ContentDesc)
                 .Select(MapMediaItem)
                 .ToList();
 
@@ -510,7 +522,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             return new ArchiveDetailMediaItem(
                 item.Id,
-                NormalizeText(item.ItemType),
                 NormalizeText(item.ContentDesc),
                 FormatCount(item.ContentCount),
                 NormalizeText(item.StoragePath),
@@ -531,7 +542,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 entry.Id,
                 NormalizeText(entry.EntryKind),
                 NormalizeText(entry.EntryName),
-                NormalizeText(entry.RelativePath),
                 FormatEntryDate(entry.CreatedAt),
                 FormatEntryDate(entry.ModifiedAt),
                 FormatEntrySize(entry.SizeMb));
@@ -563,8 +573,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 .Where(link => link.MediaItem != null)
                 .GroupBy(link => link.MediaItem.Id)
                 .Select(group => MapMediaItem(group.First().MediaItem))
-                .OrderBy(item => item.ItemType)
-                .ThenBy(item => item.ContentDesc)
+                .OrderBy(item => item.ContentDesc)
                 .ToList();
 
             return new ArchiveDetailArchiveBoxResult(
@@ -614,9 +623,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 : mediaItem != null
                     ? NormalizeText(mediaItem.ContentDesc)
                     : "-";
-            string itemType = mediaItem != null
-                ? NormalizeText(mediaItem.ItemType)
-                : "-";
             string dataSizeText = link.DataSizeMb > 0
                 ? $"{link.DataSizeMb:0.##} MB"
                 : mediaItem?.ElectronicDetail != null
@@ -635,7 +641,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 projectName,
                 materialName,
                 itemName,
-                itemType,
                 confidentialLevel,
                 NormalizeText(electronicDetail?.MaterialCategory),
                 NormalizeText(electronicDetail?.SubCategory),
@@ -782,8 +787,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     EntryId = entry.EntryId,
                     EntryKind = entry.EntryKind,
-                    EntryName = entry.EntryName,
-                    RelativePath = entry.RelativePath
+                    EntryName = entry.EntryName
                 };
             }
         }
@@ -876,11 +880,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static bool IsSimulatedMedia(YearlyArchiveRegisterMedia media)
         {
             return string.Equals(media.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal);
-        }
-
-        private static bool IsProofMedia(YearlyArchiveRegisterMedia media)
-        {
-            return media.Items.Any(item => string.Equals(item.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.Ordinal));
         }
 
         private static string NormalizeText(string? value)

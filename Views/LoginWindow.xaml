@@ -9,10 +9,6 @@
         FocusManager.FocusedElement="{Binding ElementName=TxtUsername}"
         InputLanguageManager.InputLanguage="en-US">
 
-    <Window.InputBindings>
-        <KeyBinding Key="Enter" Command="{Binding LoginCommand}"/>
-    </Window.InputBindings>
-
     <Border Background="White" CornerRadius="10"
             BorderBrush="#FF397E7A" BorderThickness="1">
         <Grid>

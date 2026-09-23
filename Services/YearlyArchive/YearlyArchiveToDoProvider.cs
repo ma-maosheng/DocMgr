@@ -36,7 +36,7 @@ namespace DocMgr.Services.YearlyArchive
             var result = new List<ToDoItem>();
             if (currentUser == null) return result;
 
-            // 关键规则：资料室资料管理员在申请提交后直至确认办结前，始终保留待办
+            // 关键规则：资料管理员在申请提交后直至确认办结前，始终保留待办
             if (IsArchiveRoomAdmin(currentUser))
             {
                 var pendingRegisters = await _archiveRegisterRepository.GetSubmittedRecordsForToDoAsync(200);
@@ -131,12 +131,8 @@ namespace DocMgr.Services.YearlyArchive
 
         private static bool IsArchiveRoomAdmin(User user)
         {
-            var dept = user.Department?.Trim() ?? string.Empty;
-            var role = user.Role?.Trim() ?? string.Empty;
-
-            return (string.Equals(dept, "资料室", StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(role, "部门资料管理员", StringComparison.OrdinalIgnoreCase))
-                   || string.Equals(role, "Administrator", StringComparison.OrdinalIgnoreCase);
+            return ArchiveRegisterBusinessRules.IsArchiveAdminUser(user)
+                   || ArchiveRegisterBusinessRules.IsSystemAdministrator(user);
         }
 
         private static string BuildRegisterPendingStage(YearlyArchiveRegisterRecord record)

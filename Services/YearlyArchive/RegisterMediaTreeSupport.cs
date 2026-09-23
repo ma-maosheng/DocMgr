@@ -18,12 +18,13 @@ namespace DocMgr.Services.YearlyArchive
         {
             var entity = new YearlyArchiveRegisterMediaItem
             {
-                ItemType = item.ItemType,
                 ContentDesc = item.ContentDesc,
                 ContentCount = isElectronic ? 1 : item.ContentCount,
                 StoragePath = ElectronicMediaItemSupport.FormatStoragePathForRegistration(item.StoragePath),
                 Note = item.Note,
-                ConfidentialLevel = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(item.ConfidentialLevel)
+                ConfidentialLevel = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(item.ConfidentialLevel),
+                SourceType = item.SourceType?.Trim() ?? string.Empty,
+                ProvideUnit = item.ProvideUnit?.Trim() ?? string.Empty
             };
 
             if (!isElectronic)
@@ -48,7 +49,6 @@ namespace DocMgr.Services.YearlyArchive
                             ? ElectronicMediaItemSupport.ResolveMissingEntryKindFallback(item.DataOrganizationForm)
                             : entry.EntryKind,
                         EntryName = entry.EntryName?.Trim() ?? string.Empty,
-                        RelativePath = entry.RelativePath?.Trim() ?? string.Empty,
                         SizeMb = entry.SizeMb,
                         CreatedAt = entry.CreatedAt,
                         ModifiedAt = entry.ModifiedAt,
@@ -91,12 +91,15 @@ namespace DocMgr.Services.YearlyArchive
             {
                 var itemVm = new MediaItemViewModel
                 {
-                    ItemType = item.ItemType,
                     ContentDesc = item.ContentDesc,
                     ContentCount = item.ContentCount > 0 ? item.ContentCount : 1,
                     StoragePath = ElectronicMediaItemSupport.FormatStoragePathForRegistration(item.StoragePath),
                     Note = item.Note,
-                    ConfidentialLevel = resolveConfidentialLevel(item.ConfidentialLevel)
+                    ConfidentialLevel = resolveConfidentialLevel(item.ConfidentialLevel),
+                    SourceType = string.IsNullOrWhiteSpace(item.SourceType)
+                        ? ArchiveRegisterDomainValues.SourceTypeInternal
+                        : item.SourceType.Trim(),
+                    ProvideUnit = item.ProvideUnit?.Trim() ?? string.Empty
                 };
 
                 if (item.ElectronicDetail != null)
@@ -113,7 +116,6 @@ namespace DocMgr.Services.YearlyArchive
                         {
                             EntryKind = entry.EntryKind,
                             EntryName = entry.EntryName,
-                            RelativePath = entry.RelativePath,
                             SizeMb = entry.SizeMb,
                             CreatedAt = entry.CreatedAt,
                             ModifiedAt = entry.ModifiedAt
@@ -177,25 +179,17 @@ namespace DocMgr.Services.YearlyArchive
         }
 
         /// <summary>
-        /// 判断登记介质实体是否为数据电子介质（排除历史证明材料行）。
+        /// 判断登记介质实体是否为数据电子介质。
         /// </summary>
         public static bool IsElectronicMediaEntity(YearlyArchiveRegisterMedia? media) =>
             media != null
-            && string.Equals(media.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
-            && !IsProofMediaEntity(media);
+            && string.Equals(media.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal);
 
         /// <summary>
         /// 判断介质组 ViewModel 是否为数据电子介质。
         /// </summary>
         public static bool IsDataElectronic(MediaEntryViewModel? media) =>
             media != null
-            && string.Equals(media.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
-            && !IsProofMedia(media);
-
-        private static bool IsProofMedia(MediaEntryViewModel? media) =>
-            media?.Items.Any(i => string.Equals(i.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.Ordinal)) == true;
-
-        private static bool IsProofMediaEntity(YearlyArchiveRegisterMedia? media) =>
-            media?.Items?.Any(i => string.Equals(i.ItemType, ArchiveRegisterDomainValues.ItemTypeProof, StringComparison.Ordinal)) == true;
+            && string.Equals(media.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal);
     }
 }

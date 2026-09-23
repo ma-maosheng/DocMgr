@@ -128,7 +128,6 @@ namespace DocMgr.Services.YearlyArchive
                     "介质类型",
                     "表单号",
                     "资料名称",
-                    "子项类型",
                     "子项名称",
                     "密级",
                     "内容数量",
@@ -177,7 +176,6 @@ namespace DocMgr.Services.YearlyArchive
                     row.CreateCell(col++).SetCellValue(item.MediaKind);
                     row.CreateCell(col++).SetCellValue(item.FormNo);
                     row.CreateCell(col++).SetCellValue(item.MaterialName);
-                    row.CreateCell(col++).SetCellValue(item.ItemType);
                     row.CreateCell(col++).SetCellValue(item.ItemName);
                     row.CreateCell(col++).SetCellValue(item.ConfidentialLevel);
                     row.CreateCell(col++).SetCellValue(item.ContentCount);
@@ -265,7 +263,6 @@ namespace DocMgr.Services.YearlyArchive
                 ProjectName = fact.ProjectName,
                 ProvideUnit = fact.ProvideUnit,
                 ApplicantName = fact.ApplicantName,
-                ItemType = fact.ItemType,
                 ItemName = fact.ItemName,
                 ConfidentialLevel = fact.ConfidentialLevel,
                 ContentCount = fact.ContentCount,

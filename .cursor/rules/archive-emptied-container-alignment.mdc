@@ -1,6 +1,6 @@
 ---
 description: 空盒/空袋占格释放与立档事实生命周期、检索「在库」三端对齐
-globs: Services/YearlyArchive/ArchiveSimulatedBoxSlotSyncService.cs,Services/YearlyArchive/ArchiveElectronicBagSlotSyncService.cs,Services/YearlyArchive/ArchiveEmptiedContainer*.cs,Services/YearlyArchive/ArchiveOutboundService*.cs,Services/YearlyArchive/ArchiveReturnService*.cs,Repositories/YearlyArchive/ArchiveFilingFactRepository.cs,Repositories/YearlyArchive/ArchiveOutboundRepository.cs
+globs: Services/YearlyArchive/ArchiveSimulatedBoxSlotSyncService.cs,Services/YearlyArchive/ArchiveElectronicBagSlotSyncService.cs,Services/YearlyArchive/ArchiveOutboundService*.cs,Services/YearlyArchive/ArchiveReturnService*.cs,Repositories/YearlyArchive/ArchiveFilingFactRepository.cs,Repositories/YearlyArchive/ArchiveOutboundRepository.cs
 alwaysApply: false
 ---
 
@@ -54,4 +54,5 @@ alwaysApply: false
 - 电子袋：`ArchiveElectronicBagSlotSyncService`
 - 出库后同步：`SyncSimulatedArchiveBoxSlotsAfterOutboundAsync` / `SyncElectronicArchiveBagSlotsAfterOutboundAsync`
 - 归还后同步：`SyncSimulatedArchiveBoxSlotsAfterReturnAsync` / `SyncElectronicArchiveBagSlotsAfterReturnAsync`
-- 历史纠偏：`ArchiveEmptiedContainerLegacyRepairService`（启动后台维护幂等执行）
+
+> 历史纠偏服务 `ArchiveEmptiedContainerLegacyRepairService` 已随「开发期删库重建」原则移除：新库不存在历史残留数据，对齐只需保证业务流程内正确。

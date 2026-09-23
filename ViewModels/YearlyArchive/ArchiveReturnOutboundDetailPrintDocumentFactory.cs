@@ -13,17 +13,35 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static readonly FontFamily LabelFont = new("SimHei");
         private static readonly FontFamily BodyFont = new("SimSun");
 
-        private const double StandardRowHeight = 32;
+        private const double StandardRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
         private const double TitleBlockHeight = 48;
         private const double HeaderInfoHeight = 28;
-        private const double CellPadding = 4;
+        private const double CellPadding = PrintPageLayoutSupport.TableCellPaddingDip;
         private const double BodyFontSize = 12;
+
+        /// <summary>资料摘要/借出原因按正文估行后的上限。</summary>
+        private const int ShortTextMaxLines = 3;
+
+        /// <summary>待归还明细按正文估行后的上限（撑满下限）。</summary>
+        private const int DetailMaxLines = 20;
 
         internal static FlowDocument Create(ArchiveReturnOutboundDetailPrintData data)
         {
             ArgumentNullException.ThrowIfNull(data);
 
-            double itemDetailRowHeight = CalculateItemDetailRowHeight();
+            string summaryText = EmptyAsPlaceholder(data.MaterialSummary);
+            string reasonText = EmptyAsPlaceholder(data.Reason);
+            string itemDetailText = BuildItemText(data);
+            double summaryRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                summaryText,
+                ShortTextMaxLines);
+            double reasonRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                reasonText,
+                ShortTextMaxLines);
+            double itemDetailRowHeight = CalculateItemDetailRowHeight(
+                summaryRowHeight,
+                reasonRowHeight,
+                itemDetailText);
 
             var document = new FlowDocument
             {
@@ -51,11 +69,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             rowGroup.Rows.Add(CreateDoubleRow("借出部门", data.BorrowerDept, "借出人", data.BorrowerName));
             rowGroup.Rows.Add(CreateDoubleRow("资料年度", data.ArchiveYearText, "项目名称", EmptyAsPlaceholder(data.ProjectName)));
             rowGroup.Rows.Add(CreateSingleRow("应还日期", data.ExpectedReturnDateText));
-            rowGroup.Rows.Add(CreateSingleRow("资料摘要", EmptyAsPlaceholder(data.MaterialSummary)));
-            rowGroup.Rows.Add(CreateSingleRow("借出原因", EmptyAsPlaceholder(data.Reason)));
+            rowGroup.Rows.Add(CreateSingleRow("资料摘要", summaryText, summaryRowHeight, verticalTop: true));
+            rowGroup.Rows.Add(CreateSingleRow("借出原因", reasonText, reasonRowHeight, verticalTop: true));
             rowGroup.Rows.Add(CreateSingleRow(
                 "待归还明细",
-                BuildItemText(data),
+                itemDetailText,
                 itemDetailRowHeight,
                 verticalTop: true));
 
@@ -65,16 +83,36 @@ namespace DocMgr.ViewModels.YearlyArchive
             return document;
         }
 
-        private static double CalculateItemDetailRowHeight()
+        private static double CalculateItemDetailRowHeight(
+            double summaryRowHeight,
+            double reasonRowHeight,
+            string itemDetailText)
         {
-            // 固定行：借出部门、资料年度、应还日期、资料摘要、借出原因。
-            double fixedTableHeight =
-                PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 5;
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 2, lineHeightDip: 16, topMarginDip: 8);
+            // 固定行：借出部门、资料年度、应还日期(3) + 资料摘要 + 借出原因。
+            const int oneLineRows = 3;
+            double fixedContentHeight =
+                StandardRowHeight * oneLineRows
+                + summaryRowHeight
+                + reasonRowHeight;
+            const int fixedRowCount = 5;
+            double fixedTableHeight = fixedContentHeight
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
+                + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
+
+            string footerText = BuildFooterNoteText();
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
+                footerText,
+                PrintPageLayoutSupport.ContentWidthDip,
+                fontSizeDip: 10,
+                lineHeightDip: 16,
+                topMarginDip: 8);
             double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
+            double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                itemDetailText,
+                DetailMaxLines);
             return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
                 reservedHeight,
-                StandardRowHeight * 5,
+                contentNeededHeight,
                 CellPadding);
         }
 
@@ -118,10 +156,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 BorderThickness = new Thickness(2, 2, 0, 0)
             };
 
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
+            PrintPageLayoutSupport.ApplyApprovalFormMainTableColumns(table);
             table.RowGroups.Add(rowGroup);
 
             return table;
@@ -137,10 +172,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             };
 
             footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
-            footer.Inlines.Add(new Run("本详单列出该出库单中尚未归还的提档明细，供资料室管理员核对借出实物后办理归还。"));
+            footer.Inlines.Add(new Run("本详单列出该出库单中尚未归还的提档明细，供资料管理员核对借出实物后办理归还。"));
 
             return footer;
         }
+
+        /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
+        private static string BuildFooterNoteText() =>
+            "说明：本详单列出该出库单中尚未归还的提档明细，供资料管理员核对借出实物后办理归还。";
 
         private static TableRow CreateSingleRow(
             string label,

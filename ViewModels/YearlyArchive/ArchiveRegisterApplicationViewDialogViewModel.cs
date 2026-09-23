@@ -7,6 +7,7 @@ using System.Windows.Input;
 using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.Shared;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
 using DocMgr.Views.Shared;
@@ -16,7 +17,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 {
     /// <summary>
     /// 资料建档（登记）申请单只读查看弹窗 ViewModel。展示申请、审批流程与附件信息，支持查看资料详情、打印与关闭。
-    /// 资料室资料管理员可在办结后增补「其他附件」（仅新增、不可删除）。
+    /// 资料管理员可在办结后增补「其他附件」（仅新增、不可删除）。
     /// </summary>
     public sealed class ArchiveRegisterApplicationViewDialogViewModel : ViewModelBase
     {
@@ -63,14 +64,19 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string WindowTitle => $"查看申请 · {FormNo} · {StatusDisplay}";
 
         public string WorkspaceBannerText => CanSupplementOtherAttachments
-            ? "本窗口以查看为主；办结后资料室资料管理员可增补「其他附件」，不可删除已有附件。"
+            ? "本窗口以查看为主；办结后资料管理员可增补「其他附件」，不可删除已有附件。"
             : "本窗口仅用于查看资料建档申请信息，不允许编辑。";
 
         // 1. 资料信息
         public string MaterialName => EmptyAsPlaceholder(_record.MaterialName);
         public string ProjectName => EmptyAsPlaceholder(_record.ProjectName);
-        public string ProvideUnit => EmptyAsPlaceholder(_record.ProvideUnit);
-        public string SourceType => EmptyAsPlaceholder(_record.SourceType);
+
+        /// <summary>提供单位：聚合各子项值（唯一时直接显示，多个时以「、」连接）。</summary>
+        public string ProvideUnit => EmptyAsPlaceholder(AggregateItemValues(item => item.ProvideUnit));
+
+        /// <summary>资料来源：聚合各子项值（唯一时直接显示，多个时以「、」连接）。</summary>
+        public string SourceType => EmptyAsPlaceholder(AggregateItemValues(item => item.SourceType));
+
         public string ArchivePurpose => EmptyAsPlaceholder(_record.ArchivePurpose);
         public string OtherRequests => EmptyAsPlaceholder(_record.OtherRequests);
         public string HasProofMaterialDisplay =>
@@ -88,17 +94,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ApplicantDateDisplay => FormatDate(_record.ApplicantDate);
 
         // 3. 审批流程（意见栏一致化：空意见不用「(无)」占位）
-        public string DeptLeader => EmptyAsPlaceholder(_record.DeptLeader);
-        public string DeptDateDisplay => FormatDate(_record.DeptDate);
+        public string DeptHead => EmptyAsPlaceholder(_record.DeptHead);
+        public string DeptHeadDateDisplay => FormatDate(_record.DeptHeadDate);
         public string ProdDeptOpinion => _uniformOpinions[0];
-        public string ProdLeader => EmptyAsPlaceholder(_record.ProdLeader);
-        public string ProdDateDisplay => FormatDate(_record.ProdDate);
+        public string ProductionHead => EmptyAsPlaceholder(_record.ProductionHead);
+        public string ProductionHeadDateDisplay => FormatDate(_record.ProductionHeadDate);
         public string RndDeptOpinion => _uniformOpinions[1];
-        public string RndLeader => EmptyAsPlaceholder(_record.RndLeader);
-        public string RndDateDisplay => FormatDate(_record.RndDate);
+        public string ArchiveRoomHead => EmptyAsPlaceholder(_record.ArchiveRoomHead);
+        public string ArchiveRoomHeadDateDisplay => FormatDate(_record.ArchiveRoomHeadDate);
         public string DeputyOpinion => _uniformOpinions[2];
-        public string DeputyLeader => EmptyAsPlaceholder(_record.DeputyLeader);
-        public string DeputyDateDisplay => FormatDate(_record.DeputyDate);
+        public string ArchiveDeputyPresident => EmptyAsPlaceholder(_record.ArchiveDeputyPresident);
+        public string ArchiveDeputyPresidentDateDisplay => FormatDate(_record.ArchiveDeputyPresidentDate);
         public string Deliverer => EmptyAsPlaceholder(_record.Deliverer);
         public string DeliverDateDisplay => FormatDate(_record.DeliverDate);
         public string Administrator => EmptyAsPlaceholder(_record.Administrator);
@@ -111,7 +117,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// <summary>已持久化登记单可打开资料详情窗口。</summary>
         public bool CanViewArchiveDetail => _record.Id > 0;
 
-        /// <summary>办结后，资料室资料管理员可增补其他附件。</summary>
+        /// <summary>办结后，资料管理员可增补其他附件。</summary>
         public bool CanSupplementOtherAttachments =>
             _record.Id > 0
             && _record.IsArchived
@@ -276,7 +282,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                var data = _archiveRegisterService.BuildPrintData(_record, _record.SourceType, _record.MediaEntries);
+                var data = _archiveRegisterService.BuildPrintData(_record, _record.MediaEntries);
                 var document = ArchiveRegisterPrintDocumentFactory.Create(data, isApplicationPrint: false);
                 var exportOptions = new PrintPreviewExportOptions
                 {
@@ -316,7 +322,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 _archiveRegisterWordExportService.ExportToFile(data, path);
-                _dialogService.ShowMessage($"Word 文档已保存：\n{path}");
+                WordExportOpenPromptSupport.NotifySavedAndOfferOpen(path, _dialogService);
             }
             catch (Exception ex)
             {
@@ -343,17 +349,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ApplicantName));
             OnPropertyChanged(nameof(ApplicantDept));
             OnPropertyChanged(nameof(ApplicantDateDisplay));
-            OnPropertyChanged(nameof(DeptLeader));
-            OnPropertyChanged(nameof(DeptDateDisplay));
+            OnPropertyChanged(nameof(DeptHead));
+            OnPropertyChanged(nameof(DeptHeadDateDisplay));
             OnPropertyChanged(nameof(ProdDeptOpinion));
-            OnPropertyChanged(nameof(ProdLeader));
-            OnPropertyChanged(nameof(ProdDateDisplay));
+            OnPropertyChanged(nameof(ProductionHead));
+            OnPropertyChanged(nameof(ProductionHeadDateDisplay));
             OnPropertyChanged(nameof(RndDeptOpinion));
-            OnPropertyChanged(nameof(RndLeader));
-            OnPropertyChanged(nameof(RndDateDisplay));
+            OnPropertyChanged(nameof(ArchiveRoomHead));
+            OnPropertyChanged(nameof(ArchiveRoomHeadDateDisplay));
             OnPropertyChanged(nameof(DeputyOpinion));
-            OnPropertyChanged(nameof(DeputyLeader));
-            OnPropertyChanged(nameof(DeputyDateDisplay));
+            OnPropertyChanged(nameof(ArchiveDeputyPresident));
+            OnPropertyChanged(nameof(ArchiveDeputyPresidentDateDisplay));
             OnPropertyChanged(nameof(Deliverer));
             OnPropertyChanged(nameof(DeliverDateDisplay));
             OnPropertyChanged(nameof(Administrator));
@@ -365,6 +371,23 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private static string EmptyAsPlaceholder(string? value) =>
             string.IsNullOrWhiteSpace(value) ? "(无)" : value.Trim();
+
+        /// <summary>
+        /// 聚合子项级字段：唯一值直接返回，多个不同值以「、」连接。
+        /// </summary>
+        private string AggregateItemValues(Func<YearlyArchiveRegisterMediaItem, string?> selector)
+        {
+            var distinct = (_record.MediaEntries ?? [])
+                .Where(media => media.Items != null)
+                .SelectMany(media => media.Items!)
+                .Select(selector)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value!.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            return distinct.Count == 0 ? string.Empty : string.Join("、", distinct);
+        }
 
         private static string FormatDate(DateTime? date) =>
             date.HasValue ? date.Value.ToString("yyyy-MM-dd") : "(无)";

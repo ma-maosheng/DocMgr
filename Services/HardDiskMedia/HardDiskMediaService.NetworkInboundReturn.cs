@@ -19,7 +19,7 @@ public partial class HardDiskMediaService
 
         if (!IsArchiveRoomMediaAdmin(currentUser))
         {
-            throw new InvalidOperationException("仅资料室资料管理员可执行办理完成。");
+            throw new InvalidOperationException("仅资料管理员可执行办理完成。");
         }
 
         string normalizedInboundNo = inboundNo?.Trim() ?? string.Empty;
@@ -90,10 +90,10 @@ public partial class HardDiskMediaService
             SignedAttachmentUploaded = true,
             SignedAttachmentUploadedTime = completedAt,
             SignedAttachmentUploader = operatorName,
-            ReviewerName = operatorName,
-            ReviewerDate = completedAt.Date,
-            ApprovedBy = operatorName,
-            ApprovedTime = completedAt,
+            DeptHead = operatorName,
+            DeptHeadDate = completedAt.Date,
+            ArchiveRoomHead = operatorName,
+            ArchiveRoomHeadDate = completedAt,
             ApprovalOpinion = "资料入网办结后代办空盘归还",
             ExecutedBy = operatorName,
             ExecutedTime = completedAt,

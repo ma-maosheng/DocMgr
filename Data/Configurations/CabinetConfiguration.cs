@@ -9,6 +9,10 @@ namespace DocMgr.Data.Configurations
         {
             builder.HasKey(e => e.Id);
             builder.Ignore(e => e.IsSelected);
+            builder.Property(e => e.HardDiskSlotCapacity)
+                .HasDefaultValue(CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity);
+            builder.Property(e => e.OpticalDiscSlotCapacity)
+                .HasDefaultValue(CabinetHardDiskSlotCategoryAssignment.DedicatedOpticalDiscSlotCapacity);
         }
     }
 }

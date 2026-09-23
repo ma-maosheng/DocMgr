@@ -34,13 +34,25 @@ namespace DocMgr.Models.YearlyArchive
 
         public List<string> ItemLines { get; init; } = new();
 
-        public string DeptAuditBlock { get; init; } = string.Empty;
+        public string DeptHeadBlock { get; init; } = string.Empty;
 
         public string ArchiveRoomHeadBlock { get; init; } = string.Empty;
 
         public string ProductionHeadBlock { get; init; } = string.Empty;
 
-        public string VicePresidentBlock { get; init; } = string.Empty;
+        public string ArchiveDeputyPresidentBlock { get; init; } = string.Empty;
+
+        public string ProductionVicePresidentBlock { get; init; } = string.Empty;
+
+        public bool EnableDeptHead { get; init; } = true;
+
+        public bool EnableArchiveRoomHead { get; init; } = true;
+
+        public bool EnableProductionHead { get; init; } = true;
+
+        public bool EnableArchiveDeputyPresident { get; init; } = true;
+
+        public bool EnableProductionVicePresident { get; init; } = true;
 
         /// <summary>资料双方交接签字栏（领用人与资料室资料员，打印时留白）。</summary>
         public string HandoverSignatureBlock { get; init; } = string.Empty;

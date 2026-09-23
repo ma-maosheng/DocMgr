@@ -151,7 +151,6 @@ namespace DocMgr.Models.YearlyArchive
                 {
                     EntryKind = ArchiveRegisterDomainValues.ElectronicEntryKindDirectory,
                     EntryName = child.Name,
-                    RelativePath = Path.GetRelativePath(itemDir.FullName, child.FullName),
                     SizeMb = stats.SizeMb,
                     CreatedAt = stats.CreatedAt,
                     ModifiedAt = stats.ModifiedAt
@@ -164,7 +163,6 @@ namespace DocMgr.Models.YearlyArchive
                 {
                     EntryKind = ArchiveRegisterDomainValues.ElectronicEntryKindFile,
                     EntryName = file.Name,
-                    RelativePath = file.Name,
                     SizeMb = BytesToMb(file.Length),
                     CreatedAt = file.CreationTime,
                     ModifiedAt = file.LastWriteTime
@@ -280,7 +278,7 @@ namespace DocMgr.Models.YearlyArchive
             DateTime? modifiedAt = null;
             try
             {
-                foreach (var file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+                foreach (var file in Directory.EnumerateFiles(path, "*", ElectronicMediaItemSupport.RecursiveIgnoreInaccessibleEnumerationOptions))
                 {
                     try
                     {
@@ -370,6 +368,31 @@ namespace DocMgr.Models.YearlyArchive
         public decimal DataSizeMb { get; init; }
 
         public int FileCount { get; init; }
+
+        /// <summary>
+        /// 资料来源（默认存量直办），允许按子项分别指定。
+        /// </summary>
+        public string SourceType { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 提供单位（默认资料室），允许按子项分别指定。
+        /// </summary>
+        public string ProvideUnit { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 密级（扫描后默认「秘密」），按子项分别指定。
+        /// </summary>
+        public string ConfidentialLevel { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 资料类型（扫描后默认「数据类」），按子项分别指定。
+        /// </summary>
+        public string MaterialCategory { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 所属子类（扫描后默认「最终成果数据」），按子项分别指定。
+        /// </summary>
+        public string SubCategory { get; set; } = string.Empty;
 
         public IReadOnlyList<ElectronicMediaContentScanEntry> Entries { get; init; } = Array.Empty<ElectronicMediaContentScanEntry>();
     }

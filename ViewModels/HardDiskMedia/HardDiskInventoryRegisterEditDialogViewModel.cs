@@ -153,7 +153,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public bool IsTargetLocationColumnReadOnly => !RequiresTargetLocation || !CanEditHeader;
 
         public string TargetLocationHint => RequiresTargetLocation
-            ? "请为每块盘指定损坏硬盘专用档口（可用行内「推荐」「预览」）。办结时将核验档口容量（10盘/档口）。"
+            ? "请为每块盘指定损坏硬盘专用档口（可用行内「推荐」「预览」）。办结时将按各柜配置的档口容量核验。"
             : "盘失登记无需归位档口，办结后清空存放位置。";
 
         public bool CanEditHeader =>
@@ -326,17 +326,21 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
-            int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
-                CabinetHardDiskSlotCategoryAssignment.CategoryDamaged);
             var preferred = DamagedLocationOptions
-                .Where(option => option.ExistingMediumCount < slotCapacity)
+                .Where(option =>
+                {
+                    int capacity = option.SlotCapacity > 0
+                        ? option.SlotCapacity
+                        : CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
+                    return option.ExistingMediumCount < capacity;
+                })
                 .OrderBy(option => option.ExistingMediumCount)
                 .ThenBy(option => option.Location, StringComparer.OrdinalIgnoreCase)
                 .FirstOrDefault();
 
             if (preferred == null)
             {
-                _dialogService.ShowMessage($"损坏硬盘专用档口均已满（每档口最多 {slotCapacity} 盘），请先腾出容量或新增专用档口。", "推荐档口");
+                _dialogService.ShowMessage("损坏硬盘专用档口均已满，请先腾出容量或新增专用档口。", "推荐档口");
                 return;
             }
 

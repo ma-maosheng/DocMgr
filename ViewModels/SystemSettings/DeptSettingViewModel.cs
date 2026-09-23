@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.SystemSettings
@@ -7,6 +8,7 @@ namespace DocMgr.ViewModels.SystemSettings
     {
         private readonly IUserService _userService;
         private readonly IDialogService _dialogService;
+        private readonly IUserContextService _userContextService;
 
         private ObservableCollection<Department> _departments = new();
         public ObservableCollection<Department> Departments
@@ -28,20 +30,28 @@ namespace DocMgr.ViewModels.SystemSettings
             }
         }
 
+        /// <summary>系统管理员可维护；其余角色仅浏览列表。</summary>
+        public bool CanMaintain { get; }
+
         public RelayCommand RefreshCommand { get; }
         public RelayCommand AddCommand { get; }
         public RelayCommand EditCommand { get; }
         public RelayCommand DeleteCommand { get; }
 
-        public DeptSettingViewModel(IUserService userService, IDialogService dialogService)
+        public DeptSettingViewModel(
+            IUserService userService,
+            IDialogService dialogService,
+            IUserContextService userContextService)
         {
             _userService = userService;
             _dialogService = dialogService;
+            _userContextService = userContextService;
+            CanMaintain = ArchiveRegisterBusinessRules.IsSystemAdministrator(_userContextService.CurrentUser);
 
             RefreshCommand = new RelayCommand(_ => LoadData());
-            AddCommand = new RelayCommand(_ => Add());
-            EditCommand = new RelayCommand(_ => Edit(), _ => SelectedDepartment != null);
-            DeleteCommand = new RelayCommand(_ => Delete(), _ => SelectedDepartment != null);
+            AddCommand = new RelayCommand(_ => Add(), _ => CanMaintain);
+            EditCommand = new RelayCommand(_ => Edit(), _ => CanMaintain && SelectedDepartment != null);
+            DeleteCommand = new RelayCommand(_ => Delete(), _ => CanMaintain && SelectedDepartment != null);
 
             LoadData();
         }
@@ -54,6 +64,11 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private void Add()
         {
+            if (!EnsureCanMaintain())
+            {
+                return;
+            }
+
             if (_dialogService.ShowDeptEditDialog(null))
             {
                 LoadData();
@@ -62,7 +77,10 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private void Edit()
         {
-            if (SelectedDepartment == null) return;
+            if (!EnsureCanMaintain() || SelectedDepartment == null)
+            {
+                return;
+            }
 
             if (_dialogService.ShowDeptEditDialog(SelectedDepartment))
             {
@@ -72,7 +90,10 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private void Delete()
         {
-            if (SelectedDepartment == null) return;
+            if (!EnsureCanMaintain() || SelectedDepartment == null)
+            {
+                return;
+            }
 
             if (_dialogService.ShowConfirm($"确定要删除部门 [{SelectedDepartment.Name}] 吗？", "警告"))
             {
@@ -86,6 +107,17 @@ namespace DocMgr.ViewModels.SystemSettings
                     _dialogService.ShowError("删除失败，可能该部门已被使用。");
                 }
             }
+        }
+
+        private bool EnsureCanMaintain()
+        {
+            if (CanMaintain)
+            {
+                return true;
+            }
+
+            _dialogService.ShowError("仅系统管理员可维护部门。");
+            return false;
         }
     }
 }

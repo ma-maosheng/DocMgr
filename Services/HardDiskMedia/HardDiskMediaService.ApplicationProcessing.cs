@@ -20,7 +20,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             if (!IsArchiveRoomMediaAdmin(currentUser))
             {
-                return HardDiskMediaFlowResult.Fail("仅资料室资料管理员可执行审批通过。");
+                return HardDiskMediaFlowResult.Fail("仅资料管理员可执行审批通过。");
             }
 
             var existing = await _hardDiskMediaRepository.GetApplicationByIdAsync(application.Id);
@@ -45,7 +45,7 @@ namespace DocMgr.Services.HardDiskMedia
                     : existing.TargetLocation?.Trim() ?? string.Empty;
                 if (string.IsNullOrWhiteSpace(requestedTargetLocation))
                 {
-                    return HardDiskMediaFlowResult.Fail("请先由资料室管理员指定归还位置后再审批通过。");
+                    return HardDiskMediaFlowResult.Fail("请先由资料管理员指定归还位置后再审批通过。");
                 }
 
                 var returnCandidate = await GetActiveReturnCandidateAsync(
@@ -76,14 +76,26 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             existing.ApplicationStatus = HardDiskMediaApplication.StatusApproved;
-            existing.ReviewerName = string.IsNullOrWhiteSpace(input.ReviewerName)
-                ? currentUser?.RealName?.Trim() ?? string.Empty
-                : input.ReviewerName.Trim();
-            existing.ReviewerDate = input.ReviewerDate ?? now;
-            existing.ApprovedBy = string.IsNullOrWhiteSpace(input.ApproverName)
-                ? currentUser?.RealName?.Trim() ?? string.Empty
-                : input.ApproverName.Trim();
-            existing.ApprovedTime = input.ApproverDate ?? now;
+            existing.DeptHead = input.DeptHead?.Trim() ?? string.Empty;
+            existing.DeptHeadDate = string.IsNullOrWhiteSpace(existing.DeptHead)
+                ? null
+                : input.DeptHeadDate ?? now;
+            existing.ArchiveRoomHead = input.ArchiveRoomHead?.Trim() ?? string.Empty;
+            existing.ArchiveRoomHeadDate = string.IsNullOrWhiteSpace(existing.ArchiveRoomHead)
+                ? null
+                : input.ArchiveRoomHeadDate ?? now;
+            existing.ProductionHead = input.ProductionHead?.Trim() ?? string.Empty;
+            existing.ProductionHeadDate = string.IsNullOrWhiteSpace(existing.ProductionHead)
+                ? null
+                : input.ProductionHeadDate ?? now;
+            existing.ArchiveDeputyPresident = input.ArchiveDeputyPresident?.Trim() ?? string.Empty;
+            existing.ArchiveDeputyPresidentDate = string.IsNullOrWhiteSpace(existing.ArchiveDeputyPresident)
+                ? null
+                : input.ArchiveDeputyPresidentDate ?? now;
+            existing.ProductionVicePresident = input.ProductionVicePresident?.Trim() ?? string.Empty;
+            existing.ProductionVicePresidentDate = string.IsNullOrWhiteSpace(existing.ProductionVicePresident)
+                ? null
+                : input.ProductionVicePresidentDate ?? now;
             existing.ApprovalOpinion = string.IsNullOrWhiteSpace(input.ApprovalOpinion) ? "同意" : input.ApprovalOpinion.Trim();
             existing.UpdatedTime = now;
 
@@ -104,7 +116,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             if (!IsArchiveRoomMediaAdmin(currentUser))
             {
-                return HardDiskMediaFlowResult.Fail("仅资料室资料管理员可确认实物交接。");
+                return HardDiskMediaFlowResult.Fail("仅资料管理员可确认实物交接。");
             }
 
             var existing = await _hardDiskMediaRepository.GetApplicationByIdAsync(application.Id);
@@ -139,7 +151,7 @@ namespace DocMgr.Services.HardDiskMedia
                     : existing.TargetLocation?.Trim() ?? string.Empty;
                 if (string.IsNullOrWhiteSpace(requestedTargetLocation))
                 {
-                    return HardDiskMediaFlowResult.Fail("请先由资料室管理员指定归还位置后再确认实物交接。");
+                    return HardDiskMediaFlowResult.Fail("请先由资料管理员指定归还位置后再确认实物交接。");
                 }
 
                 var returnCandidate = await GetActiveReturnCandidateAsync(
@@ -215,10 +227,10 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             existing.ApplicationStatus = HardDiskMediaApplication.StatusWithdrawn;
-            existing.ApprovedBy = currentUser.RealName?.Trim() ?? string.Empty;
-            existing.ApprovedTime = DateTime.Now;
+            existing.ArchiveRoomHead = currentUser.RealName?.Trim() ?? string.Empty;
+            existing.ArchiveRoomHeadDate = DateTime.Now;
             existing.ApprovalOpinion = string.IsNullOrWhiteSpace(opinion) ? "申请人撤回作废" : opinion.Trim();
-            existing.UpdatedTime = existing.ApprovedTime.Value;
+            existing.UpdatedTime = existing.ArchiveRoomHeadDate.Value;
 
             await _hardDiskMediaRepository.SaveChangesAsync();
             return HardDiskMediaFlowResult.Ok("申请单已撤回作废。");
@@ -234,7 +246,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             if (!IsArchiveRoomMediaAdmin(currentUser))
             {
-                return HardDiskMediaFlowResult.Fail("仅资料室资料管理员可执行强制撤回作废。");
+                return HardDiskMediaFlowResult.Fail("仅资料管理员可执行强制撤回作废。");
             }
 
             var existing = await _hardDiskMediaRepository.GetApplicationByIdAsync(application.Id);
@@ -273,10 +285,10 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             existing.ApplicationStatus = HardDiskMediaApplication.StatusForceWithdrawn;
-            existing.ApprovedBy = currentUser?.RealName?.Trim() ?? string.Empty;
-            existing.ApprovedTime = DateTime.Now;
-            existing.ApprovalOpinion = string.IsNullOrWhiteSpace(opinion) ? "资料室资料管理员强制撤回作废" : opinion.Trim();
-            existing.UpdatedTime = existing.ApprovedTime.Value;
+            existing.ArchiveRoomHead = currentUser?.RealName?.Trim() ?? string.Empty;
+            existing.ArchiveRoomHeadDate = DateTime.Now;
+            existing.ApprovalOpinion = string.IsNullOrWhiteSpace(opinion) ? "资料管理员强制撤回作废" : opinion.Trim();
+            existing.UpdatedTime = existing.ArchiveRoomHeadDate.Value;
 
             await _hardDiskMediaRepository.SaveChangesAsync();
             return HardDiskMediaFlowResult.Ok("申请单已强制作废。");
@@ -298,7 +310,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             if (!IsArchiveRoomMediaAdmin(currentUser))
             {
-                return HardDiskMediaFlowResult.Fail("仅资料室资料管理员可执行办理完成。");
+                return HardDiskMediaFlowResult.Fail("仅资料管理员可执行办理完成。");
             }
 
             var existingApplication = await _hardDiskMediaRepository.GetApplicationByIdAsync(application.Id);
@@ -315,6 +327,39 @@ namespace DocMgr.Services.HardDiskMedia
             if (!existingApplication.SignedAttachmentUploaded)
             {
                 return HardDiskMediaFlowResult.Fail("请先上传签批交接单后再办理。");
+            }
+
+            if (!IsReturnOrLossRegistrationType(existingApplication.ApplicationType))
+            {
+                var attachments = await _hardDiskMediaRepository.GetApplicationAttachmentsAsync(
+                    ApplicationAttachmentBusinessType,
+                    existingApplication.ApplicationNo);
+
+                if (HardDiskOutboundDomainValues.RequiresPhysicalPhotoAttachment(existingApplication.ApplicationType))
+                {
+                    bool hasPhysicalPhoto = attachments.Any(item =>
+                        string.Equals(
+                            item.FileCategory?.Trim(),
+                            HardDiskOutboundDomainValues.AttachmentCategoryPhysicalPhoto,
+                            StringComparison.Ordinal));
+                    if (!hasPhysicalPhoto)
+                    {
+                        return HardDiskMediaFlowResult.Fail("请先上传实物照片后再办理。");
+                    }
+                }
+
+                if (HardDiskOutboundDomainValues.RequiresProofMaterialAttachment(existingApplication.ProofMaterialNote))
+                {
+                    bool hasProofMaterial = attachments.Any(item =>
+                        string.Equals(
+                            item.FileCategory?.Trim(),
+                            HardDiskOutboundDomainValues.AttachmentCategoryProofMaterial,
+                            StringComparison.Ordinal));
+                    if (!hasProofMaterial)
+                    {
+                        return HardDiskMediaFlowResult.Fail("申请已声明附有证明材料，请先上传证明材料后再办理。");
+                    }
+                }
             }
 
             var medium = await _hardDiskMediaRepository.GetActiveMediumWithLedgerByIdForUpdateAsync(existingApplication.MediumId);
@@ -356,7 +401,7 @@ namespace DocMgr.Services.HardDiskMedia
                     {
                         if (string.IsNullOrWhiteSpace(existingApplication.TargetLocation))
                         {
-                            return HardDiskMediaFlowResult.Fail("请先由资料室管理员指定归还位置后再办结。");
+                            return HardDiskMediaFlowResult.Fail("请先由资料管理员指定归还位置后再办结。");
                         }
 
                         existingApplication.TargetLocation = await ResolveReturnTargetLocationAsync(
@@ -457,13 +502,26 @@ namespace DocMgr.Services.HardDiskMedia
                     ?? string.Empty;
             }
 
+            var chain = await _approvalWorkflowService.ResolveAsync(
+                new ApprovalChainResolveRequest
+                {
+                    BusinessType = ApprovalChainApplySupport.ResolveHardDiskApplicationBusinessType(existingApplication),
+                    ApplicantDept = existingApplication.ApplicantDept,
+                    FieldValues = ApprovalChainApplySupport.BuildHardDiskApplicationFieldValues(existingApplication)
+                },
+                _userService.GetAllUsers());
+
+            bool blankApprovalSignatures = existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft
+                || existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted;
+            bool isCompleted = existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusCompleted;
+
             return new HardDiskMediaPrintData
             {
                 ApplicationNo = existingApplication.ApplicationNo,
                 SourceApplicationNo = sourceApplicationNo,
                 ApplicationType = existingApplication.ApplicationType,
                 ApplicationStatus = existingApplication.StatusStr,
-                IsCompleted = existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusCompleted,
+                IsCompleted = isCompleted,
                 DiskCode = existingApplication.Medium.DiskCode,
                 SerialNumber = existingApplication.Medium.SerialNumber,
                 DiskType = existingApplication.Medium.DiskType,
@@ -484,17 +542,42 @@ namespace DocMgr.Services.HardDiskMedia
                 RelatedArchiveTitle = existingApplication.RelatedArchiveTitle,
                 Reason = existingApplication.Reason,
                 Remark = existingApplication.Remark,
-                ReviewerName = existingApplication.ReviewerName,
-                ReviewerDateText = existingApplication.ReviewerDate?.ToString("yyyy-MM-dd") ?? string.Empty,
-                ApproverName = existingApplication.ApprovedBy,
-                ApproverDateText = existingApplication.ApprovedTime?.ToString("yyyy-MM-dd") ?? string.Empty,
+                EnableDeptHead = chain.DeptHead.IsEnabled,
+                EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled,
+                EnableProductionHead = chain.ProductionHead.IsEnabled,
+                EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled,
+                EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled,
+                DeptHead = blankApprovalSignatures ? string.Empty : existingApplication.DeptHead,
+                DeptHeadDateText = blankApprovalSignatures
+                    ? string.Empty
+                    : existingApplication.DeptHeadDate?.ToString("yyyy-MM-dd") ?? string.Empty,
+                ArchiveRoomHead = blankApprovalSignatures ? string.Empty : existingApplication.ArchiveRoomHead,
+                ArchiveRoomHeadDateText = blankApprovalSignatures
+                    ? string.Empty
+                    : existingApplication.ArchiveRoomHeadDate?.ToString("yyyy-MM-dd") ?? string.Empty,
+                ProductionHead = blankApprovalSignatures ? string.Empty : existingApplication.ProductionHead,
+                ProductionHeadDateText = blankApprovalSignatures
+                    ? string.Empty
+                    : existingApplication.ProductionHeadDate?.ToString("yyyy-MM-dd") ?? string.Empty,
+                ArchiveDeputyPresident = blankApprovalSignatures
+                    ? string.Empty
+                    : existingApplication.ArchiveDeputyPresident,
+                ArchiveDeputyPresidentDateText = blankApprovalSignatures
+                    ? string.Empty
+                    : existingApplication.ArchiveDeputyPresidentDate?.ToString("yyyy-MM-dd") ?? string.Empty,
+                ProductionVicePresident = blankApprovalSignatures
+                    ? string.Empty
+                    : existingApplication.ProductionVicePresident,
+                ProductionVicePresidentDateText = blankApprovalSignatures
+                    ? string.Empty
+                    : existingApplication.ProductionVicePresidentDate?.ToString("yyyy-MM-dd") ?? string.Empty,
                 HandoverApplicant = existingApplication.ApplicantName,
                 HandoverAdmin = existingApplication.ExecutedBy,
                 HandoverDateText = existingApplication.ExecutedTime?.ToString("yyyy-MM-dd") ?? string.Empty,
                 InspectionResultText = existingApplication.InspectionResult,
                 FormatConfirmationText = ResolveFormatConfirmationText(existingApplication),
                 ApprovalOpinion = existingApplication.ApprovalOpinion,
-                ApprovalSignatureText = BuildApprovalSignatureText(existingApplication.ApprovedBy, existingApplication.ApprovedTime),
+                ApprovalSignatureText = BuildApprovalSignatureText(existingApplication.ArchiveRoomHead, existingApplication.ArchiveRoomHeadDate),
                 PrintCount = existingApplication.PrintCount
             };
         }
@@ -698,26 +781,38 @@ namespace DocMgr.Services.HardDiskMedia
         {
             var dedicatedSlots = await _hardDiskMediaRepository.GetDedicatedMagneticSlotsByCategoryAsync(categoryName);
 
-            var locations = dedicatedSlots
+            var orderedSlots = dedicatedSlots
                 .Where(item => item.Cabinet != null)
-                .Select(item => $"{item.Cabinet!.Name}{item.FaceCode}-{item.SlotCode}")
-                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(item => item, Comparer<CabinetHardDiskSlotCategoryAssignment>.Create(HardDiskBlankSlotLocationSupport.CompareDedicatedSlots))
                 .ToList();
 
-            if (locations.Count == 0)
+            if (orderedSlots.Count == 0)
             {
                 return Array.Empty<HardDiskMediaReturnTargetLocationOption>();
             }
 
-            var results = new List<HardDiskMediaReturnTargetLocationOption>(locations.Count);
-            foreach (string location in locations)
+            var results = new List<HardDiskMediaReturnTargetLocationOption>(orderedSlots.Count);
+            var seenLocations = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var dedicatedSlot in orderedSlots)
             {
+                string location = HardDiskBlankSlotLocationSupport.BuildLocationCode(
+                    dedicatedSlot.Cabinet!.Name,
+                    dedicatedSlot.FaceCode,
+                    dedicatedSlot.SlotCode);
+                if (!seenLocations.Add(location))
+                {
+                    continue;
+                }
+
                 string slotCode = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(location);
                 var occupiedIndexes = await GetOccupiedDedicatedSlotSequenceIndexesAsync(slotCode);
                 results.Add(new HardDiskMediaReturnTargetLocationOption
                 {
                     Location = location,
-                    ExistingMediumCount = occupiedIndexes.Count
+                    ExistingMediumCount = occupiedIndexes.Count,
+                    SlotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
+                        categoryName,
+                        dedicatedSlot.Cabinet)
                 });
             }
 

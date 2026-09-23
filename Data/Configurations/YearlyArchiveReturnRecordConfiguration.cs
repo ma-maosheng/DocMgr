@@ -22,11 +22,12 @@ namespace DocMgr.Data.Configurations
             builder.Property(record => record.Remark).HasMaxLength(512);
             builder.Property(record => record.LossDescription).HasMaxLength(1024);
             builder.Property(record => record.HandlerName).HasMaxLength(64);
-            builder.Property(record => record.ReviewerName).HasMaxLength(64);
-            builder.Property(record => record.ApprovedBy).HasMaxLength(64);
+            builder.Property(record => record.DeptHead).HasMaxLength(64);
+            builder.Property(record => record.ArchiveRoomHead).HasMaxLength(64);
             builder.Property(record => record.ApprovalOpinion).HasMaxLength(512);
             builder.Property(record => record.ProductionHead).HasMaxLength(64);
-            builder.Property(record => record.VicePresident).HasMaxLength(64);
+            builder.Property(record => record.ArchiveDeputyPresident).HasMaxLength(64);
+            builder.Property(record => record.ProductionVicePresident).HasMaxLength(64);
             builder.Property(record => record.HandoverApplicant).HasMaxLength(64);
             builder.Property(record => record.HandoverAdmin).HasMaxLength(64);
             builder.Property(record => record.SignedAttachmentUploader).HasMaxLength(64);

@@ -12,8 +12,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public int MediaItemId { get; init; }
 
-        public string ItemType { get; init; } = string.Empty;
-
         public string ItemName { get; init; } = string.Empty;
 
         public string ContainerCode { get; init; } = string.Empty;
@@ -42,7 +40,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 MediaKind = hit.MediaKind,
                 RegisterMediaId = hit.RegisterMediaId,
                 MediaItemId = hit.MediaItemId,
-                ItemType = hit.ItemType,
                 ItemName = hit.ItemName,
                 ContainerCode = hit.ContainerCode,
                 ContentEntryKeyword = hit.ContentSearchKeyword,

@@ -48,15 +48,26 @@ public static class NetworkOnNetDisposalValidationSupport
     }
 
     /// <summary>
-    /// 校验办结所需的申请说明、明细、审核审批人与签批单附件，返回全部错误（空列表表示通过）。
+    /// 校验办结所需的申请说明、明细、启用的审核审批人与签批单附件，返回全部错误（空列表表示通过）。
     /// </summary>
     public static IReadOnlyList<string> ValidateForComplete(
         string? reason,
         IReadOnlyList<NetworkOnNetDisposalItem> items,
+        bool enableDeptHead,
+        string? deptHead,
+        DateTime? deptHeadDate,
+        bool enableArchiveRoomHead,
         string? archiveRoomHead,
         DateTime? archiveRoomHeadDate,
+        bool enableProductionHead,
+        string? productionHead,
+        DateTime? productionHeadDate,
+        bool enableArchiveDeputyPresident,
         string? archiveDeputyPresident,
         DateTime? archiveDeputyPresidentDate,
+        bool enableProductionVicePresident,
+        string? productionVicePresident,
+        DateTime? productionVicePresidentDate,
         IReadOnlyList<SystemAttachment>? attachments,
         IReadOnlySet<int>? existingAssetIds = null)
     {
@@ -66,8 +77,31 @@ public static class NetworkOnNetDisposalValidationSupport
             errors.Add(error.StartsWith("• ", StringComparison.Ordinal) ? error : "• " + error);
         }
 
-        CollectSignerAndDateErrors(archiveRoomHead, archiveRoomHeadDate, "资料室负责人", errors);
-        CollectSignerAndDateErrors(archiveDeputyPresident, archiveDeputyPresidentDate, "分管资料副院长", errors);
+        if (enableDeptHead)
+        {
+            CollectSignerAndDateErrors(deptHead, deptHeadDate, ApprovalWorkflowDomainValues.DisplayDeptHead, errors);
+        }
+
+        if (enableArchiveRoomHead)
+        {
+            CollectSignerAndDateErrors(archiveRoomHead, archiveRoomHeadDate, ApprovalWorkflowDomainValues.DisplayArchiveRoomHead, errors);
+        }
+
+        if (enableProductionHead)
+        {
+            CollectSignerAndDateErrors(productionHead, productionHeadDate, ApprovalWorkflowDomainValues.DisplayProductionHead, errors);
+        }
+
+        if (enableArchiveDeputyPresident)
+        {
+            CollectSignerAndDateErrors(archiveDeputyPresident, archiveDeputyPresidentDate, ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident, errors);
+        }
+
+        if (enableProductionVicePresident)
+        {
+            CollectSignerAndDateErrors(productionVicePresident, productionVicePresidentDate, ApprovalWorkflowDomainValues.DisplayProductionVicePresident, errors);
+        }
+
         CollectMandatoryAttachmentErrors(attachments, errors);
 
         if (existingAssetIds != null)
@@ -84,20 +118,42 @@ public static class NetworkOnNetDisposalValidationSupport
     public static void EnsureValidForComplete(
         string? reason,
         IReadOnlyList<NetworkOnNetDisposalItem> items,
+        bool enableDeptHead,
+        string? deptHead,
+        DateTime? deptHeadDate,
+        bool enableArchiveRoomHead,
         string? archiveRoomHead,
         DateTime? archiveRoomHeadDate,
+        bool enableProductionHead,
+        string? productionHead,
+        DateTime? productionHeadDate,
+        bool enableArchiveDeputyPresident,
         string? archiveDeputyPresident,
         DateTime? archiveDeputyPresidentDate,
+        bool enableProductionVicePresident,
+        string? productionVicePresident,
+        DateTime? productionVicePresidentDate,
         IReadOnlyList<SystemAttachment>? attachments,
         IReadOnlySet<int>? existingAssetIds = null)
     {
         IReadOnlyList<string> errors = ValidateForComplete(
             reason,
             items,
+            enableDeptHead,
+            deptHead,
+            deptHeadDate,
+            enableArchiveRoomHead,
             archiveRoomHead,
             archiveRoomHeadDate,
+            enableProductionHead,
+            productionHead,
+            productionHeadDate,
+            enableArchiveDeputyPresident,
             archiveDeputyPresident,
             archiveDeputyPresidentDate,
+            enableProductionVicePresident,
+            productionVicePresident,
+            productionVicePresidentDate,
             attachments,
             existingAssetIds);
         if (errors.Count > 0)

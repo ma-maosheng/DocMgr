@@ -35,6 +35,26 @@ namespace DocMgr.Models.HardDiskMedia
 
         public bool IsCompleted { get; init; }
 
+        public string DeptHead { get; init; } = string.Empty;
+
+        public string ArchiveRoomHead { get; init; } = string.Empty;
+
+        public string ProductionHead { get; init; } = string.Empty;
+
+        public string ArchiveDeputyPresident { get; init; } = string.Empty;
+
+        public string ProductionVicePresident { get; init; } = string.Empty;
+
+        public bool EnableDeptHead { get; init; }
+
+        public bool EnableArchiveRoomHead { get; init; } = true;
+
+        public bool EnableProductionHead { get; init; }
+
+        public bool EnableArchiveDeputyPresident { get; init; } = true;
+
+        public bool EnableProductionVicePresident { get; init; }
+
         /// <summary>已累计打印次数（不含本次）。</summary>
         public int PrintCount { get; init; }
 

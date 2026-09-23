@@ -73,6 +73,9 @@ namespace DocMgr.Models.YearlyArchive
         /// <summary>签批交接单附件类别。</summary>
         public const string AttachmentKindSignedHandover = "签批交接单";
 
+        /// <summary>其他附件（办结后可增补）。</summary>
+        public const string AttachmentKindOther = "其他附件";
+
 
 
         public static IReadOnlyList<(string Value, string Display)> CompleteAndLossOptions { get; } =

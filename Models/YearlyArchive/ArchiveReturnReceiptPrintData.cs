@@ -26,7 +26,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public List<string> ItemLines { get; init; } = new();
 
-        /// <summary>交接签字栏（归还人与资料室资料管理员，按行结构化以便对齐排版）。</summary>
+        /// <summary>交接签字栏（归还人与资料管理员，按行结构化以便对齐排版）。</summary>
         public List<ArchiveReturnApprovalSignatureLine> HandoverSignatureLines { get; init; } = new();
 
         /// <summary>

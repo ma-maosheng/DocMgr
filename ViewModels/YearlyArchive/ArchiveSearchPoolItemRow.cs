@@ -106,14 +106,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string SelectionScopeDisplay => ArchiveSearchPoolSupport.ResolveSelectionScopeDisplay(
             Selection.SelectionScopeKind,
             ContentEntry?.EntryKind ?? string.Empty,
-            ContentEntry?.EntryName ?? string.Empty,
-            ContentEntry?.RelativePath ?? string.Empty);
+            ContentEntry?.EntryName ?? string.Empty);
 
         public string MatchedContentEntrySummary => ArchiveSearchPoolSupport.ResolveMatchedContentEntrySummary(
             Selection.SelectionScopeKind,
             ContentEntry?.EntryKind ?? string.Empty,
             ContentEntry?.EntryName ?? string.Empty,
-            ContentEntry?.RelativePath ?? string.Empty,
             Hit.MatchedContentEntrySummary);
     }
 }

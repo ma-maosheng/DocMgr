@@ -15,8 +15,6 @@ namespace DocMgr.Repositories.Interfaces
 
         Task<int> SaveChangesAsync();
 
-        Task BackfillFromExistingLinksAsync();
-
         Task<List<YearlyArchiveFilingFact>> SearchByRegisterCriteriaAsync(
             string mediaKind,
             RegisterDirectionSearchCriteria criteria);

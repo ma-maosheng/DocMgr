@@ -47,7 +47,6 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<TopoMapViewModel>();
         services.AddTransient<DeptSettingViewModel>();
         services.AddTransient<RoleSettingViewModel>();
-        services.AddTransient<PermissionSettingViewModel>();
         services.AddTransient<ServerPathSettingViewModel>();
         services.AddTransient<ArchiveFilingViewModel>();
         services.AddTransient<StockHardDiskDirectFilingViewModel>();
@@ -78,6 +77,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<UserPreferenceViewModel>();
         services.AddTransient<DocumentCameraCaptureDialogViewModel>();
         services.AddTransient<BusinessLogicSettingsViewModel>();
+        services.AddTransient<ApprovalWorkflowSettingsViewModel>();
         services.AddTransient<DbOperationLogPageViewModel>();
         return services;
     }

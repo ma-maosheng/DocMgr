@@ -23,7 +23,7 @@ namespace DocMgr.Services.SystemSettings
             [nameof(Role)] = new(
                 "系统角色定义，用于控制菜单与功能权限。",
                 "← 被 Users 引用（RoleId）。",
-                "只读浏览。角色变更会影响全部关联用户的权限，请通过「角色设置」维护。"),
+                "只读浏览。角色定义以种子数据为准；账号权限调整请到「用户管理」。本表不在此增删改。"),
 
             [nameof(Department)] = new(
                 "组织架构中的部门节点，供用户归属及业务单据部门字段引用。",

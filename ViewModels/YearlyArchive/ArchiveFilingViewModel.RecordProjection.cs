@@ -469,7 +469,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                         MaterialCategory = SimulatedMediaItemClassificationSupport.ResolveMaterialCategory(entry.Item),
                         SubCategory = SimulatedMediaItemClassificationSupport.ResolveSubCategory(entry.Item),
                         DataOrganizationForm = SimulatedMediaItemClassificationSupport.ResolveOrganizationFormDisplay(entry.Item),
-                        ItemType = entry.Item.ItemType ?? string.Empty,
                         ContentDesc = entry.Item.ContentDesc ?? string.Empty,
                         ContentCount = entry.Item.ContentCount,
                         Note = entry.Item.Note ?? string.Empty,
@@ -652,8 +651,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 .SelectMany(entry =>
                 {
                     var orderedItems = (entry.Media.Items ?? Enumerable.Empty<YearlyArchiveRegisterMediaItem>())
-                        .OrderBy(item => item.ItemType, StringComparer.OrdinalIgnoreCase)
-                        .ThenBy(item => item.ContentDesc, StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(item => item.ContentDesc, StringComparer.OrdinalIgnoreCase)
                         .ThenBy(item => item.Id)
                         .ToList();
 

@@ -3,6 +3,7 @@ using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 
 namespace DocMgr.Services.HardDiskMedia;
@@ -14,13 +15,19 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
 {
     private readonly IHardDiskDisposalRepository _repository;
     private readonly IBusinessRuleService _businessRuleService;
+    private readonly IUserService _userService;
+    private readonly IApprovalWorkflowService _approvalWorkflowService;
 
     public HardDiskDisposalService(
         IHardDiskDisposalRepository repository,
-        IBusinessRuleService businessRuleService)
+        IBusinessRuleService businessRuleService,
+        IUserService userService,
+        IApprovalWorkflowService approvalWorkflowService)
     {
         _repository = repository;
         _businessRuleService = businessRuleService;
+        _userService = userService;
+        _approvalWorkflowService = approvalWorkflowService;
     }
 
     public async Task<IReadOnlyList<HardDiskDisposalRecord>> SearchRecordsAsync(string? keyword, int? status, int? applyYear)
@@ -246,6 +253,31 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         }
 
         DateTime now = DateTime.Now;
+        var users = _userService.GetAllUsers();
+        var chain = await _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.HardDiskDisposal,
+                ApplicantDept = existing.ApplicantDept,
+                FieldValues = ApprovalChainApplySupport.BuildHardDiskDisposalFieldValues(
+                    existing,
+                    ResolveItemDisposalReason,
+                    item => ResolveItemDispositionMethod(item, existing.DispositionMethod))
+            },
+            users);
+        ApprovalChainApplySupport.ApplyToHardDiskDisposal(existing, chain, now);
+
+        var missing = ApprovalChainApplySupport.CollectMissingSignerErrors(
+            chain,
+            nodeKey => ApprovalChainApplySupport.ReadHardDiskDisposalSigner(existing, nodeKey));
+        if (missing.Count > 0)
+        {
+            throw new InvalidOperationException(
+                string.Join(Environment.NewLine, missing)
+                + Environment.NewLine
+                + "请在「审核审批」中配置或在用户管理中维护对应角色后再审批通过。");
+        }
+
         existing.Status = HardDiskDisposalRecord.StatusApproved;
         existing.ApprovedBy = ResolveUserDisplayName(currentUser);
         existing.ApprovedTime = now;
@@ -439,14 +471,27 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         var record = await _repository.GetRecordByIdAsync(recordId)
             ?? throw new InvalidOperationException("未找到离库处置单。");
 
+        var orderedItems = record.Items.OrderBy(item => item.SortOrder).ToList();
+        var chain = await _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.HardDiskDisposal,
+                ApplicantDept = record.ApplicantDept,
+                FieldValues = ApprovalChainApplySupport.BuildHardDiskDisposalFieldValues(
+                    record,
+                    ResolveItemDisposalReason,
+                    item => ResolveItemDispositionMethod(item, record.DispositionMethod))
+            },
+            _userService.GetAllUsers());
+
         return new HardDiskDisposalPrintData
         {
             DisposalNo = record.DisposalNo,
             ApplyDateText = record.ApplyTime.ToString("yyyy-MM-dd"),
             DisposalReason = HardDiskDisposalDomainValues.BuildReasonSummary(
-                record.Items.Select(item => ResolveItemDisposalReason(item))),
+                orderedItems.Select(item => ResolveItemDisposalReason(item))),
             DispositionMethod = HardDiskDisposalDomainValues.BuildDispositionMethodSummary(
-                record.Items.Select(item => ResolveItemDispositionMethod(item, record.DispositionMethod))),
+                orderedItems.Select(item => ResolveItemDispositionMethod(item, record.DispositionMethod))),
             OtherRemark = record.OtherRemark,
             Reason = record.Reason,
             Remark = record.Remark,
@@ -458,9 +503,18 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             CompletedBy = record.CompletedBy,
             CompletedDateText = record.CompletedAt?.ToString("yyyy-MM-dd") ?? string.Empty,
             IsCompleted = record.IsCompleted,
+            DeptHead = record.DeptHead,
+            ArchiveRoomHead = record.ArchiveRoomHead,
+            ProductionHead = record.ProductionHead,
+            ArchiveDeputyPresident = record.ArchiveDeputyPresident,
+            ProductionVicePresident = record.ProductionVicePresident,
+            EnableDeptHead = chain.DeptHead.IsEnabled,
+            EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled,
+            EnableProductionHead = chain.ProductionHead.IsEnabled,
+            EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled,
+            EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled,
             PrintCount = record.PrintCount,
-            Items = record.Items
-                .OrderBy(item => item.SortOrder)
+            Items = orderedItems
                 .Select(item => new HardDiskDisposalPrintItemData
                 {
                     SortOrder = item.SortOrder,
@@ -523,13 +577,19 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         if (existing.Status is HardDiskDisposalRecord.StatusDraft
             or HardDiskDisposalRecord.StatusSubmitted
             or HardDiskDisposalRecord.StatusWithdrawn
-            or HardDiskDisposalRecord.StatusForceWithdrawn
-            or HardDiskDisposalRecord.StatusCompleted)
+            or HardDiskDisposalRecord.StatusForceWithdrawn)
         {
             return (false, "当前状态不允许上传附件（请在审批通过并确认可上传后操作）。", null);
         }
 
-        if (existing.Status == HardDiskDisposalRecord.StatusApproved
+        if (existing.Status == HardDiskDisposalRecord.StatusCompleted)
+        {
+            if (!string.Equals(category, HardDiskDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
+            {
+                return (false, "办结后仅可增补「其他附件」。", null);
+            }
+        }
+        else if (existing.Status == HardDiskDisposalRecord.StatusApproved
             && !string.Equals(category, HardDiskDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
         {
             // 允许审批后先确认；附件主流程在 SignedUploaded，但 Approved 也可先传其他附件。
@@ -890,7 +950,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
     {
         if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
         {
-            throw new InvalidOperationException("仅资料室资料管理员可办理硬盘离库处置。");
+            throw new InvalidOperationException("仅资料管理员可办理硬盘离库处置。");
         }
     }
 

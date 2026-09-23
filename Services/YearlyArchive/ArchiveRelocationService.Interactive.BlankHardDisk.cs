@@ -52,8 +52,10 @@ namespace DocMgr.Services.YearlyArchive
             int occupiedCount = (await _hardDiskMediaRepository.GetInStockBlankHardDisksInSlotAsync(
                 targetSlotKey,
                 unlockedOnly: false)).Count;
+            var targetCabinet = await _filingRepository.GetMagneticDiskCabinetByNameAsync(request.TargetCabinetName);
             int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
-                CabinetHardDiskSlotCategoryAssignment.CategoryBlank);
+                CabinetHardDiskSlotCategoryAssignment.CategoryBlank,
+                targetCabinet);
             string slotPurposeText = ResolveMagneticSlotCategoryDisplay(
                 CabinetHardDiskSlotCategoryAssignment.CategoryBlank);
             string slotSpaceText = $"迁入后 {occupiedCount + 1} 盘 / 档口容量 {slotCapacity} 盘";

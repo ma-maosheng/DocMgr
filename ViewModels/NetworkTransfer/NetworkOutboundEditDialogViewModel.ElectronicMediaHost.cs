@@ -34,6 +34,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
 
     private void NotifyOutboundDestinationDependentUi()
     {
+        OnPropertyChanged(nameof(ArchiveDeputyPresidentTitle));
         ApplyOutboundElectronicMediaEditorRules();
         RefreshOutboundElectronicMediaTypeOptions();
         _electronicMediaEditor.RefreshOutboundDestinationDependentSettings();

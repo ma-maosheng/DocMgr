@@ -46,7 +46,7 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
         SearchCommand = new RelayCommand(async _ => await RefreshDisposalsAsync());
         SearchBoxesCommand = new RelayCommand(_ => ApplyBoxFilters());
         AddDisposalCommand = new RelayCommand(async _ => await AddDisposalAsync(), _ => CanOperate);
-        OpenDisposalCommand = new RelayCommand(async _ => await OpenDisposalAsync(), _ => SelectedRecord != null && CanOperate);
+        OpenDisposalCommand = new RelayCommand(async _ => await OpenDisposalAsync(), _ => SelectedRecord != null);
         WithdrawDisposalCommand = new RelayCommand(async _ => await WithdrawDisposalAsync(), _ => CanWithdrawSelected);
     }
 

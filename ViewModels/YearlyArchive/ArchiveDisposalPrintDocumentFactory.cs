@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -19,19 +20,45 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private const double TitleChromeHeight = 90;
         private const double HeaderHeight = 28;
-        private const double StandardRowHeight = 36;
-        /// <summary>审核：资料室负责人、生产科负责人（签字+日期，2 行）。</summary>
-        private const double ReviewRowHeight = 52;
-        /// <summary>审批：分管资料室副院长、分管生产副院长（签字+日期，2 行）。</summary>
-        private const double ApproveRowHeight = 52;
-        private const double RowChromeDip = 6;
+        private const double StandardRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
+        /// <summary>审核：资料室负责人、生产科负责人（签字+日期，最多 2 行）。</summary>
+        private const double ReviewRowHeight = PrintPageLayoutSupport.TableRowContentHeightTwoLinesDip;
+        /// <summary>审批：分管资料室副院长、分管生产副院长（签字+日期，最多 2 行）。</summary>
+        private const double ApproveRowHeight = PrintPageLayoutSupport.TableRowContentHeightTwoLinesDip;
+        private const double RowChromeDip = PrintPageLayoutSupport.TableCellPaddingDip;
         private const string BlankDateSuffix = "日期:______年___月___日";
+
+        /// <summary>申请说明按正文估行后的上限。</summary>
+        private const int ReasonMaxLines = 5;
+
+        /// <summary>备注按正文估行后的上限。</summary>
+        private const int RemarkMaxLines = 3;
+
+        /// <summary>待处置明细按正文估行后的上限（撑满下限）。</summary>
+        private const int DetailMaxLines = 20;
 
         internal static FlowDocument Create(YearlyArchiveDisposalPrintData data)
         {
             ArgumentNullException.ThrowIfNull(data);
 
-            double itemRowHeight = CalculateItemRowHeight();
+            string reasonText = EmptyAsPlaceholder(data.Reason);
+            string remarkText = EmptyAsPlaceholder(data.Remark);
+            string itemListText = BuildItemList(data);
+            string reviewSection = BuildReviewSection(data);
+            string approveSection = BuildApproveSection(data);
+            bool hasReview = !string.IsNullOrWhiteSpace(reviewSection);
+            bool hasApprove = !string.IsNullOrWhiteSpace(approveSection);
+
+            double reasonRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(reasonText, ReasonMaxLines);
+            double remarkRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(remarkText, RemarkMaxLines);
+            double itemRowHeight = CalculateItemRowHeight(
+                data,
+                reasonRowHeight,
+                remarkRowHeight,
+                hasReview,
+                hasApprove,
+                itemListText);
+
             var document = CreateDocumentSkeleton();
 
             string rail = string.Equals(
@@ -63,19 +90,28 @@ namespace DocMgr.ViewModels.YearlyArchive
                 "离库原因", EmptyAsPlaceholder(data.DisposalReason),
                 "处置方式", EmptyAsPlaceholder(data.DispositionMethod),
                 StandardRowHeight));
-            rowGroup.Rows.Add(CreateSingleRow("申请说明", EmptyAsPlaceholder(data.Reason), StandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("申请说明", reasonText, reasonRowHeight));
             rowGroup.Rows.Add(CreateSingleRow(
                 "待处置明细",
-                BuildItemList(data),
+                itemListText,
                 itemRowHeight,
                 verticalAlignTop: true));
             rowGroup.Rows.Add(CreateDoubleRow(
                 "申请人", EmptyAsPlaceholder(data.ApplicantName),
                 "申请部门", EmptyAsPlaceholder(data.ApplicantDept),
                 StandardRowHeight));
-            rowGroup.Rows.Add(CreateSingleRow("审核", BuildReviewSection(data), ReviewRowHeight, verticalAlignTop: true));
-            rowGroup.Rows.Add(CreateSingleRow("审批", BuildApproveSection(data), ApproveRowHeight, verticalAlignTop: true));
-            rowGroup.Rows.Add(CreateSingleRow("备注", EmptyAsPlaceholder(data.Remark), StandardRowHeight));
+
+            if (hasReview)
+            {
+                rowGroup.Rows.Add(CreateSingleRow("审核", reviewSection, ReviewRowHeight, verticalAlignTop: true));
+            }
+
+            if (hasApprove)
+            {
+                rowGroup.Rows.Add(CreateSingleRow("审批", approveSection, ApproveRowHeight, verticalAlignTop: true));
+            }
+
+            rowGroup.Rows.Add(CreateSingleRow("备注", remarkText, remarkRowHeight));
 
             document.Blocks.Add(CreateMainTable(rowGroup));
             document.Blocks.Add(CreateFooterParagraph(data));
@@ -83,25 +119,42 @@ namespace DocMgr.ViewModels.YearlyArchive
             return document;
         }
 
-        private static double CalculateItemRowHeight()
+        private static double CalculateItemRowHeight(
+            YearlyArchiveDisposalPrintData data,
+            double reasonRowHeight,
+            double remarkRowHeight,
+            bool hasReview,
+            bool hasApprove,
+            string itemListText)
         {
-            // 固定行：原因方式、申请说明、申请人、审核、审批、备注。
+            // 固定行：原因方式、申请人(2) + 申请说明 + 备注 + [审核]/[审批]。
+            int oneLineRows = 2;
             double fixedContentHeight =
-                StandardRowHeight * 4
-                + ReviewRowHeight
-                + ApproveRowHeight;
-            const int fixedRowCount = 6;
+                StandardRowHeight * oneLineRows
+                + reasonRowHeight
+                + remarkRowHeight
+                + (hasReview ? ReviewRowHeight : 0)
+                + (hasApprove ? ApproveRowHeight : 0);
+            int fixedRowCount = oneLineRows + 2 + (hasReview ? 1 : 0) + (hasApprove ? 1 : 0);
             double fixedTableHeight = fixedContentHeight
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, RowChromeDip) * fixedRowCount;
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(
-                lineCount: 4,
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, RowChromeDip) * fixedRowCount
+                + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
+
+            string footerText = BuildFooterNoteText(data);
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
+                footerText,
+                PrintPageLayoutSupport.ContentWidthDip,
+                fontSizeDip: 10.5,
                 lineHeightDip: 18,
                 topMarginDip: 15);
             double reservedHeight = TitleChromeHeight + HeaderHeight + footerHeight + fixedTableHeight;
+            double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                itemListText,
+                DetailMaxLines);
             return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
                 reservedHeight,
-                minimumRowHeightDip: 100,
-                stretchRowCellPaddingDip: RowChromeDip);
+                contentNeededHeight,
+                RowChromeDip);
         }
 
         private static FlowDocument CreateDocumentSkeleton()
@@ -174,32 +227,53 @@ namespace DocMgr.ViewModels.YearlyArchive
             return builder.ToString();
         }
 
-        /// <summary>审核栏：资料室负责人、生产科负责人（仅签字与日期）。</summary>
+        /// <summary>审核栏：按配置启用的职能部门节点（一级一行，未启用整栏隐藏）。</summary>
         private static string BuildReviewSection(YearlyArchiveDisposalPrintData data)
         {
-            if (!data.IsCompleted)
+            var lines = new List<string>();
+            if (data.EnableDeptHead)
             {
-                return "资料室负责人签字：                              " + BlankDateSuffix + "\n"
-                     + "生产科负责人签字：                              " + BlankDateSuffix;
+                lines.Add(data.IsCompleted
+                    ? BuildSignerLine(ApprovalWorkflowDomainValues.DisplayDeptHead, data.DeptHead, ResolveCompletedDateText(data))
+                    : ApprovalWorkflowDomainValues.DisplayDeptHead + "：                              " + BlankDateSuffix);
             }
 
-            string dateText = ResolveCompletedDateText(data);
-            return BuildSignerLine("资料室负责人签字", data.ArchiveRoomHead, dateText) + "\n"
-                 + BuildSignerLine("生产科负责人签字", data.ProductionHead, dateText);
+            if (data.EnableArchiveRoomHead)
+            {
+                lines.Add(data.IsCompleted
+                    ? BuildSignerLine(ApprovalWorkflowDomainValues.DisplayArchiveRoomHead, data.ArchiveRoomHead, ResolveCompletedDateText(data))
+                    : ApprovalWorkflowDomainValues.DisplayArchiveRoomHead + "：                              " + BlankDateSuffix);
+            }
+
+            if (data.EnableProductionHead)
+            {
+                lines.Add(data.IsCompleted
+                    ? BuildSignerLine(ApprovalWorkflowDomainValues.DisplayProductionHead, data.ProductionHead, ResolveCompletedDateText(data))
+                    : ApprovalWorkflowDomainValues.DisplayProductionHead + "：                              " + BlankDateSuffix);
+            }
+
+            return lines.Count == 0 ? string.Empty : string.Join("\n", lines);
         }
 
-        /// <summary>审批栏：分管资料室副院长、分管生产副院长（仅签字与日期）。</summary>
+        /// <summary>审批栏：按配置启用的院级节点（一级一行，未启用整栏隐藏）。</summary>
         private static string BuildApproveSection(YearlyArchiveDisposalPrintData data)
         {
-            if (!data.IsCompleted)
+            var lines = new List<string>();
+            if (data.EnableArchiveDeputyPresident)
             {
-                return "分管资料室副院长签字：                          " + BlankDateSuffix + "\n"
-                     + "分管生产副院长签字：                            " + BlankDateSuffix;
+                lines.Add(data.IsCompleted
+                    ? BuildSignerLine(ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident, data.ArchiveDeputyPresident, ResolveCompletedDateText(data))
+                    : ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident + "：                          " + BlankDateSuffix);
             }
 
-            string dateText = ResolveCompletedDateText(data);
-            return BuildSignerLine("分管资料室副院长签字", data.ArchiveDeputyPresident, dateText) + "\n"
-                 + BuildSignerLine("分管生产副院长签字", data.ProductionVicePresident, dateText);
+            if (data.EnableProductionVicePresident)
+            {
+                lines.Add(data.IsCompleted
+                    ? BuildSignerLine(ApprovalWorkflowDomainValues.DisplayProductionVicePresident, data.ProductionVicePresident, ResolveCompletedDateText(data))
+                    : ApprovalWorkflowDomainValues.DisplayProductionVicePresident + "：                            " + BlankDateSuffix);
+            }
+
+            return lines.Count == 0 ? string.Empty : string.Join("\n", lines);
         }
 
         private static string BuildSignerLine(string label, string? name, string dateText)
@@ -226,14 +300,21 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
             footer.Inlines.Add(new Run(
-                "1、本单由资料室资料管理员发起，按“保存草稿、提交、打印签批单、线下审核审批、系统审批、上传签批单、办结”流程办理。\n"));
+                "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下审核审批、系统审批、上传签批单、办结”流程办理。\n"));
             footer.Inlines.Add(new Run(
-                "      2、请线下完成审核（资料室负责人、生产科负责人）与审批（分管资料室副院长、分管生产副院长）签字后回传系统；含离库销毁时须同步上传处置资料照片。\n"));
+                "      2、请线下完成审核（资料室签字、生产科签字）与审批（分管资料院长签字、分管生产院长签字）签字后回传系统；含离库销毁时须同步上传处置资料照片。\n"));
             footer.Inlines.Add(new Run(
                 $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
 
             return footer;
         }
+
+        /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
+        private static string BuildFooterNoteText(YearlyArchiveDisposalPrintData data) =>
+            "说明：" +
+            "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下审核审批、系统审批、上传签批单、办结”流程办理。\n" +
+            "      2、请线下完成审核（资料室签字、生产科签字）与审批（分管资料院长签字、分管生产院长签字）签字后回传系统；含离库销毁时须同步上传处置资料照片。\n" +
+            $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。";
 
         private static Table CreateHeaderTable(string left, string right)
         {
@@ -257,10 +338,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 BorderBrush = Brushes.Black,
                 BorderThickness = new Thickness(2, 2, 0, 0)
             };
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
+            PrintPageLayoutSupport.ApplyApprovalFormMainTableColumns(table);
             table.RowGroups.Add(rowGroup);
             return table;
         }
@@ -304,7 +382,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 BorderThickness = new Thickness(0, 0, 1, 1),
                 BorderBrush = Brushes.Black,
-                Padding = new Thickness(2, 6, 2, 2)
+                Padding = new Thickness(2, RowChromeDip, 2, RowChromeDip)
             };
         }
 

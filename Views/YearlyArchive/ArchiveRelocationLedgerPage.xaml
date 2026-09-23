@@ -70,12 +70,6 @@
                         <ColumnDefinition Width="88"/>
                         <ColumnDefinition Width="6"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="140" MinWidth="100"/>
-                        <ColumnDefinition Width="8"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="6"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <TextBlock Grid.Column="0" Text="筛选条件" FontWeight="SemiBold" Foreground="#37474F" VerticalAlignment="Center"/>
@@ -118,9 +112,11 @@
                         </TextBox.InputBindings>
                     </TextBox>
 
-                    <Button Grid.Column="23" Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
-                    <Button Grid.Column="25" Content="重置" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
-                    <Button Grid.Column="27" Content="定位立档" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                    <StackPanel Grid.Column="23" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                        <Button Content="重置" Margin="4,0,0,0" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                        <Button Content="定位立档" Margin="6,0,0,0" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                    </StackPanel>
                 </Grid>
             </ScrollViewer>
         </Border>

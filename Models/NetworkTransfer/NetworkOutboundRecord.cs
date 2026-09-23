@@ -71,17 +71,21 @@ namespace DocMgr.Models.NetworkTransfer
 
         public DateTime ApplyTime { get; set; }
 
-        public string ProdLeader { get; set; } = string.Empty;
+        public string ProductionHead { get; set; } = string.Empty;
 
-        public DateTime? ProdDate { get; set; }
+        public DateTime? ProductionHeadDate { get; set; }
 
-        public string RndLeader { get; set; } = string.Empty;
+        public string ArchiveRoomHead { get; set; } = string.Empty;
 
-        public DateTime? RndDate { get; set; }
+        public DateTime? ArchiveRoomHeadDate { get; set; }
 
-        public string DeputyLeader { get; set; } = string.Empty;
+        public string ArchiveDeputyPresident { get; set; } = string.Empty;
 
-        public DateTime? DeputyDate { get; set; }
+        public DateTime? ArchiveDeputyPresidentDate { get; set; }
+
+        public string ProductionVicePresident { get; set; } = string.Empty;
+
+        public DateTime? ProductionVicePresidentDate { get; set; }
 
         public string Deliverer { get; set; } = string.Empty;
 
@@ -91,9 +95,9 @@ namespace DocMgr.Models.NetworkTransfer
 
         public DateTime? AdminDate { get; set; }
 
-        public string DeptLeader { get; set; } = string.Empty;
+        public string DeptHead { get; set; } = string.Empty;
 
-        public DateTime? DeptDate { get; set; }
+        public DateTime? DeptHeadDate { get; set; }
 
         public bool SignedAttachmentUploaded { get; set; }
 

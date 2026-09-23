@@ -1,25 +1,33 @@
 ---
-description: 电子资料数据组织形式：目录型允许根目录混合文件与子目录；文件型仅散文件
-globs: "**/{ElectronicMediaItemSupport.cs,ElectronicMediaContentScanService.cs,ArchiveRegisterService.PrintingAndMaintenance.cs,NetworkInboundExternalMediaValidationSupport.cs,NetworkOutboundExternalMediaValidationSupport.cs,ElectronicMediaEditingViewModel.cs,ArchiveRegisterViewModel.Media.cs,StockHardDiskDirectFilingModels.cs,ArchiveRegisterDomainValues.cs}"
+description: 电子资料数据组织形式：固定目录型（单一父目录模型），不再支持文件型与多选扫描
+globs: "**/{ElectronicMediaItemSupport.cs,ElectronicMediaContentScanService.cs,IElectronicMediaContentScanService.cs,ArchiveRegisterService.PrintingAndMaintenance.cs,NetworkInboundExternalMediaValidationSupport.cs,NetworkOutboundExternalMediaValidationSupport.cs,ElectronicMediaEditingViewModel.cs,ElectronicMediaEditingViewModel.OutboundStoragePath.cs,ArchiveRegisterViewModel.Media.cs,ArchiveRegisterViewModel.cs,ArchiveRegisterSupportTypes.cs,RegisterMediaTreeSupport.cs,StockHardDiskDirectFilingModels.cs,ArchiveRegisterDomainValues.cs,FieldDomainSeedService.SeedCatalog.cs,ArchiveRegisterResources.xaml}"
 alwaysApply: false
 ---
 
-# 电子资料数据组织形式（方案 B）
+# 电子资料数据组织形式（单一父目录模型）
 
-域值只有 **目录型** / **文件型**，不增加「混合型」，也不把一个子项拆成两条。
+域值只有 **目录型**，且系统固定为目录型：
 
-## 目录型
+- **不再有「文件型」**：域值种子只保留目录型；`ArchiveRegisterDomainValues.ElectronicDataOrganizationFormFile` 已删除，禁止恢复。
+- UI 不再提供「组织形式」选择控件（编辑模板与审批只读模板均已移除）；新子项一律按目录型创建。
 
-- 子项有**统一根目录**（扫描时选择该根，而不是只勾选其中一部分子文件夹当作整条子项）。
-- 根下可以**同时**有散文件和一级子目录；`Entries` 的 `EntryKind` 允许「目录」「文件」混合。
-- 扫描：把所选文件夹当作子项根，登记其**直接子项**（一级子目录 + 根下文件）；数据量按根目录整棵树统计。
-- 存量硬盘直办的第四层子项文件夹一律记目录型（即使根下暂时只有文件）。
+## 单一父目录模型
 
-## 文件型
+- 一个资料子项的电子内容**只能来自一个父目录**（扫描目录选择为单选，不可多选）。
+- 所选父目录（**支持直接选择盘符**，如 `D:\`）内**全部**文件与一级子目录都是该子项的明细；父目录下散文件记「文件」，一级子目录记「目录」，允许混合。
+- 数据量与文件个数按父目录**整棵树**递归统计。
+- 选择盘符根目录时需弹确认（整盘扫描可能耗时较长），实现在两个编辑 VM 的 `PickFolderAndScanElectronicContentAsync`。
 
-- **没有**统一根目录，只登记散文件。
-- 全部明细必须是「文件」；出现「目录」即校验失败。
+## 相对路径字段已删除
+
+- 单一父目录模型下相对路径恒等于名称，`YearlyArchiveRegisterElectronicMediaItemEntry.RelativePath` 字段及其在各快照表（检索集明细 `ContentEntryRelativePath`、出库明细 `ContentEntryRelativePath`）中的冗余副本已全部删除，禁止恢复。
+- 条目完整路径 = `StoragePath`（子项父目录）+ `EntryName`（目录/文件名）；条目级立档路径用 `ElectronicFilingStoragePathSupport.BuildEntryFilingPath(filingStoragePath, entryName)` 合成。
+- 「选择文件…」按钮与 `ScanFiles`、`PickFilesAndScanElectronicContentCommand` 已删除，禁止恢复散文件登记入口。
+
+## 出网/出网转建档的存储目录
+
+- 出网对话框与出网转建档场景：子项存储目录由表头（年度/项目/资料名称/子项名）自动生成，扫描落盘路径仅在未自定义时覆盖；「填写合规目录」按钮已删除（在 YA-REG-ED 上原本就是死绑定）。
 
 ## 共用校验
 
-提交/办结校验走 `ElectronicMediaItemSupport.CollectDataOrganizationEntryErrors`，建档申请、入网、出网补录/交接、存量直办写入立档链均适用。不得再用「全部 EntryKind 必须等于组织形式对应的单一类型」去覆盖已扫描明细。
+提交/办结校验走 `ElectronicMediaItemSupport.CollectDataOrganizationEntryErrors`，建档申请、入网、出网补录/交接、存量直办写入立档链均适用。目录型允许「目录」「文件」混合，不得用单一类型去覆盖已扫描明细。

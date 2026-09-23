@@ -8,7 +8,7 @@ alwaysApply: false
 
 ## 菜单位置
 
-「历史存档资料管理」→「资料离库处置」单一入口（`HA-DSP` / `HA-DSP-ED`）。权限仅资料室资料管理员。
+「历史存档资料管理」→「资料离库处置」单一入口（`HA-DSP` / `HA-DSP-ED`）。权限仅资料管理员。
 
 ## 口径
 
@@ -16,7 +16,7 @@ alwaysApply: false
 2. **一单一种方式**：离库销毁 / 离库转交 / 其他。混用方式请拆单。
 3. **最小单元**：在柜档案盒（`HistoryArchiveBox.BoxCode` 四段盒号，`LifecycleStatus=在库`）。未解析盒号不进候选。
 4. **编号前缀**：`史离-处`（`BusinessNoCategory.HistoryArchiveDisposalApply`）。
-5. **流程**：对齐 NT-DSP 七态（草稿→提交→审批→确认可上传→上传签批→办结）。仅草稿、已提交可撤回作废并解锁。
+5. **流程**：对齐 NT-DSP 七态（草稿→提交→审批→确认可上传→上传签批→办结）。仅草稿、已提交可撤回作废并解锁。办理壳与办结后增补「其他附件」见 `approval-handover-workspace.mdc`。
 6. **审核栏**：资料室负责人 + 分管资料副院长（姓名可改，日期只读）。
 
 ## 混放盒

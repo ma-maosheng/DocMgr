@@ -16,7 +16,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public string MaterialName { get; init; } = string.Empty;
 
-        public string SourceType { get; init; } = ArchiveRegisterDomainValues.SourceTypeStockDirect;
+        public string SourceType { get; init; } = ArchiveRegisterDomainValues.SourceTypeInternal;
 
         public string ArchivePurpose { get; init; } = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
 
@@ -77,6 +77,16 @@ namespace DocMgr.Models.YearlyArchive
         public string SubCategory { get; init; } = ArchiveRegisterDomainValues.SimulatedSubCategoryOther;
 
         public string OrganizationForm { get; init; } = ArchiveRegisterDomainValues.SimulatedOrganizationFormBound;
+
+        /// <summary>
+        /// 资料来源（默认内部），允许按子项分别指定；空白时回落请求级来源。
+        /// </summary>
+        public string SourceType { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 提供单位（内部默认资料室；外来须填写），允许按子项分别指定；空白时回落请求级提供单位。
+        /// </summary>
+        public string ProvideUnit { get; init; } = string.Empty;
     }
 
     /// <summary>

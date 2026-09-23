@@ -29,8 +29,6 @@ namespace DocMgr.Models.Cabinets
 
         public string ProvideUnit { get; init; } = string.Empty;
 
-        public string ItemType { get; init; } = string.Empty;
-
         public string ConfidentialLevel { get; init; } = string.Empty;
 
         /// <summary>审批确定的资料子项份数。</summary>

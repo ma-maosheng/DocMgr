@@ -4,10 +4,12 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
 using DocMgr.Models.Cabinets;
+using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.HardDiskMedia;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
@@ -27,6 +29,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IHardDiskMediaService _hardDiskMediaService;
         private readonly ICabinetService _cabinetService;
         private readonly IUserService _userService;
+        private readonly IApprovalWorkflowService _approvalWorkflowService;
         private readonly List<ArchiveDisposalCandidateRow> _candidatePool = new();
         private YearlyArchiveDisposalRecord _record;
         private bool _hasCommittedChanges;
@@ -46,10 +49,16 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _filterKeyword = string.Empty;
         private string _filterSourceRegisterKind = AllFilterText;
         private string _filterMediumKind = AllFilterText;
+        private string _defaultDeptHead = string.Empty;
         private string _defaultArchiveRoomHead = string.Empty;
         private string _defaultProductionHead = string.Empty;
         private string _defaultArchiveDeputyPresident = string.Empty;
         private string _defaultProductionVicePresident = string.Empty;
+        private bool _enableDeptHead;
+        private bool _enableArchiveRoomHead = true;
+        private bool _enableProductionHead = true;
+        private bool _enableArchiveDeputyPresident = true;
+        private bool _enableProductionVicePresident = true;
 
         public ArchiveDisposalEditDialogViewModel(
             IArchiveDisposalService disposalService,
@@ -58,6 +67,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IHardDiskMediaService hardDiskMediaService,
             ICabinetService cabinetService,
             IUserService userService,
+            IApprovalWorkflowService approvalWorkflowService,
             YearlyArchiveDisposalRecord record)
         {
             ArgumentNullException.ThrowIfNull(record);
@@ -67,6 +77,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _hardDiskMediaService = hardDiskMediaService;
             _cabinetService = cabinetService;
             _userService = userService;
+            _approvalWorkflowService = approvalWorkflowService;
             _record = record;
 
             MoveToDisposalCommand = new RelayCommand(_ => MoveToDisposal(), _ => CanEditHeader && AvailableItems.Any(i => i.IsSelected));
@@ -93,9 +104,27 @@ namespace DocMgr.ViewModels.YearlyArchive
             CaptureFromDocumentCameraCommand = new RelayCommand(
                 async _ => await CaptureFromDocumentCameraAsync(),
                 _ => CanUploadAttachment);
+            UploadSignedFormAttachmentCommand = new RelayCommand(
+                async _ => await UploadAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategorySignedForm),
+                _ => CanUploadMandatoryAttachment);
+            CaptureSignedFormAttachmentCommand = new RelayCommand(
+                async _ => await CaptureAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategorySignedForm),
+                _ => CanUploadMandatoryAttachment);
+            UploadScenePhotoAttachmentCommand = new RelayCommand(
+                async _ => await UploadAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategoryScenePhoto),
+                _ => CanUploadMandatoryAttachment && RequiresScenePhoto);
+            CaptureScenePhotoAttachmentCommand = new RelayCommand(
+                async _ => await CaptureAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategoryScenePhoto),
+                _ => CanUploadMandatoryAttachment && RequiresScenePhoto);
+            UploadOtherAttachmentCommand = new RelayCommand(
+                async _ => await UploadAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategoryOther),
+                _ => CanUploadOtherAttachment);
+            CaptureOtherAttachmentCommand = new RelayCommand(
+                async _ => await CaptureAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategoryOther),
+                _ => CanUploadOtherAttachment);
             DeleteAttachmentCommand = new RelayCommand(
                 async item => await DeleteAttachmentAsync(item as SystemAttachment),
-                item => item is SystemAttachment && CanUploadAttachment);
+                item => item is SystemAttachment && CanUploadMandatoryAttachment);
             ViewAttachmentCommand = new RelayCommand(
                 async item => await ViewAttachmentAsync(item as SystemAttachment),
                 item => item is SystemAttachment);
@@ -129,6 +158,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<ArchiveDisposalItemRow> Items { get; } = new();
 
         public ObservableCollection<SystemAttachment> Attachments { get; } = new();
+
+        public ObservableCollection<SystemAttachment> SignedFormAttachments { get; } = new();
+
+        public ObservableCollection<SystemAttachment> ScenePhotoAttachments { get; } = new();
+
+        public ObservableCollection<SystemAttachment> OtherAttachments { get; } = new();
 
         public ObservableCollection<string> DispositionMethodOptions { get; } = new();
 
@@ -194,6 +229,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string ApplicantDept => _record.ApplicantDept;
 
+        /// <summary>默认部门审核（只读展示）。</summary>
+        public string DefaultDeptHeadDisplay => EmptyAsDash(_defaultDeptHead);
+
         /// <summary>默认资料室负责人（只读展示）。</summary>
         public string DefaultArchiveRoomHeadDisplay => EmptyAsDash(_defaultArchiveRoomHead);
 
@@ -205,6 +243,22 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         /// <summary>默认分管生产副院长（只读展示）。</summary>
         public string DefaultProductionVicePresidentDisplay => EmptyAsDash(_defaultProductionVicePresident);
+
+        public bool ShowDeptHeadApprover => _enableDeptHead;
+
+        public bool ShowArchiveRoomHeadApprover => _enableArchiveRoomHead;
+
+        public bool ShowProductionHeadApprover => _enableProductionHead;
+
+        public bool ShowArchiveDeputyPresidentApprover => _enableArchiveDeputyPresident;
+
+        public bool ShowProductionVicePresidentApprover => _enableProductionVicePresident;
+
+        public bool ShowReviewApproverSection =>
+            ShowDeptHeadApprover || ShowArchiveRoomHeadApprover || ShowProductionHeadApprover;
+
+        public bool ShowApproveApproverSection =>
+            ShowArchiveDeputyPresidentApprover || ShowProductionVicePresidentApprover;
 
         public string Reason
         {
@@ -304,10 +358,44 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool CanConfirmUpload =>
             CanOperate && _record.Status == YearlyArchiveDisposalRecord.StatusApproved;
 
+        /// <summary>办结后资料管理员可增补「其他附件」。</summary>
+        public bool CanSupplementOtherAttachments =>
+            ApprovalWorkflowButtonSupport.CanSupplementOtherAttachments(
+                _record.Status == YearlyArchiveDisposalRecord.StatusCompleted,
+                CanOperate);
+
         public bool CanUploadAttachment =>
             CanOperate
             && (_record.Status == YearlyArchiveDisposalRecord.StatusApproved
-                || _record.Status == YearlyArchiveDisposalRecord.StatusSignedUploaded);
+                || _record.Status == YearlyArchiveDisposalRecord.StatusSignedUploaded
+                || CanSupplementOtherAttachments);
+
+        /// <summary>签批单/处置资料照片：仅确认可上传后、办结前可传。</summary>
+        public bool CanUploadMandatoryAttachment =>
+            CanUploadAttachment && !CanSupplementOtherAttachments;
+
+        /// <summary>其他附件：确认可上传后及办结后均可增补。</summary>
+        public bool CanUploadOtherAttachment => CanUploadAttachment;
+
+        /// <summary>当前明细是否含须上传处置资料照片的处置方式。</summary>
+        public bool RequiresScenePhoto =>
+            ArchiveDisposalDomainValues.RequiresScenePhoto(Items.Select(item => item.DispositionMethod));
+
+        public string UploadAttachmentHintText => CanSupplementOtherAttachments
+            ? "办结后仅可增补「其他附件」；不可删除已有附件。"
+            : "请在「确认可上传」后分区上传签批单与处置资料照片；办结前仍可继续补传。";
+
+        public string ApproveHintText => CanApprove
+            ? "请按线下签批结果执行审批通过；通过后点击「确认可上传」。"
+            : "仅「已提交」状态可审批通过。";
+
+        public string ConfirmUploadHintText => CanConfirmUpload
+            ? "确认后可分区上传签批单与处置资料照片。"
+            : "请先执行「审批通过」。";
+
+        public string CompleteHintText => CanComplete
+            ? "确认办结前请核对实物撤柜/低格确认与必备附件。"
+            : "请先上传签批单（销毁须处置资料照片）后再确认办结。";
 
         public bool CanComplete =>
             CanOperate && _record.Status == YearlyArchiveDisposalRecord.StatusSignedUploaded;
@@ -338,6 +426,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand ConfirmUploadCommand { get; }
         public RelayCommand UploadAttachmentCommand { get; }
         public RelayCommand CaptureFromDocumentCameraCommand { get; }
+        public RelayCommand UploadSignedFormAttachmentCommand { get; }
+        public RelayCommand CaptureSignedFormAttachmentCommand { get; }
+        public RelayCommand UploadScenePhotoAttachmentCommand { get; }
+        public RelayCommand CaptureScenePhotoAttachmentCommand { get; }
+        public RelayCommand UploadOtherAttachmentCommand { get; }
+        public RelayCommand CaptureOtherAttachmentCommand { get; }
         public RelayCommand DeleteAttachmentCommand { get; }
         public RelayCommand ViewAttachmentCommand { get; }
         public RelayCommand CompleteCommand { get; }
@@ -350,7 +444,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 BindFromRecord(_record);
-                ReloadDefaultApprovers();
+                await ReloadDefaultApproversAsync();
                 if (_record.Id <= 0 && string.IsNullOrWhiteSpace(_record.DisposalNo))
                 {
                     DisposalNo = await _disposalService.GenerateNextDisposalNoAsync();
@@ -376,17 +470,44 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        private void ReloadDefaultApprovers()
+        private async Task ReloadDefaultApproversAsync()
         {
-            var approvers = ArchiveDisposalDefaultApproverSupport.Resolve(_userService.GetAllUsers());
+            var users = _userService.GetAllUsers();
+            var chain = await _approvalWorkflowService.ResolveAsync(
+                new ApprovalChainResolveRequest
+                {
+                    BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveDisposal,
+                    FieldValues = ApprovalChainApplySupport.BuildYearlyDisposalFieldValues(
+                        _record.MediaKind,
+                        Items.Select(item => item.ToEntity()))
+                },
+                users);
+            var approvers = chain.MatchedRuleId == null
+                ? ArchiveDisposalDefaultApproverSupport.Resolve(users)
+                : ArchiveDisposalDefaultApproverSupport.FromChain(chain);
+
+            _defaultDeptHead = approvers.DeptHead;
             _defaultArchiveRoomHead = approvers.ArchiveRoomHead;
             _defaultProductionHead = approvers.ProductionHead;
             _defaultArchiveDeputyPresident = approvers.ArchiveDeputyPresident;
             _defaultProductionVicePresident = approvers.ProductionVicePresident;
+            _enableDeptHead = approvers.EnableDeptHead;
+            _enableArchiveRoomHead = approvers.EnableArchiveRoomHead;
+            _enableProductionHead = approvers.EnableProductionHead;
+            _enableArchiveDeputyPresident = approvers.EnableArchiveDeputyPresident;
+            _enableProductionVicePresident = approvers.EnableProductionVicePresident;
+            OnPropertyChanged(nameof(DefaultDeptHeadDisplay));
             OnPropertyChanged(nameof(DefaultArchiveRoomHeadDisplay));
             OnPropertyChanged(nameof(DefaultProductionHeadDisplay));
             OnPropertyChanged(nameof(DefaultArchiveDeputyPresidentDisplay));
             OnPropertyChanged(nameof(DefaultProductionVicePresidentDisplay));
+            OnPropertyChanged(nameof(ShowDeptHeadApprover));
+            OnPropertyChanged(nameof(ShowArchiveRoomHeadApprover));
+            OnPropertyChanged(nameof(ShowProductionHeadApprover));
+            OnPropertyChanged(nameof(ShowArchiveDeputyPresidentApprover));
+            OnPropertyChanged(nameof(ShowProductionVicePresidentApprover));
+            OnPropertyChanged(nameof(ShowReviewApproverSection));
+            OnPropertyChanged(nameof(ShowApproveApproverSection));
         }
 
         private static string EmptyAsDash(string? value)
@@ -423,10 +544,23 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanSubmit));
             OnPropertyChanged(nameof(CanApprove));
             OnPropertyChanged(nameof(CanConfirmUpload));
+            OnPropertyChanged(nameof(CanSupplementOtherAttachments));
             OnPropertyChanged(nameof(CanUploadAttachment));
+            OnPropertyChanged(nameof(CanUploadMandatoryAttachment));
+            OnPropertyChanged(nameof(CanUploadOtherAttachment));
+            OnPropertyChanged(nameof(RequiresScenePhoto));
+            OnPropertyChanged(nameof(UploadAttachmentHintText));
+            OnPropertyChanged(nameof(ApproveHintText));
+            OnPropertyChanged(nameof(ConfirmUploadHintText));
+            OnPropertyChanged(nameof(CompleteHintText));
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(CanPrint));
             OnPropertyChanged(nameof(CanWithdraw));
+
+            if (CanSupplementOtherAttachments)
+            {
+                UploadCategory = ArchiveDisposalDomainValues.AttachmentCategoryOther;
+            }
         }
 
         private async Task ReloadCandidatePoolAsync()
@@ -1020,7 +1154,11 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
-                if (_record.Status == YearlyArchiveDisposalRecord.StatusApproved
+                if (CanSupplementOtherAttachments)
+                {
+                    UploadCategory = ArchiveDisposalDomainValues.AttachmentCategoryOther;
+                }
+                else if (_record.Status == YearlyArchiveDisposalRecord.StatusApproved
                     && !string.Equals(UploadCategory, ArchiveDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
                 {
                     _dialogService.ShowMessage("请先点击「确认可上传」，再上传签批单或处置资料照片。");
@@ -1073,7 +1211,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                if (_record.Status == YearlyArchiveDisposalRecord.StatusApproved
+                if (CanSupplementOtherAttachments)
+                {
+                    UploadCategory = ArchiveDisposalDomainValues.AttachmentCategoryOther;
+                }
+                else if (_record.Status == YearlyArchiveDisposalRecord.StatusApproved
                     && !string.Equals(UploadCategory, ArchiveDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
                 {
                     _dialogService.ShowMessage("请先点击「确认可上传」，再上传签批单或处置资料照片。");
@@ -1182,18 +1324,45 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task ReloadAttachmentsAsync()
         {
+            Attachments.Clear();
+            SignedFormAttachments.Clear();
+            ScenePhotoAttachments.Clear();
+            OtherAttachments.Clear();
             if (string.IsNullOrWhiteSpace(_record.DisposalNo))
             {
-                Attachments.Clear();
                 return;
             }
 
             var list = await _disposalService.GetAttachmentsAsync(_record.DisposalNo);
-            Attachments.Clear();
             foreach (var item in list)
             {
                 Attachments.Add(item);
+                string category = item.FileCategory?.Trim() ?? string.Empty;
+                if (string.Equals(category, ArchiveDisposalDomainValues.AttachmentCategorySignedForm, StringComparison.Ordinal))
+                {
+                    SignedFormAttachments.Add(item);
+                }
+                else if (ArchiveDisposalDomainValues.IsScenePhotoCategory(category))
+                {
+                    ScenePhotoAttachments.Add(item);
+                }
+                else
+                {
+                    OtherAttachments.Add(item);
+                }
             }
+        }
+
+        private async Task UploadAttachmentByCategoryAsync(string category)
+        {
+            UploadCategory = category;
+            await UploadAttachmentAsync();
+        }
+
+        private async Task CaptureAttachmentByCategoryAsync(string category)
+        {
+            UploadCategory = category;
+            await CaptureFromDocumentCameraAsync();
         }
 
         private async Task RefreshCompleteHintsAsync()
@@ -1244,6 +1413,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanApprove));
             OnPropertyChanged(nameof(CanConfirmUpload));
             OnPropertyChanged(nameof(CanUploadAttachment));
+            OnPropertyChanged(nameof(CanUploadMandatoryAttachment));
+            OnPropertyChanged(nameof(CanUploadOtherAttachment));
+            OnPropertyChanged(nameof(RequiresScenePhoto));
+            OnPropertyChanged(nameof(UploadAttachmentHintText));
+            OnPropertyChanged(nameof(ApproveHintText));
+            OnPropertyChanged(nameof(ConfirmUploadHintText));
+            OnPropertyChanged(nameof(CompleteHintText));
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(CanPrint));
             OnPropertyChanged(nameof(CanWithdraw));

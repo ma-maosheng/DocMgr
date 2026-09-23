@@ -7,11 +7,11 @@ namespace DocMgr.Services.HardDiskMedia
     public sealed partial class HardDiskMediaService
     {
         /// <inheritdoc/>
-        public async Task<string?> RecommendBlankDedicatedSlotLocationAsync(int slotCapacity = HardDiskBlankSlotLocationSupport.DefaultSlotCapacity)
+        public async Task<string?> RecommendBlankDedicatedSlotLocationAsync(int slotCapacity = 0)
         {
             var options = await GetOrderedBlankDedicatedSlotLocationOptionsAsync(slotCapacity);
             string? slotCode = options
-                .FirstOrDefault(option => option.ExistingMediumCount < slotCapacity)?.Location
+                .FirstOrDefault(option => option.ExistingMediumCount < ResolveOptionSlotCapacity(option, slotCapacity))?.Location
                 ?? options.FirstOrDefault()?.Location;
 
             if (!string.IsNullOrWhiteSpace(slotCode))
@@ -35,11 +35,7 @@ namespace DocMgr.Services.HardDiskMedia
                 throw new InvalidOperationException("空白硬盘专用档口应使用档口键（不含档内序号），请调用 RecommendBlankDedicatedSlotLocationAsync。");
             }
 
-            int resolvedCapacity = slotCapacity > 0
-                ? slotCapacity
-                : CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(categoryName);
-
-            return await AllocateNextDedicatedFullLocationCoreAsync(categoryName, resolvedCapacity, reservedFullLocations);
+            return await AllocateNextDedicatedFullLocationCoreAsync(categoryName, slotCapacity, reservedFullLocations);
         }
 
         /// <inheritdoc/>
@@ -77,32 +73,41 @@ namespace DocMgr.Services.HardDiskMedia
                 return trimmed;
             }
 
-            int slotCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
-                CabinetHardDiskSlotCategoryAssignment.CategoryData);
+            var cabinet = await _archiveFilingRepository.GetMagneticDiskCabinetByNameAsync(cabinetName);
+            int resolvedCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
+                CabinetHardDiskSlotCategoryAssignment.CategoryData,
+                cabinet);
             var occupiedIndexes = await GetOccupiedDedicatedSlotSequenceIndexesAsync(slotCode);
-            if (MagneticDedicatedSlotOccupancySupport.IsSlotFull(occupiedIndexes, slotCapacity))
+            if (MagneticDedicatedSlotOccupancySupport.IsSlotFull(occupiedIndexes, resolvedCapacity))
             {
                 return await AllocateNextDedicatedFullLocationAsync(CabinetHardDiskSlotCategoryAssignment.CategoryData)
                     ?? throw new InvalidOperationException("年度数据硬盘专用档口均已满，请新增或启用新的专用档口。");
             }
 
-            int sequenceIndex = MagneticDedicatedSlotOccupancySupport.ResolveNextSequenceIndex(occupiedIndexes, slotCapacity);
+            int sequenceIndex = MagneticDedicatedSlotOccupancySupport.ResolveNextSequenceIndex(occupiedIndexes, resolvedCapacity);
             return ArchiveSlotLocationSupport.BuildFullElectronicLocation(cabinetName, side, row, column, sequenceIndex);
         }
 
         private async Task<string?> AllocateNextDedicatedFullLocationCoreAsync(
             string categoryName,
-            int slotCapacity,
+            int slotCapacityOverride,
             ISet<string>? reservedFullLocations)
         {
-            var options = await GetDedicatedReturnTargetLocationOptionsAsync(categoryName);
-            foreach (var option in options
-                         .OrderBy(item => item.ExistingMediumCount)
-                         .ThenBy(item => item.Location, StringComparer.OrdinalIgnoreCase))
+            var dedicatedSlots = await _hardDiskMediaRepository.GetDedicatedMagneticSlotsByCategoryAsync(categoryName);
+            foreach (var dedicatedSlot in dedicatedSlots
+                         .Where(item => item.Cabinet != null)
+                         .OrderBy(item => item, Comparer<CabinetHardDiskSlotCategoryAssignment>.Create(HardDiskBlankSlotLocationSupport.CompareDedicatedSlots)))
             {
+                int resolvedCapacity = slotCapacityOverride > 0
+                    ? slotCapacityOverride
+                    : CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(categoryName, dedicatedSlot.Cabinet);
+                string slotCode = HardDiskBlankSlotLocationSupport.BuildLocationCode(
+                    dedicatedSlot.Cabinet!.Name,
+                    dedicatedSlot.FaceCode,
+                    dedicatedSlot.SlotCode);
                 string? fullLocation = await TryAllocateDedicatedFullLocationInSlotAsync(
-                    option.Location,
-                    slotCapacity,
+                    slotCode,
+                    resolvedCapacity,
                     reservedFullLocations);
                 if (!string.IsNullOrWhiteSpace(fullLocation))
                 {
@@ -110,7 +115,7 @@ namespace DocMgr.Services.HardDiskMedia
                 }
             }
 
-            return await BuildFallbackDedicatedFullLocationAsync(categoryName, slotCapacity, reservedFullLocations);
+            return null;
         }
 
         private async Task<string?> TryAllocateDedicatedFullLocationInSlotAsync(
@@ -173,49 +178,54 @@ namespace DocMgr.Services.HardDiskMedia
                 dedicatedSlot.SlotCode);
         }
 
-        private async Task<string?> BuildFallbackDedicatedFullLocationAsync(
-            string categoryName,
-            int slotCapacity,
-            ISet<string>? reservedFullLocations = null)
-        {
-            var dedicatedSlots = await _hardDiskMediaRepository.GetDedicatedMagneticSlotsByCategoryAsync(categoryName);
-            foreach (var dedicatedSlot in dedicatedSlots
-                         .Where(item => item.Cabinet != null)
-                         .OrderBy(item => item, Comparer<CabinetHardDiskSlotCategoryAssignment>.Create(HardDiskBlankSlotLocationSupport.CompareDedicatedSlots)))
-            {
-                string slotCode = HardDiskBlankSlotLocationSupport.BuildLocationCode(
-                    dedicatedSlot.Cabinet!.Name,
-                    dedicatedSlot.FaceCode,
-                    dedicatedSlot.SlotCode);
-                string? fullLocation = await TryAllocateDedicatedFullLocationInSlotAsync(
-                    slotCode,
-                    slotCapacity,
-                    reservedFullLocations);
-                if (!string.IsNullOrWhiteSpace(fullLocation))
-                {
-                    return fullLocation;
-                }
-            }
-
-            return null;
-        }
-
         /// <inheritdoc/>
         public async Task<IReadOnlyList<HardDiskMediaReturnTargetLocationOption>> GetOrderedBlankDedicatedSlotLocationOptionsAsync(
-            int slotCapacity = HardDiskBlankSlotLocationSupport.DefaultSlotCapacity)
+            int slotCapacity = 0)
         {
-            var orderedLocations = await GetOrderedBlankDedicatedSlotLocationCodesAsync();
-            if (orderedLocations.Count == 0)
+            var dedicatedSlots = await _hardDiskMediaRepository.GetDedicatedMagneticSlotsByCategoryAsync(
+                CabinetHardDiskSlotCategoryAssignment.CategoryBlank);
+
+            var orderedSlots = dedicatedSlots
+                .Where(item => item.Cabinet != null)
+                .OrderBy(item => item, Comparer<CabinetHardDiskSlotCategoryAssignment>.Create(HardDiskBlankSlotLocationSupport.CompareDedicatedSlots))
+                .ToList();
+
+            if (orderedSlots.Count == 0)
             {
                 return Array.Empty<HardDiskMediaReturnTargetLocationOption>();
             }
 
+            var orderedLocations = orderedSlots
+                .Select(item => HardDiskBlankSlotLocationSupport.BuildLocationCode(
+                    item.Cabinet!.Name,
+                    item.FaceCode,
+                    item.SlotCode))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
             var inStockCounts = await _hardDiskMediaRepository.GetInStockBlankLedgerCountsBySlotCodesAsync(orderedLocations);
+            var capacityByLocation = orderedSlots
+                .GroupBy(
+                    item => HardDiskBlankSlotLocationSupport.BuildLocationCode(
+                        item.Cabinet!.Name,
+                        item.FaceCode,
+                        item.SlotCode),
+                    StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => slotCapacity > 0
+                        ? slotCapacity
+                        : CabinetHardDiskSlotCategoryAssignment.ResolveHardDiskSlotCapacity(group.First().Cabinet),
+                    StringComparer.OrdinalIgnoreCase);
+
             return orderedLocations
                 .Select(location => new HardDiskMediaReturnTargetLocationOption
                 {
                     Location = location,
-                    ExistingMediumCount = inStockCounts.TryGetValue(location, out int count) ? count : 0
+                    ExistingMediumCount = inStockCounts.TryGetValue(location, out int count) ? count : 0,
+                    SlotCapacity = capacityByLocation.TryGetValue(location, out int capacity)
+                        ? capacity
+                        : CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity
                 })
                 .ToList();
         }
@@ -238,5 +248,33 @@ namespace DocMgr.Services.HardDiskMedia
 
         private async Task<IReadOnlyList<HardDiskMediaReturnTargetLocationOption>> GetBlankDedicatedReturnTargetLocationOptionsAsync()
             => await GetOrderedBlankDedicatedSlotLocationOptionsAsync();
+
+        private static int ResolveOptionSlotCapacity(HardDiskMediaReturnTargetLocationOption option, int slotCapacityOverride)
+        {
+            if (slotCapacityOverride > 0)
+            {
+                return slotCapacityOverride;
+            }
+
+            return option.SlotCapacity > 0
+                ? option.SlotCapacity
+                : CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
+        }
+
+        private async Task<int> ResolveHardDiskSlotCapacityForLocationAsync(string? location)
+        {
+            if (!HardDiskBlankSlotLocationSupport.TryParseLocationCode(
+                    location,
+                    out string cabinetName,
+                    out _,
+                    out _,
+                    out _))
+            {
+                return CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
+            }
+
+            var cabinet = await _archiveFilingRepository.GetMagneticDiskCabinetByNameAsync(cabinetName);
+            return CabinetHardDiskSlotCategoryAssignment.ResolveHardDiskSlotCapacity(cabinet);
+        }
     }
 }

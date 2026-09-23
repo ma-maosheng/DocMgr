@@ -114,7 +114,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
             {
-                return StockHardDiskDirectFilingResult.Fail("仅资料室资料管理员可执行存量硬盘直办立档。");
+                return StockHardDiskDirectFilingResult.Fail("仅资料管理员可执行存量硬盘直办立档。");
             }
 
             var errors = await CollectCommitErrorsAsync(request, currentUser);
@@ -173,7 +173,7 @@ namespace DocMgr.Services.YearlyArchive
                 }
 
                 string electronicNo = await _archiveFilingService.GenerateNextElectronicArchiveNoAsync(request.Year);
-                string operatorName = currentUser?.RealName?.Trim() ?? "资料室管理员";
+                string operatorName = currentUser?.RealName?.Trim() ?? "资料管理员";
                 string bagRemark = existingBagCount > 0
                     ? $"{ArchiveRegisterDomainValues.SourceTypeStockDirect}；同项目第 {existingBagCount + 1} 袋。"
                     : ArchiveRegisterDomainValues.SourceTypeStockDirect;
@@ -244,7 +244,7 @@ namespace DocMgr.Services.YearlyArchive
             var errors = new List<string>();
             if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
             {
-                errors.Add("仅资料室资料管理员可执行存量硬盘直办立档。");
+                errors.Add("仅资料管理员可执行存量硬盘直办立档。");
                 return errors;
             }
 
@@ -307,62 +307,49 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!string.Equals(
                     string.IsNullOrWhiteSpace(request.SourceType)
-                        ? ArchiveRegisterDomainValues.SourceTypeStockDirect
+                        ? ArchiveRegisterDomainValues.SourceTypeInternal
                         : request.SourceType.Trim(),
-                    ArchiveRegisterDomainValues.SourceTypeStockDirect,
-                    StringComparison.Ordinal))
+                    ArchiveRegisterDomainValues.SourceTypeInternal,
+                    StringComparison.Ordinal)
+                && !ArchiveRegisterBusinessRules.IsExternalSourceType(request.SourceType))
             {
-                errors.Add("来源必须为「存量直办」。");
+                errors.Add("资料来源须为「内部」或「外来」。");
             }
-
-            if (!string.Equals(
-                    string.IsNullOrWhiteSpace(request.ProvideUnit)
-                        ? ArchiveRegisterDomainValues.ProvideUnitArchiveRoom
-                        : request.ProvideUnit.Trim(),
-                    ArchiveRegisterDomainValues.ProvideUnitArchiveRoom,
-                    StringComparison.Ordinal))
+            else if (ArchiveRegisterBusinessRules.IsExternalSourceType(request.SourceType))
             {
-                errors.Add("提供单位必须为「资料室」。");
-            }
-
-            var pageOptions = await _archiveRegisterService.GetPageDomainOptionsAsync();
-            if (!ArchiveRegisterBusinessRules.IsAllowedDomainValue(request.ArchivePurpose, pageOptions.ArchivePurposes))
-            {
-                errors.Add("请选择有效的库管模式。");
-            }
-
-            string confidential = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(request.ConfidentialLevel);
-            if (!ArchiveRegisterBusinessRules.IsAllowedDomainValue(confidential, pageOptions.ConfidentialLevels))
-            {
-                errors.Add("请选择有效的密级。");
-            }
-
-            if (!ArchiveRegisterBusinessRules.IsAllowedDomainValue(request.MaterialCategory, pageOptions.ElectronicMaterialCategories))
-            {
-                errors.Add("请选择有效的资料类型。");
+                if (string.IsNullOrWhiteSpace(request.ProvideUnit))
+                {
+                    errors.Add("外来资料必须填写提供单位。");
+                }
             }
             else
             {
-                IReadOnlyList<string> subCategoryOptions = string.Equals(
-                        request.MaterialCategory,
-                        ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocument,
-                        StringComparison.Ordinal)
-                    ? pageOptions.ElectronicDocumentSubCategories
-                    : string.Equals(
-                        request.MaterialCategory,
-                        ArchiveRegisterDomainValues.ElectronicMaterialCategoryData,
-                        StringComparison.Ordinal)
-                        ? pageOptions.ElectronicDataSubCategories
-                        : string.Equals(
-                            request.MaterialCategory,
-                            ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftware,
-                            StringComparison.Ordinal)
-                            ? pageOptions.ElectronicSoftwareSubCategories
-                            : Array.Empty<string>();
-                if (!ArchiveRegisterBusinessRules.IsAllowedDomainValue(request.SubCategory, subCategoryOptions))
+                string provideUnit = string.IsNullOrWhiteSpace(request.ProvideUnit)
+                    ? ArchiveRegisterDomainValues.ProvideUnitArchiveRoom
+                    : request.ProvideUnit.Trim();
+                if (!string.Equals(
+                        provideUnit,
+                        ArchiveRegisterDomainValues.ProvideUnitArchiveRoom,
+                        StringComparison.Ordinal))
                 {
-                    errors.Add("请选择与资料类型匹配的所属子类。");
+                    errors.Add("内部资料的提供单位必须为「资料室」。");
                 }
+            }
+
+            var pageOptions = await _archiveRegisterService.GetPageDomainOptionsAsync();
+            if (string.IsNullOrWhiteSpace(request.ArchivePurpose))
+            {
+                errors.Add("库管模式不能为空。");
+            }
+            else if (!ArchiveRegisterBusinessRules.IsAllowedDomainValue(request.ArchivePurpose, pageOptions.ArchivePurposes))
+            {
+                errors.Add("请选择有效的库管模式。");
+            }
+            else if (ArchiveRegisterDomainValues.IsExternalEntrustedArchivePurpose(request.ArchivePurpose)
+                && !ArchiveRegisterBusinessRules.IsExternalSourceType(request.SourceType))
+            {
+                errors.Add(
+                    $"库管模式「{ArchiveRegisterDomainValues.ArchivePurposeExternalEntrusted}」仅当资料来源为「{ArchiveRegisterDomainValues.SourceTypeExternal}」时可选。");
             }
 
             if (request.Materials == null || request.Materials.Count == 0)
@@ -380,6 +367,27 @@ namespace DocMgr.Services.YearlyArchive
                     foreach (var item in material.Items)
                     {
                         string prefix = $"资料「{material.MaterialName}」子项「{item.ItemName}」";
+                        string confidential = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(item.ConfidentialLevel);
+                        if (!ArchiveRegisterBusinessRules.IsAllowedDomainValue(confidential, pageOptions.ConfidentialLevels))
+                        {
+                            errors.Add($"{prefix}：请选择有效的密级。");
+                        }
+
+                        if (!ArchiveRegisterBusinessRules.IsAllowedDomainValue(item.MaterialCategory, pageOptions.ElectronicMaterialCategories))
+                        {
+                            errors.Add($"{prefix}：请选择有效的资料类型。");
+                        }
+                        else
+                        {
+                            IReadOnlyList<string> subCategoryOptions = ResolveElectronicSubCategoryOptions(
+                                pageOptions,
+                                item.MaterialCategory);
+                            if (!ArchiveRegisterBusinessRules.IsAllowedDomainValue(item.SubCategory, subCategoryOptions))
+                            {
+                                errors.Add($"{prefix}：请选择与资料类型匹配的所属子类。");
+                            }
+                        }
+
                         var mappedEntries = (item.Entries ?? Array.Empty<ElectronicMediaContentScanEntry>())
                             .Select(entry => new YearlyArchiveRegisterElectronicMediaItemEntry
                             {
@@ -535,11 +543,6 @@ namespace DocMgr.Services.YearlyArchive
             DateTime archiveYearDate = ResolveArchiveYearDate(request.Year);
             string formNo = await _archiveRegisterService.GenerateNextFormNoAsync(numberingYear);
             string operatorName = currentUser?.RealName?.Trim() ?? string.Empty;
-            string confidential = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(request.ConfidentialLevel);
-            if (string.IsNullOrWhiteSpace(confidential))
-            {
-                confidential = "秘密";
-            }
 
             var media = new YearlyArchiveRegisterMedia
             {
@@ -553,28 +556,34 @@ namespace DocMgr.Services.YearlyArchive
 
             foreach (var item in material.Items)
             {
+                string confidential = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(item.ConfidentialLevel);
+                if (string.IsNullOrWhiteSpace(confidential))
+                {
+                    confidential = "秘密";
+                }
+
                 var mediaItem = new YearlyArchiveRegisterMediaItem
                 {
-                    ItemType = ArchiveRegisterDomainValues.ItemTypeData,
                     ContentDesc = item.ItemName.Trim(),
                     ContentCount = 1,
                     StoragePath = item.StoragePath?.Trim() ?? item.FullPath,
                     ConfidentialLevel = confidential,
+                    SourceType = ResolveItemSourceType(item, request),
+                    ProvideUnit = ResolveItemProvideUnit(item, request),
                     ElectronicDetail = new YearlyArchiveRegisterElectronicMediaItemDetail
                     {
-                        MaterialCategory = string.IsNullOrWhiteSpace(request.MaterialCategory)
+                        MaterialCategory = string.IsNullOrWhiteSpace(item.MaterialCategory)
                             ? ArchiveRegisterDomainValues.ElectronicMaterialCategoryData
-                            : request.MaterialCategory.Trim(),
-                        SubCategory = string.IsNullOrWhiteSpace(request.SubCategory)
+                            : item.MaterialCategory.Trim(),
+                        SubCategory = string.IsNullOrWhiteSpace(item.SubCategory)
                             ? ArchiveRegisterDomainValues.DefaultStockDirectSubCategory
-                            : request.SubCategory.Trim(),
+                            : item.SubCategory.Trim(),
                         DataOrganizationForm = item.DataOrganizationForm,
                         DataSizeMb = item.DataSizeMb,
                         Entries = item.Entries.Select((entry, index) => new YearlyArchiveRegisterElectronicMediaItemEntry
                         {
                             EntryKind = entry.EntryKind,
                             EntryName = entry.EntryName,
-                            RelativePath = entry.RelativePath,
                             SizeMb = entry.SizeMb,
                             CreatedAt = entry.CreatedAt,
                             ModifiedAt = entry.ModifiedAt,
@@ -594,8 +603,6 @@ namespace DocMgr.Services.YearlyArchive
                 ProjectId = project.Id,
                 ProjectName = project.ProjectName,
                 MaterialName = material.MaterialName.Trim(),
-                SourceType = ArchiveRegisterDomainValues.SourceTypeStockDirect,
-                ProvideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom,
                 ArchivePurpose = string.IsNullOrWhiteSpace(request.ArchivePurpose)
                     ? ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage
                     : request.ArchivePurpose.Trim(),
@@ -608,6 +615,37 @@ namespace DocMgr.Services.YearlyArchive
             };
         }
 
+        private static string ResolveItemSourceType(
+            StockHardDiskItemDraft item,
+            StockHardDiskDirectFilingRequest request)
+        {
+            string sourceType = string.IsNullOrWhiteSpace(item.SourceType)
+                ? request.SourceType?.Trim() ?? string.Empty
+                : item.SourceType.Trim();
+            return string.IsNullOrWhiteSpace(sourceType)
+                ? ArchiveRegisterDomainValues.SourceTypeInternal
+                : sourceType;
+        }
+
+        private static string ResolveItemProvideUnit(
+            StockHardDiskItemDraft item,
+            StockHardDiskDirectFilingRequest request)
+        {
+            string provideUnit = string.IsNullOrWhiteSpace(item.ProvideUnit)
+                ? request.ProvideUnit?.Trim() ?? string.Empty
+                : item.ProvideUnit.Trim();
+
+            string sourceType = ResolveItemSourceType(item, request);
+            if (!ArchiveRegisterBusinessRules.IsExternalSourceType(sourceType))
+            {
+                return string.IsNullOrWhiteSpace(provideUnit)
+                    ? ArchiveRegisterDomainValues.ProvideUnitArchiveRoom
+                    : provideUnit;
+            }
+
+            return provideUnit;
+        }
+
         private static DateTime ResolveArchiveYearDate(string year)
         {
             if (!int.TryParse(year.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out int parsed)
@@ -618,6 +656,28 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return new DateTime(parsed, 12, 31);
+        }
+
+        private static IReadOnlyList<string> ResolveElectronicSubCategoryOptions(
+            ArchiveRegisterPageDomainOptions pageOptions,
+            string? materialCategory)
+        {
+            if (string.Equals(materialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategoryDocument, StringComparison.Ordinal))
+            {
+                return pageOptions.ElectronicDocumentSubCategories;
+            }
+
+            if (string.Equals(materialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategoryData, StringComparison.Ordinal))
+            {
+                return pageOptions.ElectronicDataSubCategories;
+            }
+
+            if (string.Equals(materialCategory, ArchiveRegisterDomainValues.ElectronicMaterialCategorySoftware, StringComparison.Ordinal))
+            {
+                return pageOptions.ElectronicSoftwareSubCategories;
+            }
+
+            return Array.Empty<string>();
         }
 
         private static int? TryParseProjectNumberYear(string? year)

@@ -102,7 +102,6 @@ internal static class NetworkOutboundOnNetAssetMappingSupport
                 YearlyArchiveRegisterElectronicMediaItemDetail? detail = item.ElectronicDetail;
                 var clonedItem = new YearlyArchiveRegisterMediaItem
                 {
-                    ItemType = item.ItemType,
                     ContentDesc = item.ContentDesc?.Trim() ?? string.Empty,
                     ContentCount = item.ContentCount > 0 ? item.ContentCount : 1,
                     StoragePath = item.StoragePath?.Trim() ?? string.Empty,
@@ -110,6 +109,8 @@ internal static class NetworkOutboundOnNetAssetMappingSupport
                         ? $"来源出网单 {outboundNo}"
                         : item.Note.Trim(),
                     ConfidentialLevel = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(item.ConfidentialLevel),
+                    SourceType = item.SourceType?.Trim() ?? string.Empty,
+                    ProvideUnit = item.ProvideUnit?.Trim() ?? string.Empty,
                     ElectronicDetail = detail == null
                         ? null
                         : new YearlyArchiveRegisterElectronicMediaItemDetail
@@ -123,7 +124,6 @@ internal static class NetworkOutboundOnNetAssetMappingSupport
                                 {
                                     EntryKind = entry.EntryKind,
                                     EntryName = entry.EntryName,
-                                    RelativePath = entry.RelativePath,
                                     SizeMb = entry.SizeMb,
                                     CreatedAt = entry.CreatedAt,
                                     ModifiedAt = entry.ModifiedAt,

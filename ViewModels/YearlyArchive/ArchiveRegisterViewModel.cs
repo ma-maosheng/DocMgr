@@ -18,7 +18,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _isInitialized;
         private bool _hasCommittedChanges;
         private bool _isDialogMode;
-        private bool _suppressProvideUnitDefault;
 
         private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly IProjectService _projectService;
@@ -53,11 +52,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<string> UserBorrowedHardDiskCodes { get; } = new();
         public ObservableCollection<string> ArchivePurposeOptions { get; } = new();
         public ObservableCollection<string> SimulatedMediaKindOptions { get; } = new();
-        public ObservableCollection<string> DataItemTypeOptions { get; } = new();
-        public ObservableCollection<string> ProofItemTypeOptions { get; } = new();
         public ObservableCollection<string> DataElectronicMediaTypeOptions { get; } = new();
         public ObservableCollection<string> DataSimulatedMediaTypeOptions { get; } = new();
-        public ObservableCollection<string> ProofSimulatedMediaTypeOptions { get; } = new();
         public ObservableCollection<string> DataElectronicDispositionOptions { get; } = new();
         public ObservableCollection<string> DataSimulatedDispositionOptions { get; } = new();
         public ObservableCollection<string> ElectronicMaterialCategoryOptions { get; } = new();
@@ -101,34 +97,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        private string _selectedSourceType = string.Empty;
-        public string SelectedSourceType
-        {
-            get => _selectedSourceType;
-            set
-            {
-                if (IsNetworkOutboundTransferRegister
-                    && !string.IsNullOrWhiteSpace(_selectedSourceType)
-                    && !string.Equals(value, _selectedSourceType, StringComparison.Ordinal))
-                {
-                    return;
-                }
-
-                if (SetProperty(ref _selectedSourceType, value))
-                {
-                    IsExternalSource = _archiveRegisterService.IsExternalSourceType(value);
-                    if (CurrentRecord != null)
-                    {
-                        CurrentRecord.SourceType = value;
-                        if (!_suppressProvideUnitDefault && !IsExternalSource)
-                        {
-                            ApplyDefaultProvideUnitForInternalSource(onlyWhenEmpty: false);
-                        }
-                    }
-                }
-            }
-        }
-
         /// <summary>是否为出网办结自动生成的建档草稿。</summary>
         public bool IsNetworkOutboundTransferRegister =>
             ArchiveRegisterBusinessRules.IsNetworkOutboundTransferRegister(CurrentRecord);
@@ -156,8 +124,24 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        /// <summary>资料来源是否允许手工修改。</summary>
-        public bool IsSourceTypeEditable => CanEditForm && !IsNetworkOutboundTransferRegister;
+        /// <summary>提供单位聚合展示：唯一值直接显示，多个不同值以「、」连接（只读绑定用）。</summary>
+        public string ProvideUnitDisplay => AggregateItemSourceValues(item => item.ProvideUnit);
+
+        /// <summary>资料来源聚合展示：唯一值直接显示，多个不同值以「、」连接（只读绑定用）。</summary>
+        public string SourceTypeDisplay => AggregateItemSourceValues(item => item.SourceType);
+
+        private string AggregateItemSourceValues(Func<MediaItemViewModel, string?> selector)
+        {
+            var distinct = MediaEntries
+                .SelectMany(media => media.Items)
+                .Select(selector)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value!.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            return distinct.Count == 0 ? string.Empty : string.Join("、", distinct);
+        }
 
         private string _selectedArchivePurpose = string.Empty;
         public string SelectedArchivePurpose
@@ -257,12 +241,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanUploadProofMaterialAttachment));
         }
 
-        private bool _isExternalSource;
-        public bool IsExternalSource
-        {
-            get => _isExternalSource;
-            private set => SetProperty(ref _isExternalSource, value);
-        }
+        /// <summary>是否存在「外来」资料来源的子项（存储已下沉至子项级）。</summary>
+        public bool IsExternalSource => MediaEntries.Any(m => m.Items.Any(i => i.IsExternalSource));
 
         private bool _isBorrowedHardDisk;
         /// <summary>
@@ -387,7 +367,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand<MediaEntryViewModel> RemoveMediaEntryCommand { get; }
         public RelayCommand<MediaItemViewModel> RemoveMediaItemCommand { get; }
         public RelayCommand<MediaItemViewModel> PickFolderAndScanElectronicContentCommand { get; }
-        public RelayCommand<MediaItemViewModel> PickFilesAndScanElectronicContentCommand { get; }
         public RelayCommand<MediaItemViewModel> RescanElectronicContentCommand { get; }
         public RelayCommand<MediaItemViewModel> ClearElectronicContentCommand { get; }
         public RelayCommand<MediaItemViewModel> ViewElectronicContentEntriesCommand { get; }
@@ -445,9 +424,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             PickFolderAndScanElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
                 async item => await PickFolderAndScanElectronicContentAsync(item),
                 item => CanEditForm && item != null && item.IsDirectoryOrganizationForm);
-            PickFilesAndScanElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
-                async item => await PickFilesAndScanElectronicContentAsync(item),
-                item => CanEditForm && item != null && item.IsFileOrganizationForm);
             RescanElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
                 async item => await RescanElectronicContentAsync(item),
                 item => CanEditForm && item != null && CanRescanElectronicContent(item));

@@ -14,25 +14,40 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static readonly FontFamily BodyFont = new("SimSun");
 
         /// <summary>单行信息行高。</summary>
-        private const double StandardRowHeight = 34;
-        /// <summary>备注/灭失说明等多行文本行高。</summary>
-        private const double RemarkRowHeight = 52;
+        private const double StandardRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
         /// <summary>审核审批签字行高（单行签字栏）。</summary>
-        private const double ApprovalSignatureRowHeight = 34;
+        private const double ApprovalSignatureRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
         /// <summary>交接签字行高（归还人 + 资料员两行，列对齐排版）。</summary>
-        private const double HandoverSignatureRowHeight = 72;
+        private const double HandoverSignatureRowHeight = PrintPageLayoutSupport.TableRowContentHeightTwoLinesDip;
         private const double TitleBlockHeight = 48;
         private const double HeaderInfoHeight = 28;
-        private const double CellPadding = 4;
+        private const double CellPadding = PrintPageLayoutSupport.TableCellPaddingDip;
         private const double BodyFontSize = 12;
         private const string BlankSignerSlot = "________________";
         private const string BlankDateSlot = "______年___月___日";
+
+        /// <summary>备注/灭失说明按正文估行后的上限。</summary>
+        private const int RemarkMaxLines = 3;
+
+        /// <summary>归还资料明细按正文估行后的上限（撑满下限）。</summary>
+        private const int DetailMaxLines = 20;
 
         internal static FlowDocument Create(ArchiveReturnReceiptPrintData data)
         {
             ArgumentNullException.ThrowIfNull(data);
 
-            double itemDetailRowHeight = CalculateItemDetailRowHeight(data);
+            string remarkText = EmptyAsPlaceholder(data.Remark);
+            string lossText = EmptyAsPlaceholder(data.LossDescription);
+            string itemDetailText = BuildItemText(data);
+            double remarkRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(remarkText, RemarkMaxLines);
+            double lossRowHeight = data.HasLossReturn
+                ? PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(lossText, RemarkMaxLines)
+                : 0;
+            double itemDetailRowHeight = CalculateItemDetailRowHeight(
+                data,
+                remarkRowHeight,
+                lossRowHeight,
+                itemDetailText);
 
             var document = new FlowDocument
             {
@@ -66,15 +81,15 @@ namespace DocMgr.ViewModels.YearlyArchive
             rowGroup.Rows.Add(CreateSingleRow("资料摘要", EmptyAsPlaceholder(data.MaterialSummary)));
             rowGroup.Rows.Add(CreateSingleRow(
                 "归还资料明细",
-                BuildItemText(data),
+                itemDetailText,
                 itemDetailRowHeight,
                 verticalTop: true));
             if (data.HasLossReturn)
             {
                 rowGroup.Rows.Add(CreateSingleRow(
                     "灭失情况描述",
-                    EmptyAsPlaceholder(data.LossDescription),
-                    RemarkRowHeight,
+                    lossText,
+                    lossRowHeight,
                     verticalTop: true));
             }
 
@@ -89,8 +104,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             rowGroup.Rows.Add(CreateSingleRow(
                 "备注",
-                EmptyAsPlaceholder(data.Remark),
-                RemarkRowHeight,
+                remarkText,
+                remarkRowHeight,
                 verticalTop: true));
 
             document.Blocks.Add(CreateMainTable(rowGroup));
@@ -99,29 +114,40 @@ namespace DocMgr.ViewModels.YearlyArchive
             return document;
         }
 
-        private static double CalculateItemDetailRowHeight(ArchiveReturnReceiptPrintData data)
+        private static double CalculateItemDetailRowHeight(
+            ArchiveReturnReceiptPrintData data,
+            double remarkRowHeight,
+            double lossRowHeight,
+            string itemDetailText)
         {
             // 固定行：借出部门、源出库单、应还日期、资料摘要、交接、备注；灭失描述可选；审批签字行数可变。
             int approvalCount = data.ApprovalSignatureLines?.Count ?? 0;
-            double fixedTableHeight =
-                PrintPageLayoutSupport.GetTableRowOuterHeightDip(StandardRowHeight, CellPadding) * 4
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(ApprovalSignatureRowHeight, CellPadding) * approvalCount
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(HandoverSignatureRowHeight, CellPadding)
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(RemarkRowHeight, CellPadding);
-            if (data.HasLossReturn)
-            {
-                fixedTableHeight += PrintPageLayoutSupport.GetTableRowOuterHeightDip(RemarkRowHeight, CellPadding);
-            }
+            double fixedContentHeight =
+                StandardRowHeight * 4
+                + ApprovalSignatureRowHeight * approvalCount
+                + HandoverSignatureRowHeight
+                + remarkRowHeight
+                + (data.HasLossReturn ? lossRowHeight : 0);
+            int fixedRowCount = 4 + approvalCount + 1 + 1 + (data.HasLossReturn ? 1 : 0); // 摘要前4 + 签批 + 交接 + 备注 + [灭失]
+            double fixedTableHeight = fixedContentHeight
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
+                + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
 
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(lineCount: 4, lineHeightDip: 16, topMarginDip: 8);
+            string footerText = BuildFooterNoteText(data);
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
+                footerText,
+                PrintPageLayoutSupport.ContentWidthDip,
+                fontSizeDip: 10,
+                lineHeightDip: 16,
+                topMarginDip: 8);
             double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
-            double stretchHeight = PrintPageLayoutSupport.CalculateStretchRowHeightDip(
+            double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                itemDetailText,
+                DetailMaxLines);
+            return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
                 reservedHeight,
-                StandardRowHeight * 4,
+                contentNeededHeight,
                 CellPadding);
-            // 「归还资料明细」减少一行（与正文 LineHeight 一致），避免签批交接单超出一页。
-            const double oneContentLineHeight = 18;
-            return Math.Max(stretchHeight - oneContentLineHeight, StandardRowHeight * 4);
         }
 
         private static string BuildApprovalSignatureLine(ArchiveReturnApprovalSignatureLine line)
@@ -169,7 +195,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 :
                 [
                     new() { RoleLabel = "归还人签字：", SignerSlot = string.Empty, DateText = BlankDateSlot },
-                    new() { RoleLabel = "资料室资料管理员签字：", SignerSlot = string.Empty, DateText = BlankDateSlot }
+                    new() { RoleLabel = "资料管理员签字：", SignerSlot = string.Empty, DateText = BlankDateSlot }
                 ];
 
             for (int i = 0; i < effectiveLines.Count; i++)
@@ -269,11 +295,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 BorderThickness = new Thickness(2, 2, 0, 0)
             };
 
-            // 左侧标签列略加宽，保证「生产管理科负责人」等文字单行显示。
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.9, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.1, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.9, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.1, GridUnitType.Star) });
+            // 左侧标签列固定 8 字符宽，保证「分管生产院长签字」等最长文案单行显示。
+            PrintPageLayoutSupport.ApplyApprovalFormMainTableColumns(table);
             table.RowGroups.Add(rowGroup);
 
             return table;
@@ -289,13 +312,21 @@ namespace DocMgr.ViewModels.YearlyArchive
             };
 
             footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
-            footer.Inlines.Add(new Run("1、无论资料是否完好，均须打印本单并完成线下签字；扫描件由资料室资料管理员上传系统。\n"));
-            footer.Inlines.Add(new Run("      2、正常完好归还仅需部门负责人签字；存在灭失时，需借出时全部审核审批人（部门负责人、资料室负责人、生产科负责人、生产副院长）签字。\n"));
-            footer.Inlines.Add(new Run("      3、归还人与资料室资料管理员须在交接栏签字确认实物交接。\n"));
+            footer.Inlines.Add(new Run("1、无论资料是否完好，均须打印本单并完成线下签字；扫描件由资料管理员上传系统。\n"));
+            footer.Inlines.Add(new Run("      2、正常完好归还仅需部门审核签字；存在灭失时，需借出时全部审核审批人（部门审核、资料室签字、生产科签字、分管生产院长签字）签字。\n"));
+            footer.Inlines.Add(new Run("      3、归还人与资料管理员须在交接栏签字确认实物交接。\n"));
             footer.Inlines.Add(new Run($"      4、本单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
 
             return footer;
         }
+
+        /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
+        private static string BuildFooterNoteText(ArchiveReturnReceiptPrintData data) =>
+            "说明：" +
+            "1、无论资料是否完好，均须打印本单并完成线下签字；扫描件由资料管理员上传系统。\n" +
+            "      2、正常完好归还仅需部门审核签字；存在灭失时，需借出时全部审核审批人（部门审核、资料室签字、生产科签字、分管生产院长签字）签字。\n" +
+            "      3、归还人与资料管理员须在交接栏签字确认实物交接。\n" +
+            $"      4、本单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。";
 
         private static TableRow CreateSingleRow(
             string label,

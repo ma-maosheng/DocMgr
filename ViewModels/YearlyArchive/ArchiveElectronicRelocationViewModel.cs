@@ -85,8 +85,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             ShowSourceHardDiskReturnSlotSnapshotCommand = new RelayCommand(
                 _ => ShowSourceHardDiskReturnSlotSnapshot(),
                 _ => CanShowSourceHardDiskReturnSlotSnapshot);
-            PreviewCommand = new RelayCommand(async _ => await PreviewAsync(), _ => !IsBusy && SourceSummary != null);
-            ExecuteCommand = new RelayCommand(async _ => await ExecuteAsync(), _ => !IsBusy && SourceSummary != null && !string.IsNullOrWhiteSpace(PreviewText));
+            PreviewCommand = new RelayCommand(async _ => await PreviewAsync(), _ => !IsBusy && IsArchiveAdmin && SourceSummary != null);
+            ExecuteCommand = new RelayCommand(async _ => await ExecuteAsync(), _ => !IsBusy && IsArchiveAdmin && SourceSummary != null && !string.IsNullOrWhiteSpace(PreviewText));
         }
 
         public string PageTitle => "电子介质资料迁档";
@@ -466,7 +466,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             if (!IsArchiveAdmin)
             {
-                _dialogService.ShowMessage("仅资料室管理员可执行资料迁档。", "权限不足");
+                _dialogService.ShowMessage("仅资料管理员可执行资料迁档。", "权限不足");
             }
 
             await LoadYearsAsync();

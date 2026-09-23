@@ -8,6 +8,7 @@ using System.Windows.Threading;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.SystemSettings
@@ -21,12 +22,14 @@ namespace DocMgr.ViewModels.SystemSettings
         public DbOperationLogPageViewModel(
             IDbOperationLogService logService,
             IDbOperationLogContextService logContextService,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            IUserContextService userContextService)
         {
             _logService = logService;
             _logContextService = logContextService;
             _dialogService = dialogService;
             _logContextService.PropertyChanged += LogContextService_PropertyChanged;
+            CanMaintain = ArchiveRegisterBusinessRules.IsSystemAdministrator(userContextService.CurrentUser);
 
             OperationOptions = new ObservableCollection<string>(new[] { "全部", "Added", "Modified", "Deleted" });
             TableNameOptions = new ObservableCollection<string> { "全部" };
@@ -38,16 +41,19 @@ namespace DocMgr.ViewModels.SystemSettings
 
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
             ViewDetailCommand = new RelayCommand(async _ => await ViewDetailAsync(), _ => SelectedLog != null);
-            ClearAllCommand = new RelayCommand(async _ => await ClearAllAsync());
+            ClearAllCommand = new RelayCommand(async _ => await ClearAllAsync(), _ => CanMaintain);
             StopRecordingCommand = new RelayCommand(
                 _ => SetRecordingEnabled(false),
-                _ => _logContextService.IsRecordingEnabled);
+                _ => CanMaintain && _logContextService.IsRecordingEnabled);
             StartRecordingCommand = new RelayCommand(
                 _ => SetRecordingEnabled(true),
-                _ => !_logContextService.IsRecordingEnabled);
+                _ => CanMaintain && !_logContextService.IsRecordingEnabled);
 
             UpdateRecordingStatusText();
         }
+
+        /// <summary>系统管理员可清除日志/启停记录；其余角色仅查询浏览。</summary>
+        public bool CanMaintain { get; }
 
         private void LogContextService_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -60,6 +66,12 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private void SetRecordingEnabled(bool enabled)
         {
+            if (!CanMaintain)
+            {
+                _dialogService.ShowError("仅系统管理员可启停数据库操作日志记录。");
+                return;
+            }
+
             _logContextService.SetRecordingEnabled(enabled);
             UpdateRecordingStatusText();
             CommandManager.InvalidateRequerySuggested();
@@ -161,6 +173,12 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private async Task ClearAllAsync()
         {
+            if (!CanMaintain)
+            {
+                _dialogService.ShowError("仅系统管理员可清除数据库操作日志。");
+                return;
+            }
+
             if (!_dialogService.ShowConfirm("确定要清除所有数据库操作日志吗？此操作不可恢复。", "清除日志"))
             {
                 return;

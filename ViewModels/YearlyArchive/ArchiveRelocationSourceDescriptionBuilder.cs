@@ -29,12 +29,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             var builder = new StringBuilder();
             builder.Append(items.Count == 1 ? "共 1 项资料" : $"共 {items.Count} 项资料");
 
-            string typeSummary = BuildTypeSummary(items);
-            if (!string.IsNullOrWhiteSpace(typeSummary) && items.Count > 1)
-            {
-                builder.Append('（').Append(typeSummary).Append('）');
-            }
-
             builder.AppendLine();
             int displayCount = System.Math.Min(entries.Count, MaxListedEntries);
             for (int index = 0; index < displayCount; index++)
@@ -54,23 +48,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             return builder.ToString().TrimEnd();
         }
 
-        private static string BuildTypeSummary(IReadOnlyList<ArchiveRelocationItemSummary> items)
-        {
-            return string.Join(
-                "、",
-                items
-                    .GroupBy(item => string.IsNullOrWhiteSpace(item.ItemType) ? "未分类" : item.ItemType.Trim())
-                    .OrderByDescending(group => group.Count())
-                    .ThenBy(group => group.Key)
-                    .Select(group => $"{group.Key} {group.Count()} 项"));
-        }
-
         private static string FormatItemEntry(ArchiveRelocationItemSummary item)
         {
             var parts = new List<string>();
             string formNo = item.FormNo?.Trim() ?? string.Empty;
             string itemName = item.ItemName?.Trim() ?? string.Empty;
-            string itemType = item.ItemType?.Trim() ?? string.Empty;
 
             if (!string.IsNullOrWhiteSpace(formNo))
             {
@@ -80,11 +62,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             if (!string.IsNullOrWhiteSpace(itemName))
             {
                 parts.Add(itemName);
-            }
-
-            if (!string.IsNullOrWhiteSpace(itemType))
-            {
-                parts.Add(itemType);
             }
 
             return parts.Count == 0 ? "（未命名子项）" : string.Join(" / ", parts);

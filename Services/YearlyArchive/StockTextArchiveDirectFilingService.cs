@@ -103,7 +103,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
             {
-                errors.Add("仅资料室资料管理员可执行存档文本直办立档。");
+                errors.Add("仅资料管理员可执行存档文本直办立档。");
             }
 
             string year = request.Year?.Trim() ?? string.Empty;
@@ -124,27 +124,44 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!string.Equals(
                     string.IsNullOrWhiteSpace(request.SourceType)
-                        ? ArchiveRegisterDomainValues.SourceTypeStockDirect
+                        ? ArchiveRegisterDomainValues.SourceTypeInternal
                         : request.SourceType.Trim(),
-                    ArchiveRegisterDomainValues.SourceTypeStockDirect,
-                    StringComparison.Ordinal))
+                    ArchiveRegisterDomainValues.SourceTypeInternal,
+                    StringComparison.Ordinal)
+                && !ArchiveRegisterBusinessRules.IsExternalSourceType(request.SourceType))
             {
-                errors.Add("来源必须为「存量直办」。");
+                errors.Add("资料来源须为「内部」或「外来」。");
             }
-
-            if (!string.Equals(
-                    string.IsNullOrWhiteSpace(request.ProvideUnit)
-                        ? ArchiveRegisterDomainValues.ProvideUnitArchiveRoom
-                        : request.ProvideUnit.Trim(),
-                    ArchiveRegisterDomainValues.ProvideUnitArchiveRoom,
-                    StringComparison.Ordinal))
+            else if (ArchiveRegisterBusinessRules.IsExternalSourceType(request.SourceType))
             {
-                errors.Add("提供单位必须为「资料室」。");
+                if (string.IsNullOrWhiteSpace(request.ProvideUnit))
+                {
+                    errors.Add("外来资料必须填写提供单位。");
+                }
+            }
+            else
+            {
+                string provideUnit = string.IsNullOrWhiteSpace(request.ProvideUnit)
+                    ? ArchiveRegisterDomainValues.ProvideUnitArchiveRoom
+                    : request.ProvideUnit.Trim();
+                if (!string.Equals(
+                        provideUnit,
+                        ArchiveRegisterDomainValues.ProvideUnitArchiveRoom,
+                        StringComparison.Ordinal))
+                {
+                    errors.Add("内部资料的提供单位必须为「资料室」。");
+                }
             }
 
             if (string.IsNullOrWhiteSpace(request.ArchivePurpose))
             {
                 errors.Add("库管模式不能为空。");
+            }
+            else if (ArchiveRegisterDomainValues.IsExternalEntrustedArchivePurpose(request.ArchivePurpose)
+                && !ArchiveRegisterBusinessRules.IsExternalSourceType(request.SourceType))
+            {
+                errors.Add(
+                    $"库管模式「{ArchiveRegisterDomainValues.ArchivePurposeExternalEntrusted}」仅当资料来源为「{ArchiveRegisterDomainValues.SourceTypeExternal}」时可选。");
             }
 
             if (string.IsNullOrWhiteSpace(request.BoxSpecification))
@@ -242,7 +259,7 @@ namespace DocMgr.Services.YearlyArchive
         {
             if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
             {
-                return StockTextArchiveDirectFilingResult.Fail("仅资料室资料管理员可执行存档文本直办立档。");
+                return StockTextArchiveDirectFilingResult.Fail("仅资料管理员可执行存档文本直办立档。");
             }
 
             var errors = await CollectCommitErrorsAsync(request, currentUser);
@@ -379,11 +396,12 @@ namespace DocMgr.Services.YearlyArchive
 
                     media.Items.Add(new YearlyArchiveRegisterMediaItem
                     {
-                        ItemType = ArchiveRegisterDomainValues.ItemTypeData,
                         ContentDesc = item.ContentDesc.Trim(),
                         ContentCount = item.ContentCount < 1 ? 1 : item.ContentCount,
                         Note = item.Note?.Trim() ?? string.Empty,
                         ConfidentialLevel = confidential,
+                        SourceType = ResolveItemSourceType(item, request),
+                        ProvideUnit = ResolveItemProvideUnit(item, request),
                         SimulatedDetail = SimulatedMediaItemClassificationSupport.CreateDetail(
                             item.MaterialCategory,
                             item.SubCategory,
@@ -403,8 +421,6 @@ namespace DocMgr.Services.YearlyArchive
                 ProjectId = project.Id,
                 ProjectName = project.ProjectName,
                 MaterialName = request.MaterialName.Trim(),
-                SourceType = ArchiveRegisterDomainValues.SourceTypeStockDirect,
-                ProvideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom,
                 ArchivePurpose = string.IsNullOrWhiteSpace(request.ArchivePurpose)
                     ? ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage
                     : request.ArchivePurpose.Trim(),
@@ -429,6 +445,37 @@ namespace DocMgr.Services.YearlyArchive
             return new DateTime(parsed, 12, 31);
         }
 
+        private static string ResolveItemSourceType(
+            StockTextArchiveMediaItemDraft item,
+            StockTextArchiveDirectFilingRequest request)
+        {
+            string sourceType = string.IsNullOrWhiteSpace(item.SourceType)
+                ? request.SourceType?.Trim() ?? string.Empty
+                : item.SourceType.Trim();
+            return string.IsNullOrWhiteSpace(sourceType)
+                ? ArchiveRegisterDomainValues.SourceTypeInternal
+                : sourceType;
+        }
+
+        private static string ResolveItemProvideUnit(
+            StockTextArchiveMediaItemDraft item,
+            StockTextArchiveDirectFilingRequest request)
+        {
+            string provideUnit = string.IsNullOrWhiteSpace(item.ProvideUnit)
+                ? request.ProvideUnit?.Trim() ?? string.Empty
+                : item.ProvideUnit.Trim();
+
+            string sourceType = ResolveItemSourceType(item, request);
+            if (!ArchiveRegisterBusinessRules.IsExternalSourceType(sourceType))
+            {
+                return string.IsNullOrWhiteSpace(provideUnit)
+                    ? ArchiveRegisterDomainValues.ProvideUnitArchiveRoom
+                    : provideUnit;
+            }
+
+            return provideUnit;
+        }
+
         private static int? TryParseProjectNumberYear(string? year)
         {
             if (string.IsNullOrWhiteSpace(year) || year.Trim().Length != 4 || !year.Trim().All(char.IsDigit))
@@ -444,6 +491,10 @@ namespace DocMgr.Services.YearlyArchive
             => StockTextArchiveExcelImportSupport.ListSheetNames(filePath);
 
         /// <inheritdoc/>
+        public void ExportExcelImportTemplate(string filePath)
+            => StockTextArchiveExcelImportSupport.ExportImportTemplate(filePath);
+
+        /// <inheritdoc/>
         public StockTextArchiveExcelParseResult ParseExcel(string filePath, string sheetName, bool expandItemsByTextLine = false)
             => StockTextArchiveExcelImportSupport.Parse(filePath, sheetName, expandItemsByTextLine);
 
@@ -456,6 +507,13 @@ namespace DocMgr.Services.YearlyArchive
             var source = boxes ?? Array.Empty<StockTextArchiveExcelBoxDraft>();
             var occupied = await LoadOccupiedBoxLocationCodesAsync();
             var cabinets = await _cabinetService.GetAllCabinetsAsync();
+
+            var duplicateLocations = source
+                .Where(box => !string.IsNullOrWhiteSpace(box.NormalizedBoxLocationCode))
+                .GroupBy(box => box.NormalizedBoxLocationCode, StringComparer.OrdinalIgnoreCase)
+                .Where(group => group.Count() > 1)
+                .Select(group => group.Key)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             var results = new List<StockTextArchiveExcelBoxValidation>(source.Count);
             int total = source.Count;
@@ -473,6 +531,13 @@ namespace DocMgr.Services.YearlyArchive
                     && occupied.Contains(box.NormalizedBoxLocationCode))
                 {
                     errors.Add($"物理位置 [{box.NormalizedBoxLocationCode}] 已被占用。");
+                }
+
+                if (!string.IsNullOrWhiteSpace(box.NormalizedBoxLocationCode)
+                    && duplicateLocations.Contains(box.NormalizedBoxLocationCode)
+                    && !errors.Any(error => error.Contains("在表中重复", StringComparison.Ordinal)))
+                {
+                    errors.Add($"档案盒编号 [{box.NormalizedBoxLocationCode}] 在本批导入中重复。");
                 }
 
                 errors.AddRange(CollectExcelSlotCategoryErrors(box, cabinets));
@@ -494,17 +559,47 @@ namespace DocMgr.Services.YearlyArchive
             IProgress<(int Current, int Total, string Status)>? progress = null)
         {
             int expected = boxes?.Count ?? 0;
-            if (expected > 0)
+            if (expected <= 0)
             {
-                progress?.Report((0, expected, "正在复核可立档盒…"));
-                await Task.Yield();
+                return new StockTextArchiveExcelImportCommitResult
+                {
+                    SucceededCount = 0,
+                    FailedCount = 0,
+                    SkippedCount = 0,
+                    Messages = new[] { "未开始导入：没有可导入的档案盒。" }
+                };
             }
 
+            progress?.Report((0, expected, "正在整批复核逻辑校验…"));
+            await Task.Yield();
+
             var validations = await ValidateExcelImportAsync(boxes, currentUser, progress);
-            int skipped = 0;
+            var failedValidations = validations.Where(item => !item.CanImport).ToList();
+            if (failedValidations.Count > 0)
+            {
+                var messages = new List<string>
+                {
+                    $"未开始导入：共 {validations.Count} 盒中有 {failedValidations.Count} 盒未通过逻辑校验，请修正后重新导入。"
+                };
+                foreach (var validation in failedValidations)
+                {
+                    messages.Add(
+                        $"{validation.Box.NormalizedBoxLocationCode}（{validation.Box.ProjectName}）："
+                        + string.Join("；", validation.Errors));
+                }
+
+                return new StockTextArchiveExcelImportCommitResult
+                {
+                    SucceededCount = 0,
+                    FailedCount = failedValidations.Count,
+                    SkippedCount = 0,
+                    Messages = messages
+                };
+            }
+
             int succeeded = 0;
             int failed = 0;
-            var messages = new List<string>();
+            var messagesOk = new List<string>();
             var occupiedThisRun = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             int total = validations.Count;
             int index = 0;
@@ -515,41 +610,41 @@ namespace DocMgr.Services.YearlyArchive
                 var box = validation.Box;
                 progress?.Report((index, total, $"正在立档第 {index} / {total} 盒（{box.NormalizedBoxLocationCode}）…"));
                 await Task.Yield();
-                if (!validation.CanImport)
-                {
-                    skipped++;
-                    messages.Add($"跳过 {box.NormalizedBoxLocationCode}（{box.ProjectName}）：{string.Join("；", validation.Errors)}");
-                    continue;
-                }
 
                 if (!string.IsNullOrWhiteSpace(box.NormalizedBoxLocationCode)
                     && !occupiedThisRun.Add(box.NormalizedBoxLocationCode))
                 {
                     failed++;
-                    messages.Add($"失败 {box.NormalizedBoxLocationCode}：本批重复占用。");
-                    continue;
+                    messagesOk.Add($"失败 {box.NormalizedBoxLocationCode}：本批重复占用。已停止后续导入。");
+                    break;
                 }
 
                 var result = await CommitAsync(box.ToRequest(), currentUser);
                 if (result.Succeeded)
                 {
                     succeeded++;
-                    messages.Add($"成功 {result.BoxLocationCode} → {result.ArchiveSequenceNo}（{result.ItemCount} 子项）");
+                    messagesOk.Add($"成功 {result.BoxLocationCode} → {result.ArchiveSequenceNo}（{result.ItemCount} 子项）");
+                    continue;
                 }
-                else
+
+                failed++;
+                occupiedThisRun.Remove(box.NormalizedBoxLocationCode);
+                messagesOk.Add($"失败 {box.NormalizedBoxLocationCode}：{result.Message}");
+                int remaining = total - index;
+                if (remaining > 0)
                 {
-                    failed++;
-                    occupiedThisRun.Remove(box.NormalizedBoxLocationCode);
-                    messages.Add($"失败 {box.NormalizedBoxLocationCode}：{result.Message}");
+                    messagesOk.Add($"已停止后续 {remaining} 盒导入（须全部成功才视为整批完成）。");
                 }
+
+                break;
             }
 
             return new StockTextArchiveExcelImportCommitResult
             {
                 SucceededCount = succeeded,
                 FailedCount = failed,
-                SkippedCount = skipped,
-                Messages = messages
+                SkippedCount = 0,
+                Messages = messagesOk
             };
         }
 

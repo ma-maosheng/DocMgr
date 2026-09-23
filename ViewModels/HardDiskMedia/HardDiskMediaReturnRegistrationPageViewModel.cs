@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows.Input;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.Shared;
+using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.HardDiskMedia
@@ -27,6 +28,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly IUserContextService _userContextService;
         private readonly IUserService _userService;
         private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
+        private readonly IApprovalWorkflowService _approvalWorkflowService;
         private readonly List<HardDiskMediaApplication> _allApplications = new();
         private readonly List<HardDiskMediaReturnCandidate> _allReturnCandidates = new();
         private readonly Dictionary<int, string> _sourceBorrowApplicationNoByReturnId = new();
@@ -50,7 +52,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             IDialogService dialogService,
             IUserContextService userContextService,
             IUserService userService,
-            IBusinessLogicSettingsService businessLogicSettingsService)
+            IBusinessLogicSettingsService businessLogicSettingsService,
+            IApprovalWorkflowService approvalWorkflowService)
         {
             _workspaceMode = workspaceMode;
             _hardDiskMediaService = hardDiskMediaService;
@@ -59,6 +62,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _userContextService = userContextService;
             _userService = userService;
             _businessLogicSettingsService = businessLogicSettingsService;
+            _approvalWorkflowService = approvalWorkflowService;
 
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
@@ -82,6 +86,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ConfirmHandoverCommand = new RelayCommand(async _ => await ConfirmHandoverAsync(), _ => CanConfirmHandover);
             UploadSignedAttachmentCommand = new RelayCommand(async _ => await UploadSignedAttachmentAsync(), _ => CanUploadSignedAttachment);
             CaptureSignedAttachmentCommand = new RelayCommand(async _ => await CaptureSignedAttachmentAsync(), _ => CanUploadSignedAttachment);
+            SupplementOtherAttachmentCommand = new RelayCommand(async _ => await SupplementOtherAttachmentAsync(), _ => CanSupplementOtherAttachments);
+            CaptureOtherAttachmentCommand = new RelayCommand(async _ => await CaptureOtherAttachmentAsync(), _ => CanSupplementOtherAttachments);
         }
 
         public HardDiskReturnWorkspaceMode WorkspaceMode => _workspaceMode;
@@ -236,6 +242,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public RelayCommand UploadSignedAttachmentCommand { get; }
 
         public RelayCommand CaptureSignedAttachmentCommand { get; }
+
+        public RelayCommand SupplementOtherAttachmentCommand { get; }
+
+        public RelayCommand CaptureOtherAttachmentCommand { get; }
 
         public async Task InitializeAsync(bool overdueOnly = false, bool matchAllYears = false)
         {

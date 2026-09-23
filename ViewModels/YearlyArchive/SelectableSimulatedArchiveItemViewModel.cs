@@ -25,8 +25,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string DataOrganizationForm { get; init; } = string.Empty;
 
-        public string ItemType { get; init; } = string.Empty;
-
         public string ContentDesc { get; init; } = string.Empty;
 
         public int ContentCount { get; init; }

@@ -336,14 +336,14 @@ namespace DocMgr.Services.YearlyArchive
         {
             if (!_archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser))
             {
-                throw new InvalidOperationException("仅资料室管理员可执行资料迁档。");
+                throw new InvalidOperationException("仅资料管理员可执行资料迁档。");
             }
         }
 
         private string ResolveOperatorName()
         {
             var user = _userContextService.CurrentUser;
-            return string.IsNullOrWhiteSpace(user?.RealName) ? user?.LoginName?.Trim() ?? "资料室管理员" : user.RealName.Trim();
+            return string.IsNullOrWhiteSpace(user?.RealName) ? user?.LoginName?.Trim() ?? "资料管理员" : user.RealName.Trim();
         }
 
         private async Task<string> GenerateRelocationNoAsync(string mediaKind, int year)
@@ -376,8 +376,7 @@ namespace DocMgr.Services.YearlyArchive
                     {
                         MediaItemId = link.YearlyArchiveRegisterMediaItemId,
                         FormNo = link.MediaItem?.MediaEntry?.RegisterRecord?.FormNo?.Trim() ?? string.Empty,
-                        ItemName = link.MediaItem?.ContentDesc?.Trim() ?? string.Empty,
-                        ItemType = link.MediaItem?.ItemType?.Trim() ?? string.Empty
+                        ItemName = link.MediaItem?.ContentDesc?.Trim() ?? string.Empty
                     })
                     .ToList()
             };
@@ -479,8 +478,7 @@ namespace DocMgr.Services.YearlyArchive
                     {
                         MediaItemId = link.YearlyArchiveRegisterMediaItemId,
                         FormNo = link.FormNo?.Trim() ?? link.MediaItem?.MediaEntry?.RegisterRecord?.FormNo?.Trim() ?? string.Empty,
-                        ItemName = link.ItemName?.Trim() ?? link.MediaItem?.ContentDesc?.Trim() ?? string.Empty,
-                        ItemType = link.MediaItem?.ItemType?.Trim() ?? string.Empty
+                        ItemName = link.ItemName?.Trim() ?? link.MediaItem?.ContentDesc?.Trim() ?? string.Empty
                     })
                     .ToList()
             };

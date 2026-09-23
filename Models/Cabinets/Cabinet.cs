@@ -30,6 +30,8 @@ namespace DocMgr.Models.Cabinets
         private int _layerCount;
         private int _columnCount;
         private double _rotationAngle;
+        private int _hardDiskSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
+        private int _opticalDiscSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedOpticalDiscSlotCapacity;
         private bool _isSelected;
 
         public int Id { get; set; }
@@ -141,6 +143,38 @@ namespace DocMgr.Models.Cabinets
         {
             get => _rotationAngle;
             set { if (_rotationAngle != value) { _rotationAngle = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>
+        /// 防磁磁盘柜：硬盘类专用档口每格最大容量（块）。非防磁柜保留默认值即可。
+        /// </summary>
+        public int HardDiskSlotCapacity
+        {
+            get => _hardDiskSlotCapacity;
+            set
+            {
+                if (_hardDiskSlotCapacity != value)
+                {
+                    _hardDiskSlotCapacity = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 防磁磁盘柜：光盘类专用档口每格最大容量（张）。非防磁柜保留默认值即可。
+        /// </summary>
+        public int OpticalDiscSlotCapacity
+        {
+            get => _opticalDiscSlotCapacity;
+            set
+            {
+                if (_opticalDiscSlotCapacity != value)
+                {
+                    _opticalDiscSlotCapacity = value;
+                    OnPropertyChanged();
+                }
+            }
         }
 
         // 仅用于 UI 交互的选中状态（不存数据库）

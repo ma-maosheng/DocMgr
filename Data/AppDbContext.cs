@@ -108,6 +108,7 @@ namespace DocMgr.Data
         // 扩展配置表
         public DbSet<UserPreference> UserPreferences { get; set; }
         public DbSet<BusinessLogicSettings> BusinessLogicSettings { get; set; }
+        public DbSet<ApprovalWorkflowRule> ApprovalWorkflowRules { get; set; }
         public DbSet<FieldDomainDefinition> FieldDomainDefinitions { get; set; }
         public DbSet<FieldDomainOption> FieldDomainOptions { get; set; }
 

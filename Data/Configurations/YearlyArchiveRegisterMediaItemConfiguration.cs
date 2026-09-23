@@ -10,6 +10,12 @@ namespace DocMgr.Data.Configurations
         {
             builder.HasKey(item => item.Id);
 
+            builder.Property(item => item.SourceType)
+                .HasMaxLength(64);
+
+            builder.Property(item => item.ProvideUnit)
+                .HasMaxLength(256);
+
             builder.HasOne(item => item.ElectronicDetail)
                 .WithOne(detail => detail.MediaItem)
                 .HasForeignKey<YearlyArchiveRegisterElectronicMediaItemDetail>(detail => detail.MediaItemId)

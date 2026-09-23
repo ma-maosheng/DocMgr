@@ -4,6 +4,7 @@ using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 
 namespace DocMgr.Services.NetworkTransfer;
@@ -21,6 +22,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     private readonly IArchiveFilingSearchService _archiveFilingSearchService;
     private readonly IProjectService _projectService;
     private readonly IUserService _userService;
+    private readonly IApprovalWorkflowService _approvalWorkflowService;
 
     public NetworkTransferService(
         INetworkTransferRepository repository,
@@ -30,7 +32,8 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         IHardDiskMediaRepository hardDiskMediaRepository,
         IArchiveFilingSearchService archiveFilingSearchService,
         IProjectService projectService,
-        IUserService userService)
+        IUserService userService,
+        IApprovalWorkflowService approvalWorkflowService)
     {
         _repository = repository;
         _businessRuleService = businessRuleService;
@@ -40,6 +43,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         _archiveFilingSearchService = archiveFilingSearchService;
         _projectService = projectService;
         _userService = userService;
+        _approvalWorkflowService = approvalWorkflowService;
     }
 
     public Task<string> GenerateNextInboundNoAsync() =>
@@ -305,20 +309,24 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅已提交状态可审批。");
         }
 
-        RequireSigner(approval.DeptLeader, "部门负责人");
-        RequireSigner(approval.ProdLeader, "生产管理科负责人");
-        RequireSigner(approval.RndLeader, "资料室负责人");
-        RequireSigner(approval.DeputyLeader, "分管领导");
-
         DateTime now = DateTime.Now;
-        existing.DeptLeader = approval.DeptLeader.Trim();
-        existing.DeptDate = approval.DeptDate ?? now.Date;
-        existing.ProdLeader = approval.ProdLeader.Trim();
-        existing.ProdDate = approval.ProdDate ?? now.Date;
-        existing.RndLeader = approval.RndLeader.Trim();
-        existing.RndDate = approval.RndDate ?? now.Date;
-        existing.DeputyLeader = approval.DeputyLeader.Trim();
-        existing.DeputyDate = approval.DeputyDate ?? now.Date;
+        existing.DeptHead = approval.DeptHead?.Trim() ?? string.Empty;
+        existing.DeptHeadDate = approval.DeptHeadDate ?? now.Date;
+        existing.ProductionHead = approval.ProductionHead?.Trim() ?? string.Empty;
+        existing.ProductionHeadDate = approval.ProductionHeadDate ?? now.Date;
+        existing.ArchiveRoomHead = approval.ArchiveRoomHead?.Trim() ?? string.Empty;
+        existing.ArchiveRoomHeadDate = approval.ArchiveRoomHeadDate ?? now.Date;
+        existing.ArchiveDeputyPresident = approval.ArchiveDeputyPresident?.Trim() ?? string.Empty;
+        existing.ArchiveDeputyPresidentDate = approval.ArchiveDeputyPresidentDate ?? now.Date;
+        existing.ProductionVicePresident = approval.ProductionVicePresident?.Trim() ?? string.Empty;
+        existing.ProductionVicePresidentDate = approval.ProductionVicePresidentDate ?? now.Date;
+
+        var chain = await ResolveInboundApprovalChainAsync(existing);
+        EnsureEnabledNetworkSigners(
+            chain,
+            nodeKey => ApprovalChainApplySupport.ReadNetworkInboundSigner(existing, nodeKey));
+        ClearDisabledInboundSigners(existing, chain);
+
         existing.Status = NetworkInboundRecord.StatusApproved;
         existing.ApprovedAt = now;
         existing.UpdatedAt = now;
@@ -365,10 +373,12 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅已审批状态可确认交接。");
         }
 
+        var inboundChain = await ResolveInboundApprovalChainAsync(existing);
         NetworkInboundApplicationValidationSupport.EnsureValidForHandoverConfirm(
             existing,
             handover,
-            Array.Empty<SystemAttachment>());
+            Array.Empty<SystemAttachment>(),
+            inboundChain);
 
         DateTime now = DateTime.Now;
         existing.Deliverer = handover.Deliverer.Trim();
@@ -721,20 +731,24 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅已提交状态可审批。");
         }
 
-        RequireSigner(approval.DeptLeader, "部门负责人");
-        RequireSigner(approval.ProdLeader, "生产管理科负责人");
-        RequireSigner(approval.RndLeader, "资料室负责人");
-        RequireSigner(approval.DeputyLeader, "分管领导");
-
         DateTime now = DateTime.Now;
-        existing.DeptLeader = approval.DeptLeader.Trim();
-        existing.DeptDate = approval.DeptDate ?? now.Date;
-        existing.ProdLeader = approval.ProdLeader.Trim();
-        existing.ProdDate = approval.ProdDate ?? now.Date;
-        existing.RndLeader = approval.RndLeader.Trim();
-        existing.RndDate = approval.RndDate ?? now.Date;
-        existing.DeputyLeader = approval.DeputyLeader.Trim();
-        existing.DeputyDate = approval.DeputyDate ?? now.Date;
+        existing.DeptHead = approval.DeptHead?.Trim() ?? string.Empty;
+        existing.DeptHeadDate = approval.DeptHeadDate ?? now.Date;
+        existing.ProductionHead = approval.ProductionHead?.Trim() ?? string.Empty;
+        existing.ProductionHeadDate = approval.ProductionHeadDate ?? now.Date;
+        existing.ArchiveRoomHead = approval.ArchiveRoomHead?.Trim() ?? string.Empty;
+        existing.ArchiveRoomHeadDate = approval.ArchiveRoomHeadDate ?? now.Date;
+        existing.ArchiveDeputyPresident = approval.ArchiveDeputyPresident?.Trim() ?? string.Empty;
+        existing.ArchiveDeputyPresidentDate = approval.ArchiveDeputyPresidentDate ?? now.Date;
+        existing.ProductionVicePresident = approval.ProductionVicePresident?.Trim() ?? string.Empty;
+        existing.ProductionVicePresidentDate = approval.ProductionVicePresidentDate ?? now.Date;
+
+        var chain = await ResolveOutboundApprovalChainAsync(existing);
+        EnsureEnabledNetworkSigners(
+            chain,
+            nodeKey => ApprovalChainApplySupport.ReadNetworkOutboundSigner(existing, nodeKey));
+        ClearDisabledOutboundSigners(existing, chain);
+
         existing.Status = NetworkOutboundRecord.StatusApproved;
         existing.ApprovedAt = now;
         existing.UpdatedAt = now;
@@ -791,7 +805,12 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         var attachments = await _repository.GetAttachmentsAsync(
             NetworkTransferDomainValues.OutboundAttachmentBusinessType,
             existing.OutboundNo);
-        NetworkOutboundApplicationValidationSupport.EnsureValidForHandoverConfirm(existing, handover, attachments);
+        var outboundChain = await ResolveOutboundApprovalChainAsync(existing);
+        NetworkOutboundApplicationValidationSupport.EnsureValidForHandoverConfirm(
+            existing,
+            handover,
+            attachments,
+            outboundChain);
 
         DateTime now = DateTime.Now;
         existing.Deliverer = handover.Deliverer.Trim();
@@ -1154,21 +1173,61 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅已提交状态可审批。");
         }
 
-        ArchiveDisposalDefaultApprovers approvers = ArchiveDisposalDefaultApproverSupport.Resolve(_userService.GetAllUsers());
-        if (string.IsNullOrWhiteSpace(approvers.ArchiveRoomHead)
-            || string.IsNullOrWhiteSpace(approvers.ArchiveDeputyPresident))
+        var users = _userService.GetAllUsers();
+        var chain = await _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.NetworkOnNetDisposal,
+                FieldValues = ApprovalChainApplySupport.BuildNetworkOnNetDisposalFieldValues(existing)
+            },
+            users);
+        ApprovalChainApplySupport.ApplyToNetworkOnNetDisposal(existing, chain, DateTime.Now);
+
+        var missing = ApprovalChainApplySupport.CollectMissingSignerErrors(
+            chain,
+            nodeKey => ApprovalChainApplySupport.ReadNetworkOnNetDisposalSigner(existing, nodeKey));
+        if (missing.Count > 0)
         {
-            throw new InvalidOperationException("未找到资料室负责人或分管资料副院长，请先在用户管理中维护对应角色后再审批通过。");
+            throw new InvalidOperationException(
+                string.Join(Environment.NewLine, missing)
+                + Environment.NewLine
+                + "请在「审核审批」中配置或在用户管理中维护对应角色后再审批通过。");
         }
 
         DateTime now = DateTime.Now;
         existing.ApprovedBy = ResolveUserDisplayName(currentUser);
         existing.ApprovedTime = now;
         existing.ApprovalOpinion = string.Empty;
-        existing.ArchiveRoomHead = NormalizeReviewSignerName(approvers.ArchiveRoomHead);
-        existing.ArchiveRoomHeadDate = now.Date;
-        existing.ArchiveDeputyPresident = NormalizeReviewSignerName(approvers.ArchiveDeputyPresident);
-        existing.ArchiveDeputyPresidentDate = now.Date;
+        existing.DeptHead = NormalizeReviewSignerName(existing.DeptHead);
+        if (chain.DeptHead.IsEnabled)
+        {
+            existing.DeptHeadDate ??= now.Date;
+        }
+
+        existing.ArchiveRoomHead = NormalizeReviewSignerName(existing.ArchiveRoomHead);
+        if (chain.ArchiveRoomHead.IsEnabled)
+        {
+            existing.ArchiveRoomHeadDate ??= now.Date;
+        }
+
+        existing.ProductionHead = NormalizeReviewSignerName(existing.ProductionHead);
+        if (chain.ProductionHead.IsEnabled)
+        {
+            existing.ProductionHeadDate ??= now.Date;
+        }
+
+        existing.ArchiveDeputyPresident = NormalizeReviewSignerName(existing.ArchiveDeputyPresident);
+        if (chain.ArchiveDeputyPresident.IsEnabled)
+        {
+            existing.ArchiveDeputyPresidentDate ??= now.Date;
+        }
+
+        existing.ProductionVicePresident = NormalizeReviewSignerName(existing.ProductionVicePresident);
+        if (chain.ProductionVicePresident.IsEnabled)
+        {
+            existing.ProductionVicePresidentDate ??= now.Date;
+        }
+
         existing.Status = NetworkOnNetDisposalRecord.StatusApproved;
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
@@ -1176,8 +1235,11 @@ public sealed partial class NetworkTransferService : INetworkTransferService
 
     public async Task UpdateDisposalReviewSignersAsync(
         int recordId,
+        string? deptHead,
         string? archiveRoomHead,
+        string? productionHead,
         string? archiveDeputyPresident,
+        string? productionVicePresident,
         User currentUser)
     {
         EnsureArchiveAdmin(currentUser);
@@ -1190,8 +1252,11 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅已审批或已确认可上传状态可修改审核审批人。");
         }
 
+        existing.DeptHead = NormalizeReviewSignerName(deptHead);
         existing.ArchiveRoomHead = NormalizeReviewSignerName(archiveRoomHead);
+        existing.ProductionHead = NormalizeReviewSignerName(productionHead);
         existing.ArchiveDeputyPresident = NormalizeReviewSignerName(archiveDeputyPresident);
+        existing.ProductionVicePresident = NormalizeReviewSignerName(productionVicePresident);
         existing.UpdatedAt = DateTime.Now;
         await _repository.SaveChangesAsync();
     }
@@ -1233,13 +1298,32 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             existing.Items.Select(item => item.OnNetAssetId).ToList(),
             tracking: true);
         HashSet<int> existingAssetIds = assets.Select(item => item.Id).ToHashSet();
+        var users = _userService.GetAllUsers();
+        var chain = await _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.NetworkOnNetDisposal,
+                FieldValues = ApprovalChainApplySupport.BuildNetworkOnNetDisposalFieldValues(existing)
+            },
+            users);
         NetworkOnNetDisposalValidationSupport.EnsureValidForComplete(
             existing.Reason,
             existing.Items.ToList(),
+            chain.DeptHead.IsEnabled,
+            existing.DeptHead,
+            existing.DeptHeadDate,
+            chain.ArchiveRoomHead.IsEnabled,
             existing.ArchiveRoomHead,
             existing.ArchiveRoomHeadDate,
+            chain.ProductionHead.IsEnabled,
+            existing.ProductionHead,
+            existing.ProductionHeadDate,
+            chain.ArchiveDeputyPresident.IsEnabled,
             existing.ArchiveDeputyPresident,
             existing.ArchiveDeputyPresidentDate,
+            chain.ProductionVicePresident.IsEnabled,
+            existing.ProductionVicePresident,
+            existing.ProductionVicePresidentDate,
             attachments,
             existingAssetIds);
 
@@ -1306,6 +1390,13 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             return (false, "附件内容为空。", null);
         }
 
+        string category = fileCategory.Trim();
+        string? statusError = await ValidateAttachmentUploadStatusAsync(businessType, recordId, category);
+        if (!string.IsNullOrWhiteSpace(statusError))
+        {
+            return (false, statusError, null);
+        }
+
         var attachment = new SystemAttachment
         {
             BusinessType = businessType.Trim(),
@@ -1315,7 +1406,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             Extension = extension?.Trim() ?? string.Empty,
             FileSize = fileSize,
             FileContent = fileContent,
-            FileCategory = fileCategory.Trim(),
+            FileCategory = category,
             UploadTime = DateTime.Now,
             UploaderName = ResolveUserDisplayName(currentUser)
         };
@@ -1323,7 +1414,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         _repository.AddAttachment(attachment);
 
         if (string.Equals(
-                fileCategory.Trim(),
+                category,
                 NetworkTransferDomainValues.AttachmentCategorySignedForm,
                 StringComparison.Ordinal))
         {
@@ -1343,9 +1434,129 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             return (false, "附件不存在。");
         }
 
+        string? completedError = await ValidateAttachmentDeleteWhenCompletedAsync(
+            attachment.BusinessType,
+            attachment.BusinessId);
+        if (!string.IsNullOrWhiteSpace(completedError))
+        {
+            return (false, completedError);
+        }
+
         _repository.RemoveAttachment(attachment);
         await _repository.SaveChangesAsync();
         return (true, "已删除。");
+    }
+
+    /// <summary>
+    /// 入网/出网：签批上传阶段可传各分类；办结后仅允许增补「其他附件」。
+    /// </summary>
+    private async Task<string?> ValidateAttachmentUploadStatusAsync(
+        string businessType,
+        int recordId,
+        string category)
+    {
+        bool isOther = string.Equals(
+            category,
+            NetworkTransferDomainValues.AttachmentCategoryOther,
+            StringComparison.Ordinal);
+
+        if (string.Equals(businessType, NetworkTransferDomainValues.InboundAttachmentBusinessType, StringComparison.Ordinal))
+        {
+            var record = await _repository.GetInboundByIdAsync(recordId);
+            if (record == null)
+            {
+                return "未找到入网申请单。";
+            }
+
+            if (record.Status == NetworkInboundRecord.StatusCompleted)
+            {
+                return isOther ? null : "办结后仅可增补「其他附件」。";
+            }
+
+            if (record.Status != NetworkInboundRecord.StatusSignedUploaded)
+            {
+                return "请先确认实物交接后再上传附件。";
+            }
+
+            return null;
+        }
+
+        if (string.Equals(businessType, NetworkTransferDomainValues.OutboundAttachmentBusinessType, StringComparison.Ordinal))
+        {
+            var record = await _repository.GetOutboundByIdAsync(recordId);
+            if (record == null)
+            {
+                return "未找到出网申请单。";
+            }
+
+            if (record.Status == NetworkOutboundRecord.StatusCompleted)
+            {
+                return isOther ? null : "办结后仅可增补「其他附件」。";
+            }
+
+            if (record.Status != NetworkOutboundRecord.StatusSignedUploaded)
+            {
+                return "请先确认实物交接后再上传附件。";
+            }
+
+            return null;
+        }
+
+        if (string.Equals(businessType, NetworkTransferDomainValues.DisposalAttachmentBusinessType, StringComparison.Ordinal))
+        {
+            var record = await _repository.GetDisposalByIdAsync(recordId);
+            if (record == null)
+            {
+                return "未找到在网数据处置单。";
+            }
+
+            if (record.Status == NetworkOnNetDisposalRecord.StatusCompleted)
+            {
+                return isOther ? null : "办结后仅可增补「其他附件」。";
+            }
+
+            if (record.Status is NetworkOnNetDisposalRecord.StatusDraft
+                or NetworkOnNetDisposalRecord.StatusSubmitted
+                or NetworkOnNetDisposalRecord.StatusWithdrawn
+                or NetworkOnNetDisposalRecord.StatusForceWithdrawn)
+            {
+                return "当前状态不允许上传附件（请在审批通过并确认可上传后操作）。";
+            }
+
+            return null;
+        }
+
+        return null;
+    }
+
+    private async Task<string?> ValidateAttachmentDeleteWhenCompletedAsync(string? businessType, int businessId)
+    {
+        if (string.Equals(businessType, NetworkTransferDomainValues.InboundAttachmentBusinessType, StringComparison.Ordinal))
+        {
+            var record = await _repository.GetInboundByIdAsync(businessId);
+            if (record?.Status == NetworkInboundRecord.StatusCompleted)
+            {
+                return "办结后不允许删除附件。";
+            }
+        }
+        else if (string.Equals(businessType, NetworkTransferDomainValues.OutboundAttachmentBusinessType, StringComparison.Ordinal))
+        {
+            var record = await _repository.GetOutboundByIdAsync(businessId);
+            if (record?.Status == NetworkOutboundRecord.StatusCompleted)
+            {
+                return "办结后不允许删除附件。";
+            }
+        }
+        else if (string.Equals(businessType, NetworkTransferDomainValues.DisposalAttachmentBusinessType, StringComparison.Ordinal))
+        {
+            var record = await _repository.GetDisposalByIdAsync(businessId);
+            if (record?.Status == NetworkOnNetDisposalRecord.StatusCompleted)
+            {
+                return "办结后不允许删除附件。";
+            }
+        }
+
+        return null;
     }
 
     private async Task MarkSignedUploadedAsync(string businessType, int recordId, User currentUser)
@@ -1852,9 +2063,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         register.ProjectId = ResolveProjectId(outbound.Year, outbound.ProjectName);
         register.ProjectName = string.IsNullOrWhiteSpace(outbound.ProjectName) ? null : outbound.ProjectName.Trim();
         register.MaterialName = materialName.Trim();
-        register.SourceType = NetworkTransferDomainValues.RegisterSourceTypeNetworkOutbound;
         register.ArchivePurpose = outbound.ArchivePurpose?.Trim() ?? string.Empty;
-        register.ProvideUnit = outbound.ApplicantDept?.Trim() ?? string.Empty;
         register.ProofMaterialNote = NormalizeOutboundProofMaterialNote(outbound.ProofMaterialNote);
         register.ApplicantName = outbound.ApplicantName?.Trim() ?? string.Empty;
         register.ApplicantDept = outbound.ApplicantDept?.Trim() ?? string.Empty;
@@ -1865,18 +2074,47 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         register.SourceNetworkOutboundRecordId = outbound.Id;
         register.SourceNetworkOutboundNo = outbound.OutboundNo;
         register.BusinessChainId = outbound.BusinessChainId;
-        register.ProdLeader = outbound.ProdLeader?.Trim() ?? string.Empty;
-        register.ProdDate = outbound.ProdDate;
-        register.RndLeader = outbound.RndLeader?.Trim() ?? string.Empty;
-        register.RndDate = outbound.RndDate;
-        register.DeputyLeader = outbound.DeputyLeader?.Trim() ?? string.Empty;
-        register.DeputyDate = outbound.DeputyDate;
+        register.ProductionHead = outbound.ProductionHead?.Trim() ?? string.Empty;
+        register.ProductionHeadDate = outbound.ProductionHeadDate;
+        register.ArchiveRoomHead = outbound.ArchiveRoomHead?.Trim() ?? string.Empty;
+        register.ArchiveRoomHeadDate = outbound.ArchiveRoomHeadDate;
+        register.ArchiveDeputyPresident = outbound.ArchiveDeputyPresident?.Trim() ?? string.Empty;
+        register.ArchiveDeputyPresidentDate = outbound.ArchiveDeputyPresidentDate;
         register.Deliverer = outbound.Deliverer?.Trim() ?? string.Empty;
         register.DeliverDate = outbound.DeliverDate;
         register.Administrator = outbound.Administrator?.Trim() ?? string.Empty;
         register.AdminDate = outbound.AdminDate;
-        register.DeptLeader = outbound.DeptLeader?.Trim() ?? string.Empty;
-        register.DeptDate = outbound.DeptDate;
+        register.DeptHead = outbound.DeptHead?.Trim() ?? string.Empty;
+        register.DeptHeadDate = outbound.DeptHeadDate;
+
+        ApplyArchiveRegisterItemSourceFromOutbound(register, outbound);
+    }
+
+    /// <summary>
+    /// 出网转入建档：资料来源与提供单位按子项回填（子项为空时以出网单默认值填充）。
+    /// </summary>
+    private static void ApplyArchiveRegisterItemSourceFromOutbound(
+        YearlyArchiveRegisterRecord register,
+        NetworkOutboundRecord outbound)
+    {
+        string defaultSourceType = ArchiveRegisterDomainValues.SourceTypeInternal;
+        string defaultProvideUnit = outbound.ApplicantDept?.Trim() ?? string.Empty;
+
+        foreach (var media in register.MediaEntries)
+        {
+            foreach (var item in media.Items)
+            {
+                if (string.IsNullOrWhiteSpace(item.SourceType))
+                {
+                    item.SourceType = defaultSourceType;
+                }
+
+                if (string.IsNullOrWhiteSpace(item.ProvideUnit))
+                {
+                    item.ProvideUnit = defaultProvideUnit;
+                }
+            }
+        }
     }
 
     private int? ResolveProjectId(string? year, string? projectName)
@@ -2249,11 +2487,100 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         return distinct.Count == 0 ? string.Empty : string.Join("、", distinct);
     }
 
-    private static void RequireSigner(string? name, string label)
+    private Task<ApprovalChainResolution> ResolveInboundApprovalChainAsync(NetworkInboundRecord record) =>
+        _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.NetworkInbound,
+                ApplicantDept = record.ApplicantDept,
+                FieldValues = ApprovalChainApplySupport.BuildNetworkInboundFieldValues(record)
+            },
+            _userService.GetAllUsers());
+
+    private Task<ApprovalChainResolution> ResolveOutboundApprovalChainAsync(NetworkOutboundRecord record) =>
+        _approvalWorkflowService.ResolveAsync(
+            new ApprovalChainResolveRequest
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.NetworkOutbound,
+                ApplicantDept = record.ApplicantDept,
+                FieldValues = ApprovalChainApplySupport.BuildNetworkOutboundFieldValues(record)
+            },
+            _userService.GetAllUsers());
+
+    private static void EnsureEnabledNetworkSigners(
+        ApprovalChainResolution chain,
+        Func<string, string?> readCurrentName)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        var missing = ApprovalChainApplySupport.CollectMissingSignerErrors(chain, readCurrentName);
+        if (missing.Count > 0)
         {
-            throw new InvalidOperationException($"请填写{label}。");
+            throw new InvalidOperationException(string.Join(Environment.NewLine, missing));
+        }
+    }
+
+    private static void ClearDisabledInboundSigners(NetworkInboundRecord record, ApprovalChainResolution chain)
+    {
+        if (!chain.DeptHead.IsEnabled)
+        {
+            record.DeptHead = string.Empty;
+            record.DeptHeadDate = null;
+        }
+
+        if (!chain.ProductionHead.IsEnabled)
+        {
+            record.ProductionHead = string.Empty;
+            record.ProductionHeadDate = null;
+        }
+
+        if (!chain.ArchiveRoomHead.IsEnabled)
+        {
+            record.ArchiveRoomHead = string.Empty;
+            record.ArchiveRoomHeadDate = null;
+        }
+
+        if (!chain.ArchiveDeputyPresident.IsEnabled)
+        {
+            record.ArchiveDeputyPresident = string.Empty;
+            record.ArchiveDeputyPresidentDate = null;
+        }
+
+        if (!chain.ProductionVicePresident.IsEnabled)
+        {
+            record.ProductionVicePresident = string.Empty;
+            record.ProductionVicePresidentDate = null;
+        }
+    }
+
+    private static void ClearDisabledOutboundSigners(NetworkOutboundRecord record, ApprovalChainResolution chain)
+    {
+        if (!chain.DeptHead.IsEnabled)
+        {
+            record.DeptHead = string.Empty;
+            record.DeptHeadDate = null;
+        }
+
+        if (!chain.ProductionHead.IsEnabled)
+        {
+            record.ProductionHead = string.Empty;
+            record.ProductionHeadDate = null;
+        }
+
+        if (!chain.ArchiveRoomHead.IsEnabled)
+        {
+            record.ArchiveRoomHead = string.Empty;
+            record.ArchiveRoomHeadDate = null;
+        }
+
+        if (!chain.ArchiveDeputyPresident.IsEnabled)
+        {
+            record.ArchiveDeputyPresident = string.Empty;
+            record.ArchiveDeputyPresidentDate = null;
+        }
+
+        if (!chain.ProductionVicePresident.IsEnabled)
+        {
+            record.ProductionVicePresident = string.Empty;
+            record.ProductionVicePresidentDate = null;
         }
     }
 
@@ -2270,7 +2597,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     {
         if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(user))
         {
-            throw new InvalidOperationException("仅资料室管理员可办理审批/交接/办结。");
+            throw new InvalidOperationException("仅资料管理员可办理审批/交接/办结。");
         }
     }
 

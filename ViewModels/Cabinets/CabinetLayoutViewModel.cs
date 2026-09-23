@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -48,7 +48,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         public bool AllowLayoutEdit => CanMaintainLayout;
 
-        /// <summary>资料室资料管理员可增删改柜体与布局；其他人不可进入本页操作。</summary>
+        /// <summary>资料管理员可增删改柜体与布局；其他人不可进入本页操作。</summary>
         public bool CanMaintainLayout =>
             CabinetManagementPermissionSupport.CanMaintain(_userContextService.CurrentUser);
 
@@ -287,6 +287,7 @@ namespace DocMgr.ViewModels.Cabinets
 
             if (_dialogService.ShowCabinetEditDialog(editableCabinet))
             {
+                var beforeEdit = CloneCabinet(SelectedCabinet);
                 ApplyCabinetEdits(SelectedCabinet, editableCabinet);
 
                 if (originalType != CabinetType.Standard && SelectedCabinet.Type == CabinetType.Standard)
@@ -294,7 +295,17 @@ namespace DocMgr.ViewModels.Cabinets
                     ApplyStandardTrackPlacement(SelectedCabinet);
                 }
 
-                _cabinetService.UpdateCabinet(SelectedCabinet);
+                try
+                {
+                    _cabinetService.UpdateCabinet(SelectedCabinet);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    ApplyCabinetEdits(SelectedCabinet, beforeEdit);
+                    _dialogService.ShowMessage(ex.Message, "提示");
+                    return;
+                }
+
                 LoadData();
                 _dialogService.ShowMessage("更新资料柜成功！");
             }
@@ -318,6 +329,8 @@ namespace DocMgr.ViewModels.Cabinets
                 LayerCount = source.LayerCount,
                 ColumnCount = source.ColumnCount,
                 RotationAngle = source.RotationAngle,
+                HardDiskSlotCapacity = source.HardDiskSlotCapacity,
+                OpticalDiscSlotCapacity = source.OpticalDiscSlotCapacity,
                 IsSelected = source.IsSelected
             };
         }
@@ -338,6 +351,8 @@ namespace DocMgr.ViewModels.Cabinets
             target.LayerCount = source.LayerCount;
             target.ColumnCount = source.ColumnCount;
             target.RotationAngle = source.RotationAngle;
+            target.HardDiskSlotCapacity = source.HardDiskSlotCapacity;
+            target.OpticalDiscSlotCapacity = source.OpticalDiscSlotCapacity;
         }
 
         private void DeleteCabinet()

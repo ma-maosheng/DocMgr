@@ -36,8 +36,6 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ContentEntryName { get; set; } = string.Empty;
 
-        public string ContentEntryRelativePath { get; set; } = string.Empty;
-
         public string FormNo { get; set; } = string.Empty;
 
         public string MaterialName { get; set; } = string.Empty;
@@ -151,9 +149,7 @@ namespace DocMgr.Models.YearlyArchive
         [NotMapped]
         public string SelectionScopeDisplay =>
             SelectionScopeKind == ArchiveSearchSelectionScopeKind.ContentEntry
-                ? string.IsNullOrWhiteSpace(ContentEntryRelativePath)
-                    ? ContentEntryName
-                    : ContentEntryRelativePath
+                ? ContentEntryName
                 : "整资料子项";
     }
 }

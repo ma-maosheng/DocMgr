@@ -24,17 +24,17 @@ namespace DocMgr.ViewModels.SystemSettings
         /// <summary>是否系统管理员（全量功能：字典维护、删行、清空、还原）。</summary>
         public bool IsSystemAdministrator { get; }
 
-        /// <summary>是否资料室资料管理员（受限开放：仅数据表浏览与备份当前库）。</summary>
+        /// <summary>是否资料管理员（受限开放：仅数据表浏览与备份当前库）。</summary>
         public bool IsArchiveAdministrator => !IsSystemAdministrator
             && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContext.CurrentUser);
 
-        /// <summary>普通登录用户（非系统管理员、非资料室资料管理员）：仅数据浏览。</summary>
+        /// <summary>普通登录用户（非系统管理员、非资料管理员）：仅数据浏览。</summary>
         public bool IsBrowsableOnlyUser => !IsSystemAdministrator && !IsArchiveAdministrator;
 
         /// <summary>非系统管理员时隐藏高危功能区，仅保留浏览/备份/导出。</summary>
         public bool ShowAdvancedMaintenance => IsSystemAdministrator;
 
-        /// <summary>非系统管理员（资料室资料管理员与普通用户）共用只读状态栏。</summary>
+        /// <summary>非系统管理员（资料管理员与普通用户）共用只读状态栏。</summary>
         public bool ShowReadOnlyStatusBar => !IsSystemAdministrator;
 
         private List<TableBrowseEntryDto> _tables = new();

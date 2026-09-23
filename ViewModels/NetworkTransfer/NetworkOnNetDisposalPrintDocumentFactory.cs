@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 
 namespace DocMgr.ViewModels.NetworkTransfer
 {
@@ -20,17 +21,32 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private const double TitleChromeHeight = 90;
         private const double HeaderHeight = 28;
         /// <summary>单行内容统一行高（原因/方式、说明、申请人、审核、审批、备注等）。</summary>
-        private const double StandardRowHeight = 36;
-        /// <summary>审核/审批（签字+日期，约 1 行）。</summary>
-        private const double ReviewRowHeight = 40;
-        private const double RowChromeDip = 6;
+        private const double StandardRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
+        /// <summary>审核/审批（仅签字+日期，单行）。</summary>
+        private const double ReviewRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
+        private const double RowChromeDip = PrintPageLayoutSupport.TableCellPaddingDip;
         private const string BlankDateSuffix = "日期:______年___月___日";
+
+        /// <summary>申请说明按正文估行后的上限。</summary>
+        private const int ReasonMaxLines = 5;
+
+        /// <summary>备注按正文估行后的上限。</summary>
+        private const int RemarkMaxLines = 3;
+
+        /// <summary>待处置清单按正文估行后的上限（撑满下限）。</summary>
+        private const int DetailMaxLines = 20;
 
         internal static FlowDocument Create(NetworkOnNetDisposalPrintData data)
         {
             ArgumentNullException.ThrowIfNull(data);
 
-            double itemRowHeight = CalculateItemRowHeight();
+            string reasonText = EmptyAsPlaceholder(data.Reason);
+            string remarkText = EmptyAsPlaceholder(data.Remark);
+            string itemListText = BuildItemList(data);
+            double reasonRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(reasonText, ReasonMaxLines);
+            double remarkRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(remarkText, RemarkMaxLines);
+            double itemRowHeight = CalculateItemRowHeight(data, reasonRowHeight, remarkRowHeight, itemListText);
+
             var document = CreateDocumentSkeleton();
 
             document.Blocks.Add(new Paragraph(new Run(""))
@@ -55,10 +71,10 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 "处置原因", EmptyAsPlaceholder(data.DisposalReason),
                 "处置方式", EmptyAsPlaceholder(data.DispositionMethod),
                 StandardRowHeight));
-            rowGroup.Rows.Add(CreateSingleRow("申请说明", EmptyAsPlaceholder(data.Reason), StandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("申请说明", reasonText, reasonRowHeight));
             rowGroup.Rows.Add(CreateSingleRow(
                 "待处置在网对象",
-                BuildItemList(data),
+                itemListText,
                 itemRowHeight,
                 verticalAlignTop: true));
             rowGroup.Rows.Add(CreateDoubleRow(
@@ -67,7 +83,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 StandardRowHeight));
             rowGroup.Rows.Add(CreateSingleRow("审核", BuildReviewSection(data), ReviewRowHeight, verticalAlignTop: true));
             rowGroup.Rows.Add(CreateSingleRow("审批", BuildApproveSection(data), ReviewRowHeight, verticalAlignTop: true));
-            rowGroup.Rows.Add(CreateSingleRow("备注", EmptyAsPlaceholder(data.Remark), StandardRowHeight));
+            rowGroup.Rows.Add(CreateSingleRow("备注", remarkText, remarkRowHeight));
 
             document.Blocks.Add(CreateMainTable(rowGroup));
             document.Blocks.Add(CreateFooterParagraph(data));
@@ -75,24 +91,38 @@ namespace DocMgr.ViewModels.NetworkTransfer
             return document;
         }
 
-        private static double CalculateItemRowHeight()
+        private static double CalculateItemRowHeight(
+            NetworkOnNetDisposalPrintData data,
+            double reasonRowHeight,
+            double remarkRowHeight,
+            string itemListText)
         {
-            // 固定行：原因方式、申请说明、申请人、审核、审批、备注。
+            // 固定行：原因方式、申请人、审核、审批(4 单行结构) + 申请说明 + 备注。
             double fixedContentHeight =
-                StandardRowHeight * 4
-                + ReviewRowHeight * 2;
+                StandardRowHeight * 2
+                + ReviewRowHeight * 2
+                + reasonRowHeight
+                + remarkRowHeight;
             const int fixedRowCount = 6;
             double fixedTableHeight = fixedContentHeight
-                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, RowChromeDip) * fixedRowCount;
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightDip(
-                lineCount: 4,
+                + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, RowChromeDip) * fixedRowCount
+                + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
+
+            string footerText = BuildFooterNoteText(data);
+            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
+                footerText,
+                PrintPageLayoutSupport.ContentWidthDip,
+                fontSizeDip: 10.5,
                 lineHeightDip: 18,
                 topMarginDip: 15);
             double reservedHeight = TitleChromeHeight + HeaderHeight + footerHeight + fixedTableHeight;
+            double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                itemListText,
+                DetailMaxLines);
             return PrintPageLayoutSupport.CalculateStretchRowHeightDip(
                 reservedHeight,
-                minimumRowHeightDip: 100,
-                stretchRowCellPaddingDip: RowChromeDip);
+                contentNeededHeight,
+                RowChromeDip);
         }
 
         private static FlowDocument CreateDocumentSkeleton()
@@ -137,24 +167,45 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         private static string BuildReviewSection(NetworkOnNetDisposalPrintData data)
         {
-            if (string.IsNullOrWhiteSpace(data.ArchiveRoomHead)
-                && string.IsNullOrWhiteSpace(data.ArchiveRoomHeadDateText))
-            {
-                return "资料室负责人签字：                              " + BlankDateSuffix;
-            }
-
-            return BuildSignerLine("资料室负责人签字", data.ArchiveRoomHead, data.ArchiveRoomHeadDateText);
+            var lines = new List<string>();
+            AppendSignerLine(lines, data.EnableDeptHead, ApprovalWorkflowDomainValues.DisplayDeptHead,
+                data.DeptHead, data.DeptHeadDateText);
+            AppendSignerLine(lines, data.EnableArchiveRoomHead, ApprovalWorkflowDomainValues.DisplayArchiveRoomHead,
+                data.ArchiveRoomHead, data.ArchiveRoomHeadDateText);
+            AppendSignerLine(lines, data.EnableProductionHead, ApprovalWorkflowDomainValues.DisplayProductionHead,
+                data.ProductionHead, data.ProductionHeadDateText);
+            return lines.Count == 0 ? string.Empty : string.Join("\n", lines);
         }
 
         private static string BuildApproveSection(NetworkOnNetDisposalPrintData data)
         {
-            if (string.IsNullOrWhiteSpace(data.ArchiveDeputyPresident)
-                && string.IsNullOrWhiteSpace(data.ArchiveDeputyPresidentDateText))
+            var lines = new List<string>();
+            AppendSignerLine(lines, data.EnableArchiveDeputyPresident, ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident,
+                data.ArchiveDeputyPresident, data.ArchiveDeputyPresidentDateText);
+            AppendSignerLine(lines, data.EnableProductionVicePresident, ApprovalWorkflowDomainValues.DisplayProductionVicePresident,
+                data.ProductionVicePresident, data.ProductionVicePresidentDateText);
+            return lines.Count == 0 ? string.Empty : string.Join("\n", lines);
+        }
+
+        private static void AppendSignerLine(
+            List<string> lines,
+            bool enabled,
+            string label,
+            string? name,
+            string? dateText)
+        {
+            if (!enabled)
             {
-                return "分管资料副院长签字：                            " + BlankDateSuffix;
+                return;
             }
 
-            return BuildSignerLine("分管资料副院长签字", data.ArchiveDeputyPresident, data.ArchiveDeputyPresidentDateText);
+            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(dateText))
+            {
+                lines.Add(label + "：                              " + BlankDateSuffix);
+                return;
+            }
+
+            lines.Add(BuildSignerLine(label, name, dateText));
         }
 
         private static string BuildSignerLine(string label, string? name, string? dateText)
@@ -175,14 +226,21 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
             footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
             footer.Inlines.Add(new Run(
-                "1、本单由资料室资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批通过、上传签批单、办结”流程办理。\n"));
+                "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批通过、上传签批单、办结”流程办理。\n"));
             footer.Inlines.Add(new Run(
-                "      2、审核为资料室负责人、审批为分管资料副院长，仅需签字与日期；请线下完成后回传签批单。\n"));
+                "      2、审核为资料室签字、审批为分管资料院长签字，仅需签字与日期；请线下完成后回传签批单。\n"));
             footer.Inlines.Add(new Run(
                 $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
 
             return footer;
         }
+
+        /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
+        private static string BuildFooterNoteText(NetworkOnNetDisposalPrintData data) =>
+            "说明：" +
+            "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批通过、上传签批单、办结”流程办理。\n" +
+            "      2、审核为资料室签字、审批为分管资料院长签字，仅需签字与日期；请线下完成后回传签批单。\n" +
+            $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。";
 
         private static Table CreateHeaderTable(string left, string right)
         {
@@ -206,10 +264,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 BorderBrush = Brushes.Black,
                 BorderThickness = new Thickness(2, 2, 0, 0)
             };
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.6, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(3.4, GridUnitType.Star) });
+            PrintPageLayoutSupport.ApplyApprovalFormMainTableColumns(table);
             table.RowGroups.Add(rowGroup);
             return table;
         }
@@ -253,7 +308,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 BorderThickness = new Thickness(0, 0, 1, 1),
                 BorderBrush = Brushes.Black,
-                Padding = new Thickness(2, 6, 2, 2)
+                Padding = new Thickness(2, RowChromeDip, 2, RowChromeDip)
             };
         }
 

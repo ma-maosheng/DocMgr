@@ -32,6 +32,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IDialogService _dialogService;
         private readonly List<YearlyArchiveOutboundRecord> _allReturnableOutbounds = new();
         private readonly List<YearlyArchiveReturnRecord> _allReturns = new();
+        private ApprovalChainResolution? _approvalChain;
 
         private int _selectedYear;
         private string _searchKeyword = string.Empty;
@@ -81,6 +82,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             PrintHandoverSheetCommand = new RelayCommand(async _ => await PrintHandoverDocumentAsync(), _ => !IsBusy && CanPrintHandoverSheet);
             UploadSignedAttachmentCommand = new RelayCommand(async _ => await UploadSignedAttachmentAsync(), _ => !IsBusy && CanUploadSignedAttachment);
             CaptureSignedAttachmentCommand = new RelayCommand(async _ => await CaptureSignedAttachmentAsync(), _ => !IsBusy && CanUploadSignedAttachment);
+            SupplementOtherAttachmentCommand = new RelayCommand(async _ => await SupplementOtherAttachmentAsync(), _ => !IsBusy && CanSupplementOtherAttachments);
+            CaptureOtherAttachmentCommand = new RelayCommand(async _ => await CaptureOtherAttachmentAsync(), _ => !IsBusy && CanSupplementOtherAttachments);
             ViewSignedAttachmentCommand = new RelayCommand(async _ => await ViewSignedAttachmentAsync(), _ => SelectedSignedAttachment != null);
             DeleteSignedAttachmentCommand = new RelayCommand(async _ => await DeleteSignedAttachmentAsync(), _ => !IsBusy && CanDeleteSignedAttachment && SelectedSignedAttachment != null);
             CancelEditCommand = new RelayCommand(_ => CancelEdit(), _ => IsEditing);
@@ -110,7 +113,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string PageSubtitle => _workspaceMode switch
         {
             ArchiveReturnWorkspaceMode.Application => "选择待归还出库单，填写归还申请；无论资料是否完好，均须打印签批交接单并完成线下签字后提交（扫描件由资料室上传）。",
-            _ => "审批、实物交接；由资料室资料管理员上传签批交接单并办结。"
+            _ => "审批、实物交接；由资料管理员上传签批交接单并办结。"
         };
 
         /// <summary>资料室侧工作台（审批入库；含兼容旧 Handover 入口）。</summary>
@@ -180,6 +183,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand PrintHandoverSheetCommand { get; }
         public RelayCommand UploadSignedAttachmentCommand { get; }
         public RelayCommand CaptureSignedAttachmentCommand { get; }
+        public RelayCommand SupplementOtherAttachmentCommand { get; }
+        public RelayCommand CaptureOtherAttachmentCommand { get; }
         public RelayCommand ViewSignedAttachmentCommand { get; }
         public RelayCommand DeleteSignedAttachmentCommand { get; }
         public RelayCommand CancelEditCommand { get; }
@@ -320,6 +325,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             && IsAdmin
             && EditingRecord is { Id: > 0, Status: YearlyArchiveReturnRecord.SignedUploaded };
 
+        /// <summary>办结后资料管理员可增补「其他附件」。</summary>
+        public bool CanSupplementOtherAttachments =>
+            IsAdminWorkbenchMode
+            && ApprovalWorkflowButtonSupport.CanSupplementOtherAttachments(
+                EditingRecord?.Status == YearlyArchiveReturnRecord.Completed,
+                IsAdmin);
+
         public bool CanDeleteSignedAttachment =>
             IsAdminWorkbenchMode
             && IsAdmin
@@ -377,7 +389,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string VoidActionToolTip => _workspaceMode == ArchiveReturnWorkspaceMode.Application
             ? "申请人撤回，状态变为「已作废（撤回）」"
-            : "资料室管理员强制作废（须满足逾期时限），状态变为「已作废（强制）」";
+            : "资料管理员强制作废（须满足逾期时限），状态变为「已作废（强制）」";
 
         /// <summary>申请人仅草稿/已提交可撤回；管理员仅草稿/已提交且逾期可强制。</summary>
         public bool CanVoid
@@ -424,8 +436,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (CanApprove)
                 {
                     return HasAbnormalReturnItems
-                        ? "本单存在灭失：签批交接单需借出时全部审核审批人（部门负责人、资料室负责人、生产科负责人、生产副院长）签字；请核对后点击“审批通过”。"
-                        : "本单资料完好归还：签批交接单仅需部门负责人签字，无需资料室负责人及其他审批人；请核对后点击“审批通过”。";
+                        ? "本单存在灭失：签批交接单需借出时全部审核审批人（部门审核、资料室签字、生产科签字、分管生产院长签字）签字；请核对后点击“审批通过”。"
+                        : "本单资料完好归还：签批交接单仅需部门审核签字，无需资料室签字及其他审批人；请核对后点击“审批通过”。";
                 }
 
                 return EditingRecord?.Status == YearlyArchiveReturnRecord.Approved
@@ -434,19 +446,29 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        /// <summary>完好归还：仅展示部门负责人。</summary>
-        public bool ShowIntactApprovalSigner => IsEditing && !HasAbnormalReturnItems;
+        /// <summary>仅部门审核节点启用时展示紧凑栏。</summary>
+        public bool ShowIntactApprovalSigner =>
+            IsEditing
+            && (_approvalChain == null
+                ? !HasAbnormalReturnItems
+                : _approvalChain.DeptHead.IsEnabled
+                  && !_approvalChain.HasFunctionalLevel
+                  && !_approvalChain.HasInstituteLevel);
 
-        /// <summary>灭失归还：展示借出时全部四级审核审批人。</summary>
-        public bool ShowLossApprovalSigners => IsEditing && HasAbnormalReturnItems;
+        /// <summary>职能部门或院级节点启用时展示完整签批栏。</summary>
+        public bool ShowLossApprovalSigners =>
+            IsEditing
+            && (_approvalChain == null
+                ? HasAbnormalReturnItems
+                : _approvalChain.HasFunctionalLevel || _approvalChain.HasInstituteLevel);
 
         /// <summary>审核人字段标签。</summary>
-        public string ReviewerFieldLabel => HasAbnormalReturnItems
-            ? "部门负责人（借出时） *"
-            : "部门负责人 *";
+        public string ReviewerFieldLabel => ShowLossApprovalSigners
+            ? "部门审核（借出时） *"
+            : "部门审核 *";
 
-        /// <summary>资料室负责人字段标签（仅灭失时展示）。</summary>
-        public string ApproverFieldLabel => "资料室负责人（借出时） *";
+        /// <summary>资料室签字字段标签（多节点签批时展示）。</summary>
+        public string ApproverFieldLabel => "资料室签字（借出时） *";
 
         public string ConfirmHandoverHintText
         {
@@ -466,7 +488,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string UploadHintText => CanUploadSignedAttachment
             ? "后续：上传签批交接单后，请打印交接单并点击“确认办结”。"
-            : "请先确认实物交接，再上传签批交接单。";
+            : (CanSupplementOtherAttachments
+                ? "办结后仅可增补「其他附件」；不可删除已有附件。"
+                : "请先确认实物交接，再上传签批交接单。");
 
         public string CompleteHintText => CanComplete
             ? "下一步：确认办结，完成资料收回入库。"
@@ -893,27 +917,34 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(ReviewerName))
+            if (string.IsNullOrWhiteSpace(DeptHead) && (_approvalChain?.DeptHead.IsEnabled ?? true))
             {
-                _dialogService.ShowMessage("请填写部门负责人。");
+                _dialogService.ShowMessage("请填写部门审核。");
                 return;
             }
 
-            if (HasAbnormalReturnItems && string.IsNullOrWhiteSpace(ApproverName))
+            if (_approvalChain != null)
             {
-                _dialogService.ShowMessage("存在灭失时请填写资料室负责人。");
-                return;
+                var probe = new YearlyArchiveReturnRecord
+                {
+                    DeptHead = DeptHead,
+                    ArchiveRoomHead = ArchiveRoomHead,
+                    ProductionHead = ProductionHeadName,
+                    ArchiveDeputyPresident = ArchiveDeputyPresidentName,
+                    ProductionVicePresident = ProductionVicePresidentName
+                };
+                var missing = ApprovalChainApplySupport.CollectMissingSignerErrors(
+                    _approvalChain,
+                    nodeKey => ApprovalChainApplySupport.ReadReturnSigner(probe, nodeKey));
+                if (missing.Count > 0)
+                {
+                    _dialogService.ShowMessage(string.Join(Environment.NewLine, missing));
+                    return;
+                }
             }
-
-            if (HasAbnormalReturnItems && string.IsNullOrWhiteSpace(ProductionHeadName))
+            else if (HasAbnormalReturnItems && string.IsNullOrWhiteSpace(ArchiveRoomHead))
             {
-                _dialogService.ShowMessage("存在灭失时请填写生产科负责人。");
-                return;
-            }
-
-            if (HasAbnormalReturnItems && string.IsNullOrWhiteSpace(VicePresidentName))
-            {
-                _dialogService.ShowMessage("存在灭失时请填写生产副院长。");
+                _dialogService.ShowMessage("存在灭失时请填写资料室签字。");
                 return;
             }
 
@@ -1203,8 +1234,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             // 灭失说明写入签批交接单，不再单独上传灭失情况表。
             AbnormalFlowHint = ShowApplicationActions
                 ? (IsEditable
-                    ? "本单存在灭失份数：请填写灭失具体情况（将写入签批交接单），打印并完成线下签字后提交；签批交接单扫描件由资料室资料管理员上传。"
-                    : "本单存在灭失份数：请打印签批交接单完成线下签字；签批交接单扫描件由资料室资料管理员上传。")
+                    ? "本单存在灭失份数：请填写灭失具体情况（将写入签批交接单），打印并完成线下签字后提交；签批交接单扫描件由资料管理员上传。"
+                    : "本单存在灭失份数：请打印签批交接单完成线下签字；签批交接单扫描件由资料管理员上传。")
                 : "本单存在灭失份数：灭失说明已体现在签批交接单中，请核对明细与四级签字人后办理审批与交接。";
         }
 
@@ -1216,6 +1247,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanApprove));
             OnPropertyChanged(nameof(CanConfirmHandover));
             OnPropertyChanged(nameof(CanUploadSignedAttachment));
+            OnPropertyChanged(nameof(CanSupplementOtherAttachments));
             OnPropertyChanged(nameof(CanDeleteSignedAttachment));
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(CanVoid));
