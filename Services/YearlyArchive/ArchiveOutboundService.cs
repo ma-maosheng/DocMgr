@@ -367,12 +367,25 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveOutboundFlowResult.Fail("仅申请人本人可撤回该申请。");
             }
 
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    signedAttachmentUploaded: false,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.Applicant),
+                OfflineApprovalLifecycleSupport.Action.Withdraw);
+            if (!gate.Allowed)
+            {
+                return ArchiveOutboundFlowResult.Fail(gate.DenyMessage ?? "当前申请单不允许撤回作废。");
+            }
+
             if (!record.CanApplicantWithdraw)
             {
                 return ArchiveOutboundFlowResult.Fail("当前申请单已录入审批信息或状态不允许撤回作废。");
             }
 
             record.MarkAsWithdrawnVoid(reason);
+            record.Status = gate.NextStatus ?? YearlyArchiveOutboundRecord.WithdrawnVoid;
             record.UpdatedAt = DateTime.Now;
 
             await using var transaction = await _outboundRepository.BeginTransactionAsync();
@@ -406,19 +419,31 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveOutboundFlowResult.Fail("未找到指定的出库申请单。");
             }
 
-            if (!record.CanForceVoid)
-            {
-                return ArchiveOutboundFlowResult.Fail("仅“已提交”且尚未审批的申请单可强制作废。");
-            }
-
             string settingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
             DateTime applyDate = ApplicationOverdueSettingSupport.ResolveOutboundApplyDate(record);
-            if (!_businessLogicSettingsService.IsEligibleForAdminForceVoid(applyDate, settingCode))
+            bool isOverdueEligible = _businessLogicSettingsService.IsEligibleForAdminForceVoid(applyDate, settingCode);
+            bool forceVoidEligible = record.CanForceVoid && isOverdueEligible;
+
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    signedAttachmentUploaded: false,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin,
+                    forceVoidEligible: forceVoidEligible),
+                OfflineApprovalLifecycleSupport.Action.ForceVoid);
+            if (!gate.Allowed)
             {
-                return ArchiveOutboundFlowResult.Fail(_businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
+                if (record.CanForceVoid && !isOverdueEligible)
+                {
+                    return ArchiveOutboundFlowResult.Fail(_businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
+                }
+
+                return ArchiveOutboundFlowResult.Fail(gate.DenyMessage ?? "当前申请单不允许强制作废。");
             }
 
             record.MarkAsForceVoided(ArchiveOutboundDomainValues.ForceVoidKindAdminManual, reason);
+            record.Status = gate.NextStatus ?? YearlyArchiveOutboundRecord.ForceVoided;
             record.UpdatedAt = DateTime.Now;
 
             await using var transaction = await _outboundRepository.BeginTransactionAsync();
@@ -505,7 +530,20 @@ namespace DocMgr.Services.YearlyArchive
             ClearDisabledOutboundSigners(existing, chain);
             if (IsApprovalComplete(existing, chain))
             {
+                var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                    new OfflineApprovalLifecycleSupport.GateContext(
+                        existing.Status,
+                        signedAttachmentUploaded: false,
+                        OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                        OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                    OfflineApprovalLifecycleSupport.Action.ApprovePass);
+                if (!gate.Allowed)
+                {
+                    return ArchiveOutboundFlowResult.Fail(gate.DenyMessage ?? "当前状态不允许审批通过。");
+                }
+
                 existing.MarkAsApproved();
+                existing.Status = gate.NextStatus ?? YearlyArchiveOutboundRecord.Approved;
             }
 
             await _outboundRepository.SaveOrUpdateRecordGraphAsync(existing);
@@ -563,15 +601,17 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveOutboundFlowResult.Fail("仅资料管理员可上传出库附件。");
             }
 
-            bool canUploadInWorkflow = record.Status == YearlyArchiveOutboundRecord.SignedUploaded;
-            bool canSupplementOtherAfterComplete =
-                record.Status == YearlyArchiveOutboundRecord.Completed && isOther;
-            if (!canUploadInWorkflow && !canSupplementOtherAfterComplete)
+            var attachGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentUpload(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    signedAttachmentUploaded: false,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                isOtherCategory: isOther,
+                isArchiveAdmin: true);
+            if (!attachGate.Allowed)
             {
-                return ArchiveOutboundFlowResult.Fail(
-                    record.Status == YearlyArchiveOutboundRecord.Completed
-                        ? "办结后仅可增补「其他附件」。"
-                        : "请先确认实物交接后再上传附件。");
+                return ArchiveOutboundFlowResult.Fail(attachGate.DenyMessage ?? "当前状态不允许上传附件。");
             }
 
             if (isProofMaterialScan
@@ -689,9 +729,16 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveOutboundFlowResult.Fail("未找到指定的出库申请单。");
             }
 
-            if (existing.Status != YearlyArchiveOutboundRecord.Approved)
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    existing.Status,
+                    signedAttachmentUploaded: false,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                OfflineApprovalLifecycleSupport.Action.ConfirmMidStep);
+            if (!gate.Allowed)
             {
-                return ArchiveOutboundFlowResult.Fail("请先审批通过后再办结审批阶段。");
+                return ArchiveOutboundFlowResult.Fail(gate.DenyMessage ?? "请先审批通过后再办结审批阶段。");
             }
 
             CopyApprovalFields(existing, record);
@@ -706,6 +753,7 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             existing.MarkAsSignedUploaded();
+            existing.Status = gate.NextStatus ?? YearlyArchiveOutboundRecord.SignedUploaded;
             existing.UpdatedAt = DateTime.Now;
             await _outboundRepository.SaveOrUpdateRecordGraphAsync(existing);
 
@@ -727,11 +775,6 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveOutboundFlowResult.Fail("未找到指定的出库申请单。");
             }
 
-            if (record.Status != YearlyArchiveOutboundRecord.SignedUploaded)
-            {
-                return ArchiveOutboundFlowResult.Fail("只有「已办结审批」状态的申请单可办理资料出库。");
-            }
-
             var attachments = await _outboundRepository.GetAttachmentsByBusinessIdAsync(record.Id);
             bool hasSignedForm = attachments.Any(a =>
                 ArchiveOutboundDomainValues.IsSignedFormAttachmentKind(a.FileCategory));
@@ -739,6 +782,18 @@ namespace DocMgr.Services.YearlyArchive
                 string.Equals(a.FileCategory, ArchiveOutboundDomainValues.AttachmentKindMaterialPhoto, StringComparison.Ordinal));
             bool hasProofScan = attachments.Any(a =>
                 string.Equals(a.FileCategory, ArchiveOutboundDomainValues.AttachmentKindProofMaterialScan, StringComparison.Ordinal));
+
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    signedAttachmentUploaded: hasSignedForm,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                OfflineApprovalLifecycleSupport.Action.Complete);
+            if (!gate.Allowed)
+            {
+                return ArchiveOutboundFlowResult.Fail(gate.DenyMessage ?? "只有「已办结审批」状态的申请单可办理资料出库。");
+            }
 
             if (!hasSignedForm || !hasPhoto)
             {
@@ -759,6 +814,7 @@ namespace DocMgr.Services.YearlyArchive
                 record.HandoverRemark = handoverRemark?.Trim() ?? string.Empty;
                 record.PhysicallyCompletedBy = operatorName;
                 record.MarkAsCompleted();
+                record.Status = gate.NextStatus ?? YearlyArchiveOutboundRecord.Completed;
                 record.UpdatedAt = DateTime.Now;
                 await _outboundRepository.SaveOrUpdateRecordGraphAsync(record);
 
@@ -1123,6 +1179,10 @@ namespace DocMgr.Services.YearlyArchive
             errors.AddRange(ArchiveOutboundSharedDiskSettingsSupport.ValidateCrossUnitConsistency(items));
             return errors;
         }
+
+        /// <inheritdoc />
+        public Task<ApprovalChainResolution> ResolveApprovalChainAsync(YearlyArchiveOutboundRecord record) =>
+            ResolveOutboundApprovalChainAsync(record);
 
         private Task<ApprovalChainResolution> ResolveOutboundApprovalChainAsync(YearlyArchiveOutboundRecord record) =>
             _approvalWorkflowService.ResolveAsync(

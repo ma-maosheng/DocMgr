@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-09-23T01:02:56Z
+generatedAt: 2026-09-24T02:57:51Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -922,7 +922,7 @@ tables:
         needsReview: false
         aliases: []
       Status:
-        chineseName: 状态
+        chineseName: 业务状态
         description: ''
         clrType: Int32
         needsReview: false
@@ -1133,6 +1133,12 @@ tables:
         aliases: []
       LastPrintedAt:
         chineseName: 最后打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      FirstPrintedAt:
+        chineseName: 首次打印时间
         description: ''
         clrType: DateTime?
         needsReview: false
@@ -1384,7 +1390,7 @@ tables:
         needsReview: false
         aliases: []
       ApplicationStatus:
-        chineseName: 申请状态
+        chineseName: 业务状态
         description: ''
         clrType: String
         needsReview: false
@@ -1469,6 +1475,12 @@ tables:
         aliases: []
       PrintedTime:
         chineseName: 打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      FirstPrintedAt:
+        chineseName: 首次打印时间
         description: ''
         clrType: DateTime?
         needsReview: false
@@ -1884,7 +1896,7 @@ tables:
         needsReview: false
         aliases: []
       Status:
-        chineseName: 状态
+        chineseName: 业务状态
         description: ''
         clrType: Int32
         needsReview: false
@@ -2119,6 +2131,12 @@ tables:
         aliases: []
       LastPrintedAt:
         chineseName: 最后打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      FirstPrintedAt:
+        chineseName: 首次打印时间
         description: ''
         clrType: DateTime?
         needsReview: false
@@ -3556,7 +3574,7 @@ tables:
         needsReview: false
         aliases: []
       Status:
-        chineseName: 状态
+        chineseName: 业务状态
         description: ''
         clrType: Int32
         needsReview: false
@@ -4060,7 +4078,7 @@ tables:
         needsReview: false
         aliases: []
       Status:
-        chineseName: 状态
+        chineseName: 业务状态
         description: ''
         clrType: Int32
         needsReview: false
@@ -4235,6 +4253,12 @@ tables:
         aliases: []
       LastPrintedAt:
         chineseName: 最后打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      FirstPrintedAt:
+        chineseName: 首次打印时间
         description: ''
         clrType: DateTime?
         needsReview: false
@@ -4704,7 +4728,7 @@ tables:
   YearlyArchiveRegisterRecord:
     tableName: YearlyArchiveRegisterRecords
     chineseName: 年度资料登记申请
-    description: 年度资料登记流程主单，记录申请状态、项目、部门及审批进度。
+    description: 年度资料登记流程主单，记录业务状态、项目、部门及审批进度。
     isView: false
     deprecated: false
     aliases: []
@@ -4740,7 +4764,7 @@ tables:
         needsReview: false
         aliases: []
       Status:
-        chineseName: 状态
+        chineseName: 业务状态
         description: ''
         clrType: Int32
         needsReview: false
@@ -4921,6 +4945,24 @@ tables:
         aliases: []
       DeptHeadDate:
         chineseName: 部门审核日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      PrintCount:
+        chineseName: 打印次数
+        description: 交接单累计打印次数。
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      LastPrintedAt:
+        chineseName: 最后打印时间
+        description: 最近一次打印交接单的时间。
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      FirstPrintedAt:
+        chineseName: 首次打印时间
         description: ''
         clrType: DateTime?
         needsReview: false
@@ -5228,7 +5270,7 @@ tables:
         needsReview: false
         aliases: []
       Status:
-        chineseName: 状态
+        chineseName: 业务状态
         description: ''
         clrType: Int32
         needsReview: false
@@ -5497,6 +5539,12 @@ tables:
         clrType: DateTime?
         needsReview: false
         aliases: []
+      FirstPrintedAt:
+        chineseName: 首次打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
       CreatedAt:
         chineseName: 创建时间
         description: ''
@@ -5658,7 +5706,7 @@ tables:
         needsReview: false
         aliases: []
       Status:
-        chineseName: 状态
+        chineseName: 业务状态
         description: ''
         clrType: String
         needsReview: false
@@ -6030,7 +6078,7 @@ tables:
         needsReview: false
         aliases: []
       Status:
-        chineseName: 状态
+        chineseName: 业务状态
         description: ''
         clrType: Int32
         needsReview: false
@@ -6380,7 +6428,7 @@ tables:
         needsReview: false
         aliases: []
       Status:
-        chineseName: 状态
+        chineseName: 业务状态
         description: ''
         clrType: Int32
         needsReview: false
@@ -6655,6 +6703,12 @@ tables:
         clrType: DateTime?
         needsReview: false
         aliases: []
+      FirstPrintedAt:
+        chineseName: 首次打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
       CreatedAt:
         chineseName: 创建时间
         description: ''
@@ -6902,7 +6956,7 @@ tables:
         needsReview: false
         aliases: []
       Status:
-        chineseName: 状态
+        chineseName: 业务状态
         description: ''
         clrType: Int32
         needsReview: false
@@ -7105,6 +7159,12 @@ tables:
         clrType: DateTime?
         needsReview: false
         aliases: []
+      FirstPrintedAt:
+        chineseName: 首次打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
       CreatedAt:
         chineseName: 创建时间
         description: ''
@@ -7230,7 +7290,7 @@ tables:
         needsReview: false
         aliases: []
       Status:
-        chineseName: 状态
+        chineseName: 业务状态
         description: ''
         clrType: Int32
         needsReview: false
@@ -7499,6 +7559,12 @@ tables:
         clrType: DateTime?
         needsReview: false
         aliases: []
+      FirstPrintedAt:
+        chineseName: 首次打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
       CreatedAt:
         chineseName: 创建时间
         description: ''
@@ -7690,7 +7756,7 @@ tables:
         needsReview: false
         aliases: []
       Status:
-        chineseName: 状态
+        chineseName: 业务状态
         description: ''
         clrType: Int32
         needsReview: false
@@ -7931,6 +7997,12 @@ tables:
         aliases: []
       LastPrintedAt:
         chineseName: 最后打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      FirstPrintedAt:
+        chineseName: 首次打印时间
         description: ''
         clrType: DateTime?
         needsReview: false

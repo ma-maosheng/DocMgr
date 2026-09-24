@@ -61,6 +61,19 @@ public sealed class NetworkTransferToDoProvider : IToDoProvider
             });
         }
 
+        var pendingDisposals = await _repository.GetPendingDisposalRecordsForToDoAsync(200);
+        result.AddRange(pendingDisposals.Select(record => new ToDoItem
+        {
+            Id = $"NET-DSP-{record.Id}-PENDING",
+            Title = $"【在网数据处置】{ResolveDisposalTitle(record)}：{BuildDisposalSummary(record)}",
+            BizType = "NetworkOnNetDisposal",
+            BizId = record.Id,
+            BizNo = record.DisposalNo,
+            Stage = ResolveDisposalStage(record),
+            CreatedTime = record.SubmittedAt ?? record.ApplyTime,
+            Priority = "高"
+        }));
+
         return result;
     }
 
@@ -73,4 +86,30 @@ public sealed class NetworkTransferToDoProvider : IToDoProvider
         record.Status is NetworkOutboundRecord.StatusSubmitted
             or NetworkOutboundRecord.StatusApproved
             or NetworkOutboundRecord.StatusSignedUploaded;
+
+    private static string ResolveDisposalTitle(NetworkOnNetDisposalRecord record) =>
+        record.Status switch
+        {
+            NetworkOnNetDisposalRecord.StatusDraft => "待提交",
+            NetworkOnNetDisposalRecord.StatusSubmitted => "待审批",
+            NetworkOnNetDisposalRecord.StatusApproved => "待确认可上传",
+            NetworkOnNetDisposalRecord.StatusSignedUploaded when !record.SignedAttachmentUploaded => "待上传签批单",
+            NetworkOnNetDisposalRecord.StatusSignedUploaded => "待办结",
+            _ => "待办理"
+        };
+
+    private static string ResolveDisposalStage(NetworkOnNetDisposalRecord record) =>
+        record.Status switch
+        {
+            NetworkOnNetDisposalRecord.StatusDraft => "草稿-待提交",
+            _ => NetworkTransferDomainValues.ToStatusDisplay(record.Status)
+        };
+
+    private static string BuildDisposalSummary(NetworkOnNetDisposalRecord record)
+    {
+        string reason = record.DisposalReason?.Trim() ?? string.Empty;
+        int itemCount = record.Items?.Count ?? 0;
+        string items = itemCount > 0 ? $"{itemCount} 项" : record.DisposalNo;
+        return string.IsNullOrWhiteSpace(reason) ? items : $"{reason} / {items}";
+    }
 }

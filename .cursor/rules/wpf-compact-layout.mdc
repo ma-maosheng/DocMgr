@@ -17,11 +17,13 @@ alwaysApply: false
 5. **提示从简**：说明性文案一行即可，字号可略小（11–12），勿用大段说明抬高版心。
 6. **与现有样式复用**：审批紧凑行样式见 `ArchiveRegisterResources.xaml` 中 `ArchiveRegisterApprovalCompact*`；新页面优先复用或抽取同类紧凑样式，禁止平行发明第二套留白更大的卡片。
 7. **标签勿截断**：只读/表单标签的固定 `Width` 须能完整显示最长中文文案（约「字数 × FontSize」）。堆叠标签（标签在上）优先不设固定宽，复用 `ArchiveRegisterApprovalReadOnlyLabelStyle`（已按文案自适应）。横排对齐标签可用固定宽，但禁止再用过窄值（如 64）截断「预计归还日期」等 6 字及以上标签；审批节点标题沿用 `ArchiveRegisterApprovalCompactStepTitleStyle`（120）。
+8. **标签与控件间隙**：横排字段标签与输入控件之间须走 `FormLabelControlGap`（`FormResources.xaml`，默认右侧 8px）。`FormLabelTextBlockStyle` / `FormLabelStyle` / `ArchiveRegisterFormLabelStyle` 已内置；禁止本地写 `Margin="0"` 贴边，禁止再平行发明第二套间距魔法数。
+9. **字段提示词冒号**：表单字段提示词统一带中文全角「：」；必填写作 `字段名 *：`。区块/卡片标题、按钮文案、表格列头、流程说明不加冒号。新页优先复用全局标签样式，勿各自复制 `*FieldLabelStyle` 间距定义。
 
 ## 推荐形态
 
 ```xml
-<!-- ✅ 紧凑：双列 + 单行签字/日期 -->
+<!-- ✅ 紧凑：双列 + 单行签字/日期；标签带「：」且与控件有间隙 -->
 <Grid>
   <Grid.ColumnDefinitions>
     <ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/>
@@ -30,9 +32,9 @@ alwaysApply: false
     <DockPanel>
       <TextBlock DockPanel.Dock="Left" Text="节点名" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
       <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-        <TextBlock Text="签字" VerticalAlignment="Center" Margin="0,0,4,0"/>
+        <TextBlock Text="签字：" Style="{StaticResource FormLabelTextBlockStyle}"/>
         <TextBox Width="90" Height="{StaticResource FormControlHeight}"/>
-        <TextBlock Text="日期" Margin="10,0,4,0" VerticalAlignment="Center"/>
+        <TextBlock Text="日期：" Style="{StaticResource FormLabelTextBlockStyle}" Margin="10,0,8,0"/>
         <DatePicker Width="124" Height="{StaticResource FormControlHeight}"/>
       </StackPanel>
     </DockPanel>
@@ -60,3 +62,5 @@ alwaysApply: false
 - 新弹窗/改版后：审批区、办理区、多步骤表单是否可用双列或单行横排减半高度？
 - 是否出现「标签在上 × 多字段 × 多卡片」的无必要组合？
 - 只读查看与可编辑审批的字段集合是否一致、且无冗余意见区？
+- 横排标签与控件是否贴边？是否已用 `FormLabelControlGap` / 全局标签样式？
+- 字段提示词是否带「：」？必填是否为 `*：`？区块标题是否误加冒号？

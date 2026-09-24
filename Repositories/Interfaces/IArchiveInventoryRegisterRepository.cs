@@ -1,5 +1,6 @@
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.OpticalDiscMedia;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Repositories.Interfaces;
@@ -39,6 +40,9 @@ public interface IArchiveInventoryRegisterRepository
 
     Task<bool> ExistsActiveHardDiskInventoryOrDisposalForMediumAsync(int mediumId);
 
+    /// <summary>资料室待办：草稿起至办结前的盘库登记单。</summary>
+    Task<List<YearlyArchiveInventoryRegisterRecord>> GetPendingRecordsForToDoAsync(int takeCount);
+
     Task<List<YearlyArchiveFilingFact>> GetFactsWithDetailsAsync(IReadOnlyCollection<int> filingFactIds);
 
     /// <summary>按项目 ID 批量取实施年度（ImplementYear）。</summary>
@@ -66,6 +70,17 @@ public interface IArchiveInventoryRegisterRepository
     void AddOpticalDiscTransaction(OpticalDiscMediaTransaction transaction);
 
     void RemoveRegisterLock(HardDiskRegisterLock lockItem);
+
+    /// <summary>本单当前占用的全部硬盘登记锁（电子轨草稿改明细时先整单解锁再按新明细加锁）。</summary>
+    Task<List<HardDiskRegisterLock>> GetOwnedRegisterLocksAsync(int recordId);
+
+    Task<List<SystemAttachment>> GetAttachmentsAsync(string registerNo);
+
+    Task<SystemAttachment?> GetAttachmentByIdAsync(int attachmentId);
+
+    void AddAttachment(SystemAttachment attachment);
+
+    void RemoveAttachment(SystemAttachment attachment);
 
     Task SaveChangesAsync();
 }

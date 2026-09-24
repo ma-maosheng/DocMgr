@@ -10,12 +10,14 @@
     <Border Style="{StaticResource ToolbarCardBorderStyle}" Padding="16,12">
       <StackPanel Orientation="Horizontal">
         <Button Content="打开办理" Command="{Binding OpenCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,16,0"/>
-        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-        <ComboBox Width="200" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"/>
+        <TextBlock Text="业务状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+        <ComboBox Width="200" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"
+                  ToolTip="可按业务状态筛选；选【全部】列出各状态申请（含未提交）"/>
         <TextBlock Text="年度:" VerticalAlignment="Center" Margin="16,0,6,0"/>
         <ComboBox Width="90" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding ApplyYears}" SelectedItem="{Binding ApplyYear}"/>
         <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="16,0,6,0"/>
-        <TextBox Width="160" Height="32" VerticalContentAlignment="Center" Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"/>
+        <TextBox Width="160" Height="32" VerticalContentAlignment="Center" Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
+                 ToolTip="出网单号、申请人、项目名称、明细资料名称/资产编号"/>
         <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72" Margin="10,0,0,0"/>
         <Button Content="刷新" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72" Margin="8,0,0,0"/>
       </StackPanel>
@@ -24,7 +26,7 @@
               AutoGenerateColumns="False" IsReadOnly="True" MouseDoubleClick="DgRecords_MouseDoubleClick">
       <DataGrid.Columns>
         <DataGridTextColumn Header="出网单号" Binding="{Binding OutboundNo, Mode=OneWay}" Width="160"/>
-        <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="160"/>
+        <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="160"/>
         <DataGridTextColumn Header="目的地" Binding="{Binding DestinationKind, Mode=OneWay}" Width="110"/>
         <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="*"/>
         <DataGridTextColumn Header="关联业务进度" Binding="{Binding BusinessChainProgressDisplay, Mode=OneWay}" Width="230"/>

@@ -23,9 +23,16 @@ public sealed partial class ArchiveDisposalService
         var existing = await _repository.GetRecordByIdForUpdateAsync(recordId)
             ?? throw new InvalidOperationException("未找到资料离库处置单。");
 
-        if (existing.Status != YearlyArchiveDisposalRecord.StatusSignedUploaded)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.Complete);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("请先确认可上传签批单后再办结。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许办结。");
         }
 
         var attachments = await _repository.GetAttachmentsAsync(existing.DisposalNo);
@@ -102,7 +109,7 @@ public sealed partial class ArchiveDisposalService
             existing.FormatRetainedConfirmedBy = operatorName;
         }
 
-        existing.Status = YearlyArchiveDisposalRecord.StatusCompleted;
+        existing.Status = gate.NextStatus ?? YearlyArchiveDisposalRecord.StatusCompleted;
         existing.CompletedAt = now;
         existing.CompletedBy = operatorName;
         existing.SignedAttachmentUploaded = true;

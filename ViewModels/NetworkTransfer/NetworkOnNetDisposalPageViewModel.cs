@@ -21,6 +21,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
         private readonly IServerPathSettingService _serverPathSettingService;
+        private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
         private readonly List<NetworkOnNetDisposalRecord> _allRecords = new();
         private bool _isInitialized;
         private int _applyYear = DateTime.Today.Year;
@@ -33,17 +34,20 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private string _assetDepartment = "全部";
         private NetworkOnNetDisposalRecord? _selectedRecord;
         private NetworkOnNetAsset? _selectedAsset;
+        private string _applicationOverdueSettingCode = string.Empty;
 
         public NetworkOnNetDisposalPageViewModel(
             INetworkTransferService service,
             IDialogService dialogService,
             IUserContextService userContextService,
-            IServerPathSettingService serverPathSettingService)
+            IServerPathSettingService serverPathSettingService,
+            IBusinessLogicSettingsService businessLogicSettingsService)
         {
             _service = service;
             _dialogService = dialogService;
             _userContextService = userContextService;
             _serverPathSettingService = serverPathSettingService;
+            _businessLogicSettingsService = businessLogicSettingsService;
 
             RefreshCommand = new RelayCommand(async _ => await RefreshAllAsync());
             SearchCommand = new RelayCommand(async _ => await RefreshDisposalsAsync());
@@ -53,6 +57,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             AddDisposalCommand = new RelayCommand(async _ => await AddDisposalAsync(), _ => CanOperate);
             OpenDisposalCommand = new RelayCommand(async _ => await OpenDisposalAsync(), _ => SelectedRecord != null);
             WithdrawDisposalCommand = new RelayCommand(async _ => await WithdrawDisposalAsync(), _ => CanWithdrawSelected);
+            ForceVoidDisposalCommand = new RelayCommand(async _ => await ForceVoidDisposalAsync(), _ => CanForceVoidSelected);
         }
 
         public ObservableCollection<NetworkOnNetAsset> Assets { get; } = new();
@@ -116,11 +121,23 @@ namespace DocMgr.ViewModels.NetworkTransfer
             set { if (SetProperty(ref _selectedAsset, value)) CommandManager.InvalidateRequerySuggested(); }
         }
 
-        private bool CanOperate => ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+        private bool CanOperate =>
+            OfflineApprovalPermissionSupport.CanCreateDraft(
+                _userContextService.CurrentUser,
+                ApprovalWorkflowBusinessTypes.NetworkOnNetDisposal);
         private bool CanWithdrawSelected =>
-            CanOperate
-            && SelectedRecord != null
-            && SelectedRecord.Status is NetworkOnNetDisposalRecord.StatusDraft or NetworkOnNetDisposalRecord.StatusSubmitted;
+            ApplicationListActionSupport.CanAdminWithdrawDisposal(
+                SelectedRecord?.Status ?? ApplicationWorkflowStatus.Completed,
+                CanOperate);
+
+        private bool CanForceVoidSelected =>
+            SelectedRecord != null
+            && ApplicationListActionSupport.CanForceVoid(
+                SelectedRecord.Status,
+                CanOperate,
+                _businessLogicSettingsService.IsEligibleForAdminForceVoid(
+                    SelectedRecord.ApplyTime,
+                    _applicationOverdueSettingCode));
 
         public RelayCommand RefreshCommand { get; }
         public RelayCommand SearchCommand { get; }
@@ -129,6 +146,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public RelayCommand AddDisposalCommand { get; }
         public RelayCommand OpenDisposalCommand { get; }
         public RelayCommand WithdrawDisposalCommand { get; }
+        public RelayCommand ForceVoidDisposalCommand { get; }
 
         public async Task InitializeAsync()
         {
@@ -216,6 +234,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             try
             {
+                _applicationOverdueSettingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
                 int? selectedId = SelectedRecord?.Id;
                 string? keyword = string.IsNullOrWhiteSpace(SearchKeyword) ? null : SearchKeyword.Trim();
                 var list = await _service.SearchDisposalRecordsAsync(keyword, null, null);
@@ -299,6 +318,24 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 await RefreshDisposalsAsync();
                 await RefreshAssetsAsync();
                 _dialogService.ShowMessage("已撤回作废。");
+            }
+            catch (Exception ex) { _dialogService.ShowError(ex.Message); }
+        }
+
+        private async Task ForceVoidDisposalAsync()
+        {
+            if (SelectedRecord == null || !CanForceVoidSelected) return;
+            try
+            {
+                if (!_dialogService.ShowConfirm(
+                        $"确定要强制作废处置单【{SelectedRecord.DisposalNo}】吗？仅草稿或已提交且已达逾期时限的单据可强制作废。",
+                        "强制作废确认"))
+                    return;
+                await _service.ForceVoidDisposalAsync(SelectedRecord.Id, "列表强制作废",
+                    _userContextService.CurrentUser ?? throw new InvalidOperationException("当前用户无效。"));
+                await RefreshDisposalsAsync();
+                await RefreshAssetsAsync();
+                _dialogService.ShowMessage("已强制作废。");
             }
             catch (Exception ex) { _dialogService.ShowError(ex.Message); }
         }

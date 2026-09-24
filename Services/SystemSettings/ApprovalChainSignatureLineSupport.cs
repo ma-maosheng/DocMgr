@@ -1,3 +1,4 @@
+using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 
 namespace DocMgr.Services.SystemSettings
@@ -44,13 +45,15 @@ namespace DocMgr.Services.SystemSettings
             return lines;
         }
 
-        /// <summary>按「一级一行」折叠为打印段落文本（未启用级别整段省略）。</summary>
+        /// <summary>按「一级一行」折叠为打印段落文本（未启用级别整段省略；签字格式走 <see cref="PrintApprovalSignatureSupport"/>）。</summary>
         public static string BuildLevelGroupedText(
             ApprovalChainResolution chain,
             Func<string, string?>? readCurrentName = null,
             bool blank = false,
-            string blankDateSuffix = "日期：______年___月___日")
+            string? blankDateSuffix = null)
         {
+            _ = blankDateSuffix; // 保留参数兼容旧调用；日期统一用 PrintApprovalSignatureSupport 留白。
+
             var rows = ApprovalChainPrintLayoutSupport.BuildRows(chain);
             if (rows.Count == 0)
             {
@@ -71,10 +74,10 @@ namespace DocMgr.Services.SystemSettings
                             ? current
                             : defaultName);
 
-                    string signerText = string.IsNullOrWhiteSpace(name)
-                        ? "____________________"
-                        : name;
-                    lineParts.Add($"{label}签字：{signerText}    {blankDateSuffix}");
+                    lineParts.Add(PrintApprovalSignatureSupport.FormatLabeledInline(
+                        label + "签字",
+                        string.IsNullOrWhiteSpace(name) ? null : name,
+                        dateText: null));
                 }
 
                 if (lineParts.Count > 0)

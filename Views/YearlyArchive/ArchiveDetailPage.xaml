@@ -35,10 +35,9 @@
             </Setter>
         </Style>
 
-        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+        <Style x:Key="FieldLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource FormFieldCaptionStyle}">
             <Setter Property="Foreground" Value="#666"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
 
         <Style x:Key="FieldValueStyle" TargetType="TextBlock">
@@ -230,7 +229,8 @@
                         <Button DockPanel.Dock="Right"
                                 Content="加入筛选池"
                                 Style="{StaticResource ToolbarActionButtonStyle}"
-                                Command="{Binding AddSelectedToFilterPoolCommand}"/>
+                                Command="{Binding AddSelectedToFilterPoolCommand}"
+                                ToolTip="将勾选的电子介质子项或目录/文件加入当前检索筛选池"/>
                         <TextBlock Text="{Binding FilterPoolSummary}"
                                    VerticalAlignment="Center"
                                    FontWeight="SemiBold"
@@ -259,29 +259,29 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="表单编号" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="表单编号：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Record.FormNo, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="申请日期" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="申请日期：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding Record.CreatedDate, StringFormat=yyyy-MM-dd HH:mm}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="资料名称" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="资料名称：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Record.MaterialName, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="所属项目" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="所属项目：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Record.ProjectName, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="资料来源" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="资料来源：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SourceTypeDisplay, Mode=OneWay, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="提供单位" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="提供单位：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding ProvideUnitDisplay, Mode=OneWay, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="申请人" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="申请人：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Record.ApplicantName, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="3" Grid.Column="2" Text="申请部门" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="2" Text="申请部门：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="3" Grid.Column="3" Text="{Binding Record.ApplicantDept, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="库管模式" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="库管模式：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Record.ArchivePurpose, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="4" Grid.Column="2" Text="其他要求" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="2" Text="其他要求：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="4" Grid.Column="3" Text="{Binding Record.OtherRequests, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
                     </Grid>
                 </GroupBox>
@@ -615,24 +615,24 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="部门审核" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="部门审核：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Record.DeptHead, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="部门审核日期" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="部门审核日期：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding Record.DeptHeadDate, StringFormat=yyyy-MM-dd, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="生产科签字" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="生产科签字：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Record.ProdDeptOpinion, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="生产科签字人" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="生产科签字人：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Record.ProductionHead, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="资料室签字" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="资料室签字：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Record.RndDeptOpinion, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="资料室签字人" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="资料室签字人：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding Record.ArchiveRoomHead, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="交接与接收" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="交接与接收：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Record.Deliverer, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="3" Grid.Column="2" Text="资料管理员" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="2" Text="资料管理员：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="3" Grid.Column="3" Text="{Binding Record.Administrator, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
                     </Grid>
                 </GroupBox>

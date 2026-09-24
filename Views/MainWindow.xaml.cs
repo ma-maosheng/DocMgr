@@ -743,10 +743,10 @@ namespace DocMgr.Views
                 OpticalDiscMediumLedgerPage => "介质管理（光盘·流转台账）",
                 HardDiskMediaOutboundApplicationPage => "介质管理（硬盘·出库申请）",
                 HardDiskMediaReturnRegistrationPage page => page.WorkspaceMode == HardDiskReturnWorkspaceMode.Approval
-                    ? "介质管理（硬盘·审批入库）"
+                    ? "介质管理（硬盘·归还办理）"
                     : "介质管理（硬盘·归还申请）",
                 HardDiskMediaTransactionPage => "介质管理（硬盘·硬盘台账）",
-                HardDiskMediaApprovalPage => "介质管理（硬盘·出库审批）",
+                HardDiskMediaApprovalPage => "介质管理（硬盘·出库办理）",
                 HardDiskInventoryRegisterPage => "介质管理（硬盘·盘库登记）",
                 HardDiskDisposalPage => "介质管理（硬盘·离库处置）",
                 HardDiskMediaPage => "介质管理（硬盘·概览）",
@@ -804,6 +804,13 @@ namespace DocMgr.Views
                 return Task.CompletedTask;
             }
 
+            if (item.BizType == "HardDiskInventoryRegister")
+            {
+                TxtPageTitle.Text = "介质管理（硬盘·盘库登记）";
+                MainContentFrame.Navigate(new HardDiskInventoryRegisterPage());
+                return Task.CompletedTask;
+            }
+
             if (item.BizType == "HistoryArchiveDisposal")
             {
                 TxtPageTitle.Text = "历史存档资料管理（资料离库处置）";
@@ -821,6 +828,26 @@ namespace DocMgr.Views
                 }
 
                 NavigateToArchiveDisposalPage(mediaKind);
+                return Task.CompletedTask;
+            }
+
+            if (item.BizType == "ArchiveInventoryRegister")
+            {
+                string mediaKind = ArchiveInventoryRegisterDomainValues.MediaKindSimulated;
+                if (!string.IsNullOrWhiteSpace(item.Title)
+                    && item.Title.Contains("电子资料盘库登记", StringComparison.Ordinal))
+                {
+                    mediaKind = ArchiveInventoryRegisterDomainValues.MediaKindElectronic;
+                }
+
+                NavigateToArchiveInventoryRegisterPage(mediaKind);
+                return Task.CompletedTask;
+            }
+
+            if (item.BizType == "NetworkOnNetDisposal")
+            {
+                TxtPageTitle.Text = "年度资料出入网管理（在网数据处置）";
+                MainContentFrame.Navigate(new NetworkOnNetDisposalPage());
                 return Task.CompletedTask;
             }
 
@@ -1477,7 +1504,7 @@ namespace DocMgr.Views
             bool matchAllYears)
         {
             TxtPageTitle.Text = mode == HardDiskReturnWorkspaceMode.Approval
-                ? "介质管理（硬盘·审批入库）"
+                ? "介质管理（硬盘·归还办理）"
                 : overdueOnly
                     ? "介质管理（硬盘·归还申请·逾期）"
                     : "介质管理（硬盘·归还申请）";
@@ -1540,7 +1567,7 @@ namespace DocMgr.Views
             bool? signedAttachmentUploadedFilter,
             bool matchAllYears)
         {
-            TxtPageTitle.Text = "介质管理（硬盘·出库审批）";
+            TxtPageTitle.Text = "介质管理（硬盘·出库办理）";
             MainContentFrame.Navigate(new HardDiskMediaApprovalPage(
                 applicationId,
                 initialStatusLabel,

@@ -223,7 +223,7 @@
                                                 </Style.Triggers>
                                             </Style>
                                         </DockPanel.Style>
-                                        <Label DockPanel.Dock="Left" Style="{StaticResource FormLabelStyle}" Content="名称：" Margin="0,0,6,0"/>
+                                        <Label DockPanel.Dock="Left" Style="{StaticResource FormLabelStyle}" Content="名称："/>
                                         <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
                                                  Text="{Binding ProofMaterialName, UpdateSourceTrigger=PropertyChanged}"
                                                  ToolTip="填写证明材料名称；审批环节由资料管理员上传扫描件"/>
@@ -243,11 +243,11 @@
                                     <TextBox DockPanel.Dock="Left" Width="88" Margin="0,0,12,0"
                                              Text="{Binding CurrentRecord.ApplicantName, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"
                                              Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
-                                    <Label DockPanel.Dock="Left" Style="{StaticResource FormLabelStyle}" Content="部门 *：" Margin="0,0,6,0"/>
+                                    <Label DockPanel.Dock="Left" Style="{StaticResource FormLabelStyle}" Content="部门 *："/>
                                     <TextBox DockPanel.Dock="Left" Width="150" Margin="0,0,12,0"
                                              Text="{Binding CurrentRecord.ApplicantDept, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"
                                              Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
-                                    <Label DockPanel.Dock="Left" Style="{StaticResource FormLabelStyle}" Content="日期 *：" Margin="0,0,6,0"/>
+                                    <Label DockPanel.Dock="Left" Style="{StaticResource FormLabelStyle}" Content="日期 *："/>
                                     <DatePicker DockPanel.Dock="Left" Width="120"
                                                 SelectedDate="{Binding CurrentRecord.ApplyTime, Mode=OneWay}"
                                                 IsEnabled="False"
@@ -364,6 +364,16 @@
         </Border>
 
         <Border Grid.Row="2" Margin="0,12,0,0" Padding="12,10,0,0" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Background="#FAFBFC">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ShowApprovalWorkflowPanel}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -375,12 +385,6 @@
                         <Button Content="保存草稿" Command="{Binding SaveDraftCommand}" Margin="0,0,8,0" Padding="12,6"/>
                         <Button Content="提交申请" Command="{Binding SubmitApplicationsCommand}" Margin="0,0,8,0" Padding="12,6"/>
                         <Button Content="打印申请" Command="{Binding PrintApplicationsCommand}" Margin="0,0,8,0" Padding="12,6"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApprovalWorkflowPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <Button Content="审批通过" Command="{Binding SaveApprovalCommand}" ToolTip="{Binding ApproveHintText}" Margin="0,0,8,0" Padding="12,6"/>
-                        <Button Content="确认实物交接" Command="{Binding ConfirmPhysicalHandoverCommand}" ToolTip="{Binding ConfirmHandoverHintText}" Margin="0,0,8,0" Padding="12,6"/>
-                        <Button Content="确认办结" Command="{Binding CompleteCommand}" ToolTip="{Binding CompleteHintText}" Margin="0,0,8,0" Padding="12,6"/>
-                        <Button Content="打印交接单" Command="{Binding PrintApprovalCommand}" ToolTip="{Binding PrintHintText}" Margin="0,0,8,0" Padding="12,6"/>
                     </StackPanel>
                 </StackPanel>
 

@@ -67,10 +67,11 @@
                                  ToolTip="检索池名称、编号、备注、创建人"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
-                        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock Text="业务状态:" VerticalAlignment="Center" Margin="0,0,5,0"/>
                         <ComboBox Width="120" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding StatusFilterOptions}"
                                   DisplayMemberPath="Label" SelectedValuePath="Value"
-                                  SelectedValue="{Binding FilterStatus}"/>
+                                  SelectedValue="{Binding FilterStatus}"
+                                  ToolTip="可按检索池业务状态筛选；选【全部】含各状态"/>
                     </StackPanel>
                     <CheckBox Content="仅看我创建的" Margin="0,0,16,8" VerticalAlignment="Center"
                               IsChecked="{Binding OnlyMine, Mode=TwoWay}"
@@ -101,7 +102,7 @@
                             <DataGridTextColumn Header="编号" Binding="{Binding ResultSetNo}" Width="130"/>
                             <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="*"/>
                             <DataGridTextColumn Header="条数" Binding="{Binding ItemCount}" Width="50"/>
-                            <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="70"/>
+                            <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay}" Width="70"/>
                             <DataGridTextColumn Header="创建人" Binding="{Binding CreatedByName}" Width="80"/>
                             <DataGridTextColumn Header="更新时间" Binding="{Binding UpdatedAtDisplay}" Width="130"/>
                         </DataGrid.Columns>
@@ -128,7 +129,7 @@
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="名称" VerticalAlignment="Center" Margin="0,0,8,8"/>
                             <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource SearchTextBoxStyle}"
                                      Text="{Binding EditableName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="状态" VerticalAlignment="Center" Margin="0,0,8,8"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="业务状态" VerticalAlignment="Center" Margin="0,0,8,8"/>
                             <ComboBox Grid.Row="1" Grid.Column="1" Style="{StaticResource ToolbarFilterComboBoxStyle}" Margin="0,0,0,8"
                                       ItemsSource="{Binding EditableStatusOptions}"
                                       DisplayMemberPath="Label" SelectedValuePath="Value"
@@ -146,7 +147,8 @@
                             <Button Content="移出选中条目" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}"
                                     Command="{Binding RemoveSelectedItemsCommand}"/>
                             <Button Content="发起借出申请" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}"
-                                    Command="{Binding CreateOutboundFromPoolCommand}"/>
+                                    Command="{Binding CreateOutboundFromPoolCommand}"
+                                    ToolTip="选中明细行时仅发起该行；未选中时使用检索池全部条目"/>
                             <Button Content="发起入网申请" Margin="10,0,0,0"
                                     Command="{Binding CreateInboundFromPoolCommand}"
                                     ToolTip="选中明细行时仅发起该行；未选中时使用检索池全部条目">

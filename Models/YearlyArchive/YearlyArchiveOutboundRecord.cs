@@ -84,6 +84,8 @@ namespace DocMgr.Models.YearlyArchive
 
         public DateTime? LastPrintedAt { get; set; }
 
+        public DateTime? FirstPrintedAt { get; set; }
+
         public string HandoverRemark { get; set; } = string.Empty;
 
         public string PhysicallyCompletedBy { get; set; } = string.Empty;

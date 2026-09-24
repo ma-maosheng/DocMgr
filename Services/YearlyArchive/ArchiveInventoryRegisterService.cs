@@ -1,5 +1,3 @@
-using DocMgr.Models.HardDiskMedia;
-using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
@@ -9,22 +7,31 @@ using DocMgr.Services.Interfaces;
 namespace DocMgr.Services.YearlyArchive;
 
 /// <summary>
-/// 年度资料盘库登记业务服务（轻量草稿/即时办结）。
+/// 年度资料盘库登记业务服务（B 流：草稿→提交→审批→确认可上传→签批办结）。
 /// </summary>
 public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryRegisterService
 {
     private readonly IArchiveInventoryRegisterRepository _repository;
     private readonly IArchiveOutboundRepository _outboundRepository;
     private readonly IBusinessRuleService _businessRuleService;
+    private readonly IUserService _userService;
+    private readonly IApprovalWorkflowService _approvalWorkflowService;
+    private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
 
     public ArchiveInventoryRegisterService(
         IArchiveInventoryRegisterRepository repository,
         IArchiveOutboundRepository outboundRepository,
-        IBusinessRuleService businessRuleService)
+        IBusinessRuleService businessRuleService,
+        IUserService userService,
+        IApprovalWorkflowService approvalWorkflowService,
+        IBusinessLogicSettingsService businessLogicSettingsService)
     {
         _repository = repository;
         _outboundRepository = outboundRepository;
         _businessRuleService = businessRuleService;
+        _userService = userService;
+        _approvalWorkflowService = approvalWorkflowService;
+        _businessLogicSettingsService = businessLogicSettingsService;
     }
 
     public async Task<IReadOnlyList<YearlyArchiveInventoryRegisterRecord>> SearchRecordsAsync(
@@ -161,8 +168,8 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
         ValidateHeader(draft.MediaKind, draft.RegisterKind, draft.Reason);
 
         DateTime now = DateTime.Now;
-        var previousHardDisks = await LoadHardDisksFromExistingItemsAsync(existing);
-        UnlockHardDisksIfOwned(existing, previousHardDisks);
+        // 草稿改明细：先解除本单全部旧锁，再按新明细加锁。
+        await UnlockAllOwnedHardDiskLocksAsync(existing);
 
         _repository.RemoveItems(existing.Items.ToList());
         existing.Items.Clear();
@@ -195,7 +202,7 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
         return (await _repository.GetRecordByIdAsync(existing.Id))!;
     }
 
-    public async Task CompleteAsync(int recordId, User currentUser)
+    public async Task SubmitAsync(int recordId, User currentUser)
     {
         EnsureArchiveAdmin(currentUser);
         var existing = await _repository.GetRecordByIdForUpdateAsync(recordId)
@@ -203,13 +210,55 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
 
         if (existing.Status != YearlyArchiveInventoryRegisterRecord.StatusDraft)
         {
-            throw new InvalidOperationException("仅草稿状态可办结。");
+            throw new InvalidOperationException("仅草稿状态可提交。");
         }
 
         ValidateHeader(existing.MediaKind, existing.RegisterKind, existing.Reason);
         if (existing.Items.Count == 0)
         {
             throw new InvalidOperationException("请至少添加一条登记明细。");
+        }
+
+        DateTime now = DateTime.Now;
+        existing.Status = YearlyArchiveInventoryRegisterRecord.StatusSubmitted;
+        existing.SubmittedAt = now;
+        existing.UpdatedAt = now;
+        await _repository.SaveChangesAsync();
+    }
+
+    public async Task CompleteAsync(int recordId, User currentUser)
+    {
+        EnsureArchiveAdmin(currentUser);
+        var existing = await _repository.GetRecordByIdForUpdateAsync(recordId)
+            ?? throw new InvalidOperationException("未找到盘库登记单。");
+
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.Complete);
+        if (!gate.Allowed)
+        {
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许办结。");
+        }
+
+        ValidateHeader(existing.MediaKind, existing.RegisterKind, existing.Reason);
+        if (existing.Items.Count == 0)
+        {
+            throw new InvalidOperationException("请至少添加一条登记明细。");
+        }
+
+        var attachments = await _repository.GetAttachmentsAsync(existing.RegisterNo);
+        bool hasSignedForm = attachments.Any(item =>
+            string.Equals(
+                item.FileCategory,
+                ArchiveInventoryRegisterDomainValues.AttachmentCategorySignedForm,
+                StringComparison.Ordinal));
+        if (!hasSignedForm)
+        {
+            throw new InvalidOperationException("办结前须上传签批单附件。");
         }
 
         DateTime now = DateTime.Now;
@@ -226,9 +275,10 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
 
         UnlockHardDisksIfOwned(existing, await LoadHardDisksFromExistingItemsAsync(existing));
 
-        existing.Status = YearlyArchiveInventoryRegisterRecord.StatusCompleted;
+        existing.Status = gate.NextStatus ?? YearlyArchiveInventoryRegisterRecord.StatusCompleted;
         existing.CompletedAt = now;
         existing.CompletedBy = operatorName;
+        existing.SignedAttachmentUploaded = true;
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
     }
@@ -239,18 +289,69 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
         var existing = await _repository.GetRecordByIdForUpdateAsync(recordId)
             ?? throw new InvalidOperationException("未找到盘库登记单。");
 
-        if (existing.Status is YearlyArchiveInventoryRegisterRecord.StatusCompleted
-            or YearlyArchiveInventoryRegisterRecord.StatusWithdrawn)
+        if (existing.Status is YearlyArchiveInventoryRegisterRecord.StatusApproved
+            or YearlyArchiveInventoryRegisterRecord.StatusSignedUploaded
+            or YearlyArchiveInventoryRegisterRecord.StatusCompleted)
         {
-            throw new InvalidOperationException("当前状态不可撤回作废。");
+            throw new InvalidOperationException("审批通过后不可撤回作废。");
+        }
+
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.Withdraw);
+        if (!gate.Allowed)
+        {
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不可撤回作废。");
         }
 
         UnlockHardDisksIfOwned(existing, await LoadHardDisksFromExistingItemsAsync(existing));
 
         DateTime now = DateTime.Now;
-        existing.Status = YearlyArchiveInventoryRegisterRecord.StatusWithdrawn;
+        existing.Status = gate.NextStatus ?? YearlyArchiveInventoryRegisterRecord.StatusWithdrawn;
         existing.WithdrawnAt = now;
         existing.WithdrawReason = reason?.Trim() ?? string.Empty;
+        existing.UpdatedAt = now;
+        await _repository.SaveChangesAsync();
+    }
+
+    public async Task ForceVoidAsync(int recordId, string? reason, User currentUser)
+    {
+        EnsureArchiveAdmin(currentUser);
+        var existing = await _repository.GetRecordByIdForUpdateAsync(recordId)
+            ?? throw new InvalidOperationException("未找到盘库登记单。");
+
+        string settingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
+        bool isOverdue = _businessLogicSettingsService.IsEligibleForAdminForceVoid(existing.ApplyTime, settingCode);
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin,
+                forceVoidEligible: isOverdue),
+            OfflineApprovalLifecycleSupport.Action.ForceVoid);
+        if (!gate.Allowed)
+        {
+            if (!isOverdue
+                && existing.Status is YearlyArchiveInventoryRegisterRecord.StatusDraft
+                    or YearlyArchiveInventoryRegisterRecord.StatusSubmitted)
+            {
+                throw new InvalidOperationException(_businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
+            }
+
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不可强制作废。");
+        }
+
+        UnlockHardDisksIfOwned(existing, await LoadHardDisksFromExistingItemsAsync(existing));
+
+        DateTime now = DateTime.Now;
+        existing.Status = gate.NextStatus ?? YearlyArchiveInventoryRegisterRecord.StatusForceWithdrawn;
+        existing.WithdrawnAt = now;
+        existing.WithdrawReason = string.IsNullOrWhiteSpace(reason) ? "资料管理员强制作废" : reason.Trim();
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
     }

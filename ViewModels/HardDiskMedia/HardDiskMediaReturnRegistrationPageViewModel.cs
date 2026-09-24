@@ -93,7 +93,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public HardDiskReturnWorkspaceMode WorkspaceMode => _workspaceMode;
 
         public string PageTitle => _workspaceMode == HardDiskReturnWorkspaceMode.Approval
-            ? "硬盘审批入库"
+            ? "硬盘归还办理"
             : "硬盘归还申请";
 
         public string PageSubtitle => _workspaceMode == HardDiskReturnWorkspaceMode.Approval
@@ -110,7 +110,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public ObservableCollection<string> ApplicationTypeOptions { get; } = new();
 
-        public ObservableCollection<int> ApplicationYears { get; } = new();
+        public ObservableCollection<int> ApplicationYears { get; } = new() { DateTime.Today.Year };
 
         public int ApplicationYear
         {
@@ -689,8 +689,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return false;
             }
 
-            return target.ApplicationStatus == HardDiskMediaApplication.StatusDraft
-                   || target.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted;
+            return ApplicationListActionSupport.CanApplicantWithdraw(
+                target.ApplicationStatus,
+                isOwnerApplicant: true);
         }
 
         private bool CanForceWithdrawSelectedApplication()
@@ -706,15 +707,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return false;
             }
 
-            if (target.ApplicationStatus != HardDiskMediaApplication.StatusDraft
-                && target.ApplicationStatus != HardDiskMediaApplication.StatusSubmitted)
-            {
-                return false;
-            }
-
-            return _businessLogicSettingsService.IsEligibleForAdminForceVoid(
+            bool overdueEligible = _businessLogicSettingsService.IsEligibleForAdminForceVoid(
                 target.ApplyTime,
                 _applicationOverdueSettingCode);
+            return ApplicationListActionSupport.CanForceVoid(
+                target.ApplicationStatus,
+                isArchiveAdmin: true,
+                forceVoidEligible: overdueEligible);
         }
 
         private HardDiskMediaApplication? ResolveVoidTargetApplication()

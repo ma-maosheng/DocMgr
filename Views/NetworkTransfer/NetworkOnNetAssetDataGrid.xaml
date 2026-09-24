@@ -26,7 +26,8 @@
                 CommandParameter="{Binding}"/>
         <Button Content="移除" Padding="8,2"
                 Command="{Binding RemoveItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                CommandParameter="{Binding}"/>
+                CommandParameter="{Binding}"
+                ToolTip="从处置明细中移除此行（不回写在网台账）"/>
       </StackPanel>
     </DataTemplate>
   </DataGrid.Resources>

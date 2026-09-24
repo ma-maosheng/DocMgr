@@ -121,7 +121,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool CanSupplementOtherAttachments =>
             _record.Id > 0
             && _record.IsArchived
-            && _archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser);
+            && OfflineApprovalPermissionSupport.CanSupplementOtherAfterComplete(_userContextService.CurrentUser);
 
         public string SupplementAttachmentHint =>
             "办结后仅可增补「其他附件」；请确保文件命名清晰准确。本页不可删除已有附件。";

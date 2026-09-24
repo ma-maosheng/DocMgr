@@ -14,13 +14,15 @@
             <StackPanel Orientation="Horizontal">
                 <Button Content="新增登记" Command="{Binding AddCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
                 <Button Content="打开办理" Command="{Binding OpenCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
-                <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="110" Margin="0,0,16,0"/>
+                <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="110" Margin="0,0,10,0"/>
+                <Button Content="强制作废" Command="{Binding ForceVoidCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="110" Margin="0,0,16,0"/>
 
-                <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBlock Text="业务状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                 <ComboBox Width="160"
                           Style="{StaticResource ToolbarFilterComboBoxStyle}"
                           ItemsSource="{Binding StatusOptions}"
-                          SelectedItem="{Binding SelectedStatus, Mode=TwoWay}"/>
+                          SelectedItem="{Binding SelectedStatus, Mode=TwoWay}"
+                          ToolTip="可按业务状态筛选；选【全部】列出各状态申请（含未提交）"/>
 
                 <TextBlock Text="年度:" VerticalAlignment="Center" Margin="16,0,6,0"/>
                 <ComboBox Width="100"
@@ -30,7 +32,8 @@
 
                 <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="16,0,6,0"/>
                 <TextBox Width="180" Height="32" VerticalContentAlignment="Center"
-                         Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"/>
+                         Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="登记单号、申请人、登记类型/说明、硬盘编号/序列号"/>
                 <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="80" Margin="10,0,0,0"/>
                 <Button Content="刷新" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="80" Margin="10,0,0,0"/>
             </StackPanel>
@@ -75,7 +78,7 @@
                         BorderBrush="#E2C98F"
                         BorderThickness="1"
                         CornerRadius="4">
-                    <TextBlock Text="库内空白/损坏硬盘异常即时登记：损坏登记（可指定损坏专用档口）、盘失登记。确认登记办结即时写台账，无需审批签批。损坏盘档口调整请在开柜界面使用交互式迁档。正式离库请使用「离库处置」。"
+                    <TextBlock Text="库内空白/损坏硬盘盘库登记：损坏登记（可指定损坏专用档口）、盘失登记。流程与离库处置一致（提交→打印签批→审批→确认可上传→上传签批单→办结）。损坏盘档口调整请在开柜界面使用交互式迁档。正式离库请使用「离库处置」。"
                                Foreground="#6F4A00"
                                TextWrapping="Wrap"
                                HorizontalAlignment="Center"/>
@@ -106,8 +109,8 @@
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="登记单编号" Binding="{Binding RegisterNo}" Width="130"/>
                         <DataGridTextColumn Header="登记类型" Binding="{Binding RegisterKind}" Width="110"/>
-                        <DataGridTextColumn Header="硬盘数" Binding="{Binding ItemCount}" Width="60"/>
-                        <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="80"/>
+                        <DataGridTextColumn Header="硬盘数" Binding="{Binding ItemCount, Mode=OneWay}" Width="60"/>
+                        <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="80"/>
                         <DataGridTextColumn Header="登记人" Binding="{Binding ApplicantName}" Width="70"/>
                         <DataGridTextColumn Header="登记日期" Binding="{Binding ApplyTime, StringFormat=yyyy-MM-dd}" Width="95"/>
                         <DataGridTextColumn Header="办结人" Binding="{Binding CompletedBy}" Width="70"/>
@@ -182,7 +185,7 @@
                                 <DataGridTextColumn Header="序列号" Binding="{Binding SerialNumber}" Width="110"/>
                                 <DataGridTextColumn Header="原状态" Binding="{Binding BeforeMediaStatus}" Width="90"/>
                                 <DataGridTextColumn Header="原档口" Binding="{Binding BeforeStorageLocation}" Width="110"/>
-                                <DataGridTextColumn Header="目标档口" Binding="{Binding TargetStorageLocationDisplay}" Width="*"/>
+                                <DataGridTextColumn Header="目标档口" Binding="{Binding TargetStorageLocationDisplay, Mode=OneWay}" Width="*"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>

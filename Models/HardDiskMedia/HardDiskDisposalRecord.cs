@@ -104,6 +104,8 @@ namespace DocMgr.Models.HardDiskMedia
 
         public DateTime? LastPrintedAt { get; set; }
 
+        public DateTime? FirstPrintedAt { get; set; }
+
         public DateTime CreatedAt { get; set; }
 
         public DateTime UpdatedAt { get; set; }

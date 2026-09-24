@@ -33,12 +33,12 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="业务状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <ComboBox Width="180"
                                   Style="{StaticResource ToolbarFilterComboBoxStyle}"
                                   ItemsSource="{Binding StatusOptions}"
                                   SelectedItem="{Binding SelectedStatus, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                  ToolTip="可按状态筛选；选【全部】列出各状态申请（含未提交）"/>
+                                  ToolTip="可按业务状态筛选；选【全部】列出各状态申请（含未提交）"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
                         <TextBlock Text="申请年度:" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -134,7 +134,7 @@
                     <DataGridTextColumn Header="关联介质" Binding="{Binding Medium.DiskCode}" Width="110"/>
                     <DataGridTextColumn Header="序列号" Binding="{Binding Medium.SerialNumber}" Width="150"/>
                     <DataGridTextColumn Header="申请类型" Binding="{Binding ApplicationType}" Width="140"/>
-                    <DataGridTextColumn Header="申请状态" Binding="{Binding StatusStr}" Width="120"/>
+                    <DataGridTextColumn Header="业务状态" Binding="{Binding StatusStr}" Width="120"/>
                     <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="90"/>
                     <DataGridTextColumn Header="申请部门" Binding="{Binding ApplicantDept}" Width="120"/>
                     <DataGridTextColumn Header="申请日期" Binding="{Binding ApplyTime, StringFormat=yyyy-MM-dd}" Width="110"/>

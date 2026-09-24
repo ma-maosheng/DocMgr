@@ -1,4 +1,4 @@
-﻿<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveElectronicRelocationPage"
+<Page x:Class="DocMgr.Views.YearlyArchive.ArchiveElectronicRelocationPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -26,10 +26,9 @@
             </Setter>
         </Style>
 
-        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+        <Style x:Key="FieldLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource FormFieldCaptionStyle}">
             <Setter Property="Foreground" Value="#666"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
 
         <Style x:Key="FormComboBoxStyle" TargetType="ComboBox">
@@ -77,9 +76,9 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="年度" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="项目" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="源电子袋" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="年度：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="项目：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="源电子袋：" Style="{StaticResource FieldLabelStyle}"/>
 
                         <ComboBox Grid.Row="1" Grid.Column="0" Style="{StaticResource FormComboBoxStyle}" Margin="0,0,12,0"
                                   ItemsSource="{Binding Years}"
@@ -112,7 +111,7 @@
                                                TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,8,0,0">
-                                    <TextBlock Text="关联资料" Style="{StaticResource FieldLabelStyle}"/>
+                                    <TextBlock Text="关联资料：" Style="{StaticResource FieldLabelStyle}"/>
                                     <TextBlock Text="{Binding SourceItemsDescriptionText, Mode=OneWay}"
                                                TextWrapping="Wrap" Margin="0,2,0,0"
                                                Foreground="#37474F" LineHeight="22"/>
@@ -137,26 +136,26 @@
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="柜子" Style="{StaticResource FieldLabelStyle}"/>
+                                    <TextBlock Text="柜子：" Style="{StaticResource FieldLabelStyle}"/>
                                     <ComboBox Style="{StaticResource FormComboBoxStyle}"
                                               ItemsSource="{Binding TargetLocation.Cabinets}"
                                               SelectedItem="{Binding TargetLocation.SelectedCabinet}"
                                               DisplayMemberPath="Name"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Text="A/B 面" Style="{StaticResource FieldLabelStyle}"/>
+                                    <TextBlock Text="A/B 面：" Style="{StaticResource FieldLabelStyle}"/>
                                     <ComboBox Style="{StaticResource FormComboBoxStyle}"
                                               ItemsSource="{Binding TargetLocation.Sides}"
                                               SelectedItem="{Binding TargetLocation.SelectedSide}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="4">
-                                    <TextBlock Text="层" Style="{StaticResource FieldLabelStyle}"/>
+                                    <TextBlock Text="层：" Style="{StaticResource FieldLabelStyle}"/>
                                     <ComboBox Style="{StaticResource FormComboBoxStyle}"
                                               ItemsSource="{Binding TargetLocation.Rows}"
                                               SelectedItem="{Binding TargetLocation.SelectedRow}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="6">
-                                    <TextBlock Text="列" Style="{StaticResource FieldLabelStyle}"/>
+                                    <TextBlock Text="列：" Style="{StaticResource FieldLabelStyle}"/>
                                     <ComboBox Style="{StaticResource FormComboBoxStyle}"
                                               ItemsSource="{Binding TargetLocation.Columns}"
                                               SelectedItem="{Binding TargetLocation.SelectedColumn}"/>
@@ -178,7 +177,7 @@
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsMoveToEmptyMode, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock Text="拟迁入空白硬盘" Style="{StaticResource FieldLabelStyle}"/>
+                            <TextBlock Text="拟迁入空白硬盘：" Style="{StaticResource FieldLabelStyle}"/>
                             <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -205,26 +204,26 @@
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="柜子" Style="{StaticResource FieldLabelStyle}"/>
+                                    <TextBlock Text="柜子：" Style="{StaticResource FieldLabelStyle}"/>
                                     <ComboBox Style="{StaticResource FormComboBoxStyle}"
                                               ItemsSource="{Binding TargetLocation.Cabinets}"
                                               SelectedItem="{Binding TargetLocation.SelectedCabinet}"
                                               DisplayMemberPath="Name"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Text="A/B 面" Style="{StaticResource FieldLabelStyle}"/>
+                                    <TextBlock Text="A/B 面：" Style="{StaticResource FieldLabelStyle}"/>
                                     <ComboBox Style="{StaticResource FormComboBoxStyle}"
                                               ItemsSource="{Binding TargetLocation.Sides}"
                                               SelectedItem="{Binding TargetLocation.SelectedSide}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="4">
-                                    <TextBlock Text="层" Style="{StaticResource FieldLabelStyle}"/>
+                                    <TextBlock Text="层：" Style="{StaticResource FieldLabelStyle}"/>
                                     <ComboBox Style="{StaticResource FormComboBoxStyle}"
                                               ItemsSource="{Binding TargetLocation.Rows}"
                                               SelectedItem="{Binding TargetLocation.SelectedRow}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="6">
-                                    <TextBlock Text="列" Style="{StaticResource FieldLabelStyle}"/>
+                                    <TextBlock Text="列：" Style="{StaticResource FieldLabelStyle}"/>
                                     <ComboBox Style="{StaticResource FormComboBoxStyle}"
                                               ItemsSource="{Binding TargetLocation.Columns}"
                                               SelectedItem="{Binding TargetLocation.SelectedColumn}"/>
@@ -245,7 +244,7 @@
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsMergeMode, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock Text="目标电子袋" Style="{StaticResource FieldLabelStyle}"/>
+                            <TextBlock Text="目标电子袋：" Style="{StaticResource FieldLabelStyle}"/>
                             <Grid Margin="0,0,0,8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -272,7 +271,7 @@
                                                    TextWrapping="Wrap"/>
                                     </StackPanel>
                                     <StackPanel Margin="0,8,0,0">
-                                        <TextBlock Text="关联资料" Style="{StaticResource FieldLabelStyle}"/>
+                                        <TextBlock Text="关联资料：" Style="{StaticResource FieldLabelStyle}"/>
                                         <TextBlock Text="{Binding TargetItemsDescriptionText, Mode=OneWay}"
                                                    TextWrapping="Wrap" Margin="0,2,0,0"
                                                    Foreground="#37474F" LineHeight="22"/>
@@ -291,7 +290,7 @@
 
                         <StackPanel Margin="0,12,0,0"
                                     Visibility="{Binding RequiresHardDiskReturnLocation, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock Text="原硬盘放回位置" Style="{StaticResource FieldLabelStyle}"/>
+                            <TextBlock Text="原硬盘放回位置：" Style="{StaticResource FieldLabelStyle}"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -320,7 +319,7 @@
                         </StackPanel>
 
                         <StackPanel Margin="0,12,0,0">
-                            <TextBlock Text="备注" Style="{StaticResource FieldLabelStyle}"/>
+                            <TextBlock Text="备注：" Style="{StaticResource FieldLabelStyle}"/>
                             <TextBox Style="{StaticResource ToolbarFilterTextBoxStyle}" VerticalContentAlignment="Center"
                                      Text="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>

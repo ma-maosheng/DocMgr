@@ -325,6 +325,16 @@ public sealed partial class ArchiveInventoryRegisterService
         }
     }
 
+    /// <summary>解除本单占用的全部硬盘锁（电子轨保存草稿换明细时用）。</summary>
+    private async Task UnlockAllOwnedHardDiskLocksAsync(YearlyArchiveInventoryRegisterRecord record)
+    {
+        var ownedLocks = await _repository.GetOwnedRegisterLocksAsync(record.Id);
+        foreach (var lockItem in ownedLocks)
+        {
+            _repository.RemoveRegisterLock(lockItem);
+        }
+    }
+
     private static HardDiskLedger EnsureHardDiskLedger(HardDiskMedium medium, DateTime now)
     {
         if (medium.Ledger != null)

@@ -57,7 +57,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public ObservableCollection<HardDiskMediaApplication> Applications { get; } = new();
         public ObservableCollection<string> StatusOptions { get; } = new();
         public ObservableCollection<HardDiskMediaStatusOptionViewModel> ApplicantOptions { get; } = new();
-        public ObservableCollection<int> ApplicationYears { get; } = new();
+        public ObservableCollection<int> ApplicationYears { get; } = new() { DateTime.Today.Year };
 
         public int ApplicationYear
         {
@@ -387,15 +387,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return false;
             }
 
-            if (SelectedApplication.ApplicationStatus != HardDiskMediaApplication.StatusDraft &&
-                SelectedApplication.ApplicationStatus != HardDiskMediaApplication.StatusSubmitted)
-            {
-                return false;
-            }
-
-            return _businessLogicSettingsService.IsEligibleForAdminForceVoid(
+            bool overdueEligible = _businessLogicSettingsService.IsEligibleForAdminForceVoid(
                 SelectedApplication.ApplyTime,
                 _applicationOverdueSettingCode);
+            return ApplicationListActionSupport.CanForceVoid(
+                SelectedApplication.ApplicationStatus,
+                isArchiveAdmin: true,
+                forceVoidEligible: overdueEligible);
         }
 
         private void OnApplicantOptionPropertyChanged(object? sender, PropertyChangedEventArgs e)

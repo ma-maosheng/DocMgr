@@ -221,9 +221,11 @@
                             <ComboBox Grid.Column="1" ItemsSource="{Binding SlotOptions}" SelectedItem="{Binding SelectedSlotOption}"
                                       DisplayMemberPath="DisplayText" Height="{StaticResource FormControlHeight}" VerticalAlignment="Center"/>
                             <Button Grid.Column="2" Content="推荐空位" Command="{Binding RecommendSlotCommand}"
-                                    Style="{StaticResource InlineActionButtonStyle}"/>
+                                    Style="{StaticResource InlineActionButtonStyle}"
+                                    ToolTip="推荐年度数据硬盘专用档口空位（含档内序号，不预占用）"/>
                             <Button Grid.Column="3" Content="档口快照" Command="{Binding ShowSlotSnapshotCommand}"
-                                    Style="{StaticResource InlineActionButtonStyle}"/>
+                                    Style="{StaticResource InlineActionButtonStyle}"
+                                    ToolTip="查看目标档口占用快照"/>
                         </Grid>
                         <TextBlock Text="{Binding StorageLocation, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#00695C"/>
                         <TextBlock Text="{Binding BusinessNumberHint, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#546E7A"/>

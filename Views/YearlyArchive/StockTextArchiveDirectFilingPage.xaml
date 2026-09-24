@@ -360,9 +360,11 @@
                             <Button Grid.Column="2" Content="刷新档口" Command="{Binding RefreshSlotOptionsCommand}"
                                     Style="{StaticResource InlineActionButtonStyle}"/>
                             <Button Grid.Column="3" Content="推荐空位" Command="{Binding RecommendSlotCommand}"
-                                    Style="{StaticResource InlineActionButtonStyle}"/>
+                                    Style="{StaticResource InlineActionButtonStyle}"
+                                    ToolTip="推荐年度资料专用档口空位（确认写入前不预占用）"/>
                             <Button Grid.Column="4" Content="档口快照" Command="{Binding ShowSlotSnapshotCommand}"
-                                    Style="{StaticResource InlineActionButtonStyle}"/>
+                                    Style="{StaticResource InlineActionButtonStyle}"
+                                    ToolTip="查看目标档口占用快照"/>
                         </Grid>
                         <TextBlock Text="{Binding BoxLocationPreview, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#00695C"/>
                         <Grid Margin="0,4,0,0">

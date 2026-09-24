@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-09-23T02:24:09Z
+> 生成时间（UTC）：2026-09-24T04:14:51Z
 
 ## 表索引
 
@@ -320,7 +320,7 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 处置单编号 | `DisposalNo` | `String` | 否 |
-| 状态 | `Status` | `Int32` | 否 |
+| 业务状态 | `Status` | `Int32` | 否 |
 | 离库原因 | `DisposalReason` | `String` | 否 |
 | 离库后处置方式 | `DispositionMethod` | `String` | 否 |
 | 其他说明 | `OtherRemark` | `String` | 否 |
@@ -356,6 +356,7 @@ alwaysApply: true
 | 撤回原因 | `WithdrawReason` | `String` | 否 |
 | 打印次数 | `PrintCount` | `Int32` | 否 |
 | 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 更新时间 | `UpdatedAt` | `DateTime` | 否 |
 
@@ -381,7 +382,7 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 登记单编号 | `RegisterNo` | `String` | 否 |
-| 状态 | `Status` | `Int32` | 否 |
+| 业务状态 | `Status` | `Int32` | 否 |
 | 登记类型 | `RegisterKind` | `String` | 否 |
 | 登记说明 | `Reason` | `String` | 否 |
 | 备注 | `Remark` | `String` | 否 |
@@ -389,10 +390,32 @@ alwaysApply: true
 | 申请人 | `ApplicantName` | `String` | 否 |
 | 申请部门 | `ApplicantDept` | `String` | 否 |
 | 申请时间 | `ApplyTime` | `DateTime` | 否 |
+| 审批人 | `ApprovedBy` | `String` | 否 |
+| 审批时间 | `ApprovedTime` | `DateTime?` | 否 |
+| 审批意见 | `ApprovalOpinion` | `String` | 否 |
+| 部门审核签字 | `DeptHead` | `String` | 否 |
+| 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
+| 资料室签字 | `ArchiveRoomHead` | `String` | 否 |
+| 资料室签字日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
+| 生产科签字 | `ProductionHead` | `String` | 否 |
+| 生产科签字日期 | `ProductionHeadDate` | `DateTime?` | 否 |
+| 分管资料院长签字 | `ArchiveDeputyPresident` | `String` | 否 |
+| 分管资料院长签字日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 分管生产院长签字 | `ProductionVicePresident` | `String` | 否 |
+| 分管生产院长签字日期 | `ProductionVicePresidentDate` | `DateTime?` | 否 |
+| 确认可上传人 | `ConfirmedBy` | `String` | 否 |
+| 确认可上传时间 | `ConfirmedTime` | `DateTime?` | 否 |
+| 已上传签批单 | `SignedAttachmentUploaded` | `Boolean` | 否 |
+| 签批单上传时间 | `SignedAttachmentUploadedTime` | `DateTime?` | 否 |
+| 签批单上传人 | `SignedAttachmentUploader` | `String` | 否 |
 | 办结时间 | `CompletedAt` | `DateTime?` | 否 |
 | 办结人 | `CompletedBy` | `String` | 否 |
+| 提交时间 | `SubmittedAt` | `DateTime?` | 否 |
 | 撤回时间 | `WithdrawnAt` | `DateTime?` | 否 |
 | 撤回原因 | `WithdrawReason` | `String` | 否 |
+| 打印次数 | `PrintCount` | `Int32` | 否 |
+| 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 更新时间 | `UpdatedAt` | `DateTime` | 否 |
 
@@ -425,7 +448,7 @@ alwaysApply: true
 | 来源资料出库单ID | `SourceOutboundRecordId` | `Int32?` | 否 |
 | 来源出网申请单ID | `SourceNetworkOutboundRecordId` | `Int32?` | 否 |
 | 申请类型 | `ApplicationType` | `String` | 否 |
-| 申请状态 | `ApplicationStatus` | `String` | 否 |
+| 业务状态 | `ApplicationStatus` | `String` | 否 |
 | 申请人 | `ApplicantName` | `String` | 否 |
 | 申请部门 | `ApplicantDept` | `String` | 否 |
 | 申请时间 | `ApplyTime` | `DateTime` | 否 |
@@ -440,6 +463,7 @@ alwaysApply: true
 | 相关资料标题 | `RelatedArchiveTitle` | `String` | 否 |
 | 打印次数 | `PrintCount` | `Int32` | 否 |
 | 打印时间 | `PrintedTime` | `DateTime?` | 否 |
+| 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 | 已上传签字件 | `SignedAttachmentUploaded` | `Boolean` | 否 |
 | 签字件上传时间 | `SignedAttachmentUploadedTime` | `DateTime?` | 否 |
 | 签字件上传人 | `SignedAttachmentUploader` | `String` | 否 |
@@ -566,7 +590,7 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 处置单编号 | `DisposalNo` | `String` | 否 |
-| 状态 | `Status` | `Int32` | 否 |
+| 业务状态 | `Status` | `Int32` | 否 |
 | 资料类别 | `MaterialKind` | `String` | 否 |
 | 处置方式 | `DispositionMethod` | `String` | 否 |
 | 转交对象 | `TransferTarget` | `String` | 否 |
@@ -606,6 +630,7 @@ alwaysApply: true
 | 撤回原因 | `WithdrawReason` | `String` | 否 |
 | 打印次数 | `PrintCount` | `Int32` | 否 |
 | 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 更新时间 | `UpdatedAt` | `DateTime` | 否 |
 
@@ -667,7 +692,7 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 入网单编号 | `InboundNo` | `String` | 否 |
-| 状态 | `Status` | `Int32` | 否 |
+| 业务状态 | `Status` | `Int32` | 否 |
 | 来源类别 | `SourceKind` | `String` | 否 |
 | 提供部门（单位） | `ProvideUnit` | `String` | 否 |
 | 目标服务器路径 | `TargetServerPath` | `String` | 否 |
@@ -713,6 +738,7 @@ alwaysApply: true
 | 撤回原因 | `WithdrawReason` | `String` | 否 |
 | 打印数量 | `PrintCount` | `Int32` | 否 |
 | 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 更新时间 | `UpdatedAt` | `DateTime` | 否 |
 
@@ -780,7 +806,7 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 处置单编号 | `DisposalNo` | `String` | 否 |
-| 状态 | `Status` | `Int32` | 否 |
+| 业务状态 | `Status` | `Int32` | 否 |
 | 处置原因 | `DisposalReason` | `String` | 否 |
 | 处置方式 | `DispositionMethod` | `String` | 否 |
 | 申请说明 | `Reason` | `String` | 否 |
@@ -814,6 +840,7 @@ alwaysApply: true
 | 撤回原因 | `WithdrawReason` | `String` | 否 |
 | 打印数量 | `PrintCount` | `Int32` | 否 |
 | 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 更新时间 | `UpdatedAt` | `DateTime` | 否 |
 
@@ -842,7 +869,7 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 出网单编号 | `OutboundNo` | `String` | 否 |
-| 状态 | `Status` | `Int32` | 否 |
+| 业务状态 | `Status` | `Int32` | 否 |
 | 目的地类别 | `DestinationKind` | `String` | 否 |
 | 资料名称 | `MaterialName` | `String` | 否 |
 | 服务器路径 | `ServerPath` | `String` | 否 |
@@ -887,6 +914,7 @@ alwaysApply: true
 | 撤回原因 | `WithdrawReason` | `String` | 否 |
 | 打印数量 | `PrintCount` | `Int32` | 否 |
 | 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 更新时间 | `UpdatedAt` | `DateTime` | 否 |
 
@@ -1154,7 +1182,7 @@ alwaysApply: true
 | ID | `Id` | `Int32` | 否 |
 | 处置单编号 | `DisposalNo` | `String` | 否 |
 | 介质类别 | `MediaKind` | `String` | 否 |
-| 状态 | `Status` | `Int32` | 否 |
+| 业务状态 | `Status` | `Int32` | 否 |
 | 离库原因 | `DisposalReason` | `String` | 否 |
 | 处置方式 | `DispositionMethod` | `String` | 否 |
 | 申请说明 | `Reason` | `String` | 否 |
@@ -1195,6 +1223,7 @@ alwaysApply: true
 | 撤回原因 | `WithdrawReason` | `String` | 否 |
 | 打印数量 | `PrintCount` | `Int32` | 否 |
 | 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 更新时间 | `UpdatedAt` | `DateTime` | 否 |
 
@@ -1279,7 +1308,7 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 登记单编号 | `RegisterNo` | `String` | 否 |
-| 状态 | `Status` | `Int32` | 否 |
+| 业务状态 | `Status` | `Int32` | 否 |
 | 介质类别 | `MediaKind` | `String` | 否 |
 | 登记类型 | `RegisterKind` | `String` | 否 |
 | 登记说明 | `Reason` | `String` | 否 |
@@ -1288,10 +1317,32 @@ alwaysApply: true
 | 申请人 | `ApplicantName` | `String` | 否 |
 | 申请部门 | `ApplicantDept` | `String` | 否 |
 | 申请时间 | `ApplyTime` | `DateTime` | 否 |
+| 审批人 | `ApprovedBy` | `String` | 否 |
+| 审批时间 | `ApprovedTime` | `DateTime?` | 否 |
+| 审批意见 | `ApprovalOpinion` | `String` | 否 |
+| 部门审核签字 | `DeptHead` | `String` | 否 |
+| 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
+| 资料室负责人 | `ArchiveRoomHead` | `String` | 否 |
+| 资料室负责人日期 | `ArchiveRoomHeadDate` | `DateTime?` | 否 |
+| 生产科签字 | `ProductionHead` | `String` | 否 |
+| 生产科签字日期 | `ProductionHeadDate` | `DateTime?` | 否 |
+| 分管资料副院长 | `ArchiveDeputyPresident` | `String` | 否 |
+| 分管资料副院长日期 | `ArchiveDeputyPresidentDate` | `DateTime?` | 否 |
+| 分管生产院长签字 | `ProductionVicePresident` | `String` | 否 |
+| 分管生产院长签字日期 | `ProductionVicePresidentDate` | `DateTime?` | 否 |
+| 确认可上传人 | `ConfirmedBy` | `String` | 否 |
+| 确认可上传时间 | `ConfirmedTime` | `DateTime?` | 否 |
+| 已上传签批单 | `SignedAttachmentUploaded` | `Boolean` | 否 |
+| 签批单上传时间 | `SignedAttachmentUploadedTime` | `DateTime?` | 否 |
+| 签批单上传人 | `SignedAttachmentUploader` | `String` | 否 |
 | 办结时间 | `CompletedAt` | `DateTime?` | 否 |
 | 办结人 | `CompletedBy` | `String` | 否 |
+| 提交时间 | `SubmittedAt` | `DateTime?` | 否 |
 | 撤回时间 | `WithdrawnAt` | `DateTime?` | 否 |
 | 撤回原因 | `WithdrawReason` | `String` | 否 |
+| 打印数量 | `PrintCount` | `Int32` | 否 |
+| 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 更新时间 | `UpdatedAt` | `DateTime` | 否 |
 
@@ -1374,7 +1425,7 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 出网单编号 | `OutboundNo` | `String` | 否 |
-| 状态 | `Status` | `Int32` | 否 |
+| 业务状态 | `Status` | `Int32` | 否 |
 | 归档年度 | `ArchiveYear` | `Int32?` | 否 |
 | 项目编号 | `ProjectId` | `Int32?` | 否 |
 | 项目名称 | `ProjectName` | `String` | 否 |
@@ -1404,6 +1455,7 @@ alwaysApply: true
 | 逾期提醒时间 | `OverdueRemindedAt` | `DateTime?` | 否 |
 | 打印次数 | `PrintCount` | `Int32` | 否 |
 | 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 | 交接备注 | `HandoverRemark` | `String` | 否 |
 | 实物出库办理人 | `PhysicallyCompletedBy` | `String` | 否 |
 | 部门审核意见 | `DeptHeadOpinion` | `String` | 否 |
@@ -1504,7 +1556,7 @@ alwaysApply: true
 | 来源出网申请ID | `SourceNetworkOutboundRecordId` | `Int32?` | 否 |
 | 来源出网申请编号 | `SourceNetworkOutboundNo` | `String` | 否 |
 | 跨域业务链ID | `BusinessChainId` | `Int32?` | 否 |
-| 状态 | `Status` | `Int32` | 否 |
+| 业务状态 | `Status` | `Int32` | 否 |
 | 创建日期 | `CreatedDate` | `DateTime` | 否 |
 | 归档日期 | `ArchivedDate` | `DateTime?` | 否 |
 | 模拟归档状态 | `SimulatedArchiveStatus` | `Int32` | 否 |
@@ -1535,6 +1587,9 @@ alwaysApply: true
 | 资料员日期 | `AdminDate` | `DateTime?` | 否 |
 | 部门负责人 | `DeptHead` | `String` | 否 |
 | 部门审核日期 | `DeptHeadDate` | `DateTime?` | 否 |
+| 打印次数 | `PrintCount` | `Int32` | 否 |
+| 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 
 ### YearlyArchiveRegisterSimulatedMediaItemDetail（模拟介质明细扩展）
 
@@ -1609,7 +1664,7 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 归还单编号 | `ReturnNo` | `String` | 否 |
-| 状态 | `Status` | `Int32` | 否 |
+| 业务状态 | `Status` | `Int32` | 否 |
 | 源出库单ID | `SourceOutboundRecordId` | `Int32` | 否 |
 | 源出库单编号 | `SourceOutboundNo` | `String` | 否 |
 | 归档年度 | `ArchiveYear` | `Int32?` | 否 |
@@ -1654,6 +1709,7 @@ alwaysApply: true
 | 强制作废时间 | `ForceVoidedAt` | `DateTime?` | 否 |
 | 打印次数 | `PrintCount` | `Int32` | 否 |
 | 最后打印时间 | `LastPrintedAt` | `DateTime?` | 否 |
+| 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 更新时间 | `UpdatedAt` | `DateTime` | 否 |
 
@@ -1665,7 +1721,7 @@ alwaysApply: true
 | 检索集编号 | `ResultSetNo` | `String` | 否 |
 | 名称 | `Name` | `String` | 否 |
 | 介质类别 | `MediaKind` | `String` | 否 |
-| 状态 | `Status` | `String` | 否 |
+| 业务状态 | `Status` | `String` | 否 |
 | 创建人用户ID | `CreatedByUserId` | `Int32` | 否 |
 | 创建人 | `CreatedByName` | `String` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |

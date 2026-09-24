@@ -16,19 +16,22 @@ namespace DocMgr.Services.YearlyArchive
         private readonly IArchiveReturnRepository _archiveReturnRepository;
         private readonly IArchiveFilingRepository _archiveFilingRepository;
         private readonly IArchiveDisposalRepository _archiveDisposalRepository;
+        private readonly IArchiveInventoryRegisterRepository _archiveInventoryRegisterRepository;
 
         public YearlyArchiveToDoProvider(
             IArchiveRegisterRepository archiveRegisterRepository,
             IArchiveOutboundRepository archiveOutboundRepository,
             IArchiveReturnRepository archiveReturnRepository,
             IArchiveFilingRepository archiveFilingRepository,
-            IArchiveDisposalRepository archiveDisposalRepository)
+            IArchiveDisposalRepository archiveDisposalRepository,
+            IArchiveInventoryRegisterRepository archiveInventoryRegisterRepository)
         {
             _archiveRegisterRepository = archiveRegisterRepository;
             _archiveOutboundRepository = archiveOutboundRepository;
             _archiveReturnRepository = archiveReturnRepository;
             _archiveFilingRepository = archiveFilingRepository;
             _archiveDisposalRepository = archiveDisposalRepository;
+            _archiveInventoryRegisterRepository = archiveInventoryRegisterRepository;
         }
 
         public async Task<List<ToDoItem>> GetToDosAsync(User currentUser)
@@ -101,6 +104,19 @@ namespace DocMgr.Services.YearlyArchive
                     BizId = r.Id,
                     BizNo = r.DisposalNo,
                     Stage = ResolveDisposalToDoStage(r),
+                    CreatedTime = r.SubmittedAt ?? r.ApplyTime,
+                    Priority = "高"
+                }));
+
+                var pendingInventory = await _archiveInventoryRegisterRepository.GetPendingRecordsForToDoAsync(200);
+                result.AddRange(pendingInventory.Select(r => new ToDoItem
+                {
+                    Id = $"YAI-{r.Id}-INVENTORY-PENDING",
+                    Title = $"【{(string.Equals(r.MediaKind, ArchiveInventoryRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal) ? "电子" : "模拟")}资料盘库登记】{ResolveInventoryToDoTitle(r)}：{BuildInventorySummary(r)}",
+                    BizType = "ArchiveInventoryRegister",
+                    BizId = r.Id,
+                    BizNo = r.RegisterNo,
+                    Stage = ResolveInventoryToDoStage(r),
                     CreatedTime = r.SubmittedAt ?? r.ApplyTime,
                     Priority = "高"
                 }));
@@ -203,6 +219,7 @@ namespace DocMgr.Services.YearlyArchive
         private static string ResolveDisposalToDoTitle(YearlyArchiveDisposalRecord record) =>
             record.Status switch
             {
+                YearlyArchiveDisposalRecord.StatusDraft => "待提交",
                 YearlyArchiveDisposalRecord.StatusSubmitted => "待审批",
                 YearlyArchiveDisposalRecord.StatusApproved => "待确认可上传",
                 YearlyArchiveDisposalRecord.StatusSignedUploaded when !record.SignedAttachmentUploaded => "待上传签批单",
@@ -211,7 +228,9 @@ namespace DocMgr.Services.YearlyArchive
             };
 
         private static string ResolveDisposalToDoStage(YearlyArchiveDisposalRecord record) =>
-            ArchiveDisposalDomainValues.ToStatusDisplay(record.Status);
+            record.Status == YearlyArchiveDisposalRecord.StatusDraft
+                ? "草稿-待提交"
+                : ArchiveDisposalDomainValues.ToStatusDisplay(record.Status);
 
         private static string BuildDisposalSummary(YearlyArchiveDisposalRecord record)
         {
@@ -221,6 +240,32 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return $"{record.DisposalReason} / {record.DispositionMethod}".Trim(' ', '/');
+        }
+
+        private static string ResolveInventoryToDoTitle(YearlyArchiveInventoryRegisterRecord record) =>
+            record.Status switch
+            {
+                YearlyArchiveInventoryRegisterRecord.StatusDraft => "待提交",
+                YearlyArchiveInventoryRegisterRecord.StatusSubmitted => "待审批",
+                YearlyArchiveInventoryRegisterRecord.StatusApproved => "待确认可上传",
+                YearlyArchiveInventoryRegisterRecord.StatusSignedUploaded when !record.SignedAttachmentUploaded => "待上传签批单",
+                YearlyArchiveInventoryRegisterRecord.StatusSignedUploaded => "待办结",
+                _ => "待办理"
+            };
+
+        private static string ResolveInventoryToDoStage(YearlyArchiveInventoryRegisterRecord record) =>
+            record.Status switch
+            {
+                YearlyArchiveInventoryRegisterRecord.StatusDraft => "草稿-待提交",
+                _ => ArchiveInventoryRegisterDomainValues.ToStatusDisplay(record.Status)
+            };
+
+        private static string BuildInventorySummary(YearlyArchiveInventoryRegisterRecord record)
+        {
+            string kind = record.RegisterKind?.Trim() ?? string.Empty;
+            int itemCount = record.Items?.Count ?? 0;
+            string items = itemCount > 0 ? $"{itemCount} 项" : record.RegisterNo;
+            return string.IsNullOrWhiteSpace(kind) ? items : $"{kind} / {items}";
         }
 
         private static string ResolveReturnToDoStage(YearlyArchiveReturnRecord record) =>

@@ -4,6 +4,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows;
+using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.Shared;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
 
@@ -54,9 +56,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public ObservableCollection<HardDiskMediaStatusOptionViewModel> ApplicantOptions { get; } = new();
 
-        public ObservableCollection<int> ApplicationYears { get; } = new();
+        public ObservableCollection<int> ApplicationYears { get; } = new() { DateTime.Today.Year };
 
-        public ObservableCollection<string> StatusOptions { get; } = new();
+        public ObservableCollection<string> StatusOptions { get; } = new() { "全部" };
 
         public ObservableCollection<string> ApplicationTypeOptions { get; } = new();
 
@@ -444,8 +446,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
             if (_applicationYear < 2000 || !ApplicationYears.Contains(_applicationYear))
             {
                 _applicationYear = ApplicationYears[^1];
-                OnPropertyChanged(nameof(ApplicationYear));
             }
+
+            // ItemsSource 重建后须强制刷新 SelectedItem 绑定，否则 ComboBox 会处于校验失败（左右红边、文本空白）。
+            OnPropertyChanged(nameof(ApplicationYear));
         }
 
         private void ApplyApplicationFilters(int? selectedId = null)
@@ -506,25 +510,23 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private bool CanWithdrawSelectedApplication()
         {
-            if (SelectedApplication == null)
+            if (SelectedApplication == null || !IsCurrentUserApplicant(SelectedApplication))
             {
                 return false;
             }
 
-            if (!IsCurrentUserApplicant(SelectedApplication))
-            {
-                return false;
-            }
-
-            return SelectedApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft ||
-                   SelectedApplication.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted;
+            return ApplicationListActionSupport.CanApplicantWithdraw(
+                SelectedApplication.ApplicationStatus,
+                isOwnerApplicant: true);
         }
 
         private bool CanSubmitSelectedApplication()
         {
-            return SelectedApplication?.ApplicationStatus == HardDiskMediaApplication.StatusDraft
-                   && HardDiskMediaApplicationViewModelHelper.CanSubmitApplication(_userContextService.CurrentUser)
-                   && IsCurrentUserApplicant(SelectedApplication);
+            return ApplicationListActionSupport.CanSubmit(
+                       SelectedApplication?.ApplicationStatus ?? ApplicationWorkflowStatus.Completed,
+                       isOwnerApplicant: SelectedApplication != null
+                           && IsCurrentUserApplicant(SelectedApplication))
+                   && HardDiskMediaApplicationViewModelHelper.CanSubmitApplication(_userContextService.CurrentUser);
         }
 
     }

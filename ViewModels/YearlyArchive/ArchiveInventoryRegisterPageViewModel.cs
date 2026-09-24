@@ -3,6 +3,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Input;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
@@ -19,6 +20,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveInventoryRegisterService _registerService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
         private readonly List<YearlyArchiveInventoryRegisterRecord> _allRecords = new();
 
         private bool _isConfigured;
@@ -29,22 +31,28 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _searchKeyword = string.Empty;
         private string _selectedStatus = "全部";
         private YearlyArchiveInventoryRegisterRecord? _selectedRecord;
+        private string _applicationOverdueSettingCode = string.Empty;
 
         public ArchiveInventoryRegisterPageViewModel(
             IArchiveInventoryRegisterService registerService,
             IDialogService dialogService,
-            IUserContextService userContextService)
+            IUserContextService userContextService,
+            IBusinessLogicSettingsService businessLogicSettingsService)
         {
             _registerService = registerService;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _businessLogicSettingsService = businessLogicSettingsService;
 
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
             SearchCommand = new RelayCommand(async _ => await RefreshAsync());
-            AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanOperate);
+            AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanCreateDraft);
             OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null);
             WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => CanWithdrawSelected);
+            ForceVoidCommand = new RelayCommand(async _ => await ForceVoidAsync(), _ => CanForceVoidSelected);
         }
+
+        public const string PendingInProgressStatus = "进行中（待办结前）";
 
         public void Configure(string mediaKind)
         {
@@ -70,8 +78,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string PageTitle => IsSimulated ? "模拟资料盘库登记办理表" : "电子资料盘库登记办理表";
 
         public string BannerText => IsSimulated
-            ? "按资料子项登记库内丢失或拟销份数。拟销用于无存档价值资料。确认登记办结即时扣减可借份数并写履历，无需审批签批。盘库导致空盒仍占档口并标「失」「销」，正式清账请后期走「离库处置」。"
-            : "按电子袋内硬盘/光盘登记损坏、盘失或拟销。拟销用于无存档价值资料，办结效应与盘失相同。确认登记办结即时改介质台账（保留档口）并禁用关联资料借出，无需审批签批。袋不移走；正式清账请后期走「离库处置」。";
+            ? "按资料子项登记库内丢失或拟销份数。拟销用于无存档价值资料。流程：草稿→提交→打印签批→线下签字→审批通过→确认可上传→上传签批单→办结。办结后即时扣减可借份数并写履历；空盒仍占档口并标「失」「销」，正式清账请后期走「离库处置」。"
+            : "按电子袋内硬盘/光盘登记损坏、盘失或拟销。拟销用于无存档价值资料。流程：草稿→提交→打印签批→线下签字→审批通过→确认可上传→上传签批单→办结。办结后即时改介质台账（保留档口）并禁用关联资料借出；袋不移走，正式清账请后期走「离库处置」。";
 
         /// <summary>仅模拟轨可见的列表/详情区域。</summary>
         public Visibility SimulatedColumnVisibility => IsSimulated ? Visibility.Visible : Visibility.Collapsed;
@@ -226,19 +234,31 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        public bool CanOperate =>
-            ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+        public bool CanCreateDraft =>
+            OfflineApprovalPermissionSupport.CanCreateDraft(
+                _userContextService.CurrentUser,
+                ApprovalWorkflowBusinessTypes.YearlyArchiveInventoryRegister);
 
         public bool CanWithdrawSelected =>
-            CanOperate
-            && SelectedRecord != null
-            && SelectedRecord.Status == YearlyArchiveInventoryRegisterRecord.StatusDraft;
+            ApplicationListActionSupport.CanAdminWithdrawInventoryRegister(
+                SelectedRecord?.Status ?? ApplicationWorkflowStatus.Completed,
+                CanCreateDraft);
+
+        public bool CanForceVoidSelected =>
+            SelectedRecord != null
+            && ApplicationListActionSupport.CanForceVoid(
+                SelectedRecord.Status,
+                CanCreateDraft,
+                _businessLogicSettingsService.IsEligibleForAdminForceVoid(
+                    SelectedRecord.ApplyTime,
+                    _applicationOverdueSettingCode));
 
         public RelayCommand RefreshCommand { get; }
         public RelayCommand SearchCommand { get; }
         public RelayCommand AddCommand { get; }
         public RelayCommand OpenCommand { get; }
         public RelayCommand WithdrawCommand { get; }
+        public RelayCommand ForceVoidCommand { get; }
 
         public async Task InitializeAsync(string? initialStatus = null, bool matchAllYears = false)
         {
@@ -261,9 +281,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             StatusOptions.Clear();
             StatusOptions.Add("全部");
-            StatusOptions.Add(ApplicationWorkflowStatus.TextDraft);
-            StatusOptions.Add(ApplicationWorkflowStatus.TextCompleted);
-            StatusOptions.Add(ApplicationWorkflowStatus.TextWithdrawn);
+            StatusOptions.Add(PendingInProgressStatus);
+            foreach (var option in ApplicationWorkflowStatus.AllOptions)
+                StatusOptions.Add(option.Label);
 
             ApplyYears.Clear();
             int currentYear = DateTime.Today.Year;
@@ -288,6 +308,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
+                _applicationOverdueSettingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
                 int? selectedId = SelectedRecord?.Id;
                 string? keyword = string.IsNullOrWhiteSpace(SearchKeyword) ? null : SearchKeyword.Trim();
                 var list = await _registerService.SearchRecordsAsync(_mediaKind, keyword, status: null, applyYear: null);
@@ -321,20 +342,19 @@ namespace DocMgr.ViewModels.YearlyArchive
             if (!string.Equals(SelectedStatus, "全部", StringComparison.Ordinal)
                 && !string.IsNullOrWhiteSpace(SelectedStatus))
             {
-                int? statusValue = SelectedStatus switch
+                if (string.Equals(SelectedStatus, PendingInProgressStatus, StringComparison.Ordinal))
                 {
-                    var text when string.Equals(text, ApplicationWorkflowStatus.TextDraft, StringComparison.Ordinal)
-                        => YearlyArchiveInventoryRegisterRecord.StatusDraft,
-                    var text when string.Equals(text, ApplicationWorkflowStatus.TextCompleted, StringComparison.Ordinal)
-                        => YearlyArchiveInventoryRegisterRecord.StatusCompleted,
-                    var text when string.Equals(text, ApplicationWorkflowStatus.TextWithdrawn, StringComparison.Ordinal)
-                        => YearlyArchiveInventoryRegisterRecord.StatusWithdrawn,
-                    _ => null
-                };
-
-                if (statusValue.HasValue)
+                    query = query.Where(item =>
+                        item.Status is YearlyArchiveInventoryRegisterRecord.StatusSubmitted
+                            or YearlyArchiveInventoryRegisterRecord.StatusApproved
+                            or YearlyArchiveInventoryRegisterRecord.StatusSignedUploaded);
+                }
+                else
                 {
-                    query = query.Where(item => item.Status == statusValue.Value);
+                    var matched = ApplicationWorkflowStatus.AllOptions
+                        .FirstOrDefault(item => string.Equals(item.Label, SelectedStatus, StringComparison.Ordinal));
+                    if (!string.IsNullOrWhiteSpace(matched.Label))
+                        query = query.Where(item => item.Status == matched.Value);
                 }
             }
 
@@ -380,7 +400,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task AddAsync()
         {
-            if (!CanOperate)
+            if (!CanCreateDraft)
             {
                 _dialogService.ShowError("仅资料管理员可办理盘库登记。");
                 return;
@@ -434,7 +454,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            if (!_dialogService.ShowConfirm("确认撤回作废当前盘库登记草稿？", "撤回作废"))
+            if (!_dialogService.ShowConfirm("确认撤回作废当前盘库登记单？仅草稿或已提交状态可撤回。", "撤回作废"))
             {
                 return;
             }
@@ -444,6 +464,34 @@ namespace DocMgr.ViewModels.YearlyArchive
                 await _registerService.WithdrawAsync(
                     SelectedRecord.Id,
                     reason: "列表撤回作废",
+                    _userContextService.CurrentUser!);
+                await RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private async Task ForceVoidAsync()
+        {
+            if (SelectedRecord == null || !CanForceVoidSelected)
+            {
+                return;
+            }
+
+            if (!_dialogService.ShowConfirm(
+                    "确定要强制作废该盘库登记单吗？仅草稿或已提交且已达逾期时限的单据可强制作废。",
+                    "强制作废确认"))
+            {
+                return;
+            }
+
+            try
+            {
+                await _registerService.ForceVoidAsync(
+                    SelectedRecord.Id,
+                    reason: "列表强制作废",
                     _userContextService.CurrentUser!);
                 await RefreshAsync();
             }

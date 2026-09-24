@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using DocMgr.Models.NetworkTransfer;
+using DocMgr.Models.SystemSettings;
 
 namespace DocMgr.Services.Interfaces
 {
@@ -128,11 +129,20 @@ namespace DocMgr.Services.Interfaces
         // 填充审批默认信息（仅资料管理员可执行）
         Task ApplyDefaultApprovalInfoAsync(YearlyArchiveRegisterRecord record, User currentUser);
 
+        /// <summary>解析资料登记签批链（用于签字卡 Show*/Enable*）。</summary>
+        Task<ApprovalChainResolution> ResolveApprovalChainAsync(YearlyArchiveRegisterRecord record);
+
         // 填充入网申请审批默认信息（仅资料管理员可执行）
         Task ApplyDefaultInboundApprovalInfoAsync(NetworkInboundRecord record, User currentUser);
 
+        /// <summary>解析入网签批链（用于签字卡 Show*/Enable*）。</summary>
+        Task<ApprovalChainResolution> ResolveInboundApprovalChainAsync(NetworkInboundRecord record);
+
         // 填充出网申请审批默认信息（仅资料管理员可执行）
         Task ApplyDefaultNetworkOutboundApprovalInfoAsync(NetworkOutboundRecord record, User currentUser);
+
+        /// <summary>解析出网签批链（用于签字卡 Show*/Enable*）。</summary>
+        Task<ApprovalChainResolution> ResolveNetworkOutboundApprovalChainAsync(NetworkOutboundRecord record);
 
         // 填充资料借出申请审批默认信息（仅资料管理员可执行）
         Task ApplyDefaultOutboundApprovalInfoAsync(YearlyArchiveOutboundRecord record, User currentUser);

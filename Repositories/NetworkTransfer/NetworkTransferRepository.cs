@@ -280,6 +280,21 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
         return query.FirstOrDefaultAsync(item => item.Id == recordId);
     }
 
+    public Task<List<NetworkOnNetDisposalRecord>> GetPendingDisposalRecordsForToDoAsync(int takeCount)
+    {
+        return _dbContext.NetworkOnNetDisposalRecords
+            .AsNoTracking()
+            .Include(item => item.Items)
+            .Where(item => item.Status == NetworkOnNetDisposalRecord.StatusDraft
+                           || item.Status == NetworkOnNetDisposalRecord.StatusSubmitted
+                           || item.Status == NetworkOnNetDisposalRecord.StatusApproved
+                           || item.Status == NetworkOnNetDisposalRecord.StatusSignedUploaded)
+            .OrderBy(item => item.SubmittedAt ?? item.ApplyTime)
+            .ThenBy(item => item.Id)
+            .Take(Math.Max(1, takeCount))
+            .ToListAsync();
+    }
+
     public void AddDisposal(NetworkOnNetDisposalRecord record) => _dbContext.NetworkOnNetDisposalRecords.Add(record);
 
     public void RemoveDisposalItems(IEnumerable<NetworkOnNetDisposalItem> items) =>

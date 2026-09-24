@@ -18,7 +18,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
     /// <summary>
     /// 在网处置办理弹窗。
     /// </summary>
-    public sealed class NetworkOnNetDisposalEditDialogViewModel : ViewModelBase
+    public sealed partial class NetworkOnNetDisposalEditDialogViewModel : ViewModelBase
     {
         private readonly INetworkTransferService _service;
         private readonly IDialogService _dialogService;
@@ -205,6 +205,12 @@ namespace DocMgr.ViewModels.NetworkTransfer
             _record.Status is NetworkOnNetDisposalRecord.StatusApproved or NetworkOnNetDisposalRecord.StatusSignedUploaded
             && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
 
+        /// <summary>签字卡可编辑：审批通过前或已审批后改签。</summary>
+        public bool CanEditSigners => CanEditReviewSigners || CanApprove;
+
+        public DateTime? SignatureDateMin =>
+            ApprovalSignatureDateSupport.ResolveMinDate(_record.FirstPrintedAt, _record.LastPrintedAt, _record.PrintCount);
+
         public string DisposalNo { get => _disposalNo; set => SetProperty(ref _disposalNo, value); }
         public string Reason { get => _reason; set => SetProperty(ref _reason, value); }
         public string Remark { get => _remark; set => SetProperty(ref _remark, value); }
@@ -227,7 +233,18 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 _ = PersistReviewSignersAsync();
             }
         }
-        public string DeptHeadDateDisplay => FormatDate(_deptHeadDate);
+
+        public DateTime? DeptHeadDate
+        {
+            get => _deptHeadDate;
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                if (!SetProperty(ref _deptHeadDate, clamped))
+                    return;
+                _ = PersistReviewSignersAsync();
+            }
+        }
 
         /// <summary>资料室负责人姓名（审批通过后自动填写，可改）。</summary>
         public string ArchiveRoomHead
@@ -240,7 +257,18 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 _ = PersistReviewSignersAsync();
             }
         }
-        public string ArchiveRoomHeadDateDisplay => FormatDate(_archiveRoomHeadDate);
+
+        public DateTime? ArchiveRoomHeadDate
+        {
+            get => _archiveRoomHeadDate;
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                if (!SetProperty(ref _archiveRoomHeadDate, clamped))
+                    return;
+                _ = PersistReviewSignersAsync();
+            }
+        }
 
         public string ProductionHead
         {
@@ -252,7 +280,18 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 _ = PersistReviewSignersAsync();
             }
         }
-        public string ProductionHeadDateDisplay => FormatDate(_productionHeadDate);
+
+        public DateTime? ProductionHeadDate
+        {
+            get => _productionHeadDate;
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                if (!SetProperty(ref _productionHeadDate, clamped))
+                    return;
+                _ = PersistReviewSignersAsync();
+            }
+        }
 
         /// <summary>分管资料副院长姓名（审批通过后自动填写，可改）。</summary>
         public string ArchiveDeputyPresident
@@ -265,7 +304,18 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 _ = PersistReviewSignersAsync();
             }
         }
-        public string ArchiveDeputyPresidentDateDisplay => FormatDate(_archiveDeputyPresidentDate);
+
+        public DateTime? ArchiveDeputyPresidentDate
+        {
+            get => _archiveDeputyPresidentDate;
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                if (!SetProperty(ref _archiveDeputyPresidentDate, clamped))
+                    return;
+                _ = PersistReviewSignersAsync();
+            }
+        }
 
         public string ProductionVicePresident
         {
@@ -277,7 +327,18 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 _ = PersistReviewSignersAsync();
             }
         }
-        public string ProductionVicePresidentDateDisplay => FormatDate(_productionVicePresidentDate);
+
+        public DateTime? ProductionVicePresidentDate
+        {
+            get => _productionVicePresidentDate;
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                if (!SetProperty(ref _productionVicePresidentDate, clamped))
+                    return;
+                _ = PersistReviewSignersAsync();
+            }
+        }
 
         public string BatchReason { get => _batchReason; set => SetProperty(ref _batchReason, value); }
         public string BatchMethod { get => _batchMethod; set => SetProperty(ref _batchMethod, value); }
@@ -361,6 +422,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 OnPropertyChanged(nameof(CompleteHintText));
                 OnPropertyChanged(nameof(CanComplete));
                 OnPropertyChanged(nameof(CanEditReviewSigners));
+                OnPropertyChanged(nameof(CanEditSigners));
+                OnPropertyChanged(nameof(SignatureDateMin));
                 OnPropertyChanged(nameof(CanAddSelected));
 
                 if (CanSupplementOtherAttachments)
@@ -369,16 +432,17 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 }
 
                 OnPropertyChanged(nameof(DeptHead));
-                OnPropertyChanged(nameof(DeptHeadDateDisplay));
+                OnPropertyChanged(nameof(DeptHeadDate));
                 OnPropertyChanged(nameof(ArchiveRoomHead));
-                OnPropertyChanged(nameof(ArchiveRoomHeadDateDisplay));
+                OnPropertyChanged(nameof(ArchiveRoomHeadDate));
                 OnPropertyChanged(nameof(ProductionHead));
-                OnPropertyChanged(nameof(ProductionHeadDateDisplay));
+                OnPropertyChanged(nameof(ProductionHeadDate));
                 OnPropertyChanged(nameof(ArchiveDeputyPresident));
-                OnPropertyChanged(nameof(ArchiveDeputyPresidentDateDisplay));
+                OnPropertyChanged(nameof(ArchiveDeputyPresidentDate));
                 OnPropertyChanged(nameof(ProductionVicePresident));
-                OnPropertyChanged(nameof(ProductionVicePresidentDateDisplay));
+                OnPropertyChanged(nameof(ProductionVicePresidentDate));
                 NotifyItemListsChanged();
+                NotifyShellAliasPropertiesChanged();
             }
             finally
             {
@@ -663,9 +727,6 @@ namespace DocMgr.ViewModels.NetworkTransfer
             catch (Exception ex) { _dialogService.ShowError(ex.Message); }
         }
 
-        private static string FormatDate(DateTime? value)
-            => value.HasValue ? value.Value.ToString("yyyy-MM-dd") : "—";
-
         private async Task PersistReviewSignersAsync()
         {
             if (_suppressReviewSignerPersist || !CanEditReviewSigners || _record.Id <= 0)
@@ -676,17 +737,27 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 await _service.UpdateDisposalReviewSignersAsync(
                     _record.Id,
                     _deptHead,
+                    _deptHeadDate,
                     _archiveRoomHead,
+                    _archiveRoomHeadDate,
                     _productionHead,
+                    _productionHeadDate,
                     _archiveDeputyPresident,
+                    _archiveDeputyPresidentDate,
                     _productionVicePresident,
+                    _productionVicePresidentDate,
                     RequireUser());
                 _hasCommittedChanges = true;
                 _record.DeptHead = _deptHead.Trim();
+                _record.DeptHeadDate = _deptHeadDate;
                 _record.ArchiveRoomHead = _archiveRoomHead.Trim();
+                _record.ArchiveRoomHeadDate = _archiveRoomHeadDate;
                 _record.ProductionHead = _productionHead.Trim();
+                _record.ProductionHeadDate = _productionHeadDate;
                 _record.ArchiveDeputyPresident = _archiveDeputyPresident.Trim();
+                _record.ArchiveDeputyPresidentDate = _archiveDeputyPresidentDate;
                 _record.ProductionVicePresident = _productionVicePresident.Trim();
+                _record.ProductionVicePresidentDate = _productionVicePresidentDate;
             }
             catch (Exception ex)
             {
@@ -835,24 +906,20 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         private async Task ReloadAttachmentsAsync()
         {
-            Attachments.Clear();
-            SignedFormAttachments.Clear();
-            OtherAttachments.Clear();
-            if (string.IsNullOrWhiteSpace(_record.DisposalNo)) return;
-            foreach (var item in await _service.GetAttachmentsAsync(
-                         NetworkTransferDomainValues.DisposalAttachmentBusinessType, _record.DisposalNo))
-            {
-                Attachments.Add(item);
-                string category = item.FileCategory?.Trim() ?? string.Empty;
-                if (string.Equals(category, NetworkTransferDomainValues.AttachmentCategorySignedForm, StringComparison.Ordinal))
-                {
-                    SignedFormAttachments.Add(item);
-                }
-                else
-                {
-                    OtherAttachments.Add(item);
-                }
-            }
+            IEnumerable<SystemAttachment> list = string.IsNullOrWhiteSpace(_record.DisposalNo)
+                ? Array.Empty<SystemAttachment>()
+                : await _service.GetAttachmentsAsync(
+                    NetworkTransferDomainValues.DisposalAttachmentBusinessType,
+                    _record.DisposalNo);
+            var policy = ApprovalAttachmentPolicySupport.Get(ApprovalWorkflowBusinessTypes.NetworkOnNetDisposal);
+            ApprovalAttachmentPolicySupport.Partition(
+                policy,
+                list,
+                Attachments,
+                SignedFormAttachments,
+                photos: null,
+                proof: null,
+                OtherAttachments);
         }
 
         private async Task UploadAttachmentByCategoryAsync(string category)

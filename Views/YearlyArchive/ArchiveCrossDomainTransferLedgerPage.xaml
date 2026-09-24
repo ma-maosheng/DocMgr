@@ -220,7 +220,8 @@
                                 ToolTip="将当前列表选中行的入网单号填入筛选框"/>
                         <Button Content="清空单号" MinWidth="84" Margin="4,0,0,0"
                                 Command="{Binding ClearBusinessNoCommand}"
-                                Style="{StaticResource CompactToolbarButtonStyle}"/>
+                                Style="{StaticResource CompactToolbarButtonStyle}"
+                                ToolTip="清空上方入网单号筛选条件"/>
                     </StackPanel>
 
                     <TextBlock Grid.Row="0" Grid.Column="6" Text="时间快捷" Style="{StaticResource FilterRowLabelStyle}"/>

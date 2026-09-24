@@ -20,7 +20,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
     /// <summary>
     /// 硬盘介质审批信息录入弹窗 ViewModel。
     /// </summary>
-    public class HardDiskMediaApprovalEditDialogViewModel : ViewModelBase
+    public partial class HardDiskMediaApprovalEditDialogViewModel : ViewModelBase
     {
         private readonly HardDiskMediaApplication _application;
         private readonly IHardDiskMediaService _hardDiskMediaService;
@@ -30,11 +30,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly User? _currentUser;
 
         private string _reviewerName = string.Empty;
-        private DateTime _reviewerDate;
+        private DateTime? _reviewerDate;
         private string _archiveRoomHead = string.Empty;
-        private DateTime _archiveRoomHeadDate;
+        private DateTime? _archiveRoomHeadDate;
         private string _archiveDeputyPresident = string.Empty;
-        private DateTime _archiveDeputyPresidentDate;
+        private DateTime? _archiveDeputyPresidentDate;
         private bool _enableDeptHead = true;
         private bool _enableArchiveRoomHead = true;
         private bool _enableArchiveDeputyPresident;
@@ -127,7 +127,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         /// <summary>顶部流程说明文案。</summary>
         public string WorkspaceBannerText =>
-            "请先查看申请信息与关联介质，再按“审批通过→确认实物交接→分区上传附件→确认办结→打印交接单”的顺序办理。";
+            ApprovalWorkflowShellCopySupport.GetWorkspaceBannerText(ApprovalWorkflowShellKind.ApplicationHandover);
 
         public string ApplicationNo => _application.ApplicationNo;
         public string ApplicantName => _application.ApplicantName;
@@ -277,10 +277,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _reviewerName, value);
         }
 
-        public DateTime DeptHeadDate
+        public DateTime? DeptHeadDate
         {
             get => _reviewerDate;
-            set => SetProperty(ref _reviewerDate, value);
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                SetProperty(ref _reviewerDate, clamped);
+            }
         }
 
         public string ArchiveRoomHead
@@ -289,10 +293,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _archiveRoomHead, value);
         }
 
-        public DateTime ArchiveRoomHeadDate
+        public DateTime? ArchiveRoomHeadDate
         {
             get => _archiveRoomHeadDate;
-            set => SetProperty(ref _archiveRoomHeadDate, value);
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                SetProperty(ref _archiveRoomHeadDate, clamped);
+            }
         }
 
         public string ArchiveDeputyPresident
@@ -301,10 +309,51 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set => SetProperty(ref _archiveDeputyPresident, value);
         }
 
-        public DateTime ArchiveDeputyPresidentDate
+        public DateTime? ArchiveDeputyPresidentDate
         {
             get => _archiveDeputyPresidentDate;
-            set => SetProperty(ref _archiveDeputyPresidentDate, value);
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                SetProperty(ref _archiveDeputyPresidentDate, clamped);
+            }
+        }
+
+        public bool ShowDeptHead => EnableDeptHead;
+        public bool ShowArchiveRoomHead => EnableArchiveRoomHead;
+        public bool ShowArchiveDeputyPresident => EnableArchiveDeputyPresident;
+        public bool ShowProductionHead => false;
+        public bool ShowProductionVicePresident => false;
+        public bool ShowReviewSignerSection => EnableDeptHead || EnableArchiveRoomHead;
+        public bool ShowApproveSignerSection => EnableArchiveDeputyPresident;
+        public bool CanEditSigners => CanApprovePass;
+        public DateTime? SignatureDateMin =>
+            ApprovalSignatureDateSupport.ResolveMinDate(_application.FirstPrintedAt, _application.PrintedTime, _application.PrintCount);
+
+        /// <summary>生产科签字占位（本业务不启用）。</summary>
+        public string ProductionHead
+        {
+            get => string.Empty;
+            set { }
+        }
+
+        public DateTime? ProductionHeadDate
+        {
+            get => null;
+            set { }
+        }
+
+        /// <summary>分管生产院长签字占位（本业务不启用）。</summary>
+        public string ProductionVicePresident
+        {
+            get => string.Empty;
+            set { }
+        }
+
+        public DateTime? ProductionVicePresidentDate
+        {
+            get => null;
+            set { }
         }
 
         public bool EnableDeptHead
@@ -399,6 +448,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
             EnableDeptHead = chain.DeptHead.IsEnabled;
             EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled;
             EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled;
+            OnPropertyChanged(nameof(ShowDeptHead));
+            OnPropertyChanged(nameof(ShowArchiveRoomHead));
+            OnPropertyChanged(nameof(ShowArchiveDeputyPresident));
+            OnPropertyChanged(nameof(ShowReviewSignerSection));
+            OnPropertyChanged(nameof(ShowApproveSignerSection));
+            OnPropertyChanged(nameof(CanEditSigners));
+            OnPropertyChanged(nameof(SignatureDateMin));
 
             await HardDiskMediaApplicationViewModelHelper.ApplyDefaultApprovalFromWorkflowAsync(
                 _application,
@@ -800,19 +856,19 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return null;
             }
 
-            if (EnableDeptHead && DeptHeadDate == default)
+            if (EnableDeptHead && !DeptHeadDate.HasValue)
             {
                 _dialogService.ShowMessage("请填写审核日期。");
                 return null;
             }
 
-            if (EnableArchiveRoomHead && ArchiveRoomHeadDate == default)
+            if (EnableArchiveRoomHead && !ArchiveRoomHeadDate.HasValue)
             {
                 _dialogService.ShowMessage("请填写审批日期。");
                 return null;
             }
 
-            if (EnableArchiveDeputyPresident && ArchiveDeputyPresidentDate == default)
+            if (EnableArchiveDeputyPresident && !ArchiveDeputyPresidentDate.HasValue)
             {
                 _dialogService.ShowMessage($"请填写{ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident}日期。");
                 return null;
@@ -878,6 +934,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             _application.ApplicationStatus = refreshed.ApplicationStatus;
             _application.PrintCount = refreshed.PrintCount;
+            _application.PrintedTime = refreshed.PrintedTime;
             _application.SignedAttachmentUploaded = refreshed.SignedAttachmentUploaded;
             _application.SignedAttachmentUploadedTime = refreshed.SignedAttachmentUploadedTime;
             _application.SignedAttachmentUploader = refreshed.SignedAttachmentUploader;
@@ -895,6 +952,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(IsApprovalEditable));
             OnPropertyChanged(nameof(IsHandoverEditable));
             OnPropertyChanged(nameof(CanApprovePass));
+            OnPropertyChanged(nameof(CanEditSigners));
+            OnPropertyChanged(nameof(SignatureDateMin));
             OnPropertyChanged(nameof(CanConfirmPhysicalHandover));
             OnPropertyChanged(nameof(CanUploadSignedAttachment));
             OnPropertyChanged(nameof(CanUploadPhysicalPhotoAttachment));
@@ -912,6 +971,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(UploadHintText));
             OnPropertyChanged(nameof(PrintHintText));
             OnPropertyChanged(nameof(CompleteHintText));
+            NotifyShellAliasPropertiesChanged();
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         }
 
@@ -926,6 +986,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(UploadHintText));
             OnPropertyChanged(nameof(CompleteHintText));
+            NotifyShellAliasPropertiesChanged();
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         }
 
@@ -944,32 +1005,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
 
             var attachments = await _hardDiskMediaService.GetApplicationAttachmentsAsync(_application.ApplicationNo);
-            foreach (var attachment in attachments)
-            {
-                Attachments.Add(attachment);
-                string category = attachment.FileCategory?.Trim() ?? string.Empty;
-                if (HardDiskOutboundDomainValues.IsSignedHandoverCategory(category))
-                {
-                    SignedHandoverAttachments.Add(attachment);
-                }
-                else if (string.Equals(category, HardDiskOutboundDomainValues.AttachmentCategoryPhysicalPhoto, StringComparison.Ordinal))
-                {
-                    PhysicalPhotoAttachments.Add(attachment);
-                }
-                else if (string.Equals(category, HardDiskOutboundDomainValues.AttachmentCategoryProofMaterial, StringComparison.Ordinal))
-                {
-                    ProofMaterialAttachments.Add(attachment);
-                }
-                else if (string.Equals(category, HardDiskOutboundDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
-                {
-                    OtherAttachments.Add(attachment);
-                }
-                else
-                {
-                    // 历史未分类附件归入其他附件区，便于查看删除
-                    OtherAttachments.Add(attachment);
-                }
-            }
+            ApprovalAttachmentPolicySupport.Partition(
+                ApprovalAttachmentPolicySupport.Get(ApprovalWorkflowBusinessTypes.HardDiskOutbound),
+                attachments,
+                Attachments,
+                SignedHandoverAttachments,
+                PhysicalPhotoAttachments,
+                ProofMaterialAttachments,
+                OtherAttachments);
 
             SelectedAttachment = selectedAttachmentId.HasValue
                 ? Attachments.FirstOrDefault(item => item.Id == selectedAttachmentId.Value)

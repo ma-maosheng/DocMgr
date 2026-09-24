@@ -2,6 +2,7 @@ using DocMgr.Views.Shared;
 using System;
 using System.Threading.Tasks;
 using System.Windows;
+using DocMgr.Models.Shared;
 using DocMgr.Services.Shared;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
@@ -79,6 +80,24 @@ namespace DocMgr.ViewModels.YearlyArchive
                 var doc = ArchiveRegisterPrintDocumentFactory.Create(data, isApplicationPrint: false);
 
                 ShowArchiveRegisterPrintPreview(doc, data);
+
+                try
+                {
+                    int printCount = CurrentRecord.PrintCount;
+                    DateTime? firstPrintedAt = CurrentRecord.FirstPrintedAt;
+                    DateTime? lastPrintedAt = CurrentRecord.LastPrintedAt;
+                    ApprovalSignatureDateSupport.RecordPrint(ref printCount, ref firstPrintedAt, ref lastPrintedAt);
+                    CurrentRecord.PrintCount = printCount;
+                    CurrentRecord.FirstPrintedAt = firstPrintedAt;
+                    CurrentRecord.LastPrintedAt = lastPrintedAt;
+                    await _archiveRegisterService.SaveOrUpdateAsync(CurrentRecord);
+                    OnPropertyChanged(nameof(CurrentRecord));
+                    NotifyShellAliasPropertiesChanged();
+                }
+                catch (Exception ex)
+                {
+                    _dialogService.ShowError("打印计数保存失败：" + ex.Message);
+                }
 
                 if (IsDialogMode && WorkspaceMode == ArchiveRegisterWorkspaceMode.Approval)
                 {

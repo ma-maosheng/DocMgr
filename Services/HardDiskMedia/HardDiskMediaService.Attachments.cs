@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.Shared;
 
 namespace DocMgr.Services.HardDiskMedia
 {
@@ -97,23 +98,21 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaAttachmentFlowResult.Fail("当前申请已作废，不允许上传附件。");
             }
 
-            if (existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)
+            bool isOther = string.Equals(category, HardDiskOutboundDomainValues.AttachmentCategoryOther, StringComparison.Ordinal);
+            var attachGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentUpload(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    existingApplication.ApplicationStatus,
+                    existingApplication.SignedAttachmentUploaded,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                isOtherCategory: isOther,
+                isArchiveAdmin: IsArchiveRoomMediaAdmin(currentUser));
+            if (!attachGate.Allowed)
             {
-                if (!string.Equals(category, HardDiskOutboundDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
-                {
-                    return HardDiskMediaAttachmentFlowResult.Fail("办结后仅可增补「其他附件」。");
-                }
+                return HardDiskMediaAttachmentFlowResult.Fail(attachGate.DenyMessage ?? "当前状态不允许上传附件。");
+            }
 
-                if (!IsArchiveRoomMediaAdmin(currentUser))
-                {
-                    return HardDiskMediaAttachmentFlowResult.Fail("仅资料管理员可在办结后增补其他附件。");
-                }
-            }
-            else if (existingApplication.ApplicationStatus != HardDiskMediaApplication.StatusSignedUploaded)
-            {
-                return HardDiskMediaAttachmentFlowResult.Fail("请先确认实物交接后再上传附件。");
-            }
-            else
+            if (existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded)
             {
                 if (string.Equals(category, HardDiskOutboundDomainValues.AttachmentCategoryPhysicalPhoto, StringComparison.Ordinal)
                     && !HardDiskOutboundDomainValues.RequiresPhysicalPhotoAttachment(existingApplication.ApplicationType))
@@ -172,10 +171,13 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             var relatedApplication = await _hardDiskMediaRepository.GetApplicationByIdAsync(existingAttachment.BusinessId);
-            if (relatedApplication != null
-                && relatedApplication.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)
+            if (relatedApplication != null)
             {
-                return HardDiskMediaAttachmentFlowResult.Fail("办结后不允许删除附件。");
+                var deleteGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentDelete(relatedApplication.ApplicationStatus);
+                if (!deleteGate.Allowed)
+                {
+                    return HardDiskMediaAttachmentFlowResult.Fail(deleteGate.DenyMessage ?? "当前状态不允许删除附件。");
+                }
             }
 
             if (relatedApplication != null &&

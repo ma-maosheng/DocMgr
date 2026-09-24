@@ -35,7 +35,8 @@
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Width="220" Style="{StaticResource ToolbarFilterTextBoxStyle}" VerticalContentAlignment="Center" Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox Width="220" Style="{StaticResource ToolbarFilterTextBoxStyle}" VerticalContentAlignment="Center" Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="硬盘编号、序列号、品牌、登记人、柜内位置、备注">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
                             </TextBox.InputBindings>

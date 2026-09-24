@@ -59,7 +59,7 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="业务状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <ComboBox Width="140"
                                   Style="{StaticResource ToolbarFilterComboBoxStyle}"
                                   ItemsSource="{Binding StatusFilterOptions}"
@@ -82,7 +82,8 @@
                             <ToggleButton x:Name="ApplicantFilterButton"
                                           Width="180"
                                           Height="32"
-                                          IsChecked="{Binding IsApplicantPopupOpen, Mode=TwoWay}">
+                                          IsChecked="{Binding IsApplicantPopupOpen, Mode=TwoWay}"
+                                          ToolTip="可多选申请人筛选列表；勾选「全部」不限申请人">
                                 <DockPanel LastChildFill="True">
                                     <TextBlock Text="{Binding SelectedApplicantSummary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Text="▼" Margin="8,0,0,0" VerticalAlignment="Center" DockPanel.Dock="Right"/>
@@ -177,7 +178,7 @@
                         <DataGridTextColumn Header="申请单号" Binding="{Binding OutboundNo}" Width="130"/>
                         <DataGridTextColumn Header="资料摘要" Binding="{Binding MaterialSummary}" Width="*" MinWidth="80"/>
                         <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="70"/>
-                        <DataGridTextColumn Header="状态" Binding="{Binding StatusStr}" Width="120"/>
+                        <DataGridTextColumn Header="业务状态" Binding="{Binding StatusStr}" Width="120"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>

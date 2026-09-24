@@ -1,4 +1,5 @@
 using DocMgr.Models.HistoryArchive;
+using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
@@ -17,17 +18,20 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
     private readonly IBusinessRuleService _businessRuleService;
     private readonly IUserService _userService;
     private readonly IApprovalWorkflowService _approvalWorkflowService;
+    private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
 
     public HistoryArchiveDisposalService(
         IHistoryArchiveDisposalRepository repository,
         IBusinessRuleService businessRuleService,
         IUserService userService,
-        IApprovalWorkflowService approvalWorkflowService)
+        IApprovalWorkflowService approvalWorkflowService,
+        IBusinessLogicSettingsService businessLogicSettingsService)
     {
         _repository = repository;
         _businessRuleService = businessRuleService;
         _userService = userService;
         _approvalWorkflowService = approvalWorkflowService;
+        _businessLogicSettingsService = businessLogicSettingsService;
     }
 
     /// <inheritdoc />
@@ -194,9 +198,16 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         var existing = await _repository.GetRecordByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到历史存档离库处置单。");
 
-        if (existing.Status != HistoryArchiveDisposalRecord.StatusSubmitted)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.ApprovePass);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅已提交状态可审批。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许审批。");
         }
 
         var users = _userService.GetAllUsers();
@@ -249,7 +260,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             existing.ProductionVicePresidentDate ??= now.Date;
         }
 
-        existing.Status = HistoryArchiveDisposalRecord.StatusApproved;
+        existing.Status = gate.NextStatus ?? HistoryArchiveDisposalRecord.StatusApproved;
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
     }
@@ -258,10 +269,15 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
     public async Task UpdateReviewSignersAsync(
         int recordId,
         string? deptHead,
+        DateTime? deptHeadDate,
         string? archiveRoomHead,
+        DateTime? archiveRoomHeadDate,
         string? productionHead,
+        DateTime? productionHeadDate,
         string? archiveDeputyPresident,
+        DateTime? archiveDeputyPresidentDate,
         string? productionVicePresident,
+        DateTime? productionVicePresidentDate,
         User currentUser)
     {
         EnsureArchiveAdmin(currentUser);
@@ -274,13 +290,34 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             throw new InvalidOperationException("仅已审批或已确认可上传状态可修改审核审批人。");
         }
 
+        var minDate = ApprovalSignatureDateSupport.ResolveMinDate(existing.FirstPrintedAt, existing.LastPrintedAt, existing.PrintCount);
+        ThrowIfSignatureDateInvalid(deptHeadDate, minDate, "部门审核日期");
+        ThrowIfSignatureDateInvalid(archiveRoomHeadDate, minDate, "资料室签字日期");
+        ThrowIfSignatureDateInvalid(productionHeadDate, minDate, "生产科签字日期");
+        ThrowIfSignatureDateInvalid(archiveDeputyPresidentDate, minDate, "分管资料院长签字日期");
+        ThrowIfSignatureDateInvalid(productionVicePresidentDate, minDate, "分管生产院长签字日期");
+
         existing.DeptHead = deptHead?.Trim() ?? string.Empty;
+        existing.DeptHeadDate = ApprovalSignatureDateSupport.Clamp(deptHeadDate, minDate);
         existing.ArchiveRoomHead = archiveRoomHead?.Trim() ?? string.Empty;
+        existing.ArchiveRoomHeadDate = ApprovalSignatureDateSupport.Clamp(archiveRoomHeadDate, minDate);
         existing.ProductionHead = productionHead?.Trim() ?? string.Empty;
+        existing.ProductionHeadDate = ApprovalSignatureDateSupport.Clamp(productionHeadDate, minDate);
         existing.ArchiveDeputyPresident = archiveDeputyPresident?.Trim() ?? string.Empty;
+        existing.ArchiveDeputyPresidentDate = ApprovalSignatureDateSupport.Clamp(archiveDeputyPresidentDate, minDate);
         existing.ProductionVicePresident = productionVicePresident?.Trim() ?? string.Empty;
+        existing.ProductionVicePresidentDate = ApprovalSignatureDateSupport.Clamp(productionVicePresidentDate, minDate);
         existing.UpdatedAt = DateTime.Now;
         await _repository.SaveChangesAsync();
+    }
+
+    private static void ThrowIfSignatureDateInvalid(DateTime? value, DateTime? minDate, string fieldLabel)
+    {
+        var error = ApprovalSignatureDateSupport.ValidateNotBeforePrint(value, minDate, fieldLabel);
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            throw new InvalidOperationException(error);
+        }
     }
 
     /// <inheritdoc />
@@ -290,15 +327,22 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         var existing = await _repository.GetRecordByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到历史存档离库处置单。");
 
-        if (existing.Status != HistoryArchiveDisposalRecord.StatusApproved)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.ConfirmMidStep);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅已审批状态可确认可上传。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许确认可上传。");
         }
 
         DateTime now = DateTime.Now;
         existing.ConfirmedBy = ResolveUserDisplayName(currentUser);
         existing.ConfirmedTime = now;
-        existing.Status = HistoryArchiveDisposalRecord.StatusSignedUploaded;
+        existing.Status = gate.NextStatus ?? HistoryArchiveDisposalRecord.StatusSignedUploaded;
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
     }
@@ -310,9 +354,16 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         var existing = await _repository.GetRecordByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到历史存档离库处置单。");
 
-        if (existing.Status != HistoryArchiveDisposalRecord.StatusSignedUploaded)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.Complete);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("请先确认可上传并上传签批单后再办结。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许办结。");
         }
 
         var attachments = await _repository.GetAttachmentsAsync(existing.DisposalNo);
@@ -375,7 +426,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
                 StringComparison.Ordinal));
         existing.ScenePhotoUploaded = attachments.Any(item =>
             HistoryArchiveDisposalDomainValues.IsScenePhotoCategory(item.FileCategory));
-        existing.Status = HistoryArchiveDisposalRecord.StatusCompleted;
+        existing.Status = gate.NextStatus ?? HistoryArchiveDisposalRecord.StatusCompleted;
         existing.CompletedAt = now;
         existing.CompletedBy = operatorName;
         existing.UpdatedAt = now;
@@ -389,21 +440,69 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         var existing = await _repository.GetRecordByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到历史存档离库处置单。");
 
-        if (existing.Status is not (HistoryArchiveDisposalRecord.StatusDraft
-            or HistoryArchiveDisposalRecord.StatusSubmitted))
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.Withdraw);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅草稿或已提交状态可撤回。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不可撤回作废。");
         }
 
-        if (existing.Status == HistoryArchiveDisposalRecord.StatusSubmitted)
+        if (existing.Status != HistoryArchiveDisposalRecord.StatusDraft)
         {
             await ApplyLedgerLifecycleAsync(existing, HistoryArchiveDisposalDomainValues.LifecycleInStock, writeLastLocation: false);
         }
 
         DateTime now = DateTime.Now;
-        existing.Status = HistoryArchiveDisposalRecord.StatusWithdrawn;
+        existing.Status = gate.NextStatus ?? HistoryArchiveDisposalRecord.StatusWithdrawn;
         existing.WithdrawnAt = now;
         existing.WithdrawReason = reason?.Trim() ?? string.Empty;
+        existing.UpdatedAt = now;
+        await _repository.SaveChangesAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task ForceVoidAsync(int recordId, string? reason, User currentUser)
+    {
+        EnsureArchiveAdmin(currentUser);
+        var existing = await _repository.GetRecordByIdAsync(recordId, tracking: true)
+            ?? throw new InvalidOperationException("未找到历史存档离库处置单。");
+
+        string settingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
+        bool isOverdue = _businessLogicSettingsService.IsEligibleForAdminForceVoid(existing.ApplyTime, settingCode);
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin,
+                forceVoidEligible: isOverdue),
+            OfflineApprovalLifecycleSupport.Action.ForceVoid);
+        if (!gate.Allowed)
+        {
+            if (!isOverdue
+                && existing.Status is HistoryArchiveDisposalRecord.StatusDraft
+                    or HistoryArchiveDisposalRecord.StatusSubmitted)
+            {
+                throw new InvalidOperationException(_businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
+            }
+
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不可强制作废。");
+        }
+
+        if (existing.Status != HistoryArchiveDisposalRecord.StatusDraft)
+        {
+            await ApplyLedgerLifecycleAsync(existing, HistoryArchiveDisposalDomainValues.LifecycleInStock, writeLastLocation: false);
+        }
+
+        DateTime now = DateTime.Now;
+        existing.Status = gate.NextStatus ?? HistoryArchiveDisposalRecord.StatusForceWithdrawn;
+        existing.WithdrawnAt = now;
+        existing.WithdrawReason = string.IsNullOrWhiteSpace(reason) ? "资料管理员强制作废" : reason.Trim();
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
     }
@@ -420,8 +519,13 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             throw new InvalidOperationException("当前状态不可打印签批单。");
         }
 
-        existing.PrintCount += 1;
-        existing.LastPrintedAt = DateTime.Now;
+        int printCount = existing.PrintCount;
+        DateTime? firstPrintedAt = existing.FirstPrintedAt;
+        DateTime? lastPrintedAt = existing.LastPrintedAt;
+        ApprovalSignatureDateSupport.RecordPrint(ref printCount, ref firstPrintedAt, ref lastPrintedAt);
+        existing.PrintCount = printCount;
+        existing.FirstPrintedAt = firstPrintedAt;
+        existing.LastPrintedAt = lastPrintedAt;
         existing.UpdatedAt = DateTime.Now;
         await _repository.SaveChangesAsync();
     }
@@ -512,22 +616,6 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         var existing = await _repository.GetRecordByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到历史存档离库处置单。");
 
-        if (existing.Status == HistoryArchiveDisposalRecord.StatusCompleted)
-        {
-            if (!string.Equals(
-                    fileCategory?.Trim(),
-                    HistoryArchiveDisposalDomainValues.AttachmentCategoryOther,
-                    StringComparison.Ordinal))
-            {
-                return (false, "办结后仅可增补「其他附件」。", null);
-            }
-        }
-        else if (existing.Status is not (HistoryArchiveDisposalRecord.StatusApproved
-            or HistoryArchiveDisposalRecord.StatusSignedUploaded))
-        {
-            return (false, "仅已审批或已确认可上传状态可上传附件。", null);
-        }
-
         if (string.IsNullOrWhiteSpace(fileCategory))
         {
             return (false, "请选择附件分类。", null);
@@ -536,6 +624,25 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         if (fileContent == null || fileContent.Length == 0)
         {
             return (false, "附件内容为空。", null);
+        }
+
+        string category = fileCategory.Trim();
+        bool isOther = string.Equals(
+            category,
+            HistoryArchiveDisposalDomainValues.AttachmentCategoryOther,
+            StringComparison.Ordinal);
+        var attachGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentUpload(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            isOtherCategory: isOther,
+            isArchiveAdmin: true,
+            allowOtherWhileApproved: true);
+        if (!attachGate.Allowed)
+        {
+            return (false, attachGate.DenyMessage ?? "当前状态不允许上传附件。", null);
         }
 
         var attachment = new SystemAttachment
@@ -547,7 +654,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             Extension = extension?.Trim() ?? string.Empty,
             FileSize = fileSize,
             FileContent = fileContent,
-            FileCategory = fileCategory.Trim(),
+            FileCategory = category,
             UploadTime = DateTime.Now,
             UploaderName = ResolveUserDisplayName(currentUser)
         };
@@ -584,9 +691,15 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         }
 
         var existing = await _repository.GetRecordByIdAsync(attachment.BusinessId, tracking: false);
-        if (existing?.Status == HistoryArchiveDisposalRecord.StatusCompleted)
+        if (existing == null)
         {
-            return (false, "办结后不允许删除附件。");
+            return (false, "未找到关联处置单。");
+        }
+
+        var deleteGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentDelete(existing.Status);
+        if (!deleteGate.Allowed)
+        {
+            return (false, deleteGate.DenyMessage ?? "当前状态不允许删除附件。");
         }
 
         _repository.RemoveAttachment(attachment);

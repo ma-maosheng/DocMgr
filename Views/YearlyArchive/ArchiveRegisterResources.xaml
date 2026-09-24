@@ -178,7 +178,7 @@
         <Setter Property="HorizontalAlignment" Value="Right"/>
         <Setter Property="TextAlignment" Value="Right"/>
         <Setter Property="Width" Value="{StaticResource YaRegLabelWidth}"/>
-        <Setter Property="Margin" Value="0"/>
+        <Setter Property="Margin" Value="{StaticResource FormLabelControlGap}"/>
     </Style>
 
     <Style x:Key="ArchiveRegisterCardLabelStyle" TargetType="Label" BasedOn="{StaticResource FormLabelStyle}">

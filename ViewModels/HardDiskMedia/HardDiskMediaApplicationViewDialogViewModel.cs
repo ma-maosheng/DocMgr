@@ -117,7 +117,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public bool CanSupplementOtherAttachments =>
             _application.Id > 0
             && _application.ApplicationStatus == HardDiskMediaApplication.StatusCompleted
-            && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+            && OfflineApprovalPermissionSupport.CanSupplementOtherAfterComplete(_userContextService.CurrentUser);
 
         public string SupplementAttachmentHint =>
             "办结后仅可增补「其他附件」；请确保文件命名清晰准确。本页不可删除已有附件。";

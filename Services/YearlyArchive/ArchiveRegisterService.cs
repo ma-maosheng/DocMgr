@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DocMgr.Models.NetworkTransfer;
+using DocMgr.Models.Shared;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
@@ -432,14 +433,16 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveRegisterFlowResult.Fail("未找到指定的登记申请单。");
             }
 
-            if (!existing.IsSubmitted)
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    existing.Status,
+                    signedAttachmentUploaded: false,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                OfflineApprovalLifecycleSupport.Action.ApprovePass);
+            if (!gate.Allowed)
             {
-                return ArchiveRegisterFlowResult.Fail("只有“已提交”状态的记录可执行审批通过。");
-            }
-
-            if (existing.IsApprovedReceived || existing.IsSignedUploaded || existing.IsArchived)
-            {
-                return ArchiveRegisterFlowResult.Fail("当前状态不允许再次执行审批通过。");
+                return ArchiveRegisterFlowResult.Fail(gate.DenyMessage ?? "当前状态不允许审批通过。");
             }
 
             // 审批流程仅要求签字人，不要求签署具体意见。
@@ -462,7 +465,7 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             ArchiveRegisterBusinessRules.CopyRegisterApprovalFields(existing, record);
-            existing.MarkAsApprovedReceived();
+            existing.Status = gate.NextStatus ?? YearlyArchiveRegisterRecord.Approved;
             await SaveOrUpdateAsync(existing);
 
             return ArchiveRegisterFlowResult.Ok("审批通过成功。下一步：确认实物交接。");
@@ -486,9 +489,16 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveRegisterFlowResult.Fail("未找到指定的登记申请单。");
             }
 
-            if (!existing.IsApprovedReceived)
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    existing.Status,
+                    signedAttachmentUploaded: false,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                OfflineApprovalLifecycleSupport.Action.ConfirmMidStep);
+            if (!gate.Allowed)
             {
-                return ArchiveRegisterFlowResult.Fail("只有“已审批”状态的记录可确认实物交接。");
+                return ArchiveRegisterFlowResult.Fail(gate.DenyMessage ?? "当前状态不允许确认实物交接。");
             }
 
             var handoverErrors = new List<string>();
@@ -501,7 +511,7 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             ArchiveRegisterBusinessRules.CopyRegisterApprovalFields(existing, record);
-            existing.MarkAsSignedUploaded();
+            existing.Status = gate.NextStatus ?? YearlyArchiveRegisterRecord.SignedUploaded;
             await SaveOrUpdateAsync(existing);
 
             return ArchiveRegisterFlowResult.Ok("实物交接确认成功，请上传签批交接单和资料照片。");
@@ -519,18 +529,31 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveRegisterFlowResult.Fail("仅资料管理员可执行确认办结。");
             }
 
-            if (!record.IsSignedUploaded)
+            var attachmentList = attachments ?? Array.Empty<SystemAttachment>();
+            bool hasSignedAttachment = attachmentList.Any(a => string.Equals(
+                ArchiveRegisterDomainValues.ResolveAttachmentKind(a.FileCategory, a.FileName),
+                ArchiveRegisterDomainValues.AttachmentKindSignedHandoverForm,
+                StringComparison.Ordinal));
+
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    hasSignedAttachment,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                OfflineApprovalLifecycleSupport.Action.Complete);
+            if (!gate.Allowed)
             {
-                return ArchiveRegisterFlowResult.Fail("请先确认实物交接并上传签批交接单后再确认办结。");
+                return ArchiveRegisterFlowResult.Fail(gate.DenyMessage ?? "当前状态不允许确认办结。");
             }
 
-            var approvalValidation = await ValidateApprovalAsync(record, attachments);
+            var approvalValidation = await ValidateApprovalAsync(record, attachmentList);
             if (!approvalValidation.IsValid)
             {
                 return ArchiveRegisterFlowResult.Fail("附件或审批信息尚未满足办结要求：\n\n" + approvalValidation.ErrorMessage);
             }
 
-            record.MarkAsCompleted();
+            record.Status = gate.NextStatus ?? YearlyArchiveRegisterRecord.Completed;
             await SaveOrUpdateAsync(record);
             return ArchiveRegisterFlowResult.Ok("确认办结成功。下一步：打印交接单。");
         }
@@ -616,13 +639,20 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveRegisterFlowResult.Fail("仅申请人本人可撤销当前登记单。");
             }
 
-            if (!record.CanCancelRegister)
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    signedAttachmentUploaded: false,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.Applicant),
+                OfflineApprovalLifecycleSupport.Action.Withdraw);
+            if (!gate.Allowed)
             {
-                return ArchiveRegisterFlowResult.Fail("当前登记单已录入审批信息或状态不允许撤回作废。");
+                return ArchiveRegisterFlowResult.Fail(gate.DenyMessage ?? "当前登记单状态不允许撤回作废。");
             }
 
             await RestoreBorrowedHardDiskRegisterLocksAsync(record);
-            record.MarkAsWithdrawnVoid();
+            record.Status = gate.NextStatus ?? YearlyArchiveRegisterRecord.WithdrawnVoid;
             await SaveOrUpdateAsync(record);
             return ArchiveRegisterFlowResult.Ok("撤回作废成功。");
         }
@@ -639,19 +669,34 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveRegisterFlowResult.Fail("仅资料管理员可执行申请单强制作废。");
             }
 
-            if (!record.CanForceCleanupRegister)
+            bool isOverdue = await ExceedsForceCleanupAgeAsync(record);
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    signedAttachmentUploaded: false,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin,
+                    forceVoidEligible: isOverdue),
+                OfflineApprovalLifecycleSupport.Action.ForceVoid);
+            if (!gate.Allowed)
             {
-                return ArchiveRegisterFlowResult.Fail("当前登记单已录入审批信息或状态不允许强制作废。");
-            }
+                if (!isOverdue
+                    && record.Status is not (
+                        YearlyArchiveRegisterRecord.Completed
+                        or YearlyArchiveRegisterRecord.WithdrawnVoid
+                        or YearlyArchiveRegisterRecord.ForceVoided
+                        or YearlyArchiveRegisterRecord.Approved
+                        or YearlyArchiveRegisterRecord.SignedUploaded))
+                {
+                    string settingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
+                    return ArchiveRegisterFlowResult.Fail(_businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
+                }
 
-            if (!await ExceedsForceCleanupAgeAsync(record))
-            {
-                string settingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
-                return ArchiveRegisterFlowResult.Fail(_businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
+                return ArchiveRegisterFlowResult.Fail(gate.DenyMessage ?? "当前登记单不允许强制作废。");
             }
 
             await RestoreBorrowedHardDiskRegisterLocksAsync(record);
-            record.MarkAsForceVoided();
+            record.Status = gate.NextStatus ?? YearlyArchiveRegisterRecord.ForceVoided;
             await SaveOrUpdateAsync(record);
             return ArchiveRegisterFlowResult.Ok("申请单强制作废成功。");
         }
@@ -721,29 +766,22 @@ namespace DocMgr.Services.YearlyArchive
                         kind,
                         ArchiveRegisterDomainValues.AttachmentKindOther,
                         StringComparison.Ordinal);
-                    bool canUploadInWorkflow = persisted.IsApprovedReceived || persisted.IsSignedUploaded;
-                    bool canSupplementOtherAfterComplete = persisted.IsArchived && isOther;
-                    if (!canUploadInWorkflow && !canSupplementOtherAfterComplete)
+
+                    var attachGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentUpload(
+                        new OfflineApprovalLifecycleSupport.GateContext(
+                            persisted.Status,
+                            signedAttachmentUploaded: persisted.IsSignedUploaded,
+                            OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                            OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                        isOtherCategory: isOther,
+                        isArchiveAdmin: true);
+                    if (!attachGate.Allowed)
                     {
                         return ArchiveRegisterAttachmentFlowResult.Fail(
-                            persisted.IsArchived
-                                ? "办结后仅可增补「其他附件」。"
-                                : "当前状态不允许上传附件，请先执行“审批通过”并确认实物交接。");
+                            attachGate.DenyMessage ?? "当前状态不允许上传附件。");
                     }
 
                     await UploadAttachmentAsync(attachment);
-
-                    if (persisted.IsApprovedReceived)
-                    {
-                        var currentAttachments = await GetAttachmentsByFormNoAsync(persisted.FormNo);
-                        var validation = await ValidateMandatoryAttachmentsAsync(persisted, currentAttachments);
-                        if (validation.IsValid)
-                        {
-                            persisted.MarkAsSignedUploaded();
-                            await SaveOrUpdateAsync(persisted);
-                        }
-                    }
-
                     return ArchiveRegisterAttachmentFlowResult.Ok("上传成功", attachment);
                 }
             }
@@ -757,6 +795,26 @@ namespace DocMgr.Services.YearlyArchive
             if (attachment == null)
             {
                 return ArchiveRegisterAttachmentFlowResult.Fail("附件不存在，无法删除。");
+            }
+
+            var existing = await GetAttachmentByIdAsync(attachment.Id);
+            if (existing == null)
+            {
+                return ArchiveRegisterAttachmentFlowResult.Fail("附件不存在，无法删除。");
+            }
+
+            if (existing.BusinessId > 0)
+            {
+                var record = await GetByIdAsync(existing.BusinessId);
+                if (record != null)
+                {
+                    var deleteGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentDelete(record.Status);
+                    if (!deleteGate.Allowed)
+                    {
+                        return ArchiveRegisterAttachmentFlowResult.Fail(
+                            deleteGate.DenyMessage ?? "当前状态不允许删除附件。");
+                    }
+                }
             }
 
             await DeleteAttachmentAsync(attachment.Id);
@@ -879,16 +937,8 @@ namespace DocMgr.Services.YearlyArchive
                 return;
             }
 
-            var users = await _archiveRegisterRepository.GetUsersAsync();
             var now = DateTime.Now;
-            var chain = await _approvalWorkflowService.ResolveAsync(
-                new ApprovalChainResolveRequest
-                {
-                    BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveRegister,
-                    ApplicantDept = record.ApplicantDept,
-                    FieldValues = ApprovalChainApplySupport.BuildRegisterFieldValues(record)
-                },
-                users);
+            var chain = await ResolveApprovalChainAsync(record);
 
             ApprovalChainApplySupport.ApplyToRegister(record, chain, now);
 
@@ -901,6 +951,21 @@ namespace DocMgr.Services.YearlyArchive
                 record.Administrator = currentUser.RealName;
             if (!record.AdminDate.HasValue)
                 record.AdminDate = now;
+        }
+
+        /// <inheritdoc />
+        public async Task<ApprovalChainResolution> ResolveApprovalChainAsync(YearlyArchiveRegisterRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            var users = await _archiveRegisterRepository.GetUsersAsync();
+            return await _approvalWorkflowService.ResolveAsync(
+                new ApprovalChainResolveRequest
+                {
+                    BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveRegister,
+                    ApplicantDept = record.ApplicantDept,
+                    FieldValues = ApprovalChainApplySupport.BuildRegisterFieldValues(record)
+                },
+                users);
         }
 
         public async Task ApplyDefaultInboundApprovalInfoAsync(NetworkInboundRecord record, User currentUser)
@@ -918,16 +983,8 @@ namespace DocMgr.Services.YearlyArchive
                 return;
             }
 
-            var users = await _archiveRegisterRepository.GetUsersAsync();
             var now = DateTime.Now;
-            var chain = await _approvalWorkflowService.ResolveAsync(
-                new ApprovalChainResolveRequest
-                {
-                    BusinessType = ApprovalWorkflowBusinessTypes.NetworkInbound,
-                    ApplicantDept = record.ApplicantDept,
-                    FieldValues = ApprovalChainApplySupport.BuildNetworkInboundFieldValues(record)
-                },
-                users);
+            var chain = await ResolveInboundApprovalChainAsync(record);
 
             ApprovalChainApplySupport.ApplyToInbound(record, chain, now);
 
@@ -952,6 +1009,21 @@ namespace DocMgr.Services.YearlyArchive
             }
         }
 
+        /// <inheritdoc />
+        public async Task<ApprovalChainResolution> ResolveInboundApprovalChainAsync(NetworkInboundRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            var users = await _archiveRegisterRepository.GetUsersAsync();
+            return await _approvalWorkflowService.ResolveAsync(
+                new ApprovalChainResolveRequest
+                {
+                    BusinessType = ApprovalWorkflowBusinessTypes.NetworkInbound,
+                    ApplicantDept = record.ApplicantDept,
+                    FieldValues = ApprovalChainApplySupport.BuildNetworkInboundFieldValues(record)
+                },
+                users);
+        }
+
         public async Task ApplyDefaultNetworkOutboundApprovalInfoAsync(NetworkOutboundRecord record, User currentUser)
         {
             ArgumentNullException.ThrowIfNull(record);
@@ -967,16 +1039,8 @@ namespace DocMgr.Services.YearlyArchive
                 return;
             }
 
-            var users = await _archiveRegisterRepository.GetUsersAsync();
             var now = DateTime.Now;
-            var chain = await _approvalWorkflowService.ResolveAsync(
-                new ApprovalChainResolveRequest
-                {
-                    BusinessType = ApprovalWorkflowBusinessTypes.NetworkOutbound,
-                    ApplicantDept = record.ApplicantDept,
-                    FieldValues = ApprovalChainApplySupport.BuildNetworkOutboundFieldValues(record)
-                },
-                users);
+            var chain = await ResolveNetworkOutboundApprovalChainAsync(record);
 
             ApprovalChainApplySupport.ApplyToNetworkOutbound(record, chain, now);
 
@@ -999,6 +1063,21 @@ namespace DocMgr.Services.YearlyArchive
             {
                 record.AdminDate = now;
             }
+        }
+
+        /// <inheritdoc />
+        public async Task<ApprovalChainResolution> ResolveNetworkOutboundApprovalChainAsync(NetworkOutboundRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            var users = await _archiveRegisterRepository.GetUsersAsync();
+            return await _approvalWorkflowService.ResolveAsync(
+                new ApprovalChainResolveRequest
+                {
+                    BusinessType = ApprovalWorkflowBusinessTypes.NetworkOutbound,
+                    ApplicantDept = record.ApplicantDept,
+                    FieldValues = ApprovalChainApplySupport.BuildNetworkOutboundFieldValues(record)
+                },
+                users);
         }
 
         public async Task ApplyDefaultOutboundApprovalInfoAsync(YearlyArchiveOutboundRecord record, User currentUser)

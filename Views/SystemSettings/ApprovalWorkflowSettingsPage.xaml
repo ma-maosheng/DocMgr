@@ -73,10 +73,12 @@
                             Command="{Binding DeleteRuleCommand}"/>
                     <Button Content="上移" Width="64" Margin="0,0,6,0"
                             Style="{StaticResource ApprovalSettingsActionButtonStyle}"
-                            Command="{Binding MoveUpCommand}"/>
+                            Command="{Binding MoveUpCommand}"
+                            ToolTip="提高选中规则优先级（列表越靠上越先匹配）"/>
                     <Button Content="下移" Width="64" Margin="0,0,6,0"
                             Style="{StaticResource ApprovalSettingsActionButtonStyle}"
-                            Command="{Binding MoveDownCommand}"/>
+                            Command="{Binding MoveDownCommand}"
+                            ToolTip="降低选中规则优先级（列表越靠下越后匹配）"/>
                     <Button Content="刷新" Width="64"
                             Style="{StaticResource ApprovalSettingsActionButtonStyle}"
                             Command="{Binding RefreshCommand}"/>

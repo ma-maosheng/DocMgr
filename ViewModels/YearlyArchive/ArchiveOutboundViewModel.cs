@@ -16,7 +16,7 @@ using Microsoft.Win32;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
-    public sealed class ArchiveOutboundViewModel : ViewModelBase
+    public sealed partial class ArchiveOutboundViewModel : ViewModelBase
     {
         private readonly IArchiveOutboundService _outboundService;
         private readonly IArchiveOutboundWordExportService _outboundWordExportService;
@@ -28,6 +28,11 @@ namespace DocMgr.ViewModels.YearlyArchive
         private YearlyArchiveOutboundRecord _record = new();
         private bool _isBusy;
         private bool _hasProofMaterialSelected;
+        private bool _enableDeptHead;
+        private bool _enableArchiveRoomHead;
+        private bool _enableProductionHead;
+        private bool _enableArchiveDeputyPresident;
+        private bool _enableProductionVicePresident;
 
         public ArchiveOutboundViewModel(
             IArchiveOutboundService outboundService,
@@ -47,7 +52,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanSaveApplicationDraft);
             SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmitApplication);
             WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => _record.CanApplicantWithdraw);
-            PrintCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrintApplication);
+            PrintApplicationCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrintApplication);
             RegisterItemsFromResultSetCommand = new RelayCommand(async _ => await RegisterItemsFromResultSetAsync(), _ => CanEditApplicationHeader);
             ExpandAllItemDetailsCommand = new RelayCommand(_ => SetAllItemDetailsExpanded(true), _ => HasContainerUnits);
             CollapseAllItemDetailsCommand = new RelayCommand(_ => SetAllItemDetailsExpanded(false), _ => HasContainerUnits);
@@ -325,7 +330,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public RelayCommand WithdrawCommand { get; }
 
-        public RelayCommand PrintCommand { get; }
+        public RelayCommand PrintApplicationCommand { get; }
 
         public RelayCommand SaveApprovalCommand { get; }
 
@@ -471,6 +476,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ApplyRecord(record);
                 await LoadAttachmentsAsync();
                 await TryAutoFillDefaultApprovalInfoAsync();
+                await ApplyApprovalChainEnableFlagsAsync();
                 return;
             }
 
@@ -497,30 +503,23 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             var attachments = await _outboundService.GetAttachmentsAsync(Record.Id);
-            foreach (var attachment in attachments)
+            ApprovalAttachmentPolicySupport.Partition(
+                ApprovalAttachmentPolicySupport.Get(ApprovalWorkflowBusinessTypes.YearlyArchiveOutbound),
+                attachments,
+                all: null,
+                SignedApprovalAttachments,
+                MaterialPhotoAttachments,
+                ProofMaterialAttachments,
+                OtherAttachments);
+
+            foreach (var attachment in SignedApprovalAttachments)
             {
-                if (string.Equals(attachment.FileCategory, ArchiveOutboundDomainValues.AttachmentKindProofMaterialScan, StringComparison.Ordinal))
+                if (string.Equals(
+                        attachment.FileCategory,
+                        ArchiveOutboundDomainValues.AttachmentKindSignedHandoverForm,
+                        StringComparison.Ordinal))
                 {
-                    ProofMaterialAttachments.Add(attachment);
-                }
-                else if (ArchiveOutboundDomainValues.IsSignedFormAttachmentKind(attachment.FileCategory))
-                {
-                    SignedApprovalAttachments.Add(attachment);
-                    if (string.Equals(
-                            attachment.FileCategory,
-                            ArchiveOutboundDomainValues.AttachmentKindSignedHandoverForm,
-                            StringComparison.Ordinal))
-                    {
-                        HandoverFormAttachments.Add(attachment);
-                    }
-                }
-                else if (string.Equals(attachment.FileCategory, ArchiveOutboundDomainValues.AttachmentKindMaterialPhoto, StringComparison.Ordinal))
-                {
-                    MaterialPhotoAttachments.Add(attachment);
-                }
-                else if (string.Equals(attachment.FileCategory, ArchiveOutboundDomainValues.AttachmentKindOther, StringComparison.Ordinal))
-                {
-                    OtherAttachments.Add(attachment);
+                    HandoverFormAttachments.Add(attachment);
                 }
             }
 
@@ -1004,6 +1003,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanManageProofMaterialAttachments));
             OnPropertyChanged(nameof(CanUploadProofMaterialAttachment));
             OnPropertyChanged(nameof(ProofMaterialAttachmentHint));
+            NotifyShellAliasPropertiesChanged();
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         }
 
@@ -1295,6 +1295,65 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 // 自动回填失败不阻断页面打开，用户仍可手工录入审批信息。
             }
+        }
+
+        /// <summary>按签批链规则刷新签字卡 Enable*/Show*。</summary>
+        private async Task ApplyApprovalChainEnableFlagsAsync()
+        {
+            if (!ShowApprovalActions || Record.Id <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                var chain = await _outboundService.ResolveApprovalChainAsync(Record);
+                EnableDeptHead = chain.DeptHead.IsEnabled;
+                EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled;
+                EnableProductionHead = chain.ProductionHead.IsEnabled;
+                EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled;
+                EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled;
+                NotifyShellAliasPropertiesChanged();
+            }
+            catch
+            {
+                // 解析失败时保持当前 Enable*，不阻断打开。
+            }
+        }
+
+        /// <summary>是否启用部门审核签字栏。</summary>
+        public bool EnableDeptHead
+        {
+            get => _enableDeptHead;
+            private set => SetProperty(ref _enableDeptHead, value);
+        }
+
+        /// <summary>是否启用资料室签字栏。</summary>
+        public bool EnableArchiveRoomHead
+        {
+            get => _enableArchiveRoomHead;
+            private set => SetProperty(ref _enableArchiveRoomHead, value);
+        }
+
+        /// <summary>是否启用生产科签字栏。</summary>
+        public bool EnableProductionHead
+        {
+            get => _enableProductionHead;
+            private set => SetProperty(ref _enableProductionHead, value);
+        }
+
+        /// <summary>是否启用分管资料院长签字栏。</summary>
+        public bool EnableArchiveDeputyPresident
+        {
+            get => _enableArchiveDeputyPresident;
+            private set => SetProperty(ref _enableArchiveDeputyPresident, value);
+        }
+
+        /// <summary>是否启用分管生产院长签字栏。</summary>
+        public bool EnableProductionVicePresident
+        {
+            get => _enableProductionVicePresident;
+            private set => SetProperty(ref _enableProductionVicePresident, value);
         }
 
         private async Task PrintApprovalAsync()

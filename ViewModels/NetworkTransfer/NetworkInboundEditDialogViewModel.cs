@@ -537,6 +537,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 LoadInternalDepartments();
                 BindFromRecord();
                 await TryAutoFillDefaultApprovalInfoAsync();
+                await ApplyApprovalChainEnableFlagsAsync();
                 await LoadConfidentialLevelOptionsAsync();
                 await InitializeElectronicMediaEditorAsync();
                 if (IsArchivedSource)
@@ -1651,6 +1652,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 _record = latest;
                 BindFromRecord();
                 await TryAutoFillDefaultApprovalInfoAsync();
+                await ApplyApprovalChainEnableFlagsAsync();
                 if (IsArchivedSource)
                 {
                     await LoadApplicantSearchResultSetsAsync();

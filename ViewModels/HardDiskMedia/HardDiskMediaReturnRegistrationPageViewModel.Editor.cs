@@ -98,7 +98,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _ => "归位位置（空白硬盘档口）"
         };
 
-        public string ReasonFieldLabel => IsSpecialSituationInspectionResult ? "特殊情况说明 *" : "特殊情况说明";
+        public string ReasonFieldLabel => IsSpecialSituationInspectionResult ? "特殊情况说明 *：" : "特殊情况说明：";
 
         public bool IsMediumSelectionEnabled => IsRegistrationEditable && SelectedApplicant != null;
 
@@ -702,6 +702,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ApplicantOptions.Clear();
             ReturnTargetLocationOptions.Clear();
             Attachments.Clear();
+            OtherAttachments.Clear();
             AbnormalReportAttachments.Clear();
             SelectedAttachment = null;
             SelectedAbnormalReportAttachment = null;
@@ -1454,6 +1455,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(CompleteHintText));
             OnPropertyChanged(nameof(WorkflowHintText));
             OnPropertyChanged(nameof(EditHeader));
+            NotifyShellAliasPropertiesChanged();
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -1461,6 +1463,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             int? selectedAbnormalAttachmentId = SelectedAbnormalReportAttachment?.Id;
             Attachments.Clear();
+            OtherAttachments.Clear();
             AbnormalReportAttachments.Clear();
             _hasAbnormalReportUploaded = false;
 
@@ -1473,10 +1476,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
 
             var attachments = await _hardDiskMediaService.GetApplicationAttachmentsAsync(_editingApplication.ApplicationNo);
+            var partitionSource = new List<SystemAttachment>();
             foreach (var attachment in attachments)
             {
+                string category = attachment.FileCategory?.Trim() ?? string.Empty;
                 if (string.Equals(
-                        attachment.FileCategory,
+                        category,
                         HardDiskMediaReturnDomainValues.AttachmentKindSignedAbnormalReturnReport,
                         StringComparison.Ordinal))
                 {
@@ -1484,9 +1489,18 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 }
                 else
                 {
-                    Attachments.Add(attachment);
+                    partitionSource.Add(attachment);
                 }
             }
+
+            ApprovalAttachmentPolicySupport.Partition(
+                ApprovalAttachmentPolicySupport.Get(ApprovalWorkflowBusinessTypes.HardDiskReturn),
+                partitionSource,
+                all: null,
+                Attachments,
+                photos: null,
+                proof: null,
+                OtherAttachments);
 
             _hasAbnormalReportUploaded = AbnormalReportAttachments.Count > 0
                 || await _hardDiskMediaService.HasUploadedAbnormalReturnReportAsync(

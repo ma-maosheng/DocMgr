@@ -93,10 +93,9 @@
             </Setter>
         </Style>
 
-        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+        <Style x:Key="FieldLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource FormFieldCaptionStyle}">
             <Setter Property="Foreground" Value="#6B7280"/>
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
 
         <Style x:Key="FieldValueStyle" TargetType="TextBlock">
@@ -475,7 +474,7 @@
                         <DataGridTemplateColumn Width="168" IsReadOnly="True">
                             <DataGridTemplateColumn.Header>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="表单号" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="表单号：" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <Button Content="{Binding Data.FoldAllButtonText, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
                                             ToolTip="{Binding Data.FoldAllButtonToolTip, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
                                             Style="{StaticResource LedgerFoldButtonStyle}"
@@ -599,41 +598,41 @@
                                 </Grid.RowDefinitions>
 
                                 <StackPanel Grid.Row="0" Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="立档事实编号"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="立档事实编号："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding FilingFactNo, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="1">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="表单号"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="表单号："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding FormNo, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="2">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="密级"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="密级："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding ConfidentialLevel, Mode=OneWay}"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="1" Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="资料名称"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="资料名称："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding MaterialName, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="1">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="子项名称"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="子项名称："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding ItemName, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="2">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="库管模式"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="库管模式："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding ArchivePurpose, Mode=OneWay}"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="2" Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="项目名称"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="项目名称："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding ProjectName, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="2" Grid.Column="1">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="提供单位"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="提供单位："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding ProvideUnit, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="3" Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="申请人 / 内容数量"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="申请人 / 内容数量："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}">
                                         <Run Text="{Binding ApplicantName, Mode=OneWay}"/>
                                         <Run Text=" · "/>
@@ -642,20 +641,20 @@
                                 </StackPanel>
                                 <StackPanel Grid.Row="3" Grid.Column="1"
                                             Visibility="{Binding IsSimulatedMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="库内/立档（灭失）"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="库内/立档（灭失）："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding CopyCountStatusDisplay, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="3" Grid.Column="2"
                                             Visibility="{Binding IsSimulatedMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="介质类型"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="介质类型："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding RegisterMediaType, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="4" Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="资料类型"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="资料类型："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding MaterialCategory, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="4" Grid.Column="1">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="所属子类 / 组织形式"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="所属子类 / 组织形式："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" TextWrapping="Wrap">
                                         <Run Text="{Binding SubCategory, Mode=OneWay}"/>
                                         <Run Text=" · "/>
@@ -687,42 +686,42 @@
                                             </Grid.RowDefinitions>
 
                                             <StackPanel Grid.Row="0" Grid.Column="0">
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="容器类型"/>
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="容器类型："/>
                                                 <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding ContainerKindDisplay, Mode=OneWay}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Row="0" Grid.Column="1">
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="立档容器编号"/>
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="立档容器编号："/>
                                                 <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding ContainerCode, Mode=OneWay}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Row="0" Grid.Column="2">
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="立档存放位置"/>
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="立档存放位置："/>
                                                 <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding StorageLocation, Mode=OneWay}"/>
                                             </StackPanel>
 
                                             <StackPanel Grid.Row="1" Grid.Column="0"
                                                         Visibility="{Binding IsSimulatedMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="档案柜"/>
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="档案柜："/>
                                                 <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding CabinetName, Mode=OneWay}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Row="1" Grid.Column="1"
                                                         Visibility="{Binding IsSimulatedMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="盒规格"/>
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="盒规格："/>
                                                 <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding BoxSpecs, Mode=OneWay}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Row="1" Grid.Column="2"
                                                         Visibility="{Binding ShowDistinctBoxLocationCode, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="盒位置编码"/>
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="盒位置编码："/>
                                                 <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding BoxLocationCode, Mode=OneWay}"/>
                                             </StackPanel>
 
                                             <StackPanel Grid.Row="2" Grid.Column="0"
                                                         Visibility="{Binding IsElectronicMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="存储载体"/>
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="存储载体："/>
                                                 <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding StorageCarrierType, Mode=OneWay}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Row="2" Grid.Column="1"
                                                         Visibility="{Binding IsElectronicMedia, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="介质编号"/>
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="介质编号："/>
                                                 <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding MediumCode, Mode=OneWay}"/>
                                             </StackPanel>
                                         </Grid>
@@ -746,11 +745,11 @@
                                             </Grid.ColumnDefinitions>
 
                                             <StackPanel Grid.Column="0">
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="当前容器编号"/>
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="当前容器编号："/>
                                                 <TextBlock Style="{StaticResource CurrentFieldValueStyle}" Text="{Binding CurrentContainerCode, Mode=OneWay}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1">
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="当前存放位置"/>
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="当前存放位置："/>
                                                 <TextBlock Style="{StaticResource CurrentFieldValueStyle}" Text="{Binding CurrentStorageLocation, Mode=OneWay}"/>
                                             </StackPanel>
                                         </Grid>
@@ -777,43 +776,43 @@
                                 </Grid.RowDefinitions>
 
                                 <StackPanel Grid.Row="0" Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="立档时间"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="立档时间："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding FiledAtDisplay, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="1">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="立档人"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="立档人："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding FiledBy, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="2">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="数据量"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="数据量："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding DataSizeDisplay, Mode=OneWay}"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="1" Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="生命周期状态"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="生命周期状态："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding LifecycleStatusDisplay, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="1">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="原件 / 备份"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="原件 / 备份："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding ArchiveCopyRoleDisplay, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="2">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="借出提示"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="借出提示："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding BorrowHintDisplay, Mode=OneWay}"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="立档存储路径"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="立档存储路径："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding FilingStoragePath, Mode=OneWay}"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="处置说明"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="处置说明："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding Disposition, Mode=OneWay}"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="生命周期备注"/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="生命周期备注："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding LifecycleRemark, Mode=OneWay}"/>
                                 </StackPanel>
                             </Grid>
@@ -876,7 +875,7 @@
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="时间" Binding="{Binding OperatedAtDisplay, Mode=OneWay}" Width="128"/>
                                         <DataGridTextColumn Header="出库单号" Binding="{Binding OutboundNo, Mode=OneWay}" Width="130"/>
-                                        <DataGridTextColumn Header="单证状态" Binding="{Binding OutboundStatusDisplay, Mode=OneWay}" Width="88"/>
+                                        <DataGridTextColumn Header="业务状态" Binding="{Binding OutboundStatusDisplay, Mode=OneWay}" Width="88"/>
                                         <DataGridTextColumn Header="节点类别" Binding="{Binding NodeCategoryDisplay, Mode=OneWay}" Width="72"/>
                                         <DataGridTextColumn Header="流程节点" Binding="{Binding ProcessNodeDisplay, Mode=OneWay}" Width="180"/>
                                         <DataGridTextColumn Header="用途" Binding="{Binding UsageModeDisplay, Mode=OneWay}" Width="56"/>

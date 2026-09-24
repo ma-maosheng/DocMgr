@@ -335,9 +335,16 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnFlowResult.Fail("未找到指定的归还单。");
             }
 
-            if (record.Status != YearlyArchiveReturnRecord.Submitted)
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    record.SignedAttachmentUploaded,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                OfflineApprovalLifecycleSupport.Action.ApprovePass);
+            if (!gate.Allowed)
             {
-                return ArchiveReturnFlowResult.Fail("只有“已提交-待审批”的归还申请可审批通过。");
+                return ArchiveReturnFlowResult.Fail(gate.DenyMessage ?? "当前状态不允许审批通过。");
             }
 
             DateTime now = DateTime.Now;
@@ -364,7 +371,8 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnFlowResult.Fail(string.Join(Environment.NewLine, missing));
             }
 
-            record.MarkAsApproved();
+            record.Status = gate.NextStatus ?? YearlyArchiveReturnRecord.Approved;
+            record.ApprovedAt = now;
             if (chain.DeptHead.IsEnabled)
             {
                 record.DeptHeadDate ??= now;
@@ -446,9 +454,16 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnFlowResult.Fail("未找到指定的归还单。");
             }
 
-            if (record.Status != YearlyArchiveReturnRecord.Approved)
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    record.SignedAttachmentUploaded,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                OfflineApprovalLifecycleSupport.Action.ConfirmMidStep);
+            if (!gate.Allowed)
             {
-                return ArchiveReturnFlowResult.Fail("只有“已审批-待实物交接”的归还单可确认实物交接。");
+                return ArchiveReturnFlowResult.Fail(gate.DenyMessage ?? "当前状态不允许确认实物交接。");
             }
 
             var abnormalGate = await ValidateAbnormalReturnGateAsync(record);
@@ -477,11 +492,13 @@ namespace DocMgr.Services.YearlyArchive
                     ?? string.Empty;
             }
 
+            DateTime now = DateTime.Now;
             record.HandoverApplicant = handoverApplicant;
             record.HandoverAdmin = handoverAdmin;
             record.HandoverDate = input.HandoverDate.Value;
-            record.MarkAsSignedUploaded();
-            record.UpdatedAt = DateTime.Now;
+            record.Status = gate.NextStatus ?? YearlyArchiveReturnRecord.SignedUploaded;
+            record.SignedUploadedAt = now;
+            record.UpdatedAt = now;
             await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
 
             return ArchiveReturnFlowResult.Ok(
@@ -504,14 +521,16 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnFlowResult.Fail("未找到指定的归还单。");
             }
 
-            if (record.Status != YearlyArchiveReturnRecord.SignedUploaded)
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    record.SignedAttachmentUploaded,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                OfflineApprovalLifecycleSupport.Action.Complete);
+            if (!gate.Allowed)
             {
-                return ArchiveReturnFlowResult.Fail("请先完成实物交接并上传签批交接单后再确认办结。");
-            }
-
-            if (!record.SignedAttachmentUploaded)
-            {
-                return ArchiveReturnFlowResult.Fail("请先上传签批交接单后再确认办结。");
+                return ArchiveReturnFlowResult.Fail(gate.DenyMessage ?? "当前状态不允许办结。");
             }
 
             if (record.PrintCount <= 0)
@@ -628,7 +647,9 @@ namespace DocMgr.Services.YearlyArchive
                 await _filingFactRepository.UpdateFilingFactLifecyclesAsync(lifecycleUpdates, operatorName, "资料归还");
 
                 outbound.UpdatedAt = now;
-                record.MarkAsCompleted(operatorName);
+                record.Status = gate.NextStatus ?? YearlyArchiveReturnRecord.Completed;
+                record.CompletedAt = now;
+                record.HandlerName = operatorName;
                 record.UpdatedAt = now;
 
                 await _returnRepository.SaveChangesAsync();
@@ -678,53 +699,70 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnFlowResult.Fail("仅登记人（部门资料员）或资料管理员可作废该归还单。");
             }
 
-            if (record.Status is YearlyArchiveReturnRecord.Completed
-                or YearlyArchiveReturnRecord.WithdrawnVoid
-                or YearlyArchiveReturnRecord.ForceVoided)
-            {
-                return ArchiveReturnFlowResult.Fail(
-                    record.Status == YearlyArchiveReturnRecord.Completed
-                        ? "已办结的归还单不可作废。"
-                        : "该归还单已作废，无需重复操作。");
-            }
-
             if (isRoomAdmin)
             {
-                if (record.Status is YearlyArchiveReturnRecord.Approved
-                    or YearlyArchiveReturnRecord.SignedUploaded)
-                {
-                    return ArchiveReturnFlowResult.Fail("当前归还单已录入审批信息或已进入交接环节，不允许强制撤回作废。");
-                }
-
-                if (record.Status is not (
-                        YearlyArchiveReturnRecord.Draft
-                        or YearlyArchiveReturnRecord.Submitted))
-                {
-                    return ArchiveReturnFlowResult.Fail("该归还单当前状态不可强制作废。");
-                }
-
                 DateTime applyTime = record.SubmittedAt ?? record.RegisteredAt ?? record.CreatedAt;
                 string settingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
-                if (!_businessLogicSettingsService.IsEligibleForAdminForceVoid(applyTime, settingCode))
+                bool isOverdue = _businessLogicSettingsService.IsEligibleForAdminForceVoid(applyTime, settingCode);
+
+                var forceGate = OfflineApprovalLifecycleSupport.TryTransition(
+                    new OfflineApprovalLifecycleSupport.GateContext(
+                        record.Status,
+                        record.SignedAttachmentUploaded,
+                        OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                        OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin,
+                        forceVoidEligible: isOverdue),
+                    OfflineApprovalLifecycleSupport.Action.ForceVoid);
+                if (!forceGate.Allowed)
                 {
+                    if (!isOverdue
+                        && record.Status is not (
+                            YearlyArchiveReturnRecord.Completed
+                            or YearlyArchiveReturnRecord.WithdrawnVoid
+                            or YearlyArchiveReturnRecord.ForceVoided
+                            or YearlyArchiveReturnRecord.Approved
+                            or YearlyArchiveReturnRecord.SignedUploaded))
+                    {
+                        return ArchiveReturnFlowResult.Fail(
+                            _businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
+                    }
+
                     return ArchiveReturnFlowResult.Fail(
-                        _businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
+                        forceGate.DenyMessage ?? "当前归还单不允许强制撤回作废。");
                 }
 
-                record.MarkAsForceVoided(
-                    string.IsNullOrWhiteSpace(reason) ? "资料管理员强制撤回作废" : reason);
-                record.UpdatedAt = DateTime.Now;
+                string forceReason = string.IsNullOrWhiteSpace(reason) ? "资料管理员强制撤回作废" : reason.Trim();
+                DateTime now = DateTime.Now;
+                record.Status = forceGate.NextStatus ?? YearlyArchiveReturnRecord.ForceVoided;
+                record.ForceVoidedAt = now;
+                record.VoidedAt = now;
+                record.ForceVoidReason = forceReason;
+                record.VoidReason = forceReason;
+                record.UpdatedAt = now;
                 await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
                 return ArchiveReturnFlowResult.Ok($"归还单 {record.ReturnNo} 已强制作废。", record.Id);
             }
 
-            if (record.Status is not (YearlyArchiveReturnRecord.Draft or YearlyArchiveReturnRecord.Submitted))
+            var withdrawGate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    record.SignedAttachmentUploaded,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.Applicant),
+                OfflineApprovalLifecycleSupport.Action.Withdraw);
+            if (!withdrawGate.Allowed)
             {
-                return ArchiveReturnFlowResult.Fail("审批后的归还单不可由申请人撤回作废。");
+                return ArchiveReturnFlowResult.Fail(
+                    withdrawGate.DenyMessage ?? "审批后的归还单不可由申请人撤回作废。");
             }
 
-            record.MarkAsWithdrawnVoid(reason);
-            record.UpdatedAt = DateTime.Now;
+            string withdrawReason = reason?.Trim() ?? string.Empty;
+            DateTime withdrawNow = DateTime.Now;
+            record.Status = withdrawGate.NextStatus ?? YearlyArchiveReturnRecord.WithdrawnVoid;
+            record.WithdrawnAt = withdrawNow;
+            record.VoidedAt = withdrawNow;
+            record.VoidReason = withdrawReason;
+            record.UpdatedAt = withdrawNow;
             await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
             return ArchiveReturnFlowResult.Ok($"归还单 {record.ReturnNo} 已撤回作废。", record.Id);
         }

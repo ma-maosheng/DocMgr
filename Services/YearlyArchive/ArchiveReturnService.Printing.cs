@@ -1,3 +1,4 @@
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Services.YearlyArchive
@@ -57,8 +58,13 @@ namespace DocMgr.Services.YearlyArchive
             var record = await _returnRepository.GetByIdWithDetailsAsync(recordId)
                 ?? throw new InvalidOperationException("未找到指定的归还单。");
 
-            record.PrintCount++;
-            record.LastPrintedAt = DateTime.Now;
+            int printCount = record.PrintCount;
+            DateTime? firstPrintedAt = record.FirstPrintedAt;
+            DateTime? lastPrintedAt = record.LastPrintedAt;
+            ApprovalSignatureDateSupport.RecordPrint(ref printCount, ref firstPrintedAt, ref lastPrintedAt);
+            record.PrintCount = printCount;
+            record.FirstPrintedAt = firstPrintedAt;
+            record.LastPrintedAt = lastPrintedAt;
             record.UpdatedAt = DateTime.Now;
             await _returnRepository.SaveOrUpdateRecordGraphAsync(record);
         }

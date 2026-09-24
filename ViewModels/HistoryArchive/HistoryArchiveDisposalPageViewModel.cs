@@ -21,6 +21,7 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
     private readonly IHistoryArchiveDisposalService _service;
     private readonly IDialogService _dialogService;
     private readonly IUserContextService _userContextService;
+    private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
     private readonly List<HistoryArchiveDisposalRecord> _allRecords = new();
     private readonly List<HistoryArchiveDisposalBoxCandidateRow> _allCandidates = new();
     private bool _isInitialized;
@@ -32,15 +33,18 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
     private string _cabinetName = AllOption;
     private HistoryArchiveDisposalRecord? _selectedRecord;
     private HistoryArchiveDisposalBoxCandidateRow? _selectedCandidate;
+    private string _applicationOverdueSettingCode = string.Empty;
 
     public HistoryArchiveDisposalPageViewModel(
         IHistoryArchiveDisposalService service,
         IDialogService dialogService,
-        IUserContextService userContextService)
+        IUserContextService userContextService,
+        IBusinessLogicSettingsService businessLogicSettingsService)
     {
         _service = service;
         _dialogService = dialogService;
         _userContextService = userContextService;
+        _businessLogicSettingsService = businessLogicSettingsService;
 
         RefreshCommand = new RelayCommand(async _ => await RefreshAllAsync());
         SearchCommand = new RelayCommand(async _ => await RefreshDisposalsAsync());
@@ -48,6 +52,7 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
         AddDisposalCommand = new RelayCommand(async _ => await AddDisposalAsync(), _ => CanOperate);
         OpenDisposalCommand = new RelayCommand(async _ => await OpenDisposalAsync(), _ => SelectedRecord != null);
         WithdrawDisposalCommand = new RelayCommand(async _ => await WithdrawDisposalAsync(), _ => CanWithdrawSelected);
+        ForceVoidDisposalCommand = new RelayCommand(async _ => await ForceVoidDisposalAsync(), _ => CanForceVoidSelected);
     }
 
     public ObservableCollection<HistoryArchiveDisposalBoxCandidateRow> Candidates { get; } = new();
@@ -152,12 +157,23 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
         }
     }
 
-    private bool CanOperate => ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+    private bool CanOperate =>
+        OfflineApprovalPermissionSupport.CanCreateDraft(
+            _userContextService.CurrentUser,
+            ApprovalWorkflowBusinessTypes.HistoryArchiveDisposal);
     private bool CanWithdrawSelected =>
-        CanOperate
-        && SelectedRecord != null
-        && SelectedRecord.Status is HistoryArchiveDisposalRecord.StatusDraft
-            or HistoryArchiveDisposalRecord.StatusSubmitted;
+        ApplicationListActionSupport.CanAdminWithdrawDisposal(
+            SelectedRecord?.Status ?? ApplicationWorkflowStatus.Completed,
+            CanOperate);
+
+    private bool CanForceVoidSelected =>
+        SelectedRecord != null
+        && ApplicationListActionSupport.CanForceVoid(
+            SelectedRecord.Status,
+            CanOperate,
+            _businessLogicSettingsService.IsEligibleForAdminForceVoid(
+                SelectedRecord.ApplyTime,
+                _applicationOverdueSettingCode));
 
     public RelayCommand RefreshCommand { get; }
     public RelayCommand SearchCommand { get; }
@@ -165,6 +181,7 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
     public RelayCommand AddDisposalCommand { get; }
     public RelayCommand OpenDisposalCommand { get; }
     public RelayCommand WithdrawDisposalCommand { get; }
+    public RelayCommand ForceVoidDisposalCommand { get; }
 
     public async Task InitializeAsync()
     {
@@ -248,6 +265,7 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
     {
         try
         {
+            _applicationOverdueSettingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
             int? selectedId = SelectedRecord?.Id;
             string? keyword = string.IsNullOrWhiteSpace(SearchKeyword) ? null : SearchKeyword.Trim();
             var list = await _service.SearchRecordsAsync(keyword, null, null);
@@ -391,6 +409,35 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
                 _userContextService.CurrentUser ?? throw new InvalidOperationException("当前用户无效。"));
             await RefreshAllAsync();
             _dialogService.ShowMessage("已撤回作废。");
+        }
+        catch (Exception ex)
+        {
+            _dialogService.ShowError(ex.Message);
+        }
+    }
+
+    private async Task ForceVoidDisposalAsync()
+    {
+        if (SelectedRecord == null || !CanForceVoidSelected)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!_dialogService.ShowConfirm(
+                    $"确定要强制作废处置单【{SelectedRecord.DisposalNo}】吗？仅草稿或已提交且已达逾期时限的单据可强制作废。",
+                    "强制作废确认"))
+            {
+                return;
+            }
+
+            await _service.ForceVoidAsync(
+                SelectedRecord.Id,
+                "列表强制作废",
+                _userContextService.CurrentUser ?? throw new InvalidOperationException("当前用户无效。"));
+            await RefreshAllAsync();
+            _dialogService.ShowMessage("已强制作废。");
         }
         catch (Exception ex)
         {

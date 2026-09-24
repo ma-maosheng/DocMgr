@@ -24,7 +24,7 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="检索集编号" Binding="{Binding ResultSetNo, Mode=OneWay}" Width="140"/>
                     <DataGridTextColumn Header="名称" Binding="{Binding Name, Mode=OneWay}" Width="*"/>
-                    <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="80"/>
+                    <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="80"/>
                     <DataGridTextColumn Header="明细数" Binding="{Binding ItemCount, Mode=OneWay}" Width="70"/>
                 </DataGrid.Columns>
             </DataGrid>

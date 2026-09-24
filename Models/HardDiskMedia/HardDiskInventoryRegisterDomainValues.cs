@@ -12,12 +12,23 @@ namespace DocMgr.Models.HardDiskMedia
         /// <summary>历史类型：损坏档口调整（已改走开柜迁档，新建不可选；旧草稿办结仍兼容）。</summary>
         public const string KindRelocateDamaged = "损坏档口调整";
 
+        public const string AttachmentBusinessType = "HardDiskInventoryRegister";
+        public const string AttachmentCategorySignedForm = "签批单";
+        public const string AttachmentCategoryOther = "其他附件";
+
+        public static IReadOnlyList<string> AttachmentCategoryOptions { get; } =
+        [
+            AttachmentCategorySignedForm,
+            AttachmentCategoryOther
+        ];
+
         /// <summary>登记类型选项（整单唯一；不含已退役的损坏档口调整）。</summary>
         public static IReadOnlyList<string> RegisterKindOptions { get; } =
         [
             KindDamage,
             KindLost
         ];
+
 
         /// <summary>可纳入盘库登记的介质状态。</summary>
         public static IReadOnlyList<string> SelectableMediaStatusOptions { get; } =
@@ -73,15 +84,24 @@ namespace DocMgr.Models.HardDiskMedia
                 || string.Equals(normalized, KindRelocateDamaged, StringComparison.Ordinal);
         }
 
+        /// <summary>损坏登记确认可上传附件信息前须勾选「已完成损坏硬盘迁档」。</summary>
+        public static bool RequiresDamagedDiskRelocationConfirm(string? kind) =>
+            string.Equals(kind?.Trim(), KindDamage, StringComparison.Ordinal);
+
         public static bool ClearsStorageLocation(string? kind) =>
             string.Equals(kind?.Trim(), KindLost, StringComparison.Ordinal);
 
         public static string ToStatusDisplay(int status) => status switch
         {
             HardDiskInventoryRegisterRecord.StatusDraft => ApplicationWorkflowStatus.TextDraft,
+            HardDiskInventoryRegisterRecord.StatusSubmitted => ApplicationWorkflowStatus.TextSubmitted,
+            HardDiskInventoryRegisterRecord.StatusApproved => ApplicationWorkflowStatus.TextApproved,
+            HardDiskInventoryRegisterRecord.StatusSignedUploaded => ApplicationWorkflowStatus.TextSignedUploaded,
             HardDiskInventoryRegisterRecord.StatusCompleted => ApplicationWorkflowStatus.TextCompleted,
             HardDiskInventoryRegisterRecord.StatusWithdrawn => ApplicationWorkflowStatus.TextWithdrawn,
+            HardDiskInventoryRegisterRecord.StatusForceWithdrawn => ApplicationWorkflowStatus.TextForceWithdrawn,
             _ => ApplicationWorkflowStatus.ToDisplay(status)
         };
     }
 }
+

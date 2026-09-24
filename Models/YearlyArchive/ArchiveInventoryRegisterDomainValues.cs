@@ -20,7 +20,19 @@ namespace DocMgr.Models.YearlyArchive
         public const string MediumKindHardDisk = "硬盘";
         public const string MediumKindOpticalDisc = "光盘";
 
+        /// <summary>附件 BusinessType（别名映射到审批业务类型 YearlyArchiveInventoryRegister）。</summary>
+        public const string AttachmentBusinessType = "ArchiveInventoryRegister";
+        public const string AttachmentCategorySignedForm = "签批单";
+        public const string AttachmentCategoryOther = "其他附件";
+
+        public static IReadOnlyList<string> AttachmentCategoryOptions { get; } =
+        [
+            AttachmentCategorySignedForm,
+            AttachmentCategoryOther
+        ];
+
         public const string TransactionTypeInventoryRegister = MaterialTransactionDomainValues.TypeInventoryRegister;
+
 
         /// <summary>电子轨登记类型选项（盘失/损坏/拟销）。</summary>
         public static IReadOnlyList<string> RegisterKindOptions { get; } =
@@ -150,9 +162,14 @@ namespace DocMgr.Models.YearlyArchive
         public static string ToStatusDisplay(int status) => status switch
         {
             YearlyArchiveInventoryRegisterRecord.StatusDraft => ApplicationWorkflowStatus.TextDraft,
+            YearlyArchiveInventoryRegisterRecord.StatusSubmitted => ApplicationWorkflowStatus.TextSubmitted,
+            YearlyArchiveInventoryRegisterRecord.StatusApproved => ApplicationWorkflowStatus.TextApproved,
+            YearlyArchiveInventoryRegisterRecord.StatusSignedUploaded => ApplicationWorkflowStatus.TextSignedUploaded,
             YearlyArchiveInventoryRegisterRecord.StatusCompleted => ApplicationWorkflowStatus.TextCompleted,
             YearlyArchiveInventoryRegisterRecord.StatusWithdrawn => ApplicationWorkflowStatus.TextWithdrawn,
+            YearlyArchiveInventoryRegisterRecord.StatusForceWithdrawn => ApplicationWorkflowStatus.TextForceWithdrawn,
             _ => ApplicationWorkflowStatus.ToDisplay(status)
         };
     }
 }
+

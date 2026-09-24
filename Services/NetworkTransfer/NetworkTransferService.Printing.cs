@@ -83,8 +83,13 @@ public sealed partial class NetworkTransferService
         var record = await _repository.GetInboundByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到入网申请单。");
 
-        record.PrintCount++;
-        record.LastPrintedAt = DateTime.Now;
+        int printCount = record.PrintCount;
+        DateTime? firstPrintedAt = record.FirstPrintedAt;
+        DateTime? lastPrintedAt = record.LastPrintedAt;
+        ApprovalSignatureDateSupport.RecordPrint(ref printCount, ref firstPrintedAt, ref lastPrintedAt);
+        record.PrintCount = printCount;
+        record.FirstPrintedAt = firstPrintedAt;
+        record.LastPrintedAt = lastPrintedAt;
         record.UpdatedAt = DateTime.Now;
         await _repository.SaveChangesAsync();
     }
@@ -107,8 +112,13 @@ public sealed partial class NetworkTransferService
         var record = await _repository.GetOutboundByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到出网申请单。");
 
-        record.PrintCount++;
-        record.LastPrintedAt = DateTime.Now;
+        int printCount = record.PrintCount;
+        DateTime? firstPrintedAt = record.FirstPrintedAt;
+        DateTime? lastPrintedAt = record.LastPrintedAt;
+        ApprovalSignatureDateSupport.RecordPrint(ref printCount, ref firstPrintedAt, ref lastPrintedAt);
+        record.PrintCount = printCount;
+        record.FirstPrintedAt = firstPrintedAt;
+        record.LastPrintedAt = lastPrintedAt;
         record.UpdatedAt = DateTime.Now;
         await _repository.SaveChangesAsync();
     }
@@ -381,8 +391,13 @@ public sealed partial class NetworkTransferService
         }
 
         DateTime now = DateTime.Now;
-        record.PrintCount++;
-        record.LastPrintedAt = now;
+        int printCount = record.PrintCount;
+        DateTime? firstPrintedAt = record.FirstPrintedAt;
+        DateTime? lastPrintedAt = record.LastPrintedAt;
+        ApprovalSignatureDateSupport.RecordPrint(ref printCount, ref firstPrintedAt, ref lastPrintedAt, now);
+        record.PrintCount = printCount;
+        record.FirstPrintedAt = firstPrintedAt;
+        record.LastPrintedAt = lastPrintedAt;
         record.UpdatedAt = now;
         await _repository.SaveChangesAsync();
     }

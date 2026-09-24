@@ -416,14 +416,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             return SelectedRecord != null
                 && _archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser)
-                && IsApprovalProcessingStatus(SelectedRecord.Status);
-        }
-
-        private static bool IsApprovalProcessingStatus(int status)
-        {
-            return status == YearlyArchiveRegisterRecord.Submitted
-                || status == YearlyArchiveRegisterRecord.Approved
-                || status == YearlyArchiveRegisterRecord.SignedUploaded;
+                && ApplicationListActionSupport.CanOpenApprovalProcessing(SelectedRecord.Status);
         }
 
         private async Task<T> ExecuteWithFreshArchiveServiceAsync<T>(Func<IArchiveRegisterService, Task<T>> action)
@@ -440,13 +433,22 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return false;
             }
 
-            return _workspaceMode == ArchiveRegisterWorkspaceMode.Approval
-                ? SelectedRecord.CanForceCleanupRegister
-                  && _archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser)
-                  && _businessLogicSettingsService.IsEligibleForAdminForceVoid(
-                      ApplicationOverdueSettingSupport.ResolveRegisterApplyDate(SelectedRecord),
-                      _applicationOverdueSettingCode)
-                : SelectedRecord.CanCancelRegister && _archiveRegisterService.IsApplicantUser(_userContextService.CurrentUser);
+            if (_workspaceMode == ArchiveRegisterWorkspaceMode.Approval)
+            {
+                bool overdueEligible = SelectedRecord.CanForceCleanupRegister
+                    && _businessLogicSettingsService.IsEligibleForAdminForceVoid(
+                        ApplicationOverdueSettingSupport.ResolveRegisterApplyDate(SelectedRecord),
+                        _applicationOverdueSettingCode);
+                return ApplicationListActionSupport.CanForceVoid(
+                    SelectedRecord.Status,
+                    isArchiveAdmin: _archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser),
+                    forceVoidEligible: overdueEligible);
+            }
+
+            return ApplicationListActionSupport.CanApplicantWithdraw(
+                SelectedRecord.Status,
+                isOwnerApplicant: _archiveRegisterService.IsApplicantUser(_userContextService.CurrentUser),
+                domainAllows: SelectedRecord.CanCancelRegister);
         }
 
         private async Task ExecuteDestructiveAsync()

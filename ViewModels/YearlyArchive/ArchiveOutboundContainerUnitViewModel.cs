@@ -201,15 +201,15 @@ namespace DocMgr.ViewModels.YearlyArchive
             !string.IsNullOrWhiteSpace(SimulatedOutboundUsageHint);
 
         public string WithdrawalNeedReturnLabel => ShowWithdrawalHardDiskReturn
-            ? "硬盘是否归还"
-            : "提档资料是否归还";
+            ? "硬盘是否归还："
+            : "提档资料是否归还：";
 
         /// <summary>提档归还字段标签（模拟资料 / 电子硬盘）。</summary>
         public string NeedReturnFieldLabel => WithdrawalNeedReturnLabel;
 
         /// <summary>预计/硬盘归还日期字段标签。</summary>
         public string ExpectedReturnDateFieldLabel =>
-            IsElectronicMedia ? "硬盘归还日期" : "预计归还日期";
+            IsElectronicMedia ? "硬盘归还日期：" : "预计归还日期：";
 
         public bool ShowWithdrawalMaterialNeedReturn =>
             UsageMode == ArchiveOutboundDomainValues.UsageModeWithdrawal && IsSimulatedMedia;

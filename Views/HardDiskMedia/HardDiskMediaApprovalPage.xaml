@@ -34,12 +34,12 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="业务状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <ComboBox Width="180"
                                   Style="{StaticResource ToolbarFilterComboBoxStyle}"
                                   ItemsSource="{Binding StatusOptions}"
                                   SelectedItem="{Binding SelectedStatus, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                  ToolTip="可按状态筛选；选【全部】列出各状态申请（含未提交）"/>
+                                  ToolTip="可按业务状态筛选；选【全部】列出各状态申请（含未提交）"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
@@ -48,7 +48,8 @@
                             <ToggleButton x:Name="ApplicantFilterButton"
                                           Width="180"
                                           Height="32"
-                                          IsChecked="{Binding IsApplicantPopupOpen, Mode=TwoWay}">
+                                          IsChecked="{Binding IsApplicantPopupOpen, Mode=TwoWay}"
+                                          ToolTip="可多选申请人筛选列表；勾选「全部」不限申请人">
                                 <DockPanel LastChildFill="True">
                                     <TextBlock Text="{Binding SelectedApplicantSummary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Text="▼" Margin="8,0,0,0" VerticalAlignment="Center" DockPanel.Dock="Right"/>
@@ -114,7 +115,7 @@
                 <Border Grid.Row="0" Background="#B98A2E"/>
 
                 <TextBlock Grid.Row="1"
-                           Text="硬盘出库审批办理表"
+                           Text="硬盘出库办理表"
                            Margin="0,12,0,4"
                            FontSize="22"
                            FontWeight="Bold"
@@ -148,7 +149,7 @@
                         <DataGridTextColumn Header="申请单编号" Binding="{Binding ApplicationNo}" Width="150"/>
                         <DataGridTextColumn Header="介质编号" Binding="{Binding Medium.DiskCode}" Width="110"/>
                         <DataGridTextColumn Header="申请类型" Binding="{Binding ApplicationType}" Width="140"/>
-                        <DataGridTextColumn Header="申请状态" Binding="{Binding StatusStr}" Width="120"/>
+                        <DataGridTextColumn Header="业务状态" Binding="{Binding StatusStr}" Width="120"/>
                         <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="90"/>
                         <DataGridTextColumn Header="申请日期" Binding="{Binding ApplyTime, StringFormat=yyyy-MM-dd}" Width="110"/>
                         <DataGridTextColumn Header="目标去向" Binding="{Binding TargetPersonOrUnit}" Width="140"/>

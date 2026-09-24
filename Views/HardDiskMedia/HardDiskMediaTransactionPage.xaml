@@ -46,7 +46,8 @@
                         <ComboBox Width="180"
                                   Style="{StaticResource ToolbarFilterComboBoxStyle}"
                                   ItemsSource="{Binding RegisterLockFilterOptions}"
-                                  SelectedItem="{Binding SelectedRegisterLockFilter}"/>
+                                  SelectedItem="{Binding SelectedRegisterLockFilter}"
+                                  ToolTip="是否被盘库登记或业务征用锁定"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
@@ -54,7 +55,8 @@
                         <TextBox Width="240"
                                  Style="{StaticResource ToolbarFilterTextBoxStyle}"
                                  VerticalContentAlignment="Center"
-                                 Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}">
+                                 Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="硬盘编号/序列号、申请单号、经办人、相关单位、批次/资料标题、流水说明">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
                             </TextBox.InputBindings>

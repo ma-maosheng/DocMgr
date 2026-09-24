@@ -1,6 +1,7 @@
 <Window x:Class="DocMgr.Views.YearlyArchive.ArchiveOutboundApplicationViewDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shared="clr-namespace:DocMgr.Views.Shared"
         Width="1150"
         Height="820"
         WindowStartupLocation="CenterOwner"
@@ -64,7 +65,7 @@
                                     <TextBlock Text="{Binding ApplyDateDisplay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="当前状态" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                    <TextBlock Text="业务状态" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                     <TextBlock Text="{Binding StatusDisplay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Grid>
@@ -177,33 +178,7 @@
                         </StackPanel>
                     </GroupBox>
 
-                    <GroupBox Header="附件材料" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
-                        <StackPanel>
-                            <TextBlock Margin="0,0,0,8"
-                                       Foreground="#B45309" FontSize="11" TextWrapping="Wrap"
-                                       Visibility="{Binding CanSupplementOtherAttachments, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                       Text="{Binding SupplementAttachmentHint, Mode=OneWay}"/>
-                            <ListView ItemsSource="{Binding Attachments}" Height="120" BorderBrush="#EEE" BorderThickness="1">
-                                <ListView.View>
-                                    <GridView>
-                                        <GridViewColumn Header="文件名" Width="240" DisplayMemberBinding="{Binding FileName}"/>
-                                        <GridViewColumn Header="附件分类" Width="90" DisplayMemberBinding="{Binding FileCategoryDisplay}"/>
-                                        <GridViewColumn Header="上传时间" Width="140" DisplayMemberBinding="{Binding UploadTime, StringFormat='yyyy-MM-dd HH:mm'}"/>
-                                        <GridViewColumn Header="上传人" Width="90" DisplayMemberBinding="{Binding UploaderName}"/>
-                                        <GridViewColumn Header="操作" Width="80">
-                                            <GridViewColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <Button Content="查看" Style="{StaticResource ButtonNormalStyle}"
-                                                            Command="{Binding DataContext.ViewAttachmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                                            CommandParameter="{Binding}"/>
-                                                </DataTemplate>
-                                            </GridViewColumn.CellTemplate>
-                                        </GridViewColumn>
-                                    </GridView>
-                                </ListView.View>
-                            </ListView>
-                        </StackPanel>
-                    </GroupBox>
+                    <shared:ApprovalCompletedAttachmentPanel/>
                 </StackPanel>
             </ScrollViewer>
         </Border>

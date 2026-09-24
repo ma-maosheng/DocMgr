@@ -7,24 +7,29 @@
     <sys:Double x:Key="ToolbarControlHeight">32</sys:Double>
     <sys:Double x:Key="DialogFormControlHeight">34</sys:Double>
 
+    <!-- 行内标签：与控件间隙、默认列宽（可容纳「四字+：」右对齐） -->
+    <Thickness x:Key="FormLabelControlGap">0,0,8,0</Thickness>
+    <sys:Double x:Key="FormLabelColumnWidth">88</sys:Double>
+
     <!-- 表单行内标签（TextBlock，用于 Grid 两列布局） -->
     <Style x:Key="FormLabelTextBlockStyle" TargetType="TextBlock">
         <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
         <Setter Property="TextAlignment" Value="Right"/>
         <Setter Property="Padding" Value="0"/>
-        <Setter Property="Margin" Value="0,0,6,0"/>
+        <Setter Property="Margin" Value="{StaticResource FormLabelControlGap}"/>
     </Style>
 
     <!-- 表单行内标签（Label，消除默认 Padding 造成的错位） -->
     <Style x:Key="FormLabelStyle" TargetType="Label">
         <Setter Property="Padding" Value="0"/>
-        <Setter Property="Margin" Value="0"/>
+        <Setter Property="Margin" Value="{StaticResource FormLabelControlGap}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="HorizontalContentAlignment" Value="Right"/>
     </Style>
 
-    <!-- 对话框字段上方标签 -->
+    <!-- 对话框字段上方标签（标签在上；文案须带中文「：」） -->
     <Style x:Key="FormFieldCaptionStyle" TargetType="TextBlock">
         <Setter Property="Foreground" Value="#666666"/>
         <Setter Property="Margin" Value="0,0,0,4"/>

@@ -1,5 +1,6 @@
 using DocMgr.Data;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,10 @@ public sealed class HardDiskInventoryRegisterRepository : IHardDiskInventoryRegi
 {
     private static readonly int[] ActiveRegisterStatuses =
     [
-        HardDiskInventoryRegisterRecord.StatusDraft
+        HardDiskInventoryRegisterRecord.StatusDraft,
+        HardDiskInventoryRegisterRecord.StatusSubmitted,
+        HardDiskInventoryRegisterRecord.StatusApproved,
+        HardDiskInventoryRegisterRecord.StatusSignedUploaded
     ];
 
     private static readonly int[] ActiveDisposalStatuses =
@@ -71,6 +75,7 @@ public sealed class HardDiskInventoryRegisterRepository : IHardDiskInventoryRegi
         return _dbContext.HardDiskInventoryRegisterRecords
             .AsNoTracking()
             .Include(item => item.Items)
+                .ThenInclude(item => item.Medium)
             .FirstOrDefaultAsync(item => item.Id == recordId);
     }
 
@@ -189,6 +194,21 @@ public sealed class HardDiskInventoryRegisterRepository : IHardDiskInventoryRegi
                               && ActiveDisposalStatuses.Contains(item.DisposalRecord!.Status));
     }
 
+    public Task<List<HardDiskInventoryRegisterRecord>> GetPendingRecordsForToDoAsync(int takeCount)
+    {
+        return _dbContext.HardDiskInventoryRegisterRecords
+            .AsNoTracking()
+            .Include(item => item.Items)
+            .Where(item => item.Status == HardDiskInventoryRegisterRecord.StatusDraft
+                           || item.Status == HardDiskInventoryRegisterRecord.StatusSubmitted
+                           || item.Status == HardDiskInventoryRegisterRecord.StatusApproved
+                           || item.Status == HardDiskInventoryRegisterRecord.StatusSignedUploaded)
+            .OrderBy(item => item.SubmittedAt ?? item.ApplyTime)
+            .ThenBy(item => item.Id)
+            .Take(Math.Max(1, takeCount))
+            .ToListAsync();
+    }
+
     public void AddRecord(HardDiskInventoryRegisterRecord record)
     {
         _dbContext.HardDiskInventoryRegisterRecords.Add(record);
@@ -207,6 +227,46 @@ public sealed class HardDiskInventoryRegisterRepository : IHardDiskInventoryRegi
     public void RemoveRegisterLock(HardDiskRegisterLock lockItem)
     {
         _dbContext.HardDiskRegisterLocks.Remove(lockItem);
+    }
+
+    public Task<List<HardDiskRegisterLock>> GetOwnedRegisterLocksAsync(int recordId)
+    {
+        return _dbContext.HardDiskRegisterLocks
+            .Where(item => item.BusinessRecordId == recordId
+                           && item.BusinessType == HardDiskRegisterLock.BusinessTypeInventoryRegister)
+            .ToListAsync();
+    }
+
+    public Task<List<SystemAttachment>> GetAttachmentsAsync(string registerNo)
+    {
+        if (string.IsNullOrWhiteSpace(registerNo))
+        {
+            return Task.FromResult(new List<SystemAttachment>());
+        }
+
+        string trimmed = registerNo.Trim();
+        return _dbContext.SystemAttachments
+            .AsNoTracking()
+            .Where(item => item.BusinessType == HardDiskInventoryRegisterDomainValues.AttachmentBusinessType
+                           && item.BusinessNo == trimmed)
+            .OrderByDescending(item => item.UploadTime)
+            .ThenByDescending(item => item.Id)
+            .ToListAsync();
+    }
+
+    public Task<SystemAttachment?> GetAttachmentByIdAsync(int attachmentId)
+    {
+        return _dbContext.SystemAttachments.FirstOrDefaultAsync(item => item.Id == attachmentId);
+    }
+
+    public void AddAttachment(SystemAttachment attachment)
+    {
+        _dbContext.SystemAttachments.Add(attachment);
+    }
+
+    public void RemoveAttachment(SystemAttachment attachment)
+    {
+        _dbContext.SystemAttachments.Remove(attachment);
     }
 
     public Task SaveChangesAsync() => _dbContext.SaveChangesAsync();

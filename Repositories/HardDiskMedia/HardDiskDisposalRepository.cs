@@ -217,7 +217,8 @@ public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
         return _dbContext.HardDiskDisposalRecords
             .AsNoTracking()
             .Include(item => item.Items)
-            .Where(item => item.Status == HardDiskDisposalRecord.StatusSubmitted
+            .Where(item => item.Status == HardDiskDisposalRecord.StatusDraft
+                           || item.Status == HardDiskDisposalRecord.StatusSubmitted
                            || item.Status == HardDiskDisposalRecord.StatusApproved
                            || item.Status == HardDiskDisposalRecord.StatusSignedUploaded)
             .OrderByDescending(item => item.SubmittedAt ?? item.ApplyTime)

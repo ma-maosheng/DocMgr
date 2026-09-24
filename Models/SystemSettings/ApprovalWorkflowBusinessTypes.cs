@@ -14,6 +14,8 @@ namespace DocMgr.Models.SystemSettings
         public const string HardDiskOutbound = "HardDiskOutbound";
         public const string HardDiskReturn = "HardDiskReturn";
         public const string HardDiskDisposal = "HardDiskDisposal";
+        public const string HardDiskInventoryRegister = "HardDiskInventoryRegister";
+        public const string YearlyArchiveInventoryRegister = "YearlyArchiveInventoryRegister";
 
         public static IReadOnlyList<string> All { get; } =
         [
@@ -23,11 +25,13 @@ namespace DocMgr.Models.SystemSettings
             NetworkInbound,
             NetworkOutbound,
             YearlyArchiveDisposal,
+            YearlyArchiveInventoryRegister,
             HistoryArchiveDisposal,
             NetworkOnNetDisposal,
             HardDiskOutbound,
             HardDiskReturn,
-            HardDiskDisposal
+            HardDiskDisposal,
+            HardDiskInventoryRegister
         ];
 
         /// <summary>
@@ -39,6 +43,7 @@ namespace DocMgr.Models.SystemSettings
             YearlyArchiveOutbound => "年度资料档案化管理·资料流转·借出申请",
             YearlyArchiveReturn => "年度资料档案化管理·资料流转·归还申请",
             YearlyArchiveDisposal => "年度资料档案化管理·离库处置·模拟/电子资料离库处置",
+            YearlyArchiveInventoryRegister => "年度资料档案化管理·盘库登记·模拟/电子资料盘库",
             NetworkInbound => "年度资料出入网管理·入网申请",
             NetworkOutbound => "年度资料出入网管理·出网申请",
             NetworkOnNetDisposal => "年度资料出入网管理·在网数据处置",
@@ -46,6 +51,7 @@ namespace DocMgr.Models.SystemSettings
             HardDiskOutbound => "介质管理·硬盘·出库申请",
             HardDiskReturn => "介质管理·硬盘·归还申请",
             HardDiskDisposal => "介质管理·硬盘·离库处置",
+            HardDiskInventoryRegister => "介质管理·硬盘·盘库登记",
             _ => businessType?.Trim() ?? string.Empty
         };
     }

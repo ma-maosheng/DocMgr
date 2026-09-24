@@ -35,7 +35,9 @@ public sealed class HistoryArchiveToDoProvider : IToDoProvider
             BizType = "HistoryArchiveDisposal",
             BizId = record.Id,
             BizNo = record.DisposalNo,
-            Stage = HistoryArchiveDisposalDomainValues.ToStatusDisplay(record.Status),
+            Stage = record.Status == HistoryArchiveDisposalRecord.StatusDraft
+                ? "草稿-待提交"
+                : HistoryArchiveDisposalDomainValues.ToStatusDisplay(record.Status),
             CreatedTime = record.SubmittedAt ?? record.ApplyTime,
             Priority = "高"
         }));
@@ -45,6 +47,7 @@ public sealed class HistoryArchiveToDoProvider : IToDoProvider
     private static string ResolveTitle(HistoryArchiveDisposalRecord record) =>
         record.Status switch
         {
+            HistoryArchiveDisposalRecord.StatusDraft => "待提交",
             HistoryArchiveDisposalRecord.StatusSubmitted => "待审批",
             HistoryArchiveDisposalRecord.StatusApproved => "待确认可上传",
             HistoryArchiveDisposalRecord.StatusSignedUploaded when !record.SignedAttachmentUploaded => "待上传签批单",

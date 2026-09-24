@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
@@ -20,6 +21,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveDisposalService _disposalService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
         private readonly List<YearlyArchiveDisposalRecord> _allRecords = new();
 
         private bool _isConfigured;
@@ -30,21 +32,25 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _searchKeyword = string.Empty;
         private string _selectedStatus = "全部";
         private YearlyArchiveDisposalRecord? _selectedRecord;
+        private string _applicationOverdueSettingCode = string.Empty;
 
         public ArchiveDisposalPageViewModel(
             IArchiveDisposalService disposalService,
             IDialogService dialogService,
-            IUserContextService userContextService)
+            IUserContextService userContextService,
+            IBusinessLogicSettingsService businessLogicSettingsService)
         {
             _disposalService = disposalService;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _businessLogicSettingsService = businessLogicSettingsService;
 
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
             SearchCommand = new RelayCommand(async _ => await RefreshAsync());
             AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanOperate);
             OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null);
             WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => CanWithdrawSelected);
+            ForceVoidCommand = new RelayCommand(async _ => await ForceVoidAsync(), _ => CanForceVoidSelected);
         }
 
         public void Configure(string mediaKind)
@@ -121,20 +127,30 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         public bool CanOperate =>
-            ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+            OfflineApprovalPermissionSupport.CanCreateDraft(
+                _userContextService.CurrentUser,
+                ApprovalWorkflowBusinessTypes.YearlyArchiveDisposal);
 
         public bool CanWithdrawSelected =>
-            CanOperate
-            && SelectedRecord != null
-            && SelectedRecord.Status is not YearlyArchiveDisposalRecord.StatusCompleted
-                and not YearlyArchiveDisposalRecord.StatusWithdrawn
-                and not YearlyArchiveDisposalRecord.StatusForceWithdrawn;
+            ApplicationListActionSupport.CanAdminWithdrawDisposal(
+                SelectedRecord?.Status ?? ApplicationWorkflowStatus.Completed,
+                CanOperate);
+
+        public bool CanForceVoidSelected =>
+            SelectedRecord != null
+            && ApplicationListActionSupport.CanForceVoid(
+                SelectedRecord.Status,
+                CanOperate,
+                _businessLogicSettingsService.IsEligibleForAdminForceVoid(
+                    SelectedRecord.ApplyTime,
+                    _applicationOverdueSettingCode));
 
         public RelayCommand RefreshCommand { get; }
         public RelayCommand SearchCommand { get; }
         public RelayCommand AddCommand { get; }
         public RelayCommand OpenCommand { get; }
         public RelayCommand WithdrawCommand { get; }
+        public RelayCommand ForceVoidCommand { get; }
 
         public async Task InitializeAsync(bool pendingInProgress = false, bool matchAllYears = false)
         {
@@ -185,6 +201,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
+                _applicationOverdueSettingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
                 int? selectedId = SelectedRecord?.Id;
                 string? keyword = string.IsNullOrWhiteSpace(SearchKeyword) ? null : SearchKeyword.Trim();
                 var list = await _disposalService.SearchRecordsAsync(keyword, status: null, applyYear: null, _mediaKind);
@@ -304,6 +321,36 @@ namespace DocMgr.ViewModels.YearlyArchive
                         ?? throw new InvalidOperationException("当前用户无效。"));
                 await RefreshAsync();
                 _dialogService.ShowMessage("已撤回作废。");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private async Task ForceVoidAsync()
+        {
+            if (SelectedRecord == null || !CanForceVoidSelected)
+            {
+                return;
+            }
+
+            try
+            {
+                if (!_dialogService.ShowConfirm(
+                        $"确定要强制作废处置单【{SelectedRecord.DisposalNo}】吗？仅草稿或已提交且已达逾期时限的单据可强制作废。",
+                        "强制作废确认"))
+                {
+                    return;
+                }
+
+                await _disposalService.ForceVoidAsync(
+                    SelectedRecord.Id,
+                    "列表强制作废",
+                    _userContextService.CurrentUser
+                        ?? throw new InvalidOperationException("当前用户无效。"));
+                await RefreshAsync();
+                _dialogService.ShowMessage("已强制作废。");
             }
             catch (Exception ex)
             {

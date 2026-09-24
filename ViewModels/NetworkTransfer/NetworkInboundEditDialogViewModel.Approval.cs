@@ -23,6 +23,11 @@ public sealed partial class NetworkInboundEditDialogViewModel
     private bool _isDialogMode = true;
     private bool _attachmentsMeetMandatoryRequirements;
     private string _attachmentRequirementHint = string.Empty;
+    private bool _enableDeptHead;
+    private bool _enableArchiveRoomHead;
+    private bool _enableProductionHead;
+    private bool _enableArchiveDeputyPresident;
+    private bool _enableProductionVicePresident;
     private bool _canApproveProd;
     private bool _canApproveRnd;
     private bool _canApproveDeputy;
@@ -265,12 +270,72 @@ public sealed partial class NetworkInboundEditDialogViewModel
             await _archiveRegisterService.ApplyDefaultInboundApprovalInfoAsync(_record, user);
             SyncApprovalFieldsFromRecord();
             OnPropertyChanged(nameof(CurrentRecord));
+            await ApplyApprovalChainEnableFlagsAsync();
             _dialogService.ShowMessage("已回填默认审批信息。");
         }
         catch (Exception ex)
         {
             _dialogService.ShowError("回填默认审批信息失败：" + ex.Message);
         }
+    }
+
+    /// <summary>按签批链规则刷新签字卡 Enable*/Show*。</summary>
+    private async Task ApplyApprovalChainEnableFlagsAsync()
+    {
+        if (!ShowApprovalWorkflowPanel)
+        {
+            return;
+        }
+
+        try
+        {
+            var chain = await _archiveRegisterService.ResolveInboundApprovalChainAsync(_record);
+            EnableDeptHead = chain.DeptHead.IsEnabled;
+            EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled;
+            EnableProductionHead = chain.ProductionHead.IsEnabled;
+            EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled;
+            EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled;
+            NotifyShellAliasPropertiesChanged();
+        }
+        catch
+        {
+            // 解析失败时保持当前 Enable*，不阻断打开。
+        }
+    }
+
+    /// <summary>是否启用部门审核签字栏。</summary>
+    public bool EnableDeptHead
+    {
+        get => _enableDeptHead;
+        private set => SetProperty(ref _enableDeptHead, value);
+    }
+
+    /// <summary>是否启用资料室签字栏。</summary>
+    public bool EnableArchiveRoomHead
+    {
+        get => _enableArchiveRoomHead;
+        private set => SetProperty(ref _enableArchiveRoomHead, value);
+    }
+
+    /// <summary>是否启用生产科签字栏。</summary>
+    public bool EnableProductionHead
+    {
+        get => _enableProductionHead;
+        private set => SetProperty(ref _enableProductionHead, value);
+    }
+
+    /// <summary>是否启用分管资料院长签字栏。</summary>
+    public bool EnableArchiveDeputyPresident
+    {
+        get => _enableArchiveDeputyPresident;
+        private set => SetProperty(ref _enableArchiveDeputyPresident, value);
+    }
+
+    /// <summary>是否启用分管生产院长签字栏。</summary>
+    public bool EnableProductionVicePresident
+    {
+        get => _enableProductionVicePresident;
+        private set => SetProperty(ref _enableProductionVicePresident, value);
     }
 
     private NetworkInboundApprovalButtonSupport.ButtonState ResolveApprovalButtonState()
@@ -343,32 +408,20 @@ public sealed partial class NetworkInboundEditDialogViewModel
         OnPropertyChanged(nameof(SelectedProjectYear));
         OnPropertyChanged(nameof(IsInboundItemGridReadOnly));
         SyncElectronicMediaEditorEditState();
+        NotifyShellAliasPropertiesChanged();
         CommandManager.InvalidateRequerySuggested();
     }
 
     private void RedistributeAttachmentsByCategory()
     {
-        SignedHandoverAttachments.Clear();
-        MaterialPhotoAttachments.Clear();
-        ProofMaterialAttachments.Clear();
-        OtherAttachments.Clear();
-
-        foreach (SystemAttachment attachment in Attachments)
-        {
-            string category = attachment.FileCategory?.Trim() ?? string.Empty;
-            if (string.Equals(category, NetworkTransferDomainValues.AttachmentCategorySignedForm, StringComparison.Ordinal))
-            {
-                SignedHandoverAttachments.Add(attachment);
-            }
-            else if (string.Equals(category, NetworkTransferDomainValues.AttachmentCategoryProofMaterial, StringComparison.Ordinal))
-            {
-                ProofMaterialAttachments.Add(attachment);
-            }
-            else
-            {
-                OtherAttachments.Add(attachment);
-            }
-        }
+        ApprovalAttachmentPolicySupport.Partition(
+            ApprovalAttachmentPolicySupport.Get(ApprovalWorkflowBusinessTypes.NetworkInbound),
+            Attachments,
+            all: null,
+            SignedHandoverAttachments,
+            photos: null,
+            ProofMaterialAttachments,
+            OtherAttachments);
     }
 
     private Task RefreshAttachmentRequirementsAsync()

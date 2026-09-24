@@ -377,6 +377,21 @@ namespace DocMgr.Models.YearlyArchive
         /// </summary>
         public DateTime? DeptHeadDate { get; set; }
 
+        /// <summary>
+        /// 打印次数（交接单/审批单累计）。
+        /// </summary>
+        public int PrintCount { get; set; }
+
+        /// <summary>
+        /// 最后打印时间。
+        /// </summary>
+        public DateTime? LastPrintedAt { get; set; }
+
+        /// <summary>
+        /// 首次打印时间。
+        /// </summary>
+        public DateTime? FirstPrintedAt { get; set; }
+
         [NotMapped]
         public bool IsDraft => Status == Unsubmitted;
 

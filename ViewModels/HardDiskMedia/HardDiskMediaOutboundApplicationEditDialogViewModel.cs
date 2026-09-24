@@ -138,8 +138,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public string TargetLocationFieldLabel =>
             ShowDestinationKind
             && HardDiskMediaOutboundReturnSupport.IsExternalDestination(DestinationKind)
-                ? "目标位置/去向 *"
-                : "目标位置/去向";
+                ? "目标位置/去向 *："
+                : "目标位置/去向：";
 
         public string TargetLocationToolTip =>
             ShowDestinationKind
@@ -307,7 +307,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
         }
 
-        public string ReasonFieldLabel => "申请原因 *";
+        public string ReasonFieldLabel => "申请原因 *：";
 
         public bool HasCommittedChanges
         {

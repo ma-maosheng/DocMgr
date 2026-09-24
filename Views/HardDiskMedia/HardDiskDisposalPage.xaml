@@ -14,13 +14,15 @@
             <StackPanel Orientation="Horizontal">
                 <Button Content="新增处置" Command="{Binding AddCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
                 <Button Content="打开办理" Command="{Binding OpenCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
-                <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="110" Margin="0,0,16,0"/>
+                <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="110" Margin="0,0,10,0"/>
+                <Button Content="强制作废" Command="{Binding ForceVoidCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="110" Margin="0,0,16,0"/>
 
-                <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBlock Text="业务状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                 <ComboBox Width="200"
                           Style="{StaticResource ToolbarFilterComboBoxStyle}"
                           ItemsSource="{Binding StatusOptions}"
-                          SelectedItem="{Binding SelectedStatus, Mode=TwoWay}"/>
+                          SelectedItem="{Binding SelectedStatus, Mode=TwoWay}"
+                          ToolTip="可按业务状态筛选；选【全部】列出各状态申请（含未提交）"/>
 
                 <TextBlock Text="年度:" VerticalAlignment="Center" Margin="16,0,6,0"/>
                 <ComboBox Width="100"
@@ -30,7 +32,8 @@
 
                 <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="16,0,6,0"/>
                 <TextBox Width="180" Height="32" VerticalContentAlignment="Center"
-                         Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"/>
+                         Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="处置单号、申请人、离库原因/方式、硬盘编号/序列号"/>
                 <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="80" Margin="10,0,0,0"/>
                 <Button Content="刷新" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="80" Margin="10,0,0,0"/>
             </StackPanel>
@@ -101,7 +104,7 @@
                     <DataGridTextColumn Header="处置方式" Binding="{Binding DispositionMethod}" Width="100"/>
                     <DataGridTextColumn Header="硬盘数" Binding="{Binding ItemCount}" Width="70"/>
                     <DataGridTextColumn Header="硬盘清单" Binding="{Binding DiskCodesSummary}" Width="220"/>
-                    <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="160"/>
+                    <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay}" Width="160"/>
                     <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="90"/>
                     <DataGridTextColumn Header="申请日期" Binding="{Binding ApplyTime, StringFormat=yyyy-MM-dd}" Width="110"/>
                     <DataGridTextColumn Header="审批人" Binding="{Binding ApprovedBy}" Width="90"/>

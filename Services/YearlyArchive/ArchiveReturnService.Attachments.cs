@@ -42,16 +42,18 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnAttachmentFlowResult.Fail("未找到指定的归还单。");
             }
 
-            if (record.Status is YearlyArchiveReturnRecord.Completed
-                or YearlyArchiveReturnRecord.WithdrawnVoid
-                or YearlyArchiveReturnRecord.ForceVoided)
+            var attachGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentUpload(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    record.SignedAttachmentUploaded,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                isOtherCategory: false,
+                isArchiveAdmin: true);
+            if (!attachGate.Allowed)
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("当前归还单已完成或已作废，不允许上传签批交接单。");
-            }
-
-            if (record.Status != YearlyArchiveReturnRecord.SignedUploaded)
-            {
-                return ArchiveReturnAttachmentFlowResult.Fail("请先确认实物交接后再上传签批交接单。");
+                return ArchiveReturnAttachmentFlowResult.Fail(
+                    attachGate.DenyMessage ?? "当前状态不允许上传签批交接单。");
             }
 
             attachment.BusinessType = ArchiveReturnDomainValues.BusinessTypeAttachment;
@@ -101,9 +103,18 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnAttachmentFlowResult.Fail("未找到指定的归还单。");
             }
 
-            if (record.Status != YearlyArchiveReturnRecord.Completed)
+            var attachGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentUpload(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    record.Status,
+                    record.SignedAttachmentUploaded,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                isOtherCategory: true,
+                isArchiveAdmin: true);
+            if (!attachGate.Allowed)
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("仅已办结归还单可增补「其他附件」。");
+                return ArchiveReturnAttachmentFlowResult.Fail(
+                    attachGate.DenyMessage ?? "当前状态不允许增补其他附件。");
             }
 
             attachment.BusinessType = ArchiveReturnDomainValues.BusinessTypeAttachment;
@@ -139,11 +150,11 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveReturnAttachmentFlowResult.Fail("未找到指定的归还单。");
             }
 
-            if (record.Status is YearlyArchiveReturnRecord.Completed
-                or YearlyArchiveReturnRecord.WithdrawnVoid
-                or YearlyArchiveReturnRecord.ForceVoided)
+            var deleteGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentDelete(record.Status);
+            if (!deleteGate.Allowed)
             {
-                return ArchiveReturnAttachmentFlowResult.Fail("当前归还单已完成或已作废，不允许删除签批交接单。");
+                return ArchiveReturnAttachmentFlowResult.Fail(
+                    deleteGate.DenyMessage ?? "当前状态不允许删除签批交接单。");
             }
 
             var existing = await _returnRepository.GetAttachmentByIdAsync(attachment.Id);

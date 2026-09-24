@@ -48,15 +48,16 @@
                              ToolTip="支持资料名称、单号、申请人、项目名称、提供单位"/>
                 </StackPanel>
 
-                <!-- 状态 -->
+                <!-- 业务状态 -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
-                    <TextBlock Text="状态:" VerticalAlignment="Center" Foreground="#666" Margin="0,0,5,0"/>
+                    <TextBlock Text="业务状态:" VerticalAlignment="Center" Foreground="#666" Margin="0,0,5,0"/>
                     <!-- Change: Binding ItemsSource, DisplayMemberPath, SelectedValuePath, SelectedValue -->
                     <ComboBox x:Name="CmbStatus" Width="120" Style="{StaticResource ToolbarFilterComboBoxStyle}" VerticalContentAlignment="Center"
                               ItemsSource="{Binding StatusOptions}"
                               DisplayMemberPath="Label"
                               SelectedValuePath="Value"
-                              SelectedValue="{Binding SelectedStatusValue}"/>
+                              SelectedValue="{Binding SelectedStatusValue}"
+                              ToolTip="可按业务状态筛选；选【全部】列出各状态申请（含未提交）"/>
                 </StackPanel>
 
                 <!-- 项目 -->
@@ -118,7 +119,7 @@
                     <DataGridTextColumn Header="所属项目" Binding="{Binding ProjectName}" Width="200"/>
                     <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="100"/>
                     <DataGridTextColumn Header="申请日期" Binding="{Binding CreatedDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-                    <DataGridTextColumn Header="登记状态" Binding="{Binding StatusStr}" Width="100">
+                    <DataGridTextColumn Header="业务状态" Binding="{Binding StatusStr}" Width="100">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="HorizontalAlignment" Value="Center"/>

@@ -194,7 +194,8 @@ public sealed class HistoryArchiveDisposalRepository : IHistoryArchiveDisposalRe
             .AsNoTracking()
             .Include(item => item.Items)
             .Where(item =>
-                item.Status == HistoryArchiveDisposalRecord.StatusSubmitted
+                item.Status == HistoryArchiveDisposalRecord.StatusDraft
+                || item.Status == HistoryArchiveDisposalRecord.StatusSubmitted
                 || item.Status == HistoryArchiveDisposalRecord.StatusApproved
                 || item.Status == HistoryArchiveDisposalRecord.StatusSignedUploaded)
             .OrderBy(item => item.SubmittedAt ?? item.ApplyTime)

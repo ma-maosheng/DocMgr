@@ -41,10 +41,10 @@
                       SelectedItem="{Binding SelectedRecord}"
                       MouseDoubleClick="DgRecords_MouseDoubleClick">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="????" Binding="{Binding OutboundNo}" Width="160"/>
-                    <DataGridTextColumn Header="????" Binding="{Binding MaterialSummary}" Width="*"/>
-                    <DataGridTextColumn Header="???" Binding="{Binding ApplicantName}" Width="90"/>
-                    <DataGridTextColumn Header="??" Binding="{Binding StatusStr}" Width="160"/>
+                    <DataGridTextColumn Header="出库单号" Binding="{Binding OutboundNo}" Width="160"/>
+                    <DataGridTextColumn Header="资料摘要" Binding="{Binding MaterialSummary}" Width="*"/>
+                    <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="90"/>
+                    <DataGridTextColumn Header="业务状态" Binding="{Binding StatusStr}" Width="160"/>
                 </DataGrid.Columns>
             </DataGrid>
         </Border>

@@ -11,7 +11,7 @@
     <Page.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <viewShared:InverseBoolToVisConverter x:Key="InverseBoolToVisConverter"/>
-        <Style x:Key="SearchFieldLabelStyle" TargetType="TextBlock">
+        <Style x:Key="SearchFieldLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource FormFieldCaptionStyle}">
             <Setter Property="Foreground" Value="#666"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -123,14 +123,17 @@
                         <Button Content="全部选择" Margin="8,0,0,0" Padding="6,2"
                                 Style="{StaticResource ButtonNormalStyle}"
                                 Command="{Binding SelectAllContentEntriesCommand}"
+                                ToolTip="勾选本子项下全部目录/文件"
                                 Visibility="{Binding ShowContentEntrySelectionCommands, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         <Button Content="清空选择" Margin="6,0,0,0" Padding="6,2"
                                 Style="{StaticResource ButtonNormalStyle}"
                                 Command="{Binding ClearContentEntrySelectionCommand}"
+                                ToolTip="清除本子项目录/文件勾选"
                                 Visibility="{Binding ShowContentEntrySelectionCommands, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         <Button Content="切换选择" Margin="6,0,0,0" Padding="6,2"
                                 Style="{StaticResource ButtonNormalStyle}"
                                 Command="{Binding ToggleContentEntrySelectionCommand}"
+                                ToolTip="反转本子项目录/文件勾选"
                                 Visibility="{Binding ShowContentEntrySelectionCommands, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     </StackPanel>
                     <StackPanel Margin="0,6,0,0"
@@ -308,8 +311,10 @@
                     <StackPanel Grid.Column="6" Orientation="Horizontal" Margin="20,0,16,0">
                         <Button Content="查询" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding SearchCommand}"/>
                         <Button Content="重置" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding ResetCommand}"/>
-                        <Button Content="选中加入筛选池" Margin="40,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding AddSelectedToPoolCommand}"/>
-                        <Button Content="本页全部加入" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding AddAllResultsToPoolCommand}"/>
+                        <Button Content="选中加入筛选池" Margin="40,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding AddSelectedToPoolCommand}"
+                                ToolTip="按勾选范围加入会话筛选池；电子可整子项或部分目录/文件"/>
+                        <Button Content="本页全部加入" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding AddAllResultsToPoolCommand}"
+                                ToolTip="将本页各组原件整子项加入筛选池（不含备份副本）"/>
                         <Button Content="检索池" Margin="40,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Click="OpenSearchPool_Click"/>
                     </StackPanel>
                 </Grid>
@@ -383,14 +388,17 @@
                                             <Button Content="全部选择" Margin="8,0,0,0" Padding="6,2"
                                                     Style="{StaticResource ButtonNormalStyle}"
                                                     Command="{Binding SelectAllItemGroupsCommand}"
+                                                    ToolTip="勾选本盒内全部资料子项"
                                                     Visibility="{Binding ShowItemGroupSelectionCommands, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                             <Button Content="清空选择" Margin="6,0,0,0" Padding="6,2"
                                                     Style="{StaticResource ButtonNormalStyle}"
                                                     Command="{Binding ClearItemGroupSelectionCommand}"
+                                                    ToolTip="清除本盒内资料子项勾选"
                                                     Visibility="{Binding ShowItemGroupSelectionCommands, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                             <Button Content="切换选择" Margin="6,0,0,0" Padding="6,2"
                                                     Style="{StaticResource ButtonNormalStyle}"
                                                     Command="{Binding ToggleItemGroupSelectionCommand}"
+                                                    ToolTip="反转本盒内资料子项勾选"
                                                     Visibility="{Binding ShowItemGroupSelectionCommands, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                         </StackPanel>
                                         <StackPanel Margin="0,8,0,0"
@@ -427,7 +435,8 @@
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button Content="移出选中" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding RemoveSelectedFromPoolCommand}"/>
-                    <Button Content="清空筛选池" Margin="8,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding ClearPoolCommand}"/>
+                    <Button Content="清空筛选池" Margin="8,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding ClearPoolCommand}"
+                            ToolTip="清空当前会话筛选池全部条目"/>
                 </StackPanel>
                 <TextBlock Text="{Binding PoolSummary}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#1B5E20"/>
             </DockPanel>

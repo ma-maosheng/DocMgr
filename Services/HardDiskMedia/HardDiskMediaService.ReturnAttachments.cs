@@ -1,4 +1,5 @@
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 
 namespace DocMgr.Services.HardDiskMedia
@@ -156,6 +157,7 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaAttachmentFlowResult.Fail("当前登记单为正常归还，无需上传非正常归还情况表扫描件。");
             }
 
+            // 非正常归还情况表须在确认实物交接前上传（非签批交接单路径，不走 EvaluateAttachmentUpload）。
             if (existingApplication.ApplicationStatus is HardDiskMediaApplication.StatusCompleted
                 or HardDiskMediaApplication.StatusWithdrawn
                 or HardDiskMediaApplication.StatusForceWithdrawn
@@ -218,10 +220,16 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaAttachmentFlowResult.Fail("未找到关联的归还登记单。");
             }
 
-            if (relatedApplication.ApplicationStatus is HardDiskMediaApplication.StatusCompleted
-                or HardDiskMediaApplication.StatusWithdrawn
-                or HardDiskMediaApplication.StatusForceWithdrawn
-                or HardDiskMediaApplication.StatusSignedUploaded)
+            var deleteGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentDelete(
+                relatedApplication.ApplicationStatus);
+            if (!deleteGate.Allowed)
+            {
+                return HardDiskMediaAttachmentFlowResult.Fail(
+                    deleteGate.DenyMessage ?? "当前登记单不允许删除扫描件。");
+            }
+
+            // 确认实物交接后禁止再改非正常归还情况表（领域约束，严于统一删除门禁）。
+            if (relatedApplication.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded)
             {
                 return HardDiskMediaAttachmentFlowResult.Fail("当前登记单已进入交接办理阶段，不允许删除扫描件。");
             }

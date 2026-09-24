@@ -239,7 +239,7 @@ public static partial class FieldDomainSeedService
         ["HardDiskMediaApplication.ApplicationNo"] = "申请单编号",
         ["HardDiskMediaApplication.MediumId"] = "介质ID",
         ["HardDiskMediaApplication.ApplicationType"] = "申请类型",
-        ["HardDiskMediaApplication.ApplicationStatus"] = "申请状态",
+        ["HardDiskMediaApplication.ApplicationStatus"] = "业务状态",
         ["HardDiskMediaApplication.ApplicantName"] = "申请人",
         ["HardDiskMediaApplication.ApplicantDept"] = "申请部门",
         ["HardDiskMediaApplication.ApplyTime"] = "申请时间",

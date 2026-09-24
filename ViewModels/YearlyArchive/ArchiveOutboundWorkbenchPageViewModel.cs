@@ -407,13 +407,13 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         {
 
-            ArchiveOutboundWorkspaceMode.Approval => "可按状态筛选；选【全部】列出各状态申请（含未提交）",
+            ArchiveOutboundWorkspaceMode.Approval => "可按业务状态筛选；选【全部】列出各状态申请（含未提交）",
 
-            ArchiveOutboundWorkspaceMode.Handover => "可按状态筛选；选【全部】列出待出库与已办结记录",
+            ArchiveOutboundWorkspaceMode.Handover => "可按业务状态筛选；选【全部】列出待出库与已办结记录",
 
-            ArchiveOutboundWorkspaceMode.Application => "可按状态筛选；选【全部】列出各状态申请（含未提交）",
+            ArchiveOutboundWorkspaceMode.Application => "可按业务状态筛选；选【全部】列出各状态申请（含未提交）",
 
-            _ => "办理状态已锁定为【待出库/已办结】"
+            _ => "业务状态已锁定为【待出库/已办结】"
 
         };
 
@@ -651,7 +651,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool CanAdd()
         {
             return _workspaceMode == ArchiveOutboundWorkspaceMode.Application
-                   && _outboundService.CanSubmitApplication(_userContextService.CurrentUser);
+                   && OfflineApprovalPermissionSupport.CanCreateDraft(
+                       _userContextService.CurrentUser,
+                       ApprovalWorkflowBusinessTypes.YearlyArchiveOutbound);
         }
 
 
@@ -664,47 +666,33 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             return _outboundService.IsArchiveAdminUser(_userContextService.CurrentUser)
-                && IsApprovalProcessingStatus(SelectedRecord.Status);
-        }
-
-        private static bool IsApprovalProcessingStatus(int status)
-        {
-            return status == YearlyArchiveOutboundRecord.Submitted
-                || status == YearlyArchiveOutboundRecord.Approved
-                || status == YearlyArchiveOutboundRecord.SignedUploaded;
+                && ApplicationListActionSupport.CanOpenApprovalProcessing(SelectedRecord.Status);
         }
 
         private bool CanExecuteDestructive()
-
         {
-
             if (SelectedRecord == null)
-
             {
-
                 return false;
-
             }
 
+            if (_workspaceMode == ArchiveOutboundWorkspaceMode.Approval)
+            {
+                bool overdueEligible = SelectedRecord.CanForceVoid
+                    && _businessLogicSettingsService.IsEligibleForAdminForceVoid(
+                        ApplicationOverdueSettingSupport.ResolveOutboundApplyDate(SelectedRecord),
+                        _applicationOverdueSettingCode);
+                return ApplicationListActionSupport.CanForceVoid(
+                    SelectedRecord.Status,
+                    isArchiveAdmin: _outboundService.IsArchiveAdminUser(_userContextService.CurrentUser),
+                    forceVoidEligible: overdueEligible);
+            }
 
-
-            return _workspaceMode == ArchiveOutboundWorkspaceMode.Approval
-
-                ? SelectedRecord.CanForceVoid
-
-                  && _outboundService.IsArchiveAdminUser(_userContextService.CurrentUser)
-
-                  && _businessLogicSettingsService.IsEligibleForAdminForceVoid(
-
-                      ApplicationOverdueSettingSupport.ResolveOutboundApplyDate(SelectedRecord),
-
-                      _applicationOverdueSettingCode)
-
-                : SelectedRecord.CanApplicantWithdraw;
-
+            return ApplicationListActionSupport.CanApplicantWithdraw(
+                SelectedRecord.Status,
+                isOwnerApplicant: true,
+                domainAllows: SelectedRecord.CanApplicantWithdraw);
         }
-
-
 
         private async Task LoadRecordsAsync()
 

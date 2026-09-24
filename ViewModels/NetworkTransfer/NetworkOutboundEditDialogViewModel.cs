@@ -425,6 +425,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
             LoadProjectYears();
             BindFromRecord();
             await TryAutoFillDefaultApprovalInfoAsync();
+            await ApplyApprovalChainEnableFlagsAsync();
             await LoadConfidentialLevelOptionsAsync();
             await LoadArchivePurposeOptionsAsync();
             await InitializeElectronicMediaEditorAsync();
@@ -907,6 +908,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         _record = latest;
         BindFromRecord();
         await TryAutoFillDefaultApprovalInfoAsync();
+        await ApplyApprovalChainEnableFlagsAsync();
         SyncElectronicMediaEditorEditState();
         LoadApplicantServerPathOptions();
         await ReloadAttachmentsAsync();

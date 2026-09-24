@@ -39,6 +39,7 @@ namespace DocMgr.Models.SystemSettings
         public const string FieldDispositionMethod = "DispositionMethod";
         public const string FieldMediaKind = "MediaKind";
         public const string FieldMediumKind = "MediumKind";
+        public const string FieldRegisterKind = "RegisterKind";
         public const string FieldAssetKind = "AssetKind";
         public const string FieldBeforeMediaStatus = "BeforeMediaStatus";
         public const string FieldHasProofMaterial = "HasProofMaterial";

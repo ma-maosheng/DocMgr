@@ -305,23 +305,27 @@
                             <Button Content="全选"
                                     Command="{Binding SelectAllSlotsCommand}"
                                     Style="{StaticResource DialogSecondaryActionButtonStyle}"
-                                    Padding="12,5"/>
+                                    Padding="12,5"
+                                    ToolTip="选中当前面别可见的全部档口"/>
                             <Button Content="反选"
                                     Margin="8,0,0,0"
                                     Command="{Binding InvertSlotSelectionCommand}"
                                     Style="{StaticResource DialogSecondaryActionButtonStyle}"
-                                    Padding="12,5"/>
+                                    Padding="12,5"
+                                    ToolTip="反转当前面别可见档口的勾选状态"/>
                             <Button Content="设置用途"
                                     Margin="8,0,0,0"
                                     Command="{Binding ApplySelectedSlotsPurposeCommand}"
                                     Style="{StaticResource DialogPrimaryActionButtonStyle}"
                                     Padding="12,5"
-                                    Visibility="{Binding CabinetMaintainActionVisibility}"/>
+                                    Visibility="{Binding CabinetMaintainActionVisibility}"
+                                    ToolTip="为勾选档口批量设置档口用途"/>
                             <Button Content="清空选择"
                                     Margin="8,0,0,0"
                                     Command="{Binding ClearSlotSelectionCommand}"
                                     Style="{StaticResource DialogSecondaryActionButtonStyle}"
-                                    Padding="12,5"/>
+                                    Padding="12,5"
+                                    ToolTip="清除当前面别的档口勾选"/>
                         </StackPanel>
                     </DockPanel>
 
@@ -346,7 +350,8 @@
                                 Command="{Binding SetInteractiveItemRelocationFromSelectionCommand}"
                                 Style="{StaticResource DialogPrimaryActionButtonStyle}"
                                 Padding="12,5"
-                                Visibility="{Binding InteractiveItemRelocationMenuVisibility}"/>
+                                Visibility="{Binding InteractiveItemRelocationMenuVisibility}"
+                                ToolTip="将当前勾选实体设为交互式迁档源，可再在目标档口迁入"/>
                     </DockPanel>
                 </StackPanel>
 

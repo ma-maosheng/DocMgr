@@ -1,0 +1,281 @@
+<UserControl x:Class="DocMgr.Views.Shared.ApprovalHandoverWorkspaceShell"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:DocMgr.Views.Shared"
+             x:Name="Root">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../YearlyArchive/ArchiveRegisterResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            <local:InverseBoolToVisConverter x:Key="InverseBoolToVisConverter"/>
+            <Style x:Key="ApprovalShellFooterButtonStyle" TargetType="Button" BasedOn="{StaticResource DialogPrimaryActionButtonStyle}">
+                <Setter Property="Width" Value="Auto"/>
+                <Setter Property="MinWidth" Value="120"/>
+                <Setter Property="Padding" Value="14,0"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+                <Setter Property="Height" Value="32"/>
+            </Style>
+            <Style x:Key="ApprovalShellFooterDangerButtonStyle" TargetType="Button" BasedOn="{StaticResource DialogDangerActionButtonStyle}">
+                <Setter Property="Width" Value="Auto"/>
+                <Setter Property="MinWidth" Value="120"/>
+                <Setter Property="Padding" Value="14,0"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+                <Setter Property="Height" Value="32"/>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,10"
+                    Visibility="{Binding ShowTitleChrome, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock Text="{Binding WindowTitle, Mode=OneWay}"
+                       FontSize="14"
+                       FontWeight="Bold"
+                       Foreground="#37474F"/>
+            <TextBlock Text="{Binding WorkspaceBannerText, Mode=OneWay}"
+                       Margin="0,6,0,0"
+                       Foreground="#546E7A"
+                       FontSize="12"
+                       TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <!-- 父卡片：业务头占满剩余高度，审批与交接信息固定贴底 -->
+        <Border Grid.Row="1" Background="White" BorderBrush="#E0E0E0" BorderThickness="1" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <ScrollViewer x:Name="HeaderScrollViewer"
+                              Grid.Row="0"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <!-- MinHeight=视口：短内容时业务头仍撑满，便于盘库双表按剩余高度算行数 -->
+                    <ContentControl x:Name="HeaderContentHost"
+                                    VerticalContentAlignment="Stretch"
+                                    MinHeight="{Binding ViewportHeight, ElementName=HeaderScrollViewer}"
+                                    Content="{Binding HeaderContent, ElementName=Root}">
+                        <ContentControl.Style>
+                            <Style TargetType="ContentControl">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <Trigger Property="Content" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ContentControl.Style>
+                    </ContentControl>
+                </ScrollViewer>
+
+                <Border Grid.Row="1"
+                        Margin="0,10,0,0"
+                        Background="#F1F8FF"
+                        BorderBrush="#90CAF9"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="12">
+                    <StackPanel>
+                        <TextBlock Text="审批与交接信息" FontWeight="SemiBold" Foreground="#1565C0" Margin="0,0,0,8"/>
+
+                        <ContentPresenter Content="{Binding SignatureContent, ElementName=Root}"/>
+                        <ContentControl Content="{Binding SignatureExtraContent, ElementName=Root}" Margin="0,8,0,0">
+                            <ContentControl.Style>
+                                <Style TargetType="ContentControl">
+                                    <Style.Triggers>
+                                        <Trigger Property="Content" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Setter Property="Margin" Value="0"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ContentControl.Style>
+                        </ContentControl>
+
+                        <Button Content="审批通过"
+                                Command="{Binding ApproveCommand}"
+                                ToolTip="{Binding ApproveHintText, Mode=OneWay}"
+                                HorizontalAlignment="Left"
+                                Width="112"
+                                Height="30"
+                                Margin="0,8,0,4"
+                                Style="{StaticResource FormInlineButtonStyle}"/>
+                        <TextBlock Text="{Binding ApproveHintText, Mode=OneWay}"
+                                   TextWrapping="Wrap"
+                                   Foreground="#1565C0"
+                                   Margin="0,0,0,8"
+                                   FontSize="11"/>
+
+                        <Separator Margin="0,0,0,8"/>
+
+                        <ContentControl Content="{Binding MidStepExtraContent, ElementName=Root}" Margin="0,0,0,8">
+                            <ContentControl.Style>
+                                <Style TargetType="ContentControl">
+                                    <Style.Triggers>
+                                        <Trigger Property="Content" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Setter Property="Margin" Value="0"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ContentControl.Style>
+                        </ContentControl>
+
+                        <Button Content="{Binding ConfirmMidStepButtonText, ElementName=Root, Mode=OneWay}"
+                                Command="{Binding ConfirmMidStepCommand}"
+                                ToolTip="{Binding ConfirmMidStepHintText, Mode=OneWay}"
+                                HorizontalAlignment="Left"
+                                MinWidth="112"
+                                Height="30"
+                                Margin="0,0,0,4"
+                                Padding="12,0"
+                                Style="{StaticResource FormInlineButtonStyle}"/>
+                        <TextBlock Text="{Binding ConfirmMidStepHintText, Mode=OneWay}"
+                                   TextWrapping="Wrap"
+                                   Foreground="#1565C0"
+                                   Margin="0,0,0,8"
+                                   FontSize="11"/>
+
+                        <Separator Margin="0,0,0,8"/>
+
+                        <TextBlock Text="附件材料" FontWeight="SemiBold" Foreground="#1565C0" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding UploadHintText, Mode=OneWay}"
+                                   Foreground="#64748B"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,0,8"/>
+
+                        <!-- 1 行 × 4 列均分；「无需上传」态由 ShowUploadButtons=False 统一驱动（标题旁标签 + 一条说明，无空表） -->
+                        <UniformGrid Rows="1" Columns="4" HorizontalAlignment="Stretch">
+                            <local:ApprovalAttachmentZoneControl Margin="0,0,4,0"
+                                ZoneTitle="{Binding SignedZoneTitle, ElementName=Root, Mode=OneWay}"
+                                Attachments="{Binding SignedAttachments}"
+                                ShowUploadButtons="True"
+                                CanUpload="{Binding CanUploadSignedAttachment}"
+                                UploadCommand="{Binding UploadSignedCommand}"
+                                CaptureCommand="{Binding CaptureSignedCommand}"
+                                ViewCommand="{Binding ViewAttachmentCommand}"
+                                DeleteCommand="{Binding DeleteAttachmentCommand}"/>
+
+                            <local:ApprovalAttachmentZoneControl Margin="0,0,4,0"
+                                ZoneTitle="{Binding PhotoZoneTitle, Mode=OneWay}"
+                                Attachments="{Binding PhotoAttachments}"
+                                ZoneHint="{Binding PhotoZoneHint, Mode=OneWay}"
+                                ShowUploadButtons="{Binding RequiresPhotoAttachment}"
+                                CanUpload="{Binding CanUploadPhotoAttachment}"
+                                UploadCommand="{Binding UploadPhotoCommand}"
+                                CaptureCommand="{Binding CapturePhotoCommand}"
+                                ViewCommand="{Binding ViewAttachmentCommand}"
+                                DeleteCommand="{Binding DeleteAttachmentCommand}"/>
+
+                            <local:ApprovalAttachmentZoneControl Margin="0,0,4,0"
+                                ZoneTitle="证明材料"
+                                Attachments="{Binding ProofAttachments}"
+                                ZoneHint="{Binding ProofZoneHint, Mode=OneWay}"
+                                PlaceholderText="本业务无需上传证明材料。"
+                                ShowUploadButtons="{Binding RequiresProofAttachment}"
+                                CanUpload="{Binding CanUploadProofAttachment}"
+                                UploadCommand="{Binding UploadProofCommand}"
+                                CaptureCommand="{Binding CaptureProofCommand}"
+                                ViewCommand="{Binding ViewAttachmentCommand}"
+                                DeleteCommand="{Binding DeleteAttachmentCommand}"/>
+
+                            <local:ApprovalAttachmentZoneControl
+                                ZoneTitle="其他附件"
+                                Attachments="{Binding OtherAttachments}"
+                                ShowUploadButtons="True"
+                                CanUpload="{Binding CanUploadOtherAttachment}"
+                                UploadCommand="{Binding UploadOtherCommand}"
+                                CaptureCommand="{Binding CaptureOtherCommand}"
+                                ViewCommand="{Binding ViewAttachmentCommand}"
+                                DeleteCommand="{Binding DeleteAttachmentCommand}"/>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Padding="10" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1" Margin="0,10,0,0"
+                Visibility="{Binding ShowFooterChrome, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock Text="{Binding CompleteHintText, Mode=OneWay}" TextWrapping="Wrap" Foreground="#E65100"/>
+        </Border>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0"
+                    Visibility="{Binding ShowFooterChrome, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Button Content="保存草稿"
+                    Command="{Binding SaveDraftCommand}">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource ApprovalShellFooterButtonStyle}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding ShowsDraftSubmitWithdraw, ElementName=Root}" Value="True"/>
+                                    <Condition Binding="{Binding CanEditHeader}" Value="True"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button Content="{Binding SubmitButtonText, ElementName=Root, Mode=OneWay}"
+                    Command="{Binding SubmitCommand}">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource ApprovalShellFooterButtonStyle}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding ShowsDraftSubmitWithdraw, ElementName=Root}" Value="True"/>
+                                    <Condition Binding="{Binding CanSubmit}" Value="True"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button Content="{Binding PrintButtonText, ElementName=Root, Mode=OneWay}"
+                    Command="{Binding PrintCommand}"
+                    ToolTip="{Binding PrintHintText, Mode=OneWay}"
+                    Style="{StaticResource ApprovalShellFooterButtonStyle}"/>
+            <Button Content="确认办结"
+                    Command="{Binding CompleteCommand}"
+                    ToolTip="{Binding CompleteHintText, Mode=OneWay}"
+                    Style="{StaticResource ApprovalShellFooterButtonStyle}"/>
+            <Button Content="撤回作废"
+                    Command="{Binding WithdrawCommand}">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource ApprovalShellFooterDangerButtonStyle}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding ShowsDraftSubmitWithdraw, ElementName=Root}" Value="True"/>
+                                    <Condition Binding="{Binding CanWithdraw}" Value="True"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button Content="关闭"
+                    Command="{Binding CloseCommand}"
+                    Width="80"
+                    Height="32"
+                    Margin="0"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -138,14 +138,19 @@ public interface INetworkTransferService
 
     Task ApproveDisposalAsync(int recordId, User currentUser);
 
-    /// <summary>已审批后更新审核审批人姓名（不含「签字」前缀）。</summary>
+    /// <summary>已审批后更新审核审批人姓名与签字日期（不含「签字」前缀）。</summary>
     Task UpdateDisposalReviewSignersAsync(
         int recordId,
         string? deptHead,
+        DateTime? deptHeadDate,
         string? archiveRoomHead,
+        DateTime? archiveRoomHeadDate,
         string? productionHead,
+        DateTime? productionHeadDate,
         string? archiveDeputyPresident,
+        DateTime? archiveDeputyPresidentDate,
         string? productionVicePresident,
+        DateTime? productionVicePresidentDate,
         User currentUser);
 
     Task ConfirmDisposalReadyForUploadAsync(int recordId, User currentUser);
@@ -159,6 +164,9 @@ public interface INetworkTransferService
     Task RecordDisposalPrintAsync(int recordId);
 
     Task WithdrawDisposalAsync(int recordId, string? reason, User currentUser);
+
+    /// <summary>逾期强制作废在网处置单（仅草稿/已提交，须达到系统逾期时限）。</summary>
+    Task ForceVoidDisposalAsync(int recordId, string? reason, User currentUser);
 
     Task<IReadOnlyList<SystemAttachment>> GetAttachmentsAsync(string businessType, string businessNo);
 

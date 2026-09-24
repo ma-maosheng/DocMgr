@@ -83,6 +83,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                     OnPropertyChanged(nameof(CurrentRecord));
                 }
             }
+
+            await ApplyApprovalChainEnableFlagsAsync();
             OnPropertyChanged(nameof(IsArchivePurposeOtherSelected));
         }
 
@@ -359,6 +361,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ProofMaterialAttachmentHint));
             OnPropertyChanged(nameof(CanUploadProofMaterialAttachment));
             NotifyNetworkOutboundTransferUiState();
+            NotifyShellAliasPropertiesChanged();
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -413,6 +416,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 await _archiveRegisterService.ApplyDefaultApprovalInfoAsync(CurrentRecord, _userContextService.CurrentUser);
                 OnPropertyChanged(nameof(CurrentRecord));
+                await ApplyApprovalChainEnableFlagsAsync();
                 CommandManager.InvalidateRequerySuggested();
                 _dialogService.ShowMessage("默认审批信息已填写。");
             }
@@ -421,6 +425,66 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _dialogService.ShowMessage(ex.Message);
             }
         }
+
+        /// <summary>按签批链规则刷新签字卡 Enable*/Show*。</summary>
+        private async Task ApplyApprovalChainEnableFlagsAsync()
+        {
+            if (_workspaceMode != ArchiveRegisterWorkspaceMode.Approval || CurrentRecord == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var chain = await _archiveRegisterService.ResolveApprovalChainAsync(CurrentRecord);
+                EnableDeptHead = chain.DeptHead.IsEnabled;
+                EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled;
+                EnableProductionHead = chain.ProductionHead.IsEnabled;
+                EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled;
+                EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled;
+                NotifyShellAliasPropertiesChanged();
+            }
+            catch
+            {
+                // 解析失败时保持当前 Enable*，不阻断打开。
+            }
+        }
+
+        /// <summary>是否启用部门审核签字栏。</summary>
+        public bool EnableDeptHead
+        {
+            get => _enableDeptHead;
+            private set => SetProperty(ref _enableDeptHead, value);
+        }
+
+        /// <summary>是否启用资料室签字栏。</summary>
+        public bool EnableArchiveRoomHead
+        {
+            get => _enableArchiveRoomHead;
+            private set => SetProperty(ref _enableArchiveRoomHead, value);
+        }
+
+        /// <summary>是否启用生产科签字栏。</summary>
+        public bool EnableProductionHead
+        {
+            get => _enableProductionHead;
+            private set => SetProperty(ref _enableProductionHead, value);
+        }
+
+        /// <summary>是否启用分管资料院长签字栏。</summary>
+        public bool EnableArchiveDeputyPresident
+        {
+            get => _enableArchiveDeputyPresident;
+            private set => SetProperty(ref _enableArchiveDeputyPresident, value);
+        }
+
+        /// <summary>是否启用分管生产院长签字栏。</summary>
+        public bool EnableProductionVicePresident
+        {
+            get => _enableProductionVicePresident;
+            private set => SetProperty(ref _enableProductionVicePresident, value);
+        }
+
         // Helpers
         private void LoadDepartments()
         {

@@ -98,15 +98,18 @@
 
                     <TextBlock Grid.Column="14" Text="单号" Style="{StaticResource FilterLabelStyle}"/>
                     <TextBox Grid.Column="15" Style="{StaticResource SearchTextBoxStyle}"
-                             Text="{Binding BusinessNo, UpdateSourceTrigger=PropertyChanged}"/>
+                             Text="{Binding BusinessNo, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="移库单号"/>
 
                     <TextBlock Grid.Column="17" Text="操作人" Style="{StaticResource FilterLabelStyle}"/>
                     <TextBox Grid.Column="18" Style="{StaticResource SearchTextBoxStyle}"
-                             Text="{Binding OperatorName, UpdateSourceTrigger=PropertyChanged}"/>
+                             Text="{Binding OperatorName, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="移库操作人"/>
 
                     <TextBlock Grid.Column="20" Text="关键字" Style="{StaticResource FilterLabelStyle}"/>
                     <TextBox Grid.Column="21" Style="{StaticResource SearchTextBoxStyle}"
-                             Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}">
+                             Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="立档编号、表单号、资料名称、移库前后容器/位置、摘要">
                         <TextBox.InputBindings>
                             <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
                         </TextBox.InputBindings>
@@ -115,7 +118,8 @@
                     <StackPanel Grid.Column="23" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
                         <Button Content="重置" Margin="4,0,0,0" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
-                        <Button Content="定位立档" Margin="6,0,0,0" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                        <Button Content="定位立档" Margin="6,0,0,0" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"
+                                ToolTip="用选中行跳转立档台账并带入筛选"/>
                     </StackPanel>
                 </Grid>
             </ScrollViewer>

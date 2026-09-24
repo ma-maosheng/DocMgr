@@ -180,6 +180,11 @@ namespace DocMgr.Models.HardDiskMedia
         public DateTime? PrintedTime { get; set; }
 
         /// <summary>
+        /// 首次打印时间。
+        /// </summary>
+        public DateTime? FirstPrintedAt { get; set; }
+
+        /// <summary>
         /// 是否已上传签字件。
         /// </summary>
         public bool SignedAttachmentUploaded { get; set; }

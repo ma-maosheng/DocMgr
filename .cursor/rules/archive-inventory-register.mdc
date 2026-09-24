@@ -25,8 +25,15 @@ alwaysApply: false
 
 ## 流程
 
-- 草稿 → 确认登记办结（无审批、无签批）；权限：资料管理员。
+- **B 流（DisposalUnlockUpload）七态**：草稿 → 提交 → 审批通过 → 确认可上传 → 上传签批单 → 办结 / 撤回 / 逾期强制作废。
+- **撤回**：仅草稿、已提交可「撤回作废」；审批通过后禁止撤回。
+- **待办**：草稿建立后起直至办结/撤回/强制作废，资料管理员待办持续提醒推进。
+- **强制作废**：草稿/已提交且达到系统「申请单逾期」时限后，资料管理员可强制作废。
+- 权限：仅**资料管理员**可发起与办理（`OfflineApprovalPermissionSupport` B 流）。
+- 默认线下审批节点：仅**资料室负责人**（`EnableArchiveRoomHead=true`；其余 Enable*=false）。
+- 附件：签批单必备；无照片区（与在网处置一致）。台账/业务效应仅在**办结**时生效。
 - 编号前缀：`资盘-登`（`BusinessNoCategory.ArchiveInventoryRegister`）。
+- 审批业务类型：`YearlyArchiveInventoryRegister`（模拟/电子共用）。
 
 ## 份数公式（模拟）
 

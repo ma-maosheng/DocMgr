@@ -141,7 +141,7 @@ namespace DocMgr.Services.SystemSettings
                 "只读浏览。由资料业务自动写入。"),
 
             [nameof(YearlyArchiveRegisterRecord)] = new(
-                "年度资料登记流程主单，记录申请状态、项目、部门及审批进度。",
+                "年度资料登记流程主单，记录业务状态、项目、部门及审批进度。",
                 "→ 逻辑关联 ProjectInfos、Departments；← 被 YearlyArchiveRegisterMedias 引用（一对多）。",
                 "可维护。删除会级联影响下级介质与明细，且可能破坏审批/归档链路，务必按子表→主表顺序操作。"),
 

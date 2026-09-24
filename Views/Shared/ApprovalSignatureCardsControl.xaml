@@ -1,0 +1,170 @@
+<UserControl x:Class="DocMgr.Views.Shared.ApprovalSignatureCardsControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../YearlyArchive/ArchiveRegisterResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <StackPanel>
+        <TextBlock Text="{Binding SignatureHintText, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                   Foreground="#64748B"
+                   FontSize="11"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,6"/>
+
+        <TextBlock Text="审核"
+                   Style="{StaticResource ArchiveRegisterApprovalCompactSectionTitleStyle}"
+                   Visibility="{Binding ShowReviewSignerSection, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        <UniformGrid Columns="2"
+                     Margin="0,0,0,6"
+                     Visibility="{Binding ShowReviewSignerSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                    Visibility="{Binding ShowDeptHead, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    IsEnabled="{Binding CanEditSigners}">
+                <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left"
+                               Text="部门审核"
+                               Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                        <TextBox Width="90"
+                                 Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                 IsEnabled="{Binding CanEditSigners}"
+                                 Text="{Binding DeptHead, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="日期"
+                                   Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"
+                                   Margin="10,0,4,0"/>
+                        <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                    IsEnabled="{Binding CanEditSigners}"
+                                    DisplayDateStart="{Binding SignatureDateMin, Mode=OneWay, TargetNullValue={x:Static sys:DateTime.MinValue}}"
+                                    SelectedDate="{Binding DeptHeadDate, Mode=TwoWay}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                    Visibility="{Binding ShowArchiveRoomHead, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    IsEnabled="{Binding CanEditSigners}">
+                <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left"
+                               Text="资料室签字"
+                               Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                        <TextBox Width="90"
+                                 Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                 IsEnabled="{Binding CanEditSigners}"
+                                 Text="{Binding ArchiveRoomHead, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="日期"
+                                   Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"
+                                   Margin="10,0,4,0"/>
+                        <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                    IsEnabled="{Binding CanEditSigners}"
+                                    DisplayDateStart="{Binding SignatureDateMin, Mode=OneWay, TargetNullValue={x:Static sys:DateTime.MinValue}}"
+                                    SelectedDate="{Binding ArchiveRoomHeadDate, Mode=TwoWay}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                    Visibility="{Binding ShowProductionHead, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    IsEnabled="{Binding CanEditSigners}">
+                <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left"
+                               Text="生产科签字"
+                               Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                        <TextBox Width="90"
+                                 Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                 IsEnabled="{Binding CanEditSigners}"
+                                 Text="{Binding ProductionHead, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="日期"
+                                   Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"
+                                   Margin="10,0,4,0"/>
+                        <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                    IsEnabled="{Binding CanEditSigners}"
+                                    DisplayDateStart="{Binding SignatureDateMin, Mode=OneWay, TargetNullValue={x:Static sys:DateTime.MinValue}}"
+                                    SelectedDate="{Binding ProductionHeadDate, Mode=TwoWay}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </UniformGrid>
+
+        <TextBlock Text="审批"
+                   Style="{StaticResource ArchiveRegisterApprovalCompactSectionTitleStyle}"
+                   Visibility="{Binding ShowApproveSignerSection, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        <UniformGrid Columns="2"
+                     Margin="0,0,0,8"
+                     Visibility="{Binding ShowApproveSignerSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                    Visibility="{Binding ShowArchiveDeputyPresident, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    IsEnabled="{Binding CanEditSigners}">
+                <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left"
+                               Text="分管资料院长签字"
+                               Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                        <TextBox Width="90"
+                                 Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                 IsEnabled="{Binding CanEditSigners}"
+                                 Text="{Binding ArchiveDeputyPresident, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="日期"
+                                   Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"
+                                   Margin="10,0,4,0"/>
+                        <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                    IsEnabled="{Binding CanEditSigners}"
+                                    DisplayDateStart="{Binding SignatureDateMin, Mode=OneWay, TargetNullValue={x:Static sys:DateTime.MinValue}}"
+                                    SelectedDate="{Binding ArchiveDeputyPresidentDate, Mode=TwoWay}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
+                    Visibility="{Binding ShowProductionVicePresident, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    IsEnabled="{Binding CanEditSigners}">
+                <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left"
+                               Text="分管生产院长签字"
+                               Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                        <TextBox Width="90"
+                                 Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                 IsEnabled="{Binding CanEditSigners}"
+                                 Text="{Binding ProductionVicePresident, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="日期"
+                                   Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"
+                                   Margin="10,0,4,0"/>
+                        <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                    IsEnabled="{Binding CanEditSigners}"
+                                    DisplayDateStart="{Binding SignatureDateMin, Mode=OneWay, TargetNullValue={x:Static sys:DateTime.MinValue}}"
+                                    SelectedDate="{Binding ProductionVicePresidentDate, Mode=TwoWay}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </UniformGrid>
+
+        <StackPanel Orientation="Horizontal"
+                    Margin="0,0,0,8"
+                    Visibility="{Binding ShowApprovalOpinion, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock Text="审批意见"
+                       Width="72"
+                       VerticalAlignment="Center"
+                       Foreground="#64748B"
+                       FontSize="12"/>
+            <TextBox Width="280"
+                     Height="{StaticResource DialogFormControlHeight}"
+                     Padding="8,0"
+                     VerticalContentAlignment="Center"
+                     IsEnabled="{Binding CanEditSigners}"
+                     Text="{Binding ApprovalOpinion, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

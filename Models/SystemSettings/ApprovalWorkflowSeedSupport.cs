@@ -194,6 +194,30 @@ namespace DocMgr.Models.SystemSettings
                 enableProductionVp: false,
                 now));
 
+            // 硬盘盘库登记：仅资料室负责人
+            rules.Add(Create(
+                ApprovalWorkflowBusinessTypes.HardDiskInventoryRegister,
+                "默认（介质管理·硬盘·盘库登记）",
+                priority: 100,
+                enableDept: false,
+                enableArchiveRoom: true,
+                enableProduction: false,
+                enableArchiveVp: false,
+                enableProductionVp: false,
+                now));
+
+            // 年度资料盘库登记：仅资料室负责人（模拟/电子共用）
+            rules.Add(Create(
+                ApprovalWorkflowBusinessTypes.YearlyArchiveInventoryRegister,
+                "默认（年度资料档案化管理·盘库登记·模拟/电子资料盘库）",
+                priority: 100,
+                enableDept: false,
+                enableArchiveRoom: true,
+                enableProduction: false,
+                enableArchiveVp: false,
+                enableProductionVp: false,
+                now));
+
             return rules;
         }
 

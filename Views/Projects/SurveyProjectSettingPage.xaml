@@ -42,7 +42,8 @@
                     <!-- 右侧搜索 -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                         <TextBlock Text="年度:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <TextBox Text="{Binding SearchYear, UpdateSourceTrigger=PropertyChanged}" Width="80" VerticalContentAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBox Text="{Binding SearchYear, UpdateSourceTrigger=PropertyChanged}" Width="80" VerticalContentAlignment="Center" Margin="0,0,10,0"
+                                 ToolTip="按项目实施年度筛选；可与关键词组合"/>
 
                         <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="0,0,5,0"/>
                         <!-- 绑定 Enter 键触发搜索 -->

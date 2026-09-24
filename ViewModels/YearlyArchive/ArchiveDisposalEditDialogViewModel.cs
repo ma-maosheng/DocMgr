@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
 using DocMgr.Models.Cabinets;
+using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
@@ -19,7 +20,7 @@ namespace DocMgr.ViewModels.YearlyArchive
     /// <summary>
     /// 资料离库处置办理弹窗 ViewModel（草稿编辑 + 审批办结工作台，布局对齐硬盘离库处置）。
     /// </summary>
-    public sealed class ArchiveDisposalEditDialogViewModel : ViewModelBase
+    public sealed partial class ArchiveDisposalEditDialogViewModel : ViewModelBase
     {
         private const string AllFilterText = "全部";
 
@@ -54,6 +55,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _defaultProductionHead = string.Empty;
         private string _defaultArchiveDeputyPresident = string.Empty;
         private string _defaultProductionVicePresident = string.Empty;
+        private string _deptHead = string.Empty;
+        private DateTime? _deptHeadDate;
+        private string _archiveRoomHead = string.Empty;
+        private DateTime? _archiveRoomHeadDate;
+        private string _productionHead = string.Empty;
+        private DateTime? _productionHeadDate;
+        private string _archiveDeputyPresident = string.Empty;
+        private DateTime? _archiveDeputyPresidentDate;
+        private string _productionVicePresident = string.Empty;
+        private DateTime? _productionVicePresidentDate;
+        private bool _suppressReviewSignerPersist;
         private bool _enableDeptHead;
         private bool _enableArchiveRoomHead = true;
         private bool _enableProductionHead = true;
@@ -151,11 +163,14 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool ShowMediumKindFilter => !IsSimulated;
 
         public string BannerText =>
-            "流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批 → 确认可上传 → 上传签批单（销毁须资料照片）→ 办结。办结释档空盒/空袋前须确认物理移除；拟销硬盘低格留盘须确认已低格并填写目标空盘档口。";
+            "流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批 → 确认可上传 → 上传签批单（销毁须资料照片）→ 办结。办结释档空盒/空袋前须确认物理移除；拟销硬盘低格留盘须确认已低格并从下拉选择目标空盘档口。";
 
         public ObservableCollection<ArchiveDisposalCandidateRow> AvailableItems { get; } = new();
 
         public ObservableCollection<ArchiveDisposalItemRow> Items { get; } = new();
+
+        /// <summary>低格留盘可选的空白硬盘专用档口。</summary>
+        public ObservableCollection<HardDiskMediaReturnTargetLocationOption> BlankLocationOptions { get; } = new();
 
         public ObservableCollection<SystemAttachment> Attachments { get; } = new();
 
@@ -254,11 +269,175 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool ShowProductionVicePresidentApprover => _enableProductionVicePresident;
 
+        public bool ShowDeptHead => ShowDeptHeadApprover;
+        public bool ShowArchiveRoomHead => ShowArchiveRoomHeadApprover;
+        public bool ShowProductionHead => ShowProductionHeadApprover;
+        public bool ShowArchiveDeputyPresident => ShowArchiveDeputyPresidentApprover;
+        public bool ShowProductionVicePresident => ShowProductionVicePresidentApprover;
+
         public bool ShowReviewApproverSection =>
             ShowDeptHeadApprover || ShowArchiveRoomHeadApprover || ShowProductionHeadApprover;
 
         public bool ShowApproveApproverSection =>
             ShowArchiveDeputyPresidentApprover || ShowProductionVicePresidentApprover;
+
+        public bool ShowReviewSignerSection => ShowReviewApproverSection;
+        public bool ShowApproveSignerSection => ShowApproveApproverSection;
+
+        /// <summary>签字卡可编辑：待审批，或已审批/已确认可上传且可操作。</summary>
+        public bool CanEditSigners =>
+            CanApprove
+            || (_record.Status is YearlyArchiveDisposalRecord.StatusApproved
+                    or YearlyArchiveDisposalRecord.StatusSignedUploaded
+                && CanOperate);
+
+        public DateTime? SignatureDateMin =>
+            ApprovalSignatureDateSupport.ResolveMinDate(_record.FirstPrintedAt, _record.LastPrintedAt, _record.PrintCount);
+
+        public string DeptHead
+        {
+            get => _deptHead;
+            set
+            {
+                if (!SetProperty(ref _deptHead, value ?? string.Empty))
+                {
+                    return;
+                }
+
+                _ = PersistReviewSignersAsync();
+            }
+        }
+
+        public DateTime? DeptHeadDate
+        {
+            get => _deptHeadDate;
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                if (!SetProperty(ref _deptHeadDate, clamped))
+                {
+                    return;
+                }
+
+                _ = PersistReviewSignersAsync();
+            }
+        }
+
+        public string ArchiveRoomHead
+        {
+            get => _archiveRoomHead;
+            set
+            {
+                if (!SetProperty(ref _archiveRoomHead, value ?? string.Empty))
+                {
+                    return;
+                }
+
+                _ = PersistReviewSignersAsync();
+            }
+        }
+
+        public DateTime? ArchiveRoomHeadDate
+        {
+            get => _archiveRoomHeadDate;
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                if (!SetProperty(ref _archiveRoomHeadDate, clamped))
+                {
+                    return;
+                }
+
+                _ = PersistReviewSignersAsync();
+            }
+        }
+
+        public string ProductionHead
+        {
+            get => _productionHead;
+            set
+            {
+                if (!SetProperty(ref _productionHead, value ?? string.Empty))
+                {
+                    return;
+                }
+
+                _ = PersistReviewSignersAsync();
+            }
+        }
+
+        public DateTime? ProductionHeadDate
+        {
+            get => _productionHeadDate;
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                if (!SetProperty(ref _productionHeadDate, clamped))
+                {
+                    return;
+                }
+
+                _ = PersistReviewSignersAsync();
+            }
+        }
+
+        public string ArchiveDeputyPresident
+        {
+            get => _archiveDeputyPresident;
+            set
+            {
+                if (!SetProperty(ref _archiveDeputyPresident, value ?? string.Empty))
+                {
+                    return;
+                }
+
+                _ = PersistReviewSignersAsync();
+            }
+        }
+
+        public DateTime? ArchiveDeputyPresidentDate
+        {
+            get => _archiveDeputyPresidentDate;
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                if (!SetProperty(ref _archiveDeputyPresidentDate, clamped))
+                {
+                    return;
+                }
+
+                _ = PersistReviewSignersAsync();
+            }
+        }
+
+        public string ProductionVicePresident
+        {
+            get => _productionVicePresident;
+            set
+            {
+                if (!SetProperty(ref _productionVicePresident, value ?? string.Empty))
+                {
+                    return;
+                }
+
+                _ = PersistReviewSignersAsync();
+            }
+        }
+
+        public DateTime? ProductionVicePresidentDate
+        {
+            get => _productionVicePresidentDate;
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                if (!SetProperty(ref _productionVicePresidentDate, clamped))
+                {
+                    return;
+                }
+
+                _ = PersistReviewSignersAsync();
+            }
+        }
 
         public string Reason
         {
@@ -444,6 +623,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 BindFromRecord(_record);
+                await EnsureBlankLocationOptionsAsync();
+                EnsurePersistedBlankLocationsInOptions();
                 await ReloadDefaultApproversAsync();
                 if (_record.Id <= 0 && string.IsNullOrWhiteSpace(_record.DisposalNo))
                 {
@@ -486,16 +667,36 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ? ArchiveDisposalDefaultApproverSupport.Resolve(users)
                 : ArchiveDisposalDefaultApproverSupport.FromChain(chain);
 
-            _defaultDeptHead = approvers.DeptHead;
-            _defaultArchiveRoomHead = approvers.ArchiveRoomHead;
-            _defaultProductionHead = approvers.ProductionHead;
-            _defaultArchiveDeputyPresident = approvers.ArchiveDeputyPresident;
-            _defaultProductionVicePresident = approvers.ProductionVicePresident;
+            _defaultDeptHead = PreferNonEmpty(_record.DeptHead, approvers.DeptHead);
+            _defaultArchiveRoomHead = PreferNonEmpty(_record.ArchiveRoomHead, approvers.ArchiveRoomHead);
+            _defaultProductionHead = PreferNonEmpty(_record.ProductionHead, approvers.ProductionHead);
+            _defaultArchiveDeputyPresident = PreferNonEmpty(_record.ArchiveDeputyPresident, approvers.ArchiveDeputyPresident);
+            _defaultProductionVicePresident = PreferNonEmpty(_record.ProductionVicePresident, approvers.ProductionVicePresident);
             _enableDeptHead = approvers.EnableDeptHead;
             _enableArchiveRoomHead = approvers.EnableArchiveRoomHead;
             _enableProductionHead = approvers.EnableProductionHead;
             _enableArchiveDeputyPresident = approvers.EnableArchiveDeputyPresident;
             _enableProductionVicePresident = approvers.EnableProductionVicePresident;
+
+            _suppressReviewSignerPersist = true;
+            try
+            {
+                _deptHead = PreferNonEmpty(_record.DeptHead, _defaultDeptHead);
+                _deptHeadDate = ApprovalSignatureDateSupport.Clamp(_record.DeptHeadDate, SignatureDateMin);
+                _archiveRoomHead = PreferNonEmpty(_record.ArchiveRoomHead, _defaultArchiveRoomHead);
+                _archiveRoomHeadDate = ApprovalSignatureDateSupport.Clamp(_record.ArchiveRoomHeadDate, SignatureDateMin);
+                _productionHead = PreferNonEmpty(_record.ProductionHead, _defaultProductionHead);
+                _productionHeadDate = ApprovalSignatureDateSupport.Clamp(_record.ProductionHeadDate, SignatureDateMin);
+                _archiveDeputyPresident = PreferNonEmpty(_record.ArchiveDeputyPresident, _defaultArchiveDeputyPresident);
+                _archiveDeputyPresidentDate = ApprovalSignatureDateSupport.Clamp(_record.ArchiveDeputyPresidentDate, SignatureDateMin);
+                _productionVicePresident = PreferNonEmpty(_record.ProductionVicePresident, _defaultProductionVicePresident);
+                _productionVicePresidentDate = ApprovalSignatureDateSupport.Clamp(_record.ProductionVicePresidentDate, SignatureDateMin);
+            }
+            finally
+            {
+                _suppressReviewSignerPersist = false;
+            }
+
             OnPropertyChanged(nameof(DefaultDeptHeadDisplay));
             OnPropertyChanged(nameof(DefaultArchiveRoomHeadDisplay));
             OnPropertyChanged(nameof(DefaultProductionHeadDisplay));
@@ -506,12 +707,34 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ShowProductionHeadApprover));
             OnPropertyChanged(nameof(ShowArchiveDeputyPresidentApprover));
             OnPropertyChanged(nameof(ShowProductionVicePresidentApprover));
+            OnPropertyChanged(nameof(ShowDeptHead));
+            OnPropertyChanged(nameof(ShowArchiveRoomHead));
+            OnPropertyChanged(nameof(ShowProductionHead));
+            OnPropertyChanged(nameof(ShowArchiveDeputyPresident));
+            OnPropertyChanged(nameof(ShowProductionVicePresident));
             OnPropertyChanged(nameof(ShowReviewApproverSection));
             OnPropertyChanged(nameof(ShowApproveApproverSection));
+            OnPropertyChanged(nameof(ShowReviewSignerSection));
+            OnPropertyChanged(nameof(ShowApproveSignerSection));
+            OnPropertyChanged(nameof(DeptHead));
+            OnPropertyChanged(nameof(DeptHeadDate));
+            OnPropertyChanged(nameof(ArchiveRoomHead));
+            OnPropertyChanged(nameof(ArchiveRoomHeadDate));
+            OnPropertyChanged(nameof(ProductionHead));
+            OnPropertyChanged(nameof(ProductionHeadDate));
+            OnPropertyChanged(nameof(ArchiveDeputyPresident));
+            OnPropertyChanged(nameof(ArchiveDeputyPresidentDate));
+            OnPropertyChanged(nameof(ProductionVicePresident));
+            OnPropertyChanged(nameof(ProductionVicePresidentDate));
+            OnPropertyChanged(nameof(CanEditSigners));
+            OnPropertyChanged(nameof(SignatureDateMin));
         }
 
         private static string EmptyAsDash(string? value)
             => string.IsNullOrWhiteSpace(value) ? "—" : value.Trim();
+
+        private static string PreferNonEmpty(string? primary, string? fallback) =>
+            !string.IsNullOrWhiteSpace(primary) ? primary.Trim() : (fallback?.Trim() ?? string.Empty);
 
         private void BindFromRecord(YearlyArchiveDisposalRecord record)
         {
@@ -556,6 +779,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(CanPrint));
             OnPropertyChanged(nameof(CanWithdraw));
+            OnPropertyChanged(nameof(CanEditSigners));
+            OnPropertyChanged(nameof(SignatureDateMin));
+            NotifyShellAliasPropertiesChanged();
 
             if (CanSupplementOtherAttachments)
             {
@@ -706,8 +932,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                var options = await _hardDiskMediaService.GetOrderedBlankDedicatedSlotLocationOptionsAsync();
-                if (options.Count == 0)
+                await EnsureBlankLocationOptionsAsync();
+                EnsurePersistedBlankLocationsInOptions();
+                if (BlankLocationOptions.Count == 0)
                 {
                     _dialogService.ShowMessage("未找到空白硬盘专用档口，请先在磁盘柜开柜界面完成设置。", "推荐档口");
                     return;
@@ -721,21 +948,85 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                var matched = options.FirstOrDefault(option =>
+                var matched = BlankLocationOptions.FirstOrDefault(option =>
                     string.Equals(
                         HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(option.Location),
                         slot,
                         StringComparison.OrdinalIgnoreCase));
-                item.TargetBlankSlotLocation = slot;
+                if (matched == null)
+                {
+                    matched = new HardDiskMediaReturnTargetLocationOption
+                    {
+                        Location = slot,
+                        ExistingMediumCount = 0
+                    };
+                    BlankLocationOptions.Insert(0, matched);
+                }
+
+                item.TargetBlankSlotLocation = matched.Location;
                 RefreshCommandStates();
-                string hint = matched == null
-                    ? slot
-                    : $"{matched.DisplayText}";
-                _dialogService.ShowMessage($"已推荐档口：{hint}", "推荐档口");
+                _dialogService.ShowMessage($"已推荐档口：{matched.DisplayText}", "推荐档口");
             }
             catch (Exception ex)
             {
                 _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private async Task EnsureBlankLocationOptionsAsync()
+        {
+            var options = await _hardDiskMediaService.GetOrderedBlankDedicatedSlotLocationOptionsAsync();
+            BlankLocationOptions.Clear();
+            foreach (var option in options)
+            {
+                BlankLocationOptions.Add(option);
+            }
+        }
+
+        /// <summary>
+        /// 将明细中已保存、但当前选项列表未包含的空盘档口补入下拉，避免只读/重开后显示为空。
+        /// </summary>
+        private void EnsurePersistedBlankLocationsInOptions()
+        {
+            foreach (var item in Items)
+            {
+                if (!item.IsFormatRetain)
+                {
+                    continue;
+                }
+
+                string location = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(item.TargetBlankSlotLocation);
+                if (string.IsNullOrWhiteSpace(location))
+                {
+                    continue;
+                }
+
+                if (BlankLocationOptions.Any(option =>
+                        string.Equals(
+                            HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(option.Location),
+                            location,
+                            StringComparison.OrdinalIgnoreCase)))
+                {
+                    // 统一为选项中的 Location 写法，保证 ComboBox SelectedValue 能命中。
+                    var matched = BlankLocationOptions.First(option =>
+                        string.Equals(
+                            HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(option.Location),
+                            location,
+                            StringComparison.OrdinalIgnoreCase));
+                    if (!string.Equals(item.TargetBlankSlotLocation, matched.Location, StringComparison.Ordinal))
+                    {
+                        item.TargetBlankSlotLocation = matched.Location;
+                    }
+
+                    continue;
+                }
+
+                BlankLocationOptions.Insert(0, new HardDiskMediaReturnTargetLocationOption
+                {
+                    Location = location,
+                    ExistingMediumCount = 0
+                });
+                item.TargetBlankSlotLocation = location;
             }
         }
 
@@ -752,7 +1043,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 string location = item.TargetBlankSlotLocation?.Trim() ?? string.Empty;
                 if (string.IsNullOrWhiteSpace(location))
                 {
-                    _dialogService.ShowMessage("请先填写或推荐空盘档口后再查看快照。", "档口快照");
+                    _dialogService.ShowMessage("请先选择或推荐空盘档口后再查看快照。", "档口快照");
                     return;
                 }
 
@@ -977,6 +1268,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 _hasCommittedChanges = true;
                 BindFromRecord(saved);
+                EnsurePersistedBlankLocationsInOptions();
                 await ReloadCandidatePoolAsync();
                 _dialogService.ShowMessage("草稿已保存。");
                 RefreshCommandStates();
@@ -1045,6 +1337,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
+                await PersistReviewSignersAsync();
                 await _disposalService.ConfirmReadyForUploadAsync(_record.Id, RequireUser());
                 _hasCommittedChanges = true;
                 await ReloadRecordAsync();
@@ -1089,6 +1382,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     return;
                 }
+
+                await PersistReviewSignersAsync();
 
                 var blankSlots = Items
                     .Where(item => ArchiveDisposalDomainValues.IsFormatRetainMethod(item.DispositionMethod) && item.Id > 0)
@@ -1315,6 +1610,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             if (latest != null)
             {
                 BindFromRecord(latest);
+                EnsurePersistedBlankLocationsInOptions();
                 await ReloadCandidatePoolAsync();
                 await RefreshCompleteHintsAsync();
             }
@@ -1324,33 +1620,18 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task ReloadAttachmentsAsync()
         {
-            Attachments.Clear();
-            SignedFormAttachments.Clear();
-            ScenePhotoAttachments.Clear();
-            OtherAttachments.Clear();
-            if (string.IsNullOrWhiteSpace(_record.DisposalNo))
-            {
-                return;
-            }
-
-            var list = await _disposalService.GetAttachmentsAsync(_record.DisposalNo);
-            foreach (var item in list)
-            {
-                Attachments.Add(item);
-                string category = item.FileCategory?.Trim() ?? string.Empty;
-                if (string.Equals(category, ArchiveDisposalDomainValues.AttachmentCategorySignedForm, StringComparison.Ordinal))
-                {
-                    SignedFormAttachments.Add(item);
-                }
-                else if (ArchiveDisposalDomainValues.IsScenePhotoCategory(category))
-                {
-                    ScenePhotoAttachments.Add(item);
-                }
-                else
-                {
-                    OtherAttachments.Add(item);
-                }
-            }
+            IEnumerable<SystemAttachment> list = string.IsNullOrWhiteSpace(_record.DisposalNo)
+                ? Array.Empty<SystemAttachment>()
+                : await _disposalService.GetAttachmentsAsync(_record.DisposalNo);
+            var policy = ApprovalAttachmentPolicySupport.Get(ApprovalWorkflowBusinessTypes.YearlyArchiveDisposal);
+            ApprovalAttachmentPolicySupport.Partition(
+                policy,
+                list,
+                Attachments,
+                SignedFormAttachments,
+                ScenePhotoAttachments,
+                proof: null,
+                OtherAttachments);
         }
 
         private async Task UploadAttachmentByCategoryAsync(string category)
@@ -1425,6 +1706,53 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanWithdraw));
             OnPropertyChanged(nameof(WindowTitle));
             OnPropertyChanged(nameof(StatusDisplay));
+            OnPropertyChanged(nameof(CanEditSigners));
+            OnPropertyChanged(nameof(SignatureDateMin));
+            NotifyShellAliasPropertiesChanged();
+        }
+
+        private async Task PersistReviewSignersAsync()
+        {
+            if (_suppressReviewSignerPersist
+                || _record.Id <= 0
+                || _record.Status is not (YearlyArchiveDisposalRecord.StatusApproved
+                    or YearlyArchiveDisposalRecord.StatusSignedUploaded)
+                || !CanOperate)
+            {
+                return;
+            }
+
+            try
+            {
+                await _disposalService.UpdateReviewSignersAsync(
+                    _record.Id,
+                    _deptHead,
+                    _deptHeadDate,
+                    _archiveRoomHead,
+                    _archiveRoomHeadDate,
+                    _productionHead,
+                    _productionHeadDate,
+                    _archiveDeputyPresident,
+                    _archiveDeputyPresidentDate,
+                    _productionVicePresident,
+                    _productionVicePresidentDate,
+                    RequireUser());
+                _hasCommittedChanges = true;
+                _record.DeptHead = _deptHead.Trim();
+                _record.DeptHeadDate = _deptHeadDate;
+                _record.ArchiveRoomHead = _archiveRoomHead.Trim();
+                _record.ArchiveRoomHeadDate = _archiveRoomHeadDate;
+                _record.ProductionHead = _productionHead.Trim();
+                _record.ProductionHeadDate = _productionHeadDate;
+                _record.ArchiveDeputyPresident = _archiveDeputyPresident.Trim();
+                _record.ArchiveDeputyPresidentDate = _archiveDeputyPresidentDate;
+                _record.ProductionVicePresident = _productionVicePresident.Trim();
+                _record.ProductionVicePresidentDate = _productionVicePresidentDate;
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
         }
 
         private Models.SystemSettings.User RequireUser()

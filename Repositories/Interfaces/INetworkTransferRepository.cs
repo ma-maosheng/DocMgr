@@ -44,6 +44,9 @@ public interface INetworkTransferRepository
 
     Task<NetworkOnNetDisposalRecord?> GetDisposalByIdAsync(int recordId, bool tracking = false);
 
+    /// <summary>资料室待办：草稿起至办结前的在网数据处置单。</summary>
+    Task<List<NetworkOnNetDisposalRecord>> GetPendingDisposalRecordsForToDoAsync(int takeCount);
+
     void AddDisposal(NetworkOnNetDisposalRecord record);
 
     void RemoveDisposalItems(IEnumerable<NetworkOnNetDisposalItem> items);

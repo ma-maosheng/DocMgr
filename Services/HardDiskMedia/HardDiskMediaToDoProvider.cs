@@ -12,13 +12,16 @@ namespace DocMgr.Services.HardDiskMedia
     {
         private readonly IHardDiskMediaRepository _hardDiskMediaRepository;
         private readonly IHardDiskDisposalRepository _hardDiskDisposalRepository;
+        private readonly IHardDiskInventoryRegisterRepository _hardDiskInventoryRegisterRepository;
 
         public HardDiskMediaToDoProvider(
             IHardDiskMediaRepository hardDiskMediaRepository,
-            IHardDiskDisposalRepository hardDiskDisposalRepository)
+            IHardDiskDisposalRepository hardDiskDisposalRepository,
+            IHardDiskInventoryRegisterRepository hardDiskInventoryRegisterRepository)
         {
             _hardDiskMediaRepository = hardDiskMediaRepository;
             _hardDiskDisposalRepository = hardDiskDisposalRepository;
+            _hardDiskInventoryRegisterRepository = hardDiskInventoryRegisterRepository;
         }
 
         /// <inheritdoc/>
@@ -62,7 +65,7 @@ namespace DocMgr.Services.HardDiskMedia
                     Priority = "高"
                 }));
 
-                // 离库处置：提交后直至办结前保留资料室待办（不含草稿/作废/已办结）。
+                // 离库处置：草稿起直至办结前保留资料室待办。
                 var pendingDisposals = await _hardDiskDisposalRepository.GetPendingRecordsForToDoAsync(200);
                 result.AddRange(pendingDisposals.Select(item => new ToDoItem
                 {
@@ -72,6 +75,20 @@ namespace DocMgr.Services.HardDiskMedia
                     BizId = item.Id,
                     BizNo = item.DisposalNo,
                     Stage = BuildDisposalPendingStage(item),
+                    CreatedTime = item.SubmittedAt ?? item.ApplyTime,
+                    Priority = "高"
+                }));
+
+                // 盘库登记：草稿起直至办结前保留资料室待办。
+                var pendingInventory = await _hardDiskInventoryRegisterRepository.GetPendingRecordsForToDoAsync(200);
+                result.AddRange(pendingInventory.Select(item => new ToDoItem
+                {
+                    Id = $"HDI-{item.Id}-INVENTORY-PENDING",
+                    Title = $"【硬盘盘库登记】{ResolveInventoryToDoTitle(item)}：{BuildInventorySummary(item)}",
+                    BizType = "HardDiskInventoryRegister",
+                    BizId = item.Id,
+                    BizNo = item.RegisterNo,
+                    Stage = BuildInventoryPendingStage(item),
                     CreatedTime = item.SubmittedAt ?? item.ApplyTime,
                     Priority = "高"
                 }));
@@ -121,6 +138,7 @@ namespace DocMgr.Services.HardDiskMedia
         private static string ResolveDisposalToDoTitle(HardDiskDisposalRecord record) =>
             record.Status switch
             {
+                HardDiskDisposalRecord.StatusDraft => "待提交",
                 HardDiskDisposalRecord.StatusSubmitted => "待审批",
                 HardDiskDisposalRecord.StatusApproved => "待确认可上传",
                 HardDiskDisposalRecord.StatusSignedUploaded
@@ -132,6 +150,7 @@ namespace DocMgr.Services.HardDiskMedia
         private static string BuildDisposalPendingStage(HardDiskDisposalRecord record) =>
             record.Status switch
             {
+                HardDiskDisposalRecord.StatusDraft => "草稿-待提交",
                 HardDiskDisposalRecord.StatusSubmitted => "已提交-待审批",
                 HardDiskDisposalRecord.StatusApproved => "已审批-待确认可上传",
                 HardDiskDisposalRecord.StatusSignedUploaded
@@ -164,6 +183,42 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             return $"{reason} / {disks}";
+        }
+
+        private static string ResolveInventoryToDoTitle(HardDiskInventoryRegisterRecord record) =>
+            record.Status switch
+            {
+                HardDiskInventoryRegisterRecord.StatusDraft => "待提交",
+                HardDiskInventoryRegisterRecord.StatusSubmitted => "待审批",
+                HardDiskInventoryRegisterRecord.StatusApproved => "待确认可上传",
+                HardDiskInventoryRegisterRecord.StatusSignedUploaded when !record.SignedAttachmentUploaded => "待上传签批单",
+                HardDiskInventoryRegisterRecord.StatusSignedUploaded => "待办结",
+                _ => "待办理"
+            };
+
+        private static string BuildInventoryPendingStage(HardDiskInventoryRegisterRecord record) =>
+            record.Status switch
+            {
+                HardDiskInventoryRegisterRecord.StatusDraft => "草稿-待提交",
+                HardDiskInventoryRegisterRecord.StatusSubmitted => "已提交-待审批",
+                HardDiskInventoryRegisterRecord.StatusApproved => "已审批-待确认可上传",
+                HardDiskInventoryRegisterRecord.StatusSignedUploaded when !record.SignedAttachmentUploaded => "已确认可上传-待上传签批单",
+                HardDiskInventoryRegisterRecord.StatusSignedUploaded => "已上传附件-待办结",
+                _ => HardDiskInventoryRegisterDomainValues.ToStatusDisplay(record.Status)
+            };
+
+        private static string BuildInventorySummary(HardDiskInventoryRegisterRecord record)
+        {
+            string kind = record.RegisterKind?.Trim() ?? string.Empty;
+            string disks = record.Items == null || record.Items.Count == 0
+                ? record.RegisterNo
+                : string.Join("、", record.Items.OrderBy(item => item.SortOrder).Select(item => item.DiskCode).Where(code => !string.IsNullOrWhiteSpace(code)));
+            if (string.IsNullOrWhiteSpace(disks))
+            {
+                disks = $"{record.Items?.Count ?? 0} 块硬盘";
+            }
+
+            return string.IsNullOrWhiteSpace(kind) ? disks : $"{kind} / {disks}";
         }
 
         private static bool IsArchiveRoomAdmin(User user)

@@ -4,8 +4,8 @@ using System.Windows;
 using System.Windows.Input;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
-using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
 
@@ -16,9 +16,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
     /// </summary>
     public sealed class HardDiskInventoryRegisterPageViewModel : ViewModelBase
     {
+        public const string PendingInProgressStatus = "进行中（待办结前）";
+
         private readonly IHardDiskInventoryRegisterService _registerService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
         private readonly List<HardDiskInventoryRegisterRecord> _allRecords = new();
 
         private bool _isInitialized;
@@ -27,21 +30,25 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private string _searchKeyword = string.Empty;
         private string _selectedStatus = "全部";
         private HardDiskInventoryRegisterRecord? _selectedRecord;
+        private string _applicationOverdueSettingCode = string.Empty;
 
         public HardDiskInventoryRegisterPageViewModel(
             IHardDiskInventoryRegisterService registerService,
             IDialogService dialogService,
-            IUserContextService userContextService)
+            IUserContextService userContextService,
+            IBusinessLogicSettingsService businessLogicSettingsService)
         {
             _registerService = registerService;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _businessLogicSettingsService = businessLogicSettingsService;
 
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
             SearchCommand = new RelayCommand(async _ => await RefreshAsync());
             AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanOperate);
             OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null);
             WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => CanWithdrawSelected);
+            ForceVoidCommand = new RelayCommand(async _ => await ForceVoidAsync(), _ => CanForceVoidSelected);
         }
 
         public ObservableCollection<HardDiskInventoryRegisterRecord> Records { get; } = new();
@@ -158,18 +165,30 @@ namespace DocMgr.ViewModels.HardDiskMedia
         }
 
         public bool CanOperate =>
-            ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+            OfflineApprovalPermissionSupport.CanCreateDraft(
+                _userContextService.CurrentUser,
+                ApprovalWorkflowBusinessTypes.HardDiskInventoryRegister);
 
         public bool CanWithdrawSelected =>
-            CanOperate
-            && SelectedRecord != null
-            && SelectedRecord.Status == HardDiskInventoryRegisterRecord.StatusDraft;
+            ApplicationListActionSupport.CanAdminWithdrawInventoryRegister(
+                SelectedRecord?.Status ?? ApplicationWorkflowStatus.Completed,
+                CanOperate);
+
+        public bool CanForceVoidSelected =>
+            SelectedRecord != null
+            && ApplicationListActionSupport.CanForceVoid(
+                SelectedRecord.Status,
+                CanOperate,
+                _businessLogicSettingsService.IsEligibleForAdminForceVoid(
+                    SelectedRecord.ApplyTime,
+                    _applicationOverdueSettingCode));
 
         public RelayCommand RefreshCommand { get; }
         public RelayCommand SearchCommand { get; }
         public RelayCommand AddCommand { get; }
         public RelayCommand OpenCommand { get; }
         public RelayCommand WithdrawCommand { get; }
+        public RelayCommand ForceVoidCommand { get; }
 
         public async Task InitializeAsync(string? initialStatus = null, bool matchAllYears = false)
         {
@@ -187,9 +206,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             StatusOptions.Clear();
             StatusOptions.Add("全部");
-            StatusOptions.Add(ApplicationWorkflowStatus.TextDraft);
-            StatusOptions.Add(ApplicationWorkflowStatus.TextCompleted);
-            StatusOptions.Add(ApplicationWorkflowStatus.TextWithdrawn);
+            StatusOptions.Add(PendingInProgressStatus);
+            foreach (var option in ApplicationWorkflowStatus.AllOptions)
+            {
+                StatusOptions.Add(option.Label);
+            }
 
             ApplyYears.Clear();
             int currentYear = DateTime.Today.Year;
@@ -214,6 +235,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             try
             {
+                _applicationOverdueSettingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
                 int? selectedId = SelectedRecord?.Id;
                 string? keyword = string.IsNullOrWhiteSpace(SearchKeyword) ? null : SearchKeyword.Trim();
                 var list = await _registerService.SearchRecordsAsync(keyword, status: null, applyYear: null);
@@ -244,23 +266,21 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 query = query.Where(item => item.ApplyTime.Year == ApplyYear);
             }
 
-            if (!string.Equals(SelectedStatus, "全部", StringComparison.Ordinal)
+            if (string.Equals(SelectedStatus, PendingInProgressStatus, StringComparison.Ordinal))
+            {
+                query = query.Where(item =>
+                    item.Status is HardDiskInventoryRegisterRecord.StatusSubmitted
+                        or HardDiskInventoryRegisterRecord.StatusApproved
+                        or HardDiskInventoryRegisterRecord.StatusSignedUploaded);
+            }
+            else if (!string.Equals(SelectedStatus, "全部", StringComparison.Ordinal)
                 && !string.IsNullOrWhiteSpace(SelectedStatus))
             {
-                int? statusValue = SelectedStatus switch
+                var matched = ApplicationWorkflowStatus.AllOptions
+                    .FirstOrDefault(item => string.Equals(item.Label, SelectedStatus, StringComparison.Ordinal));
+                if (!string.IsNullOrWhiteSpace(matched.Label))
                 {
-                    var text when string.Equals(text, ApplicationWorkflowStatus.TextDraft, StringComparison.Ordinal)
-                        => HardDiskInventoryRegisterRecord.StatusDraft,
-                    var text when string.Equals(text, ApplicationWorkflowStatus.TextCompleted, StringComparison.Ordinal)
-                        => HardDiskInventoryRegisterRecord.StatusCompleted,
-                    var text when string.Equals(text, ApplicationWorkflowStatus.TextWithdrawn, StringComparison.Ordinal)
-                        => HardDiskInventoryRegisterRecord.StatusWithdrawn,
-                    _ => null
-                };
-
-                if (statusValue.HasValue)
-                {
-                    query = query.Where(item => item.Status == statusValue.Value);
+                    query = query.Where(item => item.Status == matched.Value);
                 }
             }
 
@@ -336,6 +356,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
+            // 各状态均可打开办理/查看（壳按状态门禁按钮）。
             if (_dialogService.ShowHardDiskInventoryRegisterEditDialog(latest))
             {
                 await RefreshAsync();
@@ -349,7 +370,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
-            if (!_dialogService.ShowConfirm("确认撤回作废当前盘库登记草稿？", "撤回作废"))
+            if (!_dialogService.ShowConfirm("确认撤回作废当前盘库登记单？仅草稿或已提交状态可撤回。", "撤回作废"))
             {
                 return;
             }
@@ -359,6 +380,34 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 await _registerService.WithdrawAsync(
                     SelectedRecord.Id,
                     reason: "列表撤回作废",
+                    _userContextService.CurrentUser!);
+                await RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private async Task ForceVoidAsync()
+        {
+            if (SelectedRecord == null || !CanForceVoidSelected)
+            {
+                return;
+            }
+
+            if (!_dialogService.ShowConfirm(
+                    "确定要强制作废该盘库登记单吗？仅草稿或已提交且已达逾期时限的单据可强制作废。",
+                    "强制作废确认"))
+            {
+                return;
+            }
+
+            try
+            {
+                await _registerService.ForceVoidAsync(
+                    SelectedRecord.Id,
+                    reason: "列表强制作废",
                     _userContextService.CurrentUser!);
                 await RefreshAsync();
             }

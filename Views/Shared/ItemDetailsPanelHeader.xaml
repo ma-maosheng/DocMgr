@@ -12,7 +12,8 @@
             <Button Content="{Binding ExpandToggleText}"
                     Command="{Binding ToggleExpandCommand}"
                     Margin="12,0,0,0" Padding="8,3" VerticalAlignment="Center"
-                    Style="{StaticResource ButtonNormalStyle}"/>
+                    Style="{StaticResource ButtonNormalStyle}"
+                    ToolTip="展开或折叠明细列表"/>
         </StackPanel>
         <TextBlock Text="{Binding CollapsedSummary}"
                    Foreground="#64748B" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0"

@@ -391,7 +391,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ? "申请人撤回，状态变为「已作废（撤回）」"
             : "资料管理员强制作废（须满足逾期时限），状态变为「已作废（强制）」";
 
-        /// <summary>申请人仅草稿/已提交可撤回；管理员仅草稿/已提交且逾期可强制。</summary>
+        /// <summary>申请人仅草稿/已提交可撤回；管理员仅草稿/已提交可强制（逾期资格由 Service 再校验）。</summary>
         public bool CanVoid
         {
             get
@@ -401,25 +401,18 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return false;
                 }
 
-                if (record.Status is YearlyArchiveReturnRecord.Completed
-                    or YearlyArchiveReturnRecord.WithdrawnVoid
-                    or YearlyArchiveReturnRecord.ForceVoided)
-                {
-                    return false;
-                }
-
                 if (_workspaceMode == ArchiveReturnWorkspaceMode.Application)
                 {
                     var user = _userContextService.CurrentUser;
-                    return user != null
-                           && record.RegisteredByUserId == user.Id
-                           && record.Status is YearlyArchiveReturnRecord.Draft
-                               or YearlyArchiveReturnRecord.Submitted;
+                    return ApplicationListActionSupport.CanApplicantWithdraw(
+                        record.Status,
+                        isOwnerApplicant: user != null && record.RegisteredByUserId == user.Id);
                 }
 
-                return IsAdmin
-                       && record.Status is YearlyArchiveReturnRecord.Draft
-                           or YearlyArchiveReturnRecord.Submitted;
+                return ApplicationListActionSupport.CanForceVoid(
+                    record.Status,
+                    isArchiveAdmin: IsAdmin,
+                    forceVoidEligible: true);
             }
         }
 
@@ -464,11 +457,11 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         /// <summary>审核人字段标签。</summary>
         public string ReviewerFieldLabel => ShowLossApprovalSigners
-            ? "部门审核（借出时） *"
-            : "部门审核 *";
+            ? "部门审核（借出时） *："
+            : "部门审核 *：";
 
         /// <summary>资料室签字字段标签（多节点签批时展示）。</summary>
-        public string ApproverFieldLabel => "资料室签字（借出时） *";
+        public string ApproverFieldLabel => "资料室签字（借出时） *：";
 
         public string ConfirmHandoverHintText
         {
@@ -1183,6 +1176,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ApproverFieldLabel));
             RefreshAbnormalFlowHint();
             RefreshWorkflowHint();
+            NotifyShellAliasPropertiesChanged();
 
             if (IsAdminWorkbenchMode && EditingRecord is { } editingRecord)
             {
@@ -1198,6 +1192,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             SignedAttachments.Clear();
+            OtherAttachments.Clear();
             SelectedSignedAttachment = null;
 
             if (recordId <= 0)
@@ -1208,16 +1203,19 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             var attachments = await _returnService.GetAttachmentsAsync(recordId);
-            foreach (var attachment in attachments)
-            {
-                if (string.Equals(
-                        attachment.FileCategory,
-                        ArchiveReturnDomainValues.AttachmentKindSignedHandover,
-                        StringComparison.Ordinal))
+            ApprovalAttachmentPolicySupport.Partition(
+                ApprovalAttachmentPolicySupport.Get(ApprovalWorkflowBusinessTypes.YearlyArchiveReturn),
+                attachments.Where(a =>
                 {
-                    SignedAttachments.Add(attachment);
-                }
-            }
+                    string c = a.FileCategory?.Trim() ?? string.Empty;
+                    return string.Equals(c, ArchiveReturnDomainValues.AttachmentKindSignedHandover, StringComparison.Ordinal)
+                        || string.Equals(c, ArchiveReturnDomainValues.AttachmentKindOther, StringComparison.Ordinal);
+                }),
+                all: null,
+                SignedAttachments,
+                photos: null,
+                proof: null,
+                OtherAttachments);
 
             RefreshAbnormalFlowHint();
             RefreshWorkflowHint();
@@ -1267,6 +1265,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ReviewerFieldLabel));
             OnPropertyChanged(nameof(ApproverFieldLabel));
             OnPropertyChanged(nameof(ConfirmHandoverHintText));
+            NotifyShellAliasPropertiesChanged();
             OnPropertyChanged(nameof(UploadHintText));
             OnPropertyChanged(nameof(CompleteHintText));
             RefreshAbnormalFlowHint();

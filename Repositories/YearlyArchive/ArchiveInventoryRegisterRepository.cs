@@ -1,6 +1,7 @@
 using DocMgr.Data;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.OpticalDiscMedia;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.YearlyArchive;
@@ -15,12 +16,18 @@ public sealed class ArchiveInventoryRegisterRepository : IArchiveInventoryRegist
 {
     private static readonly int[] ActiveRegisterStatuses =
     [
-        YearlyArchiveInventoryRegisterRecord.StatusDraft
+        YearlyArchiveInventoryRegisterRecord.StatusDraft,
+        YearlyArchiveInventoryRegisterRecord.StatusSubmitted,
+        YearlyArchiveInventoryRegisterRecord.StatusApproved,
+        YearlyArchiveInventoryRegisterRecord.StatusSignedUploaded
     ];
 
     private static readonly int[] ActiveHardDiskInventoryStatuses =
     [
-        HardDiskInventoryRegisterRecord.StatusDraft
+        HardDiskInventoryRegisterRecord.StatusDraft,
+        HardDiskInventoryRegisterRecord.StatusSubmitted,
+        HardDiskInventoryRegisterRecord.StatusApproved,
+        HardDiskInventoryRegisterRecord.StatusSignedUploaded
     ];
 
     private static readonly int[] ActiveDisposalStatuses =
@@ -397,6 +404,21 @@ public sealed class ArchiveInventoryRegisterRepository : IArchiveInventoryRegist
                               && ActiveDisposalStatuses.Contains(item.DisposalRecord!.Status));
     }
 
+    public Task<List<YearlyArchiveInventoryRegisterRecord>> GetPendingRecordsForToDoAsync(int takeCount)
+    {
+        return _dbContext.YearlyArchiveInventoryRegisterRecords
+            .AsNoTracking()
+            .Include(item => item.Items)
+            .Where(item => item.Status == YearlyArchiveInventoryRegisterRecord.StatusDraft
+                           || item.Status == YearlyArchiveInventoryRegisterRecord.StatusSubmitted
+                           || item.Status == YearlyArchiveInventoryRegisterRecord.StatusApproved
+                           || item.Status == YearlyArchiveInventoryRegisterRecord.StatusSignedUploaded)
+            .OrderBy(item => item.SubmittedAt ?? item.ApplyTime)
+            .ThenBy(item => item.Id)
+            .Take(Math.Max(1, takeCount))
+            .ToListAsync();
+    }
+
     public async Task<List<YearlyArchiveFilingFact>> GetFactsWithDetailsAsync(IReadOnlyCollection<int> filingFactIds)
     {
         if (filingFactIds == null || filingFactIds.Count == 0)
@@ -538,6 +560,46 @@ public sealed class ArchiveInventoryRegisterRepository : IArchiveInventoryRegist
     public void RemoveRegisterLock(HardDiskRegisterLock lockItem)
     {
         _dbContext.HardDiskRegisterLocks.Remove(lockItem);
+    }
+
+    public Task<List<HardDiskRegisterLock>> GetOwnedRegisterLocksAsync(int recordId)
+    {
+        return _dbContext.HardDiskRegisterLocks
+            .Where(item => item.BusinessRecordId == recordId
+                           && item.BusinessType == HardDiskRegisterLock.BusinessTypeArchiveInventoryRegister)
+            .ToListAsync();
+    }
+
+    public Task<List<SystemAttachment>> GetAttachmentsAsync(string registerNo)
+    {
+        if (string.IsNullOrWhiteSpace(registerNo))
+        {
+            return Task.FromResult(new List<SystemAttachment>());
+        }
+
+        string trimmed = registerNo.Trim();
+        return _dbContext.SystemAttachments
+            .AsNoTracking()
+            .Where(item => item.BusinessType == ArchiveInventoryRegisterDomainValues.AttachmentBusinessType
+                           && item.BusinessNo == trimmed)
+            .OrderByDescending(item => item.UploadTime)
+            .ThenByDescending(item => item.Id)
+            .ToListAsync();
+    }
+
+    public Task<SystemAttachment?> GetAttachmentByIdAsync(int attachmentId)
+    {
+        return _dbContext.SystemAttachments.FirstOrDefaultAsync(item => item.Id == attachmentId);
+    }
+
+    public void AddAttachment(SystemAttachment attachment)
+    {
+        _dbContext.SystemAttachments.Add(attachment);
+    }
+
+    public void RemoveAttachment(SystemAttachment attachment)
+    {
+        _dbContext.SystemAttachments.Remove(attachment);
     }
 
     public Task SaveChangesAsync() => _dbContext.SaveChangesAsync();

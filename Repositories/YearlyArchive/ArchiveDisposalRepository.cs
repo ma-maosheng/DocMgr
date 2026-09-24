@@ -459,7 +459,8 @@ public sealed class ArchiveDisposalRepository : IArchiveDisposalRepository
         return _dbContext.YearlyArchiveDisposalRecords
             .AsNoTracking()
             .Include(item => item.Items)
-            .Where(item => item.Status == YearlyArchiveDisposalRecord.StatusSubmitted
+            .Where(item => item.Status == YearlyArchiveDisposalRecord.StatusDraft
+                           || item.Status == YearlyArchiveDisposalRecord.StatusSubmitted
                            || item.Status == YearlyArchiveDisposalRecord.StatusApproved
                            || item.Status == YearlyArchiveDisposalRecord.StatusSignedUploaded)
             .OrderBy(item => item.SubmittedAt)

@@ -43,8 +43,13 @@ namespace DocMgr.Services.YearlyArchive
             var record = await _outboundRepository.GetByIdWithDetailsAsync(recordId)
                 ?? throw new InvalidOperationException("未找到指定的出库申请单。");
 
-            record.PrintCount++;
-            record.LastPrintedAt = DateTime.Now;
+            int printCount = record.PrintCount;
+            DateTime? firstPrintedAt = record.FirstPrintedAt;
+            DateTime? lastPrintedAt = record.LastPrintedAt;
+            ApprovalSignatureDateSupport.RecordPrint(ref printCount, ref firstPrintedAt, ref lastPrintedAt);
+            record.PrintCount = printCount;
+            record.FirstPrintedAt = firstPrintedAt;
+            record.LastPrintedAt = lastPrintedAt;
             record.UpdatedAt = DateTime.Now;
             await _outboundRepository.SaveOrUpdateRecordGraphAsync(record);
         }

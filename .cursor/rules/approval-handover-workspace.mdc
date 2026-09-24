@@ -1,6 +1,6 @@
 ---
 description: 资料管理员审批录入与办结工作区统一交互（对齐 HD-OB-APV-ED；含离库处置与办结后附件后补）
-globs: Views/**/*Approval*.xaml,Views/**/*EditDialog*.xaml,Views/**/*Workbench*.xaml,Views/**/*Return*.xaml,Views/**/*Disposal*.xaml,Views/**/*ViewDialog*.xaml,ViewModels/**/*Approval*.cs,ViewModels/**/*EditDialog*.cs,ViewModels/**/*Workbench*.cs,ViewModels/**/*Return*.cs,ViewModels/**/*Disposal*.cs,ViewModels/**/*ViewDialog*.cs,Models/Shared/ApprovalWorkflowButtonSupport.cs,Services/**/*Attachment*.cs,Services/**/*Disposal*.cs,Services/NetworkTransfer/**
+globs: Views/**/*Approval*.xaml,Views/**/*EditDialog*.xaml,Views/**/*Workbench*.xaml,Views/**/*Return*.xaml,Views/**/*Disposal*.xaml,Views/**/*ViewDialog*.xaml,ViewModels/**/*Approval*.cs,ViewModels/**/*EditDialog*.cs,ViewModels/**/*Workbench*.cs,ViewModels/**/*Return*.cs,ViewModels/**/*Disposal*.cs,ViewModels/**/*ViewDialog*.cs,Models/Shared/ApprovalWorkflowButtonSupport.cs,Models/Shared/OfflineApprovalLifecycleSupport.cs,Models/Shared/OfflineApprovalPermissionSupport.cs,Models/Shared/ApplicationListActionSupport.cs,Models/Shared/ApprovalAttachmentPartitionSupport.cs,Models/Shared/ApprovalAttachmentPolicySupport.cs,Models/Shared/PrintApprovalSignatureSupport.cs,Services/**/*Attachment*.cs,Services/**/*Disposal*.cs,Services/NetworkTransfer/**,Services/YearlyArchive/ArchiveOutboundService.cs,Services/YearlyArchive/ArchiveRegisterService.cs,Services/YearlyArchive/ArchiveReturnService*.cs,Services/HardDiskMedia/**,Services/SystemSettings/ApprovalChainSignatureLineSupport.cs
 alwaysApply: false
 ---
 
@@ -9,6 +9,103 @@ alwaysApply: false
 标杆：`HD-OB-APV-ED`（`HardDiskMediaApprovalEditDialog`）+ 办结后查看窗 `HD-OB-VW`。
 
 凡「申请人提出申请 → 资料管理员审批信息录入与确认办结」的办理界面，以及四处离库处置办理界面，均按本规则对齐。
+
+## 统一壳（强制 · 新建/改造优先）
+
+UI 壳控件：`Views/Shared/ApprovalHandoverWorkspaceShell`（含 `ApprovalAttachmentZoneControl`）。
+
+| ShellKind | 含义 | 中间按钮 | 打印按钮 | 底栏草稿/提交/撤回 |
+|---|---|---|---|---|
+| `ApplicationHandover` | A 申请交接流 | 确认实物交接 | 打印交接单 | 否 |
+| `DisposalUnlockUpload` | B 处置确认可上传流 | 确认可上传 | 打印签批单 | 是 |
+
+文案常量：`ApprovalWorkflowShellCopySupport`；阶段机仍走 `ApprovalWorkflowButtonSupport`。
+
+## 第二阶段：生命周期门禁引擎（强制）
+
+权威实现：`Models/Shared/OfflineApprovalLifecycleSupport`。
+
+Service 标准写法：**领域校验 → `TryTransition` / `EvaluateAttachmentUpload|Delete` → 写回 `NextStatus` → 执行本业效应（台账/撤柜/解锁等）**。
+
+| 能力 | API | 说明 |
+|---|---|---|
+| 迁态 | `TryTransition(GateContext, Action)` | Submit / ApprovePass / ConfirmMidStep / Complete / Withdraw / ForceVoid |
+| 附件上传 | `EvaluateAttachmentUpload` | Completed 仅资料管理员增补「其他」；B 流 `allowOtherWhileApproved` |
+| 附件删除 | `EvaluateAttachmentDelete` | 办结/作废不可删 |
+| 阶段 | `ResolvePhase` | 与 UI `ApprovalWorkflowButtonSupport.ResolvePhase` 同源 |
+
+约定：
+
+1. **不含**台账、撤柜、低格、预订注销等业务效应——仍在各 Service。
+2. **强制作废资格**（逾期设置等）由 Service 算好后传入 `forceVoidEligible`；引擎不读设置表。
+3. **软审批**（如 YA-OB `SaveApprovalFlow` 先存签字、齐后才 ApprovePass）可保留；真正改 `Status→Approved` 时必须过 `ApprovePass`。
+4. A 流申请人撤回仅 Draft/Submitted；B 流离库处置资料管理员可撤回至办结前（含已审批/已确认可上传）；**盘库登记例外**：仅草稿/已提交可撤回，审批通过后禁止。
+5. B 流（盘库 + 离库）待办：草稿起直至办结/撤回/强制作废前持续提醒资料管理员；逾期达系统「申请单逾期」时限后可「强制作废」（仅草稿/已提交）。
+6. 无 `SignedAttachmentUploaded` 字段的单据（如 YA-OB）：办结前从附件推导 `hasSignedForm` 再传入门禁。
+
+## 第三阶段：列表动作门禁 + 附件策略/分区/打印签字组件化（强制）
+
+### 列表/工作台工具栏
+
+权威实现：`Models/Shared/ApplicationListActionSupport`。
+
+| API | 用途 |
+|---|---|
+| `CanSubmit` | 申请人提交草稿 |
+| `CanApplicantWithdraw` | A 流撤回；`domainAllows` 承接 HasApprovalInput 等 |
+| `CanAdminWithdrawDisposal` | B 流离库资料管理员撤回（办结前，与生命周期引擎一致） |
+| `CanAdminWithdrawInventoryRegister` | B 流盘库资料管理员撤回（仅草稿/已提交） |
+| `CanForceVoid` | A/B 流强制作废；逾期资格并入 `forceVoidEligible` |
+| `CanOpenApprovalProcessing` | 审批办理台打开办理（Submitted～SignedUploaded） |
+
+禁止列表页平行发明第二套「仅草稿/已提交可撤」判断；B 流离库列表撤回须与 `OfflineApprovalLifecycleSupport` 对齐（含已审批/已确认可上传）；盘库列表撤回须走 `CanAdminWithdrawInventoryRegister`。
+
+已接入：HD/YA/HA/NT 处置列表（含强制作废）、HD/YA 盘库列表（含撤回收紧与强制作废）、NT 入网/出网、HD 出库/归还/审批、YA 出库/建档/归还工作台。
+
+### 发起人/办理人权限
+
+权威实现：`Models/Shared/OfflineApprovalPermissionSupport`（角色判定与 `ArchiveRegisterBusinessRules` 同源：仅认角色，系统管理员不替代）。
+
+| API | 用途 |
+|---|---|
+| `CanCreateDraft` | A=部门资料员；B 离库处置=资料管理员 |
+| `CanOperateApprovalWorkbench` | 审批办理台（资料管理员） |
+| `CanApplicantOperate` | 申请侧提交/撤回等（部门资料员） |
+| `CanSupplementOtherAfterComplete` | 办结后增补「其他附件」（资料管理员） |
+
+列表「新建」与 VW/办理窗办结后增补须走本策略，禁止各页平行写死角色字符串。
+
+### 附件策略表 + 分区装载
+
+权威实现：
+
+1. `Models/Shared/ApprovalAttachmentPolicySupport`：按 `ApprovalWorkflowBusinessTypes`（及附件 BusinessType 别名）注册签批/照片/证明/其他分类、`FlowKind`、`AllowOtherWhileApproved`；提供 `Partition` 与 `EvaluateUpload`（封装生命周期引擎）。
+2. `Models/Shared/ApprovalAttachmentPartitionSupport.ClearAndPartition`：无策略上下文时的轻量分拣。
+
+办理壳四区装载优先走 `ApprovalAttachmentPolicySupport.Partition`；上传门禁优先 `EvaluateUpload`。禁止各 VM 再手写 `if (category == …)` 分拣循环（YA-REG 历史无分类按文件名 `ResolveAttachmentKind` 后再套策略谓词可保留；HD-RTN 非正常归还情况表先剔出再 Partition）。
+
+### 打印签字行
+
+`PrintApprovalSignatureSupport` 为签字行格式权威源；`ApprovalChainSignatureLineSupport.BuildLevelGroupedText` 须调用它，禁止平行硬编码留白线。
+
+业务窗只提供：
+
+1. `HeaderContent`：业务头（申请信息 / 处置选取等）
+2. `SignatureContent`：签字录入或默认审批人只读卡
+3. `MidStepExtraContent`（仅 A）：交接人/日期
+4. ViewModel 壳契约别名（见各 `*.Shell.cs`）：`ApproveCommand`、`ConfirmMidStepCommand`、`SignedAttachments`、`PhotoAttachments`、`UploadSignedCommand` 等
+
+禁止再平行复制「蓝卡 + 1×4 附件 + 底栏五按钮」整段 XAML。
+
+已迁：全部 A/B 办理壳（见下表）。
+
+签字区统一控件：`Views/Shared/ApprovalSignatureCardsControl`（紧凑双列：签字 TextBox + 日期 DatePicker；`CanEditSigners` / `SignatureDateMin`；`Show*` 一律对标审批链 `Enable*`）。
+日期下限：`ApprovalSignatureDateSupport`（优先 `FirstPrintedAt`，否则 `LastPrintedAt`/`PrintedTime`；打印写入走 `RecordPrint`）。
+附件区：`ApprovalAttachmentZoneControl` 四区 **1 行 × 4 列** 均分；区内 `DataGrid` 随所属卡片宽度铺满（文件名列 `Width=*`）。
+「无需上传」统一原则：`ShowUploadButtons=False` → 标题旁显示「无需上传」+ **一条**说明（`ZoneHint` 优先，否则 `PlaceholderText`），**不**显示空附件表；可上传时才显示上传按钮与附件表（可上传态下 `ZoneHint` 仅作表下补充提示）。
+办结后查看窗附件区：`Views/Shared/ApprovalCompletedAttachmentPanel`（HD/YA-OB/YA-REG VW 已迁入）；增补权限走 `CanSupplementOtherAfterComplete`。
+办结后「其他附件」：办理壳分区列表须按策略装入 `OtherAttachments`（YA-RTN / HD-RTN 已接线）。
+申请态专用窗（如 `ArchiveOutboundEditDialog`）禁止残留审批/交接平行 UI；审批走 `ArchiveOutboundApprovalPanel` 等壳。
 
 ## 两类流程（状态机不同，壳一致）
 
@@ -28,7 +125,7 @@ alwaysApply: false
 
 ### B. 离库处置类（确认可上传流）
 
-适用：`YA-DSP-ED` / `HD-DSP-ED` / `NT-DSP-ED` / `HA-DSP-ED`。
+适用：`YA-DSP-ED` / `HD-DSP-ED` / `NT-DSP-ED` / `HA-DSP-ED` / `HD-INV-ED` / `YA-INV-ED`。
 
 阶段映射（对标交接解锁，**按钮文案保留业务语义**）：
 
@@ -61,16 +158,24 @@ alwaysApply: false
 
 | 短码 | 类型 | 目标 |
 |---|---|---|
-| HD-OB-APV-ED / HD-OB-VW | A | 标杆（已齐） |
-| HD-RTN | A | 卡片已近；补办结后其他附件入口 |
-| YA-REG-APV/ED / YA-REG-VW | A | 标题与壳对齐；VW 已有后补 |
-| YA-OB-APV/HND / YA-OB-VW | A | 标题与壳对齐；VW 已有后补 |
-| YA-RTN | A | 壳对齐；补办结后其他附件 |
-| NT-IB-APV/ED、NT-OB-APV/ED | A | 标题对齐；办结后打开态可补其他附件 |
-| YA/HD/NT/HA-DSP-ED | B | 壳对齐「确认可上传」；分区附件；办结后可补其他附件 |
+| HD-OB-APV-ED / HD-OB-VW | A | **已迁壳**；VW 办结后其他附件（共享面板） |
+| HD-RTN | A | **已迁壳**；办结后其他附件分区列表已接线；办结后打开态后补 |
+| YA-REG-APV/ED / YA-REG-VW | A | **已迁壳**；VW 共享面板后补；打印计数 + `FirstPrintedAt`；`Show*`←`Enable*` |
+| YA-OB-APV/HND / YA-OB-VW | A | **已迁壳**；VW 共享面板后补；`Show*`←`Enable*`；申请窗已去掉审批死代码 |
+| YA-RTN | A | **已迁壳**；签字卡统一控件；办结后其他附件分区；办结后打开态后补 |
+| NT-IB-APV/ED、NT-OB-APV/ED | A | **已迁壳**；审批态隐藏外层底栏；`Show*`←`Enable*`；办结后打开编辑窗后补 |
+| HD-DSP-ED | B | **已迁壳** |
+| YA-DSP-ED | B | **已迁壳**（`SignatureExtraContent`：撤柜/低格确认） |
+| NT-DSP-ED | B | **已迁壳** |
+| HA-DSP-ED | B | **已迁壳** |
+| HD-INV-ED | B | **已迁壳**（盘库登记；无照片区；默认仅资料室负责人） |
+| YA-INV-ED | B | **已迁壳**（模拟/电子盘库登记共用业务类型；无照片区） |
 
+嵌入双模窗时：`ShowTitleChrome=False`（外层已有标题）；壳底栏承担打印/办结/关闭，外层仅保留草稿态按钮与（可选）关闭。
 ## 禁止
 
 - 办理窗办结后仍开放删附件或改传签批/照片。  
 - 处置流强行改名为「确认实物交接」导致业务歧义。  
 - 平行复制第二套五按钮阶段枚举，不走 `ApprovalWorkflowButtonSupport`（处置可用等价映射，但阶段语义须可对照上表）。
+- 平行发明第二套附件分类/上传门禁（须走 `ApprovalAttachmentPolicySupport`）。
+- 平行发明第二套新建/审批台角色判断（须走 `OfflineApprovalPermissionSupport`）。

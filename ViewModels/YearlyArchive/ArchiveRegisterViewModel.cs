@@ -18,6 +18,11 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _isInitialized;
         private bool _hasCommittedChanges;
         private bool _isDialogMode;
+        private bool _enableDeptHead;
+        private bool _enableArchiveRoomHead;
+        private bool _enableProductionHead;
+        private bool _enableArchiveDeputyPresident;
+        private bool _enableProductionVicePresident;
 
         private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly IProjectService _projectService;

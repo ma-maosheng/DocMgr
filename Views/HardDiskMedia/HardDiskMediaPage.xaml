@@ -57,7 +57,7 @@
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="怎么用本页" FontWeight="SemiBold" Foreground="#0F766E"/>
                             <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#115E59" FontSize="12.5"
-                                       Text="点击 KPI 卡片下钻到台账、出库审批、归还、盘库或离库处置列表。具体办理请走左侧「硬盘」子菜单。"/>
+                                       Text="点击 KPI 卡片下钻到台账、出库办理、归还、盘库或离库处置列表。具体办理请走左侧「硬盘」子菜单。"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -184,13 +184,13 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Margin="0,0,12,12" Padding="12" Background="#FEF2F2" CornerRadius="4" Cursor="Hand" ToolTip="出库审批：已提交" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.SubmittedApproval}">
+                            <Border Grid.Column="0" Margin="0,0,12,12" Padding="12" Background="#FEF2F2" CornerRadius="4" Cursor="Hand" ToolTip="出库办理：已提交" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.SubmittedApproval}">
                                 <StackPanel>
                                     <TextBlock Text="待审批" Foreground="#991B1B"/>
                                     <TextBlock Margin="0,6,0,0" Text="{Binding SubmittedApplicationCount}" FontSize="22" FontWeight="Bold" Foreground="#DC2626"/>
                                 </StackPanel>
                             </Border>
-                            <Border Grid.Column="1" Margin="0,0,12,12" Padding="12" Background="#FFF7ED" CornerRadius="4" Cursor="Hand" ToolTip="出库审批：已审批待交接" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.PendingHandover}">
+                            <Border Grid.Column="1" Margin="0,0,12,12" Padding="12" Background="#FFF7ED" CornerRadius="4" Cursor="Hand" ToolTip="出库办理：已审批待交接" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static hdm:HardDiskOverviewKpiKind.PendingHandover}">
                                 <StackPanel>
                                     <TextBlock Text="待实物交接" Foreground="#9A3412"/>
                                     <TextBlock Margin="0,6,0,0" Text="{Binding PendingHandoverApplicationCount}" FontSize="22" FontWeight="Bold" Foreground="#EA580C"/>
@@ -299,7 +299,7 @@
                                 <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#7B1FA2"/>
                             </Border>
                             <StackPanel>
-                                <TextBlock Text="归还申请 → 审批入库" Style="{StaticResource FlowTitleStyle}"/>
+                                <TextBlock Text="归还申请 → 归还办理" Style="{StaticResource FlowTitleStyle}"/>
                                 <TextBlock Style="{StaticResource FlowBodyStyle}" Text="对临/长借出办理正常归还、损坏归还或挂失登记。归还落档口；挂失进入出库(挂失)，不回库。"/>
                             </StackPanel>
                         </DockPanel>

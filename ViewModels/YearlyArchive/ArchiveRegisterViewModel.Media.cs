@@ -1342,6 +1342,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void RedistributeAttachmentsByKind()
         {
+            // 历史无分类附件仍按文件名推导 kind，再走策略谓词分拣（不 Clear Attachments 总表）。
+            var policy = ApprovalAttachmentPolicySupport.Get(ApprovalWorkflowBusinessTypes.YearlyArchiveRegister);
             SignedHandoverAttachments.Clear();
             MaterialPhotoAttachments.Clear();
             ProofMaterialAttachments.Clear();
@@ -1352,15 +1354,15 @@ namespace DocMgr.ViewModels.YearlyArchive
                 string kind = ArchiveRegisterDomainValues.ResolveAttachmentKind(
                     attachment.FileCategory,
                     attachment.FileName);
-                if (string.Equals(kind, ArchiveRegisterDomainValues.AttachmentKindSignedHandoverForm, StringComparison.Ordinal))
+                if (policy.IsSignedCategory(kind))
                 {
                     SignedHandoverAttachments.Add(attachment);
                 }
-                else if (string.Equals(kind, ArchiveRegisterDomainValues.AttachmentKindMaterialPhoto, StringComparison.Ordinal))
+                else if (policy.IsPhotoCategory != null && policy.IsPhotoCategory(kind))
                 {
                     MaterialPhotoAttachments.Add(attachment);
                 }
-                else if (string.Equals(kind, ArchiveRegisterDomainValues.AttachmentKindProofMaterialScan, StringComparison.Ordinal))
+                else if (policy.IsProofCategory(kind))
                 {
                     ProofMaterialAttachments.Add(attachment);
                 }

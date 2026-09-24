@@ -321,6 +321,80 @@ namespace DocMgr.Services.SystemSettings
                 });
         }
 
+        public static void ApplyToHardDiskInventoryRegister(
+            HardDiskInventoryRegisterRecord record,
+            ApprovalChainResolution chain,
+            DateTime now)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            ArgumentNullException.ThrowIfNull(chain);
+            ApplyFiveNodeSigners(
+                chain,
+                now,
+                (name, date) =>
+                {
+                    record.DeptHead = Coalesce(record.DeptHead, name);
+                    record.DeptHeadDate ??= date;
+                },
+                (name, date) =>
+                {
+                    record.ArchiveRoomHead = Coalesce(record.ArchiveRoomHead, name);
+                    record.ArchiveRoomHeadDate ??= date;
+                },
+                (name, date) =>
+                {
+                    record.ProductionHead = Coalesce(record.ProductionHead, name);
+                    record.ProductionHeadDate ??= date;
+                },
+                (name, date) =>
+                {
+                    record.ArchiveDeputyPresident = Coalesce(record.ArchiveDeputyPresident, name);
+                    record.ArchiveDeputyPresidentDate ??= date;
+                },
+                (name, date) =>
+                {
+                    record.ProductionVicePresident = Coalesce(record.ProductionVicePresident, name);
+                    record.ProductionVicePresidentDate ??= date;
+                });
+        }
+
+        public static void ApplyToYearlyArchiveInventoryRegister(
+            YearlyArchiveInventoryRegisterRecord record,
+            ApprovalChainResolution chain,
+            DateTime now)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            ArgumentNullException.ThrowIfNull(chain);
+            ApplyFiveNodeSigners(
+                chain,
+                now,
+                (name, date) =>
+                {
+                    record.DeptHead = Coalesce(record.DeptHead, name);
+                    record.DeptHeadDate ??= date;
+                },
+                (name, date) =>
+                {
+                    record.ArchiveRoomHead = Coalesce(record.ArchiveRoomHead, name);
+                    record.ArchiveRoomHeadDate ??= date;
+                },
+                (name, date) =>
+                {
+                    record.ProductionHead = Coalesce(record.ProductionHead, name);
+                    record.ProductionHeadDate ??= date;
+                },
+                (name, date) =>
+                {
+                    record.ArchiveDeputyPresident = Coalesce(record.ArchiveDeputyPresident, name);
+                    record.ArchiveDeputyPresidentDate ??= date;
+                },
+                (name, date) =>
+                {
+                    record.ProductionVicePresident = Coalesce(record.ProductionVicePresident, name);
+                    record.ProductionVicePresidentDate ??= date;
+                });
+        }
+
         public static IReadOnlyList<string> CollectMissingSignerErrors(
             ApprovalChainResolution chain,
             Func<string, string?> readCurrentName)
@@ -645,6 +719,25 @@ namespace DocMgr.Services.SystemSettings
                     ToYesNo(!string.IsNullOrWhiteSpace(record.OtherRemark))));
         }
 
+        /// <summary>硬盘盘库登记签批匹配字段。</summary>
+        public static Dictionary<string, string> BuildHardDiskInventoryRegisterFieldValues(
+            HardDiskInventoryRegisterRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            return BuildFieldValues(
+                (ApprovalWorkflowDomainValues.FieldRegisterKind, record.RegisterKind?.Trim() ?? string.Empty));
+        }
+
+        /// <summary>年度资料盘库登记签批匹配字段。</summary>
+        public static Dictionary<string, string> BuildYearlyArchiveInventoryRegisterFieldValues(
+            YearlyArchiveInventoryRegisterRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            return BuildFieldValues(
+                (ApprovalWorkflowDomainValues.FieldMediaKind, record.MediaKind?.Trim() ?? string.Empty),
+                (ApprovalWorkflowDomainValues.FieldRegisterKind, record.RegisterKind?.Trim() ?? string.Empty));
+        }
+
         public static string? ReadRegisterSigner(YearlyArchiveRegisterRecord record, string nodeKey) =>
             ReadFiveNodeSigner(
                 nodeKey,
@@ -709,6 +802,28 @@ namespace DocMgr.Services.SystemSettings
                 record.ProductionVicePresident);
 
         public static string? ReadHardDiskDisposalSigner(HardDiskDisposalRecord record, string nodeKey) =>
+            ReadFiveNodeSigner(
+                nodeKey,
+                record.DeptHead,
+                record.ArchiveRoomHead,
+                record.ProductionHead,
+                record.ArchiveDeputyPresident,
+                record.ProductionVicePresident);
+
+        public static string? ReadHardDiskInventoryRegisterSigner(
+            HardDiskInventoryRegisterRecord record,
+            string nodeKey) =>
+            ReadFiveNodeSigner(
+                nodeKey,
+                record.DeptHead,
+                record.ArchiveRoomHead,
+                record.ProductionHead,
+                record.ArchiveDeputyPresident,
+                record.ProductionVicePresident);
+
+        public static string? ReadYearlyArchiveInventoryRegisterSigner(
+            YearlyArchiveInventoryRegisterRecord record,
+            string nodeKey) =>
             ReadFiveNodeSigner(
                 nodeKey,
                 record.DeptHead,

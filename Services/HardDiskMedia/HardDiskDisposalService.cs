@@ -17,17 +17,20 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
     private readonly IBusinessRuleService _businessRuleService;
     private readonly IUserService _userService;
     private readonly IApprovalWorkflowService _approvalWorkflowService;
+    private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
 
     public HardDiskDisposalService(
         IHardDiskDisposalRepository repository,
         IBusinessRuleService businessRuleService,
         IUserService userService,
-        IApprovalWorkflowService approvalWorkflowService)
+        IApprovalWorkflowService approvalWorkflowService,
+        IBusinessLogicSettingsService businessLogicSettingsService)
     {
         _repository = repository;
         _businessRuleService = businessRuleService;
         _userService = userService;
         _approvalWorkflowService = approvalWorkflowService;
+        _businessLogicSettingsService = businessLogicSettingsService;
     }
 
     public async Task<IReadOnlyList<HardDiskDisposalRecord>> SearchRecordsAsync(string? keyword, int? status, int? applyYear)
@@ -247,9 +250,16 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         var existing = await _repository.GetRecordByIdForUpdateAsync(recordId)
             ?? throw new InvalidOperationException("未找到离库处置单。");
 
-        if (existing.Status != HardDiskDisposalRecord.StatusSubmitted)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.ApprovePass);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅已提交状态可审批。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许审批。");
         }
 
         DateTime now = DateTime.Now;
@@ -278,12 +288,67 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
                 + "请在「审核审批」中配置或在用户管理中维护对应角色后再审批通过。");
         }
 
-        existing.Status = HardDiskDisposalRecord.StatusApproved;
+        existing.Status = gate.NextStatus ?? HardDiskDisposalRecord.StatusApproved;
         existing.ApprovedBy = ResolveUserDisplayName(currentUser);
         existing.ApprovedTime = now;
         existing.ApprovalOpinion = string.IsNullOrWhiteSpace(approvalOpinion) ? "同意" : approvalOpinion.Trim();
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateReviewSignersAsync(
+        int recordId,
+        string? deptHead,
+        DateTime? deptHeadDate,
+        string? archiveRoomHead,
+        DateTime? archiveRoomHeadDate,
+        string? productionHead,
+        DateTime? productionHeadDate,
+        string? archiveDeputyPresident,
+        DateTime? archiveDeputyPresidentDate,
+        string? productionVicePresident,
+        DateTime? productionVicePresidentDate,
+        User currentUser)
+    {
+        EnsureArchiveAdmin(currentUser);
+        var existing = await _repository.GetRecordByIdForUpdateAsync(recordId)
+            ?? throw new InvalidOperationException("未找到离库处置单。");
+
+        if (existing.Status is not (HardDiskDisposalRecord.StatusApproved
+            or HardDiskDisposalRecord.StatusSignedUploaded))
+        {
+            throw new InvalidOperationException("仅已审批或已确认可上传状态可修改审核审批人。");
+        }
+
+        var minDate = ApprovalSignatureDateSupport.ResolveMinDate(existing.FirstPrintedAt, existing.LastPrintedAt, existing.PrintCount);
+        ThrowIfSignatureDateInvalid(deptHeadDate, minDate, "部门审核日期");
+        ThrowIfSignatureDateInvalid(archiveRoomHeadDate, minDate, "资料室签字日期");
+        ThrowIfSignatureDateInvalid(productionHeadDate, minDate, "生产科签字日期");
+        ThrowIfSignatureDateInvalid(archiveDeputyPresidentDate, minDate, "分管资料院长签字日期");
+        ThrowIfSignatureDateInvalid(productionVicePresidentDate, minDate, "分管生产院长签字日期");
+
+        existing.DeptHead = deptHead?.Trim() ?? string.Empty;
+        existing.DeptHeadDate = ApprovalSignatureDateSupport.Clamp(deptHeadDate, minDate);
+        existing.ArchiveRoomHead = archiveRoomHead?.Trim() ?? string.Empty;
+        existing.ArchiveRoomHeadDate = ApprovalSignatureDateSupport.Clamp(archiveRoomHeadDate, minDate);
+        existing.ProductionHead = productionHead?.Trim() ?? string.Empty;
+        existing.ProductionHeadDate = ApprovalSignatureDateSupport.Clamp(productionHeadDate, minDate);
+        existing.ArchiveDeputyPresident = archiveDeputyPresident?.Trim() ?? string.Empty;
+        existing.ArchiveDeputyPresidentDate = ApprovalSignatureDateSupport.Clamp(archiveDeputyPresidentDate, minDate);
+        existing.ProductionVicePresident = productionVicePresident?.Trim() ?? string.Empty;
+        existing.ProductionVicePresidentDate = ApprovalSignatureDateSupport.Clamp(productionVicePresidentDate, minDate);
+        existing.UpdatedAt = DateTime.Now;
+        await _repository.SaveChangesAsync();
+    }
+
+    private static void ThrowIfSignatureDateInvalid(DateTime? value, DateTime? minDate, string fieldLabel)
+    {
+        var error = ApprovalSignatureDateSupport.ValidateNotBeforePrint(value, minDate, fieldLabel);
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            throw new InvalidOperationException(error);
+        }
     }
 
     public async Task ConfirmReadyForUploadAsync(int recordId, User currentUser)
@@ -292,13 +357,20 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         var existing = await _repository.GetRecordByIdForUpdateAsync(recordId)
             ?? throw new InvalidOperationException("未找到离库处置单。");
 
-        if (existing.Status != HardDiskDisposalRecord.StatusApproved)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.ConfirmMidStep);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("请先完成审批后再确认可上传签批单。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许确认可上传。");
         }
 
         DateTime now = DateTime.Now;
-        existing.Status = HardDiskDisposalRecord.StatusSignedUploaded;
+        existing.Status = gate.NextStatus ?? HardDiskDisposalRecord.StatusSignedUploaded;
         existing.ConfirmedBy = ResolveUserDisplayName(currentUser);
         existing.ConfirmedTime = now;
         existing.UpdatedAt = now;
@@ -311,9 +383,16 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         var existing = await _repository.GetRecordByIdForUpdateAsync(recordId)
             ?? throw new InvalidOperationException("未找到离库处置单。");
 
-        if (existing.Status != HardDiskDisposalRecord.StatusSignedUploaded)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.Complete);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("请先确认可上传签批单后再办结。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许办结。");
         }
 
         var attachments = await _repository.GetAttachmentsAsync(existing.DisposalNo);
@@ -411,7 +490,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             UnlockMediaIfOwned(existing, medium);
         }
 
-        existing.Status = HardDiskDisposalRecord.StatusCompleted;
+        existing.Status = gate.NextStatus ?? HardDiskDisposalRecord.StatusCompleted;
         existing.CompletedAt = now;
         existing.CompletedBy = operatorName;
         existing.SignedAttachmentUploaded = true;
@@ -426,11 +505,16 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         var existing = await _repository.GetRecordByIdForUpdateAsync(recordId)
             ?? throw new InvalidOperationException("未找到离库处置单。");
 
-        if (existing.Status is HardDiskDisposalRecord.StatusCompleted
-            or HardDiskDisposalRecord.StatusWithdrawn
-            or HardDiskDisposalRecord.StatusForceWithdrawn)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.Withdraw);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("当前状态不可撤回作废。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不可撤回作废。");
         }
 
         var media = await _repository.GetMediaWithLedgerByIdsAsync(existing.Items.Select(item => item.MediumId).ToList());
@@ -440,9 +524,51 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         }
 
         DateTime now = DateTime.Now;
-        existing.Status = HardDiskDisposalRecord.StatusWithdrawn;
+        existing.Status = gate.NextStatus ?? HardDiskDisposalRecord.StatusWithdrawn;
         existing.WithdrawnAt = now;
         existing.WithdrawReason = reason?.Trim() ?? string.Empty;
+        existing.UpdatedAt = now;
+        await _repository.SaveChangesAsync();
+    }
+
+    public async Task ForceVoidAsync(int recordId, string? reason, User currentUser)
+    {
+        EnsureArchiveAdmin(currentUser);
+        var existing = await _repository.GetRecordByIdForUpdateAsync(recordId)
+            ?? throw new InvalidOperationException("未找到离库处置单。");
+
+        string settingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
+        bool isOverdue = _businessLogicSettingsService.IsEligibleForAdminForceVoid(existing.ApplyTime, settingCode);
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin,
+                forceVoidEligible: isOverdue),
+            OfflineApprovalLifecycleSupport.Action.ForceVoid);
+        if (!gate.Allowed)
+        {
+            if (!isOverdue
+                && existing.Status is HardDiskDisposalRecord.StatusDraft
+                    or HardDiskDisposalRecord.StatusSubmitted)
+            {
+                throw new InvalidOperationException(_businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
+            }
+
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不可强制作废。");
+        }
+
+        var media = await _repository.GetMediaWithLedgerByIdsAsync(existing.Items.Select(item => item.MediumId).ToList());
+        foreach (var medium in media)
+        {
+            UnlockMediaIfOwned(existing, medium);
+        }
+
+        DateTime now = DateTime.Now;
+        existing.Status = gate.NextStatus ?? HardDiskDisposalRecord.StatusForceWithdrawn;
+        existing.WithdrawnAt = now;
+        existing.WithdrawReason = string.IsNullOrWhiteSpace(reason) ? "资料管理员强制作废" : reason.Trim();
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
     }
@@ -460,8 +586,13 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         }
 
         DateTime now = DateTime.Now;
-        existing.PrintCount += 1;
-        existing.LastPrintedAt = now;
+        int printCount = existing.PrintCount;
+        DateTime? firstPrintedAt = existing.FirstPrintedAt;
+        DateTime? lastPrintedAt = existing.LastPrintedAt;
+        ApprovalSignatureDateSupport.RecordPrint(ref printCount, ref firstPrintedAt, ref lastPrintedAt, now);
+        existing.PrintCount = printCount;
+        existing.FirstPrintedAt = firstPrintedAt;
+        existing.LastPrintedAt = lastPrintedAt;
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
     }
@@ -582,19 +713,19 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             return (false, "当前状态不允许上传附件（请在审批通过并确认可上传后操作）。", null);
         }
 
-        if (existing.Status == HardDiskDisposalRecord.StatusCompleted)
+        bool isOther = string.Equals(category, HardDiskDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal);
+        var attachGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentUpload(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            isOtherCategory: isOther,
+            isArchiveAdmin: true,
+            allowOtherWhileApproved: true);
+        if (!attachGate.Allowed)
         {
-            if (!string.Equals(category, HardDiskDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
-            {
-                return (false, "办结后仅可增补「其他附件」。", null);
-            }
-        }
-        else if (existing.Status == HardDiskDisposalRecord.StatusApproved
-            && !string.Equals(category, HardDiskDisposalDomainValues.AttachmentCategoryOther, StringComparison.Ordinal))
-        {
-            // 允许审批后先确认；附件主流程在 SignedUploaded，但 Approved 也可先传其他附件。
-            // 签批单与照片要求进入 SignedUploaded。
-            return (false, "请先确认可上传签批单，再上传签批单或硬盘照片。", null);
+            return (false, attachGate.DenyMessage ?? "当前状态不允许上传附件。", null);
         }
 
         DateTime now = DateTime.Now;
@@ -645,9 +776,10 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             return (false, "未找到关联处置单。");
         }
 
-        if (existing.Status == HardDiskDisposalRecord.StatusCompleted)
+        var deleteGate = OfflineApprovalLifecycleSupport.EvaluateAttachmentDelete(existing.Status);
+        if (!deleteGate.Allowed)
         {
-            return (false, "已办结单据不可删除附件。");
+            return (false, deleteGate.DenyMessage ?? "当前状态不允许删除附件。");
         }
 
         string category = attachment.FileCategory?.Trim() ?? string.Empty;

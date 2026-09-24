@@ -45,6 +45,9 @@ namespace DocMgr.Services.Interfaces
 
         Task ApplyDefaultApprovalInfoAsync(YearlyArchiveOutboundRecord record, User operatorUser);
 
+        /// <summary>解析资料出库签批链（用于签字卡 Show*/Enable*）。</summary>
+        Task<ApprovalChainResolution> ResolveApprovalChainAsync(YearlyArchiveOutboundRecord record);
+
         Task<ArchiveOutboundFlowResult> UploadAttachmentFlowAsync(
             int recordId,
             string attachmentKind,

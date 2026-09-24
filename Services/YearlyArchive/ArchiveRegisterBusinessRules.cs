@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DocMgr.Models.NetworkTransfer;
+using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 
@@ -87,29 +88,13 @@ namespace DocMgr.Services.YearlyArchive
         /// 资料管理员：审批及后续办理（交接/办结/立档等）。仅认角色，系统管理员不替代本角色。
         /// </summary>
         public static bool IsArchiveAdminUser(User? user)
-        {
-            if (user == null)
-            {
-                return false;
-            }
-
-            string role = user.Role?.Trim() ?? string.Empty;
-            return string.Equals(role, UserRoleDomainValues.ArchiveAdmin, StringComparison.Ordinal);
-        }
+            => OfflineApprovalPermissionSupport.IsArchiveAdmin(user);
 
         /// <summary>
         /// 部门资料员：仅可发起各类申请业务。仅认角色。
         /// </summary>
         public static bool IsDepartmentArchiveAdmin(User? user)
-        {
-            if (user == null)
-            {
-                return false;
-            }
-
-            string role = user.Role?.Trim() ?? string.Empty;
-            return string.Equals(role, UserRoleDomainValues.DepartmentArchiveClerk, StringComparison.Ordinal);
-        }
+            => OfflineApprovalPermissionSupport.IsApplicantClerk(user);
 
         /// <summary>
         /// 申请侧操作人：部门资料员。
@@ -120,7 +105,7 @@ namespace DocMgr.Services.YearlyArchive
         /// 是否允许发起申请：仅部门资料员。系统管理员不替代本角色。
         /// </summary>
         public static bool CanSubmitApplication(User? user) =>
-            IsDepartmentArchiveAdmin(user);
+            OfflineApprovalPermissionSupport.CanApplicantOperate(user);
 
         /// <summary>
         /// 系统管理员：仅系统设置等运维，不替代资料管理员/部门资料员办理资料业务。

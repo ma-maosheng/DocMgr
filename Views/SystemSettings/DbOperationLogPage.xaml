@@ -38,7 +38,8 @@
                     <TextBlock Text="关键字：" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <TextBox Width="180"
                              Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,12,0"/>
+                             Margin="0,0,12,0"
+                             ToolTip="操作摘要、实体键、用户名、来源页面/按钮、变更字段"/>
                     <Button Content="查询"
                             Command="{Binding RefreshCommand}"
                             Width="90"
@@ -53,16 +54,19 @@
                             Command="{Binding ClearAllCommand}"
                             Width="110"
                             Margin="0,0,10,0"
-                            Style="{StaticResource ToolbarDangerButtonStyle}"/>
+                            Style="{StaticResource ToolbarDangerButtonStyle}"
+                            ToolTip="永久删除库内全部操作日志，不可恢复"/>
                     <Button Content="停止记录"
                             Command="{Binding StopRecordingCommand}"
                             Width="90"
                             Margin="0,0,10,0"
-                            Style="{StaticResource ToolbarActionButtonStyle}"/>
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            ToolTip="暂停向数据库写入操作日志"/>
                     <Button Content="启动记录"
                             Command="{Binding StartRecordingCommand}"
                             Width="90"
-                            Style="{StaticResource ToolbarActionButtonStyle}"/>
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            ToolTip="恢复向数据库写入操作日志"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>

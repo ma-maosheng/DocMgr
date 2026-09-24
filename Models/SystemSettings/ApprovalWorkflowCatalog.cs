@@ -224,6 +224,24 @@ namespace DocMgr.Models.SystemSettings
                 .ToList()
         };
 
+        private static readonly ApprovalConditionFieldDefinition HardDiskInventoryRegisterKindField = new()
+        {
+            FieldKey = ApprovalWorkflowDomainValues.FieldRegisterKind,
+            DisplayName = "登记类型",
+            Options = HardDiskInventoryRegisterDomainValues.RegisterKindOptions
+                .Select(value => (value, value))
+                .ToList()
+        };
+
+        private static readonly ApprovalConditionFieldDefinition YearlyInventoryRegisterKindField = new()
+        {
+            FieldKey = ApprovalWorkflowDomainValues.FieldRegisterKind,
+            DisplayName = "登记类型",
+            Options = ArchiveInventoryRegisterDomainValues.RegisterKindOptions
+                .Select(value => (value, value))
+                .ToList()
+        };
+
         private static readonly ApprovalConditionFieldDefinition YearlyDisposalReasonField = new()
         {
             FieldKey = ApprovalWorkflowDomainValues.FieldDisposalReason,
@@ -447,6 +465,25 @@ namespace DocMgr.Models.SystemSettings
                     HardDiskDispositionMethodField,
                     BeforeMediaStatusField,
                     HasOtherRemarkField
+                ]
+            },
+            new()
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.HardDiskInventoryRegister,
+                DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.HardDiskInventoryRegister),
+                ConditionFields =
+                [
+                    HardDiskInventoryRegisterKindField
+                ]
+            },
+            new()
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveInventoryRegister,
+                DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.YearlyArchiveInventoryRegister),
+                ConditionFields =
+                [
+                    MediaKindField,
+                    YearlyInventoryRegisterKindField
                 ]
             }
         ];

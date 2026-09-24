@@ -34,13 +34,13 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="业务状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <ComboBox Width="180"
                                   Style="{StaticResource ToolbarFilterComboBoxStyle}"
                                   ItemsSource="{Binding StatusFilterOptions}"
                                   SelectedItem="{Binding SelectedStatusFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                   DisplayMemberPath="Label"
-                                  ToolTip="可按状态筛选；选【全部】列出各状态申请（含未提交）"/>
+                                  ToolTip="可按业务状态筛选；选【全部】列出各状态申请（含未提交）"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
@@ -49,7 +49,8 @@
                             <ToggleButton x:Name="ApplicantFilterButton"
                                           Width="180"
                                           Height="32"
-                                          IsChecked="{Binding IsApplicantPopupOpen, Mode=TwoWay}">
+                                          IsChecked="{Binding IsApplicantPopupOpen, Mode=TwoWay}"
+                                          ToolTip="可多选申请人筛选列表；勾选「全部」不限申请人">
                                 <DockPanel LastChildFill="True">
                                     <TextBlock Text="{Binding SelectedApplicantSummary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Text="▼" Margin="8,0,0,0" VerticalAlignment="Center" DockPanel.Dock="Right"/>
@@ -150,7 +151,7 @@
                     <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="90"/>
                     <DataGridTextColumn Header="申请部门" Binding="{Binding ApplicantDept}" Width="120"/>
                     <DataGridTextColumn Header="申请日期" Binding="{Binding ApplicantDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-                    <DataGridTextColumn Header="状态" Binding="{Binding StatusStr}" Width="110"/>
+                    <DataGridTextColumn Header="业务状态" Binding="{Binding StatusStr}" Width="110"/>
                     <DataGridTextColumn Header="部门负责人" Binding="{Binding DeptHead}" Width="110"/>
                     <DataGridTextColumn Header="资料管理员" Binding="{Binding Administrator}" Width="110"/>
                     <DataGridTextColumn Header="归档盒/编号" Binding="{Binding ArchiveBoxNos}" Width="220"/>

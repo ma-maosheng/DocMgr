@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DocMgr.Models.Shared;
 
 namespace DocMgr.Services.HardDiskMedia
 {
@@ -29,9 +30,16 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaFlowResult.Fail("未找到当前申请单。");
             }
 
-            if (existing.ApplicationStatus != HardDiskMediaApplication.StatusSubmitted)
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    existing.ApplicationStatus,
+                    existing.SignedAttachmentUploaded,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                OfflineApprovalLifecycleSupport.Action.ApprovePass);
+            if (!gate.Allowed)
             {
-                return HardDiskMediaFlowResult.Fail("只有“已提交-待审批”的申请单才能执行审批通过。");
+                return HardDiskMediaFlowResult.Fail(gate.DenyMessage ?? "当前状态不允许审批通过。");
             }
 
             var now = DateTime.Now;
@@ -75,7 +83,7 @@ namespace DocMgr.Services.HardDiskMedia
                 existing.TargetLocation = string.Empty;
             }
 
-            existing.ApplicationStatus = HardDiskMediaApplication.StatusApproved;
+            existing.ApplicationStatus = gate.NextStatus ?? HardDiskMediaApplication.StatusApproved;
             existing.DeptHead = input.DeptHead?.Trim() ?? string.Empty;
             existing.DeptHeadDate = string.IsNullOrWhiteSpace(existing.DeptHead)
                 ? null
@@ -125,9 +133,16 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaFlowResult.Fail("未找到当前申请单。");
             }
 
-            if (existing.ApplicationStatus != HardDiskMediaApplication.StatusApproved)
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    existing.ApplicationStatus,
+                    existing.SignedAttachmentUploaded,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                OfflineApprovalLifecycleSupport.Action.ConfirmMidStep);
+            if (!gate.Allowed)
             {
-                return HardDiskMediaFlowResult.Fail("只有“已审批-待实物交接”的申请单才能确认实物交接。");
+                return HardDiskMediaFlowResult.Fail(gate.DenyMessage ?? "当前状态不允许确认实物交接。");
             }
 
             var input = handoverInput ?? new HardDiskMediaApprovalInput();
@@ -178,7 +193,7 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             var now = DateTime.Now;
-            existing.ApplicationStatus = HardDiskMediaApplication.StatusSignedUploaded;
+            existing.ApplicationStatus = gate.NextStatus ?? HardDiskMediaApplication.StatusSignedUploaded;
             existing.ExecutedBy = !string.IsNullOrWhiteSpace(handoverAdmin)
                 ? handoverAdmin
                 : handoverName;
@@ -208,13 +223,16 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaFlowResult.Fail("未找到当前申请单。");
             }
 
-            if (existing.ApplicationStatus == HardDiskMediaApplication.StatusApproved ||
-                existing.ApplicationStatus == HardDiskMediaApplication.StatusPendingProcess ||
-                existing.ApplicationStatus == HardDiskMediaApplication.StatusCompleted ||
-                existing.ApplicationStatus == HardDiskMediaApplication.StatusWithdrawn ||
-                existing.ApplicationStatus == HardDiskMediaApplication.StatusForceWithdrawn)
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    existing.ApplicationStatus,
+                    existing.SignedAttachmentUploaded,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.Applicant),
+                OfflineApprovalLifecycleSupport.Action.Withdraw);
+            if (!gate.Allowed)
             {
-                return HardDiskMediaFlowResult.Fail("当前申请单已进入或完成审批信息阶段，不允许申请人撤回作废。");
+                return HardDiskMediaFlowResult.Fail(gate.DenyMessage ?? "当前申请单不允许撤回作废。");
             }
 
             if (IsOutboundLockableType(existing.ApplicationType))
@@ -226,7 +244,7 @@ namespace DocMgr.Services.HardDiskMedia
                 }
             }
 
-            existing.ApplicationStatus = HardDiskMediaApplication.StatusWithdrawn;
+            existing.ApplicationStatus = gate.NextStatus ?? HardDiskMediaApplication.StatusWithdrawn;
             existing.ArchiveRoomHead = currentUser.RealName?.Trim() ?? string.Empty;
             existing.ArchiveRoomHeadDate = DateTime.Now;
             existing.ApprovalOpinion = string.IsNullOrWhiteSpace(opinion) ? "申请人撤回作废" : opinion.Trim();
@@ -255,24 +273,30 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaFlowResult.Fail("未找到当前申请单。");
             }
 
-            if (existing.ApplicationStatus == HardDiskMediaApplication.StatusCompleted ||
-                existing.ApplicationStatus == HardDiskMediaApplication.StatusWithdrawn ||
-                existing.ApplicationStatus == HardDiskMediaApplication.StatusForceWithdrawn)
-            {
-                return HardDiskMediaFlowResult.Fail("当前申请单状态不允许强制撤回作废。");
-            }
-
             bool isOverdue = await IsEligibleForAdminForceVoidAsync(existing.ApplyTime);
-            if (!isOverdue)
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    existing.ApplicationStatus,
+                    existing.SignedAttachmentUploaded,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin,
+                    forceVoidEligible: isOverdue),
+                OfflineApprovalLifecycleSupport.Action.ForceVoid);
+            if (!gate.Allowed)
             {
-                string settingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
-                return HardDiskMediaFlowResult.Fail(_businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
-            }
+                if (!isOverdue
+                    && existing.ApplicationStatus is not (
+                        HardDiskMediaApplication.StatusCompleted
+                        or HardDiskMediaApplication.StatusWithdrawn
+                        or HardDiskMediaApplication.StatusForceWithdrawn
+                        or HardDiskMediaApplication.StatusApproved
+                        or HardDiskMediaApplication.StatusSignedUploaded))
+                {
+                    string settingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
+                    return HardDiskMediaFlowResult.Fail(_businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
+                }
 
-            if (existing.ApplicationStatus == HardDiskMediaApplication.StatusApproved ||
-                existing.ApplicationStatus == HardDiskMediaApplication.StatusPendingProcess)
-            {
-                return HardDiskMediaFlowResult.Fail("当前申请单已录入审批信息或已上传附件，不允许强制撤回作废。");
+                return HardDiskMediaFlowResult.Fail(gate.DenyMessage ?? "当前申请单不允许强制撤回作废。");
             }
 
             if (IsOutboundLockableType(existing.ApplicationType))
@@ -284,7 +308,7 @@ namespace DocMgr.Services.HardDiskMedia
                 }
             }
 
-            existing.ApplicationStatus = HardDiskMediaApplication.StatusForceWithdrawn;
+            existing.ApplicationStatus = gate.NextStatus ?? HardDiskMediaApplication.StatusForceWithdrawn;
             existing.ArchiveRoomHead = currentUser?.RealName?.Trim() ?? string.Empty;
             existing.ArchiveRoomHeadDate = DateTime.Now;
             existing.ApprovalOpinion = string.IsNullOrWhiteSpace(opinion) ? "资料管理员强制撤回作废" : opinion.Trim();
@@ -319,14 +343,16 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaFlowResult.Fail("未找到当前申请单。");
             }
 
-            if (existingApplication.ApplicationStatus != HardDiskMediaApplication.StatusSignedUploaded)
+            var gate = OfflineApprovalLifecycleSupport.TryTransition(
+                new OfflineApprovalLifecycleSupport.GateContext(
+                    existingApplication.ApplicationStatus,
+                    existingApplication.SignedAttachmentUploaded,
+                    OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                    OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+                OfflineApprovalLifecycleSupport.Action.Complete);
+            if (!gate.Allowed)
             {
-                return HardDiskMediaFlowResult.Fail("请先完成实物交接并上传签批交接单后再确认办结。");
-            }
-
-            if (!existingApplication.SignedAttachmentUploaded)
-            {
-                return HardDiskMediaFlowResult.Fail("请先上传签批交接单后再办理。");
+                return HardDiskMediaFlowResult.Fail(gate.DenyMessage ?? "当前状态不允许办结。");
             }
 
             if (!IsReturnOrLossRegistrationType(existingApplication.ApplicationType))
@@ -457,7 +483,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             _hardDiskMediaRepository.AddTransaction(transaction);
 
-            existingApplication.ApplicationStatus = HardDiskMediaApplication.StatusCompleted;
+            existingApplication.ApplicationStatus = gate.NextStatus ?? HardDiskMediaApplication.StatusCompleted;
             existingApplication.ExecutedBy = string.IsNullOrWhiteSpace(existingApplication.ExecutedBy)
                 ? currentUser?.RealName?.Trim() ?? string.Empty
                 : existingApplication.ExecutedBy.Trim();
@@ -857,7 +883,10 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             existingApplication.PrintCount += 1;
-            existingApplication.PrintedTime = DateTime.Now;
+            var now = DateTime.Now;
+            if (!existingApplication.FirstPrintedAt.HasValue)
+                existingApplication.FirstPrintedAt = now;
+            existingApplication.PrintedTime = now;
             existingApplication.UpdatedTime = existingApplication.PrintedTime.Value;
 
             await _hardDiskMediaRepository.SaveChangesAsync();

@@ -1,3 +1,5 @@
+using DocMgr.Models.Cabinets;
+
 namespace DocMgr.Models.HardDiskMedia
 {
     /// <summary>
@@ -21,10 +23,21 @@ namespace DocMgr.Models.HardDiskMedia
         public int SlotCapacity { get; init; }
 
         /// <summary>
-        /// 下拉展示文本。
+        /// 用于展示与空余计算的有效容量（容量未配置时回退默认值）。
         /// </summary>
-        public string DisplayText => SlotCapacity > 0
-            ? $"{Location}（{ExistingMediumCount}/{SlotCapacity}盘）"
-            : $"{Location}（{ExistingMediumCount}盘）";
+        public int ResolvedSlotCapacity => SlotCapacity > 0
+            ? SlotCapacity
+            : CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
+
+        /// <summary>
+        /// 空余盘位数（不低于 0）。
+        /// </summary>
+        public int RemainingCapacity => Math.Max(0, ResolvedSlotCapacity - ExistingMediumCount);
+
+        /// <summary>
+        /// 下拉展示文本：优先标出空余盘位，便于推荐与挑选。
+        /// </summary>
+        public string DisplayText =>
+            $"{Location}（空{RemainingCapacity}｜{ExistingMediumCount}/{ResolvedSlotCapacity}）";
     }
 }

@@ -103,13 +103,14 @@ namespace DocMgr.ViewModels.NetworkTransfer
         }
 
         private bool CanApplicantOperate =>
-            ArchiveRegisterBusinessRules.CanSubmitApplication(_userContextService.CurrentUser)
-            || ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
+            OfflineApprovalPermissionSupport.CanApplicantOperate(_userContextService.CurrentUser)
+            || OfflineApprovalPermissionSupport.CanOperateApprovalWorkbench(_userContextService.CurrentUser);
 
         private bool CanWithdrawSelected =>
             IsApplicationMode
-            && SelectedRecord != null
-            && SelectedRecord.Status is NetworkInboundRecord.StatusDraft or NetworkInboundRecord.StatusSubmitted;
+            && ApplicationListActionSupport.CanApplicantWithdraw(
+                SelectedRecord?.Status ?? ApplicationWorkflowStatus.Completed,
+                isOwnerApplicant: SelectedRecord != null);
 
         public RelayCommand RefreshCommand { get; }
         public RelayCommand SearchCommand { get; }

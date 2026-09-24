@@ -1,0 +1,136 @@
+<UserControl x:Class="DocMgr.Views.Shared.ApprovalAttachmentZoneControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:DocMgr.Views.Shared"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch"
+             MinWidth="0"
+             SizeChanged="OnZoneSizeChanged">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <local:InverseBoolToVisConverter x:Key="InverseBoolToVisConverter"/>
+    </UserControl.Resources>
+    <Border Padding="6"
+            Background="#FAFBFC"
+            BorderBrush="#E2E8F0"
+            BorderThickness="1"
+            CornerRadius="3"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            MinWidth="0"
+            ClipToBounds="True">
+        <Grid x:Name="ContentHost" MinWidth="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,4" MinWidth="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{Binding ZoneTitle, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                           FontWeight="SemiBold"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"
+                           Margin="0,0,4,0"/>
+                <!-- 可上传：上传按钮；无需上传：统一显示「无需上传」 -->
+                <WrapPanel Grid.Column="1"
+                           HorizontalAlignment="Right"
+                           Visibility="{Binding ShowUploadButtons, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Button Content="上传"
+                            Command="{Binding UploadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            IsEnabled="{Binding CanUpload, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Padding="6,2"
+                            Margin="0,0,4,0"
+                            Style="{StaticResource FormInlineButtonStyle}"/>
+                    <Button Content="高影仪直拍"
+                            Command="{Binding CaptureCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            IsEnabled="{Binding CanUpload, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Padding="6,2"
+                            Style="{StaticResource FormInlineButtonStyle}"/>
+                </WrapPanel>
+                <TextBlock Grid.Column="1"
+                           Text="无需上传"
+                           Foreground="#94A3B8"
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Visibility="{Binding ShowUploadButtons, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBoolToVisConverter}}"/>
+            </Grid>
+
+            <!-- 可上传：附件表；无需上传：不显示空表，改显示一条说明 -->
+            <DataGrid x:Name="AttachmentGrid"
+                      Grid.Row="1"
+                      ItemsSource="{Binding Attachments, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      Height="88"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserResizeRows="False"
+                      CanUserResizeColumns="False"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      RowHeaderWidth="0"
+                      IsReadOnly="True"
+                      SelectionMode="Single"
+                      HorizontalAlignment="Left"
+                      VerticalAlignment="Top"
+                      MinWidth="0"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      BorderBrush="#EEE"
+                      BorderThickness="1"
+                      Visibility="{Binding ShowUploadButtons, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="文件名"
+                                        Binding="{Binding FileName}"
+                                        Width="*"
+                                        MinWidth="24"
+                                        IsReadOnly="True"/>
+                    <DataGridTemplateColumn Header="操作" Width="72">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Button Content="查看"
+                                            Padding="2,1"
+                                            Margin="0,0,2,0"
+                                            FontSize="11"
+                                            Command="{Binding ViewCommand, RelativeSource={RelativeSource AncestorType=local:ApprovalAttachmentZoneControl}}"
+                                            CommandParameter="{Binding}"/>
+                                    <Button Content="删除"
+                                            Padding="2,1"
+                                            FontSize="11"
+                                            Command="{Binding DeleteCommand, RelativeSource={RelativeSource AncestorType=local:ApprovalAttachmentZoneControl}}"
+                                            CommandParameter="{Binding}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <TextBlock Grid.Row="1"
+                       Text="{Binding SkipUploadReasonText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
+                       Foreground="#94A3B8"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       MinHeight="88"
+                       VerticalAlignment="Center"
+                       Visibility="{Binding ShowUploadButtons, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBoolToVisConverter}}"/>
+
+            <!-- 可上传时的补充提示（例如证明材料声明说明）；无需上传时说明已在 SkipUploadReasonText，不再重复 -->
+            <TextBlock Grid.Row="2"
+                       Text="{Binding ZoneHint, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
+                       Margin="0,4,0,0"
+                       Foreground="#B45309"
+                       TextWrapping="Wrap"
+                       FontSize="11"
+                       Visibility="{Binding ShowActiveZoneHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        </Grid>
+    </Border>
+</UserControl>

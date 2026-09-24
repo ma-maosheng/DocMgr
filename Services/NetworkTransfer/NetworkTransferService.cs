@@ -23,6 +23,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     private readonly IProjectService _projectService;
     private readonly IUserService _userService;
     private readonly IApprovalWorkflowService _approvalWorkflowService;
+    private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
 
     public NetworkTransferService(
         INetworkTransferRepository repository,
@@ -33,7 +34,8 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         IArchiveFilingSearchService archiveFilingSearchService,
         IProjectService projectService,
         IUserService userService,
-        IApprovalWorkflowService approvalWorkflowService)
+        IApprovalWorkflowService approvalWorkflowService,
+        IBusinessLogicSettingsService businessLogicSettingsService)
     {
         _repository = repository;
         _businessRuleService = businessRuleService;
@@ -44,6 +46,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         _projectService = projectService;
         _userService = userService;
         _approvalWorkflowService = approvalWorkflowService;
+        _businessLogicSettingsService = businessLogicSettingsService;
     }
 
     public Task<string> GenerateNextInboundNoAsync() =>
@@ -304,9 +307,16 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         var existing = await _repository.GetInboundByIdAsync(approval.Id, tracking: true)
             ?? throw new InvalidOperationException("未找到入网申请单。");
 
-        if (existing.Status != NetworkInboundRecord.StatusSubmitted)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.ApprovePass);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅已提交状态可审批。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许审批。");
         }
 
         DateTime now = DateTime.Now;
@@ -327,7 +337,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             nodeKey => ApprovalChainApplySupport.ReadNetworkInboundSigner(existing, nodeKey));
         ClearDisabledInboundSigners(existing, chain);
 
-        existing.Status = NetworkInboundRecord.StatusApproved;
+        existing.Status = gate.NextStatus ?? NetworkInboundRecord.StatusApproved;
         existing.ApprovedAt = now;
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
@@ -368,9 +378,16 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         var existing = await _repository.GetInboundByIdAsync(handover.Id, tracking: true)
             ?? throw new InvalidOperationException("未找到入网申请单。");
 
-        if (existing.Status != NetworkInboundRecord.StatusApproved)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.ConfirmMidStep);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅已审批状态可确认交接。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许确认交接。");
         }
 
         var inboundChain = await ResolveInboundApprovalChainAsync(existing);
@@ -385,7 +402,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         existing.DeliverDate = handover.DeliverDate ?? now.Date;
         existing.Administrator = handover.Administrator.Trim();
         existing.AdminDate = handover.AdminDate ?? now.Date;
-        existing.Status = NetworkInboundRecord.StatusSignedUploaded;
+        existing.Status = gate.NextStatus ?? NetworkInboundRecord.StatusSignedUploaded;
         existing.HandoverConfirmedAt = now;
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
@@ -485,9 +502,16 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             return;
         }
 
-        if (existing.Status != NetworkInboundRecord.StatusSignedUploaded)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.Complete);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("请先确认实物交接并上传签批单后再确认办结。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许办结。");
         }
 
         var attachments = await _repository.GetAttachmentsAsync(
@@ -557,7 +581,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             await AddInboundArchiveCopyTransactionsAsync(existing, operatorName, now);
             await CompleteInboundReturnHardDisksAsync(existing, currentUser, now);
 
-            existing.Status = NetworkInboundRecord.StatusCompleted;
+            existing.Status = gate.NextStatus ?? NetworkInboundRecord.StatusCompleted;
             existing.CompletedAt = now;
             existing.CompletedBy = operatorName;
             existing.UpdatedAt = now;
@@ -578,14 +602,21 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         var existing = await _repository.GetInboundByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到入网申请单。");
 
-        if (existing.Status is not (NetworkInboundRecord.StatusDraft or NetworkInboundRecord.StatusSubmitted))
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                OfflineApprovalLifecycleSupport.ActorRole.Applicant),
+            OfflineApprovalLifecycleSupport.Action.Withdraw);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅草稿或已提交状态可撤回。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许撤回。");
         }
 
         EnsureOwnerOrAdmin(existing.ApplicantUserId, currentUser);
         DateTime now = DateTime.Now;
-        existing.Status = NetworkInboundRecord.StatusWithdrawn;
+        existing.Status = gate.NextStatus ?? NetworkInboundRecord.StatusWithdrawn;
         existing.WithdrawnAt = now;
         existing.WithdrawReason = reason?.Trim() ?? string.Empty;
         existing.UpdatedAt = now;
@@ -726,9 +757,16 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         var existing = await _repository.GetOutboundByIdAsync(approval.Id, tracking: true)
             ?? throw new InvalidOperationException("未找到出网申请单。");
 
-        if (existing.Status != NetworkOutboundRecord.StatusSubmitted)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.ApprovePass);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅已提交状态可审批。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许审批。");
         }
 
         DateTime now = DateTime.Now;
@@ -749,7 +787,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             nodeKey => ApprovalChainApplySupport.ReadNetworkOutboundSigner(existing, nodeKey));
         ClearDisabledOutboundSigners(existing, chain);
 
-        existing.Status = NetworkOutboundRecord.StatusApproved;
+        existing.Status = gate.NextStatus ?? NetworkOutboundRecord.StatusApproved;
         existing.ApprovedAt = now;
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
@@ -797,9 +835,16 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         var existing = await _repository.GetOutboundByIdAsync(handover.Id, tracking: true)
             ?? throw new InvalidOperationException("未找到出网申请单。");
 
-        if (existing.Status != NetworkOutboundRecord.StatusApproved)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.ConfirmMidStep);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅已审批状态可确认交接。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许确认交接。");
         }
 
         var attachments = await _repository.GetAttachmentsAsync(
@@ -817,7 +862,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         existing.DeliverDate = handover.DeliverDate ?? now.Date;
         existing.Administrator = handover.Administrator.Trim();
         existing.AdminDate = handover.AdminDate ?? now.Date;
-        existing.Status = NetworkOutboundRecord.StatusSignedUploaded;
+        existing.Status = gate.NextStatus ?? NetworkOutboundRecord.StatusSignedUploaded;
         existing.HandoverConfirmedAt = now;
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
@@ -834,9 +879,16 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             return;
         }
 
-        if (existing.Status != NetworkOutboundRecord.StatusSignedUploaded)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.Complete);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("请先确认实物交接并上传签批单后再确认办结。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许办结。");
         }
 
         if (NetworkTransferDomainValues.IsArchiveFilingDestination(existing.DestinationKind))
@@ -871,7 +923,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
                 existing.TargetRegisterFormNo = register.FormNo;
             }
 
-            existing.Status = NetworkOutboundRecord.StatusCompleted;
+            existing.Status = gate.NextStatus ?? NetworkOutboundRecord.StatusCompleted;
             existing.CompletedAt = now;
             existing.CompletedBy = operatorName;
             existing.UpdatedAt = now;
@@ -892,9 +944,16 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         var existing = await _repository.GetOutboundByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到出网申请单。");
 
-        if (existing.Status is not (NetworkOutboundRecord.StatusDraft or NetworkOutboundRecord.StatusSubmitted))
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.ApplicationHandover,
+                OfflineApprovalLifecycleSupport.ActorRole.Applicant),
+            OfflineApprovalLifecycleSupport.Action.Withdraw);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅草稿或已提交状态可撤回。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许撤回。");
         }
 
         EnsureOwnerOrAdmin(existing.ApplicantUserId, currentUser);
@@ -902,7 +961,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         await NetworkOutboundHardDiskRequisitionSyncSupport.ReleaseRequisitionLocksAsync(
             _hardDiskMediaRepository,
             existing);
-        existing.Status = NetworkOutboundRecord.StatusWithdrawn;
+        existing.Status = gate.NextStatus ?? NetworkOutboundRecord.StatusWithdrawn;
         existing.WithdrawnAt = now;
         existing.WithdrawReason = reason?.Trim() ?? string.Empty;
         existing.UpdatedAt = now;
@@ -1168,9 +1227,16 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         var existing = await _repository.GetDisposalByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到在网处置单。");
 
-        if (existing.Status != NetworkOnNetDisposalRecord.StatusSubmitted)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.ApprovePass);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅已提交状态可审批。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许审批。");
         }
 
         var users = _userService.GetAllUsers();
@@ -1228,7 +1294,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             existing.ProductionVicePresidentDate ??= now.Date;
         }
 
-        existing.Status = NetworkOnNetDisposalRecord.StatusApproved;
+        existing.Status = gate.NextStatus ?? NetworkOnNetDisposalRecord.StatusApproved;
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
     }
@@ -1236,10 +1302,15 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     public async Task UpdateDisposalReviewSignersAsync(
         int recordId,
         string? deptHead,
+        DateTime? deptHeadDate,
         string? archiveRoomHead,
+        DateTime? archiveRoomHeadDate,
         string? productionHead,
+        DateTime? productionHeadDate,
         string? archiveDeputyPresident,
+        DateTime? archiveDeputyPresidentDate,
         string? productionVicePresident,
+        DateTime? productionVicePresidentDate,
         User currentUser)
     {
         EnsureArchiveAdmin(currentUser);
@@ -1252,13 +1323,34 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅已审批或已确认可上传状态可修改审核审批人。");
         }
 
+        var minDate = ApprovalSignatureDateSupport.ResolveMinDate(existing.FirstPrintedAt, existing.LastPrintedAt, existing.PrintCount);
+        ThrowIfSignatureDateInvalid(deptHeadDate, minDate, "部门审核日期");
+        ThrowIfSignatureDateInvalid(archiveRoomHeadDate, minDate, "资料室签字日期");
+        ThrowIfSignatureDateInvalid(productionHeadDate, minDate, "生产科签字日期");
+        ThrowIfSignatureDateInvalid(archiveDeputyPresidentDate, minDate, "分管资料院长签字日期");
+        ThrowIfSignatureDateInvalid(productionVicePresidentDate, minDate, "分管生产院长签字日期");
+
         existing.DeptHead = NormalizeReviewSignerName(deptHead);
+        existing.DeptHeadDate = ApprovalSignatureDateSupport.Clamp(deptHeadDate, minDate);
         existing.ArchiveRoomHead = NormalizeReviewSignerName(archiveRoomHead);
+        existing.ArchiveRoomHeadDate = ApprovalSignatureDateSupport.Clamp(archiveRoomHeadDate, minDate);
         existing.ProductionHead = NormalizeReviewSignerName(productionHead);
+        existing.ProductionHeadDate = ApprovalSignatureDateSupport.Clamp(productionHeadDate, minDate);
         existing.ArchiveDeputyPresident = NormalizeReviewSignerName(archiveDeputyPresident);
+        existing.ArchiveDeputyPresidentDate = ApprovalSignatureDateSupport.Clamp(archiveDeputyPresidentDate, minDate);
         existing.ProductionVicePresident = NormalizeReviewSignerName(productionVicePresident);
+        existing.ProductionVicePresidentDate = ApprovalSignatureDateSupport.Clamp(productionVicePresidentDate, minDate);
         existing.UpdatedAt = DateTime.Now;
         await _repository.SaveChangesAsync();
+    }
+
+    private static void ThrowIfSignatureDateInvalid(DateTime? value, DateTime? minDate, string fieldLabel)
+    {
+        var error = ApprovalSignatureDateSupport.ValidateNotBeforePrint(value, minDate, fieldLabel);
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            throw new InvalidOperationException(error);
+        }
     }
 
     public async Task ConfirmDisposalReadyForUploadAsync(int recordId, User currentUser)
@@ -1267,15 +1359,22 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         var existing = await _repository.GetDisposalByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到在网处置单。");
 
-        if (existing.Status != NetworkOnNetDisposalRecord.StatusApproved)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.ConfirmMidStep);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅已审批状态可确认可上传。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许确认可上传。");
         }
 
         DateTime now = DateTime.Now;
         existing.ConfirmedBy = ResolveUserDisplayName(currentUser);
         existing.ConfirmedTime = now;
-        existing.Status = NetworkOnNetDisposalRecord.StatusSignedUploaded;
+        existing.Status = gate.NextStatus ?? NetworkOnNetDisposalRecord.StatusSignedUploaded;
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
     }
@@ -1286,9 +1385,16 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         var existing = await _repository.GetDisposalByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到在网处置单。");
 
-        if (existing.Status != NetworkOnNetDisposalRecord.StatusSignedUploaded)
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.Complete);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("请先确认可上传并上传签批单后再办结。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许办结。");
         }
 
         var attachments = await _repository.GetAttachmentsAsync(
@@ -1334,7 +1440,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             asset.UpdatedAt = now;
         }
 
-        existing.Status = NetworkOnNetDisposalRecord.StatusCompleted;
+        existing.Status = gate.NextStatus ?? NetworkOnNetDisposalRecord.StatusCompleted;
         existing.CompletedAt = now;
         existing.CompletedBy = ResolveUserDisplayName(currentUser);
         existing.UpdatedAt = now;
@@ -1347,20 +1453,68 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         var existing = await _repository.GetDisposalByIdAsync(recordId, tracking: true)
             ?? throw new InvalidOperationException("未找到在网处置单。");
 
-        if (existing.Status is not (NetworkOnNetDisposalRecord.StatusDraft or NetworkOnNetDisposalRecord.StatusSubmitted))
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin),
+            OfflineApprovalLifecycleSupport.Action.Withdraw);
+        if (!gate.Allowed)
         {
-            throw new InvalidOperationException("仅草稿或已提交状态可撤回。");
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不可撤回作废。");
         }
 
-        if (existing.Status == NetworkOnNetDisposalRecord.StatusSubmitted)
+        if (existing.Status != NetworkOnNetDisposalRecord.StatusDraft)
         {
             await UnlockDisposalAssetsAsync(existing);
         }
 
         DateTime now = DateTime.Now;
-        existing.Status = NetworkOnNetDisposalRecord.StatusWithdrawn;
+        existing.Status = gate.NextStatus ?? NetworkOnNetDisposalRecord.StatusWithdrawn;
         existing.WithdrawnAt = now;
         existing.WithdrawReason = reason?.Trim() ?? string.Empty;
+        existing.UpdatedAt = now;
+        await _repository.SaveChangesAsync();
+    }
+
+    public async Task ForceVoidDisposalAsync(int recordId, string? reason, User currentUser)
+    {
+        EnsureArchiveAdmin(currentUser);
+        var existing = await _repository.GetDisposalByIdAsync(recordId, tracking: true)
+            ?? throw new InvalidOperationException("未找到在网处置单。");
+
+        string settingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
+        bool isOverdue = _businessLogicSettingsService.IsEligibleForAdminForceVoid(existing.ApplyTime, settingCode);
+        var gate = OfflineApprovalLifecycleSupport.TryTransition(
+            new OfflineApprovalLifecycleSupport.GateContext(
+                existing.Status,
+                existing.SignedAttachmentUploaded,
+                OfflineApprovalLifecycleSupport.FlowKind.DisposalUnlockUpload,
+                OfflineApprovalLifecycleSupport.ActorRole.ArchiveAdmin,
+                forceVoidEligible: isOverdue),
+            OfflineApprovalLifecycleSupport.Action.ForceVoid);
+        if (!gate.Allowed)
+        {
+            if (!isOverdue
+                && existing.Status is NetworkOnNetDisposalRecord.StatusDraft
+                    or NetworkOnNetDisposalRecord.StatusSubmitted)
+            {
+                throw new InvalidOperationException(_businessLogicSettingsService.BuildNotEligibleMessage(settingCode));
+            }
+
+            throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不可强制作废。");
+        }
+
+        if (existing.Status != NetworkOnNetDisposalRecord.StatusDraft)
+        {
+            await UnlockDisposalAssetsAsync(existing);
+        }
+
+        DateTime now = DateTime.Now;
+        existing.Status = gate.NextStatus ?? NetworkOnNetDisposalRecord.StatusForceWithdrawn;
+        existing.WithdrawnAt = now;
+        existing.WithdrawReason = string.IsNullOrWhiteSpace(reason) ? "资料管理员强制作废" : reason.Trim();
         existing.UpdatedAt = now;
         await _repository.SaveChangesAsync();
     }
@@ -1448,18 +1602,20 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     }
 
     /// <summary>
-    /// 入网/出网：签批上传阶段可传各分类；办结后仅允许增补「其他附件」。
+    /// 入网/出网/在网处置：附件上传状态门禁（走 ApprovalAttachmentPolicySupport）。
     /// </summary>
     private async Task<string?> ValidateAttachmentUploadStatusAsync(
         string businessType,
         int recordId,
         string category)
     {
-        bool isOther = string.Equals(
-            category,
-            NetworkTransferDomainValues.AttachmentCategoryOther,
-            StringComparison.Ordinal);
+        if (!ApprovalAttachmentPolicySupport.TryGet(businessType, out var policy))
+        {
+            return null;
+        }
 
+        int status;
+        bool signedUploaded;
         if (string.Equals(businessType, NetworkTransferDomainValues.InboundAttachmentBusinessType, StringComparison.Ordinal))
         {
             var record = await _repository.GetInboundByIdAsync(recordId);
@@ -1468,20 +1624,10 @@ public sealed partial class NetworkTransferService : INetworkTransferService
                 return "未找到入网申请单。";
             }
 
-            if (record.Status == NetworkInboundRecord.StatusCompleted)
-            {
-                return isOther ? null : "办结后仅可增补「其他附件」。";
-            }
-
-            if (record.Status != NetworkInboundRecord.StatusSignedUploaded)
-            {
-                return "请先确认实物交接后再上传附件。";
-            }
-
-            return null;
+            status = record.Status;
+            signedUploaded = record.SignedAttachmentUploaded;
         }
-
-        if (string.Equals(businessType, NetworkTransferDomainValues.OutboundAttachmentBusinessType, StringComparison.Ordinal))
+        else if (string.Equals(businessType, NetworkTransferDomainValues.OutboundAttachmentBusinessType, StringComparison.Ordinal))
         {
             var record = await _repository.GetOutboundByIdAsync(recordId);
             if (record == null)
@@ -1489,20 +1635,10 @@ public sealed partial class NetworkTransferService : INetworkTransferService
                 return "未找到出网申请单。";
             }
 
-            if (record.Status == NetworkOutboundRecord.StatusCompleted)
-            {
-                return isOther ? null : "办结后仅可增补「其他附件」。";
-            }
-
-            if (record.Status != NetworkOutboundRecord.StatusSignedUploaded)
-            {
-                return "请先确认实物交接后再上传附件。";
-            }
-
-            return null;
+            status = record.Status;
+            signedUploaded = record.SignedAttachmentUploaded;
         }
-
-        if (string.Equals(businessType, NetworkTransferDomainValues.DisposalAttachmentBusinessType, StringComparison.Ordinal))
+        else if (string.Equals(businessType, NetworkTransferDomainValues.DisposalAttachmentBusinessType, StringComparison.Ordinal))
         {
             var record = await _repository.GetDisposalByIdAsync(recordId);
             if (record == null)
@@ -1510,53 +1646,46 @@ public sealed partial class NetworkTransferService : INetworkTransferService
                 return "未找到在网数据处置单。";
             }
 
-            if (record.Status == NetworkOnNetDisposalRecord.StatusCompleted)
-            {
-                return isOther ? null : "办结后仅可增补「其他附件」。";
-            }
-
-            if (record.Status is NetworkOnNetDisposalRecord.StatusDraft
-                or NetworkOnNetDisposalRecord.StatusSubmitted
-                or NetworkOnNetDisposalRecord.StatusWithdrawn
-                or NetworkOnNetDisposalRecord.StatusForceWithdrawn)
-            {
-                return "当前状态不允许上传附件（请在审批通过并确认可上传后操作）。";
-            }
-
+            status = record.Status;
+            signedUploaded = record.SignedAttachmentUploaded;
+        }
+        else
+        {
             return null;
         }
 
-        return null;
+        var gate = ApprovalAttachmentPolicySupport.EvaluateUpload(
+            policy,
+            status,
+            signedUploaded,
+            category,
+            isArchiveAdmin: true);
+        return gate.Allowed ? null : gate.DenyMessage;
     }
 
     private async Task<string?> ValidateAttachmentDeleteWhenCompletedAsync(string? businessType, int businessId)
     {
+        int? status = null;
         if (string.Equals(businessType, NetworkTransferDomainValues.InboundAttachmentBusinessType, StringComparison.Ordinal))
         {
-            var record = await _repository.GetInboundByIdAsync(businessId);
-            if (record?.Status == NetworkInboundRecord.StatusCompleted)
-            {
-                return "办结后不允许删除附件。";
-            }
+            status = (await _repository.GetInboundByIdAsync(businessId))?.Status;
         }
         else if (string.Equals(businessType, NetworkTransferDomainValues.OutboundAttachmentBusinessType, StringComparison.Ordinal))
         {
-            var record = await _repository.GetOutboundByIdAsync(businessId);
-            if (record?.Status == NetworkOutboundRecord.StatusCompleted)
-            {
-                return "办结后不允许删除附件。";
-            }
+            status = (await _repository.GetOutboundByIdAsync(businessId))?.Status;
         }
         else if (string.Equals(businessType, NetworkTransferDomainValues.DisposalAttachmentBusinessType, StringComparison.Ordinal))
         {
-            var record = await _repository.GetDisposalByIdAsync(businessId);
-            if (record?.Status == NetworkOnNetDisposalRecord.StatusCompleted)
-            {
-                return "办结后不允许删除附件。";
-            }
+            status = (await _repository.GetDisposalByIdAsync(businessId))?.Status;
         }
 
-        return null;
+        if (status == null)
+        {
+            return null;
+        }
+
+        var gate = OfflineApprovalLifecycleSupport.EvaluateAttachmentDelete(status.Value);
+        return gate.Allowed ? null : gate.DenyMessage;
     }
 
     private async Task MarkSignedUploadedAsync(string businessType, int recordId, User currentUser)

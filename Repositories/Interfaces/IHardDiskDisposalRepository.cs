@@ -28,7 +28,7 @@ public interface IHardDiskDisposalRepository
     Task<bool> ExistsActiveDisposalForMediumAsync(int mediumId, int? excludeRecordId = null);
 
     /// <summary>
-    /// 资料室待办：已提交至办结前的离库处置单（不含草稿/作废/已办结）。
+    /// 资料室待办：草稿起至办结前的离库处置单（不含作废/已办结）。
     /// </summary>
     Task<List<HardDiskDisposalRecord>> GetPendingRecordsForToDoAsync(int takeCount);
 
