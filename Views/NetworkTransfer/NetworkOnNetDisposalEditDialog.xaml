@@ -26,10 +26,6 @@
         <Setter Property="Foreground" Value="#1E293B"/>
         <Setter Property="Margin" Value="0,0,0,8"/>
       </Style>
-      <Style x:Key="DisposalFieldLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource FormFieldCaptionStyle}">
-        <Setter Property="Foreground" Value="#64748B"/>
-        <Setter Property="FontSize" Value="12"/>
-      </Style>
       <Style x:Key="DisposalCardBorderStyle" TargetType="Border">
         <Setter Property="Background" Value="White"/>
         <Setter Property="BorderBrush" Value="#E0E0E0"/>
@@ -45,38 +41,54 @@
                                              ShellKind="{x:Static models:ApprovalWorkflowShellKind.DisposalUnlockUpload}">
     <viewShared:ApprovalHandoverWorkspaceShell.HeaderContent>
       <StackPanel>
-        <!-- 基本信息 -->
+        <!-- 基本信息：横排标签 + 统一标签列宽，与盘库登记/其他离库处置对齐 -->
         <Border Style="{StaticResource DisposalCardBorderStyle}">
           <StackPanel>
             <TextBlock Text="基本信息" Style="{StaticResource DisposalSectionTitleStyle}"/>
-            <DockPanel Margin="0,2">
-              <TextBlock Text="处置单号："
+            <Grid Margin="0,0,0,6">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto" MinWidth="140"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="处置单号："
                          Style="{StaticResource ArchiveRegisterFormLabelStyle}"
                          Width="{StaticResource FormLabelColumnWidth}"/>
-              <TextBox Width="200" HorizontalAlignment="Left"
+              <TextBox Grid.Column="1"
                        Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                       Height="{StaticResource DialogFormControlHeight}"
+                       VerticalContentAlignment="Center"
                        Text="{Binding DisposalNo, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"/>
-              <TextBlock Text="业务状态："
+              <TextBlock Grid.Column="3" Text="业务状态："
                          Style="{StaticResource ArchiveRegisterFormLabelStyle}"
-                         Width="{StaticResource FormLabelColumnWidth}"
-                         Margin="16,0,8,0"/>
-              <TextBlock Text="{Binding StatusDisplay, Mode=OneWay}" VerticalAlignment="Center" Foreground="#1E293B"/>
-            </DockPanel>
-            <DockPanel Margin="0,6,0,0">
-              <TextBlock Text="申请说明："
+                         Width="{StaticResource FormLabelColumnWidth}"/>
+              <TextBlock Grid.Column="4" Text="{Binding StatusDisplay, Mode=OneWay}"
+                         VerticalAlignment="Center" Foreground="#1E293B"/>
+            </Grid>
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="申请说明："
                          Style="{StaticResource ArchiveRegisterFormLabelStyle}"
-                         Width="{StaticResource FormLabelColumnWidth}"
-                         VerticalAlignment="Top" Margin="0,4,8,0"/>
-              <TextBox Height="48" AcceptsReturn="True" TextWrapping="Wrap"
+                         Width="{StaticResource FormLabelColumnWidth}"/>
+              <TextBox Grid.Column="1"
+                       Height="{StaticResource DialogFormControlHeight}"
+                       MaxLines="1" AcceptsReturn="False" TextWrapping="NoWrap"
+                       VerticalContentAlignment="Center"
                        Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
                        Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
                        IsEnabled="{Binding CanEditHeader}"/>
-            </DockPanel>
+            </Grid>
           </StackPanel>
         </Border>
 
         <!-- 处置明细 -->
-        <Border Style="{StaticResource DisposalCardBorderStyle}">
+        <Border Style="{StaticResource DisposalCardBorderStyle}" Margin="0">
           <StackPanel>
             <TextBlock Text="处置明细" Style="{StaticResource DisposalSectionTitleStyle}"/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">

@@ -28,7 +28,7 @@ namespace DocMgr.Models.HardDiskMedia
         /// <summary>工作流状态。</summary>
         public int Status { get; set; } = StatusDraft;
 
-        /// <summary>登记类型（整单唯一）：损坏登记/盘失登记（历史单可能含损坏档口调整）。</summary>
+        /// <summary>登记类型（整单唯一）：损坏登记/盘失登记/拟销登记（历史单可能含损坏档口调整）。</summary>
         public string RegisterKind { get; set; } = string.Empty;
 
         /// <summary>登记说明。</summary>

@@ -140,8 +140,7 @@ public sealed class HardDiskInventoryRegisterRepository : IHardDiskInventoryRegi
             .Include(item => item.RegisterLock)
             .Where(item => !item.IsDeleted)
             .Where(item => item.Ledger != null
-                           && (item.Ledger.MediaStatus == HardDiskMedium.StatusInStockBlank
-                               || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockDamaged))
+                           && item.Ledger.MediaStatus == HardDiskMedium.StatusInStockBlank)
             .Where(item => !busyMediumIds.Contains(item.Id))
             .Where(item => item.RegisterLock == null
                            || (excluded.Contains(item.Id)

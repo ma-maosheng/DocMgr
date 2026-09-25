@@ -33,7 +33,7 @@ namespace DocMgr.Models.HardDiskMedia
         /// <summary>登记前介质属性快照。</summary>
         public string BeforeMediaNature { get; set; } = string.Empty;
 
-        /// <summary>目标存放位置（损坏登记/档口调整必填；盘失为空）。</summary>
+        /// <summary>目标存放位置（损坏登记/档口调整必填；盘失/拟销为空，拟销办结保留台账原位置）。</summary>
         public string TargetStorageLocation { get; set; } = string.Empty;
 
         public DateTime CreatedAt { get; set; }

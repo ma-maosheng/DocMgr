@@ -11,7 +11,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
     public partial class HardDiskInventoryRegisterEditDialogViewModel
     {
         public string BannerText =>
-            "仅「在库(空盘)」「在库(损坏)」可盘库登记。流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批通过 → 确认可上传附件信息 → 分区上传签批单 → 确认办结。损坏登记/档口调整须指定损坏硬盘专用档口；盘失登记清空档口。正式离库请走「离库处置」。";
+            "仅未征用的「在库(空盘)」可盘库登记。流程：保存草稿 → 提交 → 打印签批单并线下签字 → 审批通过 → 确认可上传附件信息 → 分区上传签批单 → 确认办结。损坏登记须指定损坏硬盘专用档口；盘失登记清空档口；拟销登记保留档口并标记在库(拟销)，不可再借出或作资料盘。正式离库请走「离库处置」。";
 
         public string WorkspaceBannerText => BannerText;
 

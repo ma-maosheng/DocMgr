@@ -59,6 +59,17 @@ namespace DocMgr.Views.Shared
                 typeof(ApprovalHandoverWorkspaceShell),
                 new PropertyMetadata(true));
 
+        /// <summary>
+        /// 业务头是否撑满滚动视口（盘库双表按剩余高度布局时启用）。
+        /// 默认关闭，避免离库等固定高度内容与审批卡之间出现大块空白。
+        /// </summary>
+        public static readonly DependencyProperty StretchHeaderToViewportProperty =
+            DependencyProperty.Register(
+                nameof(StretchHeaderToViewport),
+                typeof(bool),
+                typeof(ApprovalHandoverWorkspaceShell),
+                new PropertyMetadata(false, OnStretchHeaderToViewportChanged));
+
         /// <summary>底栏「提交」按钮文案；盘库登记可设为「提交盘库信息」。</summary>
         public static readonly DependencyProperty SubmitButtonTextProperty =
             DependencyProperty.Register(
@@ -132,6 +143,28 @@ namespace DocMgr.Views.Shared
         {
             InitializeComponent();
             ApplyShellKindTexts(ShellKind);
+            Loaded += OnLoaded;
+            Unloaded += OnUnloaded;
+            ApplyStretchHeaderToViewport(StretchHeaderToViewport);
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            BodyScrollViewer.SizeChanged += OnBodyScrollViewerSizeChanged;
+            ApplyStretchHeaderToViewport(StretchHeaderToViewport);
+        }
+
+        private void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            BodyScrollViewer.SizeChanged -= OnBodyScrollViewerSizeChanged;
+        }
+
+        private void OnBodyScrollViewerSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (StretchHeaderToViewport)
+            {
+                SyncBodyContentMinHeight();
+            }
         }
 
         public ApprovalWorkflowShellKind ShellKind
@@ -178,6 +211,13 @@ namespace DocMgr.Views.Shared
             set => SetValue(ShowFooterChromeProperty, value);
         }
 
+        /// <summary>业务头是否撑满滚动视口（盘库登记启用）。</summary>
+        public bool StretchHeaderToViewport
+        {
+            get => (bool)GetValue(StretchHeaderToViewportProperty);
+            set => SetValue(StretchHeaderToViewportProperty, value);
+        }
+
         /// <summary>底栏提交按钮文案。</summary>
         public string SubmitButtonText
         {
@@ -216,6 +256,16 @@ namespace DocMgr.Views.Shared
             }
         }
 
+        private static void OnStretchHeaderToViewportChanged(
+            DependencyObject d,
+            DependencyPropertyChangedEventArgs e)
+        {
+            if (d is ApprovalHandoverWorkspaceShell shell)
+            {
+                shell.ApplyStretchHeaderToViewport((bool)e.NewValue);
+            }
+        }
+
         private void ApplyShellKindTexts(ApprovalWorkflowShellKind kind)
         {
             RefreshConfirmMidStepButtonText(kind);
@@ -236,6 +286,39 @@ namespace DocMgr.Views.Shared
                 ? ApprovalWorkflowShellCopySupport.GetConfirmMidStepButtonText(kind)
                 : overrideText.Trim();
             SetValue(ConfirmMidStepButtonTextPropertyKey, text);
+        }
+
+        private void ApplyStretchHeaderToViewport(bool stretch)
+        {
+            if (HeaderRow == null || BodyContentGrid == null)
+            {
+                return;
+            }
+
+            if (stretch)
+            {
+                HeaderRow.Height = new GridLength(1, GridUnitType.Star);
+                SyncBodyContentMinHeight();
+            }
+            else
+            {
+                HeaderRow.Height = GridLength.Auto;
+                BodyContentGrid.ClearValue(MinHeightProperty);
+            }
+        }
+
+        private void SyncBodyContentMinHeight()
+        {
+            if (BodyScrollViewer == null || BodyContentGrid == null)
+            {
+                return;
+            }
+
+            double viewportHeight = BodyScrollViewer.ViewportHeight;
+            if (viewportHeight > 0)
+            {
+                BodyContentGrid.MinHeight = viewportHeight;
+            }
         }
     }
 }

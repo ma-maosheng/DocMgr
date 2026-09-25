@@ -446,7 +446,7 @@ namespace DocMgr.ViewModels.Cabinets
             IsMagneticDiskSlot
             && IsBlankDiskDedicatedSlot
             && HardDiskPresentCount > 0
-            && HardDiskMediaItems.Where(item => !item.IsEmpty).All(item => item.IsBlankInStock)
+            && HardDiskMediaItems.Where(item => !item.IsEmpty).All(item => item.IsBlankSlotOccupancy)
             && BlankHardDiskRelocationCandidateCount > 0;
 
         public int BlankHardDiskRelocationCandidateCount =>
@@ -554,14 +554,14 @@ namespace DocMgr.ViewModels.Cabinets
                 return false;
             }
 
-            // 物理占用按「在库空盘」判断（含征用锁）；征用锁只禁止该盘作迁档源，不禁止整口作目标。
-            if (HardDiskMediaItems.Any(item => !item.IsEmpty && !item.IsBlankInStock))
+            // 物理占用按「空盘/拟销」判断（含征用锁）；征用锁只禁止该盘作迁档源，不禁止整口作目标。
+            if (HardDiskMediaItems.Any(item => !item.IsEmpty && !item.IsBlankSlotOccupancy))
             {
                 return false;
             }
 
             int slotCapacity = HardDiskCapacity;
-            int occupiedCount = HardDiskMediaItems.Count(item => item.IsBlankInStock);
+            int occupiedCount = HardDiskMediaItems.Count(item => item.IsBlankSlotOccupancy);
             return occupiedCount + incomingCount <= slotCapacity;
         }
 

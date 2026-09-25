@@ -17,6 +17,21 @@
         <ResourceDictionary Source="../YearlyArchive/ArchiveRegisterResources.xaml"/>
       </ResourceDictionary.MergedDictionaries>
       <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
+      <Style x:Key="DisposalSectionTitleStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#1E293B"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+      </Style>
+      <Style x:Key="DisposalCardBorderStyle" TargetType="Border">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#E0E0E0"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="12"/>
+        <Setter Property="Margin" Value="0,0,0,10"/>
+      </Style>
     </ResourceDictionary>
   </Window.Resources>
 
@@ -24,72 +39,118 @@
                                              ShellKind="{x:Static models:ApprovalWorkflowShellKind.DisposalUnlockUpload}">
     <viewShared:ApprovalHandoverWorkspaceShell.HeaderContent>
       <StackPanel>
-        <GroupBox Header="1. 基本信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10" Margin="0,0,0,10">
-          <Grid>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="78"/>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="16"/>
-              <ColumnDefinition Width="78"/>
-              <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <!-- 基本信息：横排标签 + 统一标签列宽，与盘库登记/其他离库处置对齐 -->
+        <Border Style="{StaticResource DisposalCardBorderStyle}" Margin="0,0,0,10">
+          <StackPanel>
+            <TextBlock Text="基本信息" Style="{StaticResource DisposalSectionTitleStyle}"/>
+            <Grid Margin="0,0,0,6">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="处置单号："
+                         Style="{StaticResource ArchiveRegisterFormLabelStyle}"
+                         Width="{StaticResource FormLabelColumnWidth}"/>
+              <TextBox Grid.Column="1"
+                       Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                       Height="{StaticResource DialogFormControlHeight}"
+                       VerticalContentAlignment="Center"
+                       Text="{Binding DisposalNo, Mode=OneWay}"
+                       IsReadOnly="True" Background="#F5F5F5"/>
+              <TextBlock Grid.Column="3" Text="业务状态："
+                         Style="{StaticResource ArchiveRegisterFormLabelStyle}"
+                         Width="{StaticResource FormLabelColumnWidth}"/>
+              <TextBox Grid.Column="4"
+                       Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                       Height="{StaticResource DialogFormControlHeight}"
+                       VerticalContentAlignment="Center"
+                       Text="{Binding StatusDisplay, Mode=OneWay}"
+                       IsReadOnly="True" Background="#F5F5F5"/>
+            </Grid>
+            <Grid Margin="0,0,0,6">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="资料类别："
+                         Style="{StaticResource ArchiveRegisterFormLabelStyle}"
+                         Width="{StaticResource FormLabelColumnWidth}"/>
+              <ComboBox Grid.Column="1"
+                        Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                        Height="{StaticResource DialogFormControlHeight}"
+                        VerticalContentAlignment="Center"
+                        ItemsSource="{Binding MaterialKindDisplayOptions}"
+                        SelectedItem="{Binding MaterialKindDisplay, UpdateSourceTrigger=PropertyChanged}"
+                        IsEnabled="{Binding CanEditMaterialKind}"/>
+              <TextBlock Grid.Column="3" Text="处置方式："
+                         Style="{StaticResource ArchiveRegisterFormLabelStyle}"
+                         Width="{StaticResource FormLabelColumnWidth}"/>
+              <ComboBox Grid.Column="4"
+                        Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                        Height="{StaticResource DialogFormControlHeight}"
+                        VerticalContentAlignment="Center"
+                        ItemsSource="{Binding MethodOptions}"
+                        SelectedItem="{Binding DispositionMethod, UpdateSourceTrigger=PropertyChanged}"
+                        IsEnabled="{Binding CanEditHeader}"/>
+            </Grid>
+            <Grid Margin="0,0,0,6"
+                  Visibility="{Binding ShowTransferTarget, Converter={StaticResource BooleanToVisibilityConverter}}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="转交对象："
+                         Style="{StaticResource ArchiveRegisterFormLabelStyle}"
+                         Width="{StaticResource FormLabelColumnWidth}"/>
+              <TextBox Grid.Column="1"
+                       Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                       Height="{StaticResource DialogFormControlHeight}"
+                       VerticalContentAlignment="Center"
+                       Text="{Binding TransferTarget, UpdateSourceTrigger=PropertyChanged}"
+                       IsEnabled="{Binding CanEditHeader}"/>
+            </Grid>
+            <Grid Margin="0,0,0,6"
+                  Visibility="{Binding ShowOtherRemark, Converter={StaticResource BooleanToVisibilityConverter}}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="其他说明："
+                         Style="{StaticResource ArchiveRegisterFormLabelStyle}"
+                         Width="{StaticResource FormLabelColumnWidth}"/>
+              <TextBox Grid.Column="1"
+                       Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                       Height="{StaticResource DialogFormControlHeight}"
+                       VerticalContentAlignment="Center"
+                       Text="{Binding OtherRemark, UpdateSourceTrigger=PropertyChanged}"
+                       IsEnabled="{Binding CanEditHeader}"/>
+            </Grid>
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="申请说明："
+                         Style="{StaticResource ArchiveRegisterFormLabelStyle}"
+                         Width="{StaticResource FormLabelColumnWidth}"/>
+              <TextBox Grid.Column="1"
+                       Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                       Height="{StaticResource DialogFormControlHeight}"
+                       MaxLines="1" AcceptsReturn="False" TextWrapping="NoWrap"
+                       VerticalContentAlignment="Center"
+                       Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
+                       IsEnabled="{Binding CanEditHeader}"/>
+            </Grid>
+          </StackPanel>
+        </Border>
 
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="处置单号：" Style="{StaticResource FormLabelTextBlockStyle}"/>
-            <TextBox Grid.Row="0" Grid.Column="1"
-                     Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                     Text="{Binding DisposalNo, Mode=OneWay}"
-                     IsReadOnly="True" Background="#F5F5F5"/>
-            <TextBlock Grid.Row="0" Grid.Column="3" Text="业务状态：" Style="{StaticResource FormLabelTextBlockStyle}"/>
-            <TextBox Grid.Row="0" Grid.Column="4"
-                     Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                     Text="{Binding StatusDisplay, Mode=OneWay}"
-                     IsReadOnly="True" Background="#F5F5F5"/>
-
-            <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,6,0,0" Text="资料类别：" Style="{StaticResource FormLabelTextBlockStyle}"/>
-            <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,6,0,0"
-                      Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
-                      ItemsSource="{Binding MaterialKindDisplayOptions}"
-                      SelectedItem="{Binding MaterialKindDisplay, UpdateSourceTrigger=PropertyChanged}"
-                      IsEnabled="{Binding CanEditMaterialKind}"/>
-            <TextBlock Grid.Row="1" Grid.Column="3" Margin="0,6,0,0" Text="处置方式：" Style="{StaticResource FormLabelTextBlockStyle}"/>
-            <ComboBox Grid.Row="1" Grid.Column="4" Margin="0,6,0,0"
-                      Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
-                      ItemsSource="{Binding MethodOptions}"
-                      SelectedItem="{Binding DispositionMethod, UpdateSourceTrigger=PropertyChanged}"
-                      IsEnabled="{Binding CanEditHeader}"/>
-
-            <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,6,0,0" Text="转交对象："
-                       Style="{StaticResource FormLabelTextBlockStyle}"
-                       Visibility="{Binding ShowTransferTarget, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-            <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="4" Margin="0,6,0,0"
-                     Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                     Text="{Binding TransferTarget, UpdateSourceTrigger=PropertyChanged}"
-                     IsEnabled="{Binding CanEditHeader}"
-                     Visibility="{Binding ShowTransferTarget, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-            <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,6,0,0" Text="其他说明："
-                       Style="{StaticResource FormLabelTextBlockStyle}"
-                       Visibility="{Binding ShowOtherRemark, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-            <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="4" Margin="0,6,0,0"
-                     Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                     Text="{Binding OtherRemark, UpdateSourceTrigger=PropertyChanged}"
-                     IsEnabled="{Binding CanEditHeader}"
-                     Visibility="{Binding ShowOtherRemark, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-
-            <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,6,0,0" Text="申请说明：" Style="{StaticResource FormLabelTextBlockStyle}"/>
-            <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="4" Margin="0,6,0,0"
-                     Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                     Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
-                     IsEnabled="{Binding CanEditHeader}"/>
-          </Grid>
-        </GroupBox>
-
-        <GroupBox Header="2. 处置明细" Style="{StaticResource Level1GroupBoxStyle}" Padding="10" Margin="0,0,0,10">
+        <GroupBox Header="2. 处置明细" Style="{StaticResource Level1GroupBoxStyle}" Padding="10" Margin="0">
           <StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
               <Button Content="刷新候选" Command="{Binding RefreshCandidatesCommand}" Padding="12,6" Margin="0,0,8,0"/>

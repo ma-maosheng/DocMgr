@@ -165,6 +165,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<HelpPage>("SS-HELP", "操作手册");
             Add<DbOperationLogPage>("SS-DBLOG", "数据库操作日志");
             Add<UserEditDialog>("SS-USER-ED", "用户编辑");
+            Add<ChangePasswordDialog>("SS-PWD", "修改密码");
             Add<ServerPathSettingEditDialog>("SS-SRVPATH-ED", "服务器路径编辑");
             Add<DeptEditDialog>("SS-DEPT-ED", "部门编辑");
 

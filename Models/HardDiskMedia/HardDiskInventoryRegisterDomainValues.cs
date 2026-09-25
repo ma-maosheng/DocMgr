@@ -9,6 +9,8 @@ namespace DocMgr.Models.HardDiskMedia
     {
         public const string KindDamage = "损坏登记";
         public const string KindLost = "盘失登记";
+        /// <summary>拟销登记：空盘标记无存档/再用价值；办结后在库(拟销)，保留档口，不可借出或作资料盘。</summary>
+        public const string KindScrap = "拟销登记";
         /// <summary>历史类型：损坏档口调整（已改走开柜迁档，新建不可选；旧草稿办结仍兼容）。</summary>
         public const string KindRelocateDamaged = "损坏档口调整";
 
@@ -26,15 +28,15 @@ namespace DocMgr.Models.HardDiskMedia
         public static IReadOnlyList<string> RegisterKindOptions { get; } =
         [
             KindDamage,
-            KindLost
+            KindLost,
+            KindScrap
         ];
 
 
-        /// <summary>可纳入盘库登记的介质状态。</summary>
+        /// <summary>可纳入盘库登记的介质状态（仅未征用的在库空盘）。</summary>
         public static IReadOnlyList<string> SelectableMediaStatusOptions { get; } =
         [
-            HardDiskMedium.StatusInStockBlank,
-            HardDiskMedium.StatusInStockDamaged
+            HardDiskMedium.StatusInStockBlank
         ];
 
         public static bool IsValidRegisterKind(string? kind)
@@ -51,6 +53,9 @@ namespace DocMgr.Models.HardDiskMedia
             return RegisterKindOptions.Any(item => string.Equals(item, normalized, StringComparison.Ordinal));
         }
 
+        public static bool IsScrapRegisterKind(string? kind) =>
+            string.Equals(kind?.Trim(), KindScrap, StringComparison.Ordinal);
+
         public static string ResolveTransactionType(string? kind)
         {
             string normalized = kind?.Trim() ?? string.Empty;
@@ -58,6 +63,7 @@ namespace DocMgr.Models.HardDiskMedia
             {
                 KindDamage => HardDiskMediaTransaction.TypeInventoryRegisterDamage,
                 KindLost => HardDiskMediaTransaction.TypeInventoryRegisterLost,
+                KindScrap => HardDiskMediaTransaction.TypeInventoryRegisterScrap,
                 KindRelocateDamaged => HardDiskMediaTransaction.TypeInventoryRegisterRelocate,
                 _ => HardDiskMediaTransaction.TypeInventoryRegisterDamage
             };
@@ -72,6 +78,7 @@ namespace DocMgr.Models.HardDiskMedia
             {
                 KindDamage => HardDiskMedium.StatusInStockDamaged,
                 KindLost => HardDiskMedium.StatusInStockLost,
+                KindScrap => HardDiskMedium.StatusInStockScrap,
                 KindRelocateDamaged => HardDiskMedium.StatusInStockDamaged,
                 _ => normalizedBefore
             };
@@ -91,6 +98,10 @@ namespace DocMgr.Models.HardDiskMedia
         public static bool ClearsStorageLocation(string? kind) =>
             string.Equals(kind?.Trim(), KindLost, StringComparison.Ordinal);
 
+        /// <summary>拟销登记：办结保留原存放位置（不迁档、不清档口）。</summary>
+        public static bool PreservesStorageLocation(string? kind) =>
+            IsScrapRegisterKind(kind);
+
         public static string ToStatusDisplay(int status) => status switch
         {
             HardDiskInventoryRegisterRecord.StatusDraft => ApplicationWorkflowStatus.TextDraft,
@@ -104,4 +115,3 @@ namespace DocMgr.Models.HardDiskMedia
         };
     }
 }
-

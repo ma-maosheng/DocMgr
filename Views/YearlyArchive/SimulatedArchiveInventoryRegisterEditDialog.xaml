@@ -42,6 +42,7 @@
 
   <viewShared:ApprovalHandoverWorkspaceShell Margin="12"
                                              ShellKind="{x:Static models:ApprovalWorkflowShellKind.DisposalUnlockUpload}"
+                                             StretchHeaderToViewport="True"
                                              SubmitButtonText="{x:Static models:ApprovalWorkflowShellCopySupport.SubmitInventoryRegisterButtonText}"
                                              ConfirmMidStepButtonTextOverride="{x:Static models:ApprovalWorkflowShellCopySupport.ConfirmUploadAttachmentInfoButtonText}">
     <viewShared:ApprovalHandoverWorkspaceShell.HeaderContent>

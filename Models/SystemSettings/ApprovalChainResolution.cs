@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace DocMgr.Models.SystemSettings
 {
     /// <summary>单条签批节点解析结果。</summary>
@@ -71,6 +73,68 @@ namespace DocMgr.Models.SystemSettings
             if (ProductionHead.IsEnabled) yield return ProductionHead;
             if (ArchiveDeputyPresident.IsEnabled) yield return ArchiveDeputyPresident;
             if (ProductionVicePresident.IsEnabled) yield return ProductionVicePresident;
+        }
+
+        /// <summary>
+        /// 「审批通过」确认框文案：按命中规则启用节点列出责任人提示词（与签字卡 Show* 同源）。
+        /// </summary>
+        /// <param name="confirmLead">确认句（须以「？」结尾），默认「确认审批通过？」。</param>
+        public string FormatApprovePassConfirmMessage(string confirmLead = "确认审批通过？") =>
+            FormatApprovePassConfirmMessage(
+                confirmLead,
+                DeptHead.IsEnabled,
+                ArchiveRoomHead.IsEnabled,
+                ProductionHead.IsEnabled,
+                ArchiveDeputyPresident.IsEnabled,
+                ProductionVicePresident.IsEnabled);
+
+        /// <summary>
+        /// 「审批通过」确认框文案：按启用开关列出责任人提示词（无命中规则时用 UI 侧 Enable* 回退）。
+        /// </summary>
+        public static string FormatApprovePassConfirmMessage(
+            string confirmLead,
+            bool enableDeptHead,
+            bool enableArchiveRoomHead,
+            bool enableProductionHead,
+            bool enableArchiveDeputyPresident,
+            bool enableProductionVicePresident)
+        {
+            string lead = string.IsNullOrWhiteSpace(confirmLead)
+                ? "确认审批通过？"
+                : confirmLead.Trim();
+
+            var names = new List<string>(5);
+            if (enableDeptHead)
+            {
+                names.Add(ApprovalWorkflowDomainValues.DisplayDeptHead);
+            }
+
+            if (enableArchiveRoomHead)
+            {
+                names.Add(ApprovalWorkflowDomainValues.DisplayArchiveRoomHead);
+            }
+
+            if (enableProductionHead)
+            {
+                names.Add(ApprovalWorkflowDomainValues.DisplayProductionHead);
+            }
+
+            if (enableArchiveDeputyPresident)
+            {
+                names.Add(ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident);
+            }
+
+            if (enableProductionVicePresident)
+            {
+                names.Add(ApprovalWorkflowDomainValues.DisplayProductionVicePresident);
+            }
+
+            if (names.Count == 0)
+            {
+                return lead;
+            }
+
+            return $"{lead}将自动填写{string.Join("、", names)}的姓名与日期。";
         }
     }
 

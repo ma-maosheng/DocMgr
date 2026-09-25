@@ -234,7 +234,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public string TargetLocationHint => RequiresTargetLocation
             ? "请为每块盘从下拉中选择损坏硬盘专用档口（可用行内「推荐」「预览」）。确认可上传附件信息时将同步台账档口与状态。"
-            : "盘失登记无需归位档口，办结后清空存放位置。";
+            : HardDiskInventoryRegisterDomainValues.IsScrapRegisterKind(RegisterKind)
+                ? "拟销登记无需迁档，办结后保留原存放位置，台账改为在库(拟销)，不可再借出或作资料盘。"
+                : "盘失登记无需归位档口，办结后清空存放位置。";
 
         public bool CanOperate =>
             ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser);
@@ -618,12 +620,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
             foreach (var candidate in _mediaPool.Where(item => !selectedIds.Contains(item.MediumId)))
             {
                 string status = candidate.MediaStatus?.Trim() ?? string.Empty;
-                bool compatible = string.Equals(kind, HardDiskInventoryRegisterDomainValues.KindDamage, StringComparison.Ordinal)
-                    ? string.Equals(status, HardDiskMedium.StatusInStockBlank, StringComparison.Ordinal)
-                    : string.Equals(kind, HardDiskInventoryRegisterDomainValues.KindRelocateDamaged, StringComparison.Ordinal)
-                        ? string.Equals(status, HardDiskMedium.StatusInStockDamaged, StringComparison.Ordinal)
-                        : string.Equals(status, HardDiskMedium.StatusInStockBlank, StringComparison.Ordinal)
-                          || string.Equals(status, HardDiskMedium.StatusInStockDamaged, StringComparison.Ordinal);
+                // 候选仅未征用在库空盘；损坏档口调整历史类型仍兼容损坏盘展示。
+                bool compatible = string.Equals(kind, HardDiskInventoryRegisterDomainValues.KindRelocateDamaged, StringComparison.Ordinal)
+                    ? string.Equals(status, HardDiskMedium.StatusInStockDamaged, StringComparison.Ordinal)
+                    : string.Equals(status, HardDiskMedium.StatusInStockBlank, StringComparison.Ordinal);
 
                 if (!compatible)
                 {
@@ -675,7 +675,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         }
 
         /// <summary>
-        /// 切换登记类型时同步目标档口：盘失登记清空；损坏类登记保留已填档口。
+        /// 切换登记类型时同步目标档口：损坏类保留已填档口；盘失/拟销清空目标档口字段（拟销办结保留台账原位置）。
         /// </summary>
         private void SyncTargetStorageLocationsForRegisterKind()
         {
@@ -917,7 +917,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             try
             {
-                if (!_dialogService.ShowConfirm("确认审批通过？将自动填写资料室签字、分管资料院长签字的姓名与日期。"))
+                ApprovalChainResolution chain = await ResolveApprovalChainAsync();
+                if (!_dialogService.ShowConfirm(chain.FormatApprovePassConfirmMessage()))
                     return;
 
                 await _registerService.ApproveAsync(_record.Id, "同意", RequireCurrentUser());
@@ -971,6 +972,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task ReloadSignerEnableFlagsAsync()
         {
+            await ResolveApprovalChainAsync();
+        }
+
+        private async Task<ApprovalChainResolution> ResolveApprovalChainAsync()
+        {
             var users = _userService.GetAllUsers();
             var chain = await _approvalWorkflowService.ResolveAsync(
                 new ApprovalChainResolveRequest
@@ -992,6 +998,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(ShowProductionVicePresident));
             OnPropertyChanged(nameof(ShowReviewSignerSection));
             OnPropertyChanged(nameof(ShowApproveSignerSection));
+            return chain;
         }
 
         private async Task ConfirmUploadAsync()

@@ -716,7 +716,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             try
             {
-                if (!_dialogService.ShowConfirm("确认审批通过？将自动填写资料室签字、分管资料院长签字的姓名与日期。"))
+                ApprovalChainResolution chain = await ResolveApprovalChainAsync();
+                if (!_dialogService.ShowConfirm(chain.FormatApprovePassConfirmMessage()))
                     return;
 
                 await _service.ApproveDisposalAsync(_record.Id, RequireUser());
@@ -767,6 +768,11 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         private async Task ReloadSignerEnableFlagsAsync()
         {
+            await ResolveApprovalChainAsync();
+        }
+
+        private async Task<ApprovalChainResolution> ResolveApprovalChainAsync()
+        {
             var users = _userService.GetAllUsers();
             var chain = await _approvalWorkflowService.ResolveAsync(
                 new ApprovalChainResolveRequest
@@ -787,6 +793,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             OnPropertyChanged(nameof(ShowProductionVicePresident));
             OnPropertyChanged(nameof(ShowReviewSignerSection));
             OnPropertyChanged(nameof(ShowApproveSignerSection));
+            return chain;
         }
 
         private async Task ConfirmUploadAsync()

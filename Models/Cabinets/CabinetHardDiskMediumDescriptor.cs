@@ -51,6 +51,9 @@ namespace DocMgr.Models.Cabinets
 
         public bool IsBlankInStock { get; init; }
 
+        /// <summary>在库(拟销)：仍占空白档口展示，标识为「拟销」（不可作空盘迁档源）。</summary>
+        public bool IsScrapInStock { get; init; }
+
         public bool HasOccupationLock { get; init; }
 
         public string OccupationLockToolTipText { get; init; } = string.Empty;

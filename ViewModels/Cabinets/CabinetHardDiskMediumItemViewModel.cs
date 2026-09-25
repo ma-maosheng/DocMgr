@@ -90,6 +90,7 @@ namespace DocMgr.ViewModels.Cabinets
             ElectronicArchiveUnitId = descriptor.ElectronicArchiveUnitId;
             MediumId = descriptor.MediumId;
             IsBlankInStock = descriptor.IsBlankInStock;
+            IsScrapInStock = descriptor.IsScrapInStock;
         }
 
         public bool IsSelected
@@ -144,6 +145,12 @@ namespace DocMgr.ViewModels.Cabinets
         public string MediumInfoText { get; } = string.Empty;
 
         public bool IsBlankInStock { get; }
+
+        /// <summary>在库(拟销)：空白档口内继续占位展示。</summary>
+        public bool IsScrapInStock { get; }
+
+        /// <summary>空白硬盘专用档口物理占用（空盘或拟销）。</summary>
+        public bool IsBlankSlotOccupancy => IsBlankInStock || IsScrapInStock;
 
         public bool HasArchiveInfo { get; }
 
@@ -469,6 +476,21 @@ namespace DocMgr.ViewModels.Cabinets
                     detailForeground: "#C2410C");
             }
 
+            if (IsScrapType(descriptor))
+            {
+                // 拟销：沿用空盘底色，中部标识改为「拟销」。
+                return CreateTypeVisual(
+                    hideDuplicateCornerText ? string.Empty : "拟销",
+                    cardBackground: "#F8FAFC",
+                    cardBorder: "#CBD5E1",
+                    iconBody: "#64748B",
+                    iconAccent: "#334155",
+                    statusBadgeBackground: "#E2E8F0",
+                    statusBadgeForeground: "#475569",
+                    titleForeground: "#334155",
+                    detailForeground: "#64748B");
+            }
+
             if (IsBlankType(descriptor))
             {
                 return CreateTypeVisual(
@@ -497,6 +519,23 @@ namespace DocMgr.ViewModels.Cabinets
                 statusBadgeForeground: "#1D4ED8",
                 titleForeground: "#1E3A8A",
                 detailForeground: "#1D4ED8");
+        }
+
+        private static bool IsScrapType(CabinetHardDiskMediumDescriptor descriptor)
+        {
+            // 仅空白档口裸盘拟销用「拟销」标识；电子袋拟销仍走资料卡 + 右上「销」。
+            if (descriptor.IsYearlyArchiveDisplay || descriptor.ElectronicArchiveUnitId > 0)
+            {
+                return false;
+            }
+
+            if (descriptor.IsScrapInStock)
+            {
+                return true;
+            }
+
+            string normalizedStatus = MediumStatusTextNormalizer.Normalize(descriptor.StatusText);
+            return string.Equals(normalizedStatus, HardDiskMedium.StatusInStockScrap, StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsBlankType(CabinetHardDiskMediumDescriptor descriptor)

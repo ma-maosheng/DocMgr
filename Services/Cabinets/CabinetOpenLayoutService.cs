@@ -210,15 +210,12 @@ namespace DocMgr.Services.Cabinets
                         ? loadedContext
                         : null;
 
-                    // 盘失/拟销且未挂电子袋：不占柜展示（硬盘盘库盘失已清空位置；资料盘库必挂袋）。
-                    if ((string.Equals(
+                    // 盘失且未挂电子袋：不占柜展示（硬盘盘库盘失已清空位置；资料盘库盘失必挂袋）。
+                    // 拟销未挂袋：保留原档口展示（硬盘盘库拟销不清档口）。
+                    if (string.Equals(
                             NormalizeStatusText(medium.Ledger.MediaStatus),
                             NormalizeStatusText(HardDiskMedium.StatusInStockLost),
                             StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(
-                            NormalizeStatusText(medium.Ledger.MediaStatus),
-                            NormalizeStatusText(HardDiskMedium.StatusInStockScrap),
-                            StringComparison.OrdinalIgnoreCase))
                         && archiveContext == null)
                     {
                         continue;
@@ -725,6 +722,7 @@ namespace DocMgr.Services.Cabinets
                 ElectronicArchiveUnitId = archiveContext?.ElectronicArchiveUnitId ?? 0,
                 MediumId = medium.Id,
                 IsBlankInStock = false,
+                IsScrapInStock = false,
                 HasOccupationLock = occupationLock.HasLock,
                 OccupationLockToolTipText = occupationLock.ToolTipSupplement,
                 OccupationLockBadgeText = occupationLock.BadgeText,
@@ -905,6 +903,10 @@ namespace DocMgr.Services.Cabinets
                 ElectronicArchiveUnitId = archiveContext?.ElectronicArchiveUnitId ?? 0,
                 MediumId = medium.Id,
                 IsBlankInStock = string.Equals(statusText, HardDiskMedium.StatusInStockBlank, StringComparison.OrdinalIgnoreCase),
+                IsScrapInStock = string.Equals(
+                    NormalizeStatusText(statusText),
+                    NormalizeStatusText(HardDiskMedium.StatusInStockScrap),
+                    StringComparison.OrdinalIgnoreCase),
                 HasOccupationLock = occupationLock.HasLock,
                 OccupationLockToolTipText = occupationLock.ToolTipSupplement,
                 OccupationLockBadgeText = occupationLock.BadgeText,

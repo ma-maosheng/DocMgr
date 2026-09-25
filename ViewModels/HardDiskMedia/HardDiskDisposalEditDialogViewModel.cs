@@ -602,7 +602,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             RaiseCommandStates();
         }
 
-        private async Task ReloadDefaultApproversAsync()
+        private async Task<ApprovalChainResolution> ReloadDefaultApproversAsync()
         {
             var users = _userService.GetAllUsers();
             var chain = await _approvalWorkflowService.ResolveAsync(
@@ -678,6 +678,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(ProductionVicePresidentDate));
             OnPropertyChanged(nameof(CanEditSigners));
             OnPropertyChanged(nameof(SignatureDateMin));
+            return chain;
         }
 
         private static string EmptyAsDash(string? value) =>
@@ -1118,7 +1119,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             try
             {
-                if (!_dialogService.ShowConfirm("确认审批通过该离库处置单？"))
+                await ReloadDefaultApproversAsync();
+                if (!_dialogService.ShowConfirm(
+                        ApprovalChainResolution.FormatApprovePassConfirmMessage(
+                            "确认审批通过该离库处置单？",
+                            _enableDeptHead,
+                            _enableArchiveRoomHead,
+                            _enableProductionHead,
+                            _enableArchiveDeputyPresident,
+                            _enableProductionVicePresident)))
                 {
                     return;
                 }

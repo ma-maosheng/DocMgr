@@ -469,6 +469,7 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
     {
         string transactionType = HardDiskInventoryRegisterDomainValues.ResolveTransactionType(record.RegisterKind);
         bool clearLocation = HardDiskInventoryRegisterDomainValues.ClearsStorageLocation(record.RegisterKind);
+        bool requiresTarget = HardDiskInventoryRegisterDomainValues.RequiresDamagedTargetLocation(record.RegisterKind);
 
         foreach (var item in record.Items.OrderBy(detail => detail.SortOrder))
         {
@@ -479,9 +480,12 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
             string afterStatus = HardDiskInventoryRegisterDomainValues.ResolveAfterMediaStatus(
                 record.RegisterKind,
                 beforeStatus);
+            // 盘失清档口；损坏迁目标档口；拟销保留原位置。
             string afterLocation = clearLocation
                 ? string.Empty
-                : (item.TargetStorageLocation?.Trim() ?? string.Empty);
+                : requiresTarget
+                    ? (item.TargetStorageLocation?.Trim() ?? string.Empty)
+                    : beforeLocation;
 
             bool statusSame = string.Equals(beforeStatus, afterStatus, StringComparison.Ordinal);
             bool locationSame = HardDiskLedgerSyncSupport.IsSameFullLocation(beforeLocation, afterLocation);
@@ -497,7 +501,8 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
             ledger.NeedReturn = false;
             ledger.StorageLocation = afterLocation;
             if (string.Equals(afterStatus, HardDiskMedium.StatusInStockDamaged, StringComparison.Ordinal)
-                || string.Equals(afterStatus, HardDiskMedium.StatusInStockLost, StringComparison.Ordinal))
+                || string.Equals(afterStatus, HardDiskMedium.StatusInStockLost, StringComparison.Ordinal)
+                || string.Equals(afterStatus, HardDiskMedium.StatusInStockScrap, StringComparison.Ordinal))
             {
                 ledger.HolderOrOrganization = string.Equals(afterStatus, HardDiskMedium.StatusInStockLost, StringComparison.Ordinal)
                     ? string.Empty
@@ -988,7 +993,7 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
             throw new InvalidOperationException(
                 allowPostRelocationDamageStatus
                     ? $"硬盘【{diskCode}】当前状态为“{status}”，损坏登记办结仅允许「在库(空盘)」或已迁档后的「在库(损坏)」。"
-                    : $"硬盘【{diskCode}】当前状态为“{status}”，损坏登记仅允许「在库(空盘)」。");
+                    : $"硬盘【{diskCode}】当前状态为“{status}”，损坏登记仅允许未征用的「在库(空盘)」。");
         }
 
         if (string.Equals(kind, HardDiskInventoryRegisterDomainValues.KindRelocateDamaged, StringComparison.Ordinal))
@@ -1001,12 +1006,16 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
             return;
         }
 
-        if (string.Equals(kind, HardDiskInventoryRegisterDomainValues.KindLost, StringComparison.Ordinal))
+        if (string.Equals(kind, HardDiskInventoryRegisterDomainValues.KindLost, StringComparison.Ordinal)
+            || string.Equals(kind, HardDiskInventoryRegisterDomainValues.KindScrap, StringComparison.Ordinal))
         {
-            if (!string.Equals(status, HardDiskMedium.StatusInStockBlank, StringComparison.Ordinal)
-                && !string.Equals(status, HardDiskMedium.StatusInStockDamaged, StringComparison.Ordinal))
+            if (!string.Equals(status, HardDiskMedium.StatusInStockBlank, StringComparison.Ordinal))
             {
-                throw new InvalidOperationException($"硬盘【{diskCode}】当前状态为“{status}”，盘失登记仅允许「在库(空盘)」或「在库(损坏)」。");
+                string kindLabel = string.Equals(kind, HardDiskInventoryRegisterDomainValues.KindScrap, StringComparison.Ordinal)
+                    ? "拟销登记"
+                    : "盘失登记";
+                throw new InvalidOperationException(
+                    $"硬盘【{diskCode}】当前状态为“{status}”，{kindLabel}仅允许未征用的「在库(空盘)」。");
             }
         }
     }
@@ -1105,12 +1114,12 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
             if (!HardDiskInventoryRegisterDomainValues.IsCreatableRegisterKind(registerKind))
             {
                 throw new InvalidOperationException(
-                    "请选择登记类型（损坏登记/盘失登记）。损坏盘档口调整请在开柜界面使用交互式迁档。");
+                    "请选择登记类型（损坏登记/盘失登记/拟销登记）。损坏盘档口调整请在开柜界面使用交互式迁档。");
             }
         }
         else if (!HardDiskInventoryRegisterDomainValues.IsValidRegisterKind(registerKind))
         {
-            throw new InvalidOperationException("请选择登记类型（损坏登记/盘失登记）。");
+            throw new InvalidOperationException("请选择登记类型（损坏登记/盘失登记/拟销登记）。");
         }
 
         if (string.IsNullOrWhiteSpace(reason))
