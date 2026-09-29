@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DocMgr.Models.Shared;
 
 namespace DocMgr.ViewModels.Cabinets
 {
@@ -87,6 +88,7 @@ namespace DocMgr.ViewModels.Cabinets
             DiskCodeText = source.DiskCodeText;
             CapacityText = source.CapacityText;
             StatusText = source.StatusText;
+            StatusTextForeground = source.StatusTextForeground;
             CurrentLocationText = source.CurrentLocationText;
             ElectronicArchiveNoText = string.IsNullOrWhiteSpace(source.ElectronicArchiveNoText) ? "—" : source.ElectronicArchiveNoText;
             ElectronicArchiveLocationText = string.IsNullOrWhiteSpace(source.ElectronicArchiveLocationText) ? "—" : source.ElectronicArchiveLocationText;
@@ -108,6 +110,8 @@ namespace DocMgr.ViewModels.Cabinets
         public string CapacityText { get; }
 
         public string StatusText { get; }
+
+        public string StatusTextForeground { get; } = MediumStatusDisplayColorSupport.DefaultForeground;
 
         public string CurrentLocationText { get; }
 

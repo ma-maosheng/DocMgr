@@ -26,7 +26,8 @@ namespace DocMgr.Repositories.YearlyArchive
                     item.fact,
                     item.RelocationMode,
                     containerLookup.TryGetArchiveBox(item.fact),
-                    containerLookup.TryGetElectronicUnit(item.fact)))
+                    containerLookup.TryGetElectronicUnit(item.fact),
+                    item.SourceMediumDisposition))
                 .ToList();
         }
 
@@ -145,6 +146,7 @@ namespace DocMgr.Repositories.YearlyArchive
             string operatorName = MaterialTransactionLedgerSearchSupport.NormalizeKeyword(criteria.OperatorName);
             string mediaKind = criteria.MediaKind?.Trim() ?? string.Empty;
             string relocationMode = criteria.RelocationMode?.Trim() ?? string.Empty;
+            string relocationKind = criteria.RelocationKind?.Trim() ?? string.Empty;
 
             var query =
                 from tx in _dbContext.YearlyArchiveMaterialTransactions.AsNoTracking()
@@ -157,7 +159,8 @@ namespace DocMgr.Repositories.YearlyArchive
                 {
                     tx = tx,
                     fact = fact,
-                    RelocationMode = record != null ? record.RelocationMode : string.Empty
+                    RelocationMode = record != null ? record.RelocationMode : string.Empty,
+                    SourceMediumDisposition = record != null ? record.SourceMediumDisposition : string.Empty
                 };
 
             if (criteria.OperatedFrom.HasValue)
@@ -179,7 +182,28 @@ namespace DocMgr.Repositories.YearlyArchive
 
             if (!string.IsNullOrWhiteSpace(relocationMode))
             {
-                query = query.Where(item => item.RelocationMode == relocationMode);
+                if (ArchiveRelocationMode.IsMoveToBlankHardDisk(relocationMode))
+                {
+                    // 现行 MoveToBlankHardDisk 与历史 MoveToEmpty 同筛。
+                    query = query.Where(item =>
+                        item.RelocationMode == ArchiveRelocationMode.MoveToBlankHardDisk
+                        || item.RelocationMode == ArchiveRelocationMode.MoveToEmpty);
+                }
+                else
+                {
+                    query = query.Where(item => item.RelocationMode == relocationMode);
+                }
+            }
+
+            if (string.Equals(relocationKind, RelocationLedgerKindFilter.Backup, StringComparison.Ordinal))
+            {
+                query = query.Where(item =>
+                    item.SourceMediumDisposition == ArchiveRelocationSourceDisposition.OriginalRetained);
+            }
+            else if (string.Equals(relocationKind, RelocationLedgerKindFilter.Normal, StringComparison.Ordinal))
+            {
+                query = query.Where(item =>
+                    item.SourceMediumDisposition != ArchiveRelocationSourceDisposition.OriginalRetained);
             }
 
             if (!string.IsNullOrWhiteSpace(businessNo))
@@ -368,6 +392,8 @@ namespace DocMgr.Repositories.YearlyArchive
             public YearlyArchiveFilingFact fact { get; init; } = null!;
 
             public string RelocationMode { get; init; } = string.Empty;
+
+            public string SourceMediumDisposition { get; init; } = string.Empty;
         }
 
         private sealed class CirculationLedgerQueryRow

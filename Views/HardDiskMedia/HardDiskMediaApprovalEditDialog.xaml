@@ -22,9 +22,9 @@
             <StackPanel>
                 <Border Background="#F9FAFB" BorderBrush="#E0E0E0" BorderThickness="1" Padding="12" Margin="0,0,0,10">
                     <StackPanel>
-                        <TextBlock Text="申请单编号" Foreground="#78909C" FontSize="12"/>
+                        <TextBlock Text="申请单编号：" Foreground="#78909C" FontSize="12"/>
                         <TextBlock Text="{Binding ApplicationNo}" FontWeight="SemiBold" Foreground="#263238" Margin="0,4,0,0"/>
-                        <TextBlock Text="业务状态" Foreground="#78909C" FontSize="12" Margin="0,8,0,0"/>
+                        <TextBlock Text="业务状态：" Foreground="#78909C" FontSize="12" Margin="0,8,0,0"/>
                         <TextBlock Text="{Binding ApplicationStatusDisplay}" FontWeight="SemiBold" Foreground="#37474F" Margin="0,4,0,0"/>
                         <TextBlock Text="{Binding SignedAttachmentStatusText}" Margin="0,6,0,0" Foreground="#64748B" TextWrapping="Wrap" FontSize="12"/>
                         <TextBlock Margin="0,4,0,0" Foreground="#64748B" FontSize="12">
@@ -48,21 +48,21 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
-                        <TextBlock Text="申请类型" Foreground="#666666" Margin="0,0,0,4"/>
-                        <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding ApplicationType, Mode=OneWay}" IsReadOnly="True" Background="#F9FAFB"/>
-                    </StackPanel>
-                    <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10">
-                        <TextBlock Text="介质编号" Foreground="#666666" Margin="0,0,0,4"/>
-                        <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding DiskCode, Mode=OneWay}" IsReadOnly="True" Background="#F9FAFB" FontWeight="SemiBold"/>
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
                         <TextBlock Text="申请人" Foreground="#666666" Margin="0,0,0,4"/>
                         <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding ApplicantName, Mode=OneWay}" IsReadOnly="True" Background="#F9FAFB"/>
                     </StackPanel>
-                    <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10">
+                    <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10">
                         <TextBlock Text="申请部门" Foreground="#666666" Margin="0,0,0,4"/>
                         <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding ApplicantDept, Mode=OneWay}" IsReadOnly="True" Background="#F9FAFB"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
+                        <TextBlock Text="申请类型" Foreground="#666666" Margin="0,0,0,4"/>
+                        <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding ApplicationType, Mode=OneWay}" IsReadOnly="True" Background="#F9FAFB"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10">
+                        <TextBlock Text="介质编号" Foreground="#666666" Margin="0,0,0,4"/>
+                        <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding DiskCode, Mode=OneWay}" IsReadOnly="True" Background="#F9FAFB" FontWeight="SemiBold"/>
                     </StackPanel>
 
                     <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,10">
@@ -112,7 +112,7 @@
                     <Border Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
                             IsEnabled="{Binding CanConfirmPhysicalHandover}">
                         <DockPanel LastChildFill="True">
-                            <TextBlock DockPanel.Dock="Left" Text="交接人(申请人)" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                            <TextBlock DockPanel.Dock="Left" Text="交接人(申请人)：" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                             <TextBox Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
                                      MinWidth="100"
                                      IsEnabled="{Binding CanConfirmPhysicalHandover}"
@@ -122,7 +122,7 @@
                     <Border Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
                             IsEnabled="{Binding CanConfirmPhysicalHandover}">
                         <DockPanel LastChildFill="True">
-                            <TextBlock DockPanel.Dock="Left" Text="交接人(资料员)" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                            <TextBlock DockPanel.Dock="Left" Text="交接人(资料员)：" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                             <TextBox Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
                                      MinWidth="100"
                                      IsEnabled="{Binding CanConfirmPhysicalHandover}"
@@ -133,7 +133,7 @@
                 <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
                         IsEnabled="{Binding CanConfirmPhysicalHandover}">
                     <DockPanel LastChildFill="True">
-                        <TextBlock DockPanel.Dock="Left" Text="办理交接日期" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                        <TextBlock DockPanel.Dock="Left" Text="办理交接日期：" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                         <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
                                     HorizontalAlignment="Left"
                                     IsEnabled="{Binding CanConfirmPhysicalHandover}"

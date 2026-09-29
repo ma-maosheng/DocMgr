@@ -46,7 +46,7 @@ namespace DocMgr.ViewModels.Cabinets
                 HasOccupationLock,
                 OccupationLockToolTipText);
 
-            var visual = ResolveVisual(descriptor, hideDuplicateCornerText: _corners.HideCenterTypePill);
+            var visual = ResolveVisual(descriptor);
             _baseCardBackground = visual.CardBackground;
             _baseCardBorderBrush = visual.CardBorderBrush;
             _baseIconBodyBrush = visual.IconBodyBrush;
@@ -73,8 +73,13 @@ namespace DocMgr.ViewModels.Cabinets
             HasArchiveInfo = descriptor.HasArchiveInfo;
             YearDisplayText = FormatLabelValue("年度", descriptor.YearText);
             ProjectDisplayText = FormatLabelValue("项目", descriptor.ProjectText);
-            UsedCapacityDisplayText = FormatLabelValue("已用", descriptor.UsedCapacityDisplayText);
-            RemainingCapacityDisplayText = FormatLabelValue("剩余", descriptor.RemainingCapacityDisplayText);
+            // 数据光盘不展示盘内已用/剩余容量（仅硬盘年度袋标容量）。
+            UsedCapacityDisplayText = descriptor.IsOpticalDiscMedia
+                ? string.Empty
+                : FormatLabelValue("已用", descriptor.UsedCapacityDisplayText);
+            RemainingCapacityDisplayText = descriptor.IsOpticalDiscMedia
+                ? string.Empty
+                : FormatLabelValue("剩余", descriptor.RemainingCapacityDisplayText);
             YearlyHardDiskCapacityLineText = BuildYearlyCapacityLine(descriptor);
             SecondaryText = descriptor.IsPendingReturn
                 ? BuildPendingReturnText(descriptor.CurrentLocationText, descriptor.CurrentHolderText)
@@ -82,10 +87,27 @@ namespace DocMgr.ViewModels.Cabinets
             CompactHeaderText = IsYearlyArchiveDisplay
                 ? BuildYearlyCompactHeader(descriptor)
                 : BuildCompactHeaderText(DiskCodeText, CapacityText);
-            CompactDetailText = IsYearlyArchiveDisplay
-                ? BuildYearlyCompactDetail(descriptor)
-                : BuildCompactDetailText(StatusText, CurrentLocationText, ElectronicArchiveNoText, ElectronicArchiveLocationText);
-            BadgeText = visual.BadgeText;
+            StatusTextForeground = MediumStatusDisplayColorSupport.ResolveForeground(StatusText);
+            if (IsYearlyArchiveDisplay)
+            {
+                CompactDetailText = BuildYearlyCompactDetail(descriptor);
+                CompactDetailStatusText = string.Empty;
+                CompactDetailSuffixText = CompactDetailText;
+            }
+            else
+            {
+                CompactDetailStatusText = StatusText;
+                CompactDetailSuffixText = BuildCompactDetailSuffixText(
+                    CurrentLocationText,
+                    ElectronicArchiveNoText,
+                    ElectronicArchiveLocationText);
+                CompactDetailText = string.IsNullOrEmpty(CompactDetailSuffixText)
+                    ? CompactDetailStatusText
+                    : $"{CompactDetailStatusText}{CompactDetailSuffixText}";
+            }
+
+            // 类型文案仅供档口详情等列表使用；卡片中部 pill 已由状态文案替代，不再展示。
+            BadgeText = ResolveTypeBadgeLabel(descriptor);
             ToolTipText = descriptor.ToolTipText;
             ElectronicArchiveUnitId = descriptor.ElectronicArchiveUnitId;
             MediumId = descriptor.MediumId;
@@ -130,6 +152,9 @@ namespace DocMgr.ViewModels.Cabinets
 
         public string StatusText { get; } = string.Empty;
 
+        /// <summary>状态描述前景色（与 HD-TXN 状态列共用映射）。</summary>
+        public string StatusTextForeground { get; } = MediumStatusDisplayColorSupport.DefaultForeground;
+
         public string CurrentLocationText { get; } = string.Empty;
 
         public string SecondaryText { get; } = string.Empty;
@@ -158,7 +183,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         public string ArchiveSequenceText { get; } = string.Empty;
 
-        /// <summary>序号改回图标右上角展示（介质卡不再用 Dock 叠层角标，避免防磁柜 UniformGrid 布局死循环）。</summary>
+        /// <summary>档内序号是否存在（标准模式由左上 NW 角标展示；本属性供兼容/详情引用）。</summary>
         public Visibility ArchiveSequenceVisibility => ArchiveSequenceNumber > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         public string NwBadgeText => _corners.Nw.Text;
@@ -212,12 +237,16 @@ namespace DocMgr.ViewModels.Cabinets
 
         public string CompactDetailText { get; } = string.Empty;
 
+        /// <summary>紧凑详情中的状态段（年度袋布局为空，避免与后缀重复）。</summary>
+        public string CompactDetailStatusText { get; } = string.Empty;
+
+        /// <summary>紧凑详情中状态之后的后缀（如「、现位：…」），供状态赋色分段绑定。</summary>
+        public string CompactDetailSuffixText { get; } = string.Empty;
+
         public string BadgeText { get; } = string.Empty;
 
-        public Visibility CenterTypeBadgeVisibility =>
-            _corners.HideCenterTypePill || string.IsNullOrWhiteSpace(BadgeText)
-                ? Visibility.Collapsed
-                : Visibility.Visible;
+        /// <summary>中部类型 pill 已由状态文案替代，统一隐藏。</summary>
+        public Visibility CenterTypeBadgeVisibility => Visibility.Collapsed;
 
         public string ToolTipText { get; } = string.Empty;
 
@@ -324,9 +353,21 @@ namespace DocMgr.ViewModels.Cabinets
             ? Visibility.Visible
             : Visibility.Collapsed;
 
-        public Visibility YearlyHardDiskCapacityLineVisibility => IsYearlyArchiveDisplay && !string.IsNullOrWhiteSpace(YearlyHardDiskCapacityLineText)
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        /// <summary>年度硬盘袋「已用」行；光盘不展示盘内容量。</summary>
+        public Visibility YearlyHardDiskUsedCapacityVisibility =>
+            IsYearlyArchiveDisplay
+            && !IsOpticalDiscMedia
+            && !string.IsNullOrWhiteSpace(UsedCapacityDisplayText)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+        /// <summary>年度硬盘袋「剩余」行；光盘不展示盘内容量。</summary>
+        public Visibility YearlyHardDiskCapacityLineVisibility =>
+            IsYearlyArchiveDisplay
+            && !IsOpticalDiscMedia
+            && !string.IsNullOrWhiteSpace(RemainingCapacityDisplayText)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
         public Visibility YearlyHardDiskCodeVisibility => IsYearlyArchiveDisplay && !IsOpticalDiscMedia
             ? Visibility.Visible
@@ -345,9 +386,11 @@ namespace DocMgr.ViewModels.Cabinets
 
         public double CardBorderThickness => IsSelected ? 2d : 1d;
 
-        public string IconBodyBrush => IsSelected ? "#BFDBFE" : _baseIconBodyBrush;
+        /// <summary>图标色固定表达空盘/数据盘，选中态不改色以免冲掉语义。</summary>
+        public string IconBodyBrush => _baseIconBodyBrush;
 
-        public string IconAccentBrush => IsSelected ? "#2563EB" : _baseIconAccentBrush;
+        /// <summary>图标描边/强调色；选中态不改色。</summary>
+        public string IconAccentBrush => _baseIconAccentBrush;
 
         public string StatusBadgeBackground => IsSelected ? "#EFF6FF" : _baseStatusBadgeBackground;
 
@@ -385,7 +428,7 @@ namespace DocMgr.ViewModels.Cabinets
         {
             if (descriptor.IsOpticalDiscMedia)
             {
-                return $"{FormatLabelValue("年度", descriptor.YearText)} · {FormatLabelValue("项目", descriptor.ProjectText)} · {BuildYearlyCapacityLine(descriptor)}";
+                return $"{FormatLabelValue("年度", descriptor.YearText)} · {FormatLabelValue("项目", descriptor.ProjectText)}";
             }
 
             string bagNo = ArchiveContainerCodeDisplaySupport.ToShortDisplayCode(descriptor.ElectronicArchiveNoText);
@@ -395,12 +438,12 @@ namespace DocMgr.ViewModels.Cabinets
 
         private static string BuildYearlyCapacityLine(CabinetHardDiskMediumDescriptor descriptor)
         {
-            string usedToken = ToCompactCapacityToken(descriptor.UsedCapacityDisplayText);
             if (descriptor.IsOpticalDiscMedia)
             {
-                return usedToken == "—" ? string.Empty : $"用{usedToken}";
+                return string.Empty;
             }
 
+            string usedToken = ToCompactCapacityToken(descriptor.UsedCapacityDisplayText);
             string remainingToken = ToCompactCapacityToken(descriptor.RemainingCapacityDisplayText);
             return $"用{usedToken}、余{remainingToken}";
         }
@@ -421,19 +464,21 @@ namespace DocMgr.ViewModels.Cabinets
             return $"{label} {resolvedValue}";
         }
 
-        private static string BuildCompactDetailText(string statusText, string currentLocationText, string electronicArchiveNoText, string electronicArchiveLocationText)
+        private static string BuildCompactDetailSuffixText(
+            string currentLocationText,
+            string electronicArchiveNoText,
+            string electronicArchiveLocationText)
         {
-            string status = string.IsNullOrWhiteSpace(statusText) ? "状态未登记" : statusText.Trim();
             string location = string.IsNullOrWhiteSpace(currentLocationText) ? "位置未登记" : currentLocationText.Trim();
-            string detail = $"{status}、现位：{location}";
+            string suffix = $"、现位：{location}";
             if (string.IsNullOrWhiteSpace(electronicArchiveNoText) && string.IsNullOrWhiteSpace(electronicArchiveLocationText))
             {
-                return detail;
+                return suffix;
             }
 
             string archiveNo = string.IsNullOrWhiteSpace(electronicArchiveNoText) ? "未登记" : electronicArchiveNoText.Trim();
             string archiveLocation = string.IsNullOrWhiteSpace(electronicArchiveLocationText) ? "未登记" : electronicArchiveLocationText.Trim();
-            return $"{detail}、袋号：{archiveNo}、袋位：{archiveLocation}";
+            return $"{suffix}、袋号：{archiveNo}、袋位：{archiveLocation}";
         }
 
         private static string BuildPendingReturnText(string currentLocationText, string currentHolderText)
@@ -459,46 +504,33 @@ namespace DocMgr.ViewModels.Cabinets
             return $"袋号：{archiveNo} · 袋位：{archiveLocation}";
         }
 
-        private static StatusVisual ResolveVisual(CabinetHardDiskMediumDescriptor descriptor, bool hideDuplicateCornerText)
+        private static StatusVisual ResolveVisual(CabinetHardDiskMediumDescriptor descriptor)
         {
+            // 图标色仅表达空盘/数据盘；形状由 HardDisk/OpticalDisc 图标可见性区分。
+            var (iconBody, iconAccent) = ResolveIconColors(descriptor);
+
             if (descriptor.IsPendingReturn)
             {
-                // 待还：橙底；角标在右下，中部不再重复文案。
+                // 待还：橙底；右下角标「待还」；图标色仍按空盘/数据盘。
                 return CreateTypeVisual(
-                    hideDuplicateCornerText ? string.Empty : "待还",
                     cardBackground: "#FFF7ED",
                     cardBorder: "#FDBA74",
-                    iconBody: "#F59E0B",
-                    iconAccent: "#B45309",
+                    iconBody: iconBody,
+                    iconAccent: iconAccent,
                     statusBadgeBackground: "#FFEDD5",
                     statusBadgeForeground: "#C2410C",
                     titleForeground: "#9A3412",
                     detailForeground: "#C2410C");
             }
 
-            if (IsScrapType(descriptor))
+            if (IsScrapType(descriptor) || IsBlankType(descriptor))
             {
-                // 拟销：沿用空盘底色，中部标识改为「拟销」。
+                // 空盘/拟销：灰底；状态文案已展示，中部不再标「空盘」「拟销」。
                 return CreateTypeVisual(
-                    hideDuplicateCornerText ? string.Empty : "拟销",
                     cardBackground: "#F8FAFC",
                     cardBorder: "#CBD5E1",
-                    iconBody: "#64748B",
-                    iconAccent: "#334155",
-                    statusBadgeBackground: "#E2E8F0",
-                    statusBadgeForeground: "#475569",
-                    titleForeground: "#334155",
-                    detailForeground: "#64748B");
-            }
-
-            if (IsBlankType(descriptor))
-            {
-                return CreateTypeVisual(
-                    hideDuplicateCornerText ? string.Empty : "空盘",
-                    cardBackground: "#F8FAFC",
-                    cardBorder: "#CBD5E1",
-                    iconBody: "#64748B",
-                    iconAccent: "#334155",
+                    iconBody: iconBody,
+                    iconAccent: iconAccent,
                     statusBadgeBackground: "#E2E8F0",
                     statusBadgeForeground: "#475569",
                     titleForeground: "#334155",
@@ -506,19 +538,50 @@ namespace DocMgr.ViewModels.Cabinets
             }
 
             // 资料：含年度袋、在库资料、盘库失/销/X、损坏专用档口等；异常靠右上角标，底色统一资料蓝。
-            string dataBadge = hideDuplicateCornerText
-                ? string.Empty
-                : ResolveDataTypeBadge(descriptor);
             return CreateTypeVisual(
-                dataBadge,
                 cardBackground: "#EFF6FF",
                 cardBorder: "#93C5FD",
-                iconBody: "#3B82F6",
-                iconAccent: "#1D4ED8",
+                iconBody: iconBody,
+                iconAccent: iconAccent,
                 statusBadgeBackground: "#DBEAFE",
                 statusBadgeForeground: "#1D4ED8",
                 titleForeground: "#1E3A8A",
                 detailForeground: "#1D4ED8");
+        }
+
+        /// <summary>
+        /// 介质图标颜色：空盘（含空白档口拟销裸盘）灰色，其余数据盘蓝色。
+        /// 光/硬盘由图标形状区分，不在此处理。
+        /// </summary>
+        private static (string IconBody, string IconAccent) ResolveIconColors(CabinetHardDiskMediumDescriptor descriptor)
+        {
+            if (IsBlankType(descriptor) || IsScrapType(descriptor))
+            {
+                return ("#64748B", "#334155");
+            }
+
+            return ("#3B82F6", "#1D4ED8");
+        }
+
+        /// <summary>档口详情等列表用的类型短文案（卡片中部不再展示）。</summary>
+        private static string ResolveTypeBadgeLabel(CabinetHardDiskMediumDescriptor descriptor)
+        {
+            if (descriptor.IsPendingReturn)
+            {
+                return "待还";
+            }
+
+            if (IsScrapType(descriptor))
+            {
+                return "拟销";
+            }
+
+            if (IsBlankType(descriptor))
+            {
+                return "空盘";
+            }
+
+            return ResolveDataTypeBadge(descriptor);
         }
 
         private static bool IsScrapType(CabinetHardDiskMediumDescriptor descriptor)
@@ -582,7 +645,6 @@ namespace DocMgr.ViewModels.Cabinets
         }
 
         private static StatusVisual CreateTypeVisual(
-            string badgeText,
             string cardBackground,
             string cardBorder,
             string iconBody,
@@ -592,7 +654,6 @@ namespace DocMgr.ViewModels.Cabinets
             string titleForeground,
             string detailForeground)
             => new(
-                badgeText,
                 cardBackground,
                 cardBorder,
                 iconBody,
@@ -602,6 +663,6 @@ namespace DocMgr.ViewModels.Cabinets
                 titleForeground,
                 detailForeground);
 
-        private sealed record StatusVisual(string BadgeText, string CardBackground, string CardBorderBrush, string IconBodyBrush, string IconAccentBrush, string StatusBadgeBackground, string StatusBadgeForeground, string TitleForeground, string DetailForeground);
+        private sealed record StatusVisual(string CardBackground, string CardBorderBrush, string IconBodyBrush, string IconAccentBrush, string StatusBadgeBackground, string StatusBadgeForeground, string TitleForeground, string DetailForeground);
     }
 }

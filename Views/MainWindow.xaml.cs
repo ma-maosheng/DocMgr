@@ -740,7 +740,7 @@ namespace DocMgr.Views
                 HistoryArchiveDisposalPage => "历史存档资料管理（资料离库处置）",
                 HardDiskMediumLedgerPage => "介质管理（硬盘·初始登记）",
                 OpticalDiscMediaPage => "介质管理（光盘·概览）",
-                OpticalDiscMediumLedgerPage => "介质管理（光盘·流转台账）",
+                OpticalDiscMediumLedgerPage => "介质管理（光盘·光盘台账）",
                 HardDiskMediaOutboundApplicationPage => "介质管理（硬盘·出库申请）",
                 HardDiskMediaReturnRegistrationPage page => page.WorkspaceMode == HardDiskReturnWorkspaceMode.Approval
                     ? "介质管理（硬盘·归还办理）"
@@ -1403,13 +1403,13 @@ namespace DocMgr.Views
             bool recentTransactionsOnly = false)
         {
             TxtPageTitle.Text = recentTransactionsOnly
-                ? "介质管理（光盘·流转台账·近90天）"
-                : "介质管理（光盘·流转台账）";
+                ? "介质管理（光盘·光盘台账·近90天）"
+                : "介质管理（光盘·光盘台账）";
             MainContentFrame.Navigate(new OpticalDiscMediumLedgerPage(initialStatus, quickFilter, recentTransactionsOnly));
         }
 
         /// <summary>
-        /// 光盘概览 KPI 卡片下钻到流转台账（可带初始筛选）。
+        /// 光盘概览 KPI 卡片下钻到光盘台账（可带初始筛选）。
         /// </summary>
         public void NavigateFromOpticalDiscOverviewKpi(OpticalDiscOverviewKpiKind kind)
         {

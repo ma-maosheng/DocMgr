@@ -38,7 +38,7 @@
 
                     <Separator Style="{StaticResource VerticalSeparatorStyle}" />
 
-                    <TextBlock Text="浏览方式" VerticalAlignment="Center" Margin="10,0,8,0" FontWeight="Bold"/>
+                    <TextBlock Text="浏览方式：" VerticalAlignment="Center" Margin="10,0,0,0" FontWeight="Bold"/>
                     <RadioButton Content="分页浏览"
                                  GroupName="TopoMapBrowseMode"
                                  IsChecked="{Binding IsPagedBrowse, Mode=TwoWay}"
@@ -57,7 +57,7 @@
                             Margin="10,0,10,0"
                             Style="{StaticResource ToolbarActionButtonStyle}"
                             Visibility="{Binding CanMaintainLedger, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                    <TextBlock Text="关键词" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="关键词：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                     <TextBox Width="220"
                              Style="{StaticResource ToolbarFilterTextBoxStyle}"
                              Margin="0,0,10,0"

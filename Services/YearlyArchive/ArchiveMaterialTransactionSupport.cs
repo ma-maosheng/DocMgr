@@ -90,6 +90,11 @@ namespace DocMgr.Services.YearlyArchive
                 : BuildRelocationDedupKey(record.RelocationNo, item.FilingFactId);
 
             string modeDisplay = MaterialTransactionDomainValues.MapRelocationModeDisplay(record.RelocationMode);
+            bool isBackupRelocation = string.Equals(
+                record.SourceMediumDisposition,
+                ArchiveRelocationSourceDisposition.OriginalRetained,
+                StringComparison.Ordinal);
+            string relocationKindLabel = isBackupRelocation ? "备份迁档" : "迁档";
             bool locationChanged = !string.Equals(
                 item.BeforeStorageLocation?.Trim(),
                 item.AfterStorageLocation?.Trim(),
@@ -100,10 +105,10 @@ namespace DocMgr.Services.YearlyArchive
                 StringComparison.OrdinalIgnoreCase);
 
             string summary = containerChanged
-                ? $"迁档（{modeDisplay}）· 容器 {item.BeforeContainerCode} → {item.AfterContainerCode}"
+                ? $"{relocationKindLabel}（{modeDisplay}）· 容器 {item.BeforeContainerCode} → {item.AfterContainerCode}"
                 : locationChanged
-                    ? $"迁档（{modeDisplay}）· 位置 {item.BeforeStorageLocation} → {item.AfterStorageLocation}"
-                    : $"迁档（{modeDisplay}）";
+                    ? $"{relocationKindLabel}（{modeDisplay}）· 位置 {item.BeforeStorageLocation} → {item.AfterStorageLocation}"
+                    : $"{relocationKindLabel}（{modeDisplay}）";
 
             return new YearlyArchiveMaterialTransaction
             {

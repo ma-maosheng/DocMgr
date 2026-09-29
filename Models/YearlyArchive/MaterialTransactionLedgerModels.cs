@@ -13,6 +13,11 @@ namespace DocMgr.Models.YearlyArchive
 
         public string RelocationMode { get; set; } = string.Empty;
 
+        /// <summary>
+        /// 空=全部；Backup=备份迁档；Normal=常规迁档。
+        /// </summary>
+        public string RelocationKind { get; set; } = string.Empty;
+
         public string MediaKind { get; set; } = string.Empty;
 
         public string BusinessNo { get; set; } = string.Empty;
@@ -20,6 +25,15 @@ namespace DocMgr.Models.YearlyArchive
         public string OperatorName { get; set; } = string.Empty;
 
         public string Keyword { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// 迁档台账「迁档性质」筛选值。
+    /// </summary>
+    public static class RelocationLedgerKindFilter
+    {
+        public const string Backup = "Backup";
+        public const string Normal = "Normal";
     }
 
     /// <summary>
@@ -126,6 +140,19 @@ namespace DocMgr.Models.YearlyArchive
             string.IsNullOrWhiteSpace(RelocationMode)
                 ? string.Empty
                 : MaterialTransactionDomainValues.MapRelocationModeDisplay(RelocationMode);
+
+        /// <summary>来源介质处置（迁档单）；<see cref="ArchiveRelocationSourceDisposition.OriginalRetained"/> 表示备份式迁档。</summary>
+        public string SourceMediumDisposition { get; init; } = string.Empty;
+
+        /// <summary>是否为保留原件的备份式迁档。</summary>
+        public bool IsBackupRelocation =>
+            string.Equals(
+                SourceMediumDisposition,
+                ArchiveRelocationSourceDisposition.OriginalRetained,
+                StringComparison.Ordinal);
+
+        /// <summary>迁档性质展示：备份迁档 / 常规迁档。</summary>
+        public string RelocationKindDisplay => IsBackupRelocation ? "备份迁档" : "常规迁档";
 
         public string FilingFactNo { get; init; } = string.Empty;
 

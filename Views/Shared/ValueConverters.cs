@@ -2,6 +2,8 @@ using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Media;
+using DocMgr.Models.Shared;
 
 namespace DocMgr.Views.Shared
 {
@@ -113,5 +115,29 @@ namespace DocMgr.Views.Shared
 
             return Binding.DoNothing;
         }
+    }
+
+    /// <summary>
+    /// 业务状态展示文案 → 前景色画刷（DataGrid「业务状态」列共用）。
+    /// </summary>
+    public sealed class WorkflowStatusForegroundConverter : IValueConverter
+    {
+        public static WorkflowStatusForegroundConverter Instance { get; } = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            string hex = ApplicationWorkflowStatusDisplayColorSupport.ResolveForeground(value as string);
+            object? brush = ColorConverter.ConvertFromString(hex);
+            if (brush is Color color)
+            {
+                return new SolidColorBrush(color);
+            }
+
+            return new SolidColorBrush(
+                (Color)ColorConverter.ConvertFromString(ApplicationWorkflowStatusDisplayColorSupport.DefaultForeground)!);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => throw new NotImplementedException();
     }
 }

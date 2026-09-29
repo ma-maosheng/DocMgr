@@ -262,12 +262,12 @@
         </Style>
 
         <Style x:Key="LedgerFilterLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource ToolbarFilterLabelStyle}">
-            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Margin" Value="0"/>
         </Style>
 
         <Style x:Key="FilterRowLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource LedgerFilterLabelStyle}">
             <Setter Property="TextAlignment" Value="Right"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Margin" Value="0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
@@ -337,44 +337,44 @@
                         <TextBlock Grid.Column="0" Text="筛选条件" Style="{StaticResource FilterRowLabelStyle}"
                                    FontWeight="SemiBold" Foreground="#37474F"/>
 
-                        <TextBlock Grid.Column="2" Text="档案年度" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="2" Text="档案年度：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <ComboBox Grid.Column="3" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding Years}"
                                   SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="5" Text="项目" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="5" Text="项目：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <ComboBox Grid.Column="6" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding ProjectOptions}"
                                   DisplayMemberPath="Name"
                                   SelectedValuePath="Id"
                                   SelectedValue="{Binding SelectedProjectId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="8" Text="介质" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="8" Text="介质：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <ComboBox Grid.Column="9" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding MediaKindOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedMediaKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="11" Text="状态" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="11" Text="状态：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <ComboBox Grid.Column="12" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding LifecycleStatusOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedLifecycleStatus, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="14" Text="副本" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="14" Text="副本：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding ArchiveCopyRoleOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedArchiveCopyRole, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="17" Text="立档自" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="17" Text="立档自：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <DatePicker Grid.Column="18" Style="{StaticResource FilterDatePickerStyle}"
                                     SelectedDate="{Binding FiledFrom, Mode=TwoWay}"/>
 
-                        <TextBlock Grid.Column="20" Text="立档至" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="20" Text="立档至：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <DatePicker Grid.Column="21" Style="{StaticResource FilterDatePickerStyle}"
                                     SelectedDate="{Binding FiledTo, Mode=TwoWay}"/>
 
@@ -402,7 +402,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="0" Text="关键词" Style="{StaticResource FilterRowLabelStyle}"/>
+                        <TextBlock Grid.Column="0" Text="关键词：" Style="{StaticResource FilterRowLabelStyle}"/>
                         <TextBox Grid.Column="2" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="模糊匹配立档事实：立档编号、表单号、资料/子项名称、密级、项目、提供单位、申请人、容器编号、存放位置、介质编号、立档路径、柜体名称、盒位编码等">
@@ -411,7 +411,7 @@
                             </TextBox.InputBindings>
                         </TextBox>
 
-                        <TextBlock Grid.Column="4" Text="目录/文件" Style="{StaticResource FilterRowLabelStyle}"/>
+                        <TextBlock Grid.Column="4" Text="目录/文件：" Style="{StaticResource FilterRowLabelStyle}"/>
                         <TextBox Grid.Column="6" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding ContentEntryKeyword, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="按电子介质目录/文件名称检索立档记录。支持通配符：* 任意字符，? 单字符；不含通配符时为包含匹配；\ 可转义 * ?。筛选「模拟」介质时无效。">
@@ -474,7 +474,7 @@
                         <DataGridTemplateColumn Width="168" IsReadOnly="True">
                             <DataGridTemplateColumn.Header>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="表单号：" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="表单号：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                                     <Button Content="{Binding Data.FoldAllButtonText, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
                                             ToolTip="{Binding Data.FoldAllButtonToolTip, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
                                             Style="{StaticResource LedgerFoldButtonStyle}"
@@ -485,7 +485,7 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                                <!-- 首行显示折叠按钮；同组展开子行用等宽占位，使表单号与首行文本左缘对齐 -->
+                                        <!-- 首行显示折叠按钮；同组展开子行用等宽占位，使表单号与首行文本左缘对齐 -->
                                         <Button Content="{Binding FoldButtonText, Mode=OneWay}"
                                                 Style="{StaticResource LedgerFoldButtonStyle}"
                                                 Visibility="{Binding ShowFoldButton, Converter={StaticResource BooleanToVisibilityConverter}}"
@@ -879,7 +879,7 @@
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="时间" Binding="{Binding OperatedAtDisplay, Mode=OneWay}" Width="128"/>
                                         <DataGridTextColumn Header="出库单号" Binding="{Binding OutboundNo, Mode=OneWay}" Width="130"/>
-                                        <DataGridTextColumn Header="业务状态" Binding="{Binding OutboundStatusDisplay, Mode=OneWay}" Width="88"/>
+                                        <DataGridTextColumn Header="业务状态" Binding="{Binding OutboundStatusDisplay, Mode=OneWay}" Width="88" ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
                                         <DataGridTextColumn Header="节点类别" Binding="{Binding NodeCategoryDisplay, Mode=OneWay}" Width="72"/>
                                         <DataGridTextColumn Header="流程节点" Binding="{Binding ProcessNodeDisplay, Mode=OneWay}" Width="180"/>
                                         <DataGridTextColumn Header="用途" Binding="{Binding UsageModeDisplay, Mode=OneWay}" Width="56"/>

@@ -168,7 +168,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
-            _dialogService.ShowError("无法跳转到流转台账：主窗口不可用。");
+            _dialogService.ShowError("无法跳转到光盘台账：主窗口不可用。");
         }
 
         private static void ReplaceCollection(ObservableCollection<string> target, IReadOnlyList<string> source)

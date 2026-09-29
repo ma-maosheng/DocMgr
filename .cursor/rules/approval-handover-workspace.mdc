@@ -159,11 +159,11 @@ Service 标准写法：**领域校验 → `TryTransition` / `EvaluateAttachmentU
 | 短码 | 类型 | 目标 |
 |---|---|---|
 | HD-OB-APV-ED / HD-OB-VW | A | **已迁壳**；VW 办结后其他附件（共享面板） |
-| HD-RTN | A | **已迁壳**；办结后其他附件分区列表已接线；办结后打开态后补 |
-| YA-REG-APV/ED / YA-REG-VW | A | **已迁壳**；VW 共享面板后补；打印计数 + `FirstPrintedAt`；`Show*`←`Enable*` |
+| HD-RTN | A | **已迁壳**；壳独立于表单滚动区并启用壳底栏；强制作废在壳外；办结后其他附件分区/后补 |
+| YA-REG-APV/ED / YA-REG-VW | A | **已迁壳**；ED 审批态壳占满内容区（`ShowBodyChrome=True`，底栏在白卡外）；VW 共享面板后补；打印计数 + `FirstPrintedAt`；`Show*`←`Enable*` |
 | YA-OB-APV/HND / YA-OB-VW | A | **已迁壳**；VW 共享面板后补；`Show*`←`Enable*`；申请窗已去掉审批死代码 |
-| YA-RTN | A | **已迁壳**；签字卡统一控件；办结后其他附件分区；办结后打开态后补 |
-| NT-IB-APV/ED、NT-OB-APV/ED | A | **已迁壳**；审批态隐藏外层底栏；`Show*`←`Enable*`；办结后打开编辑窗后补 |
+| YA-RTN | A | **已迁壳**；壳勿嵌外层 ScrollViewer，底栏在蓝卡外；强制作废在壳外；签字卡统一控件；办结后其他附件分区/后补 |
+| NT-IB-APV/ED、NT-OB-APV/ED | A | **已迁壳**；ED 审批态壳占满内容区（底栏在白卡外）；`Show*`←`Enable*`；办结后打开编辑窗后补 |
 | HD-DSP-ED | B | **已迁壳** |
 | YA-DSP-ED | B | **已迁壳**（`SignatureExtraContent`：撤柜/低格确认） |
 | NT-DSP-ED | B | **已迁壳** |
@@ -171,7 +171,11 @@ Service 标准写法：**领域校验 → `TryTransition` / `EvaluateAttachmentU
 | HD-INV-ED | B | **已迁壳**（盘库登记；无照片区；默认仅资料室负责人） |
 | YA-INV-ED | B | **已迁壳**（模拟/电子盘库登记共用业务类型；无照片区） |
 
-嵌入双模窗时：`ShowTitleChrome=False`（外层已有标题）；壳底栏承担打印/办结/关闭，外层仅保留草稿态按钮与（可选）关闭。
+
+嵌入双模窗时：`ShowTitleChrome=False`（外层已有标题）。
+- **审批态由壳占满内容区**（YA-REG-ED、NT-IB/OB-ED）：申请只读头放 `HeaderContent`，`ShowBodyChrome=True`，壳白卡包住申请头+蓝卡，**底栏固定在白卡外**；外层申请态白卡与底栏在审批态隐藏。
+- **工作台嵌入审批区**（YA-RTN、HD-RTN）：外层白卡保留业务头/明细，壳 `ShowBodyChrome=False`，**禁止再把壳套进外层 ScrollViewer**；`ShowFooterChrome=True` 由壳自管滚动与底栏；强制作废等壳外动作放在壳底栏下方。
+独立办理窗（壳为窗体根、含 HeaderContent，如 HD-OB-APV-ED、离库/盘库 ED、YA-OB 审批面板）保持默认 `ShowBodyChrome=True`。
 盘库登记办理窗须设 `StretchHeaderToViewport=True`，使双表吃满业务头剩余高度；离库等固定高度内容保持默认（关闭），避免与审批卡之间出现大块空白。
 ## 禁止
 

@@ -13,7 +13,9 @@
             <Style x:Key="OutboundApprovalInfoInlineLabelStyle" TargetType="TextBlock"
                    BasedOn="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}">
                 <Setter Property="Width" Value="72"/>
-                <Setter Property="Margin" Value="0,0,6,0"/>
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="TextAlignment" Value="Right"/>
+                <Setter Property="Margin" Value="0"/>
             </Style>
             <Style x:Key="OutboundApprovalInfoInlineValueStyle" TargetType="TextBlock">
                 <Setter Property="VerticalAlignment" Value="Center"/>
@@ -53,23 +55,23 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <DockPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,4" LastChildFill="True">
-                                <TextBlock DockPanel.Dock="Left" Text="申请人" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                                <TextBlock DockPanel.Dock="Left" Text="申请人：" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
                                 <TextBlock Text="{Binding Record.ApplicantName, Mode=OneWay}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
                             </DockPanel>
                             <DockPanel Grid.Row="0" Grid.Column="1" Margin="0,0,8,4" LastChildFill="True">
-                                <TextBlock DockPanel.Dock="Left" Text="申请部门" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                                <TextBlock DockPanel.Dock="Left" Text="申请部门：" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
                                 <TextBlock Text="{Binding Record.ApplicantDept, Mode=OneWay}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
                             </DockPanel>
                             <DockPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,4" LastChildFill="True">
-                                <TextBlock DockPanel.Dock="Left" Text="资料去向" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                                <TextBlock DockPanel.Dock="Left" Text="资料去向：" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
                                 <TextBlock Text="{Binding DestinationDisplayText, Mode=OneWay}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
                             </DockPanel>
                             <DockPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,4" LastChildFill="True">
-                                <TextBlock DockPanel.Dock="Left" Text="证明材料" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                                <TextBlock DockPanel.Dock="Left" Text="证明材料：" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
                                 <TextBlock Text="{Binding ProofMaterialDisplay, Mode=OneWay}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
                             </DockPanel>
                             <DockPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" LastChildFill="True">
-                                <TextBlock DockPanel.Dock="Left" Text="申请原由" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
+                                <TextBlock DockPanel.Dock="Left" Text="申请原由：" Style="{StaticResource OutboundApprovalInfoInlineLabelStyle}"/>
                                 <TextBlock Text="{Binding Record.Reason, Mode=OneWay}" Style="{StaticResource OutboundApprovalInfoInlineValueStyle}"/>
                             </DockPanel>
                         </Grid>
@@ -114,7 +116,7 @@
             <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
                     IsEnabled="{Binding CanEditHandoverRemark}">
                 <DockPanel LastChildFill="True">
-                    <TextBlock DockPanel.Dock="Left" Text="交接备注" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
+                    <TextBlock DockPanel.Dock="Left" Text="交接备注：" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                     <TextBox Text="{Binding HandoverRemark, UpdateSourceTrigger=PropertyChanged}"
                              MinHeight="36" TextWrapping="Wrap" AcceptsReturn="True"
                              VerticalContentAlignment="Top"

@@ -1105,6 +1105,7 @@
                                                                                         <RowDefinition Height="Auto"/>
                                                                                         <RowDefinition Height="Auto"/>
                                                                                         <RowDefinition Height="Auto"/>
+                                                                                        <RowDefinition Height="Auto"/>
                                                                                     </Grid.RowDefinitions>
 
                                                                                     <Grid HorizontalAlignment="Center" Width="34" Height="22">
@@ -1163,7 +1164,17 @@
                                                                                                Style="{StaticResource SnapFs10}"
                                                                                                Foreground="{Binding DetailForeground}"/>
 
-                                                                                    <Border Grid.Row="3"
+                                                                                    <TextBlock Grid.Row="3"
+                                                                                               Margin="0,2,0,0"
+                                                                                               Text="{Binding StatusText}"
+                                                                                               HorizontalAlignment="Center"
+                                                                                               TextAlignment="Center"
+                                                                                               TextWrapping="Wrap"
+                                                                                               Style="{StaticResource SnapFs10}"
+                                                                                               FontWeight="SemiBold"
+                                                                                               Foreground="{Binding StatusTextForeground}"/>
+
+                                                                                    <Border Grid.Row="4"
                                                                                             Margin="0,4,0,0"
                                                                                             Padding="3,1"
                                                                                             HorizontalAlignment="Center"
@@ -1247,7 +1258,8 @@
                                                                                                TextAlignment="Center"
                                                                                                TextWrapping="Wrap"
                                                                                                Style="{StaticResource SnapFs10}"
-                                                                                               Foreground="{Binding DetailForeground}"/>
+                                                                                               Foreground="{Binding DetailForeground}"
+                                                                                               Visibility="{Binding YearlyHardDiskUsedCapacityVisibility}"/>
 
                                                                                     <TextBlock Margin="0,2,0,0"
                                                                                                Text="{Binding RemainingCapacityDisplayText}"
@@ -1257,6 +1269,15 @@
                                                                                                Style="{StaticResource SnapFs10}"
                                                                                                Foreground="{Binding DetailForeground}"
                                                                                                Visibility="{Binding YearlyHardDiskCapacityLineVisibility}"/>
+
+                                                                                    <TextBlock Margin="0,2,0,0"
+                                                                                               Text="{Binding StatusText}"
+                                                                                               HorizontalAlignment="Center"
+                                                                                               TextAlignment="Center"
+                                                                                               TextWrapping="Wrap"
+                                                                                               Style="{StaticResource SnapFs10}"
+                                                                                               FontWeight="SemiBold"
+                                                                                               Foreground="{Binding StatusTextForeground}"/>
 
                                                                                     <Border Margin="0,4,0,0"
                                                                                             Padding="3,1"
@@ -1415,9 +1436,14 @@
                                                                                                FontWeight="SemiBold"
                                                                                                Foreground="{Binding TitleForeground}"/>
                                                                                     <TextBlock Margin="0,2,0,0"
-                                                                                               Text="{Binding CompactDetailText}"
                                                                                                Style="{StaticResource SnapFs9}"
-                                                                                               Foreground="{Binding DetailForeground}"/>
+                                                                                               TextWrapping="Wrap">
+                                                                                        <Run Text="{Binding CompactDetailStatusText, Mode=OneWay}"
+                                                                                             FontWeight="SemiBold"
+                                                                                             Foreground="{Binding StatusTextForeground}"/>
+                                                                                        <Run Text="{Binding CompactDetailSuffixText, Mode=OneWay}"
+                                                                                             Foreground="{Binding DetailForeground}"/>
+                                                                                    </TextBlock>
                                                                                 </StackPanel>
                                                                             </Border>
                                                                         </DataTemplate>
@@ -1765,7 +1791,7 @@
                                                FontWeight="Bold"
                                                Foreground="White"/>
                                 </Border>
-                                <TextBlock Text="开柜标识图例"
+                                <TextBlock Text="防磁磁盘柜 · 开柜标识图例"
                                            VerticalAlignment="Center"
                                            FontSize="12"
                                            FontWeight="Bold"
@@ -1775,111 +1801,172 @@
                     </Expander.Header>
 
                     <StackPanel Margin="12,8,12,10">
-                        <TextBlock Text="角位示意（与电子袋卡片一致）"
+                        <TextBlock Text="介质卡示意（与档口内卡片同结构）"
                                    FontSize="10"
                                    FontWeight="SemiBold"
                                    Foreground="#334155"
                                    Margin="0,0,0,6"/>
-                        <Border Padding="8"
+
+                        <!-- 缩略复刻标准模式介质卡：图标 → 编号/容量 → 状态文案，四角有则叠层 -->
+                        <Border Padding="6"
                                 Background="#EFF6FF"
                                 BorderBrush="#93C5FD"
                                 BorderThickness="1"
                                 CornerRadius="6"
                                 Margin="0,0,0,8">
-                            <Grid MinHeight="72">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <Grid Grid.Row="0">
-                                    <Border HorizontalAlignment="Left" Padding="4,1" Background="#FEF3C7" BorderBrush="#F59E0B" BorderThickness="0.8" CornerRadius="3">
-                                        <TextBlock Text="01" FontSize="10" FontWeight="Bold" Foreground="#92400E"/>
-                                    </Border>
-                                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                                        <Border Padding="4,1" Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="0.8" CornerRadius="3" Margin="0,0,4,0">
-                                            <TextBlock Text="失" FontSize="10" FontWeight="Bold" Foreground="#B91C1C"/>
+                            <Grid MinHeight="108">
+                                <StackPanel HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Margin="0,14,0,14">
+                                    <Grid HorizontalAlignment="Center" Width="34" Height="22">
+                                        <Border Margin="0,3,0,0"
+                                                Background="#3B82F6"
+                                                BorderBrush="#1D4ED8"
+                                                BorderThickness="1"
+                                                CornerRadius="3"/>
+                                        <Border HorizontalAlignment="Left"
+                                                Width="9"
+                                                Height="4"
+                                                Margin="2,0,0,0"
+                                                Background="#1D4ED8"
+                                                CornerRadius="1.5,1.5,0,0"/>
+                                        <Ellipse HorizontalAlignment="Right"
+                                                 VerticalAlignment="Bottom"
+                                                 Width="5"
+                                                 Height="5"
+                                                 Margin="0,0,3,3"
+                                                 Fill="#FFFFFF"
+                                                 Stroke="#1D4ED8"
+                                                 StrokeThickness="1"/>
+                                    </Grid>
+                                    <TextBlock Margin="0,4,0,0"
+                                               HorizontalAlignment="Center"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="#1E3A8A"
+                                               Text="HD-001"/>
+                                    <TextBlock Margin="0,2,0,0"
+                                               HorizontalAlignment="Center"
+                                               FontSize="10"
+                                               Foreground="#1D4ED8"
+                                               Text="500GB"/>
+                                    <TextBlock Margin="0,2,0,0"
+                                               HorizontalAlignment="Center"
+                                               FontSize="10"
+                                               FontWeight="SemiBold"
+                                               Foreground="#1D4ED8"
+                                               Text="在库(资料)"/>
+                                </StackPanel>
+
+                                <DockPanel LastChildFill="False" IsHitTestVisible="False">
+                                    <Grid DockPanel.Dock="Top">
+                                        <Border HorizontalAlignment="Left" Padding="4,1" Background="#FEF3C7" BorderBrush="#F59E0B" BorderThickness="0.8" CornerRadius="3">
+                                            <TextBlock Text="01" FontSize="10" FontWeight="Bold" Foreground="#92400E"/>
                                         </Border>
-                                        <Border Padding="4,1" Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="0.8" CornerRadius="3" Margin="0,0,4,0">
-                                            <TextBlock Text="销" FontSize="10" FontWeight="Bold" Foreground="#B91C1C"/>
+                                        <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                                            <Border Padding="4,1" Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="0.8" CornerRadius="3" Margin="0,0,4,0">
+                                                <TextBlock Text="失" FontSize="10" FontWeight="Bold" Foreground="#B91C1C"/>
+                                            </Border>
+                                            <Border Padding="4,1" Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="0.8" CornerRadius="3" Margin="0,0,4,0">
+                                                <TextBlock Text="销" FontSize="10" FontWeight="Bold" Foreground="#B91C1C"/>
+                                            </Border>
+                                            <Border Padding="4,1" Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="0.8" CornerRadius="3">
+                                                <TextBlock Text="X" FontSize="10" FontWeight="Bold" Foreground="#B91C1C"/>
+                                            </Border>
+                                        </StackPanel>
+                                    </Grid>
+                                    <Grid DockPanel.Dock="Bottom">
+                                        <Border HorizontalAlignment="Left" Padding="4,1" Background="#FEF3C7" BorderBrush="#D97706" BorderThickness="0.8" CornerRadius="3">
+                                            <TextBlock Text="预订" FontSize="10" FontWeight="Bold" Foreground="#B45309"/>
                                         </Border>
-                                        <Border Padding="4,1" Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="0.8" CornerRadius="3">
-                                            <TextBlock Text="X" FontSize="10" FontWeight="Bold" Foreground="#B91C1C"/>
+                                        <Border HorizontalAlignment="Right" Padding="4,1" Background="#FFEDD5" BorderBrush="#FDBA74" BorderThickness="0.8" CornerRadius="3">
+                                            <TextBlock Text="待还" FontSize="10" FontWeight="Bold" Foreground="#C2410C"/>
                                         </Border>
-                                    </StackPanel>
-                                </Grid>
-                                <TextBlock Grid.Row="1"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           FontSize="10"
-                                           Foreground="#94A3B8"
-                                           Text="电子袋"/>
-                                <Grid Grid.Row="2">
-                                    <Border HorizontalAlignment="Left" Padding="4,1" Background="#FEF3C7" BorderBrush="#D97706" BorderThickness="0.8" CornerRadius="3">
-                                        <TextBlock Text="预订" FontSize="10" FontWeight="Bold" Foreground="#B45309"/>
-                                    </Border>
-                                    <Border HorizontalAlignment="Right" Padding="4,1" Background="#FFEDD5" BorderBrush="#FDBA74" BorderThickness="0.8" CornerRadius="3">
-                                        <TextBlock Text="待还" FontSize="10" FontWeight="Bold" Foreground="#C2410C"/>
-                                    </Border>
-                                </Grid>
+                                    </Grid>
+                                </DockPanel>
                             </Grid>
                         </Border>
 
-                        <TextBlock Text="左上 · 袋内序号"
+                        <TextBlock Text="1. 图标：形状＝光/硬盘，颜色＝空盘/数据盘"
                                    FontSize="10"
                                    FontWeight="SemiBold"
                                    Foreground="#334155"
                                    Margin="0,0,0,2"/>
-                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,6"
-                                   Text="电子袋内介质序号（如 01）。"/>
-
-                        <TextBlock Text="右上 · 盘库（失/销/X 可并排）"
-                                   FontSize="10"
-                                   FontWeight="SemiBold"
-                                   Foreground="#334155"
-                                   Margin="0,0,0,2"/>
-                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,6"
-                                   Text="按介质台账状态标「失」「销」「X」；袋内全异常时也不再标「空」。"/>
-
-                        <TextBlock Text="右下 · 待还　左下 · 预订"
-                                   FontSize="10"
-                                   FontWeight="SemiBold"
-                                   Foreground="#334155"
-                                   Margin="0,0,0,2"/>
-                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,6"
-                                   Text="待还表示需归还；预订表示占用/征用锁。"/>
-
-                        <TextBlock Text="底色 · 类型" FontSize="10" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
                         <WrapPanel Margin="0,0,0,4">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,14,6">
-                                <Grid Width="20" Height="13" Margin="0,0,5,0">
-                                    <Border Margin="0,2,0,0" Background="#64748B" BorderBrush="#334155" BorderThickness="1" CornerRadius="2.5"/>
-                                    <Border HorizontalAlignment="Left" Width="6" Height="3" Margin="2,0,0,0" Background="#334155" CornerRadius="1,1,0,0"/>
-                                </Grid>
-                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="空盘"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,14,6">
-                                <Grid Width="20" Height="13" Margin="0,0,5,0">
-                                    <Border Margin="0,2,0,0" Background="#64748B" BorderBrush="#334155" BorderThickness="1" CornerRadius="2.5"/>
-                                    <Border HorizontalAlignment="Left" Width="6" Height="3" Margin="2,0,0,0" Background="#334155" CornerRadius="1,1,0,0"/>
-                                </Grid>
-                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="拟销"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,14,6">
-                                <Grid Width="20" Height="13" Margin="0,0,5,0">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,4">
+                                <Grid Width="28" Height="18" Margin="0,0,5,0">
                                     <Border Margin="0,2,0,0" Background="#3B82F6" BorderBrush="#1D4ED8" BorderThickness="1" CornerRadius="2.5"/>
-                                    <Border HorizontalAlignment="Left" Width="6" Height="3" Margin="2,0,0,0" Background="#1D4ED8" CornerRadius="1,1,0,0"/>
+                                    <Border HorizontalAlignment="Left" Width="7" Height="3.5" Margin="2,0,0,0" Background="#1D4ED8" CornerRadius="1,1,0,0"/>
                                 </Grid>
-                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="资料"/>
+                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="硬盘·数据"/>
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                <Grid Width="20" Height="13" Margin="0,0,5,0">
-                                    <Border Margin="0,2,0,0" Background="#F59E0B" BorderBrush="#B45309" BorderThickness="1" CornerRadius="2.5"/>
-                                    <Border HorizontalAlignment="Left" Width="6" Height="3" Margin="2,0,0,0" Background="#B45309" CornerRadius="1,1,0,0"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,4">
+                                <Grid Width="28" Height="18" Margin="0,0,5,0">
+                                    <Border Margin="0,2,0,0" Background="#64748B" BorderBrush="#334155" BorderThickness="1" CornerRadius="2.5"/>
+                                    <Border HorizontalAlignment="Left" Width="7" Height="3.5" Margin="2,0,0,0" Background="#334155" CornerRadius="1,1,0,0"/>
                                 </Grid>
-                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="待还"/>
+                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="硬盘·空盘"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <Border Width="16" Height="16" Margin="0,0,5,0" BorderBrush="#1D4ED8" BorderThickness="1" Background="#3B82F6">
+                                    <Ellipse Margin="3" Fill="#1D4ED8"/>
+                                </Border>
+                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="光盘·数据"/>
                             </StackPanel>
                         </WrapPanel>
+                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,6"
+                                   Text="块形＝硬盘，圆形＝光盘；灰＝空盘（含空白档口拟销裸盘），蓝＝数据盘。待还/盘库等不改图标色。"/>
+
+                        <TextBlock Text="2. 正文信息"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,2"/>
+                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,6"
+                                   Text="普通卡：编号 + 容量。年度资料袋另显：年度、项目；硬盘另显已用/剩余容量，光盘卡片不标盘内容量（悬停仍可见）；光盘袋不显编号行。"/>
+
+                        <TextBlock Text="3. 状态文案（中部彩色）"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,4"/>
+                        <WrapPanel Margin="0,0,0,4">
+                            <TextBlock Margin="0,0,10,4" FontSize="10" FontWeight="SemiBold" Foreground="#64748B" Text="在库(空盘)"/>
+                            <TextBlock Margin="0,0,10,4" FontSize="10" FontWeight="SemiBold" Foreground="#1D4ED8" Text="在库(资料)"/>
+                            <TextBlock Margin="0,0,10,4" FontSize="10" FontWeight="SemiBold" Foreground="#7C3AED" Text="在库(拟销)"/>
+                            <TextBlock Margin="0,0,10,4" FontSize="10" FontWeight="SemiBold" Foreground="#DC2626" Text="在库(盘失)"/>
+                            <TextBlock Margin="0,0,0,4" FontSize="10" FontWeight="SemiBold" Foreground="#D97706" Text="在库(损坏)"/>
+                        </WrapPanel>
+                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,6"
+                                   Text="取自介质台账状态，着色与介质流水一致；不再使用中部「空盘/拟销/资料」类型 pill。"/>
+
+                        <TextBlock Text="4. 卡片底色"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,4"/>
+                        <WrapPanel Margin="0,0,0,6">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,4">
+                                <Border Width="18" Height="12" Margin="0,0,5,0" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="2"/>
+                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="灰·空盘/拟销"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,4">
+                                <Border Width="18" Height="12" Margin="0,0,5,0" Background="#EFF6FF" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="2"/>
+                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="蓝·资料/损坏"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <Border Width="18" Height="12" Margin="0,0,5,0" Background="#FFF7ED" BorderBrush="#FDBA74" BorderThickness="1" CornerRadius="2"/>
+                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#475569" Text="橙·待还"/>
+                            </StackPanel>
+                        </WrapPanel>
+
+                        <TextBlock Text="5. 角标（有对应状态才显示）"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#334155"
+                                   Margin="0,0,0,2"/>
+                        <TextBlock FontSize="10" Foreground="#64748B" TextWrapping="Wrap"
+                                   Text="左上序号（数据档口）· 右上失/销/X（年度袋台账异常）· 左下预订 · 右下待还。空白/损坏专用档口裸盘通常无序号与盘库角。"/>
                     </StackPanel>
                 </Expander>
             </Border>
@@ -1921,7 +2008,7 @@
                                                FontWeight="Bold"
                                                Foreground="White"/>
                                 </Border>
-                                <TextBlock Text="开柜标识图例"
+                                <TextBlock Text="模拟介质档案柜 · 开柜标识图例"
                                            VerticalAlignment="Center"
                                            FontSize="12"
                                            FontWeight="Bold"

@@ -18,16 +18,83 @@
             <DataTemplate x:Key="ApplicantSectionsTemplate">
                 <UserControl>
                     <StackPanel Orientation="Vertical">
-                        <GroupBox Header="1. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
+                        <GroupBox Header="1. 申请信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
+                            <StackPanel>
+                                <DockPanel Margin="0,2" LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="申请人 *："/>
+                                    <TextBox DockPanel.Dock="Left" Width="88" Margin="0,0,12,0"
+                                             Text="{Binding CurrentRecord.ApplicantName, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"
+                                             Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource ArchiveRegisterInlineLabelStyle}" Text="部门 *："/>
+                                    <TextBox DockPanel.Dock="Left" Width="150" Margin="0,0,12,0"
+                                             Text="{Binding CurrentRecord.ApplicantDept, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"
+                                             Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource ArchiveRegisterInlineLabelStyle}" Text="日期 *："/>
+                                    <DatePicker DockPanel.Dock="Left" Width="120"
+                                                SelectedDate="{Binding CurrentRecord.ApplyTime, Mode=OneWay}"
+                                                IsEnabled="False"
+                                                Style="{StaticResource ArchiveRegisterFormDatePickerStyle}"/>
+                                </DockPanel>
+                                <DockPanel Margin="0,2" LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="申请说明 *："/>
+                                    <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                                             Height="48" AcceptsReturn="True" TextWrapping="Wrap"
+                                             Text="{Binding CurrentRecord.Reason, UpdateSourceTrigger=PropertyChanged}"
+                                             IsEnabled="{Binding CanEditForm}"/>
+                                </DockPanel>
+                                <DockPanel Margin="0,2" LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="其他要求："/>
+                                    <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                                             Text="{Binding CurrentRecord.OtherRequests, UpdateSourceTrigger=PropertyChanged}"
+                                             IsEnabled="{Binding CanEditForm}"/>
+                                </DockPanel>
+                                <DockPanel Margin="0,2" LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="附有证明材料："/>
+                                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
+                                                Style="{StaticResource FormInlineRadioGroupStyle}" Margin="0,0,8,0"
+                                                IsEnabled="{Binding CanEditForm}">
+                                        <RadioButton Content="是" GroupName="OutboundProofMaterialHas"
+                                                     Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
+                                                     IsChecked="{Binding HasProofMaterial, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <RadioButton Content="否" GroupName="OutboundProofMaterialHas"
+                                                     Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
+                                                     IsChecked="{Binding HasProofMaterial, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                    <DockPanel LastChildFill="True" IsEnabled="{Binding CanEditHeader}">
+                                        <DockPanel.Style>
+                                            <Style TargetType="DockPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasProofMaterial}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </DockPanel.Style>
+                                        <TextBlock DockPanel.Dock="Left" Style="{StaticResource ArchiveRegisterInlineLabelStyle}" Text="名称："/>
+                                        <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                                                 Text="{Binding ProofMaterialName, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DockPanel>
+                                </DockPanel>
+                                <DockPanel Margin="0,2" LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="备注："/>
+                                    <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                                             Height="36" AcceptsReturn="True" TextWrapping="Wrap"
+                                             Text="{Binding CurrentRecord.Remark, UpdateSourceTrigger=PropertyChanged}"
+                                             IsEnabled="{Binding CanEditForm}"/>
+                                </DockPanel>
+                            </StackPanel>
+                        </GroupBox>
+                        <GroupBox Header="2. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,4">
-                                    <Label Width="110" VerticalAlignment="Center">资料名称 *：</Label>
+                                    <TextBlock Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="资料名称 *："/>
                                     <TextBox Text="{Binding MaterialName, UpdateSourceTrigger=PropertyChanged}"
                                              Width="500" Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
                                              IsEnabled="{Binding CanEditForm}"/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,4">
-                                    <Label Width="110" VerticalAlignment="Center">所属项目 *：</Label>
+                                    <TextBlock Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="所属项目 *："/>
                                     <ComboBox Width="100" Style="{StaticResource ArchiveRegisterFormComboBoxStyle}" Margin="0,0,5,0"
                                               ItemsSource="{Binding ProjectYears}"
                                               SelectedItem="{Binding SelectedProjectYear}"
@@ -39,7 +106,7 @@
                                               IsEnabled="{Binding CanEditForm}"/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,4">
-                                    <Label Width="110" VerticalAlignment="Center">目的地 *：</Label>
+                                    <TextBlock Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="目的地 *："/>
                                     <ComboBox Width="200"
                                               ItemsSource="{Binding OutboundDestinationKindOptions}"
                                               SelectedItem="{Binding DestinationKind}"
@@ -57,7 +124,7 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <Label Width="110" VerticalAlignment="Center">库管模式 *：</Label>
+                                    <TextBlock Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="库管模式 *："/>
                                     <ComboBox Width="200"
                                               ItemsSource="{Binding ArchivePurposeOptions}"
                                               SelectedItem="{Binding SelectedArchivePurpose}"
@@ -90,7 +157,7 @@
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="0" Text="出网资料所在具体路径：" VerticalAlignment="Top"
-                                                       Margin="0,2,6,0"/>
+                                                       Margin="0,2,0,0"/>
                                             <StackPanel Grid.Column="1">
                                                 <TextBlock Text="{Binding MaterialPathDisplay, Mode=OneWay}"
                                                            TextWrapping="Wrap"
@@ -106,73 +173,6 @@
                                         <nt:NetworkInboundElectronicMediaSectionView DataContext="{Binding ElectronicMediaEditor}"/>
                                     </StackPanel>
                                 </GroupBox>
-                            </StackPanel>
-                        </GroupBox>
-                        <GroupBox Header="2. 申请信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
-                            <StackPanel>
-                                <DockPanel Margin="0,2" LastChildFill="True">
-                                    <Label DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelStyle}" Content="申请说明 *："/>
-                                    <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                                             Height="48" AcceptsReturn="True" TextWrapping="Wrap"
-                                             Text="{Binding CurrentRecord.Reason, UpdateSourceTrigger=PropertyChanged}"
-                                             IsEnabled="{Binding CanEditForm}"/>
-                                </DockPanel>
-                                <DockPanel Margin="0,2" LastChildFill="True">
-                                    <Label DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelStyle}" Content="其他要求："/>
-                                    <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                                             Text="{Binding CurrentRecord.OtherRequests, UpdateSourceTrigger=PropertyChanged}"
-                                             IsEnabled="{Binding CanEditForm}"/>
-                                </DockPanel>
-                                <DockPanel Margin="0,2" LastChildFill="True">
-                                    <Label DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelStyle}" Content="附有证明材料："/>
-                                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
-                                                Style="{StaticResource FormInlineRadioGroupStyle}" Margin="0,0,8,0"
-                                                IsEnabled="{Binding CanEditForm}">
-                                        <RadioButton Content="是" GroupName="OutboundProofMaterialHas"
-                                                     Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
-                                                     IsChecked="{Binding HasProofMaterial, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                        <RadioButton Content="否" GroupName="OutboundProofMaterialHas"
-                                                     Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
-                                                     IsChecked="{Binding HasProofMaterial, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                    </StackPanel>
-                                    <DockPanel LastChildFill="True" IsEnabled="{Binding CanEditHeader}">
-                                        <DockPanel.Style>
-                                            <Style TargetType="DockPanel">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding HasProofMaterial}" Value="True">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </DockPanel.Style>
-                                        <Label DockPanel.Dock="Left" Style="{StaticResource FormLabelStyle}" Content="名称："/>
-                                        <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                                                 Text="{Binding ProofMaterialName, UpdateSourceTrigger=PropertyChanged}"/>
-                                    </DockPanel>
-                                </DockPanel>
-                                <DockPanel Margin="0,2" LastChildFill="True">
-                                    <Label DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelStyle}" Content="备注："/>
-                                    <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                                             Height="36" AcceptsReturn="True" TextWrapping="Wrap"
-                                             Text="{Binding CurrentRecord.Remark, UpdateSourceTrigger=PropertyChanged}"
-                                             IsEnabled="{Binding CanEditForm}"/>
-                                </DockPanel>
-                                <DockPanel Margin="0,2" LastChildFill="True">
-                                    <Label DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelStyle}" Content="申请人 *："/>
-                                    <TextBox DockPanel.Dock="Left" Width="88" Margin="0,0,12,0"
-                                             Text="{Binding CurrentRecord.ApplicantName, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"
-                                             Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
-                                    <Label DockPanel.Dock="Left" Style="{StaticResource FormLabelStyle}" Content="部门 *："/>
-                                    <TextBox DockPanel.Dock="Left" Width="150" Margin="0,0,12,0"
-                                             Text="{Binding CurrentRecord.ApplicantDept, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"
-                                             Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
-                                    <Label DockPanel.Dock="Left" Style="{StaticResource FormLabelStyle}" Content="日期 *："/>
-                                    <DatePicker DockPanel.Dock="Left" Width="120"
-                                                SelectedDate="{Binding CurrentRecord.ApplyTime, Mode=OneWay}"
-                                                IsEnabled="False"
-                                                Style="{StaticResource ArchiveRegisterFormDatePickerStyle}"/>
-                                </DockPanel>
                             </StackPanel>
                         </GroupBox>
                     </StackPanel>
@@ -193,49 +193,36 @@
             <TextBlock Text="{Binding BusinessChainProgressDisplay, Mode=OneWay}"
                        Margin="0,4,0,0" Foreground="#2563EB" FontSize="11" TextWrapping="Wrap"/>
         </StackPanel>
+        <!-- 申请态：外层白卡 + 可编辑表单 -->
         <Border Grid.Row="1" BorderBrush="#D8E2EC" BorderThickness="1" CornerRadius="4" Background="White">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ShowApprovalWorkflowPanel}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="10">
-                <StackPanel Margin="12" Orientation="Vertical">
-                    <ContentControl Content="{Binding}">
-                        <ContentControl.Style>
-                            <Style TargetType="ContentControl">
-                                <Setter Property="ContentTemplate" Value="{StaticResource ApplicantSectionsTemplate}"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ShowApprovalWorkflowPanel}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ContentControl.Style>
-                    </ContentControl>
-                    <nt:NetworkOutboundApprovalApplicationSectionsView>
-                        <nt:NetworkOutboundApprovalApplicationSectionsView.Style>
-                            <Style TargetType="nt:NetworkOutboundApprovalApplicationSectionsView">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ShowApprovalWorkflowPanel}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </nt:NetworkOutboundApprovalApplicationSectionsView.Style>
-                    </nt:NetworkOutboundApprovalApplicationSectionsView>
-                    <Grid>
-                        <Grid.Style>
-                            <Style TargetType="Grid">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ShowApprovalWorkflowPanel}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Grid.Style>
-                        <nt:NetworkOutboundApprovalSectionsView/>
-                    </Grid>
-                </StackPanel>
+                <ContentControl Margin="12" Content="{Binding}" ContentTemplate="{StaticResource ApplicantSectionsTemplate}"/>
             </ScrollViewer>
         </Border>
+
+        <!-- 审批态：壳自带白卡；打印/办结/关闭底栏固定在白卡外 -->
+        <nt:NetworkOutboundApprovalSectionsView Grid.Row="1">
+            <nt:NetworkOutboundApprovalSectionsView.Style>
+                <Style TargetType="nt:NetworkOutboundApprovalSectionsView">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ShowApprovalWorkflowPanel}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </nt:NetworkOutboundApprovalSectionsView.Style>
+        </nt:NetworkOutboundApprovalSectionsView>
         <Border Grid.Row="2" Margin="0,12,0,0" Padding="12,10,0,0" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Background="#FAFBFC">
             <Border.Style>
                 <Style TargetType="Border">

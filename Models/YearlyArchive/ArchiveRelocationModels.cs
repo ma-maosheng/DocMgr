@@ -19,6 +19,11 @@ namespace DocMgr.Models.YearlyArchive
 
         public string StorageCarrierType { get; init; } = string.Empty;
 
+        /// <summary>
+        /// 模拟介质档案盒规格（如「标准(5cm)」）；电子介质袋可为空。
+        /// </summary>
+        public string BoxSpecification { get; init; } = string.Empty;
+
         public string LinkedMediumCodes { get; init; } = string.Empty;
 
         /// <summary>
@@ -37,7 +42,22 @@ namespace DocMgr.Models.YearlyArchive
 
         public string FormNo { get; init; } = string.Empty;
 
+        /// <summary>所属年度。</summary>
+        public string Year { get; init; } = string.Empty;
+
+        /// <summary>所属项目。</summary>
+        public string ProjectName { get; init; } = string.Empty;
+
+        /// <summary>资料名称。</summary>
+        public string MaterialName { get; init; } = string.Empty;
+
         public string ItemName { get; init; } = string.Empty;
+
+        /// <summary>迁档前物理位置编号（档口/完整位置编码）。</summary>
+        public string BeforeStorageLocation { get; init; } = string.Empty;
+
+        /// <summary>迁档后物理位置编号（未确定为「—」）。</summary>
+        public string AfterStorageLocation { get; init; } = string.Empty;
     }
 
     public sealed class ArchiveRelocationTargetOption
@@ -123,7 +143,7 @@ namespace DocMgr.Models.YearlyArchive
         public bool ConfirmOpticalDiscDestroyed { get; set; }
 
         /// <summary>
-        /// 迁入空盘/空袋、并入同项目硬盘模式下：保留原件，仅在目标介质生成备份副本。
+        /// 迁入空白硬盘/空白光盘、并入同项目硬盘模式下：保留原件，仅在目标介质生成备份副本。
         /// </summary>
         public bool ExecuteBackupMechanism { get; set; }
 

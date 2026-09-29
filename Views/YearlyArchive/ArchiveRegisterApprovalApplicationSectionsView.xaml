@@ -14,42 +14,12 @@
                        Foreground="#475569" FontSize="12" TextWrapping="Wrap"/>
         </Border>
 
-        <GroupBox Header="1. 资料信息" Style="{StaticResource Level1GroupBoxStyle}">
-            <StackPanel>
-                <Grid Margin="0,0,0,6">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="{StaticResource YaRegLabelColumn}"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="{StaticResource YaRegLabelColumn}"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="资料名称" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CurrentRecord.MaterialName}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" Margin="0,0,12,4"/>
-                    <TextBlock Grid.Row="0" Grid.Column="2" Text="所属项目" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
-                    <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding CurrentRecord.ProjectName}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" Margin="0,0,0,4"/>
-
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="资料来源" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SourceTypeDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" Margin="0,0,12,0" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Grid.Row="1" Grid.Column="2" Text="提供单位" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
-                    <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding ProvideUnitDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextTrimming="CharacterEllipsis"/>
-                </Grid>
-
-                <ItemsControl ItemsSource="{Binding DataElectronicMediaView}" ItemTemplate="{StaticResource MediaEntryReadOnlyTemplate_DataElectronic}"/>
-                <ItemsControl ItemsSource="{Binding DataSimulatedMediaView}" ItemTemplate="{StaticResource MediaEntryReadOnlyTemplate_DataSimulated}"/>
-            </StackPanel>
-        </GroupBox>
-
-        <GroupBox Header="2. 申请信息" Style="{StaticResource Level1GroupBoxStyle}">
+        <GroupBox Header="1. 申请信息" Style="{StaticResource Level1GroupBoxStyle}">
+            <!-- 行间距落在 DockPanel 上，避免标签/值各自底边距不对称导致上下错位 -->
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="{StaticResource YaRegLabelColumn}"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="{StaticResource YaRegLabelColumn}"/>
+                    <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
@@ -58,23 +28,65 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="库管模式" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
-                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CurrentRecord.ArchivePurpose}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" Margin="0,0,12,4"/>
-                <TextBlock Grid.Row="0" Grid.Column="2" Text="证明材料" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
-                <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding ProofMaterialDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" Margin="0,0,0,4"/>
+                <DockPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,4" LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left" Text="申请人信息：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                    <TextBlock Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}">
+                        <Run Text="{Binding CurrentRecord.ApplicantName, Mode=OneWay}"/>
+                        <Run Text="  ·  "/>
+                        <Run Text="{Binding CurrentRecord.ApplicantDept, Mode=OneWay}"/>
+                        <Run Text="  ·  "/>
+                        <Run Text="{Binding CurrentRecord.ApplicantDate, Mode=OneWay, StringFormat=yyyy-MM-dd}"/>
+                    </TextBlock>
+                </DockPanel>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="其他要求" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
-                <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding CurrentRecord.OtherRequests}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" Margin="0,0,0,4"/>
+                <DockPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,4" LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left" Text="库管模式：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                    <TextBlock Text="{Binding CurrentRecord.ArchivePurpose}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                </DockPanel>
+                <DockPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,4" LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left" Text="证明材料：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                    <TextBlock Text="{Binding ProofMaterialDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                </DockPanel>
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="申请人信息" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}" Width="Auto" HorizontalAlignment="Right"/>
-                <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}">
-                    <Run Text="{Binding CurrentRecord.ApplicantName, Mode=OneWay}"/>
-                    <Run Text="  ·  "/>
-                    <Run Text="{Binding CurrentRecord.ApplicantDept, Mode=OneWay}"/>
-                    <Run Text="  ·  "/>
-                    <Run Text="{Binding CurrentRecord.ApplicantDate, Mode=OneWay, StringFormat=yyyy-MM-dd}"/>
-                </TextBlock>
+                <DockPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left" Text="其他要求：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                    <TextBlock Text="{Binding CurrentRecord.OtherRequests}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                </DockPanel>
             </Grid>
         </GroupBox>
+
+        <GroupBox Header="2. 资料信息" Style="{StaticResource Level1GroupBoxStyle}">
+            <StackPanel>
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,4" LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Left" Text="资料名称：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding MaterialNameDisplay, Mode=OneWay}"
+                                   Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"
+                                   TextWrapping="Wrap"/>
+                    </DockPanel>
+
+                    <DockPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Left" Text="资料来源：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding SourceProvideUnitDisplay, Mode=OneWay}"
+                                   Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"
+                                   TextWrapping="Wrap"/>
+                    </DockPanel>
+                </Grid>
+
+                <ItemsControl ItemsSource="{Binding DataElectronicMediaView}" ItemTemplate="{StaticResource MediaEntryReadOnlyTemplate_DataElectronic}"/>
+                <ItemsControl ItemsSource="{Binding DataSimulatedMediaView}" ItemTemplate="{StaticResource MediaEntryReadOnlyTemplate_DataSimulated}"/>
+            </StackPanel>
+        </GroupBox>
+
     </StackPanel>
 </UserControl>

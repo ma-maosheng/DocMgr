@@ -19,7 +19,7 @@ namespace DocMgr.Models.OpticalDiscMedia
     }
 
     /// <summary>
-    /// 光盘流转台账快捷筛选（概览下钻用）。
+    /// 光盘台账快捷筛选（概览下钻用）。
     /// </summary>
     public enum OpticalDiscLedgerQuickFilter
     {

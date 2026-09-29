@@ -10,7 +10,7 @@
             <Setter Property="HorizontalAlignment" Value="Right"/>
             <Setter Property="TextAlignment" Value="Right"/>
             <Setter Property="Width" Value="72"/>
-            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
             <Setter Property="Foreground" Value="#37474F"/>
         </Style>
         <!-- 介质工具栏短标签（介质/类型/数量） -->
@@ -19,7 +19,7 @@
             <Setter Property="HorizontalAlignment" Value="Right"/>
             <Setter Property="TextAlignment" Value="Right"/>
             <Setter Property="Width" Value="40"/>
-            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
             <Setter Property="Foreground" Value="#37474F"/>
         </Style>
         <!-- 资料子项标签：容纳「子项名称/资料类型/所属子类/组织形式」 -->
@@ -28,13 +28,13 @@
             <Setter Property="HorizontalAlignment" Value="Right"/>
             <Setter Property="TextAlignment" Value="Right"/>
             <Setter Property="Width" Value="76"/>
-            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
             <Setter Property="Foreground" Value="#37474F"/>
         </Style>
         <Style x:Key="HintStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Margin" Value="78,2,0,0"/>
+            <Setter Property="Margin" Value="72,2,0,0"/>
         </Style>
         <Style x:Key="InlineActionButtonStyle" TargetType="Button" BasedOn="{StaticResource FormInlineButtonStyle}">
             <Setter Property="Padding" Value="10,4"/>
@@ -89,21 +89,21 @@
                                 <ColumnDefinition Width="140"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="实施年度" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="0" Text="实施年度：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="1"
                                       ItemsSource="{Binding YearOptions}"
                                       IsEditable="True"
                                       Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}"
                                       Height="{StaticResource FormControlHeight}"
                                       ToolTip="开放域：列出项目信息、模拟盒、电子袋中已有年度；也可手输新年度"/>
-                            <TextBlock Grid.Column="3" Text="项目名称" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="3" Text="项目名称：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="4"
                                       ItemsSource="{Binding ProjectNameOptions}"
                                       IsEditable="True"
                                       Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"
                                       Height="{StaticResource FormControlHeight}"
                                       ToolTip="开放域：列出当前年度下已登记项目名称（含模拟/电子立档）；也可手输新项目"/>
-                            <TextBlock Grid.Column="6" Text="项目编号" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="6" Text="项目编号：" Style="{StaticResource LabelStyle}"/>
                             <TextBox Grid.Column="7" Text="{Binding ProjectCode, UpdateSourceTrigger=PropertyChanged}"
                                      Height="{StaticResource FormControlHeight}"/>
                             <Button Grid.Column="8" Content="查看年度已有项目" Command="{Binding ViewYearProjectsCommand}"
@@ -129,16 +129,16 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="资料名称" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="0" Text="资料名称：" Style="{StaticResource LabelStyle}"/>
                             <TextBox Grid.Column="1" Text="{Binding MaterialName, UpdateSourceTrigger=PropertyChanged}"
                                      Height="{StaticResource FormControlHeight}"/>
-                            <TextBlock Grid.Column="3" Text="来源" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="3" Text="来源：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="4"
                                       ItemsSource="{Binding SourceTypeOptions}"
                                       SelectedItem="{Binding SourceType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       Height="{StaticResource FormControlHeight}"
                                       ToolTip="内部：提供单位固定为资料室；外来：请填写具体提供单位"/>
-                            <TextBlock Grid.Column="6" Text="提供单位" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="6" Text="提供单位：" Style="{StaticResource LabelStyle}"/>
                             <TextBox Grid.Column="7"
                                      Text="{Binding ProvideUnit, UpdateSourceTrigger=PropertyChanged}"
                                      IsReadOnly="{Binding IsProvideUnitReadOnly, Mode=OneWay}"
@@ -166,7 +166,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="库管模式" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="0" Text="库管模式：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="1" ItemsSource="{Binding ArchivePurposeOptions}" SelectedItem="{Binding ArchivePurpose}"
                                       Height="{StaticResource FormControlHeight}"/>
                         </Grid>
@@ -338,11 +338,11 @@
                                 <ColumnDefinition Width="140"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="档案盒编号" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="0" Text="档案盒编号：" Style="{StaticResource LabelStyle}"/>
                             <TextBox Grid.Column="1" Text="{Binding PreviewArchiveSequenceNo, Mode=OneWay}" IsReadOnly="True"
                                      Height="{StaticResource FormControlHeight}" Background="#F9F9F9"
                                      ToolTip="确认写入前预览，不占用号段"/>
-                            <TextBlock Grid.Column="3" Text="盒规格" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="3" Text="盒规格：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="4" ItemsSource="{Binding Specs}" SelectedItem="{Binding SelectedSpec}"
                                       Height="{StaticResource FormControlHeight}"/>
                         </Grid>
@@ -354,7 +354,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="资料档口" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="0" Text="资料档口：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="1" ItemsSource="{Binding SlotOptions}" SelectedItem="{Binding SelectedSlotOption}"
                                       DisplayMemberPath="DisplayText" Height="{StaticResource FormControlHeight}" VerticalAlignment="Center"/>
                             <Button Grid.Column="2" Content="刷新档口" Command="{Binding RefreshSlotOptionsCommand}"
@@ -372,7 +372,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="盒备注" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="0" Text="盒备注：" Style="{StaticResource LabelStyle}"/>
                             <TextBox Grid.Column="1" Text="{Binding Remarks, UpdateSourceTrigger=PropertyChanged}"
                                      Height="{StaticResource FormControlHeight}"/>
                         </Grid>

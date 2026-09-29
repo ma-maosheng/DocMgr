@@ -25,7 +25,7 @@
                 <DataGridTextColumn Header="检索集编号" Binding="{Binding ResultSetNo}" Width="140"/>
                 <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="*"/>
                 <DataGridTextColumn Header="介质" Binding="{Binding MediaKind}" Width="70"/>
-                <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay}" Width="80"/>
+                <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay}" Width="80" ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
                 <DataGridTextColumn Header="明细数" Binding="{Binding ItemCount}" Width="70"/>
                 <DataGridTextColumn Header="创建人" Binding="{Binding CreatedByName}" Width="90"/>
                 <DataGridTextColumn Header="更新时间" Binding="{Binding UpdatedAtDisplay}" Width="130"/>

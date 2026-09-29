@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using DocMgr.Models.Shared;
+
 namespace DocMgr.Models.OpticalDiscMedia
 {
     /// <summary>
@@ -24,6 +27,12 @@ namespace DocMgr.Models.OpticalDiscMedia
         /// 介质状态。
         /// </summary>
         public string MediaStatus { get; set; } = OpticalDiscMedium.StatusInStock;
+
+        /// <summary>
+        /// 状态列展示色（按 <see cref="MediaStatus"/> 语义映射，不落库）。
+        /// </summary>
+        [NotMapped]
+        public string MediaStatusColor => MediumStatusDisplayColorSupport.ResolveForeground(MediaStatus);
 
         /// <summary>
         /// 存放位置。

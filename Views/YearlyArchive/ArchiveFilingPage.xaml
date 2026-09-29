@@ -108,7 +108,7 @@
                                 <StackPanel>
                                     <TextBlock Text="模拟介质待立档池" FontSize="16" FontWeight="Bold" Foreground="#333"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                        <TextBlock Text="年度筛选:" Margin="0,0,10,0"/>
+                                        <TextBlock Text="年度筛选：" Margin="0,0,0,0"/>
                                         <ComboBox Width="100"
                                                   ItemsSource="{Binding PendingYears}"
                                                   SelectedItem="{Binding SelectedPendingYear}"/>
@@ -150,7 +150,7 @@
                                 <StackPanel>
                                     <TextBlock Text="模拟介质立档操作台" FontSize="20" FontWeight="Bold" Foreground="#1E88E5" Margin="0,0,0,20"/>
 
-                                    <GroupBox Header="第一步：资料登记信息" Padding="15" Margin="0,0,0,20">
+                                    <GroupBox Header="1. 资料登记信息" Padding="15" Margin="0,0,0,20">
                                         <Grid Margin="0,0,0,10">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
@@ -159,18 +159,18 @@
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <TextBlock Text="项目名称：" Grid.Column="0" Margin="0,0,10,0"/>
+                                            <TextBlock Text="项目名称：" Grid.Column="0" Margin="0,0,0,0"/>
                                             <Border Grid.Column="1" Background="#F9F9F9" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="2" Margin="0,0,20,0" Padding="6,4">
                                                 <TextBlock Text="{Binding TargetProject}" TextWrapping="Wrap"/>
                                             </Border>
-                                            <TextBlock Text="归属年度：" Grid.Column="2" Margin="0,0,10,0"/>
+                                            <TextBlock Text="归属年度：" Grid.Column="2" Margin="0,0,0,0"/>
                                             <Border Grid.Column="3" Background="#F9F9F9" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="2" Padding="6,4">
                                                 <TextBlock Text="{Binding TargetYear}" TextWrapping="Wrap"/>
                                             </Border>
                                         </Grid>
                                     </GroupBox>
 
-                                    <GroupBox Header="资料子项列表：选择本次拟入盒内容" Padding="15" Margin="0,0,0,20">
+                                    <GroupBox Header="2. 资料子项列表：选择本次拟入盒内容" Padding="15" Margin="0,0,0,20">
                                         <StackPanel>
                                             <TextBlock Text="提示：可勾选本次需要归入当前档案盒的资料子项，完成一个档案盒后继续选择剩余子项即可。"
                                                         Foreground="#666"
@@ -240,7 +240,7 @@
                                         </StackPanel>
                                     </GroupBox>
 
-                                    <GroupBox Header="选择立档方式" Padding="15" Margin="0,0,0,20">
+                                    <GroupBox Header="3. 选择立档方式" Padding="15" Margin="0,0,0,20">
                                         <StackPanel>
                                             <TextBlock Text="该项目当年已存在的档案盒：" Margin="0,0,0,5" FontWeight="Bold"/>
                                             <DataGrid Height="120"
@@ -291,14 +291,14 @@
                                         </StackPanel>
                                     </GroupBox>
 
-                                    <GroupBox Header="第二步：选择物理存放位置" Padding="12" Margin="0,0,0,16">
+                                    <GroupBox Header="4. 选择物理存放位置" Padding="12" Margin="0,0,0,16">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal"
                                                         VerticalAlignment="Center"
                                                         Visibility="{Binding SimulatedStepTwoLocationSelectorVisibility}">
                                                 <TextBlock Text="档口编号："
                                                            VerticalAlignment="Center"
-                                                           Margin="0,0,8,0"/>
+                                                           Margin="0,0,0,0"/>
                                                 <ComboBox MinWidth="240"
                                                           Height="{StaticResource FormControlHeight}"
                                                           ItemsSource="{Binding SimulatedTargetLocationOptions}"
@@ -334,7 +334,7 @@
                                         </StackPanel>
                                     </GroupBox>
 
-                                    <GroupBox Header="第三步：赋码与确认" Padding="12">
+                                    <GroupBox Header="5. 赋码与确认" Padding="12">
                                         <StackPanel>
                                             <Grid Margin="0,0,0,15">
                                                 <Grid.ColumnDefinitions>
@@ -352,7 +352,7 @@
                                                 <TextBlock Text="档案盒编号："
                                                            Grid.Row="0"
                                                            Grid.Column="0"
-                                                           Margin="0,0,10,0"
+                                                           Margin="0,0,0,0"
                                                            VerticalAlignment="Center"
                                                            HorizontalAlignment="Left"/>
                                                 <StackPanel Grid.Row="0"
@@ -374,7 +374,7 @@
                                                             Command="{Binding GenSeqCommand}"/>
                                                 </StackPanel>
 
-                                                <TextBlock Text="物理盒号：" Grid.Row="0" Grid.Column="2" Margin="0,0,10,0"/>
+                                                <TextBlock Text="物理盒号：" Grid.Row="0" Grid.Column="2" Margin="0,0,0,0"/>
                                                 <TextBlock Text="{Binding PhysicalCodeResult}" Grid.Row="0" Grid.Column="3" FontWeight="Bold" FontSize="14">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
@@ -390,13 +390,13 @@
                                                     </TextBlock.Style>
                                                 </TextBlock>
 
-                                                <TextBlock Text="档案盒规格：" Grid.Row="2" Grid.Column="0" Margin="0,0,10,0"/>
+                                                <TextBlock Text="档案盒规格：" Grid.Row="2" Grid.Column="0" Margin="0,0,0,0"/>
                                                 <ComboBox Grid.Row="2" Grid.Column="1" Width="120" HorizontalAlignment="Left"
                                                           ItemsSource="{Binding Specs}"
                                                           SelectedItem="{Binding SelectedSpec}"
                                                            IsEnabled="{Binding IsSimulatedArchiveFieldsEditable}"/>
 
-                                                <TextBlock Text="格内现有盒数：" Grid.Row="2" Grid.Column="2" Margin="0,0,10,0"/>
+                                                <TextBlock Text="格内现有盒数：" Grid.Row="2" Grid.Column="2" Margin="0,0,0,0"/>
                                                 <TextBlock Text="{Binding CellCountText}" Grid.Row="2" Grid.Column="3" Foreground="Gray"/>
                                             </Grid>
 
@@ -442,7 +442,7 @@
                                 <StackPanel>
                                     <TextBlock Text="电子介质待立档池" FontSize="16" FontWeight="Bold" Foreground="#333"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                        <TextBlock Text="年度筛选:" Margin="0,0,10,0"/>
+                                        <TextBlock Text="年度筛选：" Margin="0,0,0,0"/>
                                         <ComboBox Width="100"
                                                   ItemsSource="{Binding PendingYears}"
                                                   SelectedItem="{Binding SelectedPendingYear}"/>
@@ -484,7 +484,7 @@
                                 <StackPanel>
                                     <TextBlock Text="电子介质立档操作台" FontSize="20" FontWeight="Bold" Foreground="#1E88E5" Margin="0,0,0,20"/>
 
-                                    <GroupBox Header="第一步：资料登记信息" Padding="15" Margin="0,0,0,20">
+                                    <GroupBox Header="1. 资料登记信息" Padding="15" Margin="0,0,0,20">
                                         <StackPanel>
                                             <Grid Margin="0,0,0,10">
                                                 <Grid.ColumnDefinitions>
@@ -496,15 +496,15 @@
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
 
-                                                <TextBlock Text="申请单编号：" Grid.Column="0" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="申请单编号：" Grid.Column="0" Margin="0,0,0,0" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="1" Background="#F9F9F9" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="2" Margin="0,0,14,0" Padding="6,4">
                                                     <TextBlock Text="{Binding ElectronicApplicationFormNosText}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                                                 </Border>
-                                                <TextBlock Text="项目名称：" Grid.Column="2" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="项目名称：" Grid.Column="2" Margin="0,0,0,0" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="3" Background="#F9F9F9" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="2" Margin="0,0,14,0" Padding="6,4">
                                                     <TextBlock Text="{Binding TargetProject}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                                                 </Border>
-                                                <TextBlock Text="归属年度：" Grid.Column="4" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="归属年度：" Grid.Column="4" Margin="0,0,0,0" VerticalAlignment="Center"/>
                                                 <Border Grid.Column="5" Background="#F9F9F9" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="2" Padding="6,4">
                                                     <TextBlock Text="{Binding TargetYear}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                                                 </Border>
@@ -578,9 +578,9 @@
                                         </StackPanel>
                                     </GroupBox>
 
-                                    <GroupBox Header="第二步：资料明细" Padding="15" Margin="0,0,0,20">
+                                    <GroupBox Header="2. 资料明细" Padding="15" Margin="0,0,0,20">
                                         <StackPanel>
-                                            <TextBlock Text="根据第一步所选电子介质表单，列出该介质下全部资料明细（一条明细一行）。未入袋明细将一并参与本次立档，不可单独勾选部分子项。"
+                                            <TextBlock Text="根据步骤1所选电子介质表单，列出该介质下全部资料明细（一条明细一行）。未入袋明细将一并参与本次立档，不可单独勾选部分子项。"
                                                        Foreground="#666"
                                                        Margin="0,0,0,10"
                                                        TextWrapping="Wrap"/>
@@ -662,7 +662,7 @@
                                         </StackPanel>
                                     </GroupBox>
 
-                                    <GroupBox Header="第三步：该项目当年已存在的电子介质袋及可选立档方式" Padding="15" Margin="0,0,0,20">
+                                    <GroupBox Header="3. 该项目当年已存在的电子介质袋及可选立档方式" Padding="15" Margin="0,0,0,20">
                                         <StackPanel>
                                             <TextBlock Text="该项目当年已存在的电子介质袋：" Margin="0,0,0,5" FontWeight="Bold"/>
                                             <DataGrid Height="120"
@@ -822,7 +822,7 @@
                                         </StackPanel>
                                     </GroupBox>
 
-                                    <GroupBox Header="第四步：资料立档明细" Padding="15" Margin="0,0,0,20">
+                                    <GroupBox Header="4. 资料立档明细" Padding="15" Margin="0,0,0,20">
                                         <StackPanel>
                                             <TextBlock Text="{Binding ElectronicFilingTargetMediumSummary}"
                                                        FontWeight="SemiBold"
@@ -830,9 +830,9 @@
                                                        Margin="0,0,0,8"
                                                        TextWrapping="Wrap"/>
                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                                <TextBlock Text="介质总容量：" Foreground="#4A5568" Margin="0,0,6,0"/>
+                                                <TextBlock Text="介质总容量：" Foreground="#4A5568" Margin="0,0,0,0"/>
                                                 <TextBlock Text="{Binding ElectronicFilingMediumTotalCapacityText}" FontWeight="Bold" Margin="0,0,24,0"/>
-                                                <TextBlock Text="可用容量：" Foreground="#4A5568" Margin="0,0,6,0"/>
+                                                <TextBlock Text="可用容量：" Foreground="#4A5568" Margin="0,0,0,0"/>
                                                 <TextBlock Text="{Binding ElectronicFilingMediumAvailableCapacityText}" FontWeight="Bold" Foreground="#059669"/>
                                             </StackPanel>
                                             <viewShared:ItemDetailsPanelHeader DataContext="{Binding ElectronicFilingExistingDetailRowsPanel}" Margin="0,0,0,6"/>
@@ -984,7 +984,7 @@
                                         </StackPanel>
                                     </GroupBox>
 
-                                    <GroupBox Header="第五步：外来硬盘基本信息登记" Padding="15" Margin="0,0,0,20">
+                                    <GroupBox Header="5. 外来硬盘基本信息登记" Padding="15" Margin="0,0,0,20">
                                         <StackPanel>
                                             <Border Padding="10,8"
                                                     Background="#F8FAFC"
@@ -1039,7 +1039,7 @@
                                                     <TextBlock Foreground="#2E7D32"
                                                                FontSize="12"
                                                                TextWrapping="Wrap"
-                                                               Text="申请单所载借出硬盘与所选资料室借出记录一致，本步无需新增外来硬盘登记，请继续第六步。"/>
+                                                               Text="申请单所载借出硬盘与所选资料室借出记录一致，本步无需新增外来硬盘登记，请继续步骤6。"/>
                                                 </Border>
 
                                                 <Border Margin="0,12,0,0"
@@ -1052,13 +1052,13 @@
                                                     <TextBlock Foreground="#475569"
                                                                FontSize="12"
                                                                TextWrapping="Wrap"
-                                                               Text="本步无需执行外来硬盘新增登记，请继续第六步。"/>
+                                                               Text="本步无需执行外来硬盘新增登记，请继续步骤6。"/>
                                                 </Border>
                                             </StackPanel>
                                         </StackPanel>
                                     </GroupBox>
 
-                                    <GroupBox Header="第六步：外来硬盘格式化后物理存放位置" Padding="15" Margin="0,0,0,20">
+                                    <GroupBox Header="6. 外来硬盘格式化后物理存放位置" Padding="15" Margin="0,0,0,20">
                                         <StackPanel>
                                             <Border Padding="10,8"
                                                     Background="#F8FAFC"
@@ -1121,7 +1121,7 @@
                                                 <TextBlock Foreground="#475569"
                                                            FontSize="12"
                                                            TextWrapping="Wrap"
-                                                           Text="当前场景无需对外来硬盘执行格式化后空盘入库，请继续第七步。"/>
+                                                           Text="当前场景无需对外来硬盘执行格式化后空盘入库，请继续步骤7。"/>
                                             </Border>
                                         </StackPanel>
                                     </GroupBox>
@@ -1133,7 +1133,7 @@
                                                         Visibility="{Binding ElectronicStepSevenLocationSelectorVisibility}">
                                                 <TextBlock Text="档口编号："
                                                            VerticalAlignment="Center"
-                                                           Margin="0,0,8,0"/>
+                                                           Margin="0,0,0,0"/>
                                                 <ComboBox MinWidth="240"
                                                           Height="{StaticResource FormControlHeight}"
                                                           ItemsSource="{Binding ElectronicTargetLocationOptions}"
@@ -1185,7 +1185,7 @@
                                                             HorizontalAlignment="Left"
                                                             VerticalAlignment="Center"
                                                             Margin="4,0">
-                                                    <TextBlock Text="介质袋编号：" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="介质袋编号：" Margin="0,0,0,0" VerticalAlignment="Center"/>
                                                     <StackPanel Orientation="Horizontal"
                                                                 VerticalAlignment="Center"
                                                                 IsEnabled="{Binding IsElectronicArchiveFieldsEditable}">
@@ -1206,7 +1206,7 @@
                                                             HorizontalAlignment="Center"
                                                             VerticalAlignment="Center"
                                                             Margin="4,0">
-                                                    <TextBlock Text="物理位置：" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="物理位置：" Margin="0,0,0,0" VerticalAlignment="Center"/>
                                                     <TextBlock Text="{Binding ElectronicStorageLocation}"
                                                                FontWeight="Bold"
                                                                FontSize="14"
@@ -1228,7 +1228,7 @@
                                                             HorizontalAlignment="Center"
                                                             VerticalAlignment="Center"
                                                             Margin="4,0">
-                                                    <TextBlock Text="格内现有袋数：" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="格内现有袋数：" Margin="0,0,0,0" VerticalAlignment="Center"/>
                                                     <TextBlock Text="{Binding ElectronicCellCountText}"
                                                                Foreground="Gray"
                                                                VerticalAlignment="Center"/>
@@ -1238,7 +1238,7 @@
                                                             HorizontalAlignment="Center"
                                                             VerticalAlignment="Center"
                                                             Margin="4,0">
-                                                    <TextBlock Text="袋内载体：" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="袋内载体：" Margin="0,0,0,0" VerticalAlignment="Center"/>
                                                     <Border MinWidth="56"
                                                             Height="{StaticResource FormControlHeight}"
                                                             Background="#F9F9F9"

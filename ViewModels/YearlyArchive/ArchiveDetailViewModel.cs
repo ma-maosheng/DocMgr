@@ -36,25 +36,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             private set => SetProperty(ref _record, value);
         }
 
-        /// <summary>资料来源聚合展示（各子项唯一值直接显示，多个不同值以「、」连接）。</summary>
-        public string SourceTypeDisplay => AggregateRecordItemValues(item => item.SourceType);
-
-        /// <summary>提供单位聚合展示（各子项唯一值直接显示，多个不同值以「、」连接）。</summary>
-        public string ProvideUnitDisplay => AggregateRecordItemValues(item => item.ProvideUnit);
-
-        private string AggregateRecordItemValues(Func<YearlyArchiveRegisterMediaItem, string?> selector)
-        {
-            var distinct = (_record?.MediaEntries ?? [])
-                .Where(media => media.Items != null)
-                .SelectMany(media => media.Items!)
-                .Select(selector)
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .Select(value => value!.Trim())
-                .Distinct(StringComparer.Ordinal)
-                .ToList();
-
-            return distinct.Count == 0 ? string.Empty : string.Join("、", distinct);
-        }
+        /// <summary>资料来源表头汇总：内部 . 单位；多对时以顿号连接。</summary>
+        public string SourceProvideUnitDisplay =>
+            ArchiveRegisterSourceProvideUnitDisplaySupport.FormatAggregated(
+                (_record?.MediaEntries ?? [])
+                    .Where(media => media.Items != null)
+                    .SelectMany(media => media.Items!)
+                    .Select(item => ((string?)item.SourceType, (string?)item.ProvideUnit)));
 
         public ObservableCollection<ArchiveDetailMediaEntryItem> ElectronicMediaEntries { get; } = new();
         public ObservableCollection<ArchiveDetailMediaEntryItem> SimulatedMediaEntries { get; } = new();
@@ -194,8 +182,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ApplyDetailCollections(record);
                 await ApplyFilingFactBindingAsync(record);
                 ApplySearchHighlight();
-                OnPropertyChanged(nameof(SourceTypeDisplay));
-                OnPropertyChanged(nameof(ProvideUnitDisplay));
+                OnPropertyChanged(nameof(SourceProvideUnitDisplay));
                 NotifyFilterSelectionStateChanged();
             }
             catch (Exception ex)

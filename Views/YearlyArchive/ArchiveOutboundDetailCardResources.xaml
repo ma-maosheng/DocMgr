@@ -52,7 +52,7 @@
                             </TextBlock>
                         </StackPanel>
                         <StackPanel Grid.Column="1" HorizontalAlignment="Right" MaxWidth="280">
-                            <TextBlock Text="当前位置" Style="{StaticResource OutboundDetailCardSettingLabelStyle}" TextAlignment="Right"/>
+                            <TextBlock Text="当前位置：" Style="{StaticResource OutboundDetailCardSettingLabelStyle}" TextAlignment="Right"/>
                             <TextBlock Text="{Binding LocationDisplay}" Style="{StaticResource OutboundDetailCardSettingValueStyle}"
                                        FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Right"/>
                         </StackPanel>
@@ -63,7 +63,7 @@
                         CornerRadius="4" Padding="10,8" Margin="10,10,10,0">
                     <StackPanel Orientation="Horizontal">
                         <StackPanel Style="{StaticResource OutboundDetailCardSettingSlotStyle}">
-                            <TextBlock Text="领用方式" Style="{StaticResource OutboundDetailCardSettingLabelStyle}"/>
+                            <TextBlock Text="领用方式：" Style="{StaticResource OutboundDetailCardSettingLabelStyle}"/>
                             <TextBlock Text="{Binding UsageModeDisplay}" Style="{StaticResource OutboundDetailCardSettingValueStyle}" FontWeight="SemiBold"/>
                         </StackPanel>
                         <StackPanel Style="{StaticResource OutboundDetailCardSettingSlotStyle}"
@@ -73,22 +73,22 @@
                         </StackPanel>
                         <StackPanel Style="{StaticResource OutboundDetailCardSettingSlotStyle}"
                                     Visibility="{Binding ShowDuplicateSettings, Converter={StaticResource OutboundDetailCardBooleanToVisibilityConverter}}">
-                            <TextBlock Text="是否库内空盘" Style="{StaticResource OutboundDetailCardSettingLabelStyle}"/>
+                            <TextBlock Text="是否库内空盘：" Style="{StaticResource OutboundDetailCardSettingLabelStyle}"/>
                             <TextBlock Text="{Binding UseInStockBlankDiskDisplay}" Style="{StaticResource OutboundDetailCardSettingValueStyle}"/>
                         </StackPanel>
                         <StackPanel Style="{StaticResource OutboundDetailCardSettingSlotStyle}"
                                     Visibility="{Binding ShowSelfProvidedDuplicateMedium, Converter={StaticResource OutboundDetailCardBooleanToVisibilityConverter}}">
-                            <TextBlock Text="拷贝目标介质" Style="{StaticResource OutboundDetailCardSettingLabelStyle}"/>
+                            <TextBlock Text="拷贝目标介质：" Style="{StaticResource OutboundDetailCardSettingLabelStyle}"/>
                             <TextBlock Text="{Binding DuplicateMediumKindDisplay}" Style="{StaticResource OutboundDetailCardSettingValueStyle}"/>
                         </StackPanel>
                         <StackPanel Style="{StaticResource OutboundDetailCardSettingSlotStyle}"
                                     Visibility="{Binding ShowBlankDiskFields, Converter={StaticResource OutboundDetailCardBooleanToVisibilityConverter}}">
-                            <TextBlock Text="库内空盘" Style="{StaticResource OutboundDetailCardSettingLabelStyle}"/>
+                            <TextBlock Text="库内空盘：" Style="{StaticResource OutboundDetailCardSettingLabelStyle}"/>
                             <TextBlock Text="{Binding RequisitionedDiskCode}" Style="{StaticResource OutboundDetailCardSettingValueStyle}" FontWeight="SemiBold"/>
                         </StackPanel>
                         <StackPanel Style="{StaticResource OutboundDetailCardSettingSlotStyle}"
                                     Visibility="{Binding ShowRequisitionedDiskNeedReturn, Converter={StaticResource OutboundDetailCardBooleanToVisibilityConverter}}">
-                            <TextBlock Text="硬盘是否归还" Style="{StaticResource OutboundDetailCardSettingLabelStyle}"/>
+                            <TextBlock Text="硬盘是否归还：" Style="{StaticResource OutboundDetailCardSettingLabelStyle}"/>
                             <TextBlock Text="{Binding RequisitionedDiskNeedReturnDisplay}" Style="{StaticResource OutboundDetailCardSettingValueStyle}"/>
                         </StackPanel>
                         <StackPanel Style="{StaticResource OutboundDetailCardSettingSlotStyle}" Margin="0"

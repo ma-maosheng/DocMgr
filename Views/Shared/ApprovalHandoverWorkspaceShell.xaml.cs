@@ -60,6 +60,16 @@ namespace DocMgr.Views.Shared
                 new PropertyMetadata(true));
 
         /// <summary>
+        /// 是否绘制主体白边框卡片。嵌入双模窗且外层已有表单卡片时关，避免「审批与交接信息」再套一层空卡。
+        /// </summary>
+        public static readonly DependencyProperty ShowBodyChromeProperty =
+            DependencyProperty.Register(
+                nameof(ShowBodyChrome),
+                typeof(bool),
+                typeof(ApprovalHandoverWorkspaceShell),
+                new PropertyMetadata(true));
+
+        /// <summary>
         /// 业务头是否撑满滚动视口（盘库双表按剩余高度布局时启用）。
         /// 默认关闭，避免离库等固定高度内容与审批卡之间出现大块空白。
         /// </summary>
@@ -209,6 +219,13 @@ namespace DocMgr.Views.Shared
         {
             get => (bool)GetValue(ShowFooterChromeProperty);
             set => SetValue(ShowFooterChromeProperty, value);
+        }
+
+        /// <summary>是否绘制主体白边框卡片（嵌入双模窗外层已有表单卡时可关）。</summary>
+        public bool ShowBodyChrome
+        {
+            get => (bool)GetValue(ShowBodyChromeProperty);
+            set => SetValue(ShowBodyChromeProperty, value);
         }
 
         /// <summary>业务头是否撑满滚动视口（盘库登记启用）。</summary>

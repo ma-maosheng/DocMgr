@@ -22,11 +22,11 @@
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
         <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
           <TextBlock Text="在柜档案盒" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
-          <TextBlock Text="资料类别:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+          <TextBlock Text="资料类别：" VerticalAlignment="Center" Margin="0,0,0,0"/>
           <ComboBox Width="150" ItemsSource="{Binding MaterialKindOptions}" SelectedItem="{Binding MaterialKindDisplay}"/>
-          <TextBlock Text="柜体:" VerticalAlignment="Center" Margin="12,0,4,0"/>
+          <TextBlock Text="柜体：" VerticalAlignment="Center" Margin="12,0,0,0"/>
           <ComboBox Width="140" ItemsSource="{Binding CabinetNameOptions}" SelectedItem="{Binding CabinetName}"/>
-          <TextBlock Text="关键字:" VerticalAlignment="Center" Margin="12,0,4,0"/>
+          <TextBlock Text="关键字：" VerticalAlignment="Center" Margin="12,0,0,0"/>
           <TextBox Width="200" Margin="0,0,8,0" Height="28" VerticalContentAlignment="Center"
                    Text="{Binding BoxKeyword, UpdateSourceTrigger=PropertyChanged}"
                    ToolTip="盒号、盒内摘要、关联混放盒号"/>
@@ -51,10 +51,10 @@
     <TextBlock Grid.Row="2" Text="处置单" FontWeight="Bold" Margin="0,10,0,6"/>
     <DockPanel Grid.Row="3">
       <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-        <TextBlock Text="业务状态:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+        <TextBlock Text="业务状态：" VerticalAlignment="Center" Margin="0,0,0,0"/>
         <ComboBox Width="220" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"
                   ToolTip="可按业务状态筛选；选【全部】列出各状态申请（含未提交）"/>
-        <TextBlock Text="年度:" VerticalAlignment="Center" Margin="12,0,4,0"/>
+        <TextBlock Text="年度：" VerticalAlignment="Center" Margin="12,0,0,0"/>
         <ComboBox Width="90" ItemsSource="{Binding ApplyYears}" SelectedItem="{Binding ApplyYear}"/>
         <TextBox Width="160" Margin="12,0,8,0" Height="28" VerticalContentAlignment="Center"
                  Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
@@ -65,7 +65,7 @@
                 MouseDoubleClick="DgRecords_MouseDoubleClick">
         <DataGrid.Columns>
           <DataGridTextColumn Header="处置单号" Binding="{Binding DisposalNo, Mode=OneWay}" Width="160"/>
-          <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="180"/>
+          <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="180" ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
           <DataGridTextColumn Header="资料类别" Binding="{Binding MaterialKindDisplay, Mode=OneWay}" Width="140"/>
           <DataGridTextColumn Header="方式" Binding="{Binding DispositionMethod, Mode=OneWay}" Width="110"/>
           <DataGridTextColumn Header="盒数" Binding="{Binding ItemCount, Mode=OneWay}" Width="60"/>

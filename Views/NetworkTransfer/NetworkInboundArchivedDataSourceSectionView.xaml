@@ -11,7 +11,7 @@
     <GroupBox Header="{Binding ArchivedDataSourceSectionTitle}" Margin="0,8,0,0" BorderBrush="#DDD" Padding="6">
         <StackPanel Margin="4">
             <DockPanel Margin="0,0,0,4" LastChildFill="True">
-                <TextBlock Text="电子检索集 *" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBlock Text="电子检索集 *：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                 <Button DockPanel.Dock="Right" Content="刷新列表"
                         Command="{Binding RefreshApplicantSearchResultSetsCommand}"
                         Padding="8,2" IsEnabled="{Binding CanEditHeader}"/>
@@ -24,7 +24,7 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="检索集编号" Binding="{Binding ResultSetNo, Mode=OneWay}" Width="140"/>
                     <DataGridTextColumn Header="名称" Binding="{Binding Name, Mode=OneWay}" Width="*"/>
-                    <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="80"/>
+                    <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="80" ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
                     <DataGridTextColumn Header="明细数" Binding="{Binding ItemCount, Mode=OneWay}" Width="70"/>
                 </DataGrid.Columns>
             </DataGrid>

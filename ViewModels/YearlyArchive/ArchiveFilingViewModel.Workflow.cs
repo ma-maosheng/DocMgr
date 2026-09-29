@@ -750,8 +750,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void ShowNoPendingElectronicItemsMessage()
         {
             string message = SelectedElectronicMediaForm == null
-                ? "请先在第一步选择待立档的电子介质表单。"
-                : "当前电子介质下没有待入袋的资料明细，请更换第一步所选介质或刷新待立档列表。";
+                ? "请先在步骤1选择待立档的电子介质表单。"
+                : "当前电子介质下没有待入袋的资料明细，请更换步骤1所选介质或刷新待立档列表。";
             MessageBox.Show(message, "提示", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }

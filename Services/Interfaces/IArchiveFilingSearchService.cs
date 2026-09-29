@@ -22,7 +22,10 @@ namespace DocMgr.Services.Interfaces
             string filedBy,
             int? numberingYear = null);
 
-        Task WriteBackupElectronicLinksAsync(
+        /// <summary>
+        /// 为备份副本写入立档事实；返回新建 linkId → 备份立档事实 Id。
+        /// </summary>
+        Task<IReadOnlyDictionary<int, int>> WriteBackupElectronicLinksAsync(
             YearlyElectronicArchiveUnit unit,
             IReadOnlyList<BackupElectronicLinkWriteItem> links,
             IReadOnlyDictionary<int, int> primaryFilingFactIdByOriginalLinkId,

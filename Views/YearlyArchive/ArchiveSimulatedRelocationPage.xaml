@@ -43,24 +43,32 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="{Binding PageTitle}" FontSize="18" FontWeight="SemiBold"
-                   Foreground="#004D40" Margin="0,0,0,12"/>
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="{Binding PageTitle, Mode=OneWay}"
+                       FontSize="18" FontWeight="Bold"
+                       Foreground="#004D40"/>
+            <TextBlock Text="{Binding PageSubtitle, Mode=OneWay}"
+                       Margin="0,4,0,0"
+                       Foreground="#666"
+                       TextWrapping="Wrap"
+                       FontSize="12"/>
+        </StackPanel>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel>
 
-                <GroupBox Header="迁档模式" Style="{StaticResource SectionGroupBoxStyle}">
+                <GroupBox Header="1. 迁档模式" Style="{StaticResource SectionGroupBoxStyle}">
                     <StackPanel Orientation="Horizontal">
-                        <RadioButton Content="物理位置迁移" GroupName="SimulatedRelocationMode"
+                        <RadioButton Content="迁入其他档口" GroupName="SimulatedRelocationMode"
                                      IsChecked="{Binding IsPhysicalMoveModeSelected, Mode=TwoWay}"
                                      VerticalAlignment="Center" Margin="0,0,28,0"/>
-                        <RadioButton Content="并入已有档案盒" GroupName="SimulatedRelocationMode"
+                        <RadioButton Content="并入同项目档案盒" GroupName="SimulatedRelocationMode"
                                      IsChecked="{Binding IsMergeToExistingModeSelected, Mode=TwoWay}"
                                      VerticalAlignment="Center"/>
                     </StackPanel>
                 </GroupBox>
 
-                <GroupBox Header="拟迁档对象" Style="{StaticResource SectionGroupBoxStyle}">
+                <GroupBox Header="2. 拟迁档对象" Style="{StaticResource SectionGroupBoxStyle}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
@@ -112,63 +120,37 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="迁档目标" Style="{StaticResource SectionGroupBoxStyle}">
+                <GroupBox Header="3. 迁档目标" Style="{StaticResource SectionGroupBoxStyle}">
                     <StackPanel>
-                        <StackPanel Visibility="{Binding IsPhysicalMode, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <Grid Margin="0,0,0,8">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
+                        <StackPanel Visibility="{Binding ShowTargetSlotSelector, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Text="{Binding TargetLocationPanelTitle, Mode=OneWay}" Style="{StaticResource FieldLabelStyle}"/>
+                            <Grid Margin="0,0,0,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="16"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="16"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="16"/>
-                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Row="0" Grid.Column="0">
-                                    <TextBlock Text="柜子：" Style="{StaticResource FieldLabelStyle}"/>
-                                    <ComboBox Style="{StaticResource FormComboBoxStyle}"
-                                              ItemsSource="{Binding TargetLocation.Cabinets}"
-                                              SelectedItem="{Binding TargetLocation.SelectedCabinet}"
-                                              DisplayMemberPath="Name"/>
-                                </StackPanel>
-                                <StackPanel Grid.Row="0" Grid.Column="2">
-                                    <TextBlock Text="A/B 面：" Style="{StaticResource FieldLabelStyle}"/>
-                                    <ComboBox Style="{StaticResource FormComboBoxStyle}"
-                                              ItemsSource="{Binding TargetLocation.Sides}"
-                                              SelectedItem="{Binding TargetLocation.SelectedSide}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Row="0" Grid.Column="4">
-                                    <TextBlock Text="层：" Style="{StaticResource FieldLabelStyle}"/>
-                                    <ComboBox Style="{StaticResource FormComboBoxStyle}"
-                                              ItemsSource="{Binding TargetLocation.Rows}"
-                                              SelectedItem="{Binding TargetLocation.SelectedRow}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Row="0" Grid.Column="6">
-                                    <TextBlock Text="列：" Style="{StaticResource FieldLabelStyle}"/>
-                                    <ComboBox Style="{StaticResource FormComboBoxStyle}"
-                                              ItemsSource="{Binding TargetLocation.Columns}"
-                                              SelectedItem="{Binding TargetLocation.SelectedColumn}"/>
-                                </StackPanel>
+                                <ComboBox Style="{StaticResource FormComboBoxStyle}"
+                                          ItemsSource="{Binding TargetSlotLocationOptions}"
+                                          SelectedItem="{Binding SelectedTargetSlotLocationOption, Mode=TwoWay}"
+                                          DisplayMemberPath="DisplayText"
+                                          ToolTip="{Binding TargetSlotRecommendHintText, Mode=OneWay}"/>
+                                <Button Grid.Column="1" Content="推荐档口" Margin="12,0,0,0"
+                                        Style="{StaticResource ToolbarActionButtonStyle}"
+                                        Command="{Binding RecommendTargetSlotCommand}"
+                                        ToolTip="{Binding TargetSlotRecommendHintText, Mode=OneWay}"/>
+                                <Button Grid.Column="2" Content="档口快照" Margin="12,0,0,0"
+                                        Style="{StaticResource ToolbarActionButtonStyle}"
+                                        Command="{Binding ShowTargetSlotSnapshotCommand}"
+                                        IsEnabled="{Binding CanShowTargetSlotSnapshot}"/>
                             </Grid>
-
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
-                                <Button Content="档口占用快照" Style="{StaticResource ButtonNormalStyle}"
-                                        Command="{Binding TargetLocation.ShowSlotSnapshotCommand}"/>
-                            </StackPanel>
-
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBlock Text="目标位置：" Foreground="#666" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding TargetLocation.NewLocationPreview}" FontWeight="Bold"
+                                <TextBlock Text="{Binding TargetFullLocation, Mode=OneWay}" FontWeight="Bold"
                                            Foreground="#E91E63" VerticalAlignment="Center"/>
                             </StackPanel>
-                            <TextBlock Text="{Binding TargetLocation.CellOccupancyText}" Foreground="Gray" Margin="0,0,0,4"/>
-                            <TextBlock Text="{Binding TargetLocation.SlotValidationMessage}" Foreground="#C62828"/>
+                            <TextBlock Text="{Binding TargetCellOccupancyText, Mode=OneWay}" Foreground="Gray" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding TargetSlotValidationMessage, Mode=OneWay}" Foreground="#C62828"/>
 
                             <CheckBox Margin="0,8,0,0"
                                       Content="迁入空盒（在目标档口新建档案盒承载资料，源档案盒从柜内销号）"
@@ -240,15 +222,20 @@
                                 </Style>
                             </DataGrid.Style>
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="表单号" Binding="{Binding FormNo}" Width="160"/>
-                                <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName}" Width="*"/>
+                                <DataGridTextColumn Header="表单号" Binding="{Binding FormNo, Mode=OneWay}" Width="120"/>
+                                <DataGridTextColumn Header="年度" Binding="{Binding Year, Mode=OneWay}" Width="70"/>
+                                <DataGridTextColumn Header="项目" Binding="{Binding ProjectName, Mode=OneWay}" Width="140"/>
+                                <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="160"/>
+                                <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName, Mode=OneWay}" Width="*"/>
+                                <DataGridTextColumn Header="迁档前编号" Binding="{Binding BeforeStorageLocation, Mode=OneWay}" Width="140"/>
+                                <DataGridTextColumn Header="迁档后编号" Binding="{Binding AfterStorageLocation, Mode=OneWay}" Width="140"/>
                             </DataGrid.Columns>
                         </DataGrid>
                         <viewShared:ItemDetailsPanelPaginationBar DataContext="{Binding ItemDetailsPanel}"/>
                     </StackPanel>
                 </GroupBox>
 
-                <GroupBox Header="预览与确认" Style="{StaticResource SectionGroupBoxStyle}">
+                <GroupBox Header="5. 预览与确认" Style="{StaticResource SectionGroupBoxStyle}">
                     <StackPanel>
                         <TextBox Text="{Binding PreviewText, Mode=OneWay}" TextWrapping="Wrap" MinHeight="72"
                                  IsReadOnly="True" Background="#FAFAFA" BorderBrush="#E0E0E0" Padding="8"/>

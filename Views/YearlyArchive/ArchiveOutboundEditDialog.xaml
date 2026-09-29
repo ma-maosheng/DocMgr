@@ -79,9 +79,8 @@
 
             <StackPanel Margin="0,10,0,0" IsEnabled="{Binding CanEditApplicationHeader}"
                         Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <Border Background="White" BorderBrush="#D8E2EC" BorderThickness="1" Padding="14" CornerRadius="4">
+                <GroupBox Header="1. 申请信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
                     <StackPanel>
-                        <TextBlock Text="申请信息" Style="{StaticResource OutboundSectionTitleStyle}" Margin="0,0,0,12"/>
                         <TextBlock Text="申请原由：" Style="{StaticResource OutboundFieldLabelStyle}"/>
                         <TextBox Text="{Binding Record.Reason, UpdateSourceTrigger=PropertyChanged}" Height="30" Margin="0,0,0,12"
                                  ToolTip="必填，提交申请前请说明借出目的"/>
@@ -127,29 +126,27 @@
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
-                </Border>
+                </GroupBox>
             </StackPanel>
         </StackPanel>
 
         <DockPanel Grid.Row="1">
-            <Border DockPanel.Dock="Top" Margin="0,0,0,10" Padding="12,10" Background="White"
-                    BorderBrush="#D8E2EC" BorderThickness="1"
-                    Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <GroupBox DockPanel.Dock="Top" Header="2. 拟领用资料" Style="{StaticResource Level1GroupBoxStyle}"
+                      Padding="10" Margin="0,0,0,10"
+                      Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Text="拟领用资料" Style="{StaticResource OutboundSectionTitleStyle}"/>
-                        <TextBlock Text="{Binding ContainerUnitsSummary}" Margin="0,4,0,0" Foreground="#64748B" FontSize="12"/>
-                    </StackPanel>
+                    <TextBlock Grid.Column="0" Text="{Binding ContainerUnitsSummary}" VerticalAlignment="Center"
+                               Foreground="#64748B" FontSize="12"/>
                     <Button Grid.Column="1" Content="通过检索集登记拟领用的资料"
                             Command="{Binding RegisterItemsFromResultSetCommand}"
                             Padding="12,6" VerticalAlignment="Center"
                             IsEnabled="{Binding CanEditApplicationHeader}"/>
                 </Grid>
-            </Border>
+            </GroupBox>
 
             <Border DockPanel.Dock="Top" Margin="0,0,0,10" Padding="24" Background="#FAFBFC"
                     BorderBrush="#E2E8F0" BorderThickness="1">

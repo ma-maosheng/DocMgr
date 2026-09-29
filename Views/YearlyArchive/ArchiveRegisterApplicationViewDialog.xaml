@@ -31,38 +31,7 @@
         <Border Grid.Row="1" BorderBrush="#D8E2EC" BorderThickness="1" CornerRadius="4" Background="White">
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="10">
                 <StackPanel Margin="12">
-                    <GroupBox Header="1. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,6">
-                                    <TextBlock Text="资料名称" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                                    <TextBlock Text="{Binding MaterialName}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" FontWeight="SemiBold"/>
-                                </StackPanel>
-                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,6">
-                                    <TextBlock Text="所属项目" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                                    <TextBlock Text="{Binding ProjectName}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="资料来源" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                                    <TextBlock Text="{Binding SourceType}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Text="提供部门(单位)" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                                    <TextBlock Text="{Binding ProvideUnit}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
-                                </StackPanel>
-                            </Grid>
-                        </StackPanel>
-                    </GroupBox>
-
-                    <GroupBox Header="2. 申请信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
+                    <GroupBox Header="1. 申请信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -76,31 +45,8 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,6">
-                                <TextBlock Text="表单编号" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                                <TextBlock Text="{Binding FormNo}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" FontWeight="SemiBold"/>
-                            </StackPanel>
-                            <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,6">
-                                <TextBlock Text="业务状态" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                                <TextBlock Text="{Binding StatusDisplay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" FontWeight="SemiBold"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,6">
-                                <TextBlock Text="库管模式" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                                <TextBlock Text="{Binding ArchivePurpose}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
-                            </StackPanel>
-                            <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,6">
-                                <TextBlock Text="证明材料" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                                <TextBlock Text="{Binding ProofMaterialDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,6">
-                                <TextBlock Text="其他要求" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                                <TextBlock Text="{Binding OtherRequests}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3">
-                                <TextBlock Text="申请人 / 部门 / 日期" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                            <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,6">
+                                <TextBlock Text="申请人 / 部门 / 日期：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                 <TextBlock Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}">
                                     <Run Text="{Binding ApplicantName, Mode=OneWay}"/>
                                     <Run Text="  ·  "/>
@@ -109,7 +55,59 @@
                                     <Run Text="{Binding ApplicantDateDisplay, Mode=OneWay}"/>
                                 </TextBlock>
                             </StackPanel>
+
+                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,6">
+                                <TextBlock Text="表单编号：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                <TextBlock Text="{Binding FormNo}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" FontWeight="SemiBold"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,6">
+                                <TextBlock Text="业务状态：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                <TextBlock Text="{Binding StatusDisplay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" FontWeight="SemiBold"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,6">
+                                <TextBlock Text="库管模式：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                <TextBlock Text="{Binding ArchivePurpose}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,6">
+                                <TextBlock Text="证明材料：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                <TextBlock Text="{Binding ProofMaterialDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3">
+                                <TextBlock Text="其他要求：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                <TextBlock Text="{Binding OtherRequests}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                            </StackPanel>
                         </Grid>
+                    </GroupBox>
+
+                    <GroupBox Header="2. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,6">
+                                    <TextBlock Text="资料名称：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                    <TextBlock Text="{Binding MaterialName}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" FontWeight="SemiBold"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,6">
+                                    <TextBlock Text="所属项目：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                    <TextBlock Text="{Binding ProjectName}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,0">
+                                    <TextBlock Text="资料来源：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                    <TextBlock Text="{Binding SourceProvideUnitDisplay, Mode=OneWay}"
+                                               Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
                     </GroupBox>
 
                     <GroupBox Header="3. 审批流程" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
@@ -123,11 +121,11 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                            <TextBlock Text="负责人签字" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                            <TextBlock Text="负责人签字：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                             <TextBlock Text="{Binding DeptHead, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="1">
-                                            <TextBlock Text="审核日期" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                            <TextBlock Text="审核日期：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                             <TextBlock Text="{Binding DeptHeadDateDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                         </StackPanel>
                                     </Grid>
@@ -143,11 +141,11 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                            <TextBlock Text="负责人签字" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                            <TextBlock Text="负责人签字：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                             <TextBlock Text="{Binding ProductionHead, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="1">
-                                            <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                            <TextBlock Text="日期：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                             <TextBlock Text="{Binding ProductionHeadDateDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                         </StackPanel>
                                     </Grid>
@@ -163,11 +161,11 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                            <TextBlock Text="负责人签字" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                            <TextBlock Text="负责人签字：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                             <TextBlock Text="{Binding ArchiveRoomHead, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="1">
-                                            <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                            <TextBlock Text="日期：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                             <TextBlock Text="{Binding ArchiveRoomHeadDateDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                         </StackPanel>
                                     </Grid>
@@ -183,11 +181,11 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                            <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                            <TextBlock Text="签字：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                             <TextBlock Text="{Binding ArchiveDeputyPresident, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="1">
-                                            <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                            <TextBlock Text="日期：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                             <TextBlock Text="{Binding ArchiveDeputyPresidentDateDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                         </StackPanel>
                                     </Grid>
@@ -207,19 +205,19 @@
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
                                         <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,8">
-                                            <TextBlock Text="移交人签字" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                            <TextBlock Text="移交人签字：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                             <TextBlock Text="{Binding Deliverer, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                         </StackPanel>
                                         <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,8">
-                                            <TextBlock Text="移交日期" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                            <TextBlock Text="移交日期：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                             <TextBlock Text="{Binding DeliverDateDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                         </StackPanel>
                                         <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,0">
-                                            <TextBlock Text="资料室资料员签字" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                            <TextBlock Text="资料室资料员签字：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                             <TextBlock Text="{Binding Administrator, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                         </StackPanel>
                                         <StackPanel Grid.Row="1" Grid.Column="1">
-                                            <TextBlock Text="资料员日期" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                            <TextBlock Text="资料员日期：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                                             <TextBlock Text="{Binding AdminDateDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                                         </StackPanel>
                                     </Grid>

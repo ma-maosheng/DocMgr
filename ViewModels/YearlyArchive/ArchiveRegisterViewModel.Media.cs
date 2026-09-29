@@ -207,6 +207,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             DataSimulatedMediaView.Refresh();
             OnPropertyChanged(nameof(DataElectronicMediaCount));
             OnPropertyChanged(nameof(DataSimulatedMediaCount));
+            OnPropertyChanged(nameof(SourceProvideUnitDisplay));
+            OnPropertyChanged(nameof(IsExternalSource));
         }
 
         private MediaEntryViewModel? FindMediaEntryByItemsCollection(object? sender)

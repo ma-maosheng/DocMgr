@@ -33,7 +33,7 @@
 
                 <!-- 年份 -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
-                    <TextBlock Text="年份:" VerticalAlignment="Center" Foreground="#666" Margin="0,0,5,0"/>
+                    <TextBlock Text="年份：" VerticalAlignment="Center" Foreground="#666" Margin="0,0,0,0"/>
                     <!-- Change: Binding ItemsSource and SelectedItem -->
                     <ComboBox x:Name="CmbYear" Width="100" Style="{StaticResource ToolbarFilterComboBoxStyle}" VerticalContentAlignment="Center"
                               ItemsSource="{Binding Years}" SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
@@ -41,7 +41,7 @@
 
                 <!-- 关键词 -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
-                    <TextBlock Text="关键词:" VerticalAlignment="Center" Foreground="#666" Margin="0,0,5,0"/>
+                    <TextBlock Text="关键词：" VerticalAlignment="Center" Foreground="#666" Margin="0,0,0,0"/>
                     <!-- Change: Binding Text -->
                     <TextBox x:Name="TxtKeyword" Width="200" Style="{StaticResource SearchTextBoxStyle}"
                              Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
@@ -50,7 +50,7 @@
 
                 <!-- 业务状态 -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
-                    <TextBlock Text="业务状态:" VerticalAlignment="Center" Foreground="#666" Margin="0,0,5,0"/>
+                    <TextBlock Text="业务状态：" VerticalAlignment="Center" Foreground="#666" Margin="0,0,0,0"/>
                     <!-- Change: Binding ItemsSource, DisplayMemberPath, SelectedValuePath, SelectedValue -->
                     <ComboBox x:Name="CmbStatus" Width="120" Style="{StaticResource ToolbarFilterComboBoxStyle}" VerticalContentAlignment="Center"
                               ItemsSource="{Binding StatusOptions}"
@@ -62,7 +62,7 @@
 
                 <!-- 项目 -->
                 <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
-                    <TextBlock Text="项目:" VerticalAlignment="Center" Foreground="#666" Margin="0,0,5,0"/>
+                    <TextBlock Text="项目：" VerticalAlignment="Center" Foreground="#666" Margin="0,0,0,0"/>
                     <ComboBox Width="220" Style="{StaticResource ToolbarFilterComboBoxStyle}" VerticalContentAlignment="Center"
                               ItemsSource="{Binding ProjectOptions}"
                               DisplayMemberPath="Name"
@@ -121,10 +121,8 @@
                     <DataGridTextColumn Header="申请日期" Binding="{Binding CreatedDate, StringFormat=yyyy-MM-dd}" Width="110"/>
                     <DataGridTextColumn Header="业务状态" Binding="{Binding StatusStr}" Width="100">
                         <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource WorkflowStatusColumnTextStyle}">
                                 <Setter Property="HorizontalAlignment" Value="Center"/>
-                                <Setter Property="Foreground" Value="{Binding StatusColor}"/>
-                                <Setter Property="FontWeight" Value="SemiBold"/>
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>

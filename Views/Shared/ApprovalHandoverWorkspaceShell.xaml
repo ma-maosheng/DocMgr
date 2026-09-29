@@ -47,8 +47,24 @@
                        TextWrapping="Wrap"/>
         </StackPanel>
 
-        <!-- 父卡片：业务头 + 审批与交接信息同卷；盘库可撑满视口让双表吃剩余高度 -->
-        <Border Grid.Row="1" Background="White" BorderBrush="#E0E0E0" BorderThickness="1" Padding="10">
+        <!-- 主体区：默认同卷白卡（业务头 + 审批与交接）；嵌入双模窗可关 ShowBodyChrome 避免套卡 -->
+        <Border Grid.Row="1">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="White"/>
+                    <Setter Property="BorderBrush" Value="#E0E0E0"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="Padding" Value="10"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ShowBodyChrome, ElementName=Root}" Value="False">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="BorderBrush" Value="Transparent"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Padding" Value="0"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <ScrollViewer x:Name="BodyScrollViewer"
                           HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">

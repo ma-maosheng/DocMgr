@@ -10,6 +10,7 @@ namespace DocMgr.Views.YearlyArchive
     {
         private readonly IServiceScope _pageScope;
         private readonly ArchiveCrossDomainTransferLedgerViewModel _viewModel;
+        private bool _preserveStateOnUnload;
 
         public ArchiveCrossDomainTransferLedgerPage()
         {
@@ -32,6 +33,13 @@ namespace DocMgr.Views.YearlyArchive
 
         private void ArchiveCrossDomainTransferLedgerPage_Unloaded(object sender, RoutedEventArgs e)
         {
+            // 跳转立档台账后可通过「返回」回到本页，需保留事件订阅与页面 scope。
+            if (_preserveStateOnUnload)
+            {
+                _preserveStateOnUnload = false;
+                return;
+            }
+
             Loaded -= ArchiveCrossDomainTransferLedgerPage_Loaded;
             Unloaded -= ArchiveCrossDomainTransferLedgerPage_Unloaded;
             _viewModel.NavigateToFilingLedgerRequested -= ViewModel_NavigateToFilingLedgerRequested;
@@ -42,6 +50,7 @@ namespace DocMgr.Views.YearlyArchive
         {
             if (Application.Current.MainWindow is MainWindow mainWindow)
             {
+                _preserveStateOnUnload = true;
                 mainWindow.NavigateToArchiveFilingLedger(filingFactId);
                 return;
             }

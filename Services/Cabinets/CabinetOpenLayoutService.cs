@@ -666,16 +666,20 @@ namespace DocMgr.Services.Cabinets
                 statusText,
                 isYearlyArchiveDisplay);
             decimal usedMb = ResolveUsedCapacityMb(discCode, archiveContext, usedDataSizeLookup);
+            decimal totalMb = ElectronicMediaCapacitySupport.ParseCapacityTextToMb(medium.Capacity);
+            decimal remainingMb = totalMb > 0 ? Math.Max(0, totalMb - usedMb) : 0;
             string yearText = archiveContext?.Year ?? string.Empty;
             string projectText = archiveContext?.ProjectName ?? string.Empty;
             string usedCapacityDisplayText = FormatCapacityDisplayText(usedMb);
-            string archiveInfoText = BuildArchiveInfoText(discCode, archiveContext, usedMb, null, true);
-            string mediumInfoText = BuildOpticalDiscMediumInfoText(medium, usedMb);
+            string remainingCapacityDisplayText = totalMb > 0 ? FormatCapacityDisplayText(remainingMb) : "—";
+            // 卡片不标盘内容量；悬停仍提示已用/剩余，便于查阅。
+            string archiveInfoText = BuildArchiveInfoText(discCode, archiveContext, usedMb, totalMb > 0 ? remainingMb : null, true);
+            string mediumInfoText = BuildOpticalDiscMediumInfoText(medium, usedMb, totalMb);
             string electronicArchiveHint = string.IsNullOrWhiteSpace(electronicArchiveNo) && string.IsNullOrWhiteSpace(electronicArchiveLocation)
                 ? string.Empty
                 : $"\n介质袋编号：{(string.IsNullOrWhiteSpace(electronicArchiveNo) ? "未登记" : electronicArchiveNo)}\n介质袋物理位置：{(string.IsNullOrWhiteSpace(electronicArchiveLocation) ? "未登记" : electronicArchiveLocation)}";
             string yearlyDisplayHint = isYearlyArchiveDisplay
-                ? $"\n年度：{FormatYearDisplayText(yearText)}\n项目：{FormatProjectDisplayText(projectText)}\n已用容量：{usedCapacityDisplayText}"
+                ? $"\n年度：{FormatYearDisplayText(yearText)}\n项目：{FormatProjectDisplayText(projectText)}\n已用容量：{usedCapacityDisplayText}\n剩余容量：{remainingCapacityDisplayText}"
                 : string.Empty;
             var occupationLock = ResolveWithdrawalOccupationLock(withdrawalLock);
             string baseToolTipText = isPendingReturn
@@ -714,7 +718,7 @@ namespace DocMgr.Services.Cabinets
                 IsOpticalDiscMedia = true,
                 YearText = yearText,
                 ProjectText = projectText,
-                UsedCapacityDisplayText = usedCapacityDisplayText,
+                UsedCapacityDisplayText = string.Empty,
                 RemainingCapacityDisplayText = string.Empty,
                 ArchiveSequenceNumber = archiveSequenceNumber,
                 ArchiveSequenceText = archiveSequenceText,
@@ -1159,7 +1163,7 @@ namespace DocMgr.Services.Cabinets
             return builder.ToString().TrimEnd();
         }
 
-        private static string BuildOpticalDiscMediumInfoText(OpticalDiscMedium medium, decimal usedMb)
+        private static string BuildOpticalDiscMediumInfoText(OpticalDiscMedium medium, decimal usedMb, decimal totalMb)
         {
             var builder = new StringBuilder();
             builder.AppendLine("【光盘基本参数】");
@@ -1175,6 +1179,15 @@ namespace DocMgr.Services.Cabinets
             builder.AppendLine("【可用容量】");
             builder.AppendLine($"标称容量：{FormatDisplayField(medium.Capacity)}");
             builder.AppendLine($"已用容量：{FormatCapacityDisplayText(usedMb)}");
+            if (totalMb > 0)
+            {
+                decimal remainingMb = Math.Max(0, totalMb - usedMb);
+                builder.AppendLine($"剩余容量：{FormatCapacityDisplayText(remainingMb)}");
+            }
+            else
+            {
+                builder.AppendLine("剩余容量：—");
+            }
 
             return builder.ToString().TrimEnd();
         }

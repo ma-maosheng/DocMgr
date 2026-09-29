@@ -6,14 +6,16 @@
     <Page.Resources>
         <Style x:Key="LabelStyle" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="TextAlignment" Value="Right"/>
             <Setter Property="Width" Value="72"/>
-            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
             <Setter Property="Foreground" Value="#37474F"/>
         </Style>
         <Style x:Key="HintStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Margin" Value="78,2,0,0"/>
+            <Setter Property="Margin" Value="72,2,0,0"/>
         </Style>
         <Style x:Key="InlineActionButtonStyle" TargetType="Button" BasedOn="{StaticResource FormInlineButtonStyle}">
             <Setter Property="Padding" Value="10,4"/>
@@ -67,14 +69,14 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="硬盘编号" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="硬盘编号：" Style="{StaticResource LabelStyle}"/>
                         <DockPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,4" LastChildFill="True">
                             <Button DockPanel.Dock="Right" Content="生成编号" Command="{Binding GenerateDiskCodeCommand}"
                                     Style="{StaticResource InlineActionButtonStyle}"/>
                             <TextBox Text="{Binding DiskCode, UpdateSourceTrigger=PropertyChanged}"
                                      Height="{StaticResource FormControlHeight}"/>
                         </DockPanel>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="序列号" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="序列号：" Style="{StaticResource LabelStyle}"/>
                         <DockPanel Grid.Row="0" Grid.Column="3" Margin="0,0,12,4" LastChildFill="True">
                             <Button DockPanel.Dock="Right" Content="读取本机" Command="{Binding PickDiskCommand}"
                                     Style="{StaticResource InlineActionButtonStyle}"
@@ -82,7 +84,7 @@
                             <TextBox Text="{Binding SerialNumber, UpdateSourceTrigger=PropertyChanged}"
                                      Height="{StaticResource FormControlHeight}"/>
                         </DockPanel>
-                        <TextBlock Grid.Row="0" Grid.Column="4" Text="容量" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="4" Text="容量：" Style="{StaticResource LabelStyle}"/>
                         <Grid Grid.Row="0" Grid.Column="5" Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -94,23 +96,23 @@
                                       SelectedItem="{Binding CapacityUnit}" Height="{StaticResource FormControlHeight}"/>
                         </Grid>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="类型" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="类型：" Style="{StaticResource LabelStyle}"/>
                         <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding DiskTypeOptions}" IsEditable="True"
                                   Text="{Binding DiskType, UpdateSourceTrigger=PropertyChanged}"
                                   Height="{StaticResource FormControlHeight}" Margin="0,0,12,4"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="品牌" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="品牌：" Style="{StaticResource LabelStyle}"/>
                         <ComboBox Grid.Row="1" Grid.Column="3" ItemsSource="{Binding BrandOptions}" IsEditable="True"
                                   Text="{Binding Brand, UpdateSourceTrigger=PropertyChanged}"
                                   Height="{StaticResource FormControlHeight}" Margin="0,0,12,4"/>
-                        <TextBlock Grid.Row="1" Grid.Column="4" Text="接口" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="4" Text="接口：" Style="{StaticResource LabelStyle}"/>
                         <ComboBox Grid.Row="1" Grid.Column="5" ItemsSource="{Binding InterfaceTypeOptions}" IsEditable="True"
                                   Text="{Binding InterfaceType, UpdateSourceTrigger=PropertyChanged}"
                                   Height="{StaticResource FormControlHeight}" Margin="0,0,0,4"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="出厂日期" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="出厂日期：" Style="{StaticResource LabelStyle}"/>
                         <DatePicker Grid.Row="2" Grid.Column="1" SelectedDate="{Binding FactoryDate}"
                                     Height="{StaticResource FormControlHeight}" Margin="0,0,12,0" VerticalContentAlignment="Center"/>
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="登记方式" Style="{StaticResource LabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="登记方式：" Style="{StaticResource LabelStyle}"/>
                         <TextBox Grid.Row="2" Grid.Column="3" Text="{Binding RegistrationMethod, Mode=OneWay}" IsReadOnly="True"
                                  Height="{StaticResource FormControlHeight}" Margin="0,0,12,0" Background="#F9F9F9"/>
                     </Grid>
@@ -126,7 +128,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="根目录" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="0" Text="根目录：" Style="{StaticResource LabelStyle}"/>
                             <TextBox Grid.Column="1" Text="{Binding RootPath, UpdateSourceTrigger=PropertyChanged}"
                                      Height="{StaticResource FormControlHeight}" VerticalAlignment="Center"/>
                             <Button Grid.Column="2" Content="选择目录" Command="{Binding PickRootCommand}"
@@ -144,21 +146,21 @@
                                 <ColumnDefinition Width="140"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="年度" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="0" Text="年度：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="1"
                                       ItemsSource="{Binding YearOptions}"
                                       IsEditable="True"
                                       Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}"
                                       Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
                                       ToolTip="开放域：列出项目信息、模拟盒、电子袋中已有年度；也可手输新年度"/>
-                            <TextBlock Grid.Column="2" Text="项目" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="2" Text="项目：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="3"
                                       ItemsSource="{Binding ProjectNameOptions}"
                                       IsEditable="True"
                                       Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"
                                       Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
                                       ToolTip="开放域：列出当前年度下已登记项目名称（含模拟/电子立档）；也可手输新项目"/>
-                            <TextBlock Grid.Column="4" Text="项目编号" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="4" Text="项目编号：" Style="{StaticResource LabelStyle}"/>
                             <TextBox Grid.Column="5" Text="{Binding ProjectCode, UpdateSourceTrigger=PropertyChanged}"
                                      Height="{StaticResource FormControlHeight}"/>
                             <Button Grid.Column="6" Content="查看年度已有项目" Command="{Binding ViewYearProjectsCommand}"
@@ -184,13 +186,13 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="来源" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="0" Text="来源：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="1"
                                       ItemsSource="{Binding SourceTypeOptions}"
                                       SelectedItem="{Binding SourceType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
                                       ToolTip="内部：提供单位固定为资料室；外来：请填写具体提供单位"/>
-                            <TextBlock Grid.Column="2" Text="提供单位" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="2" Text="提供单位：" Style="{StaticResource LabelStyle}"/>
                             <TextBox Grid.Column="3"
                                      Text="{Binding ProvideUnit, UpdateSourceTrigger=PropertyChanged}"
                                      IsReadOnly="{Binding IsProvideUnitReadOnly, Mode=OneWay}"
@@ -206,7 +208,7 @@
                                     </Style>
                                 </TextBox.Style>
                             </TextBox>
-                            <TextBlock Grid.Column="4" Text="库管模式" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="4" Text="库管模式：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="5" ItemsSource="{Binding ArchivePurposeOptions}" SelectedItem="{Binding ArchivePurpose}"
                                       Height="{StaticResource FormControlHeight}"/>
                         </Grid>
@@ -217,7 +219,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="数据档口" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Grid.Column="0" Text="数据档口：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="1" ItemsSource="{Binding SlotOptions}" SelectedItem="{Binding SelectedSlotOption}"
                                       DisplayMemberPath="DisplayText" Height="{StaticResource FormControlHeight}" VerticalAlignment="Center"/>
                             <Button Grid.Column="2" Content="推荐空位" Command="{Binding RecommendSlotCommand}"

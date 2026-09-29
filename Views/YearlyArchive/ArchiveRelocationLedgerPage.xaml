@@ -39,7 +39,7 @@
         <StackPanel Grid.Row="0" Margin="0,0,0,12">
             <TextBlock Text="迁档台账" Style="{StaticResource PageTitleStyle}"/>
             <TextBlock Style="{StaticResource PageSubtitleStyle}"
-                       Text="横向浏览资料迁档实物流转流水，可按迁档模式、业务单号与关键字筛选。"/>
+                       Text="横向浏览资料迁档实物流转流水，可按迁档模式、迁档性质、业务单号与关键字筛选；迁档性质区分「备份迁档」与「常规迁档」。"/>
         </StackPanel>
 
         <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Padding="10,8" Margin="0,0,0,8">
@@ -55,10 +55,13 @@
                         <ColumnDefinition Width="108"/>
                         <ColumnDefinition Width="6"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="128"/>
+                        <ColumnDefinition Width="148"/>
                         <ColumnDefinition Width="6"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="68"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="100"/>
                         <ColumnDefinition Width="6"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="120"/>
@@ -82,32 +85,39 @@
                     <DatePicker Grid.Column="6" Style="{StaticResource FilterDatePickerStyle}"
                                 SelectedDate="{Binding OperatedTo, Mode=TwoWay}"/>
 
-                    <TextBlock Grid.Column="8" Text="模式" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBlock Grid.Column="8" Text="模式：" Style="{StaticResource FilterLabelStyle}"/>
                     <ComboBox Grid.Column="9" Style="{StaticResource FilterInputStyle}"
                               ItemsSource="{Binding RelocationModeOptions}"
                               DisplayMemberPath="Label"
                               SelectedValuePath="Value"
                               SelectedValue="{Binding SelectedRelocationMode, Mode=TwoWay}"/>
 
-                    <TextBlock Grid.Column="11" Text="介质" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBlock Grid.Column="11" Text="性质：" Style="{StaticResource FilterLabelStyle}"/>
                     <ComboBox Grid.Column="12" Style="{StaticResource FilterInputStyle}"
+                              ItemsSource="{Binding RelocationKindOptions}"
+                              DisplayMemberPath="Label"
+                              SelectedValuePath="Value"
+                              SelectedValue="{Binding SelectedRelocationKind, Mode=TwoWay}"/>
+
+                    <TextBlock Grid.Column="14" Text="介质：" Style="{StaticResource FilterLabelStyle}"/>
+                    <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
                               ItemsSource="{Binding MediaKindOptions}"
                               DisplayMemberPath="Label"
                               SelectedValuePath="Value"
                               SelectedValue="{Binding SelectedMediaKind, Mode=TwoWay}"/>
 
-                    <TextBlock Grid.Column="14" Text="单号" Style="{StaticResource FilterLabelStyle}"/>
-                    <TextBox Grid.Column="15" Style="{StaticResource SearchTextBoxStyle}"
+                    <TextBlock Grid.Column="17" Text="单号：" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBox Grid.Column="18" Style="{StaticResource SearchTextBoxStyle}"
                              Text="{Binding BusinessNo, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="移库单号"/>
 
-                    <TextBlock Grid.Column="17" Text="操作人" Style="{StaticResource FilterLabelStyle}"/>
-                    <TextBox Grid.Column="18" Style="{StaticResource SearchTextBoxStyle}"
+                    <TextBlock Grid.Column="20" Text="操作人：" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBox Grid.Column="21" Style="{StaticResource SearchTextBoxStyle}"
                              Text="{Binding OperatorName, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="移库操作人"/>
 
-                    <TextBlock Grid.Column="20" Text="关键字" Style="{StaticResource FilterLabelStyle}"/>
-                    <TextBox Grid.Column="21" Style="{StaticResource SearchTextBoxStyle}"
+                    <TextBlock Grid.Column="23" Text="关键字：" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBox Grid.Column="24" Style="{StaticResource SearchTextBoxStyle}"
                              Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="立档编号、表单号、资料名称、移库前后容器/位置、摘要">
                         <TextBox.InputBindings>
@@ -115,7 +125,7 @@
                         </TextBox.InputBindings>
                     </TextBox>
 
-                    <StackPanel Grid.Column="23" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="26" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
                         <Button Content="重置" Margin="4,0,0,0" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
                         <Button Content="定位立档" Margin="6,0,0,0" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"
@@ -145,6 +155,7 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="操作时间" Binding="{Binding OperatedAtDisplay}" Width="130"/>
                     <DataGridTextColumn Header="迁档模式" Binding="{Binding RelocationModeDisplay}" Width="120"/>
+                    <DataGridTextColumn Header="迁档性质" Binding="{Binding RelocationKindDisplay}" Width="88"/>
                     <DataGridTextColumn Header="迁档单号" Binding="{Binding BusinessNo}" Width="140"/>
                     <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo}" Width="130"/>
                     <DataGridTextColumn Header="表单编号" Binding="{Binding FormNo}" Width="120"/>

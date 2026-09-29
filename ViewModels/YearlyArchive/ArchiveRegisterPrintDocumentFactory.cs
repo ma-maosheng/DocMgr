@@ -135,10 +135,14 @@ namespace DocMgr.ViewModels.YearlyArchive
                 hasOpticalDiscLedger);
 
             TableRowGroup g = new TableRowGroup();
-            g.Rows.Add(CreateDoubleRow("申请人", data.Applicant, "申请部门", data.Dept, PrintRowHeightOneLine));
-            g.Rows.Add(CreateRow("资料名称", data.MaterialName, 3, PrintRowHeightOneLine));
-            g.Rows.Add(CreateDoubleRow("所属项目", data.ProjectName, "资料来源", data.SourceType, PrintRowHeightOneLine));
-            g.Rows.Add(CreateRow("提供单位", data.ProvideUnit, 3, PrintRowHeightOneLine));
+            g.Rows.Add(CreateDoubleRow("申请人", EmptyAsPlaceholder(data.Applicant), "申请部门", EmptyAsPlaceholder(data.Dept), PrintRowHeightOneLine));
+            g.Rows.Add(CreateRow("资料名称", EmptyAsPlaceholder(data.MaterialName), 3, PrintRowHeightOneLine));
+            g.Rows.Add(CreateDoubleRow(
+                "所属项目",
+                EmptyAsPlaceholder(data.ProjectName),
+                "资料来源",
+                EmptyAsPlaceholder(data.SourceType),
+                PrintRowHeightOneLine));
 
             g.Rows.Add(CreateRow("资料内容", contentStr, 3, contentHeight, VerticalAlignment.Top));
 
@@ -290,8 +294,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             int approvalRowCount = CountApprovalPrintRows(data);
             // 固定行（不含资料内容撑满行）：
-            // 申请人/名称/项目/单位/库管(5) + 证明/其他要求(+留存硬盘/光盘) + 签批行 + 交接。
-            int oneLineRows = 5 + approvalRowCount;
+            // 申请人/名称/项目·来源/库管(4) + 证明/其他要求(+留存硬盘/光盘) + 签批行 + 交接。
+            int oneLineRows = 4 + approvalRowCount;
             double fixedContentHeight =
                 PrintRowHeightOneLine * oneLineRows
                 + proofHeight
@@ -387,6 +391,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private static string FormatSignatureBlock(string signer, string date) =>
             FormatSignatureInline(signer, date);
+
+        private static string EmptyAsPlaceholder(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? "(无)" : value.Trim();
 
         private static TableCell CreateStandardLabelCell(string label, double minHeight = 0)
         {

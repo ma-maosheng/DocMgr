@@ -135,19 +135,19 @@
                         <DatePicker Grid.Column="6" Style="{StaticResource FilterDatePickerStyle}"
                                     SelectedDate="{Binding OperatedTo, Mode=TwoWay}"/>
 
-                        <TextBlock Grid.Column="8" Text="业务" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBlock Grid.Column="8" Text="业务：" Style="{StaticResource FilterLabelStyle}"/>
                         <ComboBox Grid.Column="9" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding TransactionTypeOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedTransactionType, Mode=TwoWay}"/>
 
-                        <TextBlock Grid.Column="11" Text="单号" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBlock Grid.Column="11" Text="单号：" Style="{StaticResource FilterLabelStyle}"/>
                         <TextBox Grid.Column="12" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding BusinessNo, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="流转或出库业务单号"/>
 
-                        <TextBlock Grid.Column="14" Text="节点" Style="{StaticResource FilterLabelStyle}" ToolTip="申请节点"/>
+                        <TextBlock Grid.Column="14" Text="节点：" Style="{StaticResource FilterLabelStyle}" ToolTip="申请节点"/>
                         <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding NodeCategoryOptions}"
                                   DisplayMemberPath="Label"
@@ -155,17 +155,17 @@
                                   SelectedValue="{Binding SelectedNodeCategory, Mode=TwoWay}"
                                   ToolTip="申请节点"/>
 
-                        <TextBlock Grid.Column="17" Text="申请人" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBlock Grid.Column="17" Text="申请人：" Style="{StaticResource FilterLabelStyle}"/>
                         <TextBox Grid.Column="18" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding ApplicantName, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="出库申请人姓名（申请节点视图）"/>
 
-                        <TextBlock Grid.Column="20" Text="操作人" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBlock Grid.Column="20" Text="操作人：" Style="{StaticResource FilterLabelStyle}"/>
                         <TextBox Grid.Column="21" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding OperatorName, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="流转/办理操作人"/>
 
-                        <TextBlock Grid.Column="23" Text="关键字" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBlock Grid.Column="23" Text="关键字：" Style="{StaticResource FilterLabelStyle}"/>
                         <TextBox Grid.Column="24" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="立档编号、表单号、资料/子项名称、项目、流转摘要/备注">
@@ -185,7 +185,7 @@
 
                 <ScrollViewer Grid.Row="1" Margin="0,8,0,0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal" MinHeight="24">
-                        <TextBlock Text="容器范围" Style="{StaticResource FilterLabelStyle}" Width="56" Margin="0,0,8,0"/>
+                        <TextBlock Text="容器范围：" Style="{StaticResource FilterLabelStyle}" Width="68" Margin="0,0,0,0"/>
                         <RadioButton Content="有流转记录的容器" GroupName="CirculationListingMode"
                                      IsChecked="{Binding IsCirculationOnlyListingMode, Mode=TwoWay}"
                                      VerticalAlignment="Center" VerticalContentAlignment="Center"/>
@@ -287,7 +287,7 @@
                                     <DataGridTextColumn Header="业务单" Binding="{Binding DisplayTitle}" Width="220"/>
                                     <DataGridTextColumn Header="最近活动" Binding="{Binding LatestOperatedAtDisplay}" Width="128"/>
                                     <DataGridTextColumn Header="明细数" Binding="{Binding SubItemCount}" Width="56"/>
-                                    <DataGridTextColumn Header="业务状态" Binding="{Binding OutboundStatusDisplay}" Width="88"/>
+                                    <DataGridTextColumn Header="业务状态" Binding="{Binding OutboundStatusDisplay}" Width="88" ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
                                     <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="72"/>
                                     <DataGridTextColumn Header="最近摘要" Binding="{Binding LatestSummary}" Width="*"/>
                                 </DataGrid.Columns>
@@ -330,7 +330,7 @@
                                     <DataGridTextColumn Header="分项名称" Binding="{Binding ItemName}" Width="100"/>
                                     <DataGridTextColumn Header="位置变更" Binding="{Binding LocationChangeDisplay}" Width="140"/>
                                     <DataGridTextColumn Header="生命周期" Binding="{Binding LifecycleChangeDisplay}" Width="88"/>
-                                    <DataGridTextColumn Header="业务状态" Binding="{Binding OutboundStatusDisplay}" Width="80"/>
+                                    <DataGridTextColumn Header="业务状态" Binding="{Binding OutboundStatusDisplay}" Width="80" ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
                                     <DataGridTextColumn Header="使用方式" Binding="{Binding UsageModeDisplay}" Width="72"/>
                                     <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="72"/>
                                     <DataGridTextColumn Header="操作人" Binding="{Binding OperatorName}" Width="72"/>
@@ -419,7 +419,7 @@
                                     <DataGridTextColumn Header="业务单" Binding="{Binding DisplayTitle}" Width="220"/>
                                     <DataGridTextColumn Header="最近活动" Binding="{Binding LatestOperatedAtDisplay}" Width="128"/>
                                     <DataGridTextColumn Header="明细数" Binding="{Binding SubItemCount}" Width="56"/>
-                                    <DataGridTextColumn Header="业务状态" Binding="{Binding OutboundStatusDisplay}" Width="88"/>
+                                    <DataGridTextColumn Header="业务状态" Binding="{Binding OutboundStatusDisplay}" Width="88" ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
                                     <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="72"/>
                                     <DataGridTextColumn Header="最近摘要" Binding="{Binding LatestSummary}" Width="*"/>
                                 </DataGrid.Columns>
@@ -462,7 +462,7 @@
                                     <DataGridTextColumn Header="分项名称" Binding="{Binding ItemName}" Width="100"/>
                                     <DataGridTextColumn Header="位置变更" Binding="{Binding LocationChangeDisplay}" Width="140"/>
                                     <DataGridTextColumn Header="生命周期" Binding="{Binding LifecycleChangeDisplay}" Width="88"/>
-                                    <DataGridTextColumn Header="业务状态" Binding="{Binding OutboundStatusDisplay}" Width="80"/>
+                                    <DataGridTextColumn Header="业务状态" Binding="{Binding OutboundStatusDisplay}" Width="80" ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
                                     <DataGridTextColumn Header="使用方式" Binding="{Binding UsageModeDisplay}" Width="72"/>
                                     <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="72"/>
                                     <DataGridTextColumn Header="操作人" Binding="{Binding OperatorName}" Width="72"/>

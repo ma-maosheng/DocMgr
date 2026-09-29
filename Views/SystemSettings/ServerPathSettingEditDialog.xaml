@@ -33,7 +33,7 @@
                        Foreground="#333"/>
 
             <StackPanel Grid.Row="1" Margin="0,0,0,12">
-                <TextBlock Text="部门 *" Foreground="#666" Margin="0,0,0,5"/>
+                <TextBlock Text="部门 *：" Foreground="#666" Margin="0,0,0,5"/>
                 <ComboBox Padding="5,0"
                           FontSize="14"
                           ItemsSource="{Binding DepartmentOptions}"
@@ -41,7 +41,7 @@
             </StackPanel>
 
             <StackPanel Grid.Row="2" Margin="0,0,0,12">
-                <TextBlock Text="路径名称 *" Foreground="#666" Margin="0,0,0,5"/>
+                <TextBlock Text="路径名称 *：" Foreground="#666" Margin="0,0,0,5"/>
                 <TextBox Padding="5,0"
                          FontSize="14"
                          BorderBrush="#CCC"
@@ -49,7 +49,7 @@
             </StackPanel>
 
             <StackPanel Grid.Row="3" Margin="0,0,0,12">
-                <TextBlock Text="物理地址 *" Foreground="#666" Margin="0,0,0,5"/>
+                <TextBlock Text="物理地址 *：" Foreground="#666" Margin="0,0,0,5"/>
                 <TextBox Padding="5,0"
                          FontSize="14"
                          BorderBrush="#CCC"
@@ -57,7 +57,7 @@
             </StackPanel>
 
             <StackPanel Grid.Row="4" Margin="0,0,0,12">
-                <TextBlock Text="权限 *" Foreground="#666" Margin="0,0,0,5"/>
+                <TextBlock Text="权限 *：" Foreground="#666" Margin="0,0,0,5"/>
                 <ComboBox Padding="5,0"
                           FontSize="14"
                           ItemsSource="{Binding PermissionOptions}"
@@ -65,7 +65,7 @@
             </StackPanel>
 
             <StackPanel Grid.Row="5" Margin="0,0,0,25">
-                <TextBlock Text="容量(TB) *" Foreground="#666" Margin="0,0,0,5"/>
+                <TextBlock Text="容量(TB) *：" Foreground="#666" Margin="0,0,0,5"/>
                 <TextBox Padding="5,0"
                          FontSize="14"
                          BorderBrush="#CCC"

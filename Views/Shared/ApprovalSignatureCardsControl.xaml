@@ -31,14 +31,14 @@
                                Text="部门审核"
                                Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                        <TextBlock Text="签字：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                         <TextBox Width="90"
                                  Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
                                  IsEnabled="{Binding CanEditSigners}"
                                  Text="{Binding DeptHead, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBlock Text="日期"
+                        <TextBlock Text="日期："
                                    Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"
-                                   Margin="10,0,4,0"/>
+                                   Margin="10,0,0,0"/>
                         <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
                                     IsEnabled="{Binding CanEditSigners}"
                                     DisplayDateStart="{Binding SignatureDateMin, Mode=OneWay, TargetNullValue={x:Static sys:DateTime.MinValue}}"
@@ -55,14 +55,14 @@
                                Text="资料室签字"
                                Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                        <TextBlock Text="签字：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                         <TextBox Width="90"
                                  Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
                                  IsEnabled="{Binding CanEditSigners}"
                                  Text="{Binding ArchiveRoomHead, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBlock Text="日期"
+                        <TextBlock Text="日期："
                                    Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"
-                                   Margin="10,0,4,0"/>
+                                   Margin="10,0,0,0"/>
                         <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
                                     IsEnabled="{Binding CanEditSigners}"
                                     DisplayDateStart="{Binding SignatureDateMin, Mode=OneWay, TargetNullValue={x:Static sys:DateTime.MinValue}}"
@@ -79,14 +79,14 @@
                                Text="生产科签字"
                                Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                        <TextBlock Text="签字：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                         <TextBox Width="90"
                                  Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
                                  IsEnabled="{Binding CanEditSigners}"
                                  Text="{Binding ProductionHead, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBlock Text="日期"
+                        <TextBlock Text="日期："
                                    Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"
-                                   Margin="10,0,4,0"/>
+                                   Margin="10,0,0,0"/>
                         <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
                                     IsEnabled="{Binding CanEditSigners}"
                                     DisplayDateStart="{Binding SignatureDateMin, Mode=OneWay, TargetNullValue={x:Static sys:DateTime.MinValue}}"
@@ -110,14 +110,14 @@
                                Text="分管资料院长签字"
                                Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                        <TextBlock Text="签字：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                         <TextBox Width="90"
                                  Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
                                  IsEnabled="{Binding CanEditSigners}"
                                  Text="{Binding ArchiveDeputyPresident, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBlock Text="日期"
+                        <TextBlock Text="日期："
                                    Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"
-                                   Margin="10,0,4,0"/>
+                                   Margin="10,0,0,0"/>
                         <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
                                     IsEnabled="{Binding CanEditSigners}"
                                     DisplayDateStart="{Binding SignatureDateMin, Mode=OneWay, TargetNullValue={x:Static sys:DateTime.MinValue}}"
@@ -134,14 +134,14 @@
                                Text="分管生产院长签字"
                                Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="签字" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                        <TextBlock Text="签字：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                         <TextBox Width="90"
                                  Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
                                  IsEnabled="{Binding CanEditSigners}"
                                  Text="{Binding ProductionVicePresident, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBlock Text="日期"
+                        <TextBlock Text="日期："
                                    Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"
-                                   Margin="10,0,4,0"/>
+                                   Margin="10,0,0,0"/>
                         <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
                                     IsEnabled="{Binding CanEditSigners}"
                                     DisplayDateStart="{Binding SignatureDateMin, Mode=OneWay, TargetNullValue={x:Static sys:DateTime.MinValue}}"

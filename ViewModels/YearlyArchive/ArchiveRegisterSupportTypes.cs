@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Linq;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
 
@@ -483,6 +484,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (SetProperty(ref _sourceType, value))
                 {
                     OnPropertyChanged(nameof(IsExternalSource));
+                    OnPropertyChanged(nameof(SourceProvideUnitDisplayText));
                 }
             }
         }
@@ -496,8 +498,18 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ProvideUnit
         {
             get => _provideUnit;
-            set => SetProperty(ref _provideUnit, value);
+            set
+            {
+                if (SetProperty(ref _provideUnit, value))
+                {
+                    OnPropertyChanged(nameof(SourceProvideUnitDisplayText));
+                }
+            }
         }
+
+        /// <summary>只读展示：来源 . 单位；无值时显示「(无)」。</summary>
+        public string SourceProvideUnitDisplayText =>
+            ArchiveRegisterSourceProvideUnitDisplaySupport.FormatPair(SourceType, ProvideUnit);
 
         private bool _suppressElectronicDetailSideEffects;
         private bool _treatContentMetricsAsUnknown;

@@ -18,23 +18,9 @@
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
             <viewShared:InverseBoolToVisConverter x:Key="InverseBoolToVisConverter"/>
 
-            <Style x:Key="DisposalSectionTitleStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="14"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="Foreground" Value="#1E293B"/>
-                <Setter Property="Margin" Value="0,0,0,8"/>
-            </Style>
             <Style x:Key="DisposalFilterLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource FormLabelTextBlockStyle}">
                 <Setter Property="Foreground" Value="#64748B"/>
                 <Setter Property="FontSize" Value="12"/>
-            </Style>
-            <Style x:Key="DisposalCardBorderStyle" TargetType="Border">
-                <Setter Property="Background" Value="White"/>
-                <Setter Property="BorderBrush" Value="#E0E0E0"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="4"/>
-                <Setter Property="Padding" Value="12"/>
-                <Setter Property="Margin" Value="0,0,0,10"/>
             </Style>
             <Style x:Key="DisposalTransferButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarActionButtonStyle}">
                 <Setter Property="Width" Value="82"/>
@@ -50,10 +36,9 @@
                                                ShellKind="{x:Static models:ApprovalWorkflowShellKind.DisposalUnlockUpload}">
         <viewShared:ApprovalHandoverWorkspaceShell.HeaderContent>
             <StackPanel>
-                <!-- 处置信息：横排标签 + 统一标签列宽，左右控件竖向对齐 -->
-                <Border Style="{StaticResource DisposalCardBorderStyle}">
+                <!-- 1. 处置信息：横排标签 + 统一标签列宽，左右控件竖向对齐 -->
+                <GroupBox Header="1. 处置信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10" Margin="0,0,0,10">
                     <StackPanel>
-                        <TextBlock Text="处置信息" Style="{StaticResource DisposalSectionTitleStyle}"/>
                         <Grid Margin="0,0,0,6">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -114,19 +99,18 @@
                                      IsEnabled="{Binding CanEditHeader}"/>
                         </Grid>
                     </StackPanel>
-                </Border>
+                </GroupBox>
 
-                <!-- 硬盘选取 -->
-                <DockPanel Margin="0,0,0,8">
-                    <TextBlock Text="硬盘选取" Style="{StaticResource DisposalSectionTitleStyle}" Margin="0"/>
-                    <TextBlock DockPanel.Dock="Right"
-                               Text="空盘→淘汰 / 损坏→损坏 / 盘失→盘失+库内注销；提交后征用锁定"
-                               Foreground="#64748B"
-                               FontSize="12"
-                               VerticalAlignment="Center"/>
-                </DockPanel>
+                <!-- 2. 硬盘选取 -->
+                <GroupBox Header="2. 硬盘选取" Style="{StaticResource Level1GroupBoxStyle}" Padding="10" Margin="0">
+                    <StackPanel>
+                        <TextBlock Text="空盘→淘汰 / 损坏→损坏 / 盘失→盘失+库内注销；提交后征用锁定"
+                                   Foreground="#64748B"
+                                   FontSize="12"
+                                   Margin="0,0,0,8"
+                                   TextWrapping="Wrap"/>
 
-                <Grid Height="360" Margin="0">
+                        <Grid Height="360" Margin="0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="96"/>
@@ -323,6 +307,8 @@
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
+                    </StackPanel>
+                </GroupBox>
             </StackPanel>
         </viewShared:ApprovalHandoverWorkspaceShell.HeaderContent>
 

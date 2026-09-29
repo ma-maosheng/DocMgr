@@ -151,7 +151,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 return !string.IsNullOrWhiteSpace(ElectronicArchiveNo)
                     ? ElectronicArchiveNo.Trim()
-                    : "待第八步确定";
+                    : "待步骤8确定";
             }
 
             if (SelectedElectronicSubmissionMode == ElectronicArchiveSubmissionMode.RetainedHardDiskDirectNew

@@ -45,9 +45,12 @@ namespace DocMgr.Models.YearlyArchive
 
         public static string MapRelocationModeDisplay(string mode) => mode switch
         {
-            ArchiveRelocationMode.PhysicalMove => "物理位置迁移",
-            ArchiveRelocationMode.MoveToEmpty => "迁入空盘/空袋",
-            ArchiveRelocationMode.MergeToExisting => "并入已有容器",
+            ArchiveRelocationMode.PhysicalMove => "迁入其他档口",
+            ArchiveRelocationMode.MoveToBlankHardDisk => "迁入空白硬盘",
+            ArchiveRelocationMode.MoveToBlankOpticalDisc => "迁入空白光盘",
+            // 历史 MoveToEmpty 与迁入空白硬盘同义，台账统一展示。
+            ArchiveRelocationMode.MoveToEmpty => "迁入空白硬盘",
+            ArchiveRelocationMode.MergeToExisting => "并入同项目容器",
             ArchiveRelocationMode.BatchPhysicalMove => "档口批量搬迁",
             _ => mode
         };

@@ -23,13 +23,13 @@
         <TextBlock Text="{Binding TitleText}" FontSize="18" FontWeight="Bold" Margin="0,0,120,15" Foreground="#333"/>
 
         <StackPanel Grid.Row="1" Margin="0,0,0,15">
-            <TextBlock Text="角色名称 *" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBlock Text="角色名称 *：" Foreground="#666" Margin="0,0,0,5"/>
             <TextBox Padding="5,0" FontSize="14" BorderBrush="#CCC"
                      Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
         </StackPanel>
 
         <StackPanel Grid.Row="2" Margin="0,0,0,25">
-            <TextBlock Text="备注说明" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBlock Text="备注说明：" Foreground="#666" Margin="0,0,0,5"/>
             <TextBox Height="80" Padding="5" FontSize="14"
                      TextWrapping="Wrap" AcceptsReturn="True"
                      VerticalContentAlignment="Top" BorderBrush="#CCC"

@@ -283,7 +283,7 @@
                             Padding="8,2"
                             Style="{StaticResource ToolbarActionButtonStyle}"
                             Command="{Binding LastPageCommand}"/>
-                    <TextBlock Text="跳至" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="跳至：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                     <TextBox Width="48"
                              Height="28"
                              VerticalContentAlignment="Center"

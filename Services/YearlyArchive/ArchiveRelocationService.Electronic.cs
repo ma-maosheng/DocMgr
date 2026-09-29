@@ -1,4 +1,5 @@
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.HardDiskMedia;
 
@@ -39,6 +40,16 @@ namespace DocMgr.Services.YearlyArchive
                     return Blocked("新位置与当前位置相同，无需迁移。");
                 }
 
+                string? slotIssue = await ValidateElectronicRelocationTargetSlotAsync(
+                    source,
+                    request.NewStorageLocation,
+                    request.RelocationMode,
+                    sourceHostsAtTargetAfterOperation: true);
+                if (!string.IsNullOrWhiteSpace(slotIssue))
+                {
+                    return Blocked(slotIssue);
+                }
+
                 string hardDiskSyncHint = IsHardDiskCarrier(source.StorageCarrierType)
                     ? "，关联硬盘台账存放位置将同步更新"
                     : string.Empty;
@@ -51,7 +62,7 @@ namespace DocMgr.Services.YearlyArchive
                     source.MediaItemLinks.Count);
             }
 
-            if (request.RelocationMode == ArchiveRelocationMode.MoveToEmpty)
+            if (ArchiveRelocationMode.IsMoveToBlankHardDisk(request.RelocationMode))
             {
                 if (!request.TargetBlankHardDiskMediumId.HasValue || request.TargetBlankHardDiskMediumId.Value <= 0)
                 {
@@ -98,8 +109,19 @@ namespace DocMgr.Services.YearlyArchive
                         source,
                         string.IsNullOrWhiteSpace(request.NewStorageLocation)
                             ? source.StorageLocation
-                            : request.NewStorageLocation);
+                            : request.NewStorageLocation,
+                        forNewElectronicUnit: true);
                     request.NewStorageLocation = finalLocationBackup;
+
+                    string? backupSlotIssue = await ValidateElectronicRelocationTargetSlotAsync(
+                        source,
+                        finalLocationBackup,
+                        request.RelocationMode,
+                        sourceHostsAtTargetAfterOperation: false);
+                    if (!string.IsNullOrWhiteSpace(backupSlotIssue))
+                    {
+                        return Blocked(backupSlotIssue);
+                    }
 
                     return Ready(
                         $"【保留原件·备份至空白硬盘】原件袋 [{source.ElectronicArchiveNo}] 与介质保留于 [{source.StorageLocation}] 不变；"
@@ -137,6 +159,16 @@ namespace DocMgr.Services.YearlyArchive
                         : request.NewStorageLocation);
                 request.NewStorageLocation = finalLocation;
 
+                string? moveSlotIssue = await ValidateElectronicRelocationTargetSlotAsync(
+                    source,
+                    finalLocation,
+                    request.RelocationMode,
+                    sourceHostsAtTargetAfterOperation: true);
+                if (!string.IsNullOrWhiteSpace(moveSlotIssue))
+                {
+                    return Blocked(moveSlotIssue);
+                }
+
                 string dispositionHint = sourceIsHardDisk
                     ? $"原硬盘将格式化后归位至 [{request.SourceHardDiskReturnLocation.Trim()}]。"
                     : sourceIsDisc
@@ -149,8 +181,13 @@ namespace DocMgr.Services.YearlyArchive
                     : $"电子介质袋编号 [{source.ElectronicArchiveNo}] 保持不变，档口调整为 [{finalLocation}]";
 
                 return Ready(
-                    $"【迁入空盘/空袋·换盘】{locationHint}，{source.MediaItemLinks.Count} 条资料子项将改由空白硬盘 [{targetDiskCode}] 承载。{dispositionHint}",
+                    $"【迁入空白硬盘·换盘】{locationHint}，{source.MediaItemLinks.Count} 条资料子项将改由空白硬盘 [{targetDiskCode}] 承载。{dispositionHint}",
                     source.MediaItemLinks.Count);
+            }
+
+            if (ArchiveRelocationMode.IsMoveToBlankOpticalDisc(request.RelocationMode))
+            {
+                return await BuildElectronicMoveToBlankOpticalDiscPreviewAsync(source, request);
             }
 
             if (request.RelocationMode != ArchiveRelocationMode.MergeToExisting)
@@ -190,6 +227,12 @@ namespace DocMgr.Services.YearlyArchive
             if (!string.IsNullOrWhiteSpace(hardDiskTargetBlockReason))
             {
                 return Blocked(hardDiskTargetBlockReason);
+            }
+
+            string? duplicateMaterialIssue = await ValidateElectronicMergeNoDuplicateMaterialsAsync(source, target);
+            if (!string.IsNullOrWhiteSpace(duplicateMaterialIssue))
+            {
+                return Blocked(duplicateMaterialIssue);
             }
 
             bool sourceIsHardDiskMerge = IsHardDiskCarrier(source.StorageCarrierType);
@@ -245,6 +288,13 @@ namespace DocMgr.Services.YearlyArchive
             {
                 throw new InvalidOperationException("新位置与当前位置相同，无需迁移。");
             }
+
+            EnsureElectronicRelocationTargetSlotOrThrow(
+                await ValidateElectronicRelocationTargetSlotAsync(
+                    source,
+                    newLocation,
+                    ArchiveRelocationMode.PhysicalMove,
+                    sourceHostsAtTargetAfterOperation: true));
 
             string remark = $"资料迁档：物理位置由 [{sourceLocation}] 迁至 [{newLocation}]。";
             source.StorageLocation = newLocation;
@@ -306,6 +356,15 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             EnsureHardDiskMergeTargetUnit(target);
+
+            if (!requireEmptyTarget)
+            {
+                string? duplicateMaterialIssue = await ValidateElectronicMergeNoDuplicateMaterialsAsync(source, target);
+                if (!string.IsNullOrWhiteSpace(duplicateMaterialIssue))
+                {
+                    throw new InvalidOperationException(duplicateMaterialIssue);
+                }
+            }
 
             if (requireEmptyTarget && !string.IsNullOrWhiteSpace(request.NewStorageLocation))
             {
@@ -494,6 +553,12 @@ namespace DocMgr.Services.YearlyArchive
                 string.IsNullOrWhiteSpace(request.NewStorageLocation)
                     ? source.StorageLocation
                     : request.NewStorageLocation);
+            EnsureElectronicRelocationTargetSlotOrThrow(
+                await ValidateElectronicRelocationTargetSlotAsync(
+                    source,
+                    finalLocation,
+                    request.RelocationMode,
+                    sourceHostsAtTargetAfterOperation: true));
             string newDiskCode = targetMedium.DiskCode.Trim();
             string remark = $"资料迁档：电子介质袋 [{source.ElectronicArchiveNo}] 换盘至空白硬盘 [{newDiskCode}]，存放于 [{finalLocation}]。";
 
@@ -754,6 +819,325 @@ namespace DocMgr.Services.YearlyArchive
                     "资料迁档：空白硬盘转为数据盘并同步存放位置",
                     relatedBatch,
                     relatedArchiveTitle));
+        }
+
+        private async Task<ArchiveRelocationPreview> BuildElectronicMoveToBlankOpticalDiscPreviewAsync(
+            YearlyElectronicArchiveUnit source,
+            ElectronicRelocationRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.NewStorageLocation))
+            {
+                return Blocked("请完整选择新的存放档口。");
+            }
+
+            bool sourceIsHardDisk = IsHardDiskCarrier(source.StorageCarrierType);
+            bool sourceIsDisc = IsOpticalDiscCarrier(source.StorageCarrierType);
+
+            if (request.ExecuteBackupMechanism)
+            {
+                string finalLocationBackup = await ResolveMoveToEmptyFinalStorageLocationAsync(
+                    source,
+                    request.NewStorageLocation,
+                    forNewElectronicUnit: true);
+                request.NewStorageLocation = finalLocationBackup;
+
+                string? backupSlotIssue = await ValidateElectronicRelocationTargetSlotAsync(
+                    source,
+                    finalLocationBackup,
+                    request.RelocationMode,
+                    sourceHostsAtTargetAfterOperation: false);
+                if (!string.IsNullOrWhiteSpace(backupSlotIssue))
+                {
+                    return Blocked(backupSlotIssue);
+                }
+
+                string backupDiscCode = await PeekNextOpticalDiscCodeForUnitAsync(source.Year);
+
+                return Ready(
+                    $"【保留原件·备份至空白光盘】原件袋 [{source.ElectronicArchiveNo}] 与介质保留于 [{source.StorageLocation}] 不变；"
+                    + $"将在 [{finalLocationBackup}] 新建备份光盘袋，自动登记数据光盘（编号预计 [{backupDiscCode}]），"
+                    + $"承载 {source.MediaItemLinks.Count} 条资料子项（逻辑备份，物理刻录由人工完成）。",
+                    source.MediaItemLinks.Count);
+            }
+
+            if (sourceIsHardDisk)
+            {
+                if (string.IsNullOrWhiteSpace(request.SourceHardDiskReturnLocation))
+                {
+                    return Blocked("请选择原硬盘放回位置。");
+                }
+
+                if (!request.ConfirmHardDiskFormatted)
+                {
+                    return Blocked("请确认原硬盘已格式化并将按空盘管理。");
+                }
+            }
+
+            if (sourceIsDisc && !request.ConfirmOpticalDiscDestroyed)
+            {
+                return Blocked("请确认原光盘已物理销毁。");
+            }
+
+            string finalLocation = await ResolveMoveToEmptyFinalStorageLocationAsync(
+                source,
+                request.NewStorageLocation);
+            request.NewStorageLocation = finalLocation;
+
+            string? moveSlotIssue = await ValidateElectronicRelocationTargetSlotAsync(
+                source,
+                finalLocation,
+                request.RelocationMode,
+                sourceHostsAtTargetAfterOperation: true);
+            if (!string.IsNullOrWhiteSpace(moveSlotIssue))
+            {
+                return Blocked(moveSlotIssue);
+            }
+
+            string dispositionHint = sourceIsHardDisk
+                ? $"原硬盘将格式化后归位至 [{request.SourceHardDiskReturnLocation.Trim()}]。"
+                : sourceIsDisc
+                    ? "原光盘将标记为已销毁。"
+                    : string.Empty;
+
+            bool keepOriginalSlot = string.Equals(finalLocation, source.StorageLocation?.Trim(), StringComparison.OrdinalIgnoreCase);
+            string locationHint = keepOriginalSlot
+                ? $"电子介质袋编号 [{source.ElectronicArchiveNo}] 与档口 [{finalLocation}] 保持不变"
+                : $"电子介质袋编号 [{source.ElectronicArchiveNo}] 保持不变，档口调整为 [{finalLocation}]";
+
+            return Ready(
+                $"【迁入空白光盘】{locationHint}，{source.MediaItemLinks.Count} 条资料子项将改由新建数据光盘承载（系统不管理空白光盘库存，确认后自动登记）。{dispositionHint}",
+                source.MediaItemLinks.Count);
+        }
+
+        private async Task<ArchiveRelocationExecutionContext> ExecuteElectronicMoveToBlankOpticalDiscAsync(
+            YearlyElectronicArchiveUnit source,
+            ElectronicRelocationRequest request,
+            DateTime operatedAt)
+        {
+            string finalLocation = await ResolveMoveToEmptyFinalStorageLocationAsync(
+                source,
+                string.IsNullOrWhiteSpace(request.NewStorageLocation)
+                    ? source.StorageLocation
+                    : request.NewStorageLocation);
+            EnsureElectronicRelocationTargetSlotOrThrow(
+                await ValidateElectronicRelocationTargetSlotAsync(
+                    source,
+                    finalLocation,
+                    request.RelocationMode,
+                    sourceHostsAtTargetAfterOperation: true));
+            string remark = $"资料迁档：电子介质袋 [{source.ElectronicArchiveNo}] 迁入空白光盘，存放于 [{finalLocation}]。";
+
+            string disposition = await ReplaceSourceElectronicMediumForMoveToBlankOpticalDiscAsync(
+                source,
+                request,
+                operatedAt,
+                remark);
+
+            string discCode = await CreateOrReviveOpticalDiscForUnitAsync(
+                source,
+                finalLocation,
+                operatedAt,
+                remark,
+                isNewArchiveInbound: true);
+
+            source.StorageCarrierType = ArchiveFilingBusinessRules.DefaultOpticalDiscBagCarrierType;
+            source.StorageLocation = finalLocation;
+            source.LinkedMediumCodes = string.Empty;
+            source.MediaCount = 1;
+            source.UnitLifecycleStatus = ArchiveContainerLifecycleStatus.InUse;
+
+            foreach (var link in source.MediaItemLinks)
+            {
+                link.MediumCode = discCode;
+            }
+
+            var context = new ArchiveRelocationExecutionContext
+            {
+                TargetContainerId = source.Id,
+                TargetContainerCode = source.ElectronicArchiveNo,
+                TargetStorageLocation = finalLocation,
+                SourceMediumDisposition = disposition
+            };
+
+            await UpdateFilingFactsForDiskSwapAsync(
+                source.Id,
+                finalLocation,
+                discCode,
+                operatedAt,
+                remark,
+                context.RelocationItems,
+                ArchiveFilingBusinessRules.DefaultOpticalDiscBagCarrierType);
+
+            request.NewStorageLocation = finalLocation;
+            await _relocationRepository.SaveChangesAsync();
+            return context;
+        }
+
+        private async Task<string> ReplaceSourceElectronicMediumForMoveToBlankOpticalDiscAsync(
+            YearlyElectronicArchiveUnit source,
+            ElectronicRelocationRequest request,
+            DateTime operatedAt,
+            string remark)
+        {
+            if (IsHardDiskCarrier(source.StorageCarrierType))
+            {
+                if (!request.ConfirmHardDiskFormatted)
+                {
+                    throw new InvalidOperationException("请先确认原硬盘已格式化。");
+                }
+
+                string formattedBlankLocation = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(
+                    string.IsNullOrWhiteSpace(request.SourceHardDiskReturnLocation)
+                        ? source.StorageLocation
+                        : request.SourceHardDiskReturnLocation);
+                string operatorName = ResolveOperatorName();
+                string relatedBatch = source.ElectronicArchiveNo.Trim();
+                string relatedArchiveTitle = string.IsNullOrWhiteSpace(source.ContentSummary)
+                    ? relatedBatch
+                    : source.ContentSummary.Trim();
+
+                foreach (var mediumLink in source.MediumLinks.ToList())
+                {
+                    var medium = mediumLink.HardDiskMedium;
+                    if (medium == null)
+                    {
+                        continue;
+                    }
+
+                    FormatHardDiskMediumToBlank(
+                        medium,
+                        formattedBlankLocation,
+                        operatedAt,
+                        $"{remark} 原硬盘 [{medium.DiskCode}] 已格式化并归位至 [{formattedBlankLocation}]。",
+                        operatorName,
+                        relatedBatch,
+                        relatedArchiveTitle);
+                    source.MediumLinks.Remove(mediumLink);
+                }
+
+                return ArchiveRelocationSourceDisposition.HardDiskFormattedBlank;
+            }
+
+            if (IsOpticalDiscCarrier(source.StorageCarrierType))
+            {
+                if (!request.ConfirmOpticalDiscDestroyed)
+                {
+                    throw new InvalidOperationException("请先确认原光盘已物理销毁。");
+                }
+
+                foreach (var discLink in source.DiscLinks.ToList())
+                {
+                    var disc = discLink.OpticalDiscMedium;
+                    if (disc == null)
+                    {
+                        continue;
+                    }
+
+                    MarkOpticalDiscDestroyed(disc, operatedAt, $"{remark} 原光盘 [{disc.DiscCode}] 已物理销毁。", ResolveOperatorName());
+                    source.DiscLinks.Remove(discLink);
+                }
+
+                return ArchiveRelocationSourceDisposition.OpticalDiscDestroyed;
+            }
+
+            return await Task.FromResult(ArchiveRelocationSourceDisposition.None);
+        }
+
+        private async Task<string> CreateOrReviveOpticalDiscForUnitAsync(
+            YearlyElectronicArchiveUnit unit,
+            string storageLocation,
+            DateTime operatedAt,
+            string remark,
+            bool isNewArchiveInbound)
+        {
+            string discCode = unit.ElectronicArchiveNo.Trim();
+            var discMedium = await _filingRepository.GetOpticalDiscMediumByCodeAsync(discCode);
+            bool isNewDisc = discMedium == null;
+            if (discMedium == null)
+            {
+                discMedium = new OpticalDiscMedium
+                {
+                    DiscCode = discCode,
+                    DiscType = "数据光盘",
+                    Capacity = string.Empty,
+                    RegistrationMethod = OpticalDiscMedium.RegistrationMethodArchive,
+                    RegisterDate = operatedAt,
+                    CreatedTime = operatedAt
+                };
+                _filingRepository.AddOpticalDiscMedium(discMedium);
+            }
+
+            discMedium.SourceType = string.IsNullOrWhiteSpace(unit.SourceType) ? "YearlyElectronicArchiveUnit" : unit.SourceType.Trim();
+            discMedium.SourceRecordKey = string.IsNullOrWhiteSpace(unit.SourceRecordKey)
+                ? unit.ElectronicArchiveNo.Trim()
+                : unit.SourceRecordKey.Trim();
+            discMedium.Remarks = unit.Remarks?.Trim() ?? string.Empty;
+            discMedium.IsDeleted = false;
+            discMedium.UpdatedTime = operatedAt;
+
+            var ledger = discMedium.Ledger ??= new OpticalDiscLedger
+            {
+                MediumId = discMedium.Id,
+                DiscCode = discCode,
+                CreatedTime = operatedAt
+            };
+            string beforeStatus = ledger.MediaStatus;
+            string beforeLocation = ledger.StorageLocation;
+            ledger.DiscCode = discCode;
+            ledger.MediaStatus = OpticalDiscMedium.StatusInStock;
+            ledger.HolderOrOrganization = "资料室";
+            ledger.StorageLocation = storageLocation;
+            ledger.NeedReturn = false;
+            ledger.UpdatedTime = operatedAt;
+
+            if (isNewArchiveInbound && (isNewDisc
+                || !string.Equals(beforeStatus, OpticalDiscMedium.StatusInStock, StringComparison.Ordinal)
+                || !string.Equals(beforeLocation, storageLocation, StringComparison.OrdinalIgnoreCase)))
+            {
+                discMedium.Transactions.Add(new OpticalDiscMediaTransaction
+                {
+                    Medium = discMedium,
+                    TransactionType = isNewDisc
+                        ? OpticalDiscMediaTransaction.TypeArchiveInbound
+                        : OpticalDiscMediaTransaction.TypeRelocate,
+                    BusinessNo = unit.ElectronicArchiveNo.Trim(),
+                    BeforeStatus = beforeStatus,
+                    AfterStatus = ledger.MediaStatus,
+                    BeforeLocation = beforeLocation,
+                    AfterLocation = storageLocation,
+                    OperatorName = ResolveOperatorName(),
+                    OperateTime = operatedAt,
+                    TargetOrganization = "资料室",
+                    NeedReturn = false,
+                    RelatedBatch = unit.ElectronicArchiveNo.Trim(),
+                    RelatedArchiveTitle = string.IsNullOrWhiteSpace(unit.ContentSummary)
+                        ? unit.ElectronicArchiveNo.Trim()
+                        : unit.ContentSummary.Trim(),
+                    Description = isNewDisc ? "资料迁档：空白光盘登记入库" : "资料迁档：数据光盘位置/状态更新",
+                    Remark = remark
+                });
+            }
+
+            if (!unit.DiscLinks.Any(link => link.OpticalDiscMediumId == discMedium.Id
+                || (link.OpticalDiscMedium != null
+                    && string.Equals(link.OpticalDiscMedium.DiscCode, discCode, StringComparison.OrdinalIgnoreCase))))
+            {
+                unit.DiscLinks.Add(new YearlyElectronicArchiveUnitDiscLink
+                {
+                    YearlyElectronicArchiveUnitId = unit.Id,
+                    OpticalDiscMedium = discMedium,
+                    ElectronicArchiveUnit = unit,
+                    CreatedAt = operatedAt
+                });
+            }
+
+            return discCode;
+        }
+
+        private async Task<string> PeekNextOpticalDiscCodeForUnitAsync(string year)
+        {
+            string previewNo = await GenerateNextElectronicArchiveNoAsync(year);
+            return previewNo;
         }
     }
 }

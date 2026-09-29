@@ -49,25 +49,25 @@
             <StackPanel>
                 <WrapPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
-                        <TextBlock Text="年度:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock Text="年度：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <ComboBox Width="100" Style="{StaticResource ToolbarFilterComboBoxStyle}"
                                   ItemsSource="{Binding Years}"
                                   SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
-                        <TextBlock Text="介质类型:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock Text="介质类型：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <ComboBox Width="120" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding MediaKindOptions}"
                                   DisplayMemberPath="Label" SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedMediaKind, Mode=TwoWay}"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
-                        <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock Text="关键词：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <TextBox Width="200" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding FilterKeyword, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="检索池名称、编号、备注、创建人"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
-                        <TextBlock Text="业务状态:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock Text="业务状态：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <ComboBox Width="120" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding StatusFilterOptions}"
                                   DisplayMemberPath="Label" SelectedValuePath="Value"
                                   SelectedValue="{Binding FilterStatus}"
@@ -102,7 +102,7 @@
                             <DataGridTextColumn Header="编号" Binding="{Binding ResultSetNo}" Width="130"/>
                             <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="*"/>
                             <DataGridTextColumn Header="条数" Binding="{Binding ItemCount}" Width="50"/>
-                            <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay}" Width="70"/>
+                            <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay}" Width="70" ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
                             <DataGridTextColumn Header="创建人" Binding="{Binding CreatedByName}" Width="80"/>
                             <DataGridTextColumn Header="更新时间" Binding="{Binding UpdatedAtDisplay}" Width="130"/>
                         </DataGrid.Columns>
@@ -126,15 +126,15 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="名称" VerticalAlignment="Center" Margin="0,0,8,8"/>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="名称：" VerticalAlignment="Center" Margin="0,0,0,8"/>
                             <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource SearchTextBoxStyle}"
                                      Text="{Binding EditableName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="业务状态" VerticalAlignment="Center" Margin="0,0,8,8"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="业务状态：" VerticalAlignment="Center" Margin="0,0,0,8"/>
                             <ComboBox Grid.Row="1" Grid.Column="1" Style="{StaticResource ToolbarFilterComboBoxStyle}" Margin="0,0,0,8"
                                       ItemsSource="{Binding EditableStatusOptions}"
                                       DisplayMemberPath="Label" SelectedValuePath="Value"
                                       SelectedValue="{Binding EditableStatus}"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="备注" VerticalAlignment="Top" Margin="0,4,8,0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="备注：" VerticalAlignment="Top" Margin="0,4,0,0"/>
                             <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource SearchTextBoxStyle}"
                                      Text="{Binding EditableRemarks, UpdateSourceTrigger=PropertyChanged}"
                                      AcceptsReturn="True" TextWrapping="Wrap" MinHeight="48"/>

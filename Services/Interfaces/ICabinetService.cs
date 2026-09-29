@@ -18,6 +18,11 @@ namespace DocMgr.Services.Interfaces
         void SetHardDiskDedicatedSlotCategory(int cabinetId, string faceCode, string slotCode, string categoryName);
 
         /// <summary>
+        /// 读取防磁磁盘柜档口已配置的专用类别（已规范化）；未配置返回 null。
+        /// </summary>
+        string? GetHardDiskDedicatedSlotCategoryName(int cabinetId, string faceCode, string slotCode);
+
+        /// <summary>
         /// 清除防磁磁盘柜档口专用类别。
         /// </summary>
         void ClearHardDiskDedicatedSlotCategory(int cabinetId, string faceCode, string slotCode);

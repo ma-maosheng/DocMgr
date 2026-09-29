@@ -32,17 +32,17 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="状态：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <ComboBox Width="150" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="属性:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="属性：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <ComboBox Width="150" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding NatureOptions}" SelectedItem="{Binding SelectedNature}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="征用锁:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="征用锁：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <ComboBox Width="180"
                                   Style="{StaticResource ToolbarFilterComboBoxStyle}"
                                   ItemsSource="{Binding RegisterLockFilterOptions}"
@@ -51,7 +51,7 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="关键词：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <TextBox Width="240"
                                  Style="{StaticResource ToolbarFilterTextBoxStyle}"
                                  VerticalContentAlignment="Center"
@@ -114,7 +114,14 @@
                             <DataGridTextColumn Header="是否要求归还" Binding="{Binding Ledger.NeedReturn}" Width="100"/>
                             <DataGridTextColumn Header="台账登记人" Binding="{Binding Ledger.RegisterPerson}" Width="110"/>
                             <DataGridTextColumn Header="台账登记日期" Binding="{Binding Ledger.RegisterDate, StringFormat=yyyy-MM-dd}" Width="120"/>
-                            <DataGridTextColumn Header="状态" Binding="{Binding Ledger.MediaStatus}" Width="110"/>
+                            <DataGridTextColumn Header="状态" Binding="{Binding Ledger.MediaStatus}" Width="110">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{Binding Ledger.MediaStatusColor, FallbackValue=#64748B, TargetNullValue=#64748B}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
                             <DataGridTextColumn Header="属性" Binding="{Binding Ledger.MediaNature}" Width="110"/>
                             <DataGridTemplateColumn Header="征用" Width="50">
                                 <DataGridTemplateColumn.CellTemplate>

@@ -1006,9 +1006,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool CanUseElectronicAppendMode => _electronicDecision.CanAppend;
 
-        public string ElectronicStepSevenTitle => "第七步：资料介质物理存放位置";
+        public string ElectronicStepSevenTitle => "7. 资料介质物理存放位置";
 
-        public string ElectronicStepEightTitle => "第八步：赋码与确认";
+        public string ElectronicStepEightTitle => "8. 赋码与确认";
 
         public ElectronicArchiveStepFourLayoutDescriptor ElectronicStepFourLayout => _electronicDecision.StepFourLayout;
 

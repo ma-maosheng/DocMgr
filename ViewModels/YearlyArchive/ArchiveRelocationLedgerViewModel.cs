@@ -17,6 +17,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private DateTime? _operatedFrom;
         private DateTime? _operatedTo;
         private string _selectedRelocationMode = string.Empty;
+        private string _selectedRelocationKind = string.Empty;
         private string _selectedMediaKind = string.Empty;
         private string _businessNo = string.Empty;
         private string _operatorName = string.Empty;
@@ -56,10 +57,31 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<FilterOption> RelocationModeOptions { get; } =
         [
             new FilterOption { Label = "全部模式", Value = string.Empty },
-            new FilterOption { Label = "物理位置迁移", Value = ArchiveRelocationMode.PhysicalMove },
-            new FilterOption { Label = "迁入空盘/空袋", Value = ArchiveRelocationMode.MoveToEmpty },
-            new FilterOption { Label = "并入已有容器", Value = ArchiveRelocationMode.MergeToExisting },
-            new FilterOption { Label = "档口批量搬迁", Value = ArchiveRelocationMode.BatchPhysicalMove }
+            new FilterOption
+            {
+                Label = MaterialTransactionDomainValues.MapRelocationModeDisplay(ArchiveRelocationMode.PhysicalMove),
+                Value = ArchiveRelocationMode.PhysicalMove
+            },
+            new FilterOption
+            {
+                Label = MaterialTransactionDomainValues.MapRelocationModeDisplay(ArchiveRelocationMode.MoveToBlankHardDisk),
+                Value = ArchiveRelocationMode.MoveToBlankHardDisk
+            },
+            new FilterOption
+            {
+                Label = MaterialTransactionDomainValues.MapRelocationModeDisplay(ArchiveRelocationMode.MoveToBlankOpticalDisc),
+                Value = ArchiveRelocationMode.MoveToBlankOpticalDisc
+            },
+            new FilterOption
+            {
+                Label = MaterialTransactionDomainValues.MapRelocationModeDisplay(ArchiveRelocationMode.MergeToExisting),
+                Value = ArchiveRelocationMode.MergeToExisting
+            },
+            new FilterOption
+            {
+                Label = MaterialTransactionDomainValues.MapRelocationModeDisplay(ArchiveRelocationMode.BatchPhysicalMove),
+                Value = ArchiveRelocationMode.BatchPhysicalMove
+            }
         ];
 
         public string SelectedRelocationMode
@@ -68,11 +90,24 @@ namespace DocMgr.ViewModels.YearlyArchive
             set => SetProperty(ref _selectedRelocationMode, value);
         }
 
+        public ObservableCollection<FilterOption> RelocationKindOptions { get; } =
+        [
+            new FilterOption { Label = "全部性质", Value = string.Empty },
+            new FilterOption { Label = "备份迁档", Value = RelocationLedgerKindFilter.Backup },
+            new FilterOption { Label = "常规迁档", Value = RelocationLedgerKindFilter.Normal }
+        ];
+
+        public string SelectedRelocationKind
+        {
+            get => _selectedRelocationKind;
+            set => SetProperty(ref _selectedRelocationKind, value);
+        }
+
         public ObservableCollection<FilterOption> MediaKindOptions { get; } =
         [
             new FilterOption { Label = "全部介质", Value = string.Empty },
-            new FilterOption { Label = ArchiveRegisterDomainValues.MediaKindSimulated, Value = ArchiveRegisterDomainValues.MediaKindSimulated },
-            new FilterOption { Label = ArchiveRegisterDomainValues.MediaKindElectronic, Value = ArchiveRegisterDomainValues.MediaKindElectronic }
+            new FilterOption { Label = "模拟介质", Value = ArchiveRegisterDomainValues.MediaKindSimulated },
+            new FilterOption { Label = "电子介质", Value = ArchiveRegisterDomainValues.MediaKindElectronic }
         ];
 
         public string SelectedMediaKind
@@ -165,6 +200,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OperatedFrom = OperatedFrom,
             OperatedTo = OperatedTo,
             RelocationMode = SelectedRelocationMode,
+            RelocationKind = SelectedRelocationKind,
             MediaKind = SelectedMediaKind,
             BusinessNo = BusinessNo,
             OperatorName = OperatorName,
@@ -176,6 +212,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OperatedFrom = null;
             OperatedTo = null;
             SelectedRelocationMode = string.Empty;
+            SelectedRelocationKind = string.Empty;
             SelectedMediaKind = string.Empty;
             BusinessNo = string.Empty;
             OperatorName = string.Empty;

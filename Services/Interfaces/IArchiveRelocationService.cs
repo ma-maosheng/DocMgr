@@ -80,5 +80,11 @@ namespace DocMgr.Services.Interfaces
         Task<string?> GetBatchSimulatedPendingReturnConfirmMessageAsync(
             BatchSimulatedSlotPhysicalMoveRequest request,
             string actionLabel);
+
+        /// <summary>
+        /// 预览下一迁档单号（不落库；实际单号在执行迁档时按同一规则生成）。
+        /// </summary>
+        /// <param name="mediaKind">介质类别（模拟/电子/历史）。</param>
+        Task<string> PeekNextRelocationNoAsync(string mediaKind);
     }
 }

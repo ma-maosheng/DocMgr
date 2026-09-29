@@ -1,6 +1,7 @@
 <UserControl x:Class="DocMgr.Views.NetworkTransfer.NetworkOutboundApprovalSectionsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:nt="clr-namespace:DocMgr.Views.NetworkTransfer"
              xmlns:models="clr-namespace:DocMgr.Models.Shared"
              xmlns:viewShared="clr-namespace:DocMgr.Views.Shared">
     <UserControl.Resources>
@@ -12,10 +13,16 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
+    <!-- 壳自带主体白卡；底栏固定在白卡外 -->
     <viewShared:ApprovalHandoverWorkspaceShell
         ShellKind="{x:Static models:ApprovalWorkflowShellKind.ApplicationHandover}"
         ShowTitleChrome="False"
+        ShowBodyChrome="True"
         ShowFooterChrome="True">
+        <viewShared:ApprovalHandoverWorkspaceShell.HeaderContent>
+            <nt:NetworkOutboundApprovalApplicationSectionsView/>
+        </viewShared:ApprovalHandoverWorkspaceShell.HeaderContent>
+
         <viewShared:ApprovalHandoverWorkspaceShell.SignatureContent>
             <StackPanel>
                 <DockPanel Margin="0,0,0,6" LastChildFill="False">
@@ -37,7 +44,8 @@
                     <TextBlock Text="审批通过前可补录本单生产网来源服务器路径；出网资料所在具体路径由系统按规范自动生成。电子介质目录与数据量须在审批通过后、确认实物交接前补录。"
                                Foreground="#92400E" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"/>
                     <DockPanel LastChildFill="True" Margin="0,0,0,4">
-                        <TextBlock DockPanel.Dock="Left" Text="服务器路径" Width="72" VerticalAlignment="Center"
+                        <TextBlock DockPanel.Dock="Left" Text="服务器路径：" Width="84" VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" TextAlignment="Right"
                                    Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                         <ComboBox Width="280" HorizontalAlignment="Left"
                                   Style="{StaticResource NetworkInboundApprovalPathComboBoxStyle}"
@@ -45,10 +53,11 @@
                                   DisplayMemberPath="PathName"
                                   SelectedItem="{Binding SelectedServerPath, UpdateSourceTrigger=PropertyChanged}"/>
                     </DockPanel>
-                    <TextBlock Margin="72,0,0,6" Text="{Binding SelectedServerPathInfo, Mode=OneWay}"
+                    <TextBlock Margin="84,0,0,6" Text="{Binding SelectedServerPathInfo, Mode=OneWay}"
                                Foreground="#475569" FontSize="11" TextWrapping="Wrap"/>
                     <DockPanel LastChildFill="True">
-                        <TextBlock DockPanel.Dock="Left" Text="出网资料所在具体路径" Width="148" VerticalAlignment="Top"
+                        <TextBlock DockPanel.Dock="Left" Text="出网资料所在具体路径：" Width="160" VerticalAlignment="Top"
+                                   HorizontalAlignment="Right" TextAlignment="Right"
                                    Margin="0,2,0,0"
                                    Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                         <TextBlock Text="{Binding MaterialPathDisplay, Mode=OneWay}"
@@ -66,18 +75,18 @@
                     <TextBlock DockPanel.Dock="Left" Text="资料交接" Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
-                            <TextBlock Text="移交" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                            <TextBlock Text="移交：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                             <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
                                      Text="{Binding Deliverer, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="8,0,4,0"/>
+                            <TextBlock Text="日期：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="8,0,0,0"/>
                             <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
                                         SelectedDate="{Binding DeliverDate}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="资料员" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
+                            <TextBlock Text="资料员：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
                             <TextBox Width="90" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
                                      Text="{Binding Administrator, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock Text="日期" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="8,0,4,0"/>
+                            <TextBlock Text="日期：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="8,0,0,0"/>
                             <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
                                         SelectedDate="{Binding AdminDate}"/>
                         </StackPanel>

@@ -7,7 +7,7 @@ using DocMgr.ViewModels.Base;
 namespace DocMgr.ViewModels.HardDiskMedia
 {
     /// <summary>
-    /// 数据光盘流转台账列表 ViewModel。
+    /// 数据光盘台账列表 ViewModel。
     /// </summary>
     public class OpticalDiscMediumLedgerViewModel : ViewModelBase
     {
@@ -118,7 +118,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             get => _selectedMedium;
             set
             {
-                if (!SetProperty(ref _selectedMedium, value) || _suppressSelectionReload)
+                if (!SetProperty(ref _selectedMedium, value))
+                {
+                    return;
+                }
+
+                NotifySelectedRegistrationDisplay();
+
+                if (_suppressSelectionReload)
                 {
                     return;
                 }
@@ -131,6 +138,25 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 _ = LoadTransactionsAsync();
             }
         }
+
+        /// <summary>初始登记信息（OpticalDiscMedium）。</summary>
+        public string SelectedDiscCodeText => EmptyAsPlaceholder(SelectedMedium?.DiscCode);
+
+        public string SelectedDiscTypeText => EmptyAsPlaceholder(SelectedMedium?.DiscType);
+
+        public string SelectedCapacityText => EmptyAsPlaceholder(SelectedMedium?.Capacity);
+
+        public string SelectedRegistrationMethodText => EmptyAsPlaceholder(SelectedMedium?.RegistrationMethod);
+
+        public string SelectedRegisterPersonText => EmptyAsPlaceholder(SelectedMedium?.RegisterPerson);
+
+        public string SelectedRegisterDateText => FormatDate(SelectedMedium?.RegisterDate);
+
+        public string SelectedSourceTypeText => EmptyAsPlaceholder(SelectedMedium?.SourceType);
+
+        public string SelectedSourceRecordKeyText => EmptyAsPlaceholder(SelectedMedium?.SourceRecordKey);
+
+        public string SelectedInitialRemarkText => EmptyAsPlaceholder(SelectedMedium?.Remarks);
 
         public OpticalDiscMediumTransactionRecord? SelectedTransaction
         {
@@ -265,7 +291,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"加载光盘流转台账失败：{ex.Message}");
+                _dialogService.ShowError($"加载光盘台账失败：{ex.Message}");
             }
         }
 
@@ -398,7 +424,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"加载光盘流转台账失败：{ex.Message}");
+                _dialogService.ShowError($"加载光盘台账失败：{ex.Message}");
             }
         }
 
@@ -437,6 +463,29 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 _dialogService.SetBusyState(false);
             }
+        }
+
+        private void NotifySelectedRegistrationDisplay()
+        {
+            OnPropertyChanged(nameof(SelectedDiscCodeText));
+            OnPropertyChanged(nameof(SelectedDiscTypeText));
+            OnPropertyChanged(nameof(SelectedCapacityText));
+            OnPropertyChanged(nameof(SelectedRegistrationMethodText));
+            OnPropertyChanged(nameof(SelectedRegisterPersonText));
+            OnPropertyChanged(nameof(SelectedRegisterDateText));
+            OnPropertyChanged(nameof(SelectedSourceTypeText));
+            OnPropertyChanged(nameof(SelectedSourceRecordKeyText));
+            OnPropertyChanged(nameof(SelectedInitialRemarkText));
+        }
+
+        private static string FormatDate(DateTime? value)
+        {
+            return value.HasValue ? value.Value.ToString("yyyy-MM-dd") : "(无)";
+        }
+
+        private static string EmptyAsPlaceholder(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? "(无)" : value.Trim();
         }
     }
 }

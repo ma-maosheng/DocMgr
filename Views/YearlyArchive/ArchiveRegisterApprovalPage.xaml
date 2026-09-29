@@ -34,7 +34,7 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="业务状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="业务状态：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <ComboBox Width="180"
                                   Style="{StaticResource ToolbarFilterComboBoxStyle}"
                                   ItemsSource="{Binding StatusFilterOptions}"
@@ -44,7 +44,7 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
-                        <TextBlock Text="申请人信息:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="申请人信息：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <Grid>
                             <ToggleButton x:Name="ApplicantFilterButton"
                                           Width="180"
@@ -81,7 +81,7 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
-                        <TextBlock Text="申请年度:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="申请年度：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <ComboBox Width="100"
                                   Style="{StaticResource ToolbarFilterComboBoxStyle}"
                                   ItemsSource="{Binding YearOptions}"
@@ -151,7 +151,7 @@
                     <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName}" Width="90"/>
                     <DataGridTextColumn Header="申请部门" Binding="{Binding ApplicantDept}" Width="120"/>
                     <DataGridTextColumn Header="申请日期" Binding="{Binding ApplicantDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-                    <DataGridTextColumn Header="业务状态" Binding="{Binding StatusStr}" Width="110"/>
+                    <DataGridTextColumn Header="业务状态" Binding="{Binding StatusStr}" Width="110" ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
                     <DataGridTextColumn Header="部门负责人" Binding="{Binding DeptHead}" Width="110"/>
                     <DataGridTextColumn Header="资料管理员" Binding="{Binding Administrator}" Width="110"/>
                     <DataGridTextColumn Header="归档盒/编号" Binding="{Binding ArchiveBoxNos}" Width="220"/>

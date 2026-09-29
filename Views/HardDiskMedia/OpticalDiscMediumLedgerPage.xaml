@@ -11,9 +11,6 @@
     <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="1.1*"/>
-            <RowDefinition Height="12"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -26,11 +23,19 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Width="220" Style="{StaticResource ToolbarFilterTextBoxStyle}" VerticalContentAlignment="Center"
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="状态：" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                        <ComboBox Width="150" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="关键词：" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                        <TextBox Width="240"
+                                 Style="{StaticResource ToolbarFilterTextBoxStyle}"
+                                 VerticalContentAlignment="Center"
                                  Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="光盘编号、类型、存放位置、持有人、来源、备注">
                             <TextBox.InputBindings>
@@ -39,172 +44,185 @@
                         </TextBox>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <ComboBox Width="150" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"/>
-                    </StackPanel>
-
-                    <Button Grid.Column="2" Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88" Margin="0,0,10,0"/>
-                    <Button Grid.Column="3" Content="导出台账" Command="{Binding ExportCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
-                    <Button Grid.Column="4" Content="刷新列表" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"/>
+                    <Button Grid.Column="2"
+                            Content="查询"
+                            Command="{Binding SearchCommand}"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Width="88"
+                            Margin="0,0,10,0"/>
+                    <Button Grid.Column="3"
+                            Content="导出台账"
+                            Command="{Binding ExportCommand}"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Width="96"
+                            Margin="0,0,10,0"/>
+                    <Button Grid.Column="4"
+                            Content="刷新列表"
+                            Command="{Binding RefreshCommand}"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Width="96"/>
                 </Grid>
             </ScrollViewer>
         </Border>
 
-        <Border Grid.Row="1"
-                Margin="0,12,0,12"
-                Padding="0"
-                Background="#FFFDF7"
-                BorderBrush="#E2C98F"
-                BorderThickness="1"
-                CornerRadius="0">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="4"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+        <!-- 内容区：先上下，再上区左右（对齐 HD-TXN） -->
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="1.15*"/>
+                <RowDefinition Height="12"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Background="#B98A2E"/>
+            <!-- 上半区：左台账 + 右初始登记 -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2.4*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="1*"/>
+                </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Row="1"
-                           Text="数据光盘流转台账"
-                           Margin="0,12,0,4"
-                           FontSize="22"
-                           FontWeight="Bold"
-                           Foreground="#6F4A00"
-                           HorizontalAlignment="Center"
-                           TextDecorations="Underline"/>
+                <!-- 上左：光盘台账 -->
+                <Border Grid.Column="0" Background="White" CornerRadius="4" Padding="10">
+                    <DataGrid x:Name="DgMedia"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              RowHeight="38"
+                              ColumnHeaderHeight="40"
+                              GridLinesVisibility="Horizontal"
+                              BorderThickness="0"
+                              ItemsSource="{Binding MediaItems}"
+                              SelectedItem="{Binding SelectedMedium}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="光盘编号" Binding="{Binding DiscCode}" Width="110"/>
+                            <DataGridTextColumn Header="当前存放位置" Binding="{Binding Ledger.StorageLocation}" Width="180"/>
+                            <DataGridTextColumn Header="持有人/保管单位" Binding="{Binding Ledger.HolderOrOrganization}" Width="160"/>
+                            <DataGridTextColumn Header="是否要求归还" Binding="{Binding Ledger.NeedReturn}" Width="100"/>
+                            <DataGridTextColumn Header="台账登记人" Binding="{Binding Ledger.RegisterPerson}" Width="110"/>
+                            <DataGridTextColumn Header="台账登记日期" Binding="{Binding Ledger.RegisterDate, StringFormat=yyyy-MM-dd}" Width="120"/>
+                            <DataGridTextColumn Header="状态" Binding="{Binding Ledger.MediaStatus}" Width="110">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{Binding Ledger.MediaStatusColor, FallbackValue=#64748B, TargetNullValue=#64748B}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="台账备注" Binding="{Binding Ledger.Remark}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
 
-                <TextBlock Grid.Row="2"
-                           Text="Optical Disc Circulation Ledger"
-                           Margin="0,0,0,4"
-                           FontSize="12"
-                           Foreground="#9A7B3F"
-                           HorizontalAlignment="Center"/>
+                <!-- 上右：所选光盘初始登记信息 -->
+                <Border Grid.Column="2" Background="White" CornerRadius="4" Padding="16">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock Text="初始登记信息" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
 
-                <TextBlock Grid.Row="3"
-                           Text="仅含已写入数据的光盘；台账随电子立档、资料出库/归还、迁档与销毁自动形成，不可手工初始登记空白盘。"
-                           Margin="24,0,24,10"
-                           FontSize="12"
-                           Foreground="#8A6A2F"
-                           TextWrapping="Wrap"
-                           HorizontalAlignment="Center"/>
+                            <TextBlock Margin="0,12,0,0" Text="{Binding SelectedDiscCodeText, Mode=OneWay, StringFormat=光盘编号：{0}}" Foreground="#374151"/>
+                            <TextBlock Margin="0,6,0,0" Text="{Binding SelectedDiscTypeText, Mode=OneWay, StringFormat=光盘类型：{0}}" Foreground="#374151"/>
+                            <TextBlock Margin="0,6,0,0" Text="{Binding SelectedCapacityText, Mode=OneWay, StringFormat=容量：{0}}" Foreground="#374151"/>
+                            <TextBlock Margin="0,6,0,0" Text="{Binding SelectedRegistrationMethodText, Mode=OneWay, StringFormat=登记方式：{0}}" Foreground="#374151"/>
+                            <TextBlock Margin="0,6,0,0" Text="{Binding SelectedRegisterPersonText, Mode=OneWay, StringFormat=登记人：{0}}" Foreground="#374151"/>
+                            <TextBlock Margin="0,6,0,0" Text="{Binding SelectedRegisterDateText, Mode=OneWay, StringFormat=登记日期：{0}}" Foreground="#374151"/>
+                            <TextBlock Margin="0,6,0,0" Text="{Binding SelectedSourceTypeText, Mode=OneWay, StringFormat=来源类型：{0}}" Foreground="#374151"/>
+                            <TextBlock Margin="0,6,0,0" Text="{Binding SelectedSourceRecordKeyText, Mode=OneWay, StringFormat=来源记录：{0}}" Foreground="#374151" TextWrapping="Wrap"/>
+                            <TextBlock Margin="0,6,0,0" Text="{Binding SelectedInitialRemarkText, Mode=OneWay, StringFormat=初始备注：{0}}" Foreground="#374151" TextWrapping="Wrap"/>
+
+                            <TextBlock Margin="0,14,0,0"
+                                       Text="仅含已写入数据的光盘；台账随电子立档、资料出库/归还、迁档与销毁自动形成，不可手工初始登记空白盘。"
+                                       FontSize="12"
+                                       Foreground="#8A6A2F"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
             </Grid>
-        </Border>
 
-        <Border Grid.Row="2" Background="White" CornerRadius="4" Padding="10">
-            <DataGrid x:Name="DgMedia"
-                      AutoGenerateColumns="False"
-                      CanUserAddRows="False"
-                      IsReadOnly="True"
-                      SelectionMode="Single"
-                      RowHeight="38"
-                      ColumnHeaderHeight="40"
-                      GridLinesVisibility="Horizontal"
-                      BorderThickness="0"
-                      ItemsSource="{Binding MediaItems}"
-                      SelectedItem="{Binding SelectedMedium}">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="光盘编号" Binding="{Binding DiscCode}" Width="120"/>
-                    <DataGridTextColumn Header="当前状态" Binding="{Binding Ledger.MediaStatus}" Width="110"/>
-                    <DataGridTextColumn Header="当前存放位置" Binding="{Binding Ledger.StorageLocation}" Width="150"/>
-                    <DataGridTextColumn Header="持有人/保管单位" Binding="{Binding Ledger.HolderOrOrganization}" Width="140"/>
-                    <DataGridTextColumn Header="需归还" Binding="{Binding Ledger.NeedReturn}" Width="70"/>
-                    <DataGridTextColumn Header="光盘类型" Binding="{Binding DiscType}" Width="90"/>
-                    <DataGridTextColumn Header="容量" Binding="{Binding Capacity}" Width="80"/>
-                    <DataGridTextColumn Header="登记方式" Binding="{Binding RegistrationMethod}" Width="110"/>
-                    <DataGridTextColumn Header="登记人" Binding="{Binding RegisterPerson}" Width="90"/>
-                    <DataGridTextColumn Header="登记日期" Binding="{Binding RegisterDate, StringFormat=yyyy-MM-dd}" Width="110"/>
-                    <DataGridTextColumn Header="来源类型" Binding="{Binding SourceType}" Width="100"/>
-                    <DataGridTextColumn Header="来源记录" Binding="{Binding SourceRecordKey}" Width="120"/>
-                    <DataGridTextColumn Header="备注" Binding="{Binding Remarks}" Width="*"/>
-                </DataGrid.Columns>
-            </DataGrid>
-        </Border>
+            <!-- 下半区：历史流转记录 -->
+            <Border Grid.Row="2" Background="White" CornerRadius="4" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-        <Border Grid.Row="4" Background="White" CornerRadius="4" Padding="10">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="8"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <DockPanel Grid.Row="0" Margin="0,0,0,8" LastChildFill="True">
-                    <CheckBox DockPanel.Dock="Right"
-                              Content="跟随选中光盘"
-                              VerticalAlignment="Center"
-                              IsChecked="{Binding FollowSelectedMedium}"
-                              Margin="12,0,0,0"/>
-                    <TextBlock Text="流转流水（立档入库 / 出库 / 归还 / 迁档 / 销毁）"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Foreground="#374151"
-                               VerticalAlignment="Center"/>
-                </DockPanel>
-
-                <StackPanel Grid.Row="1">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="光盘编号:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Width="140" VerticalContentAlignment="Center" Margin="0,0,16,0"
-                                 Text="{Binding TransactionDiscCodeKeyword, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="按光盘编号筛选下方流转流水">
-                            <TextBox.InputBindings>
-                                <KeyBinding Key="Enter" Command="{Binding SearchTransactionsCommand}"/>
-                            </TextBox.InputBindings>
-                        </TextBox>
-                        <TextBlock Text="业务单号:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Width="160" VerticalContentAlignment="Center" Margin="0,0,16,0"
-                                 Text="{Binding TransactionBusinessNoKeyword, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="按业务单号筛选下方流转流水">
-                            <TextBox.InputBindings>
-                                <KeyBinding Key="Enter" Command="{Binding SearchTransactionsCommand}"/>
-                            </TextBox.InputBindings>
-                        </TextBox>
-                        <TextBlock Text="流转类型:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <ComboBox Width="130"
+                    <DockPanel Grid.Row="0" Margin="0,0,0,8" LastChildFill="True">
+                        <CheckBox DockPanel.Dock="Right"
+                                  Content="跟随选中光盘"
                                   VerticalAlignment="Center"
-                                  Margin="0,0,16,0"
-                                  ItemsSource="{Binding TransactionTypeOptions}"
-                                  SelectedItem="{Binding SelectedTransactionType}"/>
-                        <Button Content="查询流转" Command="{Binding SearchTransactionsCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,8,0"/>
-                        <Button Content="查看全部" Command="{Binding ShowAllTransactionsCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96"/>
-                    </StackPanel>
-                    <TextBlock Margin="0,6,0,0"
-                               Text="{Binding TransactionScopeHint, Mode=OneWay}"
-                               Foreground="#6B7280"
-                               FontSize="12"/>
-                </StackPanel>
+                                  IsChecked="{Binding FollowSelectedMedium}"
+                                  Margin="12,0,0,0"/>
+                        <TextBlock Text="历史流转记录"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#1F2937"
+                                   VerticalAlignment="Center"/>
+                    </DockPanel>
 
-                <DataGrid Grid.Row="3"
-                          AutoGenerateColumns="False"
-                          CanUserAddRows="False"
-                          IsReadOnly="True"
-                          SelectionMode="Single"
-                          RowHeight="34"
-                          ColumnHeaderHeight="38"
-                          GridLinesVisibility="Horizontal"
-                          BorderThickness="0"
-                          ItemsSource="{Binding Transactions}"
-                          SelectedItem="{Binding SelectedTransaction}">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="办理时间" Binding="{Binding OperateTime, StringFormat=yyyy-MM-dd HH:mm}" Width="130"/>
-                        <DataGridTextColumn Header="光盘编号" Binding="{Binding DiscCode}" Width="110"/>
-                        <DataGridTextColumn Header="流转类型" Binding="{Binding TransactionType}" Width="100"/>
-                        <DataGridTextColumn Header="业务单号" Binding="{Binding BusinessNo}" Width="140"/>
-                        <DataGridTextColumn Header="流转前状态" Binding="{Binding BeforeStatus}" Width="110"/>
-                        <DataGridTextColumn Header="流转后状态" Binding="{Binding AfterStatus}" Width="110"/>
-                        <DataGridTextColumn Header="流转前位置" Binding="{Binding BeforeLocation}" Width="130"/>
-                        <DataGridTextColumn Header="流转后位置" Binding="{Binding AfterLocation}" Width="130"/>
-                        <DataGridTextColumn Header="办理人" Binding="{Binding OperatorName}" Width="90"/>
-                        <DataGridTextColumn Header="业务说明" Binding="{Binding Description}" Width="140"/>
-                        <DataGridTextColumn Header="备注" Binding="{Binding Remark}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </Grid>
-        </Border>
+                    <StackPanel Grid.Row="1">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="光盘编号：" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                            <TextBox Width="140" VerticalContentAlignment="Center" Margin="0,0,16,0"
+                                     Text="{Binding TransactionDiscCodeKeyword, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="按光盘编号筛选下方流转流水">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Enter" Command="{Binding SearchTransactionsCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <TextBlock Text="业务单号：" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                            <TextBox Width="160" VerticalContentAlignment="Center" Margin="0,0,16,0"
+                                     Text="{Binding TransactionBusinessNoKeyword, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="按业务单号筛选下方流转流水">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Enter" Command="{Binding SearchTransactionsCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <TextBlock Text="流转类型：" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                            <ComboBox Width="130"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,16,0"
+                                      ItemsSource="{Binding TransactionTypeOptions}"
+                                      SelectedItem="{Binding SelectedTransactionType}"/>
+                            <Button Content="查询流转" Command="{Binding SearchTransactionsCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,8,0"/>
+                            <Button Content="查看全部" Command="{Binding ShowAllTransactionsCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96"/>
+                        </StackPanel>
+                        <TextBlock Margin="0,6,0,0"
+                                   Text="{Binding TransactionScopeHint, Mode=OneWay}"
+                                   Foreground="#6B7280"
+                                   FontSize="12"/>
+                    </StackPanel>
+
+                    <DataGrid Grid.Row="3"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              RowHeight="34"
+                              ColumnHeaderHeight="38"
+                              GridLinesVisibility="Horizontal"
+                              BorderThickness="0"
+                              ItemsSource="{Binding Transactions}"
+                              SelectedItem="{Binding SelectedTransaction}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="办理时间" Binding="{Binding OperateTime, StringFormat=yyyy-MM-dd HH:mm}" Width="130"/>
+                            <DataGridTextColumn Header="光盘编号" Binding="{Binding DiscCode}" Width="110"/>
+                            <DataGridTextColumn Header="流转类型" Binding="{Binding TransactionType}" Width="100"/>
+                            <DataGridTextColumn Header="业务单号" Binding="{Binding BusinessNo}" Width="140"/>
+                            <DataGridTextColumn Header="流转前状态" Binding="{Binding BeforeStatus}" Width="110"/>
+                            <DataGridTextColumn Header="流转后状态" Binding="{Binding AfterStatus}" Width="110"/>
+                            <DataGridTextColumn Header="流转前位置" Binding="{Binding BeforeLocation}" Width="130"/>
+                            <DataGridTextColumn Header="流转后位置" Binding="{Binding AfterLocation}" Width="130"/>
+                            <DataGridTextColumn Header="办理人" Binding="{Binding OperatorName}" Width="90"/>
+                            <DataGridTextColumn Header="业务说明" Binding="{Binding Description}" Width="140"/>
+                            <DataGridTextColumn Header="备注" Binding="{Binding Remark}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Page>

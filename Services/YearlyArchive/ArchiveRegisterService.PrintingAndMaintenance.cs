@@ -76,31 +76,19 @@ namespace DocMgr.Services.YearlyArchive
                 record.DeputyOpinion);
 
             var entries = mediaEntries?.ToList() ?? new List<YearlyArchiveRegisterMedia>();
-            var itemSourceInfos = entries
+            var itemSourcePairs = entries
                 .SelectMany(media => media.Items ?? [])
-                .Select(item => (SourceType: item.SourceType?.Trim() ?? string.Empty, ProvideUnit: item.ProvideUnit?.Trim() ?? string.Empty))
-                .Where(info => info.SourceType.Length > 0 || info.ProvideUnit.Length > 0)
+                .Select(item => ((string?)item.SourceType, (string?)item.ProvideUnit))
                 .ToList();
 
-            var distinctSourceTypes = itemSourceInfos
-                .Select(info => info.SourceType)
-                .Where(v => v.Length > 0)
+            string sourceProvideUnit = ArchiveRegisterSourceProvideUnitDisplaySupport.FormatAggregated(itemSourcePairs);
+            // 多对「来源 . 单位」时表头已聚合展示；超过一对时明细行仍附带来源便于核对。
+            bool sinkSourceToItems = itemSourcePairs
+                .Select(pair => ArchiveRegisterSourceProvideUnitDisplaySupport.FormatPair(pair.Item1, pair.Item2))
+                .Where(text => !string.Equals(text, ArchiveRegisterSourceProvideUnitDisplaySupport.EmptyPlaceholder, StringComparison.Ordinal))
                 .Distinct(StringComparer.Ordinal)
-                .ToList();
-            var distinctProvideUnits = itemSourceInfos
-                .Select(info => info.ProvideUnit)
-                .Where(v => v.Length > 0)
-                .Distinct(StringComparer.Ordinal)
-                .ToList();
-
-            // 来源或提供单位任一字段跨子项不唯一时：表头写「详见资料内容」，明细下沉到资料子项行。
-            bool sinkSourceToItems = distinctSourceTypes.Count > 1 || distinctProvideUnits.Count > 1;
-            string sourceType = sinkSourceToItems
-                ? ArchiveRegisterDomainValues.PrintSourceDetailInItemContentHint
-                : (distinctSourceTypes.Count == 0 ? string.Empty : distinctSourceTypes[0]);
-            string provideUnit = sinkSourceToItems
-                ? ArchiveRegisterDomainValues.PrintSourceDetailInItemContentHint
-                : (distinctProvideUnits.Count == 0 ? string.Empty : distinctProvideUnits[0]);
+                .Skip(1)
+                .Any();
             string retainedHardDiskRegistration = BuildRetainedHardDiskRegistrationText(entries);
             var pageDomainOptions = CreatePageDomainOptions(GetPageDomainDefinitions());
             var users = _archiveRegisterRepository.GetUsersAsync().GetAwaiter().GetResult();
@@ -118,8 +106,8 @@ namespace DocMgr.Services.YearlyArchive
                 FormNo = record.FormNo,
                 MaterialName = record.MaterialName,
                 ProjectName = record.ProjectName ?? string.Empty,
-                SourceType = sourceType,
-                ProvideUnit = provideUnit,
+                SourceType = sourceProvideUnit,
+                ProvideUnit = string.Empty,
                 Purpose = record.ArchivePurpose,
                 OtherRequests = record.OtherRequests,
                 Dept = record.ApplicantDept,
@@ -227,16 +215,12 @@ namespace DocMgr.Services.YearlyArchive
                     var extras = new List<string>();
                     if (sinkSourceToItems)
                     {
-                        string itemSourceType = item.SourceType?.Trim() ?? string.Empty;
-                        if (itemSourceType.Length > 0)
+                        string pair = ArchiveRegisterSourceProvideUnitDisplaySupport.FormatPair(
+                            item.SourceType,
+                            item.ProvideUnit);
+                        if (!string.Equals(pair, ArchiveRegisterSourceProvideUnitDisplaySupport.EmptyPlaceholder, StringComparison.Ordinal))
                         {
-                            extras.Add($"来源：{itemSourceType}");
-                        }
-
-                        string itemProvideUnit = item.ProvideUnit?.Trim() ?? string.Empty;
-                        if (itemProvideUnit.Length > 0)
-                        {
-                            extras.Add($"提供单位：{itemProvideUnit}");
+                            extras.Add($"来源：{pair}");
                         }
                     }
 

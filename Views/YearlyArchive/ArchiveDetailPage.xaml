@@ -35,14 +35,18 @@
             </Setter>
         </Style>
 
-        <Style x:Key="FieldLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource FormFieldCaptionStyle}">
+        <!-- 横排标签/值底边距须一致，避免同行上下错位；行距由同底边距承担 -->
+        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#666"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
 
         <Style x:Key="FieldValueStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#222"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0,0,12,8"/>
         </Style>
 
@@ -239,11 +243,11 @@
                                    Foreground="#666"
                                    Margin="16,0,0,0"
                                    TextWrapping="Wrap"
-                                   Text="在五、立档结果 · 电子介质袋中勾选资料子项或目录/文件，加入当前检索筛选池。"/>
+                                   Text="在 5. 立档结果 · 电子介质袋中勾选资料子项或目录/文件，加入当前检索筛选池。"/>
                     </DockPanel>
                 </Border>
 
-                <GroupBox Header="一、申请基本信息" Style="{StaticResource SectionGroupBoxStyle}">
+                <GroupBox Header="1. 申请基本信息" Style="{StaticResource SectionGroupBoxStyle}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="220"/>
@@ -259,25 +263,26 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="表单编号：" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Record.FormNo, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="申请日期：" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding Record.CreatedDate, StringFormat=yyyy-MM-dd HH:mm}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="申请人：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Record.ApplicantName, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="申请部门：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding Record.ApplicantDept, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="资料名称：" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Record.MaterialName, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="所属项目：" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Record.ProjectName, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="表单编号：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Record.FormNo, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="申请日期：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Record.CreatedDate, StringFormat=yyyy-MM-dd HH:mm}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="资料来源：" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SourceTypeDisplay, Mode=OneWay, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="提供单位：" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding ProvideUnitDisplay, Mode=OneWay, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="资料名称：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Record.MaterialName, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="所属项目：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding Record.ProjectName, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="申请人：" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Record.ApplicantName, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="3" Grid.Column="2" Text="申请部门：" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="3" Grid.Column="3" Text="{Binding Record.ApplicantDept, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="资料来源：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3"
+                                   Text="{Binding SourceProvideUnitDisplay, Mode=OneWay}"
+                                   Style="{StaticResource FieldValueStyle}"
+                                   TextWrapping="Wrap"/>
 
                         <TextBlock Grid.Row="4" Grid.Column="0" Text="库管模式：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Record.ArchivePurpose, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
@@ -286,7 +291,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="二、资料介质与内容" Style="{StaticResource SectionGroupBoxStyle}">
+                <GroupBox Header="2. 资料介质与内容" Style="{StaticResource SectionGroupBoxStyle}">
                     <StackPanel>
                         <GroupBox Header="电子资料介质" Style="{StaticResource SectionGroupBoxStyle}">
                             <StackPanel>
@@ -373,21 +378,21 @@
                                                                         <Expander.Header>
                                                                             <WrapPanel>
                                                                                 <TextBlock Text="子项资料名称：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                                <TextBlock Text="{Binding ContentDesc}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
+                                                                                <TextBlock Text="{Binding ContentDesc}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <TextBlock Text="密级：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                                <TextBlock Text="{Binding ConfidentialLevel}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
+                                                                                <TextBlock Text="{Binding ConfidentialLevel}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <TextBlock Text="份数：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                                <TextBlock Text="{Binding ContentCountText}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
+                                                                                <TextBlock Text="{Binding ContentCountText}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <TextBlock Text="存储目录：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                                <TextBlock Text="{Binding StoragePath}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
+                                                                                <TextBlock Text="{Binding StoragePath}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <TextBlock Text="目录/文件：" Style="{StaticResource FieldLabelStyle}"/>
                                                                                 <TextBlock Text="{Binding ContentEntryBreakdownText}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <TextBlock Text="资料类型：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                                <TextBlock Text="{Binding MaterialCategory}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
+                                                                                <TextBlock Text="{Binding MaterialCategory}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <TextBlock Text="所属子类：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                                <TextBlock Text="{Binding SubCategory}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
+                                                                                <TextBlock Text="{Binding SubCategory}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <TextBlock Text="组织形式：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                                <TextBlock Text="{Binding DataOrganizationForm}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
+                                                                                <TextBlock Text="{Binding DataOrganizationForm}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <Border Style="{StaticResource SearchHitBadgeBorderStyle}">
                                                                                     <TextBlock Text="检索命中" Foreground="White" FontSize="11"/>
                                                                                 </Border>
@@ -396,13 +401,13 @@
                                                                         <StackPanel Margin="8,4,8,8">
                                                                             <WrapPanel Margin="0,0,0,6">
                                                                                 <TextBlock Text="资料类型：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                                <TextBlock Text="{Binding MaterialCategory}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,4"/>
+                                                                                <TextBlock Text="{Binding MaterialCategory}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <TextBlock Text="所属子类：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                                <TextBlock Text="{Binding SubCategory}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,4"/>
+                                                                                <TextBlock Text="{Binding SubCategory}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <TextBlock Text="组织形式：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                                <TextBlock Text="{Binding DataOrganizationForm}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,4"/>
+                                                                                <TextBlock Text="{Binding DataOrganizationForm}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <TextBlock Text="数据量：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                                <TextBlock Text="{Binding DataSizeText}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,4"/>
+                                                                                <TextBlock Text="{Binding DataSizeText}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <TextBlock Text="备注：" Style="{StaticResource FieldLabelStyle}"/>
                                                                                 <TextBlock Text="{Binding Note}" Style="{StaticResource FieldValueStyle}"/>
                                                                             </WrapPanel>
@@ -573,7 +578,7 @@
                                                                             </Grid>
                                                                             <WrapPanel Margin="0,4,0,0">
                                                                                 <TextBlock Text="介质类型：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                                <TextBlock Text="{Binding MediaType}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,0"/>
+                                                                                <TextBlock Text="{Binding MediaType}" Style="{StaticResource FieldValueStyle}"/>
                                                                                 <TextBlock Text="密级：" Style="{StaticResource FieldLabelStyle}"/>
                                                                                 <TextBlock Text="{Binding ConfidentialLevel}" Style="{StaticResource FieldValueStyle}"/>
                                                                             </WrapPanel>
@@ -600,7 +605,7 @@
                     </StackPanel>
                 </GroupBox>
 
-                <GroupBox Header="三、审批与交接信息" Style="{StaticResource SectionGroupBoxStyle}">
+                <GroupBox Header="3. 审批与交接信息" Style="{StaticResource SectionGroupBoxStyle}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="220"/>
@@ -637,7 +642,7 @@
                     </Grid>
                 </GroupBox>
 
-                <GroupBox Header="四、附件材料" Style="{StaticResource SectionGroupBoxStyle}">
+                <GroupBox Header="4. 附件材料" Style="{StaticResource SectionGroupBoxStyle}">
                     <StackPanel>
                         <TextBlock Text="暂无附件材料。" Foreground="#888">
                             <TextBlock.Style>
@@ -683,7 +688,7 @@
                     </StackPanel>
                 </GroupBox>
 
-                <GroupBox Header="五、立档结果" Style="{StaticResource SectionGroupBoxStyle}">
+                <GroupBox Header="5. 立档结果" Style="{StaticResource SectionGroupBoxStyle}">
                     <StackPanel>
                         <WrapPanel Margin="0,0,0,10">
                             <TextBlock Text="库管模式：" Style="{StaticResource FieldLabelStyle}"/>
@@ -784,16 +789,16 @@
                                                                         </Grid>
                                                                         <WrapPanel>
                                                                             <TextBlock Text="介质类型：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                            <TextBlock Text="{Binding MediaType}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,0"/>
+                                                                            <TextBlock Text="{Binding MediaType}" Style="{StaticResource FieldValueStyle}"/>
                                                                             <TextBlock Text="库管模式：" Style="{StaticResource FieldLabelStyle}"/>
                                                                             <TextBlock Text="{Binding DataContext.Record.ArchivePurpose, RelativeSource={RelativeSource AncestorType=Page}, TargetNullValue=-}"
-                                                                                       Style="{StaticResource FieldValueStyle}" Margin="0,0,12,0"/>
+                                                                                       Style="{StaticResource FieldValueStyle}"/>
                                                                         </WrapPanel>
                                                                         <WrapPanel Visibility="{Binding HasElectronicDetail, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                                             <TextBlock Text="资料类型：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                            <TextBlock Text="{Binding MaterialCategory}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,0"/>
+                                                                            <TextBlock Text="{Binding MaterialCategory}" Style="{StaticResource FieldValueStyle}"/>
                                                                             <TextBlock Text="所属子类：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                            <TextBlock Text="{Binding SubCategory}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,0"/>
+                                                                            <TextBlock Text="{Binding SubCategory}" Style="{StaticResource FieldValueStyle}"/>
                                                                             <TextBlock Text="组织形式：" Style="{StaticResource FieldLabelStyle}"/>
                                                                             <TextBlock Text="{Binding DataOrganizationForm}" Style="{StaticResource FieldValueStyle}"/>
                                                                         </WrapPanel>
@@ -862,7 +867,7 @@
                                                     <TextBlock Text="资料摘要：" Style="{StaticResource FieldLabelStyle}"/>
                                                     <TextBlock Text="{Binding ContentSummary}" Style="{StaticResource FieldValueStyle}"/>
                                                     <TextBlock Text="归档信息：" Style="{StaticResource FieldLabelStyle}"/>
-                                                    <TextBlock Text="{Binding ArchivedBy}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,4"/>
+                                                    <TextBlock Text="{Binding ArchivedBy}" Style="{StaticResource FieldValueStyle}"/>
                                                     <TextBlock Text="{Binding ArchivedDateText}" Style="{StaticResource FieldValueStyle}"/>
                                                     <TextBlock Text="备注：" Style="{StaticResource FieldLabelStyle}"/>
                                                     <TextBlock Text="{Binding Remarks}" Style="{StaticResource FieldValueStyle}"/>
@@ -916,15 +921,15 @@
                                                                                 </CheckBox.Style>
                                                                             </CheckBox>
                                                                             <TextBlock Text="{Binding FormNo}" FontWeight="SemiBold" Foreground="#00695C" Margin="0,0,12,2"/>
-                                                                            <TextBlock Text="{Binding ItemName}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
+                                                                            <TextBlock Text="{Binding ItemName}" Style="{StaticResource FieldValueStyle}"/>
                                                                             <TextBlock Text="来源介质：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                            <TextBlock Text="{Binding RegisterMediaType}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
+                                                                            <TextBlock Text="{Binding RegisterMediaType}" Style="{StaticResource FieldValueStyle}"/>
                                                                             <TextBlock Text="资料类型：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                            <TextBlock Text="{Binding MaterialCategory}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
+                                                                            <TextBlock Text="{Binding MaterialCategory}" Style="{StaticResource FieldValueStyle}"/>
                                                                             <TextBlock Text="密级：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                            <TextBlock Text="{Binding ConfidentialLevel}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
+                                                                            <TextBlock Text="{Binding ConfidentialLevel}" Style="{StaticResource FieldValueStyle}"/>
                                                                             <TextBlock Text="目录/文件：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                            <TextBlock Text="{Binding ContentEntryBreakdownText}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,2"/>
+                                                                            <TextBlock Text="{Binding ContentEntryBreakdownText}" Style="{StaticResource FieldValueStyle}"/>
                                                                             <TextBlock Text="数据量：" Style="{StaticResource FieldLabelStyle}"/>
                                                                             <TextBlock Text="{Binding DataSizeText}" Style="{StaticResource FieldValueStyle}"/>
                                                                             <Border Style="{StaticResource SearchHitBadgeBorderStyle}">
@@ -936,15 +941,15 @@
                                                                         <WrapPanel Margin="0,0,0,8">
                                                                             <TextBlock Text="库管模式：" Style="{StaticResource FieldLabelStyle}"/>
                                                                             <TextBlock Text="{Binding DataContext.Record.ArchivePurpose, RelativeSource={RelativeSource AncestorType=Page}, TargetNullValue=-}"
-                                                                                       Style="{StaticResource FieldValueStyle}" Margin="0,0,12,4"/>
+                                                                                       Style="{StaticResource FieldValueStyle}"/>
                                                                             <TextBlock Text="来源介质：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                            <TextBlock Text="{Binding RegisterMediaType}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,4"/>
+                                                                            <TextBlock Text="{Binding RegisterMediaType}" Style="{StaticResource FieldValueStyle}"/>
                                                                             <TextBlock Text="资料类型：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                            <TextBlock Text="{Binding MaterialCategory}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,4"/>
+                                                                            <TextBlock Text="{Binding MaterialCategory}" Style="{StaticResource FieldValueStyle}"/>
                                                                             <TextBlock Text="所属子类：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                            <TextBlock Text="{Binding SubCategory}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,4"/>
+                                                                            <TextBlock Text="{Binding SubCategory}" Style="{StaticResource FieldValueStyle}"/>
                                                                             <TextBlock Text="组织形式：" Style="{StaticResource FieldLabelStyle}"/>
-                                                                            <TextBlock Text="{Binding DataOrganizationForm}" Style="{StaticResource FieldValueStyle}" Margin="0,0,12,4"/>
+                                                                            <TextBlock Text="{Binding DataOrganizationForm}" Style="{StaticResource FieldValueStyle}"/>
                                                                         </WrapPanel>
                                                                         <TextBlock Text="{Binding SummaryText}" TextWrapping="Wrap" Style="{StaticResource FieldValueStyle}" Margin="0,0,0,8"/>
                                                                         <TextBlock Text="目录/文件明细" FontWeight="Bold" Margin="0,4,0,6"/>

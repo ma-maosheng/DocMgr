@@ -119,7 +119,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<HardDiskDisposalPage>("HD-DSP", "硬盘离库处置");
             Add<HardDiskInventoryRegisterPage>("HD-INV", "硬盘盘库登记");
             Add<OpticalDiscMediaPage>("OD-MED", "光盘概览");
-            Add<OpticalDiscMediumLedgerPage>("OD-LDG", "光盘流转台账");
+            Add<OpticalDiscMediumLedgerPage>("OD-LDG", "光盘台账");
 
             // HD Dialogs
             Add<HardDiskMediumEditDialog>("HD-MED-ED", "硬盘介质编辑");

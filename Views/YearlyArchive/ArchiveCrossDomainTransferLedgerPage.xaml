@@ -49,11 +49,11 @@
             </Style.Triggers>
         </Style>
         <Style x:Key="LedgerFilterLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource ToolbarFilterLabelStyle}">
-            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Margin" Value="0"/>
         </Style>
         <Style x:Key="FilterRowLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource LedgerFilterLabelStyle}">
             <Setter Property="TextAlignment" Value="Right"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Margin" Value="0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="FilterCardHintStyle" TargetType="TextBlock">
@@ -146,7 +146,7 @@
                         <DatePicker Grid.Column="6" Style="{StaticResource FilterDatePickerStyle}"
                                     SelectedDate="{Binding OperatedTo, Mode=TwoWay}"/>
 
-                        <TextBlock Grid.Column="8" Text="流转类型" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="8" Text="流转类型：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <ComboBox Grid.Column="9" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding TransactionTypeOptions}"
                                   DisplayMemberPath="Label"
@@ -154,18 +154,18 @@
                                   SelectedValue="{Binding SelectedTransactionType, Mode=TwoWay}"
                                   ToolTip="立档资料复制入网等跨域流转类型"/>
 
-                        <TextBlock Grid.Column="11" Text="介质" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="11" Text="介质：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <ComboBox Grid.Column="12" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding MediaKindOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedMediaKind, Mode=TwoWay}"/>
 
-                        <TextBlock Grid.Column="14" Text="操作人" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="14" Text="操作人：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <TextBox Grid.Column="15" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding OperatorName, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="17" Text="关键字" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="17" Text="关键字：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <TextBox Grid.Column="18" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="立档编号、资料名称、服务器路径、在网资产编号等">
@@ -203,7 +203,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="入网单号" Style="{StaticResource FilterRowLabelStyle}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="入网单号：" Style="{StaticResource FilterRowLabelStyle}"/>
                     <ComboBox Grid.Row="0" Grid.Column="2"
                               Style="{StaticResource FilterInputStyle}"
                               Height="{StaticResource ToolbarControlHeight}"
@@ -224,7 +224,7 @@
                                 ToolTip="清空上方入网单号筛选条件"/>
                     </StackPanel>
 
-                    <TextBlock Grid.Row="0" Grid.Column="6" Text="时间快捷" Style="{StaticResource FilterRowLabelStyle}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="6" Text="时间快捷：" Style="{StaticResource FilterRowLabelStyle}"/>
                     <WrapPanel Grid.Row="0" Grid.Column="8" VerticalAlignment="Center">
                         <Button Content="近30天" MinWidth="72" Style="{StaticResource QuickChipButtonStyle}"
                                 Command="{Binding ApplyRecentDaysCommand}" CommandParameter="30"/>
@@ -234,7 +234,7 @@
                                 Command="{Binding ApplyRecentDaysCommand}" CommandParameter="{x:Null}"/>
                     </WrapPanel>
 
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="最近单号" Style="{StaticResource FilterRowLabelStyle}" Margin="0,6,8,0"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="最近单号：" Style="{StaticResource FilterRowLabelStyle}" Margin="0,6,0,0"/>
                     <ScrollViewer Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="7"
                                   Margin="0,6,0,0"
                                   HorizontalScrollBarVisibility="Auto"

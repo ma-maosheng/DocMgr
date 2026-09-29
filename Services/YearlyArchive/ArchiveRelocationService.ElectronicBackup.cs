@@ -36,7 +36,14 @@ namespace DocMgr.Services.YearlyArchive
                 source,
                 string.IsNullOrWhiteSpace(request.NewStorageLocation)
                     ? source.StorageLocation
-                    : request.NewStorageLocation);
+                    : request.NewStorageLocation,
+                forNewElectronicUnit: true);
+            EnsureElectronicRelocationTargetSlotOrThrow(
+                await ValidateElectronicRelocationTargetSlotAsync(
+                    source,
+                    finalLocation,
+                    request.RelocationMode,
+                    sourceHostsAtTargetAfterOperation: false));
             string newDiskCode = targetMedium.DiskCode.Trim();
             string operatorName = ResolveOperatorName();
             string backupUnitNo = await GenerateNextElectronicArchiveNoAsync(source.Year);
@@ -90,7 +97,7 @@ namespace DocMgr.Services.YearlyArchive
 
             await _relocationRepository.SaveChangesAsync();
 
-            await _filingFactWriter.WriteBackupElectronicLinksAsync(
+            var backupFactIdByLinkId = await _filingFactWriter.WriteBackupElectronicLinksAsync(
                 backupUnit,
                 cloneResult.WriteItems,
                 cloneResult.PrimaryFilingFactIdByOriginalLinkId,
@@ -106,8 +113,85 @@ namespace DocMgr.Services.YearlyArchive
                 SourceMediumDisposition = ArchiveRelocationSourceDisposition.OriginalRetained
             };
 
-            AppendBackupRelocationItems(context, source, cloneResult.WriteItems, cloneResult.PrimaryFilingFactIdByOriginalLinkId);
+            AppendBackupRelocationItems(context, source, cloneResult.WriteItems, backupFactIdByLinkId);
             request.TargetBlankHardDiskCode = newDiskCode;
+            request.NewStorageLocation = finalLocation;
+            return context;
+        }
+
+        private async Task<ArchiveRelocationExecutionContext> ExecuteElectronicBackupToBlankOpticalDiscAsync(
+            YearlyElectronicArchiveUnit source,
+            ElectronicRelocationRequest request,
+            DateTime operatedAt)
+        {
+            string finalLocation = await ResolveMoveToEmptyFinalStorageLocationAsync(
+                source,
+                string.IsNullOrWhiteSpace(request.NewStorageLocation)
+                    ? source.StorageLocation
+                    : request.NewStorageLocation,
+                forNewElectronicUnit: true);
+            EnsureElectronicRelocationTargetSlotOrThrow(
+                await ValidateElectronicRelocationTargetSlotAsync(
+                    source,
+                    finalLocation,
+                    request.RelocationMode,
+                    sourceHostsAtTargetAfterOperation: false));
+            string operatorName = ResolveOperatorName();
+            string backupUnitNo = await GenerateNextElectronicArchiveNoAsync(source.Year);
+            string remark = $"资料备份：由电子介质袋 [{source.ElectronicArchiveNo}] 备份至新建光盘袋 [{backupUnitNo}]，存放于 [{finalLocation}]；原件保留于 [{source.StorageLocation}]。";
+
+            var backupUnit = new YearlyElectronicArchiveUnit
+            {
+                ElectronicArchiveNo = backupUnitNo,
+                ProjectName = source.ProjectName.Trim(),
+                Year = source.Year.Trim(),
+                StorageCarrierType = ArchiveFilingBusinessRules.DefaultOpticalDiscBagCarrierType,
+                StoragePath = source.StoragePath?.Trim() ?? string.Empty,
+                StorageLocation = finalLocation,
+                LinkedMediumCodes = string.Empty,
+                Disposition = source.Disposition?.Trim() ?? string.Empty,
+                ContentSummary = BuildBackupContentSummary(source),
+                ArchivedBy = operatorName,
+                ArchivedDate = operatedAt,
+                SourceType = source.SourceType?.Trim() ?? string.Empty,
+                SourceRecordKey = $"BackupFrom:{source.Id}",
+                Remarks = request.Remarks?.Trim() ?? string.Empty,
+                UnitLifecycleStatus = ArchiveContainerLifecycleStatus.InUse,
+                MediaCount = 1
+            };
+
+            _filingRepository.AddElectronicArchiveUnit(backupUnit);
+
+            string discCode = await CreateOrReviveOpticalDiscForUnitAsync(
+                backupUnit,
+                finalLocation,
+                operatedAt,
+                remark,
+                isNewArchiveInbound: true);
+
+            var cloneResult = await CloneSourceLinksToTargetUnitAsync(source, backupUnit, discCode, operatedAt);
+            backupUnit.MediaCount = 1;
+            backupUnit.LinkedMediumCodes = string.Empty;
+
+            await _relocationRepository.SaveChangesAsync();
+
+            var backupFactIdByLinkId = await _filingFactWriter.WriteBackupElectronicLinksAsync(
+                backupUnit,
+                cloneResult.WriteItems,
+                cloneResult.PrimaryFilingFactIdByOriginalLinkId,
+                operatedAt,
+                operatorName,
+                remark);
+
+            var context = new ArchiveRelocationExecutionContext
+            {
+                TargetContainerId = backupUnit.Id,
+                TargetContainerCode = backupUnit.ElectronicArchiveNo,
+                TargetStorageLocation = finalLocation,
+                SourceMediumDisposition = ArchiveRelocationSourceDisposition.OriginalRetained
+            };
+
+            AppendBackupRelocationItems(context, source, cloneResult.WriteItems, backupFactIdByLinkId);
             request.NewStorageLocation = finalLocation;
             return context;
         }
@@ -134,6 +218,12 @@ namespace DocMgr.Services.YearlyArchive
                 throw new InvalidOperationException("目标电子介质袋必须与源袋属于同一项目、同一年度。");
             }
 
+            string? duplicateMaterialIssue = await ValidateElectronicMergeNoDuplicateMaterialsAsync(source, target);
+            if (!string.IsNullOrWhiteSpace(duplicateMaterialIssue))
+            {
+                throw new InvalidOperationException(duplicateMaterialIssue);
+            }
+
             string targetMediumCode = ResolveTargetMediumCode(target);
             if (string.IsNullOrWhiteSpace(targetMediumCode))
             {
@@ -151,7 +241,7 @@ namespace DocMgr.Services.YearlyArchive
 
             await _relocationRepository.SaveChangesAsync();
 
-            await _filingFactWriter.WriteBackupElectronicLinksAsync(
+            var backupFactIdByLinkId = await _filingFactWriter.WriteBackupElectronicLinksAsync(
                 target,
                 cloneResult.WriteItems,
                 cloneResult.PrimaryFilingFactIdByOriginalLinkId,
@@ -167,7 +257,7 @@ namespace DocMgr.Services.YearlyArchive
                 SourceMediumDisposition = ArchiveRelocationSourceDisposition.OriginalRetained
             };
 
-            AppendBackupRelocationItems(context, source, cloneResult.WriteItems, cloneResult.PrimaryFilingFactIdByOriginalLinkId);
+            AppendBackupRelocationItems(context, source, cloneResult.WriteItems, backupFactIdByLinkId);
             return context;
         }
 
@@ -327,19 +417,22 @@ namespace DocMgr.Services.YearlyArchive
             ArchiveRelocationExecutionContext context,
             YearlyElectronicArchiveUnit source,
             IReadOnlyList<BackupElectronicLinkWriteItem> writeItems,
-            IReadOnlyDictionary<int, int> primaryFilingFactIdByOriginalLinkId)
+            IReadOnlyDictionary<int, int> backupFilingFactIdByLinkId)
         {
             foreach (var item in writeItems)
             {
-                if (!primaryFilingFactIdByOriginalLinkId.TryGetValue(item.OriginalSourceLinkId, out int primaryFactId))
+                int backupLinkId = item.Link.Id;
+                if (backupLinkId <= 0
+                    || !backupFilingFactIdByLinkId.TryGetValue(backupLinkId, out int backupFactId))
                 {
                     continue;
                 }
 
+                // 迁档明细记录「备份副本」的落位，不记录未移动的原件立档事实。
                 context.RelocationItems.Add(new YearlyArchiveRelocationItem
                 {
-                    FilingFactId = primaryFactId,
-                    SourceLinkId = item.OriginalSourceLinkId,
+                    FilingFactId = backupFactId,
+                    SourceLinkId = backupLinkId,
                     SourceLinkType = FilingFactSourceLinkType.ElectronicMediaItemLink,
                     BeforeContainerCode = source.ElectronicArchiveNo.Trim(),
                     BeforeStorageLocation = source.StorageLocation?.Trim() ?? string.Empty,

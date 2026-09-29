@@ -15,7 +15,8 @@ namespace DocMgr.Services.YearlyArchive
             YearlyArchiveFilingFact fact,
             string relocationMode,
             YearlyArchiveBox? archiveBox = null,
-            YearlyElectronicArchiveUnit? electronicUnit = null)
+            YearlyElectronicArchiveUnit? electronicUnit = null,
+            string? sourceMediumDisposition = null)
         {
             ResolveContainerPresentation(fact, archiveBox, electronicUnit, out var containerContext);
 
@@ -27,6 +28,7 @@ namespace DocMgr.Services.YearlyArchive
                 TransactionType = transaction.TransactionType,
                 BusinessNo = transaction.BusinessNo,
                 RelocationMode = relocationMode,
+                SourceMediumDisposition = sourceMediumDisposition?.Trim() ?? string.Empty,
                 FilingFactNo = fact.FilingFactNo,
                 FormNo = fact.FormNo,
                 MediaKind = fact.MediaKind,

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -8,6 +9,7 @@ using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.Shared;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
 using DocMgr.Views.Shared;
@@ -67,16 +69,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             ? "本窗口以查看为主；办结后资料管理员可增补「其他附件」，不可删除已有附件。"
             : "本窗口仅用于查看资料建档申请信息，不允许编辑。";
 
-        // 1. 资料信息
-        public string MaterialName => EmptyAsPlaceholder(_record.MaterialName);
-        public string ProjectName => EmptyAsPlaceholder(_record.ProjectName);
-
-        /// <summary>提供单位：聚合各子项值（唯一时直接显示，多个时以「、」连接）。</summary>
-        public string ProvideUnit => EmptyAsPlaceholder(AggregateItemValues(item => item.ProvideUnit));
-
-        /// <summary>资料来源：聚合各子项值（唯一时直接显示，多个时以「、」连接）。</summary>
-        public string SourceType => EmptyAsPlaceholder(AggregateItemValues(item => item.SourceType));
-
+        // 1. 申请信息
+        public string FormNo => string.IsNullOrWhiteSpace(_record.FormNo) ? "待编单" : _record.FormNo.Trim();
+        public string StatusDisplay => _record.StatusStr;
         public string ArchivePurpose => EmptyAsPlaceholder(_record.ArchivePurpose);
         public string OtherRequests => EmptyAsPlaceholder(_record.OtherRequests);
         public string HasProofMaterialDisplay =>
@@ -85,13 +80,21 @@ namespace DocMgr.ViewModels.YearlyArchive
             ArchiveRegisterDomainValues.HasProofMaterial(_record.ProofMaterialNote)
                 ? EmptyAsPlaceholder(_record.ProofMaterialNote)
                 : ArchiveRegisterDomainValues.ProofMaterialNoneText;
-
-        // 2. 申请信息
-        public string FormNo => string.IsNullOrWhiteSpace(_record.FormNo) ? "待编单" : _record.FormNo.Trim();
-        public string StatusDisplay => _record.StatusStr;
         public string ApplicantName => EmptyAsPlaceholder(_record.ApplicantName);
         public string ApplicantDept => EmptyAsPlaceholder(_record.ApplicantDept);
         public string ApplicantDateDisplay => FormatDate(_record.ApplicantDate);
+
+        // 2. 资料信息
+        public string MaterialName => EmptyAsPlaceholder(_record.MaterialName);
+        public string ProjectName => EmptyAsPlaceholder(_record.ProjectName);
+
+        /// <summary>资料来源：内部 . 单位；多对时以顿号连接。</summary>
+        public string SourceProvideUnitDisplay =>
+            ArchiveRegisterSourceProvideUnitDisplaySupport.FormatAggregated(
+                (_record.MediaEntries ?? [])
+                    .Where(media => media.Items != null)
+                    .SelectMany(media => media.Items!)
+                    .Select(item => ((string?)item.SourceType, (string?)item.ProvideUnit)));
 
         // 3. 审批流程（意见栏一致化：空意见不用「(无)」占位）
         public string DeptHead => EmptyAsPlaceholder(_record.DeptHead);
@@ -338,8 +341,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(WorkspaceBannerText));
             OnPropertyChanged(nameof(MaterialName));
             OnPropertyChanged(nameof(ProjectName));
-            OnPropertyChanged(nameof(ProvideUnit));
-            OnPropertyChanged(nameof(SourceType));
+            OnPropertyChanged(nameof(SourceProvideUnitDisplay));
             OnPropertyChanged(nameof(ArchivePurpose));
             OnPropertyChanged(nameof(OtherRequests));
             OnPropertyChanged(nameof(HasProofMaterialDisplay));
@@ -371,23 +373,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private static string EmptyAsPlaceholder(string? value) =>
             string.IsNullOrWhiteSpace(value) ? "(无)" : value.Trim();
-
-        /// <summary>
-        /// 聚合子项级字段：唯一值直接返回，多个不同值以「、」连接。
-        /// </summary>
-        private string AggregateItemValues(Func<YearlyArchiveRegisterMediaItem, string?> selector)
-        {
-            var distinct = (_record.MediaEntries ?? [])
-                .Where(media => media.Items != null)
-                .SelectMany(media => media.Items!)
-                .Select(selector)
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .Select(value => value!.Trim())
-                .Distinct(StringComparer.Ordinal)
-                .ToList();
-
-            return distinct.Count == 0 ? string.Empty : string.Join("、", distinct);
-        }
 
         private static string FormatDate(DateTime? date) =>
             date.HasValue ? date.Value.ToString("yyyy-MM-dd") : "(无)";

@@ -126,6 +126,22 @@ namespace DocMgr.Services.Cabinets
         }
 
         /// <inheritdoc/>
+        public string? GetHardDiskDedicatedSlotCategoryName(int cabinetId, string faceCode, string slotCode)
+        {
+            if (string.IsNullOrWhiteSpace(faceCode) || string.IsNullOrWhiteSpace(slotCode))
+            {
+                return null;
+            }
+
+            var existing = _cabinetRepository.GetSlotCategoryAssignment(
+                cabinetId,
+                faceCode.Trim(),
+                slotCode.Trim());
+            string normalized = CabinetHardDiskSlotCategoryAssignment.NormalizeCategoryName(existing?.CategoryName);
+            return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+        }
+
+        /// <inheritdoc/>
         public void ClearHardDiskDedicatedSlotCategory(int cabinetId, string faceCode, string slotCode)
         {
             CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);

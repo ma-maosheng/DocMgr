@@ -21,21 +21,21 @@
                 Margin="0,0,0,12">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="开始：" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="开始：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                     <DatePicker SelectedDate="{Binding StartTime, Mode=TwoWay}" Width="130" Margin="0,0,12,0"/>
-                    <TextBlock Text="结束：" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="结束：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                     <DatePicker SelectedDate="{Binding EndTime, Mode=TwoWay}" Width="130" Margin="0,0,12,0"/>
-                    <TextBlock Text="表名：" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="表名：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                     <ComboBox Width="180"
                               ItemsSource="{Binding TableNameOptions}"
                               SelectedItem="{Binding SelectedTableName, Mode=TwoWay}"
                               Margin="0,0,12,0"/>
-                    <TextBlock Text="操作：" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="操作：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                     <ComboBox Width="110"
                               ItemsSource="{Binding OperationOptions}"
                               SelectedItem="{Binding SelectedOperation, Mode=TwoWay}"
                               Margin="0,0,12,0"/>
-                    <TextBlock Text="关键字：" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="关键字：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                     <TextBox Width="180"
                              Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
                              Margin="0,0,12,0"

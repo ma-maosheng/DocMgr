@@ -39,9 +39,17 @@ public sealed partial class NetworkInboundEditDialogViewModel
         set => SetProperty(ref _provideUnit, value);
     }
 
-    /// <summary>审批只读展示用提供部门（单位）。</summary>
-    public string ProvideUnitDisplay =>
-        NetworkTransferDomainValues.ResolveInboundProvideUnit(_record.SourceKind, _record.ProvideUnit);
+    /// <summary>审批只读展示用提供部门（单位）；无值时显示「(无)」。</summary>
+    public string ProvideUnitDisplay
+    {
+        get
+        {
+            string resolved = NetworkTransferDomainValues.ResolveInboundProvideUnit(
+                _record.SourceKind,
+                _record.ProvideUnit);
+            return string.IsNullOrWhiteSpace(resolved) ? "(无)" : resolved;
+        }
+    }
 
     private void LoadInternalDepartments()
     {

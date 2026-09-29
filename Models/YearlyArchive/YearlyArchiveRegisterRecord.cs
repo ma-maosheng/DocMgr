@@ -495,17 +495,7 @@ namespace DocMgr.Models.YearlyArchive
         public string StatusStr => ApplicationWorkflowStatus.ToDisplay(Status);
 
         [NotMapped]
-        public string StatusColor => Status switch
-        {
-            Unsubmitted => "#FF9800", // 未提交
-            Submitted => "#2196F3", // 已提交
-            Approved => "#4CAF50", // 已审批
-            SignedUploaded => "#7E57C2", // 已上传签字件
-            Completed => "#00796B", // 已办结
-            WithdrawnVoid => "#9E9E9E", // 已撤回作废
-            ForceVoided => "#616161", // 已强制作废
-            _ => "#9E9E9E"
-        };
+        public string StatusColor => ApplicationWorkflowStatusDisplayColorSupport.ResolveForeground(Status);
 
         /// <summary>
         /// 资料立档进度摘要（模拟介质 + 电子介质）。

@@ -138,7 +138,7 @@ namespace DocMgr.Services.YearlyArchive
             await _materialTransactionRepository.SaveChangesAsync();
         }
 
-        public async Task WriteBackupElectronicLinksAsync(
+        public async Task<IReadOnlyDictionary<int, int>> WriteBackupElectronicLinksAsync(
             YearlyElectronicArchiveUnit unit,
             IReadOnlyList<BackupElectronicLinkWriteItem> links,
             IReadOnlyDictionary<int, int> primaryFilingFactIdByOriginalLinkId,
@@ -152,7 +152,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (links.Count == 0)
             {
-                return;
+                return new Dictionary<int, int>();
             }
 
             var facts = new List<YearlyArchiveFilingFact>();
@@ -199,13 +199,15 @@ namespace DocMgr.Services.YearlyArchive
 
             if (facts.Count == 0)
             {
-                return;
+                return new Dictionary<int, int>();
             }
 
             _filingFactRepository.AddFilingFacts(facts);
             await _filingFactRepository.SaveChangesAsync();
             await _materialTransactionWriter.AppendFilingTransactionsAsync(facts);
             await _materialTransactionRepository.SaveChangesAsync();
+
+            return facts.ToDictionary(fact => fact.SourceLinkId, fact => fact.Id);
         }
 
         private async Task<int> GetNextSequenceAsync(string mediaKind, int year)

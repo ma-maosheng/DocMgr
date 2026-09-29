@@ -62,6 +62,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             await RefreshAttachmentRequirementsAsync();
             OnPropertyChanged(nameof(WindowTitle));
             OnPropertyChanged(nameof(IsExternalSource));
+            OnPropertyChanged(nameof(SourceProvideUnitDisplay));
+            OnPropertyChanged(nameof(MaterialNameDisplay));
             NotifyNetworkOutboundTransferUiState();
             if (_userContextService.CurrentUser != null)
             {

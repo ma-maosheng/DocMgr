@@ -55,7 +55,7 @@
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="怎么用本页" FontWeight="SemiBold" Foreground="#0F766E"/>
                             <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#115E59" FontSize="12.5"
-                                       Text="点击 KPI 下钻到「流转台账」。办理立档、借还、迁档、盘库、离库请走年度资料菜单。"/>
+                                       Text="点击 KPI 下钻到「光盘台账」。办理立档、借还、迁档、盘库、离库请走年度资料菜单。"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -86,7 +86,7 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Margin="0,0,12,12" Padding="12" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="打开光盘流转台账" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.TotalMedia}">
+                            <Border Grid.Column="0" Margin="0,0,12,12" Padding="12" Background="#F8FAFC" CornerRadius="4" Cursor="Hand" ToolTip="打开光盘台账" MouseLeftButtonUp="KpiCard_MouseLeftButtonUp" Tag="{x:Static odm:OpticalDiscOverviewKpiKind.TotalMedia}">
                                 <StackPanel>
                                     <TextBlock Text="光盘总数" Foreground="#64748B"/>
                                     <TextBlock Margin="0,6,0,0" Text="{Binding TotalMediumCount}" FontSize="22" FontWeight="Bold" Foreground="#0F172A"/>
@@ -188,7 +188,7 @@
                     <StackPanel>
                         <TextBlock Text="光盘如何形成与流转" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
                         <TextBlock Margin="0,4,0,10" Style="{StaticResource FlowBodyStyle}"
-                                   Text="状态、档口变化都会写入流转流水。本模块只有概览和流转台账两个入口。"/>
+                                   Text="状态、档口变化都会写入流转流水。本模块只有概览和光盘台账两个入口。"/>
 
                         <DockPanel Margin="0,0,0,8">
                             <Border Width="26" Height="26" CornerRadius="13" Background="#E0F2F1" Margin="0,0,10,0">
@@ -243,7 +243,7 @@
                         <StackPanel>
                             <TextBlock Text="与硬盘的差别" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937"/>
                             <TextBlock Margin="0,6,0,0" Style="{StaticResource FlowBodyStyle}"
-                                       Text="硬盘可空白登记、独立出库审批与硬盘离库；光盘始终绑在电子资料袋上，不能单独出库或格式化留盘。查看全过程请用「流转台账」。"/>
+                                       Text="硬盘可空白登记、独立出库审批与硬盘离库；光盘始终绑在电子资料袋上，不能单独出库或格式化留盘。查看全过程请用「光盘台账」。"/>
                         </StackPanel>
                     </Border>
                     <Border Padding="16" Background="White" CornerRadius="6">

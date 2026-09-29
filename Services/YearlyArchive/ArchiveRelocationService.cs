@@ -290,14 +290,20 @@ namespace DocMgr.Services.YearlyArchive
                 ArchiveRelocationExecutionContext context = request.ExecuteBackupMechanism
                     ? request.RelocationMode switch
                     {
-                        ArchiveRelocationMode.MoveToEmpty => await ExecuteElectronicBackupToEmptyAsync(source, request, operatedAt),
+                        _ when ArchiveRelocationMode.IsMoveToBlankHardDisk(request.RelocationMode)
+                            => await ExecuteElectronicBackupToEmptyAsync(source, request, operatedAt),
+                        _ when ArchiveRelocationMode.IsMoveToBlankOpticalDisc(request.RelocationMode)
+                            => await ExecuteElectronicBackupToBlankOpticalDiscAsync(source, request, operatedAt),
                         ArchiveRelocationMode.MergeToExisting => await ExecuteElectronicBackupMergeAsync(source, request, operatedAt),
                         _ => throw new InvalidOperationException($"备份机制不支持迁档模式：{request.RelocationMode}")
                     }
                     : request.RelocationMode switch
                     {
                         ArchiveRelocationMode.PhysicalMove => await ExecuteElectronicPhysicalMoveAsync(source, request, operatedAt),
-                        ArchiveRelocationMode.MoveToEmpty => await ExecuteElectronicMoveToEmptyAsync(source, request, operatedAt),
+                        _ when ArchiveRelocationMode.IsMoveToBlankHardDisk(request.RelocationMode)
+                            => await ExecuteElectronicMoveToEmptyAsync(source, request, operatedAt),
+                        _ when ArchiveRelocationMode.IsMoveToBlankOpticalDisc(request.RelocationMode)
+                            => await ExecuteElectronicMoveToBlankOpticalDiscAsync(source, request, operatedAt),
                         ArchiveRelocationMode.MergeToExisting => await ExecuteElectronicContainerMoveAsync(source, request, operatedAt, requireEmptyTarget: false),
                         _ => throw new InvalidOperationException($"不支持的迁档模式：{request.RelocationMode}")
                     };
@@ -346,9 +352,14 @@ namespace DocMgr.Services.YearlyArchive
             return string.IsNullOrWhiteSpace(user?.RealName) ? user?.LoginName?.Trim() ?? "资料管理员" : user.RealName.Trim();
         }
 
+        /// <inheritdoc />
+        public Task<string> PeekNextRelocationNoAsync(string mediaKind)
+            => GenerateRelocationNoAsync(mediaKind, DateTime.Now.Year);
+
         private async Task<string> GenerateRelocationNoAsync(string mediaKind, int year)
         {
-            string prefix = $"迁档-{mediaKind}-{year}-";
+            string kind = string.IsNullOrWhiteSpace(mediaKind) ? "未知" : mediaKind.Trim();
+            string prefix = $"迁档-{kind}-{year}-";
             string? lastNo = await _relocationRepository.GetLastRelocationNoByPrefixAsync(prefix);
             int nextSequence = 1;
             if (!string.IsNullOrWhiteSpace(lastNo) && lastNo.Length > prefix.Length
@@ -370,12 +381,16 @@ namespace DocMgr.Services.YearlyArchive
                 ProjectName = box.ProjectName,
                 Year = box.Year,
                 LifecycleStatus = box.ContainerLifecycleStatus,
+                BoxSpecification = box.Specs?.Trim() ?? string.Empty,
                 ItemCount = box.MediaItemLinks.Count,
                 Items = box.MediaItemLinks
                     .Select(link => new ArchiveRelocationItemSummary
                     {
                         MediaItemId = link.YearlyArchiveRegisterMediaItemId,
                         FormNo = link.MediaItem?.MediaEntry?.RegisterRecord?.FormNo?.Trim() ?? string.Empty,
+                        Year = box.Year?.Trim() ?? string.Empty,
+                        ProjectName = box.ProjectName?.Trim() ?? string.Empty,
+                        MaterialName = link.MediaItem?.MediaEntry?.RegisterRecord?.MaterialName?.Trim() ?? string.Empty,
                         ItemName = link.MediaItem?.ContentDesc?.Trim() ?? string.Empty
                     })
                     .ToList()
@@ -478,6 +493,11 @@ namespace DocMgr.Services.YearlyArchive
                     {
                         MediaItemId = link.YearlyArchiveRegisterMediaItemId,
                         FormNo = link.FormNo?.Trim() ?? link.MediaItem?.MediaEntry?.RegisterRecord?.FormNo?.Trim() ?? string.Empty,
+                        Year = unit.Year?.Trim() ?? string.Empty,
+                        ProjectName = unit.ProjectName?.Trim() ?? string.Empty,
+                        MaterialName = link.MaterialName?.Trim()
+                            ?? link.MediaItem?.MediaEntry?.RegisterRecord?.MaterialName?.Trim()
+                            ?? string.Empty,
                         ItemName = link.ItemName?.Trim() ?? link.MediaItem?.ContentDesc?.Trim() ?? string.Empty
                     })
                     .ToList()
@@ -635,22 +655,39 @@ namespace DocMgr.Services.YearlyArchive
             }
         }
 
+        /// <summary>
+        /// 解析迁入空白介质后的最终存放位置。
+        /// <paramref name="forNewElectronicUnit"/> 为 false（换盘）：同档口时保留源袋原编号；
+        /// 为 true（备份新建袋）：即使同档口也分配新的档内序号，避免与原件共用完整物理位置编号。
+        /// </summary>
         private async Task<string> ResolveMoveToEmptyFinalStorageLocationAsync(
             YearlyElectronicArchiveUnit source,
-            string requestedLocation)
+            string requestedLocation,
+            bool forNewElectronicUnit = false)
         {
             string sourceLocation = source.StorageLocation?.Trim() ?? string.Empty;
             requestedLocation = requestedLocation?.Trim() ?? string.Empty;
 
-            if (string.IsNullOrWhiteSpace(requestedLocation)
-                || string.Equals(requestedLocation, sourceLocation, StringComparison.OrdinalIgnoreCase)
-                || ArchiveSlotLocationSupport.IsSameSlot(sourceLocation, requestedLocation))
+            if (!forNewElectronicUnit)
             {
-                return sourceLocation;
+                if (string.IsNullOrWhiteSpace(requestedLocation)
+                    || string.Equals(requestedLocation, sourceLocation, StringComparison.OrdinalIgnoreCase)
+                    || ArchiveSlotLocationSupport.IsSameSlot(sourceLocation, requestedLocation))
+                {
+                    return sourceLocation;
+                }
+            }
+
+            string locationToParse = string.IsNullOrWhiteSpace(requestedLocation)
+                ? sourceLocation
+                : requestedLocation;
+            if (string.IsNullOrWhiteSpace(locationToParse))
+            {
+                throw new InvalidOperationException("请完整选择新的存放档口。");
             }
 
             if (!ArchiveSlotLocationSupport.TryParseSlotLocation(
-                    requestedLocation,
+                    locationToParse,
                     out string cabinetName,
                     out string side,
                     out int row,
@@ -661,10 +698,12 @@ namespace DocMgr.Services.YearlyArchive
 
             string slotCode = ArchiveSlotLocationSupport.BuildSlotKey(cabinetName, side, row, column);
             string slotPrefix = slotCode + "-";
+            // 新建袋时原件仍占用原序号，不得从占用集中排除源袋。
+            int? excludeUnitId = forNewElectronicUnit ? null : source.Id;
             var occupiedIndexes = await _filingRepository.GetElectronicUnitSequenceIndexesInSlotAsync(
                 slotCode,
                 slotPrefix,
-                source.Id);
+                excludeUnitId);
             int minSequence = ArchiveSlotLocationSupport.ResolveMinimumAvailableSequence(occupiedIndexes);
             return ArchiveSlotLocationSupport.BuildFullElectronicLocation(cabinetName, side, row, column, minSequence);
         }
@@ -675,7 +714,8 @@ namespace DocMgr.Services.YearlyArchive
             string newMediumCode,
             DateTime updatedAt,
             string remark,
-            List<YearlyArchiveRelocationItem> relocationItems)
+            List<YearlyArchiveRelocationItem> relocationItems,
+            string? storageCarrierType = null)
         {
             var facts = await _relocationRepository.GetFilingFactsByContainerAsync(
                 ArchiveRegisterDomainValues.MediaKindElectronic,
@@ -709,6 +749,11 @@ namespace DocMgr.Services.YearlyArchive
                 if (!string.IsNullOrWhiteSpace(newMediumCode))
                 {
                     fact.MediumCode = newMediumCode;
+                }
+
+                if (!string.IsNullOrWhiteSpace(storageCarrierType))
+                {
+                    fact.StorageCarrierType = storageCarrierType.Trim();
                 }
 
                 fact.LifecycleUpdatedAt = updatedAt;
@@ -796,6 +841,131 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// 并入同项目硬盘：目标袋不得已含拟并入资料（同介质明细、同表单号+子项名、或已是源件的备份副本），避免同一资料二次写入。
+        /// </summary>
+        private async Task<string?> ValidateElectronicMergeNoDuplicateMaterialsAsync(
+            YearlyElectronicArchiveUnit source,
+            YearlyElectronicArchiveUnit target)
+        {
+            var targetMediaItemIds = target.MediaItemLinks
+                .Select(link => link.YearlyArchiveRegisterMediaItemId)
+                .Where(id => id > 0)
+                .ToHashSet();
+            var targetNameKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var link in target.MediaItemLinks)
+            {
+                string? key = BuildElectronicMergeMaterialKey(link.FormNo, link.ItemName);
+                if (key != null)
+                {
+                    targetNameKeys.Add(key);
+                }
+            }
+
+            var conflictLabels = new List<string>();
+            foreach (var link in source.MediaItemLinks)
+            {
+                bool mediaItemConflict = link.YearlyArchiveRegisterMediaItemId > 0
+                    && targetMediaItemIds.Contains(link.YearlyArchiveRegisterMediaItemId);
+                string? nameKey = BuildElectronicMergeMaterialKey(link.FormNo, link.ItemName);
+                bool nameConflict = nameKey != null && targetNameKeys.Contains(nameKey);
+                if (!mediaItemConflict && !nameConflict)
+                {
+                    continue;
+                }
+
+                conflictLabels.Add(FormatElectronicMergeConflictLabel(link));
+            }
+
+            var sourceLinkIds = source.MediaItemLinks
+                .Select(link => link.Id)
+                .Where(id => id > 0)
+                .ToList();
+            if (sourceLinkIds.Count > 0)
+            {
+                var sourceFacts = await _relocationRepository.GetFilingFactsBySourceLinksAsync(
+                    FilingFactSourceLinkType.ElectronicMediaItemLink,
+                    sourceLinkIds);
+                var sourceFactIds = sourceFacts
+                    .Select(fact => fact.Id)
+                    .Where(id => id > 0)
+                    .ToHashSet();
+                if (sourceFactIds.Count > 0)
+                {
+                    var targetFacts = await _relocationRepository.GetFilingFactsByContainerAsync(
+                        ArchiveRegisterDomainValues.MediaKindElectronic,
+                        target.Id);
+                    foreach (var targetFact in targetFacts)
+                    {
+                        if (targetFact.PrimaryFilingFactId is not int primaryId
+                            || primaryId <= 0
+                            || !sourceFactIds.Contains(primaryId))
+                        {
+                            continue;
+                        }
+
+                        conflictLabels.Add(FormatElectronicMergeConflictLabel(
+                            targetFact.FormNo,
+                            targetFact.ItemName));
+                    }
+                }
+            }
+
+            if (conflictLabels.Count == 0)
+            {
+                return null;
+            }
+
+            var distinct = conflictLabels
+                .Where(label => !string.IsNullOrWhiteSpace(label))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            string sample = string.Join("、", distinct.Take(5));
+            if (distinct.Count > 5)
+            {
+                sample += $" 等共 {distinct.Count} 项";
+            }
+
+            return $"目标硬盘袋 [{target.ElectronicArchiveNo}] 已包含拟并入的资料，不能重复写入：{sample}。";
+        }
+
+        private static string? BuildElectronicMergeMaterialKey(string? formNo, string? itemName)
+        {
+            string form = formNo?.Trim() ?? string.Empty;
+            string item = itemName?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(form) && string.IsNullOrWhiteSpace(item))
+            {
+                return null;
+            }
+
+            return $"{form}\u001f{item}";
+        }
+
+        private static string FormatElectronicMergeConflictLabel(YearlyElectronicArchiveUnitMediaItemLink link)
+            => FormatElectronicMergeConflictLabel(link.FormNo, link.ItemName);
+
+        private static string FormatElectronicMergeConflictLabel(string? formNo, string? itemName)
+        {
+            string form = formNo?.Trim() ?? string.Empty;
+            string item = itemName?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(form) && !string.IsNullOrWhiteSpace(item))
+            {
+                return $"{form}/{item}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(item))
+            {
+                return item;
+            }
+
+            if (!string.IsNullOrWhiteSpace(form))
+            {
+                return form;
+            }
+
+            return "未命名子项";
         }
 
         private void SyncLinkedHardDiskLedgerStorageLocation(

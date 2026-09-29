@@ -31,13 +31,13 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0">
-                <TextBlock Text="登录账号 *" Foreground="#666" Margin="0,0,0,5"/>
+                <TextBlock Text="登录账号 *：" Foreground="#666" Margin="0,0,0,5"/>
                 <TextBox Padding="5,0"
                          Text="{Binding LoginName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
             </StackPanel>
 
             <StackPanel Grid.Column="2">
-                <TextBlock Text="真实姓名 *" Foreground="#666" Margin="0,0,0,5"/>
+                <TextBlock Text="真实姓名 *：" Foreground="#666" Margin="0,0,0,5"/>
                 <TextBox Padding="5,0"
                          Text="{Binding RealName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
             </StackPanel>
@@ -51,7 +51,7 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0">
-                <TextBlock Text="所属部门" Foreground="#666" Margin="0,0,0,5"/>
+                <TextBlock Text="所属部门：" Foreground="#666" Margin="0,0,0,5"/>
                 <ComboBox Padding="5,0"
                           ItemsSource="{Binding DepartmentOptions}"
                           SelectedItem="{Binding SelectedDepartment, Mode=TwoWay}"
@@ -59,7 +59,7 @@
             </StackPanel>
 
             <StackPanel Grid.Column="2">
-                <TextBlock Text="用户角色" Foreground="#666" Margin="0,0,0,5"/>
+                <TextBlock Text="用户角色：" Foreground="#666" Margin="0,0,0,5"/>
                 <ComboBox Padding="5,0"
                           ItemsSource="{Binding RoleOptions}"
                           SelectedItem="{Binding SelectedRole, Mode=TwoWay}"
@@ -68,7 +68,7 @@
         </Grid>
 
         <StackPanel Grid.Row="3" Margin="0,0,0,25">
-            <TextBlock Text="登录密码" Foreground="#666" Margin="0,0,0,5"/>
+            <TextBlock Text="登录密码：" Foreground="#666" Margin="0,0,0,5"/>
             <PasswordBox x:Name="PwdBox" Padding="5,0" PasswordChanged="PwdBox_PasswordChanged"/>
             <TextBlock Text="确认密码" Foreground="#666" Margin="0,8,0,5"/>
             <PasswordBox x:Name="PwdConfirmBox" Padding="5,0" PasswordChanged="PwdConfirmBox_PasswordChanged"/>

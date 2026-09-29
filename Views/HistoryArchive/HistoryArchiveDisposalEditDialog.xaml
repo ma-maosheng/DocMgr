@@ -17,21 +17,6 @@
         <ResourceDictionary Source="../YearlyArchive/ArchiveRegisterResources.xaml"/>
       </ResourceDictionary.MergedDictionaries>
       <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-
-      <Style x:Key="DisposalSectionTitleStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="#1E293B"/>
-        <Setter Property="Margin" Value="0,0,0,8"/>
-      </Style>
-      <Style x:Key="DisposalCardBorderStyle" TargetType="Border">
-        <Setter Property="Background" Value="White"/>
-        <Setter Property="BorderBrush" Value="#E0E0E0"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="4"/>
-        <Setter Property="Padding" Value="12"/>
-        <Setter Property="Margin" Value="0,0,0,10"/>
-      </Style>
     </ResourceDictionary>
   </Window.Resources>
 
@@ -39,10 +24,9 @@
                                              ShellKind="{x:Static models:ApprovalWorkflowShellKind.DisposalUnlockUpload}">
     <viewShared:ApprovalHandoverWorkspaceShell.HeaderContent>
       <StackPanel>
-        <!-- 基本信息：横排标签 + 统一标签列宽，与盘库登记/其他离库处置对齐 -->
-        <Border Style="{StaticResource DisposalCardBorderStyle}" Margin="0,0,0,10">
+        <!-- 1. 基本信息：横排标签 + 统一标签列宽，与盘库登记/其他离库处置对齐 -->
+        <GroupBox Header="1. 基本信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10" Margin="0,0,0,10">
           <StackPanel>
-            <TextBlock Text="基本信息" Style="{StaticResource DisposalSectionTitleStyle}"/>
             <Grid Margin="0,0,0,6">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
@@ -148,7 +132,7 @@
                        IsEnabled="{Binding CanEditHeader}"/>
             </Grid>
           </StackPanel>
-        </Border>
+        </GroupBox>
 
         <GroupBox Header="2. 处置明细" Style="{StaticResource Level1GroupBoxStyle}" Padding="10" Margin="0">
           <StackPanel>

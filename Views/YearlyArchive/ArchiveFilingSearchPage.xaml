@@ -11,7 +11,8 @@
     <Page.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <viewShared:InverseBoolToVisConverter x:Key="InverseBoolToVisConverter"/>
-        <Style x:Key="SearchFieldLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource FormFieldCaptionStyle}">
+        <!-- 横排检索字段：标签/值同底边距，避免同行上下错位 -->
+        <Style x:Key="SearchFieldLabelStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#666"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -264,12 +265,12 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
-                        <TextBlock Text="年份:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock Text="年份：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <ComboBox Width="100" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding Years}" SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="15,0,16,0">
-                        <TextBlock Text="项目:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock Text="项目：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <ComboBox Width="220" Style="{StaticResource ToolbarFilterComboBoxStyle}" VerticalContentAlignment="Center"
                                   ItemsSource="{Binding ProjectOptions}"
                                   DisplayMemberPath="Name"
@@ -277,7 +278,7 @@
                                   SelectedValue="{Binding SelectedProjectId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,16,0">
-                        <TextBlock Text="关键词:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock Text="关键词：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <TextBox Width="180" Style="{StaticResource SearchTextBoxStyle}" Text="{Binding RegisterKeyword, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="表单号、资料名称、子项名称、提供单位等"/>
                     </StackPanel>
@@ -285,7 +286,7 @@
 
                     <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="0,0,16,0"
                             Visibility="{Binding IsElectronicSearch, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock Text="条目类型:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock Text="条目类型：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <ComboBox Width="100"
                               Style="{StaticResource ToolbarFilterComboBoxStyle}"
                               ItemsSource="{Binding ContentEntryKindOptions}"
@@ -296,13 +297,13 @@
 
                     <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="0,0,16,0"
                                 Visibility="{Binding IsElectronicSearch, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock Text="目录/文件名称:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock Text="目录/文件名称：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <TextBox Width="160" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding ContentEntryKeyword, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="按目录/文件名称检索。支持通配符：* 任意字符，? 单字符；不含通配符时为包含匹配；\ 可转义 * ?"/>
                     </StackPanel>
                     <StackPanel Grid.Column="5" Orientation="Horizontal">
-                        <TextBlock Text="状态:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock Text="状态：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                         <ComboBox Width="110" Style="{StaticResource ToolbarFilterComboBoxStyle}" ItemsSource="{Binding LifecycleStatusOptions}"
                                   DisplayMemberPath="Label" SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedLifecycleStatus}"/>
@@ -540,9 +541,9 @@
         <Border Grid.Row="5" Style="{StaticResource ToolbarCardBorderStyle}" Padding="10,8">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <TextBlock Text="结果集名称:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <TextBlock Text="结果集名称：" VerticalAlignment="Center" Margin="0,0,0,0"/>
                     <TextBox Width="180" Style="{StaticResource SearchTextBoxStyle}" Text="{Binding ResultSetName, UpdateSourceTrigger=PropertyChanged}"/>
-                    <TextBlock Text="备注:" VerticalAlignment="Center" Margin="16,0,5,0"/>
+                    <TextBlock Text="备注：" VerticalAlignment="Center" Margin="16,0,0,0"/>
                     <TextBox Width="160" Style="{StaticResource SearchTextBoxStyle}" Text="{Binding ResultSetRemarks, UpdateSourceTrigger=PropertyChanged}"/>
                     <Button Content="保存筛选池为结果集" Margin="16,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding SaveResultSetCommand}"/>
                 </StackPanel>

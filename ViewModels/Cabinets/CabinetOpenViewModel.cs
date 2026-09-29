@@ -247,11 +247,13 @@ namespace DocMgr.ViewModels.Cabinets
         public Visibility CabinetMaintainActionVisibility =>
             CanMaintainCabinet ? Visibility.Visible : Visibility.Collapsed;
 
-        public Visibility MagneticDiskLegendVisibility => Request.CabinetType == CabinetType.MagneticDisk && !IsSingleSlotSnapshot
+        /// <summary>防磁磁盘柜开柜标识图例（非单格快照时可见）。</summary>
+        public Visibility MagneticDiskLegendVisibility => IsMagneticDiskCabinet && !IsSingleSlotSnapshot
             ? Visibility.Visible
             : Visibility.Collapsed;
 
-        public Visibility ArchiveBoxLegendVisibility => Request.CabinetType != CabinetType.MagneticDisk && !IsSingleSlotSnapshot
+        /// <summary>模拟介质档案柜（标准滑道式）开柜标识图例（非单格快照时可见）。</summary>
+        public Visibility ArchiveBoxLegendVisibility => IsStandardSlidingCabinet && !IsSingleSlotSnapshot
             ? Visibility.Visible
             : Visibility.Collapsed;
 

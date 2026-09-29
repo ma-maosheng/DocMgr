@@ -88,7 +88,14 @@
                         <DataGridTextColumn Header="序号" Binding="{Binding SequenceDisplay}" Width="56"/>
                         <DataGridTextColumn Header="编码" Binding="{Binding DiskCodeText}" Width="120"/>
                         <DataGridTextColumn Header="容量" Binding="{Binding CapacityText}" Width="90"/>
-                        <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="90"/>
+                        <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="90">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{Binding StatusTextForeground, FallbackValue=#64748B}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                         <DataGridTextColumn Header="当前位置" Binding="{Binding CurrentLocationText}" Width="140"/>
                         <DataGridTextColumn Header="袋号" Binding="{Binding ElectronicArchiveNoText}" Width="110"/>
                         <DataGridTextColumn Header="袋位" Binding="{Binding ElectronicArchiveLocationText}" Width="120"/>

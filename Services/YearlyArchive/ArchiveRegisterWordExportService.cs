@@ -65,7 +65,6 @@ namespace DocMgr.Services.YearlyArchive
             AddDoubleRow(table, ref rowIndex, "申请人", data.Applicant, "申请部门", data.Dept, WordTableRowStyle.SingleLine);
             AddSingleRow(table, ref rowIndex, "资料名称", data.MaterialName, WordTableRowStyle.SingleLine);
             AddDoubleRow(table, ref rowIndex, "所属项目", data.ProjectName, "资料来源", data.SourceType, WordTableRowStyle.SingleLine);
-            AddSingleRow(table, ref rowIndex, "提供单位", data.ProvideUnit, WordTableRowStyle.SingleLine);
 
             string contentText = data.ItemLines.Count > 0 ? string.Join("\n", data.ItemLines) : "(无)";
             bool hasRetainedHardDisk = !string.IsNullOrWhiteSpace(data.RetainedHardDiskRegistration);
@@ -267,7 +266,7 @@ namespace DocMgr.Services.YearlyArchive
         {
             // 与 FlowDocument 登记单一致：固定行外高 + 表后 4 行说明同页。
             int fixedTableHeight =
-                PrintPageLayoutSupport.GetTableRowOuterHeightTwips(SingleRowHeightTwips, CellMarginDxa) * 9
+                PrintPageLayoutSupport.GetTableRowOuterHeightTwips(SingleRowHeightTwips, CellMarginDxa) * 8
                 + PrintPageLayoutSupport.GetTableRowOuterHeightTwips(SignatureBlockRowHeightTwips, CellMarginDxa) * 2;
             if (hasRetainedHardDisk)
             {

@@ -75,7 +75,7 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="面数" FontSize="12" Foreground="#666"/>
+                            <TextBlock Text="面数：" FontSize="12" Foreground="#666"/>
                             <TextBlock Text="{Binding FaceCount}"
                                        FontSize="16"
                                        FontWeight="Bold"
@@ -84,7 +84,7 @@
                         </StackPanel>
 
                         <StackPanel Grid.Column="1">
-                            <TextBlock Text="层数" FontSize="12" Foreground="#666"/>
+                            <TextBlock Text="层数：" FontSize="12" Foreground="#666"/>
                             <TextBlock Text="{Binding LayerCount}"
                                        FontSize="16"
                                        FontWeight="Bold"
@@ -93,7 +93,7 @@
                         </StackPanel>
 
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="格数(列)" FontSize="12" Foreground="#666"/>
+                            <TextBlock Text="格数(列)：" FontSize="12" Foreground="#666"/>
                             <TextBlock Text="{Binding ColumnCount}"
                                        FontSize="16"
                                        FontWeight="Bold"
@@ -103,7 +103,7 @@
                     </Grid>
 
                     <StackPanel Visibility="{Binding MagneticSpecificationVisibility}">
-                        <TextBlock Text="门数" FontSize="12" Foreground="#666"/>
+                        <TextBlock Text="门数：" FontSize="12" Foreground="#666"/>
                         <ComboBox Margin="0,6,0,12"
                                   Height="32"
                                   VerticalContentAlignment="Center"
@@ -112,14 +112,14 @@
                                   SelectedValuePath="Key"
                                   SelectedValue="{Binding SelectedMagneticDoorCount, Mode=TwoWay}"/>
 
-                        <TextBlock Text="抽屉层数" FontSize="12" Foreground="#666"/>
+                        <TextBlock Text="抽屉层数：" FontSize="12" Foreground="#666"/>
                         <ComboBox Margin="0,6,0,12"
                                   Height="32"
                                   VerticalContentAlignment="Center"
                                   ItemsSource="{Binding DrawerCountOptions}"
                                   SelectedItem="{Binding SelectedMagneticDrawerCount, Mode=TwoWay}"/>
 
-                        <TextBlock Text="每层格数" FontSize="12" Foreground="#666"/>
+                        <TextBlock Text="每层格数：" FontSize="12" Foreground="#666"/>
                         <ComboBox Margin="0,6,0,12"
                                   Height="32"
                                   VerticalContentAlignment="Center"
@@ -134,7 +134,7 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0">
-                                <TextBlock Text="硬盘档口最大容量（块/格）" FontSize="12" Foreground="#666"/>
+                                <TextBlock Text="硬盘档口最大容量（块/格）：" FontSize="12" Foreground="#666"/>
                                 <TextBox Margin="0,6,0,0"
                                          Height="32"
                                          Padding="5,0"
@@ -143,7 +143,7 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="光盘档口最大容量（张/格）" FontSize="12" Foreground="#666"/>
+                                <TextBlock Text="光盘档口最大容量（张/格）：" FontSize="12" Foreground="#666"/>
                                 <TextBox Margin="0,6,0,0"
                                          Height="32"
                                          Padding="5,0"
@@ -166,7 +166,7 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0">
-                                <TextBlock Text="面数" FontSize="12" Foreground="#666"/>
+                                <TextBlock Text="面数：" FontSize="12" Foreground="#666"/>
                                 <TextBlock Text="{Binding FaceCount}"
                                            FontSize="16"
                                            FontWeight="Bold"
@@ -175,7 +175,7 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="1">
-                                <TextBlock Text="层数" FontSize="12" Foreground="#666"/>
+                                <TextBlock Text="层数：" FontSize="12" Foreground="#666"/>
                                 <TextBlock Text="{Binding LayerCount}"
                                            FontSize="16"
                                            FontWeight="Bold"
@@ -184,7 +184,7 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="格数(列)" FontSize="12" Foreground="#666"/>
+                                <TextBlock Text="格数(列)：" FontSize="12" Foreground="#666"/>
                                 <TextBlock Text="{Binding ColumnCount}"
                                            FontSize="16"
                                            FontWeight="Bold"
@@ -206,7 +206,7 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                <TextBlock Text="宽 (cm)" FontSize="12" Foreground="#666"/>
+                                <TextBlock Text="宽 (cm)：" FontSize="12" Foreground="#666"/>
                                 <TextBox Margin="0,6,0,0"
                                          Height="32"
                                          Padding="5,0"
@@ -215,7 +215,7 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="1" Margin="4,0">
-                                <TextBlock Text="高 (cm)" FontSize="12" Foreground="#666"/>
+                                <TextBlock Text="高 (cm)：" FontSize="12" Foreground="#666"/>
                                 <TextBox Margin="0,6,0,0"
                                          Height="32"
                                          Padding="5,0"
@@ -224,7 +224,7 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="2" Margin="8,0,0,0">
-                                <TextBlock Text="深 (cm)" FontSize="12" Foreground="#666"/>
+                                <TextBlock Text="深 (cm)：" FontSize="12" Foreground="#666"/>
                                 <TextBox Margin="0,6,0,0"
                                          Height="32"
                                          Padding="5,0"

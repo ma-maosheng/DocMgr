@@ -31,13 +31,20 @@ namespace DocMgr.Services.YearlyArchive
                     return Blocked("新位置与当前位置相同，无需迁移。");
                 }
 
+                if (request.MoveContentsToNewEmptyBox
+                    && string.IsNullOrWhiteSpace(request.NewBoxSpecification))
+                {
+                    return Blocked("迁入空盒模式下，请选择新档案盒规格。");
+                }
+
+                string? slotIssue = await ValidateSimulatedRelocationTargetSlotAsync(source, request);
+                if (!string.IsNullOrWhiteSpace(slotIssue))
+                {
+                    return Blocked(slotIssue);
+                }
+
                 if (request.MoveContentsToNewEmptyBox)
                 {
-                    if (string.IsNullOrWhiteSpace(request.NewBoxSpecification))
-                    {
-                        return Blocked("迁入空盒模式下，请选择新档案盒规格。");
-                    }
-
                     return Ready(
                         $"【物理位置迁移·迁入空盒】将档案盒 [{source.ArchiveSequenceNo}] 内 {source.MediaItemLinks.Count} 条资料子项迁至新档口 [{request.NewStorageLocation.Trim()}] 的新建空盒（规格：{request.NewBoxSpecification.Trim()}），源档案盒将从柜内销号。",
                         source.MediaItemLinks.Count);
@@ -92,6 +99,12 @@ namespace DocMgr.Services.YearlyArchive
             SimulatedRelocationRequest request,
             DateTime operatedAt)
         {
+            string? slotIssue = await ValidateSimulatedRelocationTargetSlotAsync(source, request);
+            if (!string.IsNullOrWhiteSpace(slotIssue))
+            {
+                throw new InvalidOperationException(slotIssue);
+            }
+
             if (request.MoveContentsToNewEmptyBox)
             {
                 return await ExecuteSimulatedPhysicalMoveToNewEmptyBoxAsync(source, request, operatedAt);

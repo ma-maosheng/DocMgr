@@ -24,7 +24,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="介质：" VerticalAlignment="Center"/>
                 <TextBox Grid.Column="1" Text="电子" Height="26" Margin="2,0" VerticalContentAlignment="Center" IsReadOnly="True" Background="#F5F5F5"/>
-                <TextBlock Grid.Column="2" Text="类型：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                <TextBlock Grid.Column="2" Text="类型：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,0,0"/>
                 <ComboBox Grid.Column="3" Margin="2,0" VerticalContentAlignment="Center"
                           ItemsSource="{Binding DataElectronicMediaTypeOptions}"
                           SelectedItem="{Binding SelectedElectronicMediaType}">
@@ -52,9 +52,9 @@
                         </Style>
                     </TextBox.Style>
                 </TextBox>
-                <TextBlock Grid.Column="4" Text="数量：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                <TextBlock Grid.Column="4" Text="数量：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,0,0"/>
                 <TextBox Grid.Column="5" Text="{Binding DataElectronicMediaCount, Mode=OneWay}" Height="26" Margin="2,0" VerticalContentAlignment="Center" IsReadOnly="True" Background="#F5F5F5"/>
-                <TextBlock Grid.Column="6" Text="处置：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0">
+                <TextBlock Grid.Column="6" Text="处置：" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,0,0">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
                             <Setter Property="Visibility" Value="Visible"/>

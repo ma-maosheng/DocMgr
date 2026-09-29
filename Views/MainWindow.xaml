@@ -614,7 +614,7 @@
                                 <Expander x:Name="ExpOpticalDiscSection" Header="光盘" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
                                         <Button x:Name="BtnOpticalDiscOverview" Content="概览" Style="{StaticResource SubSubNavButton}" Click="BtnOpticalDiscOverview_Click"/>
-                                        <Button x:Name="BtnOpticalDiscLedger" Content="流转台账" Style="{StaticResource SubSubNavButton}" Click="BtnOpticalDiscLedger_Click"/>
+                                        <Button x:Name="BtnOpticalDiscLedger" Content="光盘台账" Style="{StaticResource SubSubNavButton}" Click="BtnOpticalDiscLedger_Click"/>
                                     </StackPanel>
                                 </Expander>
                             </StackPanel>
@@ -877,7 +877,7 @@
                             <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,0,10" Padding="14">
                                 <StackPanel>
                                     <TextBlock Text="介质管理" Style="{StaticResource HomeModuleTitleStyle}"/>
-                                    <TextBlock Text="硬盘：登记、出库、归还、盘库、离库与台账。光盘：概览与流转台账。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
+                                    <TextBlock Text="硬盘：登记、出库、归还、盘库、离库与台账。光盘：概览与光盘台账。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
                                 </StackPanel>
                             </Border>
                         </UniformGrid>

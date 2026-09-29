@@ -1,3 +1,4 @@
+using DocMgr.Models.Cabinets;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
@@ -7,13 +8,16 @@ using System.Linq;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
-    public sealed class ArchiveSimulatedRelocationViewModel : ViewModelBase
+    public sealed partial class ArchiveSimulatedRelocationViewModel : ViewModelBase
     {
         private readonly IArchiveRelocationService _relocationService;
         private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly IProjectService _projectService;
         private readonly IUserContextService _userContextService;
         private readonly IDialogService _dialogService;
+        private readonly ICabinetService _cabinetService;
+        private readonly IArchiveFilingService _filingService;
+        private readonly List<Cabinet> _archiveCabinets = new();
 
         private ArchiveRelocationContainerSummary? _sourceSummary;
         private string _selectedRelocationMode = ArchiveRelocationMode.PhysicalMove;
@@ -22,12 +26,15 @@ namespace DocMgr.ViewModels.YearlyArchive
         private ArchiveRelocationSourceOption? _selectedSourceOption;
         private string _remarks = string.Empty;
         private string _previewText = string.Empty;
+        private bool _hasExecutablePreview;
         private ArchiveRelocationTargetOption? _selectedTarget;
         private ArchiveRelocationContainerSummary? _targetSummary;
         private bool _moveContentsToNewEmptyBox;
         private string _selectedNewBoxSpecification = "标准(5cm)";
         private bool _isBusy;
         private bool _isInitialized;
+        private string _relocationNo = "待编单";
+        private string _statusDisplay = "待办理";
 
         public ArchiveSimulatedRelocationViewModel(
             IArchiveRelocationService relocationService,
@@ -43,16 +50,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             _projectService = projectService;
             _userContextService = userContextService;
             _dialogService = dialogService;
-            TargetLocation = new RelocationPhysicalLocationSelectionModel(
-                RelocationPhysicalLocationKind.SimulatedArchiveBox,
-                cabinetService,
-                filingService,
-                dialogService);
+            _cabinetService = cabinetService;
+            _filingService = filingService;
 
             RelocationModes =
             [
-                new RelocationModeOption("物理位置迁移", ArchiveRelocationMode.PhysicalMove),
-                new RelocationModeOption("并入已有档案盒", ArchiveRelocationMode.MergeToExisting)
+                new RelocationModeOption("迁入其他档口", ArchiveRelocationMode.PhysicalMove),
+                new RelocationModeOption("并入同项目档案盒", ArchiveRelocationMode.MergeToExisting)
             ];
 
             Items = new ObservableCollection<ArchiveRelocationItemSummary>();
@@ -67,13 +71,50 @@ namespace DocMgr.ViewModels.YearlyArchive
             BoxSpecifications = new ObservableCollection<string> { "标准(10cm)", "标准(5cm)", "标准(3cm)", "标准(2cm)", "非标(10cm)" };
 
             RefreshTargetsCommand = new RelayCommand(async _ => await RefreshTargetsAsync(), _ => !IsBusy && SourceSummary != null && IsContainerMode);
+            RecommendTargetSlotCommand = new RelayCommand(
+                async _ => await RecommendTargetSlotAsync(),
+                _ => CanRecommendTargetSlot);
+            ShowTargetSlotSnapshotCommand = new RelayCommand(
+                _ => ShowTargetSlotSnapshot(),
+                _ => CanShowTargetSlotSnapshot);
             PreviewCommand = new RelayCommand(async _ => await PreviewAsync(), _ => !IsBusy && IsArchiveAdmin && SourceSummary != null);
-            ExecuteCommand = new RelayCommand(async _ => await ExecuteAsync(), _ => !IsBusy && IsArchiveAdmin && SourceSummary != null && !string.IsNullOrWhiteSpace(PreviewText));
+            ExecuteCommand = new RelayCommand(
+                async _ => await ExecuteAsync(),
+                _ => !IsBusy && IsArchiveAdmin && SourceSummary != null && HasExecutablePreview);
         }
 
-        public string PageTitle => "模拟介质资料迁档";
+        /// <summary>页眉标题（流程名 · 迁档编号 · 状态），对齐资料立档编辑窗。</summary>
+        public string PageTitle => $"模拟介质资料迁档 · {RelocationNo} · {StatusDisplay}";
 
-        public RelocationPhysicalLocationSelectionModel TargetLocation { get; }
+        /// <summary>页眉说明文案。</summary>
+        public string PageSubtitle =>
+            "请选择迁档对象与目标，预览确认后执行。迁档无需审批，提交后立即生效；单号在执行时正式落库。";
+
+        /// <summary>当前展示的迁档编号（待办理为预览下一号；已完成为实发单号）。</summary>
+        public string RelocationNo
+        {
+            get => _relocationNo;
+            private set
+            {
+                if (SetProperty(ref _relocationNo, value))
+                {
+                    OnPropertyChanged(nameof(PageTitle));
+                }
+            }
+        }
+
+        /// <summary>迁档办理状态展示。</summary>
+        public string StatusDisplay
+        {
+            get => _statusDisplay;
+            private set
+            {
+                if (SetProperty(ref _statusDisplay, value))
+                {
+                    OnPropertyChanged(nameof(PageTitle));
+                }
+            }
+        }
 
         public ObservableCollection<string> Years { get; } = new();
 
@@ -93,6 +134,10 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public RelayCommand RefreshTargetsCommand { get; }
 
+        public RelayCommand RecommendTargetSlotCommand { get; }
+
+        public RelayCommand ShowTargetSlotSnapshotCommand { get; }
+
         public RelayCommand PreviewCommand { get; }
 
         public RelayCommand ExecuteCommand { get; }
@@ -102,6 +147,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool IsPhysicalMode => SelectedRelocationMode == ArchiveRelocationMode.PhysicalMove;
 
         public bool IsContainerMode => SelectedRelocationMode == ArchiveRelocationMode.MergeToExisting;
+
+        public bool ShowTargetSlotSelector => IsPhysicalMode;
 
         public bool ShowNewBoxSpecificationSelector => IsPhysicalMode && MoveContentsToNewEmptyBox;
 
@@ -113,7 +160,15 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (SetProperty(ref _moveContentsToNewEmptyBox, value))
                 {
                     OnPropertyChanged(nameof(ShowNewBoxSpecificationSelector));
+                    OnPropertyChanged(nameof(TargetSlotRecommendHintText));
+                    OnPropertyChanged(nameof(CanRecommendTargetSlot));
                     PreviewText = string.Empty;
+                    if (IsPhysicalMode && SourceSummary != null)
+                    {
+                        _ = ResetTargetSlotSelectionAsync();
+                    }
+
+                    RefreshDisplayItems();
                 }
             }
         }
@@ -121,7 +176,19 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string SelectedNewBoxSpecification
         {
             get => _selectedNewBoxSpecification;
-            set => SetProperty(ref _selectedNewBoxSpecification, value);
+            set
+            {
+                if (SetProperty(ref _selectedNewBoxSpecification, value))
+                {
+                    OnPropertyChanged(nameof(TargetSlotRecommendHintText));
+                    OnPropertyChanged(nameof(CanRecommendTargetSlot));
+                    PreviewText = string.Empty;
+                    if (MoveContentsToNewEmptyBox && IsPhysicalMode && SourceSummary != null)
+                    {
+                        _ = ResetTargetSlotSelectionAsync();
+                    }
+                }
+            }
         }
 
         public bool IsMergeMode => IsContainerMode;
@@ -153,7 +220,13 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool IsBusy
         {
             get => _isBusy;
-            private set => SetProperty(ref _isBusy, value);
+            private set
+            {
+                if (SetProperty(ref _isBusy, value))
+                {
+                    OnPropertyChanged(nameof(CanRecommendTargetSlot));
+                }
+            }
         }
 
         public string SelectedYear
@@ -208,15 +281,27 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     OnPropertyChanged(nameof(IsPhysicalMode));
                     OnPropertyChanged(nameof(IsContainerMode));
+                    OnPropertyChanged(nameof(ShowTargetSlotSelector));
                     OnPropertyChanged(nameof(SourceSummaryText));
                     OnPropertyChanged(nameof(ShowSourceCurrentLocation));
                     OnPropertyChanged(nameof(ItemsSectionHeader));
                     OnPropertyChanged(nameof(ShowItemsEmptyHint));
                     OnPropertyChanged(nameof(ShowNewBoxSpecificationSelector));
+                    OnPropertyChanged(nameof(TargetSlotRecommendHintText));
+                    OnPropertyChanged(nameof(CanRecommendTargetSlot));
+                    OnPropertyChanged(nameof(TargetSlotValidationMessage));
                     NotifyRelocationModeRadioProperties();
                     PreviewText = string.Empty;
                     _ = RefreshTargetsAsync();
                     RefreshDisplayItems();
+                    if (IsPhysicalMode && SourceSummary != null)
+                    {
+                        _ = ResetTargetSlotSelectionAsync();
+                    }
+                    else
+                    {
+                        ClearTargetSlotSelection();
+                    }
                 }
             }
         }
@@ -298,7 +383,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             : ArchiveRelocationSourceDescriptionBuilder.BuildItemsDescription(TargetSummary.Items);
 
         public string ItemsSectionHeader =>
-            IsMergeMode && HasSelectedTarget ? "资料清单（并档后）" : "资料清单";
+            IsMergeMode && HasSelectedTarget ? "4. 资料清单（并档后）" : "4. 资料清单";
 
         public bool ShowItemsEmptyHint =>
             IsMergeMode && SourceSummary != null && !HasSelectedTarget;
@@ -314,7 +399,25 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string PreviewText
         {
             get => _previewText;
-            private set => SetProperty(ref _previewText, value);
+            private set
+            {
+                if (!SetProperty(ref _previewText, value))
+                {
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    HasExecutablePreview = false;
+                }
+            }
+        }
+
+        /// <summary>最近一次预览是否可执行（失败/未预览时「确认迁档」不可用）。</summary>
+        public bool HasExecutablePreview
+        {
+            get => _hasExecutablePreview;
+            private set => SetProperty(ref _hasExecutablePreview, value);
         }
 
         public async Task InitializeAsync()
@@ -332,7 +435,37 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             await LoadYearsAsync();
-            await TargetLocation.LoadCabinetsAsync();
+            await LoadArchiveCabinetsAsync();
+            await RefreshPendingRelocationNoAsync();
+        }
+
+        private async Task RefreshPendingRelocationNoAsync()
+        {
+            try
+            {
+                RelocationNo = await _relocationService.PeekNextRelocationNoAsync(
+                    ArchiveRegisterDomainValues.MediaKindSimulated);
+                StatusDisplay = "待办理";
+            }
+            catch
+            {
+                RelocationNo = "待编单";
+                StatusDisplay = "待办理";
+            }
+        }
+
+        private async Task LoadArchiveCabinetsAsync()
+        {
+            try
+            {
+                var allCabinets = await _cabinetService.GetAllCabinetsAsync();
+                _archiveCabinets.Clear();
+                _archiveCabinets.AddRange(CabinetSelectionSupport.BuildSimulatedArchiveCabinetItems(allCabinets));
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"加载档案柜失败：{ex.Message}", "错误");
+            }
         }
 
         private async Task LoadYearsAsync()
@@ -438,11 +571,22 @@ namespace DocMgr.ViewModels.YearlyArchive
                 TargetSummary = null;
                 _selectedTarget = null;
                 OnPropertyChanged(nameof(SelectedTarget));
-                TargetLocation.CurrentSourceLocation = summary.StorageLocation;
-                TargetLocation.ResetTargetSelection();
                 PreviewText = string.Empty;
                 await RefreshTargetsAsync();
+                if (IsPhysicalMode)
+                {
+                    await ResetTargetSlotSelectionAsync();
+                }
+                else
+                {
+                    ClearTargetSlotSelection();
+                }
+
                 RefreshDisplayItems();
+                OnPropertyChanged(nameof(TargetSlotRecommendHintText));
+                OnPropertyChanged(nameof(CanRecommendTargetSlot));
+                OnPropertyChanged(nameof(IsTargetSameSlotAsSource));
+                OnPropertyChanged(nameof(TargetSlotValidationMessage));
             }
             catch (Exception ex)
             {
@@ -495,8 +639,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             TargetOptions.Clear();
             _selectedTarget = null;
             OnPropertyChanged(nameof(SelectedTarget));
-            TargetLocation.CurrentSourceLocation = string.Empty;
-            TargetLocation.ResetTargetSelection();
+            ClearTargetSlotSelection();
         }
 
         private string? ResolveSelectedProjectName()
@@ -546,6 +689,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            string sourceLocation = ArchiveRelocationItemContainerCodeSupport.NormalizeStorageLocation(
+                SourceSummary.StorageLocation);
+
             if (!IsMergeMode || TargetSummary == null)
             {
                 if (IsMergeMode)
@@ -554,7 +700,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
                 else
                 {
-                    ReplaceItems(Items, SourceSummary.Items);
+                    string afterLocation = ResolveSimulatedAfterStorageLocation();
+                    ReplaceItems(
+                        Items,
+                        SourceSummary.Items
+                            .Select(item => ArchiveRelocationItemContainerCodeSupport.WithStorageLocations(
+                                item, sourceLocation, afterLocation))
+                            .ToList());
                 }
 
                 OnPropertyChanged(nameof(ItemsSectionHeader));
@@ -562,15 +714,19 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            string targetLocation = ArchiveRelocationItemContainerCodeSupport.NormalizeStorageLocation(
+                TargetSummary.StorageLocation);
             var mergedItems = new Dictionary<int, ArchiveRelocationItemSummary>();
             foreach (var item in TargetSummary.Items)
             {
-                mergedItems[item.MediaItemId] = item;
+                mergedItems[item.MediaItemId] = ArchiveRelocationItemContainerCodeSupport.WithStorageLocations(
+                    item, targetLocation, targetLocation);
             }
 
             foreach (var item in SourceSummary.Items)
             {
-                mergedItems[item.MediaItemId] = item;
+                mergedItems[item.MediaItemId] = ArchiveRelocationItemContainerCodeSupport.WithStorageLocations(
+                    item, sourceLocation, targetLocation);
             }
 
             ReplaceItems(
@@ -581,6 +737,16 @@ namespace DocMgr.ViewModels.YearlyArchive
                     .ToList());
             OnPropertyChanged(nameof(ItemsSectionHeader));
             OnPropertyChanged(nameof(ShowItemsEmptyHint));
+        }
+
+        private string ResolveSimulatedAfterStorageLocation()
+        {
+            if (!IsPhysicalMode)
+            {
+                return ArchiveRelocationItemContainerCodeSupport.UnspecifiedStorageLocation;
+            }
+
+            return ArchiveRelocationItemContainerCodeSupport.NormalizeStorageLocation(TargetFullLocation);
         }
 
         private async Task PreviewAsync()
@@ -595,13 +761,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 IsBusy = true;
                 var preview = await _relocationService.PreviewSimulatedRelocationAsync(request);
-                PreviewText = preview.CanExecute
-                    ? preview.SummaryText
-                    : $"【不可执行】{preview.BlockReason}";
+                ApplyPreviewResult(preview);
             }
             catch (Exception ex)
             {
                 PreviewText = $"【预览失败】{ex.Message}";
+                HasExecutablePreview = false;
             }
             finally
             {
@@ -614,6 +779,35 @@ namespace DocMgr.ViewModels.YearlyArchive
             var request = BuildRequest();
             if (request == null)
             {
+                return;
+            }
+
+            ArchiveRelocationPreview preview;
+            try
+            {
+                IsBusy = true;
+                preview = await _relocationService.PreviewSimulatedRelocationAsync(request);
+                ApplyPreviewResult(preview);
+            }
+            catch (Exception ex)
+            {
+                PreviewText = $"【预览失败】{ex.Message}";
+                HasExecutablePreview = false;
+                _dialogService.ShowError(ex.Message, "迁档核验失败");
+                return;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+
+            if (!preview.CanExecute)
+            {
+                _dialogService.ShowMessage(
+                    string.IsNullOrWhiteSpace(preview.BlockReason)
+                        ? "当前迁档条件不可执行，请先修正后再确认。"
+                        : preview.BlockReason,
+                    "不可执行");
                 return;
             }
 
@@ -632,8 +826,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            int? previousSourceId = SelectedSourceOption?.ContainerId;
-
             try
             {
                 IsBusy = true;
@@ -641,13 +833,15 @@ namespace DocMgr.ViewModels.YearlyArchive
                 var result = await _relocationService.ExecuteSimulatedRelocationAsync(request);
                 if (result.Success)
                 {
-                    _dialogService.ShowMessage($"{result.Message}\n迁档单号：{result.RelocationNo}", "迁档完成");
-                    await ReloadSourceOptionsAsync();
-                    var restored = SourceOptions.FirstOrDefault(option => option.ContainerId == previousSourceId);
-                    if (restored != null)
-                    {
-                        SelectedSourceOption = restored;
-                    }
+                    string completedNo = string.IsNullOrWhiteSpace(result.RelocationNo)
+                        ? string.Empty
+                        : result.RelocationNo.Trim();
+                    _dialogService.ShowMessage(
+                        string.IsNullOrWhiteSpace(completedNo)
+                            ? result.Message
+                            : $"{result.Message}\n迁档单号：{completedNo}",
+                        "迁档完成");
+                    await ResetWorkbenchForNewBusinessAsync();
                 }
                 else
                 {
@@ -663,6 +857,71 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _dialogService.SetBusyState(false);
                 IsBusy = false;
             }
+        }
+
+        /// <summary>
+        /// 迁档办结后恢复为待办理新单：清空源/目标与预览，页眉回到待编单。
+        /// </summary>
+        private async Task ResetWorkbenchForNewBusinessAsync()
+        {
+            Remarks = string.Empty;
+            if (MoveContentsToNewEmptyBox)
+            {
+                MoveContentsToNewEmptyBox = false;
+            }
+
+            if (SelectedRelocationMode != ArchiveRelocationMode.PhysicalMove)
+            {
+                SelectedRelocationMode = ArchiveRelocationMode.PhysicalMove;
+            }
+
+            if (SelectedSourceOption != null)
+            {
+                SelectedSourceOption = null;
+            }
+            else
+            {
+                ClearSourceState();
+            }
+
+            await ReloadSourceOptionsKeepingSelectionClearedAsync();
+            await RefreshPendingRelocationNoAsync();
+        }
+
+        private async Task ReloadSourceOptionsKeepingSelectionClearedAsync()
+        {
+            string? projectName = ResolveSelectedProjectName();
+            SourceOptions.Clear();
+            if (string.IsNullOrWhiteSpace(projectName) || string.IsNullOrWhiteSpace(SelectedYear))
+            {
+                return;
+            }
+
+            try
+            {
+                var options = await _relocationService.GetSimulatedSourceOptionsAsync(projectName, SelectedYear);
+                foreach (var option in options)
+                {
+                    SourceOptions.Add(option);
+                }
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message, "加载源档案盒失败");
+            }
+        }
+
+        private void ApplyPreviewResult(ArchiveRelocationPreview preview)
+        {
+            if (preview.CanExecute)
+            {
+                PreviewText = preview.SummaryText;
+                HasExecutablePreview = true;
+                return;
+            }
+
+            PreviewText = $"【不可执行】{preview.BlockReason}";
+            HasExecutablePreview = false;
         }
 
         private SimulatedRelocationRequest? BuildRequest()
@@ -682,7 +941,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             if (IsPhysicalMode)
             {
-                if (!TargetLocation.TryApplyToSimulatedRequest(request, out string message))
+                if (!TryApplySelectedTargetLocation(request, out string message))
                 {
                     _dialogService.ShowMessage(message, "提示");
                     return null;

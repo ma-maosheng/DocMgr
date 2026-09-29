@@ -5,6 +5,7 @@ using DocMgr.Views.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Models.Shared;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Data;
@@ -82,7 +83,14 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string? SelectedProjectYear
         {
             get => _selectedProjectYear;
-            set { if (SetProperty(ref _selectedProjectYear, value)) LoadProjects(); }
+            set
+            {
+                if (SetProperty(ref _selectedProjectYear, value))
+                {
+                    LoadProjects();
+                    OnPropertyChanged(nameof(MaterialNameDisplay));
+                }
+            }
         }
 
         private ProjectInfo? _selectedProject;
@@ -98,8 +106,61 @@ namespace DocMgr.ViewModels.YearlyArchive
                         CurrentRecord.ProjectId = value.Id;
                         CurrentRecord.ProjectName = value.ProjectName;
                     }
+
+                    OnPropertyChanged(nameof(MaterialNameDisplay));
                 }
             }
+        }
+
+        /// <summary>资料名称只读展示：年度.项目.资料（库内 MaterialName 仍仅存「资料」段）。</summary>
+        public string MaterialNameDisplay
+        {
+            get
+            {
+                string year = ResolveMaterialNameYear();
+                string project = CurrentRecord?.ProjectName?.Trim() ?? string.Empty;
+                string material = CurrentRecord?.MaterialName?.Trim() ?? string.Empty;
+                return FormatMaterialNameDisplay(year, project, material);
+            }
+        }
+
+        private string ResolveMaterialNameYear()
+        {
+            string fromProject = SelectedProject?.ImplementYear?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(fromProject))
+            {
+                return fromProject;
+            }
+
+            string selected = SelectedProjectYear?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(selected)
+                && !string.Equals(selected, "全部", StringComparison.Ordinal))
+            {
+                return selected;
+            }
+
+            return string.Empty;
+        }
+
+        private static string FormatMaterialNameDisplay(string? year, string? project, string? material)
+        {
+            var parts = new List<string>(3);
+            if (!string.IsNullOrWhiteSpace(year))
+            {
+                parts.Add(year.Trim());
+            }
+
+            if (!string.IsNullOrWhiteSpace(project))
+            {
+                parts.Add(project.Trim());
+            }
+
+            if (!string.IsNullOrWhiteSpace(material))
+            {
+                parts.Add(material.Trim());
+            }
+
+            return parts.Count == 0 ? "—" : string.Join(".", parts);
         }
 
         /// <summary>是否为出网办结自动生成的建档草稿。</summary>
@@ -129,24 +190,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        /// <summary>提供单位聚合展示：唯一值直接显示，多个不同值以「、」连接（只读绑定用）。</summary>
-        public string ProvideUnitDisplay => AggregateItemSourceValues(item => item.ProvideUnit);
-
-        /// <summary>资料来源聚合展示：唯一值直接显示，多个不同值以「、」连接（只读绑定用）。</summary>
-        public string SourceTypeDisplay => AggregateItemSourceValues(item => item.SourceType);
-
-        private string AggregateItemSourceValues(Func<MediaItemViewModel, string?> selector)
-        {
-            var distinct = MediaEntries
-                .SelectMany(media => media.Items)
-                .Select(selector)
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .Select(value => value!.Trim())
-                .Distinct(StringComparer.Ordinal)
-                .ToList();
-
-            return distinct.Count == 0 ? string.Empty : string.Join("、", distinct);
-        }
+        /// <summary>资料来源表头汇总：内部 . 单位；多对时以顿号连接（只读绑定用）。</summary>
+        public string SourceProvideUnitDisplay =>
+            ArchiveRegisterSourceProvideUnitDisplaySupport.FormatAggregated(
+                MediaEntries.SelectMany(media => media.Items)
+                    .Select(item => ((string?)item.SourceType, (string?)item.ProvideUnit)));
 
         private string _selectedArchivePurpose = string.Empty;
         public string SelectedArchivePurpose
