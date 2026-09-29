@@ -485,6 +485,7 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                                <!-- 首行显示折叠按钮；同组展开子行用等宽占位，使表单号与首行文本左缘对齐 -->
                                         <Button Content="{Binding FoldButtonText, Mode=OneWay}"
                                                 Style="{StaticResource LedgerFoldButtonStyle}"
                                                 Visibility="{Binding ShowFoldButton, Converter={StaticResource BooleanToVisibilityConverter}}"
@@ -492,6 +493,9 @@
                                                 Command="{Binding Data.ToggleFoldGroupCommand, Source={StaticResource FilingLedgerVmProxy}}"
                                                 CommandParameter="{Binding}"
                                                 PreviewMouseLeftButtonDown="FoldButton_PreviewMouseLeftButtonDown"/>
+                                        <Border Width="40"
+                                                Margin="0,0,6,0"
+                                                Visibility="{Binding IsFoldGroupLeader, Converter={StaticResource InverseBoolToVisConverter}}"/>
                                         <TextBlock Text="{Binding FormNo, Mode=OneWay}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </DataTemplate>

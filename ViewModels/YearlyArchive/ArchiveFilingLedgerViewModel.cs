@@ -519,10 +519,16 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 await ReportBusyAsync("正在整理折叠列表…");
                 var expandedSnapshot = new HashSet<string>(_expandedFoldGroupKeys, StringComparer.Ordinal);
-                await Task.Run(() => AnnotateFoldGroups(rows, expandedSnapshot)).ConfigureAwait(true);
+                var orderedRows = await Task.Run(() =>
+                {
+                    // 同表单号先聚拢再标注折叠，避免展开后被其它申请单打断。
+                    var contiguous = OrderRowsForContiguousFoldGroups(rows);
+                    AnnotateFoldGroups(contiguous, expandedSnapshot);
+                    return contiguous;
+                }).ConfigureAwait(true);
 
                 _sourceRows.Clear();
-                _sourceRows.AddRange(rows);
+                _sourceRows.AddRange(orderedRows);
                 EnsureFoldGroupVisible(selectedId);
                 ApplyFoldDisplay(selectedId);
                 UpdateSummary();
@@ -547,6 +553,29 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(HasFoldableGroups));
             OnPropertyChanged(nameof(FoldAllButtonText));
             OnPropertyChanged(nameof(FoldAllButtonToolTip));
+        }
+
+        /// <summary>
+        /// 将同一折叠键（表单号）的行聚拢为连续段。
+        /// 组间按组内最新立档时间降序；组内按立档时间、立档事实 Id 降序。
+        /// </summary>
+        private static List<FilingLedgerRow> OrderRowsForContiguousFoldGroups(IReadOnlyList<FilingLedgerRow> rows)
+        {
+            if (rows.Count <= 1)
+            {
+                return rows is List<FilingLedgerRow> list ? list : rows.ToList();
+            }
+
+            return rows
+                .Select(row => (Row: row, Key: ResolveFoldGroupKey(row)))
+                .GroupBy(item => item.Key, StringComparer.Ordinal)
+                .OrderByDescending(group => group.Max(item => item.Row.FiledAt))
+                .ThenByDescending(group => group.Max(item => item.Row.FilingFactId))
+                .SelectMany(group => group
+                    .OrderByDescending(item => item.Row.FiledAt)
+                    .ThenByDescending(item => item.Row.FilingFactId)
+                    .Select(item => item.Row))
+                .ToList();
         }
 
         private static void AnnotateFoldGroups(IReadOnlyList<FilingLedgerRow> rows, HashSet<string> expandedKeys)
