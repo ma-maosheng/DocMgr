@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
+using DocMgr.Models.HistoryArchive;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.Interfaces;
 
@@ -41,13 +42,13 @@ namespace DocMgr.Services.HistoryArchive
             return _aerialPhotoRepository.GetAll();
         }
 
-        public async Task ImportAerialPhotosAsync(List<AerialPhoto> list, string sheetName, bool isRecreate = false)
+        public async Task ImportAerialPhotosAsync(List<AerialPhoto> list, string categoryName, bool isRecreate = false)
         {
             HistoryArchiveLedgerPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             ArgumentNullException.ThrowIfNull(list);
             await _importSlotGuard.EnsureSlotsReadyForHistoryImportAsync(list.Select(item => item.BoxNumber));
-            string categoryName = HistoryArchiveImportTableNameSupport.BuildAerialPhotoTableName(sheetName);
-            _aerialPhotoRepository.Import(categoryName, list, isRecreate);
+            string normalizedCategory = HistoryArchiveImportTableNameSupport.NormalizeCategoryName(categoryName);
+            _aerialPhotoRepository.Import(normalizedCategory, list, isRecreate);
         }
 
         public void DropTable(string tableName)

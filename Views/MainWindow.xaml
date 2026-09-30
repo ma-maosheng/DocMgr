@@ -501,14 +501,28 @@
                               Margin="0,10,0,0">
                     <StackPanel x:Name="NavMenuPanel">
 
-                        <!-- NEW: 年度项目管理 -->
+                        <!-- 1. 历史存档资料管理 -->
+                        <Expander x:Name="ExpHistoryArchive" Header="历史存档资料管理" Style="{StaticResource NavExpander}">
+                            <StackPanel>
+                                <Expander Header="资料录入与编辑" Style="{StaticResource SubNavExpander}">
+                                    <StackPanel>
+                                        <Button x:Name="BtnHistMap" Content="地形图图件" Style="{StaticResource SubSubNavButton}" Click="BtnTopoMap_Click"/>
+                                        <Button x:Name="BtnHistAerial" Content="航摄胶片、像片" Style="{StaticResource SubSubNavButton}" Click="BtnAerialPhoto_Click"/>
+                                        <Button x:Name="BtnOtherData" Content="其他资料" Style="{StaticResource SubSubNavButton}" Click="BtnOtherMap_Click"/>
+                                    </StackPanel>
+                                </Expander>
+                                <Button x:Name="BtnHistDisposal" Content="资料离库处置" Style="{StaticResource SubNavButton}" Click="BtnHistDisposal_Click"/>
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- 2. 年度项目管理 -->
                         <Expander x:Name="ExpProjects" Header="年度项目管理" Style="{StaticResource NavExpander}">
                             <StackPanel>
                                 <Button x:Name="BtnProjectInfo" Content="项目信息设置" Style="{StaticResource SubNavButton}" Click="BtnProjectSetting_Click"/>
                             </StackPanel>
                         </Expander>
 
-                        <!-- 1. 年度资料档案化管理 -->
+                        <!-- 3. 年度资料档案化管理 -->
                         <Expander x:Name="ExpYearlyArchive" Header="年度资料档案化管理" Style="{StaticResource NavExpander}">
                             <StackPanel>
                                 <Expander Header="资料建档" Style="{StaticResource SubNavExpander}">
@@ -518,7 +532,6 @@
                                         <Button x:Name="BtnArchiveFiling" Content="资料立档" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveFiling_Click"/>
                                         <Button x:Name="BtnStockHardDiskDirectFiling" Content="存量硬盘资料直办立档" Style="{StaticResource SubSubNavButton}" Click="BtnStockHardDiskDirectFiling_Click"/>
                                         <Button x:Name="BtnStockTextArchiveDirectFiling" Content="存档文本资料直办立档" Style="{StaticResource SubSubNavButton}" Click="BtnStockTextArchiveDirectFiling_Click"/>
-                                        <Button x:Name="BtnArchiveFilingLedger" Content="立档台账" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveFilingLedger_Click"/>
                                     </StackPanel>
                                 </Expander>
                                 <Expander Header="资料迁档" Style="{StaticResource SubNavExpander}">
@@ -528,6 +541,7 @@
                                         <Button x:Name="BtnArchiveRelocationLedger" Content="迁档台账" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveRelocationLedger_Click"/>
                                     </StackPanel>
                                 </Expander>
+                                <Button x:Name="BtnArchiveFilingLedger" Content="立档台账" Style="{StaticResource SubNavButton}" Click="BtnArchiveFilingLedger_Click"/>
                                 <Expander Header="资料检索" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
                                         <Button x:Name="BtnArchiveSearch" Content="资料检索(综合模式)" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveSearch_Click"/>
@@ -561,7 +575,7 @@
                             </StackPanel>
                         </Expander>
 
-                        <!-- 2. 年度资料出入网管理 -->
+                        <!-- 4. 年度资料出入网管理 -->
                         <Expander x:Name="ExpNetworkMgr" Header="年度资料出入网管理" Style="{StaticResource NavExpander}">
                             <StackPanel>
                                 <Button x:Name="BtnNetInboundApply"   Content="入网申请" Style="{StaticResource SubNavButton}" Click="BtnNetInboundApply_Click"/>
@@ -572,29 +586,22 @@
                             </StackPanel>
                         </Expander>
 
-                        <!-- 3. 历史存档资料管理 -->
-                        <Expander x:Name="ExpHistoryArchive" Header="历史存档资料管理" Style="{StaticResource NavExpander}">
-                            <StackPanel>
-                                <Expander Header="资料录入与编辑" Style="{StaticResource SubNavExpander}">
-                                    <StackPanel>
-                                        <Button x:Name="BtnHistMap" Content="地形图图件" Style="{StaticResource SubSubNavButton}" Click="BtnTopoMap_Click"/>
-                                        <Button x:Name="BtnHistAerial" Content="航摄胶片、像片" Style="{StaticResource SubSubNavButton}" Click="BtnAerialPhoto_Click"/>
-                                        <Button x:Name="BtnOtherData" Content="其他资料" Style="{StaticResource SubSubNavButton}" Click="BtnOtherMap_Click"/>
-                                    </StackPanel>
-                                </Expander>
-                                <Button x:Name="BtnHistDisposal" Content="资料离库处置" Style="{StaticResource SubNavButton}" Click="BtnHistDisposal_Click"/>
-                            </StackPanel>
-                        </Expander>
+                        <!-- 5. 库管资料总览 -->
+                        <Button x:Name="BtnStockContainerOverview"
+                                Content="库管资料总览"
+                                Style="{StaticResource NavButton}"
+                                FontWeight="SemiBold"
+                                Click="BtnStockContainerOverview_Click"/>
 
-                        <!-- 4. 档案柜管理 -->
+                        <!-- 6. 档案柜管理 -->
                         <Expander x:Name="ExpCabinets" Header="档案柜管理" Style="{StaticResource NavExpander}">
                             <StackPanel>
                                 <Button x:Name="BtnCabRegister" Content="档案柜登记" Style="{StaticResource SubNavButton}" Click="BtnCabRegister_Click"/>
-                                <Button x:Name="BtnCabSearch"   Content="档案柜检索" Style="{StaticResource SubNavButton}" Click="BtnCabSearch_Click"/>
+                                <Button x:Name="BtnCabSearch"   Content="开柜查看" Style="{StaticResource SubNavButton}" Click="BtnCabSearch_Click"/>
                             </StackPanel>
                         </Expander>
 
-                        <!-- 5. 介质管理 -->
+                        <!-- 7. 介质管理 -->
                         <Expander x:Name="ExpMediaMgr" Header="介质管理" Style="{StaticResource NavExpander}">
                             <StackPanel>
                                 <Expander x:Name="ExpHardDiskSection" Header="硬盘" Style="{StaticResource SubNavExpander}">
@@ -620,7 +627,7 @@
                             </StackPanel>
                         </Expander>
 
-                        <!-- 6. 系统设置 -->
+                        <!-- 8. 系统设置 -->
                         <Expander x:Name="SystemSettingsExpander" Header="系统设置" Style="{StaticResource NavExpander}">
                             <StackPanel>
                                 <Button x:Name="BtnUserMgr" Content="用户管理" Style="{StaticResource SubNavButton}" Click="BtnUserManagement_Click"/>
@@ -648,7 +655,7 @@
                             </StackPanel>
                         </Expander>
 
-                        <!-- 7. 帮助 -->
+                        <!-- 9. 帮助 -->
                         <Expander x:Name="ExpHelp" Header="帮助" Style="{StaticResource NavExpander}">
                             <StackPanel>
                                 <Button x:Name="BtnHelpDoc" Content="操作手册" Style="{StaticResource SubNavButton}" Click="BtnHelpDoc_Click"/>

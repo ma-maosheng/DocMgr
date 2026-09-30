@@ -3,7 +3,7 @@ using DocMgr.ViewModels.Base;
 namespace DocMgr.ViewModels.Cabinets
 {
     /// <summary>
-    /// 档案柜平面布局交互宿主，供布局控件与交互行为按模式区分登记/检索能力。
+    /// 档案柜平面布局交互宿主，供布局控件与交互行为按模式区分登记/开柜查看能力。
     /// </summary>
     public interface ICabinetLayoutInteractionHost
     {

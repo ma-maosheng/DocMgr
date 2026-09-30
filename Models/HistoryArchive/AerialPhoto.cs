@@ -10,7 +10,7 @@ namespace DocMgr.Models.HistoryArchive
         public int Id { get; set; }
 
         /// <summary>
-        /// 存档批次键（导入时写入为「像片」+ Excel 工作表名），用于分表浏览。
+        /// 存档批次键（导入时写入为「航片：」+ 后缀），用于分表浏览。
         /// </summary>
         public string Category { get; set; } = string.Empty;
 

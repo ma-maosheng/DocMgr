@@ -368,7 +368,7 @@ namespace DocMgr.Services.YearlyArchive
                 nextSequence = parsed + 1;
             }
 
-            return $"{prefix}{nextSequence:D6}";
+            return $"{prefix}{nextSequence:D4}";
         }
 
         private static ArchiveRelocationContainerSummary MapSimulatedSummary(YearlyArchiveBox box)

@@ -4,7 +4,7 @@ using DocMgr.ViewModels.Base;
 namespace DocMgr.ViewModels.Cabinets
 {
     /// <summary>
-    /// 档案柜检索：在平面布局中打开档案柜，查看档口与存放内容。
+    /// 开柜查看：在平面布局中打开档案柜，查看档口与存放内容。
     /// </summary>
     public class CabinetSearchViewModel : ViewModelBase, ICabinetLayoutInteractionHost
     {

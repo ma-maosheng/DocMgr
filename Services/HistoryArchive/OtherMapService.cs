@@ -43,13 +43,13 @@ namespace DocMgr.Services.HistoryArchive
             return _otherMapRepository.GetAll();
         }
 
-        public async Task ImportOtherMapsAsync(List<OtherMap> list, string sheetName, bool isRecreate = false)
+        public async Task ImportOtherMapsAsync(List<OtherMap> list, string categoryName, bool isRecreate = false)
         {
             HistoryArchiveLedgerPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             ArgumentNullException.ThrowIfNull(list);
             await _importSlotGuard.EnsureSlotsReadyForHistoryImportAsync(list.Select(item => item.BoxNumber));
-            string categoryName = HistoryArchiveImportTableNameSupport.BuildOtherMapTableName(sheetName);
-            _otherMapRepository.Import(categoryName, list, isRecreate);
+            string normalizedCategory = HistoryArchiveImportTableNameSupport.NormalizeCategoryName(categoryName);
+            _otherMapRepository.Import(normalizedCategory, list, isRecreate);
         }
 
         public void DropTable(string tableName)

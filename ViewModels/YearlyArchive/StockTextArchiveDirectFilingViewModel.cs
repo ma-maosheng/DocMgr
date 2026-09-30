@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.Projects;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
@@ -27,6 +29,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly ICabinetService _cabinetService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IUserService _userService;
 
         private string _year = string.Empty;
         private string _projectName = string.Empty;
@@ -41,9 +44,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _sourceType = ArchiveRegisterDomainValues.SourceTypeInternal;
         private string _archivePurpose = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
         private string _provideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
+        private bool _suppressSourceProvidePropagate;
         private string _selectedSpec = "标准(5cm)";
         private ArchiveBoxTargetLocationOption? _selectedSlotOption;
-        private string _boxLocationPreview = string.Empty;
+        private string _physicalLocationCode = string.Empty;
+        private string _boxLocationHint = string.Empty;
+        private int _physicalLocationPreviewToken;
         private string _remarks = string.Empty;
         private string _selectedSimulatedMediaType = ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper;
         private bool _isBusy;
@@ -57,13 +63,15 @@ namespace DocMgr.ViewModels.YearlyArchive
             IArchiveRegisterService archiveRegisterService,
             ICabinetService cabinetService,
             IDialogService dialogService,
-            IUserContextService userContextService)
+            IUserContextService userContextService,
+            IUserService userService)
         {
             _filingService = filingService;
             _archiveRegisterService = archiveRegisterService;
             _cabinetService = cabinetService;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _userService = userService;
 
             MediaGroups = new ObservableCollection<StockTextArchiveMediaGroupViewModel>();
             MediaGroups.CollectionChanged += OnMediaGroupsCollectionChanged;
@@ -95,6 +103,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<string> MediaTypeOptions { get; } = new();
         public ObservableCollection<string> MaterialCategoryOptions { get; } = new();
         public ObservableCollection<string> OrganizationFormOptions { get; } = new();
+        /// <summary>部门列表，供内部「提供单位」可编辑下拉绑定。</summary>
+        public ObservableCollection<Department> Departments { get; } = new();
         public ObservableCollection<string> Specs { get; } = new()
         {
             "标准(10cm)", "标准(5cm)", "标准(3cm)", "标准(2cm)", "非标(10cm)"
@@ -222,23 +232,22 @@ namespace DocMgr.ViewModels.YearlyArchive
             set
             {
                 string normalized = value?.Trim() ?? string.Empty;
+                string previousSource = _sourceType;
+                string previousProvide = _provideUnit;
                 if (!SetProperty(ref _sourceType, normalized))
                 {
                     return;
                 }
 
                 OnPropertyChanged(nameof(IsExternalSource));
-                OnPropertyChanged(nameof(IsProvideUnitReadOnly));
                 ApplyProvideUnitForSourceType();
+                PropagateDefaultSourceProvideUnit(previousSource, previousProvide);
             }
         }
 
         /// <summary>资料来源是否为「外来」。</summary>
         public bool IsExternalSource =>
             string.Equals(SourceType, ArchiveRegisterDomainValues.SourceTypeExternal, StringComparison.Ordinal);
-
-        /// <summary>内部来源时提供单位固定为资料室，不可编辑。</summary>
-        public bool IsProvideUnitReadOnly => !IsExternalSource;
 
         public string ArchivePurpose
         {
@@ -264,7 +273,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ProvideUnit
         {
             get => _provideUnit;
-            set => SetProperty(ref _provideUnit, value ?? string.Empty);
+            set
+            {
+                string previous = _provideUnit;
+                string normalized = value ?? string.Empty;
+                if (!SetProperty(ref _provideUnit, normalized))
+                {
+                    return;
+                }
+
+                PropagateDefaultProvideUnit(previous);
+            }
         }
 
         public string SelectedSpec
@@ -286,22 +305,27 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedSlotOption, value) && !_suppressSlotApply)
                 {
-                    ApplySelectedSlot(value);
+                    _ = ApplySelectedSlotAsync(value);
                 }
             }
         }
 
-        public string BoxLocationPreview
+        /// <summary>
+        /// 目标档案盒物理位置编号预览（含盒内序号；确认写入前不占用）。
+        /// </summary>
+        public string PhysicalLocationCode
         {
-            get => _boxLocationPreview;
-            private set
-            {
-                if (SetProperty(ref _boxLocationPreview, value))
-                {
-                    OnPropertyChanged(nameof(CanShowSlotSnapshot));
-                    CommandManager.InvalidateRequerySuggested();
-                }
-            }
+            get => _physicalLocationCode;
+            private set => SetProperty(ref _physicalLocationCode, value);
+        }
+
+        /// <summary>
+        /// 落位辅助说明（档口占用概况等）。
+        /// </summary>
+        public string BoxLocationHint
+        {
+            get => _boxLocationHint;
+            private set => SetProperty(ref _boxLocationHint, value);
         }
 
         public string Remarks
@@ -328,7 +352,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         public async Task InitializeAsync()
         {
             var options = await _archiveRegisterService.GetPageDomainOptionsAsync();
-            Replace(ArchivePurposeOptions, options.ArchivePurposes, ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage);
+            Replace(
+                ArchivePurposeOptions,
+                ArchiveRegisterDomainValues.FilterDirectFilingArchivePurposes(options.ArchivePurposes),
+                ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage);
             Replace(
                 SourceTypeOptions,
                 options.SourceTypes.Count > 0
@@ -353,6 +380,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 options.SimulatedMapSubCategories.Count > 0
                     ? options.SimulatedMapSubCategories
                     : ArchiveRegisterDomainValues.SimulatedMapSubCategories);
+            LoadDepartments();
             if (string.IsNullOrWhiteSpace(SelectedSimulatedMediaType) || !MediaTypeOptions.Contains(SelectedSimulatedMediaType))
             {
                 SelectedSimulatedMediaType = MediaTypeOptions.FirstOrDefault()
@@ -366,19 +394,39 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ArchivePurpose = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
             }
 
-            if (string.IsNullOrWhiteSpace(SourceType) || !SourceTypeOptions.Contains(SourceType))
+            _suppressSourceProvidePropagate = true;
+            try
             {
-                SourceType = SourceTypeOptions.FirstOrDefault()
-                    ?? ArchiveRegisterDomainValues.SourceTypeInternal;
+                if (string.IsNullOrWhiteSpace(SourceType) || !SourceTypeOptions.Contains(SourceType))
+                {
+                    SourceType = SourceTypeOptions.FirstOrDefault()
+                        ?? ArchiveRegisterDomainValues.SourceTypeInternal;
+                }
+                else
+                {
+                    ApplyProvideUnitForSourceType();
+                }
+
+                if (string.IsNullOrWhiteSpace(ProvideUnit) && !IsExternalSource)
+                {
+                    ProvideUnit = ResolveDefaultInternalProvideUnit();
+                }
             }
-            else
+            finally
             {
-                ApplyProvideUnitForSourceType();
+                _suppressSourceProvidePropagate = false;
             }
 
             if (MediaGroups.Count == 0)
             {
                 AddMediaGroup();
+            }
+            else
+            {
+                foreach (var item in MediaGroups.SelectMany(group => group.Items))
+                {
+                    item.EnsureDefaultsFromPage();
+                }
             }
 
             await RefreshPreviewArchiveSequenceNoAsync();
@@ -447,6 +495,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void AddMediaGroup()
         {
             var group = new StockTextArchiveMediaGroupViewModel(
+                this,
                 SelectedSimulatedMediaType,
                 ConfidentialLevelOptions,
                 MaterialCategoryOptions,
@@ -564,7 +613,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     _suppressSlotApply = false;
                 }
 
-                ApplySelectedSlot(SelectedSlotOption);
+                await ApplySelectedSlotAsync(SelectedSlotOption);
             }
             catch (Exception ex)
             {
@@ -636,23 +685,53 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
             }
 
-            ApplySelectedSlot(SelectedSlotOption);
-            if (!string.IsNullOrWhiteSpace(suggestion.SuggestionSummary))
-            {
-                BoxLocationPreview = $"{slotKey}　{suggestion.SuggestionSummary}";
-            }
+            await ApplySelectedSlotAsync(SelectedSlotOption, suggestion.SuggestionSummary);
         }
 
-        private void ApplySelectedSlot(ArchiveBoxTargetLocationOption? option)
+        private async Task ApplySelectedSlotAsync(
+            ArchiveBoxTargetLocationOption? option,
+            string? suggestionSummary = null)
         {
+            int token = ++_physicalLocationPreviewToken;
             if (option == null)
             {
-                BoxLocationPreview = string.Empty;
+                PhysicalLocationCode = string.Empty;
+                BoxLocationHint = string.Empty;
                 return;
             }
 
-            BoxLocationPreview =
-                $"{option.Location}（当前 {option.ExistingBoxCount} 盒；确认写入时分配最小可用盒内序号）";
+            BoxLocationHint = string.IsNullOrWhiteSpace(suggestionSummary)
+                ? $"目标档口当前 {option.ExistingBoxCount} 盒；确认写入时按格口最小可用序号赋码（预览不占用）。"
+                : suggestionSummary.Trim();
+
+            try
+            {
+                string preview = await _filingService.PeekNextBoxLocationCodeAsync(
+                    option.CabinetName,
+                    option.Side,
+                    option.Row,
+                    option.Column);
+                if (token != _physicalLocationPreviewToken)
+                {
+                    return;
+                }
+
+                PhysicalLocationCode = preview;
+                if (string.IsNullOrWhiteSpace(PhysicalLocationCode))
+                {
+                    BoxLocationHint = "未能解析物理位置编号，请重新选择或推荐档口。";
+                }
+            }
+            catch (Exception ex)
+            {
+                if (token != _physicalLocationPreviewToken)
+                {
+                    return;
+                }
+
+                PhysicalLocationCode = string.Empty;
+                BoxLocationHint = "物理位置编号预览失败：" + ex.Message;
+            }
         }
 
         private async Task ShowSlotSnapshotAsync()
@@ -931,7 +1010,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 + $"资料名称：{MaterialName}\n"
                 + $"来源：{SourceType}　提供单位：{ProvideUnit}\n"
                 + $"盒规格：{SelectedSpec}\n"
-                + $"档口：{SelectedSlotOption?.Location}\n"
+                + $"物理位置编号：{(string.IsNullOrWhiteSpace(PhysicalLocationCode) ? SelectedSlotOption?.Location : PhysicalLocationCode)}\n"
                 + $"{MediaSummary}\n"
                 + $"{BusinessNumberHint}\n\n是否继续？";
             if (!_dialogService.ShowConfirm(confirmText, "确认存档文本直办立档"))
@@ -973,7 +1052,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                     Note = item.Note?.Trim() ?? string.Empty,
                     MaterialCategory = item.MaterialCategory?.Trim() ?? string.Empty,
                     SubCategory = item.SubCategory?.Trim() ?? string.Empty,
-                    OrganizationForm = item.OrganizationForm?.Trim() ?? string.Empty
+                    OrganizationForm = item.OrganizationForm?.Trim() ?? string.Empty,
+                    SourceType = item.SourceType?.Trim() ?? string.Empty,
+                    ProvideUnit = item.ProvideUnit?.Trim() ?? string.Empty
                 }).ToList()
             }).ToList();
 
@@ -1004,7 +1085,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             MaterialName = string.Empty;
             _previousProjectNameForMaterialDefault = string.Empty;
             SourceType = ArchiveRegisterDomainValues.SourceTypeInternal;
-            ProvideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
+            ProvideUnit = ResolveDefaultInternalProvideUnit();
             Remarks = string.Empty;
             PreviewArchiveSequenceNo = string.Empty;
             ProjectHint = "请填写实施年度与项目名称。";
@@ -1030,7 +1111,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _suppressSlotApply = false;
             }
 
-            BoxLocationPreview = string.Empty;
+            _physicalLocationPreviewToken++;
+            PhysicalLocationCode = string.Empty;
+            BoxLocationHint = string.Empty;
             SlotOptions.Clear();
             RefreshYearOptions();
             RefreshProjectNameOptions();
@@ -1038,24 +1121,96 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         /// <summary>
-        /// 内部：提供单位固定为资料室；外来：若仍为资料室则清空以便用户填写。
+        /// 内部：提供单位默认为操作人部门（缺省资料室）；外来：若仍为内部默认值则清空以便填写。
+        /// 仅更新页面默认值字段，不经 ProvideUnit setter，避免与来源变更传播重复触发。
         /// </summary>
         private void ApplyProvideUnitForSourceType()
         {
+            string internalDefault = ResolveDefaultInternalProvideUnit();
+            string next = _provideUnit;
             if (IsExternalSource)
             {
-                if (string.Equals(
-                        ProvideUnit,
-                        ArchiveRegisterDomainValues.ProvideUnitArchiveRoom,
-                        StringComparison.Ordinal))
+                if (string.Equals(next, internalDefault, StringComparison.Ordinal)
+                    || string.Equals(next, ArchiveRegisterDomainValues.ProvideUnitArchiveRoom, StringComparison.Ordinal))
                 {
-                    ProvideUnit = string.Empty;
+                    next = string.Empty;
                 }
+            }
+            else if (string.IsNullOrWhiteSpace(next))
+            {
+                next = internalDefault;
+            }
 
+            if (string.Equals(_provideUnit, next, StringComparison.Ordinal))
+            {
                 return;
             }
 
-            ProvideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
+            _provideUnit = next;
+            OnPropertyChanged(nameof(ProvideUnit));
+        }
+
+        /// <summary>内部来源默认提供单位：当前用户部门，缺省「资料室」。</summary>
+        internal string ResolveDefaultInternalProvideUnit()
+        {
+            string dept = _userContextService.CurrentUser?.Department?.Trim() ?? string.Empty;
+            return string.IsNullOrWhiteSpace(dept)
+                ? ArchiveRegisterDomainValues.ProvideUnitArchiveRoom
+                : dept;
+        }
+
+        private void PropagateDefaultSourceProvideUnit(string previousSource, string previousProvide)
+        {
+            if (_suppressSourceProvidePropagate)
+            {
+                return;
+            }
+
+            foreach (var item in MediaGroups.SelectMany(group => group.Items))
+            {
+                bool sourceMatches = string.Equals(item.SourceType, previousSource, StringComparison.Ordinal);
+                bool provideMatches = string.Equals(item.ProvideUnit, previousProvide, StringComparison.Ordinal);
+                if (!sourceMatches && !provideMatches)
+                {
+                    continue;
+                }
+
+                item.ApplyPageDefaults(
+                    sourceMatches ? SourceType : item.SourceType,
+                    provideMatches || sourceMatches ? ProvideUnit : item.ProvideUnit);
+            }
+        }
+
+        private void PropagateDefaultProvideUnit(string previousProvide)
+        {
+            if (_suppressSourceProvidePropagate)
+            {
+                return;
+            }
+
+            foreach (var item in MediaGroups.SelectMany(group => group.Items))
+            {
+                if (string.Equals(item.ProvideUnit, previousProvide, StringComparison.Ordinal))
+                {
+                    item.ProvideUnit = ProvideUnit;
+                }
+            }
+        }
+
+        private void LoadDepartments()
+        {
+            try
+            {
+                Departments.Clear();
+                foreach (Department department in _userService.GetAllDepartments())
+                {
+                    Departments.Add(department);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
         }
 
         private static void EnsureOption(ObservableCollection<string> target, string? value)
@@ -1098,6 +1253,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _mediaType;
 
         public StockTextArchiveMediaGroupViewModel(
+            StockTextArchiveDirectFilingViewModel pageOwner,
             string mediaType,
             ObservableCollection<string> confidentialLevelOptions,
             ObservableCollection<string> materialCategoryOptions,
@@ -1105,6 +1261,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IReadOnlyList<string> textSubCategories,
             IReadOnlyList<string> mapSubCategories)
         {
+            PageOwner = pageOwner ?? throw new ArgumentNullException(nameof(pageOwner));
             _mediaType = mediaType;
             ConfidentialLevelOptions = confidentialLevelOptions;
             MaterialCategoryOptions = materialCategoryOptions;
@@ -1114,6 +1271,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             Items = new ObservableCollection<StockTextArchiveMediaItemViewModel>();
             Items.CollectionChanged += (_, _) => RefreshMediaCount();
         }
+
+        public StockTextArchiveDirectFilingViewModel PageOwner { get; }
 
         public ObservableCollection<string> ConfidentialLevelOptions { get; }
 
@@ -1142,13 +1301,15 @@ namespace DocMgr.ViewModels.YearlyArchive
             string level = ConfidentialLevelOptions.Contains("秘密")
                 ? "秘密"
                 : ConfidentialLevelOptions.FirstOrDefault() ?? "秘密";
-            Items.Add(new StockTextArchiveMediaItemViewModel(this)
+            var item = new StockTextArchiveMediaItemViewModel(this)
             {
                 ConfidentialLevel = level,
                 ContentCount = 1,
                 MaterialCategory = ArchiveRegisterDomainValues.SimulatedMaterialCategoryText,
                 OrganizationForm = ArchiveRegisterDomainValues.SimulatedOrganizationFormBound
-            });
+            };
+            item.EnsureDefaultsFromPage();
+            Items.Add(item);
             RefreshMediaCount();
         }
 
@@ -1167,6 +1328,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _materialCategory = ArchiveRegisterDomainValues.SimulatedMaterialCategoryText;
         private string _subCategory = string.Empty;
         private string _organizationForm = ArchiveRegisterDomainValues.SimulatedOrganizationFormBound;
+        private string _sourceType = ArchiveRegisterDomainValues.SourceTypeInternal;
+        private string _provideUnit = string.Empty;
+        private bool _suppressProvideUnitApply;
 
         public StockTextArchiveMediaItemViewModel(StockTextArchiveMediaGroupViewModel owner)
         {
@@ -1200,6 +1364,32 @@ namespace DocMgr.ViewModels.YearlyArchive
             set => SetProperty(ref _note, value);
         }
 
+        public string SourceType
+        {
+            get => _sourceType;
+            set
+            {
+                string normalized = value?.Trim() ?? string.Empty;
+                if (!SetProperty(ref _sourceType, normalized))
+                {
+                    return;
+                }
+
+                OnPropertyChanged(nameof(IsExternalSource));
+                ApplyProvideUnitForSourceType();
+            }
+        }
+
+        /// <summary>本子项资料来源是否为「外来」。</summary>
+        public bool IsExternalSource =>
+            string.Equals(SourceType, ArchiveRegisterDomainValues.SourceTypeExternal, StringComparison.Ordinal);
+
+        public string ProvideUnit
+        {
+            get => _provideUnit;
+            set => SetProperty(ref _provideUnit, value ?? string.Empty);
+        }
+
         public string MaterialCategory
         {
             get => _materialCategory;
@@ -1225,6 +1415,71 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         public ObservableCollection<string> AvailableSubCategories { get; } = new();
+
+        /// <summary>按页面立档默认值补齐本子项来源与提供单位。</summary>
+        public void EnsureDefaultsFromPage()
+        {
+            ApplyPageDefaults(Owner.PageOwner.SourceType, Owner.PageOwner.ProvideUnit);
+        }
+
+        /// <summary>写入来源/提供单位（用于页面默认值下推，避免触发再回写）。</summary>
+        public void ApplyPageDefaults(string? sourceType, string? provideUnit)
+        {
+            _suppressProvideUnitApply = true;
+            try
+            {
+                string nextSource = string.IsNullOrWhiteSpace(sourceType)
+                    ? ArchiveRegisterDomainValues.SourceTypeInternal
+                    : sourceType.Trim();
+                if (!string.Equals(_sourceType, nextSource, StringComparison.Ordinal))
+                {
+                    _sourceType = nextSource;
+                    OnPropertyChanged(nameof(SourceType));
+                    OnPropertyChanged(nameof(IsExternalSource));
+                }
+
+                string nextProvide = provideUnit ?? string.Empty;
+                if (!IsExternalSource && string.IsNullOrWhiteSpace(nextProvide))
+                {
+                    nextProvide = Owner.PageOwner.ResolveDefaultInternalProvideUnit();
+                }
+
+                if (!string.Equals(_provideUnit, nextProvide, StringComparison.Ordinal))
+                {
+                    _provideUnit = nextProvide;
+                    OnPropertyChanged(nameof(ProvideUnit));
+                }
+            }
+            finally
+            {
+                _suppressProvideUnitApply = false;
+            }
+        }
+
+        private void ApplyProvideUnitForSourceType()
+        {
+            if (_suppressProvideUnitApply)
+            {
+                return;
+            }
+
+            string internalDefault = Owner.PageOwner.ResolveDefaultInternalProvideUnit();
+            if (IsExternalSource)
+            {
+                if (string.Equals(ProvideUnit, internalDefault, StringComparison.Ordinal)
+                    || string.Equals(ProvideUnit, ArchiveRegisterDomainValues.ProvideUnitArchiveRoom, StringComparison.Ordinal))
+                {
+                    ProvideUnit = string.Empty;
+                }
+
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(ProvideUnit))
+            {
+                ProvideUnit = internalDefault;
+            }
+        }
 
         private void RefreshSubCategoryOptions()
         {

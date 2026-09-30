@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Input;
+using DocMgr.Models.HistoryArchive;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.Shared
@@ -11,10 +12,11 @@ namespace DocMgr.ViewModels.Shared
     /// </summary>
     public sealed class SheetSelectionResult
     {
-        public SheetSelectionResult(string sheetName, bool expandItemsByTextLine)
+        public SheetSelectionResult(string sheetName, bool expandItemsByTextLine, string? category = null)
         {
             SheetName = sheetName ?? string.Empty;
             ExpandItemsByTextLine = expandItemsByTextLine;
+            Category = category?.Trim() ?? string.Empty;
         }
 
         public string SheetName { get; }
@@ -23,6 +25,11 @@ namespace DocMgr.ViewModels.Shared
         /// 勾选时按内容单元格内的文本行拆分记录；否则按 Excel 表格行导入。
         /// </summary>
         public bool ExpandItemsByTextLine { get; }
+
+        /// <summary>
+        /// 历史存档导入的分类；未启用分类输入时为空。
+        /// </summary>
+        public string Category { get; }
     }
 
     public class SheetSelectionDialogViewModel : ViewModelBase
@@ -33,14 +40,18 @@ namespace DocMgr.ViewModels.Shared
 
         private readonly IDialogService _dialogService;
         private string _selectedSheet = string.Empty;
+        private string _category = string.Empty;
         private bool _expandItemsByTextLine;
+        private bool _syncCategoryFromSheet = true;
 
         public SheetSelectionDialogViewModel(
             IEnumerable<string> sheetNames,
             IDialogService dialogService,
             bool showExpandItemsByTextLineOption = false,
             string? expandItemsByTextLineContent = null,
-            string? expandItemsByTextLineToolTip = null)
+            string? expandItemsByTextLineToolTip = null,
+            bool showCategoryInput = false,
+            string? categoryNamePrefix = null)
         {
             _dialogService = dialogService;
             SheetNames = (sheetNames ?? Enumerable.Empty<string>()).ToList();
@@ -52,6 +63,12 @@ namespace DocMgr.ViewModels.Shared
             ExpandItemsByTextLineToolTip = string.IsNullOrWhiteSpace(expandItemsByTextLineToolTip)
                 ? DefaultExpandOptionToolTip
                 : expandItemsByTextLineToolTip.Trim();
+            ShowCategoryInput = showCategoryInput;
+            CategoryPrefix = categoryNamePrefix?.Trim() ?? string.Empty;
+            if (ShowCategoryInput)
+            {
+                _category = BuildDefaultCategory(_selectedSheet);
+            }
 
             ConfirmCommand = new RelayCommand(_ => Confirm(), _ => CanConfirm());
             CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
@@ -74,15 +91,54 @@ namespace DocMgr.ViewModels.Shared
         /// </summary>
         public string ExpandItemsByTextLineToolTip { get; }
 
+        /// <summary>
+        /// 是否显示「分类」输入（历史存档 Excel 导入）。
+        /// </summary>
+        public bool ShowCategoryInput { get; }
+
+        /// <summary>
+        /// 分类须符合的前缀（如「地形图：」），用于确定时校验。
+        /// </summary>
+        public string CategoryPrefix { get; }
+
         public string SelectedSheet
         {
             get => _selectedSheet;
             set
             {
-                if (SetProperty(ref _selectedSheet, value))
+                if (!SetProperty(ref _selectedSheet, value))
                 {
-                    CommandManager.InvalidateRequerySuggested();
+                    return;
                 }
+
+                if (ShowCategoryInput && _syncCategoryFromSheet)
+                {
+                    Category = BuildDefaultCategory(value);
+                    _syncCategoryFromSheet = true;
+                }
+
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
+
+        /// <summary>
+        /// 分类全文（默认「前缀 + 工作表名」）；确定时校验须以规定前缀开头且后缀非空。
+        /// </summary>
+        public string Category
+        {
+            get => _category;
+            set
+            {
+                string next = value ?? string.Empty;
+                if (!SetProperty(ref _category, next))
+                {
+                    return;
+                }
+
+                string trimmed = next.Trim();
+                string autoDefault = BuildDefaultCategory(_selectedSheet);
+                _syncCategoryFromSheet = string.Equals(trimmed, autoDefault, StringComparison.Ordinal);
+                CommandManager.InvalidateRequerySuggested();
             }
         }
 
@@ -105,13 +161,42 @@ namespace DocMgr.ViewModels.Shared
 
         private void Confirm()
         {
-            if (!CanConfirm())
+            if (string.IsNullOrWhiteSpace(SelectedSheet))
             {
                 _dialogService.ShowMessage("请选择一个有效的工作表！");
                 return;
             }
 
+            if (ShowCategoryInput)
+            {
+                if (!HistoryArchiveImportTableNameSupport.TryValidateCategoryName(
+                        Category,
+                        CategoryPrefix,
+                        out string? errorMessage))
+                {
+                    _dialogService.ShowMessage(errorMessage ?? "分类格式不正确。");
+                    return;
+                }
+
+                Category = HistoryArchiveImportTableNameSupport.NormalizeCategoryName(Category);
+            }
+
             RequestClose?.Invoke(true);
+        }
+
+        private string BuildDefaultCategory(string? sheetName)
+        {
+            if (string.IsNullOrWhiteSpace(sheetName))
+            {
+                return CategoryPrefix;
+            }
+
+            if (string.IsNullOrWhiteSpace(CategoryPrefix))
+            {
+                return sheetName.Trim();
+            }
+
+            return HistoryArchiveImportTableNameSupport.BuildDefaultCategoryName(CategoryPrefix, sheetName);
         }
     }
 }

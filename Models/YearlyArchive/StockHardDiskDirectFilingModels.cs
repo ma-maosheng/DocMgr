@@ -370,12 +370,12 @@ namespace DocMgr.Models.YearlyArchive
         public int FileCount { get; init; }
 
         /// <summary>
-        /// 资料来源（默认存量直办），允许按子项分别指定。
+        /// 资料来源（默认内部），允许按子项分别指定。
         /// </summary>
         public string SourceType { get; set; } = string.Empty;
 
         /// <summary>
-        /// 提供单位（默认资料室），允许按子项分别指定。
+        /// 提供单位（内部默认操作人部门/资料室；外来须填写），允许按子项分别指定。
         /// </summary>
         public string ProvideUnit { get; set; } = string.Empty;
 

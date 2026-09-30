@@ -84,7 +84,7 @@ namespace DocMgr.Models.YearlyArchive
         public string SourceType { get; init; } = string.Empty;
 
         /// <summary>
-        /// 提供单位（内部默认资料室；外来须填写），允许按子项分别指定；空白时回落请求级提供单位。
+        /// 提供单位（内部默认操作人部门/资料室；外来须填写），允许按子项分别指定；空白时回落请求级提供单位。
         /// </summary>
         public string ProvideUnit { get; init; } = string.Empty;
     }

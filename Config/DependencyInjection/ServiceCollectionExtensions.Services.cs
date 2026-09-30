@@ -3,6 +3,7 @@ using DocMgr.Services.Cabinets;
 using DocMgr.Services.HardDiskMedia;
 using DocMgr.Services.HistoryArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.Inventory;
 using DocMgr.Services.NetworkTransfer;
 using DocMgr.Services.Projects;
 using DocMgr.Services.Shared;
@@ -56,6 +57,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IFilingFactWriter, FilingFactWriter>();
         services.AddScoped<IArchiveFilingSearchService, ArchiveFilingSearchService>();
         services.AddScoped<IArchiveFilingLedgerService, ArchiveFilingLedgerService>();
+        services.AddScoped<IStockContainerOverviewService, StockContainerOverviewService>();
         services.AddScoped<IArchiveRelocationLedgerService, ArchiveRelocationLedgerService>();
         services.AddScoped<IArchiveCirculationLedgerService, ArchiveCirculationLedgerService>();
         services.AddScoped<IArchiveCrossDomainTransferLedgerService, ArchiveCrossDomainTransferLedgerService>();

@@ -11,6 +11,7 @@ using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using DocMgr.Services.HistoryArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 
 
 namespace DocMgr.ViewModels.HistoryArchive
@@ -426,11 +427,23 @@ namespace DocMgr.ViewModels.HistoryArchive
                         sheetNames.Add(workbook.GetSheetName(i));
                 }
 
-                // 2. 选择Sheet
-                string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames)?.SheetName;
-                if (string.IsNullOrEmpty(selectedSheet)) return;
+                // 2. 选择 Sheet，并确认分类（默认：地形图 + 工作表名）
+                SheetSelectionResult? sheetSelection = _dialogService.ShowSheetSelectionDialog(
+                    sheetNames,
+                    "选择要导入的工作表",
+                    showCategoryInput: true,
+                    categoryNamePrefix: HistoryArchiveImportTableNameSupport.TopoMapPrefix);
+                if (sheetSelection == null
+                    || string.IsNullOrWhiteSpace(sheetSelection.SheetName)
+                    || string.IsNullOrWhiteSpace(sheetSelection.Category))
+                {
+                    return;
+                }
 
-                await ProcessImportLogicAsync(filePath, selectedSheet);
+                await ProcessImportLogicAsync(
+                    filePath,
+                    sheetSelection.SheetName.Trim(),
+                    HistoryArchiveImportTableNameSupport.NormalizeCategoryName(sheetSelection.Category));
             }
             catch (Exception ex)
             {
@@ -438,7 +451,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             }
         }
 
-        private async Task ProcessImportLogicAsync(string filePath, string sheetName)
+        private async Task ProcessImportLogicAsync(string filePath, string sheetName, string targetTableName)
         {
             // [优化] 直接从 Service 获取，删除所有关于 Application.Current.MainWindow 的引用
             string currentUserRealName = _userContextService.CurrentUser?.RealName ?? "Unknown";
@@ -529,8 +542,6 @@ namespace DocMgr.ViewModels.HistoryArchive
                 return;
             }
 
-            string targetTableName = HistoryArchiveImportTableNameSupport.BuildTopoMapTableName(sheetName);
-
             bool needAsk = await Task.Run(() => _topoMapService.IsTableExist(targetTableName));
             bool isRecreate = false;
             if (needAsk)
@@ -551,7 +562,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                     "地形图 Excel 导入",
                     $"正在核验档口并写入 {data.Count} 条…"))
                 {
-                    await _topoMapService.ImportTopoMapsAsync(data, sheetName, isRecreate);
+                    await _topoMapService.ImportTopoMapsAsync(data, targetTableName, isRecreate);
                 }
             }
             catch (InvalidOperationException ex)

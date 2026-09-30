@@ -34,6 +34,8 @@ namespace DocMgr.Services.YearlyArchive
                             EntryKind = entry.EntryKind,
                             EntryName = entry.EntryName,
                             SizeMb = entry.SizeMb,
+                            CreatedAt = entry.CreatedAt,
+                            ModifiedAt = entry.ModifiedAt,
                             SortOrder = entry.SortOrder
                         })
                         .ToList()

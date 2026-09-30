@@ -16,7 +16,8 @@ namespace DocMgr.Services.Interfaces
         /// <summary>
         /// 将其他图件数据导入到数据库（先核验落档档口用途）。
         /// </summary>
-        Task ImportOtherMapsAsync(List<OtherMap> list, string sheetName, bool isRecreate = false);
+        /// <param name="categoryName">分类（逻辑表名）。</param>
+        Task ImportOtherMapsAsync(List<OtherMap> list, string categoryName, bool isRecreate = false);
 
         /// <summary>
         /// 删除指定名称的数据表。

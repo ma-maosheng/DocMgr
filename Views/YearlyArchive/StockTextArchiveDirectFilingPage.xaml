@@ -4,12 +4,12 @@
       Title="存档文本资料直办立档"
       Background="#F0F2F5">
     <Page.Resources>
-        <!-- 主表单标签：固定宽度右对齐，保证各卡片左缘齐整 -->
+        <!-- 主表单标签：固定宽度右对齐，保证各卡片左缘齐整（须容纳「物理位置编号：」） -->
         <Style x:Key="LabelStyle" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Right"/>
             <Setter Property="TextAlignment" Value="Right"/>
-            <Setter Property="Width" Value="72"/>
+            <Setter Property="Width" Value="96"/>
             <Setter Property="Margin" Value="0,0,0,4"/>
             <Setter Property="Foreground" Value="#37474F"/>
         </Style>
@@ -22,7 +22,7 @@
             <Setter Property="Margin" Value="0,0,0,4"/>
             <Setter Property="Foreground" Value="#37474F"/>
         </Style>
-        <!-- 资料子项标签：容纳「子项名称/资料类型/所属子类/组织形式」 -->
+        <!-- 资料子项标签：容纳「来源/提供单位/资料类型」等 -->
         <Style x:Key="ItemLabelStyle" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -34,7 +34,7 @@
         <Style x:Key="HintStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Margin" Value="72,2,0,0"/>
+            <Setter Property="Margin" Value="96,2,0,0"/>
         </Style>
         <Style x:Key="InlineActionButtonStyle" TargetType="Button" BasedOn="{StaticResource FormInlineButtonStyle}">
             <Setter Property="Padding" Value="10,4"/>
@@ -137,23 +137,40 @@
                                       ItemsSource="{Binding SourceTypeOptions}"
                                       SelectedItem="{Binding SourceType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       Height="{StaticResource FormControlHeight}"
-                                      ToolTip="内部：提供单位固定为资料室；外来：请填写具体提供单位"/>
+                                      ToolTip="立档默认值：新建子项时自动带入；子项可单独修改"/>
                             <TextBlock Grid.Column="6" Text="提供单位：" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="7"
-                                     Text="{Binding ProvideUnit, UpdateSourceTrigger=PropertyChanged}"
-                                     IsReadOnly="{Binding IsProvideUnitReadOnly, Mode=OneWay}"
-                                     Height="{StaticResource FormControlHeight}"
-                                     ToolTip="内部固定为资料室；外来时填写来源单位">
-                                <TextBox.Style>
-                                    <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBoxStyle}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsProvideUnitReadOnly, Mode=OneWay}" Value="True">
-                                                <Setter Property="Background" Value="#F9F9F9"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBox.Style>
-                            </TextBox>
+                            <Grid Grid.Column="7">
+                                <ComboBox ItemsSource="{Binding Departments}"
+                                          DisplayMemberPath="Name" SelectedValuePath="Name" IsEditable="True"
+                                          SelectedValue="{Binding ProvideUnit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          Height="{StaticResource FormControlHeight}"
+                                          ToolTip="内部：可选当前部门或手输历史机构名；外来请改用来源为「外来」后填写">
+                                    <ComboBox.Style>
+                                        <Style TargetType="ComboBox" BasedOn="{StaticResource FormComboBoxStyle}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ComboBox.Style>
+                                </ComboBox>
+                                <TextBox Text="{Binding ProvideUnit, UpdateSourceTrigger=PropertyChanged}"
+                                         Height="{StaticResource FormControlHeight}"
+                                         ToolTip="外来资料的提供单位名称">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBoxStyle}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+                            </Grid>
                         </Grid>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -293,26 +310,65 @@
                                                                         MinWidth="28" MinHeight="28" Margin="0,0,0,4"
                                                                         VerticalAlignment="Center"/>
 
-                                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="资料类型：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="来源：" Style="{StaticResource ItemLabelStyle}"/>
                                                                 <ComboBox Grid.Row="1" Grid.Column="1"
+                                                                          ItemsSource="{Binding Owner.PageOwner.SourceTypeOptions}"
+                                                                          SelectedItem="{Binding SourceType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                          Height="{StaticResource FormControlHeight}" Margin="0,0,0,4"
+                                                                          ToolTip="本子项资料来源"/>
+                                                                <TextBlock Grid.Row="1" Grid.Column="3" Text="提供单位：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <Grid Grid.Row="1" Grid.Column="4" Margin="0,0,0,4">
+                                                                    <ComboBox ItemsSource="{Binding Owner.PageOwner.Departments}"
+                                                                              DisplayMemberPath="Name" SelectedValuePath="Name" IsEditable="True"
+                                                                              SelectedValue="{Binding ProvideUnit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                              Height="{StaticResource FormControlHeight}"
+                                                                              ToolTip="内部：可选当前部门或手输历史机构名">
+                                                                        <ComboBox.Style>
+                                                                            <Style TargetType="ComboBox" BasedOn="{StaticResource FormComboBoxStyle}">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </ComboBox.Style>
+                                                                    </ComboBox>
+                                                                    <TextBox Text="{Binding ProvideUnit, UpdateSourceTrigger=PropertyChanged}"
+                                                                             Height="{StaticResource FormControlHeight}"
+                                                                             ToolTip="外来资料的提供单位名称">
+                                                                        <TextBox.Style>
+                                                                            <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBoxStyle}">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBox.Style>
+                                                                    </TextBox>
+                                                                </Grid>
+                                                                <TextBlock Grid.Row="1" Grid.Column="6" Text="资料类型：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <ComboBox Grid.Row="1" Grid.Column="7" Grid.ColumnSpan="3"
                                                                           ItemsSource="{Binding Owner.MaterialCategoryOptions}"
                                                                           SelectedItem="{Binding MaterialCategory}"
                                                                           Height="{StaticResource FormControlHeight}" Margin="0,0,0,4"/>
-                                                                <TextBlock Grid.Row="1" Grid.Column="3" Text="所属子类：" Style="{StaticResource ItemLabelStyle}"/>
-                                                                <ComboBox Grid.Row="1" Grid.Column="4"
+
+                                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="所属子类：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <ComboBox Grid.Row="2" Grid.Column="1"
                                                                           ItemsSource="{Binding AvailableSubCategories}"
                                                                           SelectedItem="{Binding SubCategory}"
                                                                           Height="{StaticResource FormControlHeight}" Margin="0,0,0,4"/>
-                                                                <TextBlock Grid.Row="1" Grid.Column="6" Text="组织形式：" Style="{StaticResource ItemLabelStyle}"/>
-                                                                <ComboBox Grid.Row="1" Grid.Column="7" Grid.ColumnSpan="3"
+                                                                <TextBlock Grid.Row="2" Grid.Column="3" Text="组织形式：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <ComboBox Grid.Row="2" Grid.Column="4"
                                                                           ItemsSource="{Binding Owner.OrganizationFormOptions}"
                                                                           SelectedItem="{Binding OrganizationForm}"
                                                                           Height="{StaticResource FormControlHeight}" Margin="0,0,0,4"/>
-
-                                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="备注：" Style="{StaticResource ItemLabelStyle}"/>
-                                                                <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="9"
+                                                                <TextBlock Grid.Row="2" Grid.Column="6" Text="备注：" Style="{StaticResource ItemLabelStyle}"/>
+                                                                <TextBox Grid.Row="2" Grid.Column="7" Grid.ColumnSpan="3"
                                                                          Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}"
-                                                                         Height="{StaticResource FormControlHeight}"/>
+                                                                         Height="{StaticResource FormControlHeight}" Margin="0,0,0,4"/>
                                                             </Grid>
                                                         </Border>
                                                     </DataTemplate>
@@ -336,6 +392,9 @@
                                 <ColumnDefinition Width="12"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="180"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="档案盒编号：" Style="{StaticResource LabelStyle}"/>
@@ -345,6 +404,10 @@
                             <TextBlock Grid.Column="3" Text="盒规格：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="4" ItemsSource="{Binding Specs}" SelectedItem="{Binding SelectedSpec}"
                                       Height="{StaticResource FormControlHeight}"/>
+                            <TextBlock Grid.Column="6" Text="物理位置编号：" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Column="7" Text="{Binding PhysicalLocationCode, Mode=OneWay}" IsReadOnly="True"
+                                     Height="{StaticResource FormControlHeight}" Background="#F9F9F9"
+                                     ToolTip="确认写入前预览，不占用号段"/>
                         </Grid>
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
@@ -366,7 +429,7 @@
                                     Style="{StaticResource InlineActionButtonStyle}"
                                     ToolTip="查看目标档口占用快照"/>
                         </Grid>
-                        <TextBlock Text="{Binding BoxLocationPreview, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#00695C"/>
+                        <TextBlock Text="{Binding BoxLocationHint, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#00695C"/>
                         <Grid Margin="0,4,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>

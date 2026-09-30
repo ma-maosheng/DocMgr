@@ -80,28 +80,28 @@ namespace DocMgr.Services.Shared
                     BusinessNoCategory.DiskInventoryRegister,
                     Prefix: "盘库-登",
                     WorkflowMode: BusinessWorkflowMode.Register,
-                    SequenceLength: 3,
+                    SequenceLength: 4,
                     ApprovalPolicy: ApplyApprovalPolicy,
                     AttachmentPolicy: ApplyAttachmentPolicy),
                 [BusinessNoCategory.DiskDisposalApply] = new(
                     BusinessNoCategory.DiskDisposalApply,
                     Prefix: "盘离-申",
                     WorkflowMode: BusinessWorkflowMode.Apply,
-                    SequenceLength: 3,
+                    SequenceLength: 4,
                     ApprovalPolicy: ApplyApprovalPolicy,
                     AttachmentPolicy: ApplyAttachmentPolicy),
                 [BusinessNoCategory.ArchiveInventoryRegister] = new(
                     BusinessNoCategory.ArchiveInventoryRegister,
                     Prefix: "资盘-登",
                     WorkflowMode: BusinessWorkflowMode.Register,
-                    SequenceLength: 3,
+                    SequenceLength: 4,
                     ApprovalPolicy: RegisterApprovalPolicy,
                     AttachmentPolicy: RegisterAttachmentPolicy),
                 [BusinessNoCategory.ArchiveDisposalApply] = new(
                     BusinessNoCategory.ArchiveDisposalApply,
                     Prefix: "资离-处",
                     WorkflowMode: BusinessWorkflowMode.Apply,
-                    SequenceLength: 3,
+                    SequenceLength: 4,
                     ApprovalPolicy: ApplyApprovalPolicy,
                     AttachmentPolicy: ApplyAttachmentPolicy),
                 [BusinessNoCategory.NetworkInboundApply] = new(
@@ -129,7 +129,7 @@ namespace DocMgr.Services.Shared
                     BusinessNoCategory.HistoryArchiveDisposalApply,
                     Prefix: "史离-处",
                     WorkflowMode: BusinessWorkflowMode.Apply,
-                    SequenceLength: 3,
+                    SequenceLength: 4,
                     ApprovalPolicy: ApplyApprovalPolicy,
                     AttachmentPolicy: ApplyAttachmentPolicy)
             };

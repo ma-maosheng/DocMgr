@@ -16,7 +16,8 @@ namespace DocMgr.Services.Interfaces
         /// <summary>
         /// 导入地形图数据（先核验落档档口用途）。
         /// </summary>
-        Task ImportTopoMapsAsync(List<TopoMap> maps, string sheetName, bool isRecreate = false);
+        /// <param name="categoryName">分类（逻辑表名）。</param>
+        Task ImportTopoMapsAsync(List<TopoMap> maps, string categoryName, bool isRecreate = false);
 
         /// <summary>
         /// 获取所有地形图数据表名

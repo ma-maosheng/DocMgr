@@ -10,6 +10,7 @@ using DocMgr.Views.NetworkTransfer;
 using DocMgr.Views.Projects;
 using DocMgr.Views.Shared;
 using DocMgr.Views.SystemSettings;
+using DocMgr.Views.Inventory;
 using DocMgr.Views.YearlyArchive;
 
 namespace DocMgr.Infrastructure.DebugUi
@@ -67,6 +68,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<ArchiveFilingSearchPage>("YA-FIL-SCH", "立档检索");
             Add<ArchiveFilingSearchPoolPage>("YA-FIL-POOL", "立档检索池");
             Add<ArchiveFilingLedgerPage>("YA-FIL-LDG", "立档台账");
+            Add<StockContainerOverviewPage>("YA-STK-OVW", "库管资料总览");
             Add<ArchiveDetailPage>("YA-DTL", "资料查看");
             Add<ArchiveSearchPage>("YA-SCH", "资料检索");
             Add<ArchiveOutboundApplyPage>("YA-OB-APP", "借出申请");
@@ -133,7 +135,7 @@ namespace DocMgr.Infrastructure.DebugUi
 
             // CB
             Add<CabinetLayoutPage>("CB-LAY", "档案柜登记");
-            Add<CabinetSearchPage>("CB-SCH", "档案柜检索");
+            Add<CabinetSearchPage>("CB-SCH", "开柜查看");
             Add<CabinetOpenDialog>("CB-OPEN", "开柜");
             Add<CabinetEditDialog>("CB-ED", "柜体编辑");
             Add<CabinetSlotDetailDialog>("CB-SLOT", "档口详情");

@@ -220,8 +220,8 @@ namespace DocMgr.Services.YearlyArchive
                 {
                     Succeeded = true,
                     Message = existingBagCount > 0
-                        ? $"已完成存量直办立档（第 {existingBagCount + 1} 袋）。电子袋 [{filingResult.ElectronicArchiveNo}]，硬盘 [{medium.DiskCode}]，档口 [{fullLocation}]。"
-                        : $"已完成存量直办立档。电子袋 [{filingResult.ElectronicArchiveNo}]，硬盘 [{medium.DiskCode}]，档口 [{fullLocation}]。",
+                        ? $"已完成存量直办立档（第 {existingBagCount + 1} 袋）。电子袋 [{filingResult.ElectronicArchiveNo}]，硬盘 [{medium.DiskCode}]，物理位置编号 [{fullLocation}]。"
+                        : $"已完成存量直办立档。电子袋 [{filingResult.ElectronicArchiveNo}]，硬盘 [{medium.DiskCode}]，物理位置编号 [{fullLocation}]。",
                     ElectronicArchiveNo = filingResult.ElectronicArchiveNo,
                     DiskCode = medium.DiskCode,
                     StorageLocation = fullLocation,
@@ -305,51 +305,20 @@ namespace DocMgr.Services.YearlyArchive
                 errors.Add("数据档口必须是带档内序号的完整位置，请使用「推荐空位」或从列表选择后确认。");
             }
 
-            if (!string.Equals(
-                    string.IsNullOrWhiteSpace(request.SourceType)
-                        ? ArchiveRegisterDomainValues.SourceTypeInternal
-                        : request.SourceType.Trim(),
-                    ArchiveRegisterDomainValues.SourceTypeInternal,
-                    StringComparison.Ordinal)
-                && !ArchiveRegisterBusinessRules.IsExternalSourceType(request.SourceType))
-            {
-                errors.Add("资料来源须为「内部」或「外来」。");
-            }
-            else if (ArchiveRegisterBusinessRules.IsExternalSourceType(request.SourceType))
-            {
-                if (string.IsNullOrWhiteSpace(request.ProvideUnit))
-                {
-                    errors.Add("外来资料必须填写提供单位。");
-                }
-            }
-            else
-            {
-                string provideUnit = string.IsNullOrWhiteSpace(request.ProvideUnit)
-                    ? ArchiveRegisterDomainValues.ProvideUnitArchiveRoom
-                    : request.ProvideUnit.Trim();
-                if (!string.Equals(
-                        provideUnit,
-                        ArchiveRegisterDomainValues.ProvideUnitArchiveRoom,
-                        StringComparison.Ordinal))
-                {
-                    errors.Add("内部资料的提供单位必须为「资料室」。");
-                }
-            }
-
             var pageOptions = await _archiveRegisterService.GetPageDomainOptionsAsync();
+            var allowedArchivePurposes = ArchiveRegisterDomainValues.FilterDirectFilingArchivePurposes(pageOptions.ArchivePurposes);
             if (string.IsNullOrWhiteSpace(request.ArchivePurpose))
             {
                 errors.Add("库管模式不能为空。");
             }
-            else if (!ArchiveRegisterBusinessRules.IsAllowedDomainValue(request.ArchivePurpose, pageOptions.ArchivePurposes))
-            {
-                errors.Add("请选择有效的库管模式。");
-            }
-            else if (ArchiveRegisterDomainValues.IsExternalEntrustedArchivePurpose(request.ArchivePurpose)
-                && !ArchiveRegisterBusinessRules.IsExternalSourceType(request.SourceType))
+            else if (ArchiveRegisterDomainValues.IsExternalEntrustedArchivePurpose(request.ArchivePurpose))
             {
                 errors.Add(
-                    $"库管模式「{ArchiveRegisterDomainValues.ArchivePurposeExternalEntrusted}」仅当资料来源为「{ArchiveRegisterDomainValues.SourceTypeExternal}」时可选。");
+                    $"直办立档不支持库管模式「{ArchiveRegisterDomainValues.ArchivePurposeExternalEntrusted}」。");
+            }
+            else if (!ArchiveRegisterBusinessRules.IsAllowedDomainValue(request.ArchivePurpose, allowedArchivePurposes))
+            {
+                errors.Add("请选择有效的库管模式。");
             }
 
             if (request.Materials == null || request.Materials.Count == 0)
@@ -386,6 +355,18 @@ namespace DocMgr.Services.YearlyArchive
                             {
                                 errors.Add($"{prefix}：请选择与资料类型匹配的所属子类。");
                             }
+                        }
+
+                        string itemSourceType = ResolveItemSourceType(item, request);
+                        if (!string.Equals(itemSourceType, ArchiveRegisterDomainValues.SourceTypeInternal, StringComparison.Ordinal)
+                            && !ArchiveRegisterBusinessRules.IsExternalSourceType(itemSourceType))
+                        {
+                            errors.Add($"{prefix}：资料来源须为「内部」或「外来」。");
+                        }
+
+                        if (string.IsNullOrWhiteSpace(ResolveItemProvideUnit(item, request)))
+                        {
+                            errors.Add($"{prefix}：提供单位不能为空。");
                         }
 
                         var mappedEntries = (item.Entries ?? Array.Empty<ElectronicMediaContentScanEntry>())

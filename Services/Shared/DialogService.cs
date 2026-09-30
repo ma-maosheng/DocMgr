@@ -231,7 +231,9 @@ namespace DocMgr.Services.Shared
             string title = "选择Sheet",
             bool showExpandItemsByTextLineOption = false,
             string? expandItemsByTextLineContent = null,
-            string? expandItemsByTextLineToolTip = null)
+            string? expandItemsByTextLineToolTip = null,
+            bool showCategoryInput = false,
+            string? categoryNamePrefix = null)
         {
             var dialog = new SheetSelectionDialog
             {
@@ -239,12 +241,23 @@ namespace DocMgr.Services.Shared
                 Title = string.IsNullOrWhiteSpace(title) ? "选择Sheet" : title.Trim()
             };
             var (scope, viewModel) = CreateScopedViewModel<SheetSelectionDialogViewModel>(
-                new[] { typeof(IEnumerable<string>), typeof(IDialogService), typeof(bool), typeof(string), typeof(string) },
+                new[]
+                {
+                    typeof(IEnumerable<string>),
+                    typeof(IDialogService),
+                    typeof(bool),
+                    typeof(string),
+                    typeof(string),
+                    typeof(bool),
+                    typeof(string)
+                },
                 sheetNames,
                 this,
                 showExpandItemsByTextLineOption,
                 expandItemsByTextLineContent,
-                expandItemsByTextLineToolTip);
+                expandItemsByTextLineToolTip,
+                showCategoryInput,
+                categoryNamePrefix);
 
             dialog.DataContext = viewModel;
 
@@ -254,7 +267,10 @@ namespace DocMgr.Services.Shared
             try
             {
                 return dialog.ShowDialog() == true
-                    ? new SheetSelectionResult(viewModel.SelectedSheet, viewModel.ExpandItemsByTextLine)
+                    ? new SheetSelectionResult(
+                        viewModel.SelectedSheet,
+                        viewModel.ExpandItemsByTextLine,
+                        showCategoryInput ? viewModel.Category : null)
                     : null;
             }
             finally

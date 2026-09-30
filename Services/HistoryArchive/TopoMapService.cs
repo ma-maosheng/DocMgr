@@ -47,7 +47,7 @@ namespace DocMgr.Services.HistoryArchive
             return list;
         }
 
-        public async Task ImportTopoMapsAsync(List<TopoMap> maps, string sheetName, bool isRecreate = false)
+        public async Task ImportTopoMapsAsync(List<TopoMap> maps, string categoryName, bool isRecreate = false)
         {
             HistoryArchiveLedgerPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             ArgumentNullException.ThrowIfNull(maps);
@@ -57,8 +57,8 @@ namespace DocMgr.Services.HistoryArchive
             }
 
             await _importSlotGuard.EnsureSlotsReadyForHistoryImportAsync(maps.Select(item => item.BoxNumber));
-            string categoryName = HistoryArchiveImportTableNameSupport.BuildTopoMapTableName(sheetName);
-            _topoMapRepository.Import(categoryName, maps, isRecreate);
+            string normalizedCategory = HistoryArchiveImportTableNameSupport.NormalizeCategoryName(categoryName);
+            _topoMapRepository.Import(normalizedCategory, maps, isRecreate);
         }
 
         public void DropTable(string tableName)

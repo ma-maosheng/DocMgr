@@ -453,9 +453,9 @@ namespace DocMgr.Services.YearlyArchive
                 (ColumnProjectName, "必填；可手输新项目，系统按年度+名称匹配或新建。"),
                 (ColumnProjectCode, "可选；新建项目时可一并写入项目编号。"),
                 (ColumnMaterialName, "必填；资料名称。"),
-                (ColumnSourceType, $"必填；{ArchiveRegisterDomainValues.SourceTypeInternal} / {ArchiveRegisterDomainValues.SourceTypeExternal}。空白时默认「{ArchiveRegisterDomainValues.SourceTypeInternal}」。"),
-                (ColumnProvideUnit, $"必填；来源为「{ArchiveRegisterDomainValues.SourceTypeInternal}」时填「{ArchiveRegisterDomainValues.ProvideUnitArchiveRoom}」；来源为「{ArchiveRegisterDomainValues.SourceTypeExternal}」时填写具体提供单位。"),
-                (ColumnArchivePurpose, $"必填；院管资料、短期存档 / {ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage} / {ArchiveRegisterDomainValues.ArchivePurposeExternalEntrusted}。空白时默认「{ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage}」。外部委托仅当来源为外来时可选。"),
+                (ColumnSourceType, $"必填；{ArchiveRegisterDomainValues.SourceTypeInternal} / {ArchiveRegisterDomainValues.SourceTypeExternal}。空白时默认「{ArchiveRegisterDomainValues.SourceTypeInternal}」。可按子项填写，盒级可只在首行填写后下填。"),
+                (ColumnProvideUnit, $"必填；院内部门名称或外部单位名称（可手输历史机构名）。来源为「{ArchiveRegisterDomainValues.SourceTypeInternal}」且空白时默认「{ArchiveRegisterDomainValues.ProvideUnitArchiveRoom}」。"),
+                (ColumnArchivePurpose, $"必填；院管资料、短期存档 / {ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage}。空白时默认「{ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage}」。直办立档不支持「{ArchiveRegisterDomainValues.ArchivePurposeExternalEntrusted}」。"),
                 (ColumnMediaType, "必填；" + string.Join("、", ArchiveRegisterDomainValues.StockTextArchiveMediaTypes) + $"。空白时默认「{ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper}」。同一盒须同一种载体类型。"),
                 (ColumnBoxCount, "可选；同一序号下声明的盒数，用于与实际档案盒编号数量核对。"),
                 (ColumnBoxLocation, "必填；物理位置，格式如 丙A-3-2-01（柜面-层-列-盒序号）。"),
@@ -629,25 +629,24 @@ namespace DocMgr.Services.YearlyArchive
                 {
                     provideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
                 }
-                else if (!string.Equals(provideUnit, ArchiveRegisterDomainValues.ProvideUnitArchiveRoom, StringComparison.Ordinal))
-                {
-                    errors.Add("内部资料的提供单位必须为「资料室」。");
-                }
             }
             else if (string.Equals(sourceType, ArchiveRegisterDomainValues.SourceTypeExternal, StringComparison.Ordinal)
                 && string.IsNullOrWhiteSpace(provideUnit))
             {
                 errors.Add("外来资料必须填写提供单位。");
             }
+            else if (string.IsNullOrWhiteSpace(provideUnit))
+            {
+                errors.Add("提供单位不能为空。");
+            }
 
             string archivePurpose = string.IsNullOrWhiteSpace(first.ArchivePurpose)
                 ? ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage
                 : first.ArchivePurpose.Trim();
-            if (ArchiveRegisterDomainValues.IsExternalEntrustedArchivePurpose(archivePurpose)
-                && !string.Equals(sourceType, ArchiveRegisterDomainValues.SourceTypeExternal, StringComparison.Ordinal))
+            if (ArchiveRegisterDomainValues.IsExternalEntrustedArchivePurpose(archivePurpose))
             {
                 errors.Add(
-                    $"库管模式「{ArchiveRegisterDomainValues.ArchivePurposeExternalEntrusted}」仅当来源为「{ArchiveRegisterDomainValues.SourceTypeExternal}」时可选。");
+                    $"直办立档不支持库管模式「{ArchiveRegisterDomainValues.ArchivePurposeExternalEntrusted}」。");
             }
 
             string mediaType = string.IsNullOrWhiteSpace(first.MediaType)

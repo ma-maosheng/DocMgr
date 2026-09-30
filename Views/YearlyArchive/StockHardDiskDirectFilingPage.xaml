@@ -8,14 +8,14 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Right"/>
             <Setter Property="TextAlignment" Value="Right"/>
-            <Setter Property="Width" Value="72"/>
+            <Setter Property="Width" Value="96"/>
             <Setter Property="Margin" Value="0,0,0,4"/>
             <Setter Property="Foreground" Value="#37474F"/>
         </Style>
         <Style x:Key="HintStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Margin" Value="72,2,0,0"/>
+            <Setter Property="Margin" Value="96,2,0,0"/>
         </Style>
         <Style x:Key="InlineActionButtonStyle" TargetType="Button" BasedOn="{StaticResource FormInlineButtonStyle}">
             <Setter Property="Padding" Value="10,4"/>
@@ -191,26 +191,61 @@
                                       ItemsSource="{Binding SourceTypeOptions}"
                                       SelectedItem="{Binding SourceType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
-                                      ToolTip="内部：提供单位固定为资料室；外来：请填写具体提供单位"/>
+                                      ToolTip="立档默认值：扫描子项时自动带入；子项可单独修改"/>
                             <TextBlock Grid.Column="2" Text="提供单位：" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="3"
-                                     Text="{Binding ProvideUnit, UpdateSourceTrigger=PropertyChanged}"
-                                     IsReadOnly="{Binding IsProvideUnitReadOnly, Mode=OneWay}"
-                                     Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
-                                     ToolTip="内部固定为资料室；外来时填写来源单位">
-                                <TextBox.Style>
-                                    <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBoxStyle}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsProvideUnitReadOnly, Mode=OneWay}" Value="True">
-                                                <Setter Property="Background" Value="#F9F9F9"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBox.Style>
-                            </TextBox>
+                            <Grid Grid.Column="3" Margin="0,0,12,0">
+                                <ComboBox ItemsSource="{Binding Departments}"
+                                          DisplayMemberPath="Name" SelectedValuePath="Name" IsEditable="True"
+                                          SelectedValue="{Binding ProvideUnit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          Height="{StaticResource FormControlHeight}"
+                                          ToolTip="内部：可选当前部门或手输历史机构名；外来请改用来源为「外来」后填写">
+                                    <ComboBox.Style>
+                                        <Style TargetType="ComboBox" BasedOn="{StaticResource FormComboBoxStyle}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ComboBox.Style>
+                                </ComboBox>
+                                <TextBox Text="{Binding ProvideUnit, UpdateSourceTrigger=PropertyChanged}"
+                                         Height="{StaticResource FormControlHeight}"
+                                         ToolTip="外来资料的提供单位名称">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBoxStyle}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+                            </Grid>
                             <TextBlock Grid.Column="4" Text="库管模式：" Style="{StaticResource LabelStyle}"/>
                             <ComboBox Grid.Column="5" ItemsSource="{Binding ArchivePurposeOptions}" SelectedItem="{Binding ArchivePurpose}"
                                       Height="{StaticResource FormControlHeight}"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="220"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="180"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="介质袋编号：" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Column="1" Text="{Binding PreviewElectronicArchiveNo, Mode=OneWay}" IsReadOnly="True"
+                                     Height="{StaticResource FormControlHeight}" Background="#F9F9F9"
+                                     ToolTip="确认写入前预览，不占用号段；年度取自目录扫描「年度」（项目实施年度）"/>
+                            <TextBlock Grid.Column="3" Text="物理位置编号：" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Column="4" Text="{Binding StorageLocation, Mode=OneWay}" IsReadOnly="True"
+                                     Height="{StaticResource FormControlHeight}" Background="#F9F9F9"
+                                     ToolTip="确认写入前预览，不占用号段"/>
                         </Grid>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -229,7 +264,6 @@
                                     Style="{StaticResource InlineActionButtonStyle}"
                                     ToolTip="查看目标档口占用快照"/>
                         </Grid>
-                        <TextBlock Text="{Binding StorageLocation, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#00695C"/>
                         <TextBlock Text="{Binding BusinessNumberHint, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#546E7A"/>
                     </StackPanel>
                 </GroupBox>
@@ -239,13 +273,60 @@
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top" Text="{Binding PreviewSummary, Mode=OneWay}"
                                    FontSize="12" Foreground="#546E7A" Margin="0,0,0,4"
-                                   ToolTip="资料类型、子类、密级可按子项分别修改；其余列为扫描结果只读。"/>
+                                   ToolTip="来源、提供单位、资料类型、子类、密级可按子项分别修改；其余列为扫描结果只读。"/>
                         <DataGrid ItemsSource="{Binding PreviewRows}" AutoGenerateColumns="False" IsReadOnly="False"
                                   CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
                                   SelectionUnit="Cell" MaxHeight="320">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="*" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="子项" Binding="{Binding ItemName, Mode=OneWay}" Width="*" IsReadOnly="True"/>
+                                <DataGridTemplateColumn Header="来源" Width="72">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.SourceTypeOptions, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                      SelectedItem="{Binding SourceType, UpdateSourceTrigger=PropertyChanged}"
+                                                      Height="{StaticResource FormControlHeight}" Margin="1"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="提供单位" Width="140">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <ComboBox ItemsSource="{Binding DataContext.Departments, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                          DisplayMemberPath="Name" SelectedValuePath="Name" IsEditable="True"
+                                                          SelectedValue="{Binding ProvideUnit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          Height="{StaticResource FormControlHeight}" Margin="1"
+                                                          ToolTip="内部：可选当前部门或手输历史机构名">
+                                                    <ComboBox.Style>
+                                                        <Style TargetType="ComboBox" BasedOn="{StaticResource FormComboBoxStyle}">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ComboBox.Style>
+                                                </ComboBox>
+                                                <TextBox Text="{Binding ProvideUnit, UpdateSourceTrigger=PropertyChanged}"
+                                                         Height="{StaticResource FormControlHeight}" Margin="1"
+                                                         ToolTip="外来资料的提供单位名称">
+                                                    <TextBox.Style>
+                                                        <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBoxStyle}">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBox.Style>
+                                                </TextBox>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTemplateColumn Header="资料类型" Width="100">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>

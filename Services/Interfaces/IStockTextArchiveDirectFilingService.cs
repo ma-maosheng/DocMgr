@@ -54,6 +54,11 @@ namespace DocMgr.Services.Interfaces
         Task<string> PeekNextArchiveSequenceNoAsync(string year);
 
         /// <summary>
+        /// 预览目标档口即将赋码的物理位置编号（含盒内序号；不占用）。
+        /// </summary>
+        Task<string> PeekNextBoxLocationCodeAsync(string cabinetName, string side, int row, int column);
+
+        /// <summary>
         /// 确认立档前的完整性与逻辑核验。
         /// </summary>
         Task<IReadOnlyList<string>> CollectCommitErrorsAsync(

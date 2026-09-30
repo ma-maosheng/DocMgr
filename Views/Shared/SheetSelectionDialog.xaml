@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
         Width="520"
-        Height="340"
+        Height="380"
         MinWidth="420"
         MinHeight="280"
         WindowStartupLocation="CenterOwner"
@@ -16,6 +16,7 @@
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <Grid Margin="20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -44,7 +45,25 @@
                   ItemsSource="{Binding SheetNames}"
                   SelectedItem="{Binding SelectedSheet, Mode=TwoWay}"/>
 
-        <CheckBox Grid.Row="2"
+        <DockPanel Grid.Row="2"
+                   Margin="0,12,0,0"
+                   LastChildFill="True"
+                   Visibility="{Binding ShowCategoryInput, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock DockPanel.Dock="Left"
+                       Text="分类："
+                       Style="{StaticResource FormLabelTextBlockStyle}"
+                       Width="48"
+                       HorizontalAlignment="Right"
+                       TextAlignment="Right"
+                       VerticalAlignment="Center"/>
+            <TextBox Text="{Binding Category, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Height="{StaticResource FormControlHeight}"
+                     VerticalContentAlignment="Center"
+                     FontSize="13"
+                     ToolTip="默认「规定前缀 + 工作表名」；须以「地形图：/航片：/其他：」开头且后缀非空，确定时校验。"/>
+        </DockPanel>
+
+        <CheckBox Grid.Row="3"
                   Margin="0,12,0,0"
                   VerticalAlignment="Top"
                   FontSize="13"
@@ -53,7 +72,7 @@
                   Visibility="{Binding ShowExpandItemsByTextLineOption, Converter={StaticResource BooleanToVisibilityConverter}}"
                   ToolTip="{Binding ExpandItemsByTextLineToolTip, Mode=OneWay}"/>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
             <Button Content="确定" Style="{StaticResource DialogPrimaryActionButtonStyle}"
                     Command="{Binding ConfirmCommand}" Cursor="Hand"/>
             <Button Content="取消" Margin="10,0,0,0" Style="{StaticResource DialogSecondaryActionButtonStyle}"

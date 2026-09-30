@@ -11,6 +11,7 @@ using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using DocMgr.Services.HistoryArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.HistoryArchive
 {
@@ -412,10 +413,22 @@ namespace DocMgr.ViewModels.HistoryArchive
                         sheetNames.Add(workbook.GetSheetName(i));
                 }
 
-                string? selectedSheet = _dialogService.ShowSheetSelectionDialog(sheetNames)?.SheetName;
-                if (string.IsNullOrEmpty(selectedSheet)) return;
+                SheetSelectionResult? sheetSelection = _dialogService.ShowSheetSelectionDialog(
+                    sheetNames,
+                    "选择要导入的工作表",
+                    showCategoryInput: true,
+                    categoryNamePrefix: HistoryArchiveImportTableNameSupport.AerialPhotoPrefix);
+                if (sheetSelection == null
+                    || string.IsNullOrWhiteSpace(sheetSelection.SheetName)
+                    || string.IsNullOrWhiteSpace(sheetSelection.Category))
+                {
+                    return;
+                }
 
-                await ProcessImportLogicAsync(filePath, selectedSheet);
+                await ProcessImportLogicAsync(
+                    filePath,
+                    sheetSelection.SheetName.Trim(),
+                    HistoryArchiveImportTableNameSupport.NormalizeCategoryName(sheetSelection.Category));
             }
             catch (Exception ex)
             {
@@ -423,12 +436,11 @@ namespace DocMgr.ViewModels.HistoryArchive
             }
         }
 
-        private async Task ProcessImportLogicAsync(string filePath, string sheetName)
+        private async Task ProcessImportLogicAsync(string filePath, string sheetName, string targetTableName)
         {
             string currentUser = _userContextService.CurrentUser?.RealName ?? "Unknown";
 
             string nowStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            string targetTableName = HistoryArchiveImportTableNameSupport.BuildAerialPhotoTableName(sheetName);
 
             List<AerialPhoto> dataList = new List<AerialPhoto>();
 
@@ -516,7 +528,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                     "航摄影像 Excel 导入",
                     $"正在核验档口并写入 {dataList.Count} 条…"))
                 {
-                    await _aerialPhotoService.ImportAerialPhotosAsync(dataList, sheetName, isRecreate);
+                    await _aerialPhotoService.ImportAerialPhotosAsync(dataList, targetTableName, isRecreate);
                 }
             }
             catch (InvalidOperationException ex)

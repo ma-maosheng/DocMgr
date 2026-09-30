@@ -1,0 +1,28 @@
+---
+description: Windows 本机向 GitHub 推送时绕过坏代理与证书吊销校验
+alwaysApply: true
+---
+
+# Git Push（本机 Windows → GitHub）
+
+本机 `git` 常配置 `http(s).proxy=http://127.0.0.1:7890`。该代理端口可能在听，但对 GitHub 的 TLS 会失败（`TLS connect error` / `unexpected eof`）。直连有时还会因 Schannel 吊销检查离线失败（`CRYPT_E_REVOCATION_OFFLINE`）。
+
+## 推送命令（首选，一次成功）
+
+用户要求推远程时，**不要**先空跑多次默认 `git push`。直接用（**仅 `-c` 临时覆盖，禁止改 git config**）：
+
+```powershell
+git -c http.schannelCheckRevoke=false -c http.proxy= -c https.proxy= push -u origin HEAD
+```
+
+含义：
+
+1. `http.proxy=` / `https.proxy=`：本次推送禁用本地代理，直连 GitHub  
+2. `http.schannelCheckRevoke=false`：跳过 Schannel 证书吊销在线校验  
+
+PowerShell 可能把 git 写到 stderr 的进度当成错误流；以 `git status -sb` 是否显示与 `origin/master` 对齐为准。
+
+## 禁止
+
+- ❌ 为推送去改用户的 `git config`（含 `--global` / `--local` 写 proxy、schannel）
+- ❌ 在已确认代理不可用时反复重试默认 `git push` 空耗时间

@@ -30,17 +30,21 @@ namespace DocMgr.Services.Interfaces
         void ShowSystemAttachmentView(SystemAttachment attachment);
 
         /// <summary>
-        /// 选择工作表。取消返回 null。结果中含「以文本行为单位拆分」勾选状态。
+        /// 选择工作表。取消返回 null。结果中含「以文本行为单位拆分」勾选状态，以及可选的分类文本。
         /// </summary>
         /// <param name="showExpandItemsByTextLineOption">是否显示按文本行拆分勾选。</param>
         /// <param name="expandItemsByTextLineContent">勾选框文案；空则用默认（资料子项）。</param>
         /// <param name="expandItemsByTextLineToolTip">勾选框提示；空则用默认。</param>
+        /// <param name="showCategoryInput">是否显示「分类」输入（历史存档 Excel 导入）。</param>
+        /// <param name="categoryNamePrefix">分类默认前缀（如「地形图」）；与工作表名拼接为默认分类。</param>
         SheetSelectionResult? ShowSheetSelectionDialog(
             List<string> sheetNames,
             string title = "选择Sheet",
             bool showExpandItemsByTextLineOption = false,
             string? expandItemsByTextLineContent = null,
-            string? expandItemsByTextLineToolTip = null);
+            string? expandItemsByTextLineToolTip = null,
+            bool showCategoryInput = false,
+            string? categoryNamePrefix = null);
         ImportMode? ShowImportOptionDialog(string tableName);
 
         void SetBusyState(bool isBusy);

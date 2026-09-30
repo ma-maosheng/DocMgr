@@ -2,6 +2,7 @@ using DocMgr.ViewModels;
 using DocMgr.ViewModels.Cabinets;
 using DocMgr.ViewModels.HardDiskMedia;
 using DocMgr.ViewModels.HistoryArchive;
+using DocMgr.ViewModels.Inventory;
 using DocMgr.ViewModels.NetworkTransfer;
 using DocMgr.ViewModels.Projects;
 using DocMgr.ViewModels.SystemSettings;
@@ -52,6 +53,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<StockHardDiskDirectFilingViewModel>();
         services.AddTransient<StockTextArchiveDirectFilingViewModel>();
         services.AddTransient<ArchiveFilingLedgerViewModel>();
+        services.AddTransient<StockContainerOverviewViewModel>();
         services.AddTransient<ArchiveRelocationLedgerViewModel>();
         services.AddTransient<ArchiveCirculationLedgerViewModel>();
         services.AddTransient<ArchiveCrossDomainTransferLedgerViewModel>();

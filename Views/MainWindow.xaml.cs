@@ -17,6 +17,7 @@ using DocMgr.Views.NetworkTransfer;
 using DocMgr.Views.Projects;
 using DocMgr.Views.SystemSettings;
 using DocMgr.ViewModels.YearlyArchive;
+using DocMgr.Views.Inventory;
 using DocMgr.Views.YearlyArchive;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -566,6 +567,7 @@ namespace DocMgr.Views
                 StockHardDiskDirectFilingPage => BtnStockHardDiskDirectFiling,
                 StockTextArchiveDirectFilingPage => BtnStockTextArchiveDirectFiling,
                 ArchiveFilingLedgerPage => BtnArchiveFilingLedger,
+                StockContainerOverviewPage => BtnStockContainerOverview,
                 ArchiveSimulatedRelocationPage => BtnArchiveSimulatedRelocation,
                 ArchiveElectronicRelocationPage => BtnArchiveElectronicRelocation,
                 ArchiveRelocationLedgerPage => BtnArchiveRelocationLedger,
@@ -702,7 +704,8 @@ namespace DocMgr.Views
                 ArchiveFilingPage => "年度资料档案化管理（资料建档·资料立档）",
                 StockHardDiskDirectFilingPage => "年度资料档案化管理（资料建档·存量硬盘直办立档）",
                 StockTextArchiveDirectFilingPage => "年度资料档案化管理（资料建档·存档文本直办立档）",
-                ArchiveFilingLedgerPage => "年度资料档案化管理（资料建档·立档台账）",
+                ArchiveFilingLedgerPage => "年度资料档案化管理（立档台账）",
+                StockContainerOverviewPage => "库管资料总览",
                 ArchiveRelocationLedgerPage => "年度资料档案化管理（资料迁档·迁档台账）",
                 ArchiveCirculationLedgerPage => "年度资料档案化管理（资料流转·流转台账）",
                 ArchiveCrossDomainTransferLedgerPage => "年度资料档案化管理（资料流转·跨域流转台账）",
@@ -733,7 +736,7 @@ namespace DocMgr.Views
                 ArchiveSearchPage => "年度资料档案化管理（资料检索·资料检索(综合模式)）",
                 ProjectSettingPage => "年度项目管理（项目信息设置）",
                 CabinetLayoutPage => "档案柜管理（档案柜登记）",
-                CabinetSearchPage => "档案柜管理（档案柜检索）",
+                CabinetSearchPage => "档案柜管理（开柜查看）",
                 TopoMapPage => "历史存档资料管理（地形图）",
                 OtherMapPage => "历史存档资料管理（其他图件）",
                 AerialPhotoPage => "历史存档资料管理（航摄影像）",
@@ -942,6 +945,7 @@ namespace DocMgr.Views
             SetNavButton(BtnStockHardDiskDirectFiling, true);
             SetNavButton(BtnStockTextArchiveDirectFiling, true);
             SetNavButton(BtnArchiveFilingLedger, true);
+            SetNavButton(BtnStockContainerOverview, true);
             SetNavButton(BtnArchiveRelocationLedger, true);
             SetNavButton(BtnArchiveCirculationLedger, true);
             SetNavButton(BtnArchiveCrossDomainTransferLedger, true);
@@ -1058,7 +1062,7 @@ namespace DocMgr.Views
 
         private void BtnCabSearch_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "档案柜管理（档案柜检索）";
+            TxtPageTitle.Text = "档案柜管理（开柜查看）";
             MainContentFrame.Navigate(new CabinetSearchPage());
         }
 
@@ -1111,14 +1115,20 @@ namespace DocMgr.Views
 
         private void BtnArchiveFilingLedger_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料建档·立档台账）";
+            TxtPageTitle.Text = "年度资料档案化管理（立档台账）";
             MainContentFrame.Navigate(new ArchiveFilingLedgerPage());
+        }
+
+        private void BtnStockContainerOverview_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "库管资料总览";
+            MainContentFrame.Navigate(new StockContainerOverviewPage());
         }
 
         public void NavigateToArchiveFilingLedger(int filingFactId)
         {
             ArchiveFilingLedgerNavigationState.PendingFilingFactId = filingFactId;
-            TxtPageTitle.Text = "年度资料档案化管理（资料建档·立档台账）";
+            TxtPageTitle.Text = "年度资料档案化管理（立档台账）";
             MainContentFrame.Navigate(new ArchiveFilingLedgerPage());
         }
 

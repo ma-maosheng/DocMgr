@@ -423,8 +423,12 @@ namespace DocMgr.ViewModels.HistoryArchive
                     showExpandItemsByTextLineOption: true,
                     expandItemsByTextLineContent: "以文本行为单位记录资料内容",
                     expandItemsByTextLineToolTip:
-                        "勾选后，「资料内容」单元格内每一非空文本行导入为一条记录；不勾选则以 Excel 表格行整格内容作为一条记录。");
-                if (sheetSelection == null || string.IsNullOrWhiteSpace(sheetSelection.SheetName))
+                        "勾选后，「资料内容」单元格内每一非空文本行导入为一条记录；不勾选则以 Excel 表格行整格内容作为一条记录。",
+                    showCategoryInput: true,
+                    categoryNamePrefix: HistoryArchiveImportTableNameSupport.OtherMapPrefix);
+                if (sheetSelection == null
+                    || string.IsNullOrWhiteSpace(sheetSelection.SheetName)
+                    || string.IsNullOrWhiteSpace(sheetSelection.Category))
                 {
                     return;
                 }
@@ -432,6 +436,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                 await ProcessImportLogicAsync(
                     filePath,
                     sheetSelection.SheetName.Trim(),
+                    HistoryArchiveImportTableNameSupport.NormalizeCategoryName(sheetSelection.Category),
                     sheetSelection.ExpandItemsByTextLine);
             }
             catch (Exception ex)
@@ -440,12 +445,14 @@ namespace DocMgr.ViewModels.HistoryArchive
             }
         }
 
-        private async Task ProcessImportLogicAsync(string filePath, string sheetName, bool expandContentByTextLine)
+        private async Task ProcessImportLogicAsync(
+            string filePath,
+            string sheetName,
+            string targetTableName,
+            bool expandContentByTextLine)
         {
             string currentUser = _userContextService.CurrentUser?.RealName ?? "Unknown";
             string nowStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            // 存档表名：其他资料 + Excel 工作表名。
-            string targetTableName = HistoryArchiveImportTableNameSupport.BuildOtherMapTableName(sheetName);
 
             List<OtherMap> dataList = new List<OtherMap>();
 
@@ -595,7 +602,7 @@ namespace DocMgr.ViewModels.HistoryArchive
                     "其他资料 Excel 导入",
                     $"正在核验档口并写入 {dataList.Count} 条…"))
                 {
-                    await _otherMapService.ImportOtherMapsAsync(dataList, sheetName, isRecreate);
+                    await _otherMapService.ImportOtherMapsAsync(dataList, targetTableName, isRecreate);
                 }
             }
             catch (InvalidOperationException ex)

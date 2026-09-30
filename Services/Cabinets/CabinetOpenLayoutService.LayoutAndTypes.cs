@@ -34,6 +34,8 @@ namespace DocMgr.Services.Cabinets
                     .Select(item => ExtractSourceSuffix(
                         item.SortCategory,
                         HistoryArchiveImportTableNameSupport.AerialPhotoPrefix,
+                        HistoryArchiveImportTableNameSupport.LegacyAerialPhotoBarePrefix,
+                        HistoryArchiveImportTableNameSupport.LegacyAerialPhotoImportPrefix,
                         HistoryArchiveImportTableNameSupport.LegacyAerialPhotoPrefix))
                     .Where(text => !string.IsNullOrWhiteSpace(text))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -244,6 +246,8 @@ namespace DocMgr.Services.Cabinets
                     .Select(item => ExtractSourceSuffix(
                         item.SortCategory,
                         HistoryArchiveImportTableNameSupport.AerialPhotoPrefix,
+                        HistoryArchiveImportTableNameSupport.LegacyAerialPhotoBarePrefix,
+                        HistoryArchiveImportTableNameSupport.LegacyAerialPhotoImportPrefix,
                         HistoryArchiveImportTableNameSupport.LegacyAerialPhotoPrefix))
                     .Where(text => !string.IsNullOrWhiteSpace(text))
                     .Distinct(StringComparer.OrdinalIgnoreCase)

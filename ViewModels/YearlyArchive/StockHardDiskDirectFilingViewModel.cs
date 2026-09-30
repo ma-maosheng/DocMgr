@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
@@ -24,6 +26,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly ICabinetService _cabinetService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IUserService _userService;
         private ArchiveRegisterPageDomainOptions? _pageDomainOptions;
 
         private string _diskCode = string.Empty;
@@ -48,6 +51,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _sourceType = ArchiveRegisterDomainValues.SourceTypeInternal;
         private string _archivePurpose = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
         private string _provideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
+        private bool _suppressSourceProvidePropagate;
         private HardDiskMediaReturnTargetLocationOption? _selectedSlotOption;
         private string _storageLocation = string.Empty;
         private string _scanWarningText = string.Empty;
@@ -60,7 +64,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             IArchiveRegisterService archiveRegisterService,
             ICabinetService cabinetService,
             IDialogService dialogService,
-            IUserContextService userContextService)
+            IUserContextService userContextService,
+            IUserService userService)
         {
             _filingService = filingService;
             _hardDiskMediaService = hardDiskMediaService;
@@ -68,6 +73,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _cabinetService = cabinetService;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _userService = userService;
 
             PickDiskCommand = new RelayCommand(async _ => await PickDiskAsync(), _ => !IsBusy);
             GenerateDiskCodeCommand = new RelayCommand(async _ => await GenerateDiskCodeAsync(), _ => !IsBusy);
@@ -89,6 +95,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<string> SourceTypeOptions { get; } = new();
         public ObservableCollection<string> ConfidentialLevelOptions { get; } = new();
         public ObservableCollection<string> MaterialCategoryOptions { get; } = new();
+        /// <summary>部门列表，供内部「提供单位」可编辑下拉绑定。</summary>
+        public ObservableCollection<Department> Departments { get; } = new();
         public ObservableCollection<HardDiskMediaReturnTargetLocationOption> SlotOptions { get; } = new();
         public ObservableCollection<StockHardDiskPreviewRow> PreviewRows { get; } = new();
 
@@ -236,7 +244,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         /// <summary>
-        /// 标题行展示的介质袋编号预览。年度取自目录扫描「年度」字段（项目实施年度），不占用号段。
+        /// 介质袋编号预览（页内字段与标题共用）。年度取自目录扫描「年度」字段（项目实施年度），不占用号段。
         /// </summary>
         public string PreviewElectronicArchiveNo
         {
@@ -270,23 +278,22 @@ namespace DocMgr.ViewModels.YearlyArchive
             set
             {
                 string normalized = value?.Trim() ?? string.Empty;
+                string previousSource = _sourceType;
+                string previousProvide = _provideUnit;
                 if (!SetProperty(ref _sourceType, normalized))
                 {
                     return;
                 }
 
                 OnPropertyChanged(nameof(IsExternalSource));
-                OnPropertyChanged(nameof(IsProvideUnitReadOnly));
                 ApplyProvideUnitForSourceType();
+                PropagateDefaultSourceProvideUnit(previousSource, previousProvide);
             }
         }
 
         /// <summary>资料来源是否为「外来」。</summary>
         public bool IsExternalSource =>
             string.Equals(SourceType, ArchiveRegisterDomainValues.SourceTypeExternal, StringComparison.Ordinal);
-
-        /// <summary>内部来源时提供单位固定为资料室，不可编辑。</summary>
-        public bool IsProvideUnitReadOnly => !IsExternalSource;
 
         public string ArchivePurpose
         {
@@ -297,7 +304,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ProvideUnit
         {
             get => _provideUnit;
-            set => SetProperty(ref _provideUnit, value ?? string.Empty);
+            set
+            {
+                string previous = _provideUnit;
+                string normalized = value ?? string.Empty;
+                if (!SetProperty(ref _provideUnit, normalized))
+                {
+                    return;
+                }
+
+                PropagateDefaultProvideUnit(previous);
+            }
         }
 
         public HardDiskMediaReturnTargetLocationOption? SelectedSlotOption
@@ -350,7 +367,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             _pageDomainOptions = await _archiveRegisterService.GetPageDomainOptionsAsync();
             var options = _pageDomainOptions;
-            Replace(ArchivePurposeOptions, options.ArchivePurposes, ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage);
+            Replace(
+                ArchivePurposeOptions,
+                ArchiveRegisterDomainValues.FilterDirectFilingArchivePurposes(options.ArchivePurposes),
+                ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage);
             Replace(
                 SourceTypeOptions,
                 options.SourceTypes.Count > 0
@@ -363,6 +383,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ArchiveRegisterDomainValues.SourceTypeInternal);
             Replace(ConfidentialLevelOptions, options.ConfidentialLevels, "秘密");
             Replace(MaterialCategoryOptions, options.ElectronicMaterialCategories, ArchiveRegisterDomainValues.ElectronicMaterialCategoryData);
+            LoadDepartments();
             RefreshYearOptions();
             RefreshProjectNameOptions();
 
@@ -378,14 +399,27 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ArchivePurpose = ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage;
             }
 
-            if (string.IsNullOrWhiteSpace(SourceType) || !SourceTypeOptions.Contains(SourceType))
+            _suppressSourceProvidePropagate = true;
+            try
             {
-                SourceType = SourceTypeOptions.FirstOrDefault()
-                    ?? ArchiveRegisterDomainValues.SourceTypeInternal;
+                if (string.IsNullOrWhiteSpace(SourceType) || !SourceTypeOptions.Contains(SourceType))
+                {
+                    SourceType = SourceTypeOptions.FirstOrDefault()
+                        ?? ArchiveRegisterDomainValues.SourceTypeInternal;
+                }
+                else
+                {
+                    ApplyProvideUnitForSourceType();
+                }
+
+                if (string.IsNullOrWhiteSpace(ProvideUnit) && !IsExternalSource)
+                {
+                    ProvideUnit = ResolveDefaultInternalProvideUnit();
+                }
             }
-            else
+            finally
             {
-                ApplyProvideUnitForSourceType();
+                _suppressSourceProvidePropagate = false;
             }
 
             foreach (var row in PreviewRows)
@@ -783,7 +817,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 $"即将把硬盘 [{DiskCode}] 作为数据盘登记，并按扫描结果直接立档。\n"
                 + $"年度/项目：{Year} / {ProjectName}\n"
                 + $"来源：{SourceType}　提供单位：{ProvideUnit}\n"
-                + $"档口：{StorageLocation}\n"
+                + $"介质袋编号：{PreviewElectronicArchiveNo}\n"
+                + $"物理位置编号：{StorageLocation}\n"
                 + $"{PreviewSummary}\n"
                 + $"{ExistingBagHint}\n"
                 + $"{BusinessNumberHint}\n\n是否继续？";
@@ -826,7 +861,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             ClearUserInputsForNextRound();
             SourceType = ArchiveRegisterDomainValues.SourceTypeInternal;
-            ProvideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
+            ProvideUnit = ResolveDefaultInternalProvideUnit();
             ArchivePurpose = string.Empty;
 
             _suppressSlotResolve = true;
@@ -939,24 +974,95 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         /// <summary>
-        /// 内部：提供单位固定为资料室；外来：若仍为资料室则清空以便用户填写。
+        /// 内部：提供单位默认为操作人部门（缺省资料室）；外来：若仍为内部默认值则清空以便填写。
         /// </summary>
         private void ApplyProvideUnitForSourceType()
         {
+            string internalDefault = ResolveDefaultInternalProvideUnit();
+            string next = _provideUnit;
             if (IsExternalSource)
             {
-                if (string.Equals(
-                        ProvideUnit,
-                        ArchiveRegisterDomainValues.ProvideUnitArchiveRoom,
-                        StringComparison.Ordinal))
+                if (string.Equals(next, internalDefault, StringComparison.Ordinal)
+                    || string.Equals(next, ArchiveRegisterDomainValues.ProvideUnitArchiveRoom, StringComparison.Ordinal))
                 {
-                    ProvideUnit = string.Empty;
+                    next = string.Empty;
                 }
+            }
+            else if (string.IsNullOrWhiteSpace(next))
+            {
+                next = internalDefault;
+            }
 
+            if (string.Equals(_provideUnit, next, StringComparison.Ordinal))
+            {
                 return;
             }
 
-            ProvideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
+            _provideUnit = next;
+            OnPropertyChanged(nameof(ProvideUnit));
+        }
+
+        /// <summary>内部来源默认提供单位：当前用户部门，缺省「资料室」。</summary>
+        internal string ResolveDefaultInternalProvideUnit()
+        {
+            string dept = _userContextService.CurrentUser?.Department?.Trim() ?? string.Empty;
+            return string.IsNullOrWhiteSpace(dept)
+                ? ArchiveRegisterDomainValues.ProvideUnitArchiveRoom
+                : dept;
+        }
+
+        private void PropagateDefaultSourceProvideUnit(string previousSource, string previousProvide)
+        {
+            if (_suppressSourceProvidePropagate)
+            {
+                return;
+            }
+
+            foreach (var row in PreviewRows)
+            {
+                bool sourceMatches = string.Equals(row.SourceType, previousSource, StringComparison.Ordinal);
+                bool provideMatches = string.Equals(row.ProvideUnit, previousProvide, StringComparison.Ordinal);
+                if (!sourceMatches && !provideMatches)
+                {
+                    continue;
+                }
+
+                row.ApplyPageDefaults(
+                    sourceMatches ? SourceType : row.SourceType,
+                    provideMatches || sourceMatches ? ProvideUnit : row.ProvideUnit);
+            }
+        }
+
+        private void PropagateDefaultProvideUnit(string previousProvide)
+        {
+            if (_suppressSourceProvidePropagate)
+            {
+                return;
+            }
+
+            foreach (var row in PreviewRows)
+            {
+                if (string.Equals(row.ProvideUnit, previousProvide, StringComparison.Ordinal))
+                {
+                    row.ProvideUnit = ProvideUnit;
+                }
+            }
+        }
+
+        private void LoadDepartments()
+        {
+            try
+            {
+                Departments.Clear();
+                foreach (Department department in _userService.GetAllDepartments())
+                {
+                    Departments.Add(department);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
         }
 
         /// <summary>
@@ -1011,11 +1117,12 @@ namespace DocMgr.ViewModels.YearlyArchive
     }
 
     /// <summary>
-    /// 扫描预览行（资料类型 / 子类 / 密级可按子项编辑）。
+    /// 扫描预览行（来源 / 单位 / 资料类型 / 子类 / 密级可按子项编辑）。
     /// </summary>
     public sealed class StockHardDiskPreviewRow : ViewModelBase
     {
         private readonly StockHardDiskDirectFilingViewModel _owner;
+        private bool _suppressProvideUnitApply;
 
         public StockHardDiskPreviewRow(
             StockHardDiskDirectFilingViewModel owner,
@@ -1045,6 +1152,44 @@ namespace DocMgr.ViewModels.YearlyArchive
         public int FileCount => Item.FileCount;
 
         public string FilingStoragePath => Item.FilingStoragePath;
+
+        public string SourceType
+        {
+            get => Item.SourceType;
+            set
+            {
+                string trimmed = value?.Trim() ?? string.Empty;
+                if (string.Equals(Item.SourceType, trimmed, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                Item.SourceType = trimmed;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsExternalSource));
+                ApplyProvideUnitForSourceType();
+            }
+        }
+
+        /// <summary>本子项资料来源是否为「外来」。</summary>
+        public bool IsExternalSource =>
+            string.Equals(SourceType, ArchiveRegisterDomainValues.SourceTypeExternal, StringComparison.Ordinal);
+
+        public string ProvideUnit
+        {
+            get => Item.ProvideUnit;
+            set
+            {
+                string trimmed = value ?? string.Empty;
+                if (string.Equals(Item.ProvideUnit, trimmed, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                Item.ProvideUnit = trimmed;
+                OnPropertyChanged();
+            }
+        }
 
         public string MaterialCategory
         {
@@ -1096,10 +1241,20 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         /// <summary>
-        /// 按页面域值补齐默认密级 / 资料类型 / 子类，并刷新子类下拉。
+        /// 按页面域值补齐默认来源 / 单位 / 密级 / 资料类型 / 子类，并刷新子类下拉。
         /// </summary>
         public void EnsureDefaultsFromOwner()
         {
+            if (string.IsNullOrWhiteSpace(Item.SourceType)
+                || (_owner.SourceTypeOptions.Count > 0 && !_owner.SourceTypeOptions.Contains(Item.SourceType)))
+            {
+                ApplyPageDefaults(_owner.SourceType, _owner.ProvideUnit);
+            }
+            else if (string.IsNullOrWhiteSpace(Item.ProvideUnit))
+            {
+                ApplyPageDefaults(Item.SourceType, _owner.ProvideUnit);
+            }
+
             if (string.IsNullOrWhiteSpace(Item.ConfidentialLevel)
                 || (_owner.ConfidentialLevelOptions.Count > 0
                     && !_owner.ConfidentialLevelOptions.Contains(Item.ConfidentialLevel)))
@@ -1117,6 +1272,65 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             RefreshSubCategoryOptions(preferDefaultForDataCategory: true);
+        }
+
+        /// <summary>写入来源/提供单位（用于页面默认值下推）。</summary>
+        public void ApplyPageDefaults(string? sourceType, string? provideUnit)
+        {
+            _suppressProvideUnitApply = true;
+            try
+            {
+                string nextSource = string.IsNullOrWhiteSpace(sourceType)
+                    ? ArchiveRegisterDomainValues.SourceTypeInternal
+                    : sourceType.Trim();
+                if (!string.Equals(Item.SourceType, nextSource, StringComparison.Ordinal))
+                {
+                    Item.SourceType = nextSource;
+                    OnPropertyChanged(nameof(SourceType));
+                    OnPropertyChanged(nameof(IsExternalSource));
+                }
+
+                string nextProvide = provideUnit ?? string.Empty;
+                if (!IsExternalSource && string.IsNullOrWhiteSpace(nextProvide))
+                {
+                    nextProvide = _owner.ResolveDefaultInternalProvideUnit();
+                }
+
+                if (!string.Equals(Item.ProvideUnit, nextProvide, StringComparison.Ordinal))
+                {
+                    Item.ProvideUnit = nextProvide;
+                    OnPropertyChanged(nameof(ProvideUnit));
+                }
+            }
+            finally
+            {
+                _suppressProvideUnitApply = false;
+            }
+        }
+
+        private void ApplyProvideUnitForSourceType()
+        {
+            if (_suppressProvideUnitApply)
+            {
+                return;
+            }
+
+            string internalDefault = _owner.ResolveDefaultInternalProvideUnit();
+            if (IsExternalSource)
+            {
+                if (string.Equals(ProvideUnit, internalDefault, StringComparison.Ordinal)
+                    || string.Equals(ProvideUnit, ArchiveRegisterDomainValues.ProvideUnitArchiveRoom, StringComparison.Ordinal))
+                {
+                    ProvideUnit = string.Empty;
+                }
+
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(ProvideUnit))
+            {
+                ProvideUnit = internalDefault;
+            }
         }
 
         private void RefreshSubCategoryOptions(bool preferDefaultForDataCategory)

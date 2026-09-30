@@ -1,0 +1,295 @@
+<Page x:Class="DocMgr.Views.Inventory.StockContainerOverviewPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      mc:Ignorable="d"
+      d:DesignHeight="900"
+      d:DesignWidth="1400"
+      Title="StockContainerOverviewPage"
+      Background="#F0F2F5">
+
+    <Page.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
+        <Style x:Key="PageTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#004D40"/>
+        </Style>
+
+        <Style x:Key="PageSubtitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#6B7280"/>
+            <Setter Property="Margin" Value="0,4,0,0"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="CompactToolbarButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarActionButtonStyle}">
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MinHeight" Value="28"/>
+        </Style>
+
+        <Style x:Key="ContentCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <Style x:Key="SectionHeaderBarStyle" TargetType="Border">
+            <Setter Property="Background" Value="#F9FAFB"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="14,10"/>
+        </Style>
+
+        <Style x:Key="FilterRowLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource ToolbarFilterLabelStyle}">
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="OverviewPaneGridSplitterStyle" TargetType="GridSplitter">
+            <Setter Property="Height" Value="8"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="#E5E7EB"/>
+            <Setter Property="ResizeBehavior" Value="PreviousAndNext"/>
+            <Setter Property="ResizeDirection" Value="Rows"/>
+            <Setter Property="Cursor" Value="SizeNS"/>
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="库管资料总览" Style="{StaticResource PageTitleStyle}"/>
+            <TextBlock Style="{StaticResource PageSubtitleStyle}"
+                       Text="以年度档案盒、电子介质袋、历史存档盒为主行盘点查询；支持按资料名反查容器，并可导出 Excel。借还请走资料检索→检索池。"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Margin="0,0,0,10" Padding="12,10">
+            <StackPanel>
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="140"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="160"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="110"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="110"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="年度：" Style="{StaticResource FilterRowLabelStyle}" Width="48"/>
+                    <ComboBox Grid.Column="1"
+                              Height="{StaticResource FormControlHeight}"
+                              ItemsSource="{Binding Years}"
+                              SelectedItem="{Binding SelectedYear}"/>
+
+                    <TextBlock Grid.Column="3" Text="状态：" Style="{StaticResource FilterRowLabelStyle}" Width="48"/>
+                    <ComboBox Grid.Column="4"
+                              Height="{StaticResource FormControlHeight}"
+                              ItemsSource="{Binding LifecycleFilterOptions}"
+                              DisplayMemberPath="Label"
+                              SelectedValuePath="Value"
+                              SelectedValue="{Binding SelectedLifecycleFilter}"/>
+
+                    <TextBlock Grid.Column="6" Text="位置：" Style="{StaticResource FilterRowLabelStyle}" Width="48"/>
+                    <TextBox Grid.Column="7"
+                             Height="{StaticResource FormControlHeight}"
+                             Text="{Binding StorageLocationKeyword, UpdateSourceTrigger=PropertyChanged}"/>
+
+                    <TextBlock Grid.Column="9" Text="归档自：" Style="{StaticResource FilterRowLabelStyle}" Width="60"/>
+                    <DatePicker Grid.Column="10"
+                                Height="{StaticResource FormControlHeight}"
+                                SelectedDate="{Binding ArchivedFrom}"/>
+                    <TextBlock Grid.Column="11" Text="至" VerticalAlignment="Center" Margin="8,0"/>
+                    <DatePicker Grid.Column="12"
+                                Height="{StaticResource FormControlHeight}"
+                                SelectedDate="{Binding ArchivedTo}"/>
+                </Grid>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="关键词：" Style="{StaticResource FilterRowLabelStyle}" Width="60"/>
+                    <TextBox Grid.Column="1"
+                             Height="{StaticResource FormControlHeight}"
+                             Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="匹配容器编号、项目、位置，或盒/袋内资料名称；勾选「含目录/文件名」后还可匹配电子介质目录与文件名称"/>
+
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                        <CheckBox Content="年度盒" IsChecked="{Binding IncludeYearlyBox}" Margin="0,0,10,0"/>
+                        <CheckBox Content="电子袋" IsChecked="{Binding IncludeElectronicBag}" Margin="0,0,10,0"/>
+                        <CheckBox Content="历史盒" IsChecked="{Binding IncludeHistoryBox}" Margin="0,0,10,0"/>
+                        <CheckBox Content="含已停用" IsChecked="{Binding IncludeInactive}"/>
+                    </StackPanel>
+                </Grid>
+
+                <DockPanel LastChildFill="True">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <CheckBox Content="含目录/文件名"
+                                  IsChecked="{Binding IncludeElectronicEntryNames}"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,8,0"
+                                  ToolTip="勾选后关键词额外匹配电子介质目录/文件明细的名称字段；默认不匹配"/>
+                        <CheckBox Content="区分大小写"
+                                  IsChecked="{Binding KeywordCaseSensitive}"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,8,0"
+                                  ToolTip="勾选后关键词按原文区分字母大小写；默认忽略大小写"/>
+                        <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource CompactToolbarButtonStyle}" Margin="0,0,6,0"/>
+                        <Button Content="重置" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}" Margin="0,0,6,0"/>
+                        <Button Content="刷新" Command="{Binding RefreshCommand}" Style="{StaticResource CompactToolbarButtonStyle}" Margin="0,0,12,0"/>
+                        <CheckBox Content="导出含明细"
+                                  IsChecked="{Binding ExportIncludeContents}"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,8,0"
+                                  ToolTip="导出 Excel 时是否附带「容器内容明细」工作表"/>
+                        <Button Content="导出" Command="{Binding ExportCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding SummaryText, Mode=OneWay}"
+                               VerticalAlignment="Center"
+                               Foreground="#37474F"
+                               FontSize="12"/>
+                </DockPanel>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="2*"/>
+                <RowDefinition Height="8"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Style="{StaticResource ContentCardStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Style="{StaticResource SectionHeaderBarStyle}">
+                        <TextBlock Text="容器列表" FontWeight="SemiBold" Foreground="#37474F"/>
+                    </Border>
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding ContainerRows}"
+                              SelectedItem="{Binding SelectedRow}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              RowHeaderWidth="0"
+                              AlternatingRowBackground="#FAFAFA"
+                              BorderThickness="0"
+                              EnableRowVirtualization="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="类型" Binding="{Binding ContainerKindDisplay, Mode=OneWay}" Width="100"/>
+                            <DataGridTextColumn Header="容器编号" Binding="{Binding ContainerCode, Mode=OneWay}" Width="140"/>
+                            <DataGridTextColumn Header="项目/类别" Binding="{Binding ProjectOrCategory, Mode=OneWay}" Width="160"/>
+                            <DataGridTextColumn Header="年度" Binding="{Binding Year, Mode=OneWay}" Width="70"/>
+                            <DataGridTextColumn Header="存放位置" Binding="{Binding StorageLocation, Mode=OneWay}" Width="140"/>
+                            <DataGridTextColumn Header="状态" Binding="{Binding LifecycleStatusDisplay, Mode=OneWay}" Width="90"/>
+                            <DataGridTextColumn Header="件数" Binding="{Binding ItemCount, Mode=OneWay}" Width="60"/>
+                            <DataGridTextColumn Header="内容摘要" Binding="{Binding ContentSummary, Mode=OneWay}" Width="*"/>
+                            <DataGridTextColumn Header="规格/载体" Binding="{Binding Specs, Mode=OneWay}" Width="140"/>
+                            <DataGridTextColumn Header="归档日期" Binding="{Binding ArchivedDateDisplay, Mode=OneWay}" Width="100"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Row="1" Style="{StaticResource OverviewPaneGridSplitterStyle}"/>
+
+            <Border Grid.Row="2" Style="{StaticResource ContentCardStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Style="{StaticResource SectionHeaderBarStyle}">
+                        <DockPanel LastChildFill="True">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="查看目录/文件"
+                                        Command="{Binding ViewElectronicEntriesCommand}"
+                                        Style="{StaticResource CompactToolbarButtonStyle}"
+                                        Margin="8,0,0,0"
+                                        ToolTip="选中电子资料行后，查看其目录/文件明细"/>
+                                <Button Content="打开立档台账"
+                                        Command="{Binding OpenFilingLedgerCommand}"
+                                        Style="{StaticResource CompactToolbarButtonStyle}"
+                                        Margin="8,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding ContentSummaryText, Mode=OneWay}"
+                                       FontWeight="SemiBold"
+                                       Foreground="#37474F"
+                                       VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Border>
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding ContentItems}"
+                              SelectedItem="{Binding SelectedContentItem}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              RowHeaderWidth="0"
+                              AlternatingRowBackground="#FAFAFA"
+                              BorderThickness="0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="资料类别" Binding="{Binding MaterialKindDisplay, Mode=OneWay}" Width="90"/>
+                            <DataGridTextColumn Header="资料名称" Binding="{Binding Title, Mode=OneWay}" Width="180"/>
+                            <DataGridTextColumn Header="明细" Binding="{Binding ItemName, Mode=OneWay}" Width="140"/>
+                            <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevel, Mode=OneWay}" Width="70"/>
+                            <DataGridTextColumn Header="份数" Binding="{Binding ContentCount, Mode=OneWay}" Width="60"/>
+                            <DataGridTextColumn Header="生命周期" Binding="{Binding LifecycleStatusDisplay, Mode=OneWay}" Width="80"/>
+                            <DataGridTextColumn Header="原件/备份" Binding="{Binding ArchiveCopyRoleDisplay, Mode=OneWay}" Width="80"/>
+                            <DataGridTextColumn Header="介质编号" Binding="{Binding MediumCode, Mode=OneWay}" Width="100"/>
+                            <DataGridTextColumn Header="表单号" Binding="{Binding FormNo, Mode=OneWay}" Width="120"/>
+                            <DataGridTextColumn Header="补充" Binding="{Binding ExtraInfo, Mode=OneWay}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="0"
+                    Grid.RowSpan="3"
+                    Background="#CCFFFFFF"
+                    Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <ProgressBar Width="220" Height="6" IsIndeterminate="True"/>
+                    <TextBlock Text="{Binding BusyStatus, Mode=OneWay}"
+                               Margin="0,10,0,0"
+                               HorizontalAlignment="Center"
+                               Foreground="#455A64"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

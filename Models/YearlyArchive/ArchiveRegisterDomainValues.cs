@@ -86,6 +86,23 @@ namespace DocMgr.Models.YearlyArchive
         public static bool IsExternalEntrustedArchivePurpose(string? archivePurpose) =>
             string.Equals(archivePurpose?.Trim(), ArchivePurposeExternalEntrusted, StringComparison.Ordinal);
 
+        /// <summary>
+        /// 直办立档库管模式选项：排除「外部委托、代管代发」。
+        /// </summary>
+        public static IReadOnlyList<string> FilterDirectFilingArchivePurposes(IEnumerable<string>? purposes)
+        {
+            if (purposes == null)
+            {
+                return Array.Empty<string>();
+            }
+
+            return purposes
+                .Where(item => !string.IsNullOrWhiteSpace(item) && !IsExternalEntrustedArchivePurpose(item))
+                .Select(item => item.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+        }
+
         /// <summary>附件类别：签批交接单。</summary>
         public const string AttachmentKindSignedHandoverForm = "SignedHandoverForm";
 

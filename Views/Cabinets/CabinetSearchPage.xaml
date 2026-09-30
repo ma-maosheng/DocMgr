@@ -6,7 +6,7 @@
       xmlns:local="clr-namespace:DocMgr.Views.Cabinets"
       mc:Ignorable="d"
       d:DesignHeight="800" d:DesignWidth="1400"
-      Title="档案柜检索">
+      Title="开柜查看">
 
     <Grid>
         <Grid.RowDefinitions>

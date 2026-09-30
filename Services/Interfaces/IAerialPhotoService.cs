@@ -17,9 +17,9 @@ namespace DocMgr.Services.Interfaces
         /// 将航摄影像数据导入到数据库（先核验落档档口用途）。
         /// </summary>
         /// <param name="list">要导入的数据列表</param>
-        /// <param name="sheetName">Sheet名称（用于生成表名后缀）</param>
+        /// <param name="categoryName">分类（逻辑表名）</param>
         /// <param name="isRecreate">是否重建表（即覆盖旧数据）</param>
-        Task ImportAerialPhotosAsync(List<AerialPhoto> list, string sheetName, bool isRecreate = false);
+        Task ImportAerialPhotosAsync(List<AerialPhoto> list, string categoryName, bool isRecreate = false);
 
         /// <summary>
         /// 删除指定名称的数据表
