@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
@@ -73,6 +74,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ToggleFoldGroupCommand = new RelayCommand<FilingLedgerRow>(
                 ToggleFoldGroup,
                 row => row is { ShowFoldButton: true });
+            ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.Filing));
 
             ContentEntriesPanel = new ItemDetailsListPresenter<FilingLedgerContentEntryInfo>(
                 "电子介质目录 / 文件明细",
@@ -342,6 +344,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand ViewRegisterDetailCommand { get; }
         public RelayCommand ToggleFoldAllCommand { get; }
         public RelayCommand<FilingLedgerRow> ToggleFoldGroupCommand { get; }
+        public RelayCommand ShowIntroCommand { get; }
 
         /// <summary>列表是否存在可折叠的同单多子项。</summary>
         public bool HasFoldableGroups => _sourceRows.Any(row => row.ShowFoldButton);

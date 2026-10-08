@@ -323,8 +323,27 @@ namespace DocMgr.Models.SystemSettings
                 .ToList()
         };
 
+        /// <summary>
+        /// 业务类型目录（SS-APPR 左侧列表顺序）。
+        /// 与主窗口左侧导航「顶级·[二级·]叶子」出现顺序对齐。
+        /// </summary>
         public static IReadOnlyList<ApprovalBusinessTypeDefinition> BusinessTypes { get; } =
         [
+            // 历史存档资料管理
+            new()
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.HistoryArchiveDisposal,
+                DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.HistoryArchiveDisposal),
+                ConditionFields =
+                [
+                    MaterialKindField,
+                    HistoryDispositionMethodField,
+                    IsTransferMethodField,
+                    HasMixedPlacementField,
+                    HasOtherRemarkField
+                ]
+            },
+            // 年度资料档案化管理 · 资料建档 / 资料流转 / 盘库登记 / 离库处置
             new()
             {
                 BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveRegister,
@@ -370,6 +389,30 @@ namespace DocMgr.Models.SystemSettings
             },
             new()
             {
+                BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveInventoryRegister,
+                DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.YearlyArchiveInventoryRegister),
+                ConditionFields =
+                [
+                    MediaKindField,
+                    YearlyInventoryRegisterKindField
+                ]
+            },
+            new()
+            {
+                BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveDisposal,
+                DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.YearlyArchiveDisposal),
+                ConditionFields =
+                [
+                    MediaKindField,
+                    YearlyDisposalReasonField,
+                    YearlyDispositionMethodField,
+                    HasFormatRetainField,
+                    MediumKindField
+                ]
+            },
+            // 年度资料出入网管理
+            new()
+            {
                 BusinessType = ApprovalWorkflowBusinessTypes.NetworkInbound,
                 DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.NetworkInbound),
                 ConditionFields =
@@ -397,32 +440,6 @@ namespace DocMgr.Models.SystemSettings
             },
             new()
             {
-                BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveDisposal,
-                DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.YearlyArchiveDisposal),
-                ConditionFields =
-                [
-                    MediaKindField,
-                    YearlyDisposalReasonField,
-                    YearlyDispositionMethodField,
-                    HasFormatRetainField,
-                    MediumKindField
-                ]
-            },
-            new()
-            {
-                BusinessType = ApprovalWorkflowBusinessTypes.HistoryArchiveDisposal,
-                DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.HistoryArchiveDisposal),
-                ConditionFields =
-                [
-                    MaterialKindField,
-                    HistoryDispositionMethodField,
-                    IsTransferMethodField,
-                    HasMixedPlacementField,
-                    HasOtherRemarkField
-                ]
-            },
-            new()
-            {
                 BusinessType = ApprovalWorkflowBusinessTypes.NetworkOnNetDisposal,
                 DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.NetworkOnNetDisposal),
                 ConditionFields =
@@ -433,6 +450,7 @@ namespace DocMgr.Models.SystemSettings
                     HasOtherRemarkField
                 ]
             },
+            // 介质管理 · 硬盘（出库 → 归还 → 盘库 → 离库，与导航一致）
             new()
             {
                 BusinessType = ApprovalWorkflowBusinessTypes.HardDiskOutbound,
@@ -457,18 +475,6 @@ namespace DocMgr.Models.SystemSettings
             },
             new()
             {
-                BusinessType = ApprovalWorkflowBusinessTypes.HardDiskDisposal,
-                DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.HardDiskDisposal),
-                ConditionFields =
-                [
-                    HardDiskDisposalReasonField,
-                    HardDiskDispositionMethodField,
-                    BeforeMediaStatusField,
-                    HasOtherRemarkField
-                ]
-            },
-            new()
-            {
                 BusinessType = ApprovalWorkflowBusinessTypes.HardDiskInventoryRegister,
                 DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.HardDiskInventoryRegister),
                 ConditionFields =
@@ -478,12 +484,14 @@ namespace DocMgr.Models.SystemSettings
             },
             new()
             {
-                BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveInventoryRegister,
-                DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.YearlyArchiveInventoryRegister),
+                BusinessType = ApprovalWorkflowBusinessTypes.HardDiskDisposal,
+                DisplayName = ApprovalWorkflowBusinessTypes.ToDisplay(ApprovalWorkflowBusinessTypes.HardDiskDisposal),
                 ConditionFields =
                 [
-                    MediaKindField,
-                    YearlyInventoryRegisterKindField
+                    HardDiskDisposalReasonField,
+                    HardDiskDispositionMethodField,
+                    BeforeMediaStatusField,
+                    HasOtherRemarkField
                 ]
             }
         ];

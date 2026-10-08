@@ -80,11 +80,20 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,12">
-            <TextBlock Text="流转台账" Style="{StaticResource PageTitleStyle}"/>
-            <TextBlock Style="{StaticResource PageSubtitleStyle}"
-                       Text="按容器 → 业务单 → 明细时间线，浏览立档入库后的出库/归还落账与出库申请节点；不含立档业务与迁档记录。"/>
-        </StackPanel>
+        <DockPanel Grid.Row="0" Margin="0,0,0,12" LastChildFill="True">
+            <Button DockPanel.Dock="Right"
+                    Content="台账简介"
+                    VerticalAlignment="Top"
+                    Margin="12,0,0,0"
+                    Style="{StaticResource CompactToolbarButtonStyle}"
+                    Command="{Binding ShowIntroCommand}"
+                    ToolTip="查看本台账的业务范围、关联对象与写入逻辑"/>
+            <StackPanel>
+                <TextBlock Text="流转台账" Style="{StaticResource PageTitleStyle}"/>
+                <TextBlock Style="{StaticResource PageSubtitleStyle}"
+                           Text="按容器 → 业务单 → 明细时间线，浏览立档入库后的出库/归还落账与出库申请节点；不含立档业务与迁档记录。"/>
+            </StackPanel>
+        </DockPanel>
 
         <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Padding="10,8" Margin="0,0,0,8">
             <Grid>

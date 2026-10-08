@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.NetworkTransfer;
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.ViewModels.Cabinets;
 using DocMgr.ViewModels.Shared;
@@ -21,6 +22,12 @@ namespace DocMgr.Services.Interfaces
         void ShowElectronicMediaItemEntriesDialog(string title, IReadOnlyList<ElectronicMediaItemEntryDisplayItem> entries, string summaryText);
         void ShowMessage(string message, string title = "提示");
         void ShowTextDetailDialog(string content, string title = "详情");
+
+        /// <summary>
+        /// 打开台账简介窗（业务范围 / 关联对象 / 写入逻辑）。
+        /// </summary>
+        void ShowLedgerIntro(LedgerIntroKind kind);
+
         void ShowError(string message, string title = "错误");
         bool ShowConfirm(string message, string title = "确认");
 

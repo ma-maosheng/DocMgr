@@ -206,6 +206,7 @@ namespace DocMgr.ViewModels.HistoryArchive
         public RelayCommand SearchCommand { get; }
         public RelayCommand ResetSearchCommand { get; }
         public RelayCommand ExportCommand { get; }
+        public RelayCommand ShowIntroCommand { get; }
         public RelayCommand FirstPageCommand { get; }
         public RelayCommand PreviousPageCommand { get; }
         public RelayCommand NextPageCommand { get; }
@@ -237,6 +238,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             SearchCommand = new RelayCommand(_ => ApplySearchFilter());
             ResetSearchCommand = new RelayCommand(_ => ResetSearch());
             ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => _filteredAerialPhotos.Count > 0);
+            ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.AerialPhoto));
             FirstPageCommand = new RelayCommand(_ => GoToPage(1), _ => CanGoPrevious);
             PreviousPageCommand = new RelayCommand(_ => GoToPage(CurrentPage - 1), _ => CanGoPrevious);
             NextPageCommand = new RelayCommand(_ => GoToPage(CurrentPage + 1), _ => CanGoNext);

@@ -28,6 +28,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
@@ -73,7 +74,14 @@
                             Content="刷新列表"
                             Command="{Binding RefreshCommand}"
                             Style="{StaticResource ToolbarActionButtonStyle}"
-                            Width="96"/>
+                            Width="96"
+                            Margin="0,0,10,0"/>
+                    <Button Grid.Column="6"
+                            Content="台账简介"
+                            Command="{Binding ShowIntroCommand}"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            Width="96"
+                            ToolTip="查看本台账的业务范围、关联对象与写入逻辑"/>
                 </Grid>
             </ScrollViewer>
         </Border>

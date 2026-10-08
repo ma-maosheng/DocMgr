@@ -291,11 +291,20 @@
         </Grid.RowDefinitions>
 
         <!-- 页头 -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,12">
-            <TextBlock Text="立档台账" Style="{StaticResource PageTitleStyle}"/>
-            <TextBlock Style="{StaticResource PageSubtitleStyle}"
-                       Text="按立档编号中的档案年度浏览已立档资料，支持多条件筛选、详情查看与台账导出（资料管理员）。"/>
-        </StackPanel>
+        <DockPanel Grid.Row="0" Margin="0,0,0,12" LastChildFill="True">
+            <Button DockPanel.Dock="Right"
+                    Content="台账简介"
+                    VerticalAlignment="Top"
+                    Margin="12,0,0,0"
+                    Style="{StaticResource CompactToolbarButtonStyle}"
+                    Command="{Binding ShowIntroCommand}"
+                    ToolTip="查看本台账的业务范围、关联对象与写入逻辑"/>
+            <StackPanel>
+                <TextBlock Text="立档台账" Style="{StaticResource PageTitleStyle}"/>
+                <TextBlock Style="{StaticResource PageSubtitleStyle}"
+                           Text="按立档编号中的档案年度浏览已立档资料，支持多条件筛选、详情查看与台账导出（资料管理员）。"/>
+            </StackPanel>
+        </DockPanel>
 
         <!-- 筛选区 -->
         <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Padding="10,8" Margin="0,0,0,8">

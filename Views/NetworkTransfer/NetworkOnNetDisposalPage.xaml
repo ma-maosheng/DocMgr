@@ -22,7 +22,14 @@
     <DockPanel Grid.Row="1">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
         <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-          <TextBlock Text="在网台账" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+          <TextBlock Text="在网台账" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,8,0"/>
+          <Button Content="台账简介"
+                  Command="{Binding ShowIntroCommand}"
+                  Style="{StaticResource ToolbarActionButtonStyle}"
+                  Width="96"
+                  Margin="0,0,12,0"
+                  VerticalAlignment="Center"
+                  ToolTip="查看本台账的业务范围、关联对象与写入逻辑"/>
           <TextBlock Text="来源：" VerticalAlignment="Center" Margin="0,0,0,0"/>
           <ComboBox Width="110" ItemsSource="{Binding OriginKindOptions}" SelectedItem="{Binding AssetOriginKind}"/>
           <TextBlock Text="状态：" VerticalAlignment="Center" Margin="12,0,0,0"/>

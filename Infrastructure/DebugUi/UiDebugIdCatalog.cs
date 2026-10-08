@@ -182,6 +182,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<AttachmentViewChoiceDialog>("SH-ATT-CHO", "附件查看方式");
             Add<DocumentCameraCaptureDialog>("SH-CAM", "高影仪直拍");
             Add<TextDetailDialog>("SH-TXT", "文本详情");
+            Add<LedgerIntroDialog>("SH-LDG-INTRO", "台账简介");
             Add<SheetSelectionDialog>("SH-SHEET", "工作表选择");
             Add<ImportOptionDialog>("SH-IMP", "导入选项");
             Add<OperationProgressOverlay>("SH-PROG", "操作进度");

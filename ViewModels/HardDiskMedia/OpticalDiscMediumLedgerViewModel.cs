@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using DocMgr.Models.OpticalDiscMedia;
+using DocMgr.Models.Shared;
+using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.HardDiskMedia
@@ -36,6 +38,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ExportCommand = new RelayCommand(async _ => await ExportAsync());
             SearchTransactionsCommand = new RelayCommand(async _ => await SearchTransactionsAsync());
             ShowAllTransactionsCommand = new RelayCommand(async _ => await ShowAllTransactionsAsync());
+            ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.OpticalDisc));
         }
 
         public ObservableCollection<OpticalDiscMedium> MediaItems { get; } = new();
@@ -182,6 +185,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public RelayCommand SearchCommand { get; }
         public RelayCommand RefreshCommand { get; }
         public RelayCommand ExportCommand { get; }
+        public RelayCommand ShowIntroCommand { get; }
         public RelayCommand SearchTransactionsCommand { get; }
         public RelayCommand ShowAllTransactionsCommand { get; }
 

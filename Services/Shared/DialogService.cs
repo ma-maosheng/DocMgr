@@ -131,6 +131,16 @@ namespace DocMgr.Services.Shared
             dialog.ShowDialog();
         }
 
+        public void ShowLedgerIntro(LedgerIntroKind kind)
+        {
+            var content = LedgerIntroCopySupport.Get(kind);
+            var dialog = new LedgerIntroDialog(content)
+            {
+                Owner = GetOwnerWindow()
+            };
+            dialog.ShowDialog();
+        }
+
         public void ShowElectronicMediaItemEntriesDialog(
             string title,
             IReadOnlyList<ElectronicMediaItemEntryDisplayItem> entries,

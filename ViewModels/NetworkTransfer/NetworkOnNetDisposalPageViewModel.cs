@@ -58,6 +58,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             OpenDisposalCommand = new RelayCommand(async _ => await OpenDisposalAsync(), _ => SelectedRecord != null);
             WithdrawDisposalCommand = new RelayCommand(async _ => await WithdrawDisposalAsync(), _ => CanWithdrawSelected);
             ForceVoidDisposalCommand = new RelayCommand(async _ => await ForceVoidDisposalAsync(), _ => CanForceVoidSelected);
+            ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.OnNetAsset));
         }
 
         public ObservableCollection<NetworkOnNetAsset> Assets { get; } = new();
@@ -147,6 +148,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public RelayCommand OpenDisposalCommand { get; }
         public RelayCommand WithdrawDisposalCommand { get; }
         public RelayCommand ForceVoidDisposalCommand { get; }
+        public RelayCommand ShowIntroCommand { get; }
 
         public async Task InitializeAsync()
         {

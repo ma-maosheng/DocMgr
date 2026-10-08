@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.Shared;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 
@@ -31,6 +32,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
+            ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.HardDisk));
         }
 
         public ObservableCollection<HardDiskMedium> MediaItems { get; } = new();
@@ -141,6 +143,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public RelayCommand SearchCommand { get; }
         public RelayCommand RefreshCommand { get; }
+        public RelayCommand ShowIntroCommand { get; }
 
         public async Task InitializeAsync(
             string? initialStatus = null,

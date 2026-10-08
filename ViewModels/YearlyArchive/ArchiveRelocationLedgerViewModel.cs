@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
@@ -38,6 +39,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             NavigateToFilingLedgerCommand = new RelayCommand(
                 _ => NavigateToFilingLedger(),
                 _ => SelectedRow != null && SelectedRow.FilingFactId > 0);
+            ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.Relocation));
         }
 
         public event Action<int>? NavigateToFilingLedgerRequested;
@@ -157,6 +159,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand SearchCommand { get; }
         public RelayCommand ResetCommand { get; }
         public RelayCommand NavigateToFilingLedgerCommand { get; }
+        public RelayCommand ShowIntroCommand { get; }
 
         public async Task InitializeAsync()
         {

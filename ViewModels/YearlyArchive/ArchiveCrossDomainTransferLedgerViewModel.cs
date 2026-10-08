@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Input;
+using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
@@ -77,6 +78,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 await SearchAsync();
             });
             ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => LedgerRows.Count > 0);
+            ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.CrossDomain));
         }
 
         public event Action<int>? NavigateToFilingLedgerRequested;
@@ -211,6 +213,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand ApplyRecentDaysCommand { get; }
 
         public RelayCommand ExportCommand { get; }
+        public RelayCommand ShowIntroCommand { get; }
 
         public async Task InitializeAsync()
         {

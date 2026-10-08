@@ -36,11 +36,20 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,12">
-            <TextBlock Text="迁档台账" Style="{StaticResource PageTitleStyle}"/>
-            <TextBlock Style="{StaticResource PageSubtitleStyle}"
-                       Text="横向浏览资料迁档实物流转流水，可按迁档模式、迁档性质、业务单号与关键字筛选；迁档性质区分「备份迁档」与「常规迁档」。"/>
-        </StackPanel>
+        <DockPanel Grid.Row="0" Margin="0,0,0,12" LastChildFill="True">
+            <Button DockPanel.Dock="Right"
+                    Content="台账简介"
+                    VerticalAlignment="Top"
+                    Margin="12,0,0,0"
+                    Style="{StaticResource CompactToolbarButtonStyle}"
+                    Command="{Binding ShowIntroCommand}"
+                    ToolTip="查看本台账的业务范围、关联对象与写入逻辑"/>
+            <StackPanel>
+                <TextBlock Text="迁档台账" Style="{StaticResource PageTitleStyle}"/>
+                <TextBlock Style="{StaticResource PageSubtitleStyle}"
+                           Text="横向浏览资料迁档实物流转流水，可按迁档模式、迁档性质、业务单号与关键字筛选；迁档性质区分「备份迁档」与「常规迁档」。"/>
+            </StackPanel>
+        </DockPanel>
 
         <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Padding="10,8" Margin="0,0,0,8">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">

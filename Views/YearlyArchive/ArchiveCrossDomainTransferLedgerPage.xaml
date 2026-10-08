@@ -96,11 +96,20 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,12">
-            <TextBlock Text="跨域流转台账" Style="{StaticResource PageTitleStyle}"/>
-            <TextBlock Style="{StaticResource PageSubtitleStyle}"
-                       Text="横向浏览立档电子资料复制上传入网等跨域流转流水；原件保管关系不变，生产网侧见在网资产编号与服务器路径。"/>
-        </StackPanel>
+        <DockPanel Grid.Row="0" Margin="0,0,0,12" LastChildFill="True">
+            <Button DockPanel.Dock="Right"
+                    Content="台账简介"
+                    VerticalAlignment="Top"
+                    Margin="12,0,0,0"
+                    Style="{StaticResource CompactToolbarButtonStyle}"
+                    Command="{Binding ShowIntroCommand}"
+                    ToolTip="查看本台账的业务范围、关联对象与写入逻辑"/>
+            <StackPanel>
+                <TextBlock Text="跨域流转台账" Style="{StaticResource PageTitleStyle}"/>
+                <TextBlock Style="{StaticResource PageSubtitleStyle}"
+                           Text="横向浏览立档电子资料复制上传入网等跨域流转流水；原件保管关系不变，生产网侧见在网资产编号与服务器路径。"/>
+            </StackPanel>
+        </DockPanel>
 
         <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Padding="10,8" Margin="0,0,0,8">
             <Grid Grid.IsSharedSizeScope="True">
