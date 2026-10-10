@@ -1,7 +1,6 @@
 using DocMgr.Config;
 using DocMgr.Data;
 using DocMgr.Data.Interceptors;
-using DocMgr.Data.Sqlite;
 using DocMgr.Infrastructure.Startup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,14 +25,14 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton<AppInitializationState>();
         services.AddScoped<DbOperationLogWriter>();
         services.AddScoped<DbOperationLogInterceptor>();
-        services.AddSingleton<SqliteConnectionPragmaInterceptor>();
+        services.AddSingleton<SqlServerIdentityKeyNormalizeInterceptor>();
 
         services.AddDbContext<AppDbContext>((serviceProvider, options) =>
         {
-            options.UseSqlite(connectionString);
+            options.UseSqlServer(connectionString);
             options.AddInterceptors(
                 serviceProvider.GetRequiredService<DbOperationLogInterceptor>(),
-                serviceProvider.GetRequiredService<SqliteConnectionPragmaInterceptor>());
+                serviceProvider.GetRequiredService<SqlServerIdentityKeyNormalizeInterceptor>());
         });
 
         services.AddRepositories();

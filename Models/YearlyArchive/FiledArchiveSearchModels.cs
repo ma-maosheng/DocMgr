@@ -301,6 +301,9 @@ namespace DocMgr.Models.YearlyArchive
         /// <summary>空表示全部；<see cref="ArchiveRegisterDomainValues.MediaKindSimulated"/> 或 <see cref="ArchiveRegisterDomainValues.MediaKindElectronic"/>。</summary>
         public string MediaKind { get; set; } = string.Empty;
 
+        /// <summary>空表示全部；<see cref="FilingLedgerFilingMethod.OffNetwork"/> 或 <see cref="FilingLedgerFilingMethod.OnNetwork"/>。</summary>
+        public string FilingMethod { get; set; } = string.Empty;
+
         public string Keyword { get; set; } = string.Empty;
 
         /// <summary>
@@ -363,6 +366,9 @@ namespace DocMgr.Models.YearlyArchive
         public string FoldButtonText { get; set; } = string.Empty;
 
         public string MediaKind { get; init; } = string.Empty;
+
+        /// <summary>立档方式显示名：网外资料立档 / 网内资料立档。</summary>
+        public string FilingMethod { get; init; } = string.Empty;
 
         /// <summary>登记介质条目上的介质类型（如纸质、U盘等）。</summary>
         public string RegisterMediaType { get; init; } = string.Empty;

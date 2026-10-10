@@ -27,6 +27,7 @@ namespace DocMgr.Services.YearlyArchive
             var (mediaItemIds, mediaItems, mediaEntries) = await ResolveElectronicSubmissionAsync(request);
             EnrichBorrowedHardDiskSubmissionAsync(request, mediaEntries);
             ValidateElectronicSubmissionRequest(request, mediaItemIds, mediaEntries, requireExistingUnitId: false);
+            await EnsureOutboundArchiveFilingCarrierAsync(request, mediaEntries, releaseBlankHold: false);
             await ValidateCopySubmissionMediumCapacityAsync(request, mediaItems);
 
             var archiveUnit = CreateSubmissionArchiveUnit(request.ArchiveUnit, currentUser);
@@ -90,6 +91,7 @@ namespace DocMgr.Services.YearlyArchive
             var (mediaItemIds, mediaItems, mediaEntries) = await ResolveElectronicSubmissionAsync(request);
             EnrichBorrowedHardDiskSubmissionAsync(request, mediaEntries);
             ValidateElectronicSubmissionRequest(request, mediaItemIds, mediaEntries, requireExistingUnitId: true);
+            await EnsureOutboundArchiveFilingCarrierAsync(request, mediaEntries, releaseBlankHold: false);
 
             var archiveUnit = CreateSubmissionArchiveUnit(request.ArchiveUnit, currentUser);
             ApplyOpticalDiscSingleArchiveRules(request, archiveUnit, mediaEntries);

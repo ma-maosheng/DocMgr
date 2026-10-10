@@ -9,7 +9,7 @@ namespace DocMgr.Services.NetworkTransfer;
 /// </summary>
 public static class NetworkOutboundItemStoragePathSupport
 {
-    public const string DefaultStoragePathLabel = "存储目录：";
+    public const string DefaultStoragePathLabel = "目录：";
 
     /// <summary>
     /// 出网子项存储目录生成所需的表头快照。
@@ -33,10 +33,10 @@ public static class NetworkOutboundItemStoragePathSupport
             || string.Equals(type, ArchiveRegisterDomainValues.ElectronicMediaTypeOpticalDisc, StringComparison.Ordinal)
             || string.Equals(type, ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk, StringComparison.Ordinal))
         {
-            return $"{type}存储目录：";
+            return $"{type}目录：";
         }
 
-        return string.IsNullOrWhiteSpace(type) ? DefaultStoragePathLabel : $"{type}存储目录：";
+        return string.IsNullOrWhiteSpace(type) ? DefaultStoragePathLabel : $"{type}目录：";
     }
 
     public static bool IsStoragePathEditable(string? destinationKind, bool canEditForm) =>
@@ -44,6 +44,11 @@ public static class NetworkOutboundItemStoragePathSupport
 
     public static bool ShouldForceGeneratedStoragePath(string? destinationKind) =>
         NetworkTransferDomainValues.IsArchiveFilingDestination(destinationKind);
+
+    /// <summary>
+    /// 资料室存档介质内四级目录规则说明（年度\项目\资料名称\子项名称）。
+    /// </summary>
+    public const string ArchiveFilingMediaPathRuleDescription = @"年度\项目\资料名称\子项名称";
 
     /// <summary>
     /// 介质盘内相对目录：年度\项目\资料名称\子项名称。
@@ -62,6 +67,57 @@ public static class NetworkOutboundItemStoragePathSupport
             NetworkMaterialPathSupport.SanitizePathSegment(projectName, "未知项目"),
             NetworkMaterialPathSupport.SanitizePathSegment(materialName, "未命名资料"),
             NetworkMaterialPathSupport.SanitizePathSegment(itemName, "未命名子项"));
+    }
+
+    /// <summary>
+    /// 所选父目录是否符合资料室存档四级路径：等于或末尾为「年度\项目\资料名称\子项名称」。
+    /// </summary>
+    public static bool DoesScannedPathMatchGeneratedMediaPath(string? scannedRootPath, string? generatedMediaPath)
+    {
+        string expected = NormalizeComparePath(generatedMediaPath);
+        if (string.IsNullOrWhiteSpace(expected))
+        {
+            return false;
+        }
+
+        var scannedSegments = new List<string>();
+        AddPathSegments(
+            scannedSegments,
+            ElectronicMediaItemSupport.FormatStoragePathForRegistration(scannedRootPath));
+        string scanned = string.Join("\\", scannedSegments);
+        if (string.IsNullOrWhiteSpace(scanned))
+        {
+            return false;
+        }
+
+        return scanned.Equals(expected, StringComparison.OrdinalIgnoreCase)
+            || scanned.EndsWith("\\" + expected, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// 资料室存档：核验所选父目录与表头生成路径；不符时返回错误文案。
+    /// </summary>
+    public static bool TryValidateArchiveFilingScannedPath(
+        string? scannedRootPath,
+        string? year,
+        string? projectName,
+        string? materialName,
+        string? itemName,
+        out string generatedMediaPath,
+        out string errorMessage)
+    {
+        generatedMediaPath = BuildMediaStoragePath(year, projectName, materialName, itemName);
+        if (DoesScannedPathMatchGeneratedMediaPath(scannedRootPath, generatedMediaPath))
+        {
+            errorMessage = string.Empty;
+            return true;
+        }
+
+        string selected = string.IsNullOrWhiteSpace(scannedRootPath) ? "（未选择）" : scannedRootPath.Trim();
+        errorMessage =
+            $"资料室存档要求介质内目录按「{ArchiveFilingMediaPathRuleDescription}」存放。"
+            + $"规范路径为「{generatedMediaPath}」，当前所选父目录为「{selected}」，二者不一致。";
+        return false;
     }
 
     /// <summary>

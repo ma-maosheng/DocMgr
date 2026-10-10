@@ -608,10 +608,19 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void ReplaceTargetSlotLocationOptions(IReadOnlyList<HardDiskMediaReturnTargetLocationOption> options)
         {
-            TargetSlotLocationOptions.Clear();
-            foreach (var option in options)
+            // Clear 期间抑制选中回写，避免把 TargetFullLocation 冲空后再无法按 previousLocation 还原。
+            _suppressTargetSlotResolve = true;
+            try
             {
-                TargetSlotLocationOptions.Add(option);
+                TargetSlotLocationOptions.Clear();
+                foreach (var option in options)
+                {
+                    TargetSlotLocationOptions.Add(option);
+                }
+            }
+            finally
+            {
+                _suppressTargetSlotResolve = false;
             }
         }
 

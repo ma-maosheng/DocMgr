@@ -704,6 +704,15 @@ namespace DocMgr.ViewModels.YearlyArchive
                         LinkedMediumCodes = archiveLink?.ElectronicArchiveUnit?.LinkedMediumCodes ?? string.Empty,
                         IsBorrowedHardDisk = entry.Media.IsBorrowedHardDisk,
                         BorrowedHardDiskCode = entry.Media.BorrowedHardDiskCode ?? string.Empty,
+                        IsOutboundArchiveFiling = entry.Record.SourceNetworkOutboundRecordId is > 0
+                            && string.Equals(
+                                entry.Media.Disposition?.Trim(),
+                                ArchiveRegisterDomainValues.ElectronicDispositionNone,
+                                StringComparison.Ordinal),
+                        UseInStockBlankHardDisk = entry.Media.UseInStockBlankHardDisk,
+                        RequisitionedHardDiskCode = entry.Media.RequisitionedHardDiskCode ?? string.Empty,
+                        AppendTargetElectronicUnitId = entry.Media.AppendTargetElectronicUnitId,
+                        AppendTargetHardDiskCode = entry.Media.AppendTargetHardDiskCode ?? string.Empty,
                         IsSelected = !isArchived
                     };
                     return viewModel;

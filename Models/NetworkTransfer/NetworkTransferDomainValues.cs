@@ -326,6 +326,27 @@ namespace DocMgr.Models.NetworkTransfer
         public static bool IsOutboundExternalDestination(string? destinationKind) =>
             string.Equals(destinationKind?.Trim(), DestinationKindOutboundExternal, StringComparison.Ordinal);
 
+        /// <summary>是否为出网（院内）目的地（含历史「外部离线」归一前识别）。</summary>
+        public static bool IsOutboundInternalDestination(string? destinationKind)
+        {
+            string trimmed = destinationKind?.Trim() ?? string.Empty;
+            return string.Equals(trimmed, DestinationKindOutboundInternal, StringComparison.Ordinal)
+                   || string.Equals(trimmed, LegacyDestinationKindExternalOffline, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// 解析出网接收部门（单位）：资料室存档清空；院内/院外保留填写值。
+        /// </summary>
+        public static string ResolveOutboundDestinationUnit(string? destinationKind, string? destinationUnit)
+        {
+            if (!IsExternalOfflineDestination(destinationKind))
+            {
+                return string.Empty;
+            }
+
+            return destinationUnit?.Trim() ?? string.Empty;
+        }
+
         /// <summary>出网单分管领导默认审批角色：出网（院内/院外）→分管生产院长签字，否则→分管资料院长签字。</summary>
         public static string ResolveOutboundArchiveDeputyPresidentRole(string? destinationKind) =>
             IsExternalOfflineDestination(destinationKind)

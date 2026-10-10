@@ -60,28 +60,28 @@ namespace DocMgr.Infrastructure.DebugUi
 
             // YA Pages
             Add<ArchiveRegisterApplicationPage>("YA-REG-APP", "建档申请");
-            Add<ArchiveRegisterApprovalPage>("YA-REG-APV", "建档审批");
+            Add<ArchiveRegisterApprovalPage>("YA-REG-APV", "申请审批");
             Add<ArchiveFilingPage>("YA-FIL", "资料立档");
-            Add<StockHardDiskDirectFilingPage>("YA-FIL-STK", "存量硬盘直办立档");
-            Add<StockTextArchiveDirectFilingPage>("YA-FIL-STT", "存档文本直办立档");
-            Add<StockTextArchiveExcelImportDialog>("YA-FIL-STT-IMP", "存档文本直办 Excel 导入");
+            Add<StockHardDiskDirectFilingPage>("YA-FIL-STK", "存量硬盘资料直办立档");
+            Add<StockTextArchiveDirectFilingPage>("YA-FIL-STT", "存档文本资料直办立档");
+            Add<StockTextArchiveExcelImportDialog>("YA-FIL-STT-IMP", "存档文本资料直办 Excel 导入");
             Add<ArchiveFilingSearchPage>("YA-FIL-SCH", "立档检索");
-            Add<ArchiveFilingSearchPoolPage>("YA-FIL-POOL", "立档检索池");
+            Add<ArchiveFilingSearchPoolPage>("YA-FIL-POOL", "检索池");
             Add<ArchiveFilingLedgerPage>("YA-FIL-LDG", "立档台账");
             Add<StockContainerOverviewPage>("YA-STK-OVW", "库管资料总览");
             Add<ArchiveDetailPage>("YA-DTL", "资料查看");
-            Add<ArchiveSearchPage>("YA-SCH", "资料检索");
+            Add<ArchiveSearchPage>("YA-SCH", "资料检索(综合模式)");
             Add<ArchiveOutboundApplyPage>("YA-OB-APP", "借出申请");
             Add<ArchiveOutboundApprovalPage>("YA-OB-APV", "审批出库");
             Add<ArchiveOutboundHandoverPage>("YA-OB-HND", "出库交接");
-            Add<ArchiveReturnWorkbenchPage>("YA-RTN", "归还工作台");
+            Add<ArchiveReturnWorkbenchPage>("YA-RTN", "归还申请/审批入库");
             Add<ArchiveCirculationLedgerPage>("YA-CIR-LDG", "流转台账");
             Add<ArchiveCrossDomainTransferLedgerPage>("YA-XDM-LDG", "跨域流转台账");
-            Add<ArchiveInventoryRegisterPage>("YA-INV", "资料盘库登记");
-            Add<ArchiveSimulatedRelocationPage>("YA-REL-SIM", "模拟介质迁档");
-            Add<ArchiveElectronicRelocationPage>("YA-REL-ELC", "电子介质迁档");
+            Add<ArchiveInventoryRegisterPage>("YA-INV", "模拟/电子资料盘库");
+            Add<ArchiveSimulatedRelocationPage>("YA-REL-SIM", "模拟介质资料迁档");
+            Add<ArchiveElectronicRelocationPage>("YA-REL-ELC", "电子介质资料迁档");
             Add<ArchiveRelocationLedgerPage>("YA-REL-LDG", "迁档台账");
-            Add<ArchiveDisposalPage>("YA-DSP", "资料离库处置");
+            Add<ArchiveDisposalPage>("YA-DSP", "模拟/电子资料离库处置");
 
             // YA Dialogs / Windows
             Add<ArchiveRegisterEditDialog>("YA-REG-ED", "建档编辑");
@@ -94,16 +94,17 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<ArchiveSearchResultSetPickDialog>("YA-SCH-PICK", "检索集选择");
             Add<StockHardDiskYearProjectPickDialog>("YA-FIL-STK-PRJ", "年度已有项目");
             Add<ArchiveDetailWindow>("YA-DTL-WN", "资料详情窗口");
-            Add<SimulatedArchiveInventoryRegisterEditDialog>("YA-INV-SIM-ED", "模拟盘库登记编辑");
-            Add<ElectronicArchiveInventoryRegisterEditDialog>("YA-INV-ELC-ED", "电子盘库登记编辑");
+            Add<SimulatedArchiveInventoryRegisterEditDialog>("YA-INV-SIM-ED", "模拟资料盘库编辑");
+            Add<ElectronicArchiveInventoryRegisterEditDialog>("YA-INV-ELC-ED", "电子资料盘库编辑");
             Add<ElectronicMediaItemEntriesDialog>("YA-ELC-ENT", "电子目录/文件明细");
             Add<ArchiveDisposalEditDialog>("YA-DSP-ED", "资料离库处置编辑");
 
-            // NT Pages（年度资料出入网管理 · 5 子菜单）
+            // NT Pages（年度资料出入网管理 · 6 子菜单）
             Add<NetworkInboundApplicationPage>("NT-IB-APP", "入网申请");
             Add<NetworkInboundApprovalPage>("NT-IB-APV", "入网审批");
             Add<NetworkOutboundApplicationPage>("NT-OB-APP", "出网申请");
             Add<NetworkOutboundApprovalPage>("NT-OB-APV", "出网审批");
+            Add<NetworkOnNetAssetLedgerPage>("NT-ONL-LDG", "在网数据台账");
             Add<NetworkOnNetDisposalPage>("NT-DSP", "在网数据处置");
 
             // NT Dialogs / Windows
@@ -112,26 +113,26 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<NetworkOnNetDisposalEditDialog>("NT-DSP-ED", "在网数据处置编辑");
 
             // HD / OD Pages
-            Add<HardDiskMediaPage>("HD-MED", "硬盘概览");
-            Add<HardDiskMediumLedgerPage>("HD-LDG", "硬盘初始登记");
-            Add<HardDiskMediaOutboundApplicationPage>("HD-OB-APP", "硬盘出库申请");
-            Add<HardDiskMediaApprovalPage>("HD-OB-APV", "硬盘出库审批");
-            Add<HardDiskMediaReturnRegistrationPage>("HD-RTN", "硬盘归还");
+            Add<HardDiskMediaPage>("HD-MED", "概览");
+            Add<HardDiskMediumLedgerPage>("HD-LDG", "初始登记");
+            Add<HardDiskMediaOutboundApplicationPage>("HD-OB-APP", "出库申请");
+            Add<HardDiskMediaApprovalPage>("HD-OB-APV", "出库办理");
+            Add<HardDiskMediaReturnRegistrationPage>("HD-RTN", "归还申请/归还办理");
             Add<HardDiskMediaTransactionPage>("HD-TXN", "硬盘台账");
-            Add<HardDiskDisposalPage>("HD-DSP", "硬盘离库处置");
-            Add<HardDiskInventoryRegisterPage>("HD-INV", "硬盘盘库登记");
-            Add<OpticalDiscMediaPage>("OD-MED", "光盘概览");
+            Add<HardDiskDisposalPage>("HD-DSP", "离库处置");
+            Add<HardDiskInventoryRegisterPage>("HD-INV", "盘库登记");
+            Add<OpticalDiscMediaPage>("OD-MED", "概览");
             Add<OpticalDiscMediumLedgerPage>("OD-LDG", "光盘台账");
 
             // HD Dialogs
             Add<HardDiskMediumEditDialog>("HD-MED-ED", "硬盘介质编辑");
             Add<HardDiskMediumSelectionDialog>("HD-MED-PICK", "硬盘介质选择");
             Add<LocalPhysicalDiskPickerDialog>("HD-MED-HW", "本机硬盘选择");
-            Add<HardDiskMediaOutboundApplicationEditDialog>("HD-OB-ED", "硬盘出库申请编辑");
-            Add<HardDiskMediaApplicationViewDialog>("HD-OB-VW", "硬盘出库申请查看");
-            Add<HardDiskMediaApprovalEditDialog>("HD-OB-APV-ED", "硬盘出库审批编辑");
-            Add<HardDiskDisposalEditDialog>("HD-DSP-ED", "硬盘离库处置编辑");
-            Add<HardDiskInventoryRegisterEditDialog>("HD-INV-ED", "硬盘盘库登记编辑");
+            Add<HardDiskMediaOutboundApplicationEditDialog>("HD-OB-ED", "出库申请编辑");
+            Add<HardDiskMediaApplicationViewDialog>("HD-OB-VW", "出库申请查看");
+            Add<HardDiskMediaApprovalEditDialog>("HD-OB-APV-ED", "出库办理编辑");
+            Add<HardDiskDisposalEditDialog>("HD-DSP-ED", "离库处置编辑");
+            Add<HardDiskInventoryRegisterEditDialog>("HD-INV-ED", "盘库登记编辑");
 
             // CB
             Add<CabinetLayoutPage>("CB-LAY", "档案柜登记");
@@ -146,13 +147,13 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<CabinetHardDiskSlotCategoryEditDialog>("CB-HD-CAT", "硬盘档口用途");
 
             // HA
-            Add<TopoMapPage>("HA-TOPO", "地形图");
-            Add<AerialPhotoPage>("HA-AER", "航摄影像");
-            Add<OtherMapPage>("HA-OTH", "其他图件");
+            Add<TopoMapPage>("HA-TOPO", "地形图图件");
+            Add<AerialPhotoPage>("HA-AER", "航摄胶片、像片");
+            Add<OtherMapPage>("HA-OTH", "其他资料");
             Add<HistoryArchiveDisposalPage>("HA-DSP", "资料离库处置");
-            Add<TopoMapEditDialog>("HA-TOPO-ED", "地形图编辑");
-            Add<AerialPhotoEditDialog>("HA-AER-ED", "航摄影像编辑");
-            Add<OtherMapEditDialog>("HA-OTH-ED", "其他图件编辑");
+            Add<TopoMapEditDialog>("HA-TOPO-ED", "地形图图件编辑");
+            Add<AerialPhotoEditDialog>("HA-AER-ED", "航摄胶片、像片编辑");
+            Add<OtherMapEditDialog>("HA-OTH-ED", "其他资料编辑");
             Add<HistoryArchiveDisposalEditDialog>("HA-DSP-ED", "资料离库处置编辑");
 
             // SS
@@ -166,6 +167,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<AdvancedDataPage>("SS-ADV", "高级数据管理");
             Add<HelpPage>("SS-HELP", "操作手册");
             Add<DbOperationLogPage>("SS-DBLOG", "数据库操作日志");
+            Add<UserSessionMonitorPage>("SS-ONLINE", "在线用户与登录记录");
             Add<UserEditDialog>("SS-USER-ED", "用户编辑");
             Add<ChangePasswordDialog>("SS-PWD", "修改密码");
             Add<ServerPathSettingEditDialog>("SS-SRVPATH-ED", "服务器路径编辑");

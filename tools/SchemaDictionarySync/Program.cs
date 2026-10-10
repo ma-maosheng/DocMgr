@@ -81,10 +81,10 @@ internal static class Program
         var appOutputDirectory = ResolveAppOutputDirectory(repoRoot);
         var databaseOptions = DocMgrDatabaseConfiguration.Load(appOutputDirectory);
         var databaseSettings = new DocMgrDatabaseSettings(databaseOptions);
-        Console.WriteLine($"Using database: {databaseOptions.DatabasePath}");
+        Console.WriteLine($"Using database: {databaseSettings.TargetDisplay}");
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseSqlite(databaseSettings.ConnectionString);
+        optionsBuilder.UseSqlServer(databaseSettings.ConnectionString);
 
         using var dbContext = new AppDbContext(optionsBuilder.Options);
         dbContext.Database.Migrate();

@@ -197,6 +197,10 @@ namespace DocMgr.Services.Shared
 
             // 打印预览里「申请单编号/申请日期」等为无边框表头表，导出时不得加边框，避免看起来像主表内行。
             bool isOutsideMetaHeader = !HasVisibleBorder(source);
+            // 表后说明表显式使用五号及以下字号；表头表不设 FontSize（NaN），仍按正文导出。
+            bool useFooterFont = isOutsideMetaHeader
+                && source.FontSize > 0
+                && source.FontSize <= 11;
 
             var table = document.CreateTable(rows.Count, columnCount);
             int[] columnWidths = ResolveColumnWidthsTwips(source, columnCount);
@@ -220,7 +224,11 @@ namespace DocMgr.Services.Shared
                     span = Math.Min(span, columnCount - columnIndex);
 
                     XWPFTableCell targetCell = targetRow.GetCell(columnIndex);
-                    WriteCell(targetCell, sourceCell, applyBorder: !isOutsideMetaHeader);
+                    WriteCell(
+                        targetCell,
+                        sourceCell,
+                        applyBorder: !isOutsideMetaHeader,
+                        useFooterFont: useFooterFont);
 
                     if (span > 1)
                     {
@@ -402,7 +410,11 @@ namespace DocMgr.Services.Shared
             }
         }
 
-        private static void WriteCell(XWPFTableCell targetCell, TableCell sourceCell, bool applyBorder = true)
+        private static void WriteCell(
+            XWPFTableCell targetCell,
+            TableCell sourceCell,
+            bool applyBorder = true,
+            bool useFooterFont = false)
         {
             if (applyBorder)
             {
@@ -417,20 +429,12 @@ namespace DocMgr.Services.Shared
 
             string text = ExtractCellText(sourceCell);
             bool isLabel = applyBorder && LooksLikeLabel(sourceCell, text);
+            bool bold = useFooterFont && CellContainsBold(sourceCell);
 
             var paragraph = targetCell.AddParagraph();
             paragraph.Alignment = ResolveCellAlignment(sourceCell, isLabel);
             WordExportFontSupport.ApplyHalfLineParagraphSpacing(paragraph);
-            var run = paragraph.CreateRun();
-            run.SetText(text);
-            if (isLabel)
-            {
-                WordExportFontSupport.ApplyLabel(run);
-            }
-            else
-            {
-                WordExportFontSupport.ApplyBody(run);
-            }
+            WriteCellRuns(paragraph, text, isLabel, bold, useFooterFont);
 
             // 多行内容顶对齐，单行标签/正文居中；表外编号/日期顶对齐更接近预览。
             bool alignTop = !applyBorder || text.Contains('\n', StringComparison.Ordinal);
@@ -451,6 +455,71 @@ namespace DocMgr.Services.Shared
             tcPr.tcMar.bottom = CreateMargin(margin);
             tcPr.tcMar.left = CreateMargin(margin);
             tcPr.tcMar.right = CreateMargin(margin);
+        }
+
+        /// <summary>单元格内换行写成 Word 换行，避免序号被拼成一行后再次错位。</summary>
+        private static void WriteCellRuns(
+            XWPFParagraph paragraph,
+            string text,
+            bool isLabel,
+            bool bold,
+            bool useFooterFont)
+        {
+            string normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal).TrimEnd('\n', '\r');
+            string[] lines = normalized.Split('\n');
+            if (lines.Length == 0)
+            {
+                lines = [string.Empty];
+            }
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (i > 0)
+                {
+                    paragraph.CreateRun().AddBreak(BreakType.TEXTWRAPPING);
+                }
+
+                XWPFRun run = paragraph.CreateRun();
+                run.SetText(lines[i]);
+                if (isLabel)
+                {
+                    WordExportFontSupport.ApplyLabel(run);
+                }
+                else if (useFooterFont)
+                {
+                    WordExportFontSupport.ApplyFooter(run, bold);
+                }
+                else
+                {
+                    WordExportFontSupport.ApplyBody(run, bold);
+                }
+            }
+        }
+
+        private static bool CellContainsBold(TableCell cell)
+        {
+            foreach (Block block in cell.Blocks)
+            {
+                if (block is not Paragraph paragraph)
+                {
+                    continue;
+                }
+
+                if (paragraph.FontWeight == FontWeights.Bold)
+                {
+                    return true;
+                }
+
+                foreach (Inline inline in paragraph.Inlines)
+                {
+                    if (inline is Run run && run.FontWeight == FontWeights.Bold)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static ParagraphAlignment ResolveCellAlignment(TableCell sourceCell, bool isLabel)

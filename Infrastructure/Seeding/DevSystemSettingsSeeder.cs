@@ -82,7 +82,11 @@ public static class DevSystemSettingsSeeder
                     Role = userSeed.Role ?? string.Empty,
                     Password = passwordHash ?? PasswordHashingSupport.Hash("123456"),
                     CreatedDate = userSeed.CreatedDate ?? DateTime.Now,
+#if DEBUG
+                    MustChangePassword = false,
+#else
                     MustChangePassword = true,
+#endif
                     FailedLoginCount = 0
                 });
                 changed = true;
@@ -195,7 +199,8 @@ public static class DevSystemSettingsSeeder
                         Role = userSeed.Role ?? string.Empty,
                         Password = passwordHash ?? PasswordHashingSupport.Hash("123456"),
                         CreatedDate = userSeed.CreatedDate ?? DateTime.Now,
-                        MustChangePassword = true,
+                        // 开发期全量同步仅 DEBUG 执行，不强制首次改密
+                        MustChangePassword = false,
                         FailedLoginCount = 0
                     });
                     changed = true;
@@ -231,22 +236,20 @@ public static class DevSystemSettingsSeeder
                 }
             }
 
-            // 4) 项目
+            // 4) 项目：按业务键匹配，禁止写入显式 IDENTITY Id（兼容 SQL Server）。
             foreach (var projectSeed in seed.ProjectInfos ?? [])
             {
-                var projectId = projectSeed.Id;
-                var existingProject = repository.GetProjectInfoById(projectId);
+                var existingProject = ResolveExistingProject(repository, projectSeed);
 
                 if (existingProject == null)
                 {
                     repository.AddProjectInfo(new ProjectInfo
                     {
-                        Id = projectId,
-                        ProjectName = projectSeed.ProjectName,
-                        ProjectCode = projectSeed.ProjectCode,
-                        ImplementYear = projectSeed.ImplementYear,
-                        CapitalMgrDept = projectSeed.CapitalMgrDept,
-                        Remark = projectSeed.Remark
+                        ProjectName = projectSeed.ProjectName ?? string.Empty,
+                        ProjectCode = projectSeed.ProjectCode ?? string.Empty,
+                        ImplementYear = projectSeed.ImplementYear ?? string.Empty,
+                        CapitalMgrDept = projectSeed.CapitalMgrDept ?? string.Empty,
+                        Remark = projectSeed.Remark ?? string.Empty
                     });
                     changed = true;
                     continue;
@@ -295,9 +298,48 @@ public static class DevSystemSettingsSeeder
         }
         catch (Exception ex)
         {
-            Debug.WriteLine("[DevSeed] 导入失败: " + ex.Message);
+            // 必须清空 ChangeTracker：否则 ProjectInfos 显式 Id 写入失败后，
+            // 同作用域后续档口规格/字段字典 SaveChanges 会连带失败。
+            try
+            {
+                repository.RejectPendingChanges();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            Debug.WriteLine("[DevSeed] 导入失败: " + ex);
+            throw;
         }
 #endif
+    }
+
+    private static ProjectInfo? ResolveExistingProject(
+        IDevSystemSettingsSeedRepository repository,
+        ProjectInfoSeed projectSeed)
+    {
+        ProjectInfo? existing = null;
+        if (!string.IsNullOrWhiteSpace(projectSeed.ProjectCode))
+        {
+            existing = repository.GetProjectInfoByCode(projectSeed.ProjectCode);
+        }
+
+        if (existing == null
+            && !string.IsNullOrWhiteSpace(projectSeed.ProjectName))
+        {
+            existing = repository.GetProjectInfoByNameAndYear(
+                projectSeed.ProjectName,
+                projectSeed.ImplementYear ?? string.Empty);
+        }
+
+        // 兼容旧种子仍带 Id：仅作回退匹配，插入时不再写显式 Id。
+        if (existing == null && projectSeed.Id > 0)
+        {
+            existing = repository.GetProjectInfoById(projectSeed.Id);
+        }
+
+        return existing;
     }
 
     private static bool TryLoadSeedFile(string filePath, out SystemSettingsSeedFile seed)

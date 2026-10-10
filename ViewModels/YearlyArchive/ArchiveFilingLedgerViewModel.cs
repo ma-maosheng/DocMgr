@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -36,6 +37,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly HashSet<string> _expandedFoldGroupKeys = new(StringComparer.Ordinal);
         private int? _selectedProjectId;
         private string _selectedMediaKind = string.Empty;
+        private string _selectedFilingMethod = string.Empty;
         private string _selectedLifecycleStatus = string.Empty;
         private string _selectedArchiveCopyRole = string.Empty;
         private string _keyword = string.Empty;
@@ -184,6 +186,27 @@ namespace DocMgr.ViewModels.YearlyArchive
             string.IsNullOrWhiteSpace(SelectedMediaKind)
             || ShowSimulatedOnlyColumns
             || ShowElectronicOnlyColumns;
+
+        public ObservableCollection<FilterOption> FilingMethodOptions { get; } =
+        [
+            new FilterOption { Label = "全部", Value = string.Empty },
+            new FilterOption
+            {
+                Label = FilingLedgerFilingMethod.OffNetworkLabel,
+                Value = FilingLedgerFilingMethod.OffNetwork
+            },
+            new FilterOption
+            {
+                Label = FilingLedgerFilingMethod.OnNetworkLabel,
+                Value = FilingLedgerFilingMethod.OnNetwork
+            }
+        ];
+
+        public string SelectedFilingMethod
+        {
+            get => _selectedFilingMethod;
+            set => SetProperty(ref _selectedFilingMethod, value);
+        }
 
         public ObservableCollection<FilterOption> LifecycleStatusOptions { get; } =
         [
@@ -711,6 +734,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 Year = ResolveSelectedArchiveYear(),
                 ProjectId = SelectedProjectId,
                 MediaKind = SelectedMediaKind?.Trim() ?? string.Empty,
+                FilingMethod = SelectedFilingMethod?.Trim() ?? string.Empty,
                 Keyword = Keyword?.Trim() ?? string.Empty,
                 ContentEntryKeyword = ContentEntryKeyword?.Trim() ?? string.Empty,
                 LifecycleStatus = string.IsNullOrWhiteSpace(SelectedLifecycleStatus)
@@ -774,10 +798,19 @@ namespace DocMgr.ViewModels.YearlyArchive
                 $"立档事实 [{row.FilingFactNo}] · {row.MediaKind} · {row.FormNo} · {row.ItemName} · " +
                 $"{storageSummary} · {row.LifecycleStatusDisplay}";
 
+            // 独立 scope：快速切换选中行时旧请求可能未结束，不可与页面级 DbContext 叠查。
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            IArchiveMaterialTransactionService materialTransactionService =
+                scope.ServiceProvider.GetRequiredService<IArchiveMaterialTransactionService>();
+            IArchiveFilingLedgerService ledgerService =
+                scope.ServiceProvider.GetRequiredService<IArchiveFilingLedgerService>();
+
             try
             {
-                var transactions = await _materialTransactionService.GetTimelineByFilingFactIdAsync(row.FilingFactId);
-                if (version != _detailLoadVersion)
+                var transactions = await materialTransactionService
+                    .GetTimelineByFilingFactIdAsync(row.FilingFactId)
+                    .ConfigureAwait(true);
+                if (version != Volatile.Read(ref _detailLoadVersion))
                 {
                     return;
                 }
@@ -792,21 +825,23 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                if (version == _detailLoadVersion)
+                if (version == Volatile.Read(ref _detailLoadVersion))
                 {
-                    _dialogService.ShowError($"加载流转履历失败：{ex.Message}");
+                    _dialogService.ShowError($"加载流转履历失败：{ex.GetBaseException().Message}");
                 }
             }
 
-            if (version != _detailLoadVersion)
+            if (version != Volatile.Read(ref _detailLoadVersion))
             {
                 return;
             }
 
             try
             {
-                var processNodes = await _materialTransactionService.GetOutboundProcessNodesByFilingFactIdAsync(row.FilingFactId);
-                if (version != _detailLoadVersion)
+                var processNodes = await materialTransactionService
+                    .GetOutboundProcessNodesByFilingFactIdAsync(row.FilingFactId)
+                    .ConfigureAwait(true);
+                if (version != Volatile.Read(ref _detailLoadVersion))
                 {
                     return;
                 }
@@ -821,13 +856,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                if (version == _detailLoadVersion)
+                if (version == Volatile.Read(ref _detailLoadVersion))
                 {
-                    _dialogService.ShowError($"加载出库流程节点失败：{ex.Message}");
+                    _dialogService.ShowError($"加载出库流程节点失败：{ex.GetBaseException().Message}");
                 }
             }
 
-            if (version != _detailLoadVersion)
+            if (version != Volatile.Read(ref _detailLoadVersion))
             {
                 return;
             }
@@ -839,10 +874,10 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                var entries = await _ledgerService.GetContentEntriesByMediaItemIdAsync(
+                var entries = await ledgerService.GetContentEntriesByMediaItemIdAsync(
                     row.MediaItemId,
-                    row.FilingStoragePath);
-                if (version != _detailLoadVersion)
+                    row.FilingStoragePath).ConfigureAwait(true);
+                if (version != Volatile.Read(ref _detailLoadVersion))
                 {
                     return;
                 }
@@ -858,9 +893,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                if (version == _detailLoadVersion)
+                if (version == Volatile.Read(ref _detailLoadVersion))
                 {
-                    _dialogService.ShowError($"加载目录/文件明细失败：{ex.Message}");
+                    _dialogService.ShowError($"加载目录/文件明细失败：{ex.GetBaseException().Message}");
                 }
             }
         }
@@ -921,6 +956,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             SelectedYear = DateTime.Now.Year.ToString();
             SelectedProjectId = null;
             SelectedMediaKind = string.Empty;
+            SelectedFilingMethod = string.Empty;
             SelectedLifecycleStatus = string.Empty;
             SelectedArchiveCopyRole = string.Empty;
             Keyword = string.Empty;

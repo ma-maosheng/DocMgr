@@ -489,7 +489,7 @@ namespace DocMgr.Models.YearlyArchive
 
         public DateTime? OperatedTo { get; set; }
 
-        /// <summary>空表示全部；当前仅「立档资料复制入网」。</summary>
+        /// <summary>空表示全部；见 <see cref="MaterialTransactionDomainValues.CrossDomainTransferTypes"/>。</summary>
         public string TransactionType { get; set; } = string.Empty;
 
         public string MediaKind { get; set; } = string.Empty;
@@ -548,30 +548,54 @@ namespace DocMgr.Models.YearlyArchive
 
         public string Remark { get; init; } = string.Empty;
 
-        /// <summary>离线存放位置 → 生产网服务器路径。</summary>
+        /// <summary>
+        /// 跨域路径展示：立档转入网为「资料室 → 生产网」；出网转立档为「生产网 → 资料室」。
+        /// </summary>
         public string TransferPathDisplay
         {
             get
             {
-                string source = SourceStorageLocation?.Trim() ?? string.Empty;
-                string target = TargetServerPath?.Trim() ?? string.Empty;
-                if (string.IsNullOrEmpty(source) && string.IsNullOrEmpty(target))
+                string archiveSide = SourceStorageLocation?.Trim() ?? string.Empty;
+                string networkSide = TargetServerPath?.Trim() ?? string.Empty;
+                bool isOutboundFiling = string.Equals(
+                    TransactionType,
+                    MaterialTransactionDomainValues.TypeNetworkOutboundFiling,
+                    StringComparison.Ordinal);
+
+                string from = isOutboundFiling ? networkSide : archiveSide;
+                string to = isOutboundFiling ? archiveSide : networkSide;
+
+                if (string.IsNullOrEmpty(from) && string.IsNullOrEmpty(to))
                 {
                     return "—";
                 }
 
-                if (string.IsNullOrEmpty(source))
+                if (string.IsNullOrEmpty(from))
                 {
-                    return $"→ {target}";
+                    return $"→ {to}";
                 }
 
-                if (string.IsNullOrEmpty(target))
+                if (string.IsNullOrEmpty(to))
                 {
-                    return source;
+                    return from;
                 }
 
-                return $"{source} → {target}";
+                return $"{from} → {to}";
             }
         }
+    }
+
+    /// <summary>
+    /// 出网转立档履历写入所需的来源出网信息（按建档申请 Id 索引）。
+    /// </summary>
+    public sealed class NetworkOutboundFilingOrigin
+    {
+        public int OutboundRecordId { get; init; }
+
+        public string OutboundNo { get; init; } = string.Empty;
+
+        public string ServerPath { get; init; } = string.Empty;
+
+        public string MaterialPath { get; init; } = string.Empty;
     }
 }

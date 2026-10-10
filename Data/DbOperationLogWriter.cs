@@ -1,7 +1,4 @@
 using DocMgr.Models.SystemSettings;
-using DocMgr.Data.Interceptors;
-using DocMgr.Data.Sqlite;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;
@@ -14,12 +11,10 @@ namespace DocMgr.Data
     public sealed class DbOperationLogWriter
     {
         private readonly DocMgrDatabaseSettings _databaseSettings;
-        private readonly SqliteConnectionPragmaInterceptor _pragmaInterceptor;
 
         public DbOperationLogWriter(DocMgrDatabaseSettings databaseSettings)
         {
             _databaseSettings = databaseSettings;
-            _pragmaInterceptor = new SqliteConnectionPragmaInterceptor(databaseSettings);
         }
 
         public async Task WriteAsync(
@@ -55,48 +50,48 @@ namespace DocMgr.Data
                     using var command = connection.CreateCommand();
                     command.Transaction = activeTransaction.GetDbTransaction();
                     command.CommandText = """
-                        INSERT INTO "DbOperationLogs" (
-                            "OperationTime",
-                            "UserId",
-                            "UserName",
-                            "SessionId",
-                            "SourcePage",
-                            "SourceButton",
-                            "EntityType",
-                            "TableName",
-                            "EntityKey",
-                            "Operation",
-                            "ChangedColumns",
-                            "Summary"
+                        INSERT INTO [DbOperationLogs] (
+                            [OperationTime],
+                            [UserId],
+                            [UserName],
+                            [SessionId],
+                            [SourcePage],
+                            [SourceButton],
+                            [EntityType],
+                            [TableName],
+                            [EntityKey],
+                            [Operation],
+                            [ChangedColumns],
+                            [Summary]
                         )
                         VALUES (
-                            $operationTime,
-                            $userId,
-                            $userName,
-                            $sessionId,
-                            $sourcePage,
-                            $sourceButton,
-                            $entityType,
-                            $tableName,
-                            $entityKey,
-                            $operation,
-                            $changedColumns,
-                            $summary
+                            @operationTime,
+                            @userId,
+                            @userName,
+                            @sessionId,
+                            @sourcePage,
+                            @sourceButton,
+                            @entityType,
+                            @tableName,
+                            @entityKey,
+                            @operation,
+                            @changedColumns,
+                            @summary
                         );
                         """;
 
-                    AddParameter(command, "$operationTime", log.OperationTime);
-                    AddParameter(command, "$userId", log.UserId);
-                    AddParameter(command, "$userName", log.UserName);
-                    AddParameter(command, "$sessionId", log.SessionId);
-                    AddParameter(command, "$sourcePage", log.SourcePage);
-                    AddParameter(command, "$sourceButton", log.SourceButton);
-                    AddParameter(command, "$entityType", log.EntityType);
-                    AddParameter(command, "$tableName", log.TableName);
-                    AddParameter(command, "$entityKey", log.EntityKey);
-                    AddParameter(command, "$operation", log.Operation);
-                    AddParameter(command, "$changedColumns", log.ChangedColumns);
-                    AddParameter(command, "$summary", log.Summary);
+                    AddParameter(command, "@operationTime", log.OperationTime);
+                    AddParameter(command, "@userId", log.UserId);
+                    AddParameter(command, "@userName", log.UserName);
+                    AddParameter(command, "@sessionId", log.SessionId);
+                    AddParameter(command, "@sourcePage", log.SourcePage);
+                    AddParameter(command, "@sourceButton", log.SourceButton);
+                    AddParameter(command, "@entityType", log.EntityType);
+                    AddParameter(command, "@tableName", log.TableName);
+                    AddParameter(command, "@entityKey", log.EntityKey);
+                    AddParameter(command, "@operation", log.Operation);
+                    AddParameter(command, "@changedColumns", log.ChangedColumns);
+                    AddParameter(command, "@summary", log.Summary);
 
                     await command.ExecuteNonQueryAsync(cancellationToken);
                 }
@@ -117,9 +112,10 @@ namespace DocMgr.Data
                 return;
             }
 
-            var options = SqliteNetworkAccessSupport.CreateDbContextOptions(
-                _databaseSettings.ConnectionString,
-                _pragmaInterceptor);
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlServer(_databaseSettings.ConnectionString)
+                .AddInterceptors(new Interceptors.SqlServerIdentityKeyNormalizeInterceptor())
+                .Options;
 
             await using var context = new AppDbContext(options);
             context.DbOperationLogs.AddRange(logs);

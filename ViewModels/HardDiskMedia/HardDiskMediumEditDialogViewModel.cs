@@ -284,6 +284,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task LoadBlankSlotLocationOptionsAsync(bool autoSelectRecommended)
         {
+            // Clear 前先记住当前位置：ComboBox TwoWay 会在 Clear 时把 Selected 冲空并回写 CurrentLocation。
+            string normalizedCurrent = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(CurrentLocation);
             BlankSlotLocationOptions.Clear();
 
             var options = await _hardDiskMediaService.GetOrderedBlankDedicatedSlotLocationOptionsAsync();
@@ -293,7 +295,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
 
             string? recommended = await _hardDiskMediaService.RecommendBlankDedicatedSlotLocationAsync();
-            string normalizedCurrent = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(CurrentLocation);
 
             if (autoSelectRecommended)
             {

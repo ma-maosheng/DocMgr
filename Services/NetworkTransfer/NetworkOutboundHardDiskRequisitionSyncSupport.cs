@@ -25,11 +25,40 @@ internal static class NetworkOutboundHardDiskRequisitionSyncSupport
                      .GroupBy(item => item.RequisitionedMediumId!.Value)
                      .Select(group => group.First()))
         {
-            await ApplyRequisitionLockAsync(
+            await ApplyBlankDiskLockAsync(
                 hardDiskMediaRepository,
                 record,
                 media.RequisitionedMediumId!.Value,
-                media.RequisitionedHardDiskCode);
+                media.RequisitionedHardDiskCode,
+                HardDiskRegisterLock.BusinessTypeNetworkOutboundRequisition,
+                requireInStockBlank: true);
+        }
+    }
+
+    /// <summary>
+    /// 资料室存档：提交时占用预定空盘，不改变台账状态。
+    /// </summary>
+    internal static async Task ApplyArchiveFilingHoldsAsync(
+        IHardDiskMediaRepository hardDiskMediaRepository,
+        NetworkOutboundRecord record)
+    {
+        if (!NetworkTransferDomainValues.IsArchiveFilingDestination(record.DestinationKind))
+        {
+            return;
+        }
+
+        foreach (YearlyArchiveRegisterMedia media in (record.MediaEntries ?? [])
+                     .Where(item => item.UseInStockBlankHardDisk && item.RequisitionedMediumId is > 0)
+                     .GroupBy(item => item.RequisitionedMediumId!.Value)
+                     .Select(group => group.First()))
+        {
+            await ApplyBlankDiskLockAsync(
+                hardDiskMediaRepository,
+                record,
+                media.RequisitionedMediumId!.Value,
+                media.RequisitionedHardDiskCode,
+                HardDiskRegisterLock.BusinessTypeNetworkOutboundArchiveHold,
+                requireInStockBlank: true);
         }
     }
 
@@ -77,15 +106,46 @@ internal static class NetworkOutboundHardDiskRequisitionSyncSupport
                      .Select(item => item.RequisitionedMediumId!.Value)
                      .Distinct())
         {
-            await TryReleaseRequisitionLockAsync(hardDiskMediaRepository, mediumId, record.OutboundNo);
+            await TryReleaseLockAsync(
+                hardDiskMediaRepository,
+                mediumId,
+                record.OutboundNo,
+                HardDiskRegisterLock.BusinessTypeNetworkOutboundRequisition);
         }
     }
 
-    private static async Task ApplyRequisitionLockAsync(
+    /// <summary>
+    /// 资料室存档撤回或作废时，解除预定空盘占用。办结不调用本方法。
+    /// </summary>
+    internal static async Task ReleaseArchiveFilingHoldsAsync(
+        IHardDiskMediaRepository hardDiskMediaRepository,
+        NetworkOutboundRecord record)
+    {
+        if (!NetworkTransferDomainValues.IsArchiveFilingDestination(record.DestinationKind))
+        {
+            return;
+        }
+
+        foreach (int mediumId in (record.MediaEntries ?? [])
+                     .Where(item => item.UseInStockBlankHardDisk && item.RequisitionedMediumId is > 0)
+                     .Select(item => item.RequisitionedMediumId!.Value)
+                     .Distinct())
+        {
+            await TryReleaseLockAsync(
+                hardDiskMediaRepository,
+                mediumId,
+                record.OutboundNo,
+                HardDiskRegisterLock.BusinessTypeNetworkOutboundArchiveHold);
+        }
+    }
+
+    private static async Task ApplyBlankDiskLockAsync(
         IHardDiskMediaRepository hardDiskMediaRepository,
         NetworkOutboundRecord record,
         int mediumId,
-        string? expectedDiskCode)
+        string? expectedDiskCode,
+        string businessType,
+        bool requireInStockBlank)
     {
         HardDiskMedium? medium = await hardDiskMediaRepository.GetActiveMediumWithLedgerByIdForUpdateAsync(mediumId);
         if (medium == null)
@@ -96,7 +156,7 @@ internal static class NetworkOutboundHardDiskRequisitionSyncSupport
         if (medium.RegisterLock != null)
         {
             HardDiskRegisterLock lockItem = medium.RegisterLock;
-            if (string.Equals(lockItem.BusinessType, HardDiskRegisterLock.BusinessTypeNetworkOutboundRequisition, StringComparison.Ordinal)
+            if (string.Equals(lockItem.BusinessType, businessType, StringComparison.Ordinal)
                 && string.Equals(lockItem.BusinessNo, record.OutboundNo, StringComparison.OrdinalIgnoreCase))
             {
                 return;
@@ -106,7 +166,8 @@ internal static class NetworkOutboundHardDiskRequisitionSyncSupport
         }
 
         string currentStatus = medium.Ledger?.MediaStatus?.Trim() ?? string.Empty;
-        if (!string.Equals(currentStatus, HardDiskMedium.StatusInStockBlank, StringComparison.Ordinal))
+        if (requireInStockBlank
+            && !string.Equals(currentStatus, HardDiskMedium.StatusInStockBlank, StringComparison.Ordinal))
         {
             throw new InvalidOperationException($"硬盘 [{medium.DiskCode}] 当前状态为“{currentStatus}”，不可征用。");
         }
@@ -114,7 +175,7 @@ internal static class NetworkOutboundHardDiskRequisitionSyncSupport
         medium.RegisterLock = new HardDiskRegisterLock
         {
             MediumId = medium.Id,
-            BusinessType = HardDiskRegisterLock.BusinessTypeNetworkOutboundRequisition,
+            BusinessType = businessType,
             BusinessRecordId = record.Id > 0 ? record.Id : null,
             BusinessNo = record.OutboundNo,
             PreviousStatus = currentStatus,
@@ -192,10 +253,11 @@ internal static class NetworkOutboundHardDiskRequisitionSyncSupport
                 isExternalDestination));
     }
 
-    private static async Task TryReleaseRequisitionLockAsync(
+    private static async Task TryReleaseLockAsync(
         IHardDiskMediaRepository hardDiskMediaRepository,
         int mediumId,
-        string outboundNo)
+        string outboundNo,
+        string businessType)
     {
         HardDiskMedium? medium = await hardDiskMediaRepository.GetActiveMediumWithLedgerByIdForUpdateAsync(mediumId);
         if (medium?.RegisterLock == null)
@@ -204,7 +266,7 @@ internal static class NetworkOutboundHardDiskRequisitionSyncSupport
         }
 
         HardDiskRegisterLock lockItem = medium.RegisterLock;
-        if (!string.Equals(lockItem.BusinessType, HardDiskRegisterLock.BusinessTypeNetworkOutboundRequisition, StringComparison.Ordinal)
+        if (!string.Equals(lockItem.BusinessType, businessType, StringComparison.Ordinal)
             || !string.Equals(lockItem.BusinessNo, outboundNo, StringComparison.OrdinalIgnoreCase))
         {
             return;

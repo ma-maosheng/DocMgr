@@ -27,6 +27,21 @@ namespace DocMgr.Services.Interfaces
         /// </summary>
         void Logout(string sessionId);
 
+        /// <summary>
+        /// 查询当前在线用户（系统管理员 / 资料管理员）。
+        /// </summary>
+        IReadOnlyList<UserSessionMonitorItem> GetOnlineUsers(User operatorUser);
+
+        /// <summary>
+        /// 查询用户登录记录（系统管理员 / 资料管理员）。
+        /// </summary>
+        IReadOnlyList<UserSessionMonitorItem> SearchLoginRecords(
+            User operatorUser,
+            DateTime? loginFromInclusive,
+            DateTime? loginToInclusive,
+            string? keyword,
+            int limit = 500);
+
         // 用户管理
         List<User> GetAllUsers();
         void AddUser(User user, string password);

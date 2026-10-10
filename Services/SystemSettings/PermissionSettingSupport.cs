@@ -27,7 +27,7 @@ public static class PermissionSettingSupport
             "年度资料·申请办理", "建档/借出/归还申请的新增与提交（部门资料员）",
             SystemAdmin: false, ArchiveRoomAdmin: false, DepartmentAdmin: true, NetworkManager: false, Others: false),
         new PermissionMatrixRow(
-            "年度资料·审批办理", "申请审批、立档、直办立档、台账维护、出库/归还审批、迁档、盘库、离库处置等写入",
+            "年度资料·审批办理", "建档审批、立档、直办立档、台账维护、借出/归还审批、迁档、盘库、离库处置等写入",
             SystemAdmin: false, ArchiveRoomAdmin: true, DepartmentAdmin: false, NetworkManager: false, Others: false),
         new PermissionMatrixRow(
             "跨域出入网·申请办理", "入网/出网申请的新增与提交（部门资料员）",
@@ -56,5 +56,8 @@ public static class PermissionSettingSupport
         new PermissionMatrixRow(
             "系统运维·维护", "用户/部门/审核审批/逾期设置/库日志清除与启停、高级数据高危维护",
             SystemAdmin: true, ArchiveRoomAdmin: false, DepartmentAdmin: false, NetworkManager: false, Others: false),
+        new PermissionMatrixRow(
+            "在线会话·查阅", "当前在线用户与登录记录（系统管理员、资料管理员）",
+            SystemAdmin: true, ArchiveRoomAdmin: true, DepartmentAdmin: false, NetworkManager: false, Others: false),
     };
 }

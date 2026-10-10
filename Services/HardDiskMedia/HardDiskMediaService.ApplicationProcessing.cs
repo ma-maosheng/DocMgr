@@ -217,10 +217,22 @@ namespace DocMgr.Services.HardDiskMedia
                 return HardDiskMediaFlowResult.Fail("未识别当前用户，无法撤回作废。");
             }
 
+            if (!CanSubmitHardDiskApplication(currentUser))
+            {
+                return HardDiskMediaFlowResult.Fail("仅部门资料员可撤回作废硬盘申请。");
+            }
+
             var existing = await _hardDiskMediaRepository.GetApplicationByIdAsync(application.Id);
             if (existing == null)
             {
                 return HardDiskMediaFlowResult.Fail("未找到当前申请单。");
+            }
+
+            // 出库单：申请人姓名即办理人；归还单 ApplicantName 为原借用人，故仅出库校验本人。
+            if (!IsReturnOrLossRegistrationType(existing.ApplicationType)
+                && !IsApplicantOwner(existing, currentUser))
+            {
+                return HardDiskMediaFlowResult.Fail("仅申请人本人可撤回作废该申请。");
             }
 
             var gate = OfflineApprovalLifecycleSupport.TryTransition(

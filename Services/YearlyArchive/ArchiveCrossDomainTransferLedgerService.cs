@@ -53,7 +53,7 @@ namespace DocMgr.Services.YearlyArchive
                 [
                     "操作时间",
                     "流转类型",
-                    "入网单号",
+                    "业务单号",
                     "立档编号",
                     "表单编号",
                     "介质",

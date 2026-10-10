@@ -55,6 +55,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// </summary>
         public string BorrowedHardDiskCode { get; init; } = string.Empty;
 
+        /// <summary>出网资料室存档转入，且处置为无需处置。</summary>
+        public bool IsOutboundArchiveFiling { get; init; }
+
+        public bool UseInStockBlankHardDisk { get; init; }
+
+        public string RequisitionedHardDiskCode { get; init; } = string.Empty;
+
+        public int? AppendTargetElectronicUnitId { get; init; }
+
+        public string AppendTargetHardDiskCode { get; init; } = string.Empty;
+
         public bool IsSelected
         {
             get => _isSelected;

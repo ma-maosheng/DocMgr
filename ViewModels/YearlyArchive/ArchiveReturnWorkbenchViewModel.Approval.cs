@@ -8,6 +8,7 @@ using DocMgr.Views.Shared;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -173,49 +174,62 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// </summary>
         private async Task SyncApprovalSignersForLossStateAsync(YearlyArchiveReturnRecord record)
         {
-            YearlyArchiveOutboundRecord? outbound = null;
-            if (record.SourceOutboundRecordId > 0)
+            await _editingDbGate.WaitAsync().ConfigureAwait(true);
+            try
             {
-                outbound = await _outboundService.GetRecordAsync(record.SourceOutboundRecordId);
+                if (!_isActive || !ReferenceEquals(EditingRecord, record))
+                {
+                    return;
+                }
+
+                YearlyArchiveOutboundRecord? outbound = null;
+                if (record.SourceOutboundRecordId > 0)
+                {
+                    outbound = await _outboundService.GetRecordAsync(record.SourceOutboundRecordId).ConfigureAwait(true);
+                }
+
+                DateTime today = DateTime.Today;
+                _approvalChain = await _returnService.ResolveApprovalChainAsync(record).ConfigureAwait(true);
+
+                record.DeptHead = DeptHead;
+                record.ArchiveRoomHead = ArchiveRoomHead;
+                record.ProductionHead = ProductionHeadName;
+                record.ArchiveDeputyPresident = ArchiveDeputyPresidentName;
+                record.ProductionVicePresident = ProductionVicePresidentName;
+                ApprovalChainApplySupport.ApplyToReturn(record, _approvalChain, outbound, today);
+
+                DeptHead = record.DeptHead;
+                DeptHeadDate ??= record.DeptHeadDate ?? (_approvalChain.DeptHead.IsEnabled ? today : null);
+                ArchiveRoomHead = _approvalChain.ArchiveRoomHead.IsEnabled ? record.ArchiveRoomHead : string.Empty;
+                ArchiveRoomHeadDate = _approvalChain.ArchiveRoomHead.IsEnabled
+                    ? (ArchiveRoomHeadDate ?? record.ArchiveRoomHeadDate ?? record.ApprovedAt ?? today)
+                    : null;
+                ProductionHeadName = _approvalChain.ProductionHead.IsEnabled ? record.ProductionHead : string.Empty;
+                ProductionHeadDate = _approvalChain.ProductionHead.IsEnabled
+                    ? (ProductionHeadDate ?? record.ProductionHeadDate ?? today)
+                    : null;
+                ArchiveDeputyPresidentName = _approvalChain.ArchiveDeputyPresident.IsEnabled
+                    ? record.ArchiveDeputyPresident
+                    : string.Empty;
+                ArchiveDeputyPresidentDate = _approvalChain.ArchiveDeputyPresident.IsEnabled
+                    ? (ArchiveDeputyPresidentDate ?? record.ArchiveDeputyPresidentDate ?? today)
+                    : null;
+                ProductionVicePresidentName = _approvalChain.ProductionVicePresident.IsEnabled
+                    ? record.ProductionVicePresident
+                    : string.Empty;
+                ProductionVicePresidentDate = _approvalChain.ProductionVicePresident.IsEnabled
+                    ? (ProductionVicePresidentDate ?? record.ProductionVicePresidentDate ?? today)
+                    : null;
+
+                OnPropertyChanged(nameof(ShowIntactApprovalSigner));
+                OnPropertyChanged(nameof(ShowLossApprovalSigners));
+                OnPropertyChanged(nameof(ReviewerFieldLabel));
+                OnPropertyChanged(nameof(ApproverFieldLabel));
             }
-
-            DateTime today = DateTime.Today;
-            _approvalChain = await _returnService.ResolveApprovalChainAsync(record);
-
-            record.DeptHead = DeptHead;
-            record.ArchiveRoomHead = ArchiveRoomHead;
-            record.ProductionHead = ProductionHeadName;
-            record.ArchiveDeputyPresident = ArchiveDeputyPresidentName;
-            record.ProductionVicePresident = ProductionVicePresidentName;
-            ApprovalChainApplySupport.ApplyToReturn(record, _approvalChain, outbound, today);
-
-            DeptHead = record.DeptHead;
-            DeptHeadDate ??= record.DeptHeadDate ?? (_approvalChain.DeptHead.IsEnabled ? today : null);
-            ArchiveRoomHead = _approvalChain.ArchiveRoomHead.IsEnabled ? record.ArchiveRoomHead : string.Empty;
-            ArchiveRoomHeadDate = _approvalChain.ArchiveRoomHead.IsEnabled
-                ? (ArchiveRoomHeadDate ?? record.ArchiveRoomHeadDate ?? record.ApprovedAt ?? today)
-                : null;
-            ProductionHeadName = _approvalChain.ProductionHead.IsEnabled ? record.ProductionHead : string.Empty;
-            ProductionHeadDate = _approvalChain.ProductionHead.IsEnabled
-                ? (ProductionHeadDate ?? record.ProductionHeadDate ?? today)
-                : null;
-            ArchiveDeputyPresidentName = _approvalChain.ArchiveDeputyPresident.IsEnabled
-                ? record.ArchiveDeputyPresident
-                : string.Empty;
-            ArchiveDeputyPresidentDate = _approvalChain.ArchiveDeputyPresident.IsEnabled
-                ? (ArchiveDeputyPresidentDate ?? record.ArchiveDeputyPresidentDate ?? today)
-                : null;
-            ProductionVicePresidentName = _approvalChain.ProductionVicePresident.IsEnabled
-                ? record.ProductionVicePresident
-                : string.Empty;
-            ProductionVicePresidentDate = _approvalChain.ProductionVicePresident.IsEnabled
-                ? (ProductionVicePresidentDate ?? record.ProductionVicePresidentDate ?? today)
-                : null;
-
-            OnPropertyChanged(nameof(ShowIntactApprovalSigner));
-            OnPropertyChanged(nameof(ShowLossApprovalSigners));
-            OnPropertyChanged(nameof(ReviewerFieldLabel));
-            OnPropertyChanged(nameof(ApproverFieldLabel));
+            finally
+            {
+                _editingDbGate.Release();
+            }
         }
 
         private ArchiveReturnApprovalInput BuildApprovalInput() =>

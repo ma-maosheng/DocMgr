@@ -56,6 +56,7 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
     {
         IQueryable<NetworkInboundRecord> query = _dbContext.NetworkInboundRecords
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(item => item.Items)
             .Include(item => item.BusinessChain)
                 .ThenInclude(chain => chain!.Tasks)
@@ -93,8 +94,10 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
 
     public Task<NetworkInboundRecord?> GetInboundByIdAsync(int recordId, bool tracking = false)
     {
+        // 多集合 Include 必须拆分查询，否则笛卡尔积会在物化 BusinessChain.Tasks 时触发同键重复跟踪。
         IQueryable<NetworkInboundRecord> query = tracking
             ? _dbContext.NetworkInboundRecords
+                .AsSplitQuery()
                 .Include(item => item.Items)
                 .Include(item => item.MediaEntries)
                     .ThenInclude(media => media.Items)
@@ -107,6 +110,7 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
                 .Include(item => item.BusinessChain)
                     .ThenInclude(chain => chain!.Tasks)
             : _dbContext.NetworkInboundRecords.AsNoTracking()
+                .AsSplitQuery()
                 .Include(item => item.Items)
                 .Include(item => item.MediaEntries)
                     .ThenInclude(media => media.Items)
@@ -155,6 +159,7 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
     {
         IQueryable<NetworkOutboundRecord> query = _dbContext.NetworkOutboundRecords
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(item => item.Items)
             .Include(item => item.BusinessChain)
                 .ThenInclude(chain => chain!.Tasks)
@@ -190,8 +195,10 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
 
     public Task<NetworkOutboundRecord?> GetOutboundByIdAsync(int recordId, bool tracking = false)
     {
+        // 多集合 Include 必须拆分查询，否则笛卡尔积会在物化 BusinessChain.Tasks 时触发同键重复跟踪。
         IQueryable<NetworkOutboundRecord> query = tracking
             ? _dbContext.NetworkOutboundRecords
+                .AsSplitQuery()
                 .Include(item => item.Items)
                 .Include(item => item.MediaEntries)
                     .ThenInclude(media => media.Items)
@@ -204,6 +211,7 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
                     .ThenInclude(chain => chain!.Tasks)
             : _dbContext.NetworkOutboundRecords
                 .AsNoTracking()
+                .AsSplitQuery()
                 .Include(item => item.Items)
                 .Include(item => item.MediaEntries)
                     .ThenInclude(media => media.Items)
@@ -416,6 +424,59 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
             .Include(item => item.OutboundRecord)
             .Where(item => ids.Contains(item.Id))
             .ToListAsync();
+    }
+
+    public async Task<Dictionary<int, NetworkInboundRecord>> GetInboundRecordsByIdsAsync(
+        IReadOnlyCollection<int> recordIds)
+    {
+        if (recordIds == null || recordIds.Count == 0)
+        {
+            return new Dictionary<int, NetworkInboundRecord>();
+        }
+
+        HashSet<int> ids = recordIds.Where(id => id > 0).ToHashSet();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, NetworkInboundRecord>();
+        }
+
+        List<NetworkInboundRecord> records = await _dbContext.NetworkInboundRecords
+            .AsNoTracking()
+            .Where(item => ids.Contains(item.Id))
+            .ToListAsync();
+        return records.ToDictionary(item => item.Id);
+    }
+
+    public async Task<List<NetworkOnNetElectronicMediaSnapshot>> GetElectronicMediaSnapshotsByInboundContentDescsAsync(
+        IReadOnlyCollection<string> contentDescs)
+    {
+        List<string> names = (contentDescs ?? [])
+            .Select(item => item?.Trim() ?? string.Empty)
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (names.Count == 0)
+        {
+            return [];
+        }
+
+        return await (
+            from item in _dbContext.YearlyArchiveRegisterMediaItems.AsNoTracking()
+            join media in _dbContext.YearlyArchiveRegisterMedias.AsNoTracking()
+                on item.YearlyArchiveRegisterMediaId equals media.Id
+            join detail in _dbContext.YearlyArchiveRegisterElectronicMediaItemDetails.AsNoTracking()
+                on item.Id equals detail.MediaItemId
+            where media.NetworkInboundRecordId != null
+                  && names.Contains(item.ContentDesc)
+            select new NetworkOnNetElectronicMediaSnapshot
+            {
+                MediaItemId = item.Id,
+                InboundRecordId = media.NetworkInboundRecordId,
+                OutboundRecordId = media.NetworkOutboundRecordId,
+                ContentDesc = item.ContentDesc,
+                DataOrganizationForm = detail.DataOrganizationForm,
+                EntryCount = detail.Entries.Count
+            }).ToListAsync();
     }
 
     public Task<NetworkOnNetAsset?> GetOnNetAssetByIdAsync(int assetId, bool tracking = false)
@@ -643,6 +704,8 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
         _dbContext.YearlyArchiveMaterialTransactions.AddRange(transactions);
 
     public Task SaveChangesAsync() => _dbContext.SaveChangesAsync();
+
+    public void ClearChangeTracker() => _dbContext.ChangeTracker.Clear();
 
     private async Task<HashSet<int>> GetLockedAssetIdsAsync(
         int? excludeOutboundRecordId,

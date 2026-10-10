@@ -25,6 +25,7 @@ public class FieldDomainSeedRepository : IFieldDomainSeedRepository
     public void AddDefinition(FieldDomainDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
+        definition.Id = 0;
         _dbContext.FieldDomainDefinitions.Add(definition);
     }
 

@@ -160,7 +160,7 @@ namespace DocMgr.Services.YearlyArchive
                 return false;
             }
 
-            return record.ApplicantUserId == user.Id || IsArchiveAdminUser(user);
+            return CanSubmitApplication(user) && record.ApplicantUserId == user.Id;
         }
 
         private static bool HasDuplicateOutboundItem(

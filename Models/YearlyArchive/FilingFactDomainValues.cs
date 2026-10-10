@@ -30,6 +30,49 @@ namespace DocMgr.Models.YearlyArchive
         public const string Backup = "Backup";
     }
 
+    /// <summary>
+    /// 立档台账「立档方式」：按建档申请是否来源于出网申请区分网内/网外资料立档。
+    /// </summary>
+    public static class FilingLedgerFilingMethod
+    {
+        /// <summary>未关联出网申请的常规建档立档。</summary>
+        public const string OffNetwork = "OffNetwork";
+
+        /// <summary>出网办结转建档后立档。</summary>
+        public const string OnNetwork = "OnNetwork";
+
+        public const string OffNetworkLabel = "网外资料立档";
+
+        public const string OnNetworkLabel = "网内资料立档";
+
+        public static string ToDisplay(string? value)
+        {
+            if (string.Equals(value, OnNetwork, StringComparison.Ordinal))
+            {
+                return OnNetworkLabel;
+            }
+
+            if (string.Equals(value, OffNetwork, StringComparison.Ordinal))
+            {
+                return OffNetworkLabel;
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// 由建档申请是否关联出网申请解析立档方式编码。
+        /// </summary>
+        public static string ResolveCode(bool hasSourceNetworkOutbound)
+            => hasSourceNetworkOutbound ? OnNetwork : OffNetwork;
+
+        /// <summary>
+        /// 由建档申请是否关联出网申请解析立档方式显示名。
+        /// </summary>
+        public static string ResolveDisplay(bool hasSourceNetworkOutbound)
+            => hasSourceNetworkOutbound ? OnNetworkLabel : OffNetworkLabel;
+    }
+
     public static class ArchiveSearchResultSetStatus
     {
         public const string Draft = "Draft";

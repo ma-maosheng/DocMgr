@@ -23,6 +23,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveFilingSearchService _searchService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IArchiveFilingService _filingService;
         private ArchiveOutboundWorkspaceMode _workspaceMode = ArchiveOutboundWorkspaceMode.Application;
 
         private YearlyArchiveOutboundRecord _record = new();
@@ -39,19 +40,21 @@ namespace DocMgr.ViewModels.YearlyArchive
             IArchiveOutboundWordExportService outboundWordExportService,
             IArchiveFilingSearchService searchService,
             IDialogService dialogService,
-            IUserContextService userContextService)
+            IUserContextService userContextService,
+            IArchiveFilingService filingService)
         {
             _outboundService = outboundService;
             _outboundWordExportService = outboundWordExportService;
             _searchService = searchService;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _filingService = filingService;
 
             Items = new ObservableCollection<YearlyArchiveOutboundItem>();
 
             SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanSaveApplicationDraft);
             SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmitApplication);
-            WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => _record.CanApplicantWithdraw);
+            WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => CanWithdrawApplication);
             PrintApplicationCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrintApplication);
             RegisterItemsFromResultSetCommand = new RelayCommand(async _ => await RegisterItemsFromResultSetAsync(), _ => CanEditApplicationHeader);
             ExpandAllItemDetailsCommand = new RelayCommand(_ => SetAllItemDetailsExpanded(true), _ => HasContainerUnits);
@@ -275,7 +278,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        public string WindowTitle => $"资料借出 · {Record.OutboundNo} · {StatusDisplay}";
+        /// <summary>页眉标题（流程名 · 单号 · 状态）；流程名与菜单「借出申请 / 审批出库」对齐。</summary>
+        public string WindowTitle
+        {
+            get
+            {
+                string flowName = _workspaceMode == ArchiveOutboundWorkspaceMode.Application
+                    ? "借出申请"
+                    : "审批出库";
+                return $"{flowName} · {Record.OutboundNo} · {StatusDisplay}";
+            }
+        }
 
         /// <summary>审批工作台顶部流程说明文案。</summary>
         public string ApprovalWorkspaceBannerText =>
@@ -374,7 +387,16 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public RelayCommand CollapseAllItemDetailsCommand { get; }
 
-        public void SetWorkspaceMode(ArchiveOutboundWorkspaceMode mode) => _workspaceMode = mode;
+        public void SetWorkspaceMode(ArchiveOutboundWorkspaceMode mode)
+        {
+            if (_workspaceMode == mode)
+            {
+                return;
+            }
+
+            _workspaceMode = mode;
+            OnPropertyChanged(nameof(WindowTitle));
+        }
 
         public bool ShowApplicationActions => _workspaceMode == ArchiveOutboundWorkspaceMode.Application;
 
@@ -440,19 +462,29 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool CanManageProofMaterialAttachments => CanUploadProofMaterialAttachment;
 
         public bool CanEditApplicationHeader =>
-            _workspaceMode == ArchiveOutboundWorkspaceMode.Application && _record.IsDraft;
+            _workspaceMode == ArchiveOutboundWorkspaceMode.Application
+            && _record.IsDraft
+            && IsCurrentUserApplicantOwner();
 
         public bool CanSaveApplicationDraft =>
-            _workspaceMode == ArchiveOutboundWorkspaceMode.Application
+            CanEditApplicationHeader
             && ResolveApplicationFormActions().CanSaveDraft;
 
         public bool CanSubmitApplication =>
-            _workspaceMode == ArchiveOutboundWorkspaceMode.Application
+            CanEditApplicationHeader
             && ResolveApplicationFormActions().CanSubmitApplication;
 
         public bool CanPrintApplication =>
             _workspaceMode == ArchiveOutboundWorkspaceMode.Application
             && ResolveApplicationFormActions().CanPrintApplication;
+
+        public bool CanWithdrawApplication =>
+            _workspaceMode == ArchiveOutboundWorkspaceMode.Application
+            && IsCurrentUserApplicantOwner()
+            && ApplicationListActionSupport.CanApplicantWithdraw(
+                _record.Status,
+                isOwnerApplicant: true,
+                domainAllows: _record.CanApplicantWithdraw);
 
         public bool IsItemsReadOnly => !CanEditApplicationHeader;
 
@@ -737,6 +769,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanSaveApplicationDraft));
             OnPropertyChanged(nameof(CanSubmitApplication));
             OnPropertyChanged(nameof(CanPrintApplication));
+            OnPropertyChanged(nameof(CanWithdrawApplication));
             OnPropertyChanged(nameof(IsItemsReadOnly));
             OnPropertyChanged(nameof(DestinationKind));
             OnPropertyChanged(nameof(ShowExternalUnit));
@@ -779,6 +812,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     rows,
                     CanEditApplicationHeader,
                     _dialogService,
+                    _filingService,
                     unitIndex++,
                     OnContainerUnitSharedDiskStateChanged,
                     RevokeContainerUnitRegistrationAsync));
@@ -1714,5 +1748,16 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private ApplicationFormActionSupport.ActionState ResolveApplicationFormActions() =>
             ApplicationFormActionSupport.Resolve(_record.Id, _record.IsDraft);
+
+        private bool IsCurrentUserApplicantOwner()
+        {
+            var user = _userContextService.CurrentUser;
+            if (user == null || !_outboundService.CanSubmitApplication(user))
+            {
+                return false;
+            }
+
+            return _record.Id <= 0 || _record.ApplicantUserId == user.Id;
+        }
     }
 }

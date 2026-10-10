@@ -88,23 +88,17 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
             .ToListAsync();
     }
 
-    public Task<List<YearlyArchiveRegisterRecord>> GetCompletedUnfiledRecordsForToDoAsync(int takeCount)
+    /// <summary>
+    /// 资料管理员「待立档」待办：与立档页待立档池同一判定（已办结且仍有未入盒/未入袋明细）。
+    /// </summary>
+    public async Task<List<YearlyArchiveRegisterRecord>> GetCompletedUnfiledRecordsForToDoAsync(int takeCount)
     {
-        return _dbContext.YearlyArchiveRegisterRecords
-            .AsNoTracking()
-            .Include(record => record.MediaEntries)
-            .Where(record => record.Status == YearlyArchiveRegisterRecord.Completed)
-            .Where(record =>
-                (record.MediaEntries.Any(media => media.MediaKind == ArchiveRegisterDomainValues.MediaKindSimulated
-                    && media.Items.Any(item => !item.ArchiveBoxLinks.Any()))
-                 && record.SimulatedArchiveStatus != YearlyArchiveRegisterRecord.TrackArchived)
-                ||
-                (record.MediaEntries.Any(media => media.MediaKind == ArchiveRegisterDomainValues.MediaKindElectronic
-                    && media.Items.Any(item => !item.ElectronicArchiveUnitMediaItemLinks.Any()))
-                 && record.ElectronicArchiveStatus != YearlyArchiveRegisterRecord.TrackArchived))
+        // 复用待立档池查询，避免另写 Include/Items 条件导致待办与操作台不一致。
+        List<YearlyArchiveRegisterRecord> pending = await GetPendingRecordsAsync(year: null);
+        return pending
             .OrderByDescending(record => record.AdminDate ?? record.DeliverDate ?? record.CreatedDate)
             .Take(takeCount)
-            .ToListAsync();
+            .ToList();
     }
 
     public Task<int> GetFiledSimulatedRecordCountAsync(int? year)
@@ -357,6 +351,7 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     public Task<List<YearlyArchiveRegisterMedia>> GetElectronicMediaEntriesForArchivingAsync(IReadOnlyCollection<int> mediaEntryIds)
     {
         return _dbContext.YearlyArchiveRegisterMedias
+            .AsSplitQuery()
             .Include(media => media.RegisterRecord)
             .Include(media => media.Items)
                 .ThenInclude(item => item.ElectronicArchiveUnitMediaItemLinks)
@@ -367,6 +362,7 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     public Task<List<YearlyArchiveRegisterMediaItem>> GetElectronicMediaItemsForArchivingAsync(IReadOnlyCollection<int> mediaItemIds)
     {
         return _dbContext.YearlyArchiveRegisterMediaItems
+            .AsSplitQuery()
             .Include(item => item.MediaEntry)
                 .ThenInclude(media => media!.RegisterRecord)
             .Include(item => item.MediaEntry)
@@ -427,6 +423,7 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     public Task<YearlyElectronicArchiveUnit?> GetElectronicArchiveUnitWithDetailsAsync(int unitId)
     {
         return _dbContext.YearlyElectronicArchiveUnits
+            .AsSplitQuery()
             .Include(item => item.MediumLinks)
             .Include(item => item.DiscLinks)
             .Include(item => item.MediaItemLinks)
@@ -437,6 +434,7 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     public Task<OpticalDiscMedium?> GetOpticalDiscMediumByCodeAsync(string discCode)
     {
         return _dbContext.OpticalDiscMedia
+            .AsSplitQuery()
             .Include(item => item.Ledger)
             .Include(item => item.Transactions)
             .FirstOrDefaultAsync(item => item.DiscCode == discCode);
@@ -469,6 +467,7 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     public Task<OpticalDiscMedium?> GetOpticalDiscMediumByIdWithLedgerAsync(int mediumId)
     {
         return _dbContext.OpticalDiscMedia
+            .AsSplitQuery()
             .Include(item => item.Ledger)
             .Include(item => item.Transactions)
             .FirstOrDefaultAsync(item => item.Id == mediumId && !item.IsDeleted);

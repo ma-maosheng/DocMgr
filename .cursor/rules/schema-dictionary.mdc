@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-09-24T04:14:51Z
+> 生成时间（UTC）：2026-10-10T01:59:35Z
 
 ## 表索引
 
@@ -408,6 +408,9 @@ alwaysApply: true
 | 已上传签批单 | `SignedAttachmentUploaded` | `Boolean` | 否 |
 | 签批单上传时间 | `SignedAttachmentUploadedTime` | `DateTime?` | 否 |
 | 签批单上传人 | `SignedAttachmentUploader` | `String` | 否 |
+| 已完成损坏硬盘迁档 | `DamagedDiskRelocationConfirmed` | `Boolean` | 否 |
+| 损坏硬盘迁档确认时间 | `DamagedDiskRelocationConfirmedAt` | `DateTime?` | 否 |
+| 损坏硬盘迁档确认人 | `DamagedDiskRelocationConfirmedBy` | `String` | 否 |
 | 办结时间 | `CompletedAt` | `DateTime?` | 否 |
 | 办结人 | `CompletedBy` | `String` | 否 |
 | 提交时间 | `SubmittedAt` | `DateTime?` | 否 |
@@ -871,6 +874,7 @@ alwaysApply: true
 | 出网单编号 | `OutboundNo` | `String` | 否 |
 | 业务状态 | `Status` | `Int32` | 否 |
 | 目的地类别 | `DestinationKind` | `String` | 否 |
+| 接收部门（单位） | `DestinationUnit` | `String` | 否 |
 | 资料名称 | `MaterialName` | `String` | 否 |
 | 服务器路径 | `ServerPath` | `String` | 否 |
 | 出网资料所在具体路径 | `MaterialPath` | `String` | 否 |
@@ -1532,6 +1536,8 @@ alwaysApply: true
 | 领用硬盘编号 | `RequisitionedHardDiskCode` | `String` | 否 |
 | 领用硬盘是否需归还 | `RequisitionedDiskNeedReturn` | `Boolean` | 否 |
 | 预计归还日期 | `ExpectedReturnDate` | `DateTime?` | 否 |
+| 并档目标电子袋ID | `AppendTargetElectronicUnitId` | `Int32?` | 否 |
+| 并档目标硬盘编号 | `AppendTargetHardDiskCode` | `String` | 否 |
 
 ### YearlyArchiveRegisterMediaItem（登记介质明细）
 

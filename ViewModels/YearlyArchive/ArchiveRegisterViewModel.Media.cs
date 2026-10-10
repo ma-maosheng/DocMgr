@@ -26,8 +26,20 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly List<string> _simulatedTextSubCategoryOptions = new();
         private readonly List<string> _simulatedMapSubCategoryOptions = new();
 
-        private bool _isSyncingElectronicMediaSettings;
+        private int _electronicMediaSettingsSyncDepth;
         private bool _isSyncingSimulatedMediaSettings;
+
+        private bool IsSyncingElectronicMediaSettings => _electronicMediaSettingsSyncDepth > 0;
+
+        private void BeginElectronicMediaSettingsSync() => _electronicMediaSettingsSyncDepth++;
+
+        private void EndElectronicMediaSettingsSync()
+        {
+            if (_electronicMediaSettingsSyncDepth > 0)
+            {
+                _electronicMediaSettingsSyncDepth--;
+            }
+        }
 
         /// <summary>
         /// 防止 RefreshUserBorrowedHardDiskCodesAsync 与绑定/介质同步互相触发造成栈溢出。
@@ -40,7 +52,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             get => _selectedElectronicMediaType;
             set
             {
-                if (!_isSyncingElectronicMediaSettings
+                if (!IsSyncingElectronicMediaSettings
                     && IsNetworkOutboundTransferRegister
                     && !string.IsNullOrWhiteSpace(_selectedElectronicMediaType)
                     && !string.Equals(value, _selectedElectronicMediaType, StringComparison.Ordinal))
@@ -48,7 +60,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                if (SetProperty(ref _selectedElectronicMediaType, value))
+                if (SetProperty(ref _selectedElectronicMediaType, value)
+                    && !IsSyncingElectronicMediaSettings)
                 {
                     RefreshElectronicDispositionOptions();
                     ApplySelectedElectronicMediaSettingsToEntries();
@@ -62,7 +75,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             get => _selectedElectronicDisposition;
             set
             {
-                if (!_isSyncingElectronicMediaSettings
+                if (!IsSyncingElectronicMediaSettings
                     && IsNetworkOutboundTransferRegister
                     && !string.IsNullOrWhiteSpace(_selectedElectronicDisposition)
                     && !string.Equals(value, _selectedElectronicDisposition, StringComparison.Ordinal))
@@ -70,7 +83,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                if (SetProperty(ref _selectedElectronicDisposition, value))
+                if (SetProperty(ref _selectedElectronicDisposition, value)
+                    && !IsSyncingElectronicMediaSettings)
                 {
                     ApplySelectedElectronicMediaSettingsToEntries();
                 }
@@ -87,7 +101,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             get => _selectedSimulatedMediaType;
             set
             {
-                if (SetProperty(ref _selectedSimulatedMediaType, value))
+                if (SetProperty(ref _selectedSimulatedMediaType, value)
+                    && !_isSyncingSimulatedMediaSettings)
                 {
                     ApplySelectedSimulatedMediaSettingsToEntries();
                 }
@@ -552,49 +567,78 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             var domainOptions = await _archiveRegisterService.GetPageDomainOptionsAsync();
 
-            ApplyOptions(SourceTypeOptions, domainOptions.SourceTypes);
-            ApplyOptions(ArchivePurposeOptions, domainOptions.ArchivePurposes);
-            ApplyOptions(SimulatedMediaKindOptions, domainOptions.SimulatedMediaKinds);
-            ApplyOptions(DataElectronicMediaTypeOptions,
-                ArchiveRegisterBusinessRules.FilterManualSelectableElectronicMediaTypes(domainOptions.DataElectronicMediaTypes));
-            ApplyOptions(DataSimulatedMediaTypeOptions, domainOptions.DataSimulatedMediaTypes);
-            ApplyOptions(DataElectronicDispositionOptions, domainOptions.DataElectronicDispositions);
-            _allElectronicDispositionOptions.Clear();
-            _allElectronicDispositionOptions.AddRange(domainOptions.DataElectronicDispositions);
-            ApplyOptions(ElectronicMaterialCategoryOptions, domainOptions.ElectronicMaterialCategories);
-            ApplyOptions(ElectronicDataOrganizationFormOptions, domainOptions.ElectronicDataOrganizationForms);
-            ApplyOptions(
-                SimulatedMaterialCategoryOptions,
-                domainOptions.SimulatedMaterialCategories.Count > 0
-                    ? domainOptions.SimulatedMaterialCategories
-                    : ArchiveRegisterDomainValues.SimulatedMaterialCategories);
-            ApplyOptions(
-                SimulatedOrganizationFormOptions,
-                domainOptions.SimulatedOrganizationForms.Count > 0
-                    ? domainOptions.SimulatedOrganizationForms
-                    : ArchiveRegisterDomainValues.SimulatedOrganizationForms);
-            _electronicDocumentSubCategoryOptions.Clear();
-            _electronicDocumentSubCategoryOptions.AddRange(domainOptions.ElectronicDocumentSubCategories);
-            _electronicDataSubCategoryOptions.Clear();
-            _electronicDataSubCategoryOptions.AddRange(domainOptions.ElectronicDataSubCategories);
-            _electronicSoftwareSubCategoryOptions.Clear();
-            _electronicSoftwareSubCategoryOptions.AddRange(domainOptions.ElectronicSoftwareSubCategories);
-            _simulatedTextSubCategoryOptions.Clear();
-            _simulatedTextSubCategoryOptions.AddRange(
-                domainOptions.SimulatedTextSubCategories.Count > 0
-                    ? domainOptions.SimulatedTextSubCategories
-                    : ArchiveRegisterDomainValues.SimulatedTextSubCategories);
-            _simulatedMapSubCategoryOptions.Clear();
-            _simulatedMapSubCategoryOptions.AddRange(
-                domainOptions.SimulatedMapSubCategories.Count > 0
-                    ? domainOptions.SimulatedMapSubCategories
-                    : ArchiveRegisterDomainValues.SimulatedMapSubCategories);
-            ApplyOptions(DataSimulatedDispositionOptions, domainOptions.DataSimulatedDispositions);
-            ApplyOptions(ConfidentialLevelOptions, domainOptions.ConfidentialLevels);
-            ApplyOptions(ProdOpinionOptions, domainOptions.ProdOpinionOptions);
-            ApplyOptions(RndOpinionOptions, domainOptions.RndOpinionOptions);
-            ApplyOptions(DeputyOpinionOptions, domainOptions.DeputyOpinionOptions);
+            // Clear 表头/明细绑定的选项前记住已选值，避免 ComboBox TwoWay 冲掉草稿回显。
+            string preferredMediaType = SelectedElectronicMediaType;
+            string preferredDisposition = SelectedElectronicDisposition;
+            string preferredSimulatedType = SelectedSimulatedMediaType;
+            string preferredArchivePurpose = SelectedArchivePurpose;
 
+            BeginElectronicMediaSettingsSync();
+            _isSyncingSimulatedMediaSettings = true;
+            try
+            {
+                ApplyOptions(SourceTypeOptions, domainOptions.SourceTypes);
+                ApplyOptions(ArchivePurposeOptions, domainOptions.ArchivePurposes);
+                ApplyOptions(SimulatedMediaKindOptions, domainOptions.SimulatedMediaKinds);
+                ApplyOptions(DataElectronicMediaTypeOptions,
+                    ArchiveRegisterBusinessRules.FilterManualSelectableElectronicMediaTypes(domainOptions.DataElectronicMediaTypes));
+                ApplyOptions(DataSimulatedMediaTypeOptions, domainOptions.DataSimulatedMediaTypes);
+                ApplyOptions(DataElectronicDispositionOptions, domainOptions.DataElectronicDispositions);
+                _allElectronicDispositionOptions.Clear();
+                _allElectronicDispositionOptions.AddRange(domainOptions.DataElectronicDispositions);
+                ApplyOptions(ElectronicMaterialCategoryOptions, domainOptions.ElectronicMaterialCategories);
+                ApplyOptions(ElectronicDataOrganizationFormOptions, domainOptions.ElectronicDataOrganizationForms);
+                ApplyOptions(
+                    SimulatedMaterialCategoryOptions,
+                    domainOptions.SimulatedMaterialCategories.Count > 0
+                        ? domainOptions.SimulatedMaterialCategories
+                        : ArchiveRegisterDomainValues.SimulatedMaterialCategories);
+                ApplyOptions(
+                    SimulatedOrganizationFormOptions,
+                    domainOptions.SimulatedOrganizationForms.Count > 0
+                        ? domainOptions.SimulatedOrganizationForms
+                        : ArchiveRegisterDomainValues.SimulatedOrganizationForms);
+                _electronicDocumentSubCategoryOptions.Clear();
+                _electronicDocumentSubCategoryOptions.AddRange(domainOptions.ElectronicDocumentSubCategories);
+                _electronicDataSubCategoryOptions.Clear();
+                _electronicDataSubCategoryOptions.AddRange(domainOptions.ElectronicDataSubCategories);
+                _electronicSoftwareSubCategoryOptions.Clear();
+                _electronicSoftwareSubCategoryOptions.AddRange(domainOptions.ElectronicSoftwareSubCategories);
+                _simulatedTextSubCategoryOptions.Clear();
+                _simulatedTextSubCategoryOptions.AddRange(
+                    domainOptions.SimulatedTextSubCategories.Count > 0
+                        ? domainOptions.SimulatedTextSubCategories
+                        : ArchiveRegisterDomainValues.SimulatedTextSubCategories);
+                _simulatedMapSubCategoryOptions.Clear();
+                _simulatedMapSubCategoryOptions.AddRange(
+                    domainOptions.SimulatedMapSubCategories.Count > 0
+                        ? domainOptions.SimulatedMapSubCategories
+                        : ArchiveRegisterDomainValues.SimulatedMapSubCategories);
+                ApplyOptions(DataSimulatedDispositionOptions, domainOptions.DataSimulatedDispositions);
+                ApplyOptions(ConfidentialLevelOptions, domainOptions.ConfidentialLevels);
+                ApplyOptions(ProdOpinionOptions, domainOptions.ProdOpinionOptions);
+                ApplyOptions(RndOpinionOptions, domainOptions.RndOpinionOptions);
+                ApplyOptions(DeputyOpinionOptions, domainOptions.DeputyOpinionOptions);
+
+                SelectedElectronicMediaType = ComboBoxSelectionPreserveSupport.ResolvePreferredOrFirst(
+                    DataElectronicMediaTypeOptions,
+                    preferredMediaType);
+                SelectedSimulatedMediaType = ComboBoxSelectionPreserveSupport.ResolvePreferredOrFirst(
+                    DataSimulatedMediaTypeOptions,
+                    preferredSimulatedType);
+                SelectedArchivePurpose = ComboBoxSelectionPreserveSupport.ResolvePreferredOrFirst(
+                    ArchivePurposeOptions,
+                    preferredArchivePurpose,
+                    fallbackToFirst: false);
+            }
+            finally
+            {
+                _isSyncingSimulatedMediaSettings = false;
+                EndElectronicMediaSettingsSync();
+            }
+
+            // 处置选项依赖已恢复的介质类型；内部自行同步并写回偏好。
+            SelectedElectronicDisposition = preferredDisposition;
             RefreshElectronicDispositionOptions();
             EnsureElectronicMediaSelections();
             EnsureSimulatedMediaSelections();
@@ -621,7 +665,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void EnsureElectronicMediaSelections()
         {
-            _isSyncingElectronicMediaSettings = true;
+            BeginElectronicMediaSettingsSync();
             try
             {
                 if (string.IsNullOrWhiteSpace(SelectedElectronicMediaType))
@@ -636,7 +680,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             finally
             {
-                _isSyncingElectronicMediaSettings = false;
+                EndElectronicMediaSettingsSync();
             }
 
             SyncBorrowedHardDiskSettingsFromSelections();
@@ -646,7 +690,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             var firstElectronicMedia = MediaEntries.FirstOrDefault(m => IsDataElectronic(m));
 
-            _isSyncingElectronicMediaSettings = true;
+            BeginElectronicMediaSettingsSync();
             try
             {
                 string rawMediaType = string.IsNullOrWhiteSpace(firstElectronicMedia?.MediaType)
@@ -676,7 +720,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             finally
             {
-                _isSyncingElectronicMediaSettings = false;
+                EndElectronicMediaSettingsSync();
             }
 
             SyncBorrowedHardDiskSettingsFromSelections();
@@ -684,7 +728,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void ApplySelectedElectronicMediaSettingsToEntries()
         {
-            if (_isSyncingElectronicMediaSettings)
+            if (IsSyncingElectronicMediaSettings)
             {
                 return;
             }
@@ -723,20 +767,27 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void RefreshElectronicDispositionOptions()
         {
             var allowedOptions = GetAllowedElectronicDispositionOptions();
-            ApplyOptions(DataElectronicDispositionOptions, allowedOptions);
 
-            string current = SelectedElectronicDisposition?.Trim() ?? string.Empty;
-            string? canon = allowedOptions.FirstOrDefault(o => string.Equals(o, current, StringComparison.OrdinalIgnoreCase));
-            if (canon != null)
+            string preferredDisposition = MediaEntries
+                .FirstOrDefault(IsDataElectronic)
+                ?.Disposition?.Trim()
+                ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(preferredDisposition))
             {
-                if (!string.Equals(SelectedElectronicDisposition, canon, StringComparison.Ordinal))
-                {
-                    SelectedElectronicDisposition = canon;
-                }
+                preferredDisposition = SelectedElectronicDisposition?.Trim() ?? string.Empty;
             }
-            else
+
+            BeginElectronicMediaSettingsSync();
+            try
             {
-                SelectedElectronicDisposition = allowedOptions.FirstOrDefault() ?? string.Empty;
+                ApplyOptions(DataElectronicDispositionOptions, allowedOptions);
+                SelectedElectronicDisposition = ComboBoxSelectionPreserveSupport.ResolvePreferredOrFirst(
+                    allowedOptions is IReadOnlyList<string> list ? list : allowedOptions.ToList(),
+                    preferredDisposition);
+            }
+            finally
+            {
+                EndElectronicMediaSettingsSync();
             }
 
             SyncBorrowedHardDiskSettingsFromSelections();
@@ -744,6 +795,11 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private IReadOnlyList<string> GetAllowedElectronicDispositionOptions()
         {
+            if (IsNetworkOutboundTransferRegister)
+            {
+                return [ArchiveRegisterDomainValues.ElectronicDispositionNone];
+            }
+
             return _archiveRegisterService.GetAllowedElectronicDispositions(
                 ResolveSelectedElectronicMediaType(),
                 _allElectronicDispositionOptions);
@@ -1006,17 +1062,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                         ? _electronicSoftwareSubCategoryOptions
                         : Array.Empty<string>();
 
-            item.AvailableSubCategories.Clear();
-            foreach (var option in options)
-            {
-                item.AvailableSubCategories.Add(option);
-            }
-
-            if (!string.IsNullOrWhiteSpace(item.SubCategory)
-                && !options.Any(option => string.Equals(option, item.SubCategory, StringComparison.OrdinalIgnoreCase)))
-            {
-                item.SubCategory = string.Empty;
-            }
+            ComboBoxSelectionPreserveSupport.RefreshBoundStringOptions(
+                item.AvailableSubCategories,
+                options,
+                () => item.SubCategory,
+                value => item.SubCategory = value,
+                fallbackToFirst: false,
+                clearWhenInvalid: true);
         }
 
         private void RefreshSimulatedSubCategoryOptions(MediaItemViewModel item)
@@ -1044,17 +1096,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ? domainOptions
                 : ArchiveRegisterDomainValues.GetSimulatedSubCategories(category);
 
-            item.AvailableSubCategories.Clear();
-            foreach (var option in options)
-            {
-                item.AvailableSubCategories.Add(option);
-            }
-
-            if (string.IsNullOrWhiteSpace(item.SubCategory)
-                || !options.Any(option => string.Equals(option, item.SubCategory, StringComparison.Ordinal)))
-            {
-                item.SubCategory = options.FirstOrDefault() ?? string.Empty;
-            }
+            ComboBoxSelectionPreserveSupport.RefreshBoundStringOptions(
+                item.AvailableSubCategories,
+                options,
+                () => item.SubCategory,
+                value => item.SubCategory = value,
+                fallbackToFirst: true,
+                clearWhenInvalid: false);
         }
 
         private static ElectronicMediaItemEntryViewModel CreateContentEntryViewModel(ElectronicMediaContentScanEntry entry)
@@ -1291,17 +1339,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 : CurrentRecord.ArchivePurpose;
         }
 
-        private static void ApplyOptions(ObservableCollection<string> target, IReadOnlyCollection<string> values)
-        {
-            target.Clear();
-            foreach (var item in values
-                .Where(static value => !string.IsNullOrWhiteSpace(value))
-                .Select(static value => value.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase))
-            {
-                target.Add(item);
-            }
-        }
+        private static void ApplyOptions(ObservableCollection<string> target, IReadOnlyCollection<string> values) =>
+            ComboBoxSelectionPreserveSupport.ReplaceStringOptions(target, values);
 
         /// <summary>
         /// 从持久化记录还原密级，并与域值列表对齐，避免 ComboBox 绑定丢失。

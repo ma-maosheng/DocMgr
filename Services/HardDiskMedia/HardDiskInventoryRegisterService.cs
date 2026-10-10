@@ -112,6 +112,7 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
         LockMedia(record, media, now);
         await _repository.SaveChangesAsync();
 
+        _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(record.Id))!;
     }
 
@@ -129,6 +130,7 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
             throw new InvalidOperationException("登记单无效。");
         }
 
+        _repository.ClearChangeTracker();
         var existing = await _repository.GetRecordByIdForUpdateAsync(draft.Id)
             ?? throw new InvalidOperationException("未找到盘库登记单。");
 
@@ -163,6 +165,7 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
         LockMedia(existing, media, now);
         await _repository.SaveChangesAsync();
 
+        _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(existing.Id))!;
     }
 

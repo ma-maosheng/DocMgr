@@ -133,13 +133,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
                 + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
 
-            string footerText = BuildFooterNoteText(data);
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
-                footerText,
-                PrintPageLayoutSupport.ContentWidthDip,
-                fontSizeDip: 10,
-                lineHeightDip: 16,
-                topMarginDip: 8);
+            double footerHeight = PrintFormNoteLayoutSupport.EstimateHeightDip(
+                "说明：",
+                BuildFooterLines(data),
+                BodyFont,
+                fontSize: 10,
+                lineHeight: 16,
+                topMargin: 8);
             double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
             double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
                 itemDetailText,
@@ -302,31 +302,23 @@ namespace DocMgr.ViewModels.YearlyArchive
             return table;
         }
 
-        private static Paragraph CreateFooterParagraph(ArchiveReturnReceiptPrintData data)
-        {
-            var footer = new Paragraph
-            {
-                FontSize = 10,
-                Margin = new Thickness(0, 8, 0, 0),
-                LineHeight = 16
-            };
-
-            footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
-            footer.Inlines.Add(new Run("1、无论资料是否完好，均须打印本单并完成线下签字；扫描件由资料管理员上传系统。\n"));
-            footer.Inlines.Add(new Run("      2、正常完好归还仅需部门审核签字；存在灭失时，需借出时全部审核审批人（部门审核、资料室签字、生产科签字、分管生产院长签字）签字。\n"));
-            footer.Inlines.Add(new Run("      3、归还人与资料管理员须在交接栏签字确认实物交接。\n"));
-            footer.Inlines.Add(new Run($"      4、本单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
-
-            return footer;
-        }
+        private static Table CreateFooterParagraph(ArchiveReturnReceiptPrintData data) =>
+            PrintFormNoteLayoutSupport.Create(
+                "说明：",
+                BuildFooterLines(data),
+                BodyFont,
+                fontSize: 10,
+                lineHeight: 16,
+                topMargin: 8);
 
         /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
-        private static string BuildFooterNoteText(ArchiveReturnReceiptPrintData data) =>
-            "说明：" +
-            "1、无论资料是否完好，均须打印本单并完成线下签字；扫描件由资料管理员上传系统。\n" +
-            "      2、正常完好归还仅需部门审核签字；存在灭失时，需借出时全部审核审批人（部门审核、资料室签字、生产科签字、分管生产院长签字）签字。\n" +
-            "      3、归还人与资料管理员须在交接栏签字确认实物交接。\n" +
-            $"      4、本单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。";
+        private static IReadOnlyList<string> BuildFooterLines(ArchiveReturnReceiptPrintData data) =>
+        [
+            "1、无论资料是否完好，均须打印本单并完成线下签字；扫描件由资料管理员上传系统。",
+            "2、正常完好归还仅需部门审核签字；存在灭失时，需借出时全部审核审批人（部门审核、资料室签字、生产科签字、分管生产院长签字）签字。",
+            "3、归还人与资料管理员须在交接栏签字确认实物交接。",
+            $"4、本单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"
+        ];
 
         private static TableRow CreateSingleRow(
             string label,

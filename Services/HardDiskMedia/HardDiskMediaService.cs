@@ -909,14 +909,16 @@ namespace DocMgr.Services.HardDiskMedia
                     throw new InvalidOperationException("未找到要保存的业务申请记录。");
                 }
 
-                if (existing.ApplicationStatus == HardDiskMediaApplication.StatusCompleted ||
-                    existing.ApplicationStatus == HardDiskMediaApplication.StatusCancelled ||
-                    existing.ApplicationStatus == HardDiskMediaApplication.StatusForceWithdrawn ||
-                    existing.ApplicationStatus == HardDiskMediaApplication.StatusWithdrawn ||
-                    existing.ApplicationStatus == HardDiskMediaApplication.StatusPendingProcess ||
-                    existing.SignedAttachmentUploaded)
+                if (existing.ApplicationStatus != HardDiskMediaApplication.StatusDraft)
                 {
-                    throw new InvalidOperationException("当前申请已进入交接办理阶段，不允许变更。请重新发起业务单据。");
+                    throw new InvalidOperationException("仅草稿状态的申请单可保存或提交。");
+                }
+
+                // 出库单按申请人姓名校验本人；归还单 ApplicantName 为原借用人，仅要求部门资料员角色（见 ValidateApplicationRules）。
+                if (!IsReturnOrLossRegistrationType(existing.ApplicationType)
+                    && !IsApplicantOwner(existing, currentUser))
+                {
+                    throw new InvalidOperationException("仅申请人本人可保存或提交该申请。");
                 }
 
                 int originalMediumId = existing.MediumId;

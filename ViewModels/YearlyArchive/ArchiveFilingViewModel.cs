@@ -270,7 +270,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                     OnPropertyChanged(nameof(IsElectronicLocationEditable));
                     OnPropertyChanged(nameof(IsElectronicArchiveFieldsEditable));
                     OnPropertyChanged(nameof(IsElectronicUsbScenario));
-                    OnPropertyChanged(nameof(IsElectronicInnerNetworkScenario));
                     OnPropertyChanged(nameof(IsElectronicOpticalDiscScenario));
                     OnPropertyChanged(nameof(IsElectronicHardDiskScenario));
                     OnPropertyChanged(nameof(IsElectronicHardDiskReturnScenario));
@@ -739,6 +738,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _electronicLinkedMediumCodes, value))
                 {
+                    RequestCopyTargetHardDiskCapacityRefresh();
                     _ = RebuildElectronicFilingDetailRowsAsync();
                 }
             }
@@ -971,6 +971,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 if (_suppressElectronicSubmissionModeChange)
                 {
+                    RequestCopyTargetHardDiskCapacityRefresh();
                     return;
                 }
 
@@ -992,6 +993,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 RefreshElectronicScenario();
+                RequestCopyTargetHardDiskCapacityRefresh();
                 OnPropertyChanged(nameof(IsElectronicCopyScenario));
                 OnPropertyChanged(nameof(IsElectronicDirectBagScenario));
                 OnPropertyChanged(nameof(IsOpticalDiscArchiveScenario));
@@ -1041,8 +1043,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool IsElectronicUsbScenario => SelectedElectronicMediaTypes.Count == 1 && string.Equals(SelectedElectronicMediaTypes[0], ArchiveRegisterDomainValues.ElectronicMediaTypeUsbDrive, StringComparison.Ordinal);
 
-        public bool IsElectronicInnerNetworkScenario => SelectedElectronicMediaTypes.Count == 1 && string.Equals(SelectedElectronicMediaTypes[0], ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork, StringComparison.Ordinal);
-
         public bool IsElectronicOpticalDiscScenario => SelectedElectronicMediaTypes.Count == 1 && string.Equals(SelectedElectronicMediaTypes[0], ArchiveRegisterDomainValues.ElectronicMediaTypeOpticalDisc, StringComparison.Ordinal);
 
         public bool IsElectronicHardDiskScenario => SelectedElectronicMediaTypes.Count == 1 && string.Equals(SelectedElectronicMediaTypes[0], ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk, StringComparison.Ordinal);
@@ -1058,7 +1058,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool IsElectronicDirectBagScenario => SelectedElectronicSubmissionMode is ElectronicArchiveSubmissionMode.RetainedOpticalDiscSingleNew or ElectronicArchiveSubmissionMode.RetainedHardDiskDirectNew;
 
         public bool IsElectronicMediumSelectionButtonVisible =>
-            ElectronicStepFourBlankHardDiskSectionVisibility == Visibility.Visible;
+            ElectronicStepFourBlankHardDiskSectionVisibility == Visibility.Visible
+            && !IsOutboundArchiveBlankDiskCodeReadOnly;
 
         private IReadOnlyList<string> SelectedElectronicMediaTypes => EnumerateSelectedElectronicMediaEntryRows()
             .Select(item => item.MediaType?.Trim())
@@ -1273,6 +1274,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void OnSelectedExistingElectronicUnitChanged()
         {
+            RequestSelectedExistingHardDiskCapacityRefresh();
             if (IsElectronicTrack && !IsNewBoxMode && SelectedExistingElectronicUnit != null)
             {
                 ElectronicArchiveNo = SelectedExistingElectronicUnit.ElectronicArchiveNo;

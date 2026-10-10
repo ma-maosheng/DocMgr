@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -28,6 +29,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly IUserService _userService;
         private readonly IApprovalWorkflowService _approvalWorkflowService;
         private readonly List<HardDiskInventoryRegisterCandidateViewModel> _mediaPool = new();
+        private readonly SemaphoreSlim _persistReviewSignersGate = new(1, 1);
         private HardDiskInventoryRegisterRecord _record;
         private bool _hasCommittedChanges;
         private bool _suppressReviewSignerPersist;
@@ -774,11 +776,29 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task EnsureDamagedLocationOptionsAsync()
         {
+            // Clear 前先记住各行目标档口：行内 ComboBox SelectedValue TwoWay 会在 Clear 时冲空。
+            var persistedByItem = Items
+                .Select(item => (Item: item, Location: item.TargetStorageLocation?.Trim() ?? string.Empty))
+                .ToList();
+
             var options = await _registerService.GetDamagedTargetLocationOptionsAsync();
             DamagedLocationOptions.Clear();
             foreach (var option in options)
             {
                 DamagedLocationOptions.Add(option);
+            }
+
+            foreach (var (item, location) in persistedByItem)
+            {
+                if (string.IsNullOrWhiteSpace(location))
+                {
+                    continue;
+                }
+
+                if (!string.Equals(item.TargetStorageLocation?.Trim(), location, StringComparison.Ordinal))
+                {
+                    item.TargetStorageLocation = location;
+                }
             }
         }
 
@@ -934,39 +954,47 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task PersistReviewSignersAsync()
         {
-            if (_suppressReviewSignerPersist || !CanEditReviewSigners || _record.Id <= 0)
-                return;
-
+            await _persistReviewSignersGate.WaitAsync().ConfigureAwait(true);
             try
             {
-                await _registerService.UpdateReviewSignersAsync(
-                    _record.Id,
-                    _deptHead,
-                    _deptHeadDate,
-                    _archiveRoomHead,
-                    _archiveRoomHeadDate,
-                    _productionHead,
-                    _productionHeadDate,
-                    _archiveDeputyPresident,
-                    _archiveDeputyPresidentDate,
-                    _productionVicePresident,
-                    _productionVicePresidentDate,
-                    RequireCurrentUser());
-                _hasCommittedChanges = true;
-                _record.DeptHead = _deptHead.Trim();
-                _record.DeptHeadDate = _deptHeadDate;
-                _record.ArchiveRoomHead = _archiveRoomHead.Trim();
-                _record.ArchiveRoomHeadDate = _archiveRoomHeadDate;
-                _record.ProductionHead = _productionHead.Trim();
-                _record.ProductionHeadDate = _productionHeadDate;
-                _record.ArchiveDeputyPresident = _archiveDeputyPresident.Trim();
-                _record.ArchiveDeputyPresidentDate = _archiveDeputyPresidentDate;
-                _record.ProductionVicePresident = _productionVicePresident.Trim();
-                _record.ProductionVicePresidentDate = _productionVicePresidentDate;
+                if (_suppressReviewSignerPersist || !CanEditReviewSigners || _record.Id <= 0)
+                    return;
+
+                try
+                {
+                    await _registerService.UpdateReviewSignersAsync(
+                        _record.Id,
+                        _deptHead,
+                        _deptHeadDate,
+                        _archiveRoomHead,
+                        _archiveRoomHeadDate,
+                        _productionHead,
+                        _productionHeadDate,
+                        _archiveDeputyPresident,
+                        _archiveDeputyPresidentDate,
+                        _productionVicePresident,
+                        _productionVicePresidentDate,
+                        RequireCurrentUser());
+                    _hasCommittedChanges = true;
+                    _record.DeptHead = _deptHead.Trim();
+                    _record.DeptHeadDate = _deptHeadDate;
+                    _record.ArchiveRoomHead = _archiveRoomHead.Trim();
+                    _record.ArchiveRoomHeadDate = _archiveRoomHeadDate;
+                    _record.ProductionHead = _productionHead.Trim();
+                    _record.ProductionHeadDate = _productionHeadDate;
+                    _record.ArchiveDeputyPresident = _archiveDeputyPresident.Trim();
+                    _record.ArchiveDeputyPresidentDate = _archiveDeputyPresidentDate;
+                    _record.ProductionVicePresident = _productionVicePresident.Trim();
+                    _record.ProductionVicePresidentDate = _productionVicePresidentDate;
+                }
+                catch (Exception ex)
+                {
+                    _dialogService.ShowError(ex.Message);
+                }
             }
-            catch (Exception ex)
+            finally
             {
-                _dialogService.ShowError(ex.Message);
+                _persistReviewSignersGate.Release();
             }
         }
 

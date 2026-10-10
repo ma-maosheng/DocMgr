@@ -329,6 +329,9 @@
                             <ColumnDefinition Width="96"/>
                             <ColumnDefinition Width="8"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="128"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="88"/>
                             <ColumnDefinition Width="8"/>
                             <ColumnDefinition Width="Auto"/>
@@ -365,29 +368,36 @@
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedMediaKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="11" Text="状态：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="11" Text="立档方式：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <ComboBox Grid.Column="12" Style="{StaticResource FilterInputStyle}"
+                                  ItemsSource="{Binding FilingMethodOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedValuePath="Value"
+                                  SelectedValue="{Binding SelectedFilingMethod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Grid.Column="14" Text="状态：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding LifecycleStatusOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedLifecycleStatus, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="14" Text="副本：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
+                        <TextBlock Grid.Column="17" Text="副本：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="18" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding ArchiveCopyRoleOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedArchiveCopyRole, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="17" Text="立档自：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <DatePicker Grid.Column="18" Style="{StaticResource FilterDatePickerStyle}"
+                        <TextBlock Grid.Column="20" Text="立档自：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <DatePicker Grid.Column="21" Style="{StaticResource FilterDatePickerStyle}"
                                     SelectedDate="{Binding FiledFrom, Mode=TwoWay}"/>
 
-                        <TextBlock Grid.Column="20" Text="立档至：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <DatePicker Grid.Column="21" Style="{StaticResource FilterDatePickerStyle}"
+                        <TextBlock Grid.Column="23" Text="立档至：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <DatePicker Grid.Column="24" Style="{StaticResource FilterDatePickerStyle}"
                                     SelectedDate="{Binding FiledTo, Mode=TwoWay}"/>
 
-                        <StackPanel Grid.Column="23" Orientation="Horizontal" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="26" Orientation="Horizontal" VerticalAlignment="Center">
                             <Button Content="查询" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding SearchCommand}"/>
                             <Button Content="重置" Margin="4,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding ResetCommand}"/>
                             <Button Content="导出" Margin="6,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding ExportCommand}" ToolTip="导出台账"/>
@@ -512,6 +522,7 @@
                         </DataGridTemplateColumn>
                         <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo, Mode=OneWay}" Width="140"/>
                         <DataGridTextColumn Header="介质" Binding="{Binding MediaKind, Mode=OneWay}" Width="56"/>
+                        <DataGridTextColumn Header="立档方式" Binding="{Binding FilingMethod, Mode=OneWay}" Width="100"/>
                         <DataGridTextColumn Header="介质类型" Binding="{Binding RegisterMediaType, Mode=OneWay}" Width="72">
                             <DataGridTextColumn.Visibility>
                                 <Binding Path="Data.ShowSimulatedOnlyColumns"

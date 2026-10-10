@@ -169,6 +169,29 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             query = query.Where(fact => fact.MediaKind == mediaKind);
         }
 
+        if (!string.IsNullOrWhiteSpace(criteria.FilingMethod))
+        {
+            string filingMethod = criteria.FilingMethod.Trim();
+            if (string.Equals(filingMethod, FilingLedgerFilingMethod.OnNetwork, StringComparison.Ordinal))
+            {
+                query = query.Where(fact =>
+                    fact.RegisterRecordId > 0
+                    && _dbContext.YearlyArchiveRegisterRecords.Any(record =>
+                        record.Id == fact.RegisterRecordId
+                        && record.SourceNetworkOutboundRecordId != null
+                        && record.SourceNetworkOutboundRecordId > 0));
+            }
+            else if (string.Equals(filingMethod, FilingLedgerFilingMethod.OffNetwork, StringComparison.Ordinal))
+            {
+                query = query.Where(fact =>
+                    fact.RegisterRecordId <= 0
+                    || !_dbContext.YearlyArchiveRegisterRecords.Any(record =>
+                        record.Id == fact.RegisterRecordId
+                        && record.SourceNetworkOutboundRecordId != null
+                        && record.SourceNetworkOutboundRecordId > 0));
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(criteria.Year))
         {
             string year = criteria.Year.Trim();
@@ -374,6 +397,30 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
         return rows.ToDictionary(
             record => record.Id,
             record => record.ArchivePurpose?.Trim() ?? string.Empty);
+    }
+
+    public async Task<IReadOnlyDictionary<int, bool>> GetHasSourceNetworkOutboundByRegisterRecordIdsAsync(
+        IReadOnlyCollection<int> registerRecordIds)
+    {
+        if (registerRecordIds == null || registerRecordIds.Count == 0)
+        {
+            return new Dictionary<int, bool>();
+        }
+
+        var rows = await _dbContext.YearlyArchiveRegisterRecords
+            .AsNoTracking()
+            .Where(record => registerRecordIds.Contains(record.Id))
+            .Select(record => new
+            {
+                record.Id,
+                HasSourceNetworkOutbound = record.SourceNetworkOutboundRecordId != null
+                    && record.SourceNetworkOutboundRecordId > 0
+            })
+            .ToListAsync();
+
+        return rows.ToDictionary(
+            record => record.Id,
+            record => record.HasSourceNetworkOutbound);
     }
 
     /// <summary>按项目 ID 批量取实施年度（ImplementYear）。</summary>

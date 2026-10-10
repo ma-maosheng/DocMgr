@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.ArchiveContainers;
 using DocMgr.Models.Shared;
@@ -16,6 +18,8 @@ namespace DocMgr.ViewModels.YearlyArchive
     {
         private readonly IArchiveCirculationLedgerService _ledgerService;
         private readonly IDialogService _dialogService;
+        private readonly SemaphoreSlim _searchGate = new(1, 1);
+        private int _searchGeneration;
 
         private int _selectedSubTabIndex;
         private DateTime? _operatedFrom;
@@ -284,62 +288,76 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task SearchAsync()
         {
+            int generation = Interlocked.Increment(ref _searchGeneration);
+            await _searchGate.WaitAsync().ConfigureAwait(true);
             try
             {
-                string? selectedContainerCode = SelectedContainer?.ContainerCode;
-                ArchiveContainerKind selectedKind = SelectedContainer?.ContainerKind ?? CurrentContainerKind;
-                string? selectedBusinessNo = SelectedBusiness?.BusinessNo;
-                string? selectedBusinessKind = SelectedBusiness?.BusinessKind;
-
-                var circulationCriteria = BuildCirculationCriteria();
-                var processNodeCriteria = BuildProcessNodeCriteria();
-                bool loadNeverCirculated = CirculationLedgerNeverCirculatedSupport.CanIncludeNeverCirculated(
-                    circulationCriteria,
-                    processNodeCriteria);
-                bool loadCirculationActivity = !CirculationLedgerListingMode.IsNeverCirculatedOnly(ListingMode);
-
-                _allCirculationRows = loadCirculationActivity
-                    ? (await _ledgerService.SearchCirculationAsync(circulationCriteria)).ToList()
-                    : new List<MaterialTransactionLedgerRow>();
-
-                _allProcessNodeRows = loadCirculationActivity && ShouldLoadProcessNodes()
-                    ? (await _ledgerService.SearchOutboundProcessNodesAsync(processNodeCriteria)).ToList()
-                    : new List<MaterialOutboundProcessNodeSearchRow>();
-
-                _neverCirculatedMasters = loadNeverCirculated
-                    ? (await _ledgerService.SearchNeverCirculatedContainersAsync(circulationCriteria)).ToList()
-                    : new List<CirculationContainerMasterRow>();
-
-                RefreshPresentation();
-
-                SelectedContainer = !string.IsNullOrWhiteSpace(selectedContainerCode)
-                    ? ContainerMasters.FirstOrDefault(row =>
-                        row.ContainerKind == selectedKind
-                        && string.Equals(row.ContainerCode, selectedContainerCode, StringComparison.OrdinalIgnoreCase))
-                    : ContainerMasters.FirstOrDefault();
-
-                if (SelectedContainer != null
-                    && !string.IsNullOrWhiteSpace(selectedBusinessNo)
-                    && !string.IsNullOrWhiteSpace(selectedBusinessKind))
+                if (generation != Volatile.Read(ref _searchGeneration))
                 {
-                    SelectedBusiness = BusinessRows.FirstOrDefault(row =>
-                        string.Equals(row.BusinessKind, selectedBusinessKind, StringComparison.Ordinal)
-                        && string.Equals(row.BusinessNo, selectedBusinessNo, StringComparison.OrdinalIgnoreCase))
-                        ?? BusinessRows.FirstOrDefault();
-                }
-                else
-                {
-                    SelectedBusiness = BusinessRows.FirstOrDefault();
+                    return;
                 }
 
-                UpdateSummaryText();
-                OnPropertyChanged(nameof(ShowListingModeLimitedHint));
-                OnPropertyChanged(nameof(ListingModeLimitedHint));
-                CommandManager.InvalidateRequerySuggested();
+                try
+                {
+                    string? selectedContainerCode = SelectedContainer?.ContainerCode;
+                    ArchiveContainerKind selectedKind = SelectedContainer?.ContainerKind ?? CurrentContainerKind;
+                    string? selectedBusinessNo = SelectedBusiness?.BusinessNo;
+                    string? selectedBusinessKind = SelectedBusiness?.BusinessKind;
+
+                    var circulationCriteria = BuildCirculationCriteria();
+                    var processNodeCriteria = BuildProcessNodeCriteria();
+                    bool loadNeverCirculated = CirculationLedgerNeverCirculatedSupport.CanIncludeNeverCirculated(
+                        circulationCriteria,
+                        processNodeCriteria);
+                    bool loadCirculationActivity = !CirculationLedgerListingMode.IsNeverCirculatedOnly(ListingMode);
+
+                    _allCirculationRows = loadCirculationActivity
+                        ? (await _ledgerService.SearchCirculationAsync(circulationCriteria)).ToList()
+                        : new List<MaterialTransactionLedgerRow>();
+
+                    _allProcessNodeRows = loadCirculationActivity && ShouldLoadProcessNodes()
+                        ? (await _ledgerService.SearchOutboundProcessNodesAsync(processNodeCriteria)).ToList()
+                        : new List<MaterialOutboundProcessNodeSearchRow>();
+
+                    _neverCirculatedMasters = loadNeverCirculated
+                        ? (await _ledgerService.SearchNeverCirculatedContainersAsync(circulationCriteria)).ToList()
+                        : new List<CirculationContainerMasterRow>();
+
+                    RefreshPresentation();
+
+                    SelectedContainer = !string.IsNullOrWhiteSpace(selectedContainerCode)
+                        ? ContainerMasters.FirstOrDefault(row =>
+                            row.ContainerKind == selectedKind
+                            && string.Equals(row.ContainerCode, selectedContainerCode, StringComparison.OrdinalIgnoreCase))
+                        : ContainerMasters.FirstOrDefault();
+
+                    if (SelectedContainer != null
+                        && !string.IsNullOrWhiteSpace(selectedBusinessNo)
+                        && !string.IsNullOrWhiteSpace(selectedBusinessKind))
+                    {
+                        SelectedBusiness = BusinessRows.FirstOrDefault(row =>
+                            string.Equals(row.BusinessKind, selectedBusinessKind, StringComparison.Ordinal)
+                            && string.Equals(row.BusinessNo, selectedBusinessNo, StringComparison.OrdinalIgnoreCase))
+                            ?? BusinessRows.FirstOrDefault();
+                    }
+                    else
+                    {
+                        SelectedBusiness = BusinessRows.FirstOrDefault();
+                    }
+
+                    UpdateSummaryText();
+                    OnPropertyChanged(nameof(ShowListingModeLimitedHint));
+                    OnPropertyChanged(nameof(ListingModeLimitedHint));
+                    CommandManager.InvalidateRequerySuggested();
+                }
+                catch (Exception ex)
+                {
+                    _dialogService.ShowError($"查询流转台账失败：{ex.Message}");
+                }
             }
-            catch (Exception ex)
+            finally
             {
-                _dialogService.ShowError($"查询流转台账失败：{ex.Message}");
+                _searchGate.Release();
             }
         }
 

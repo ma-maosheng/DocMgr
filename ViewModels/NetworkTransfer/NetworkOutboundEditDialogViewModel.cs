@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models;
 using DocMgr.Models.NetworkTransfer;
@@ -11,6 +13,7 @@ using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.YearlyArchive;
 using DocMgr.Views.Shared;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DocMgr.ViewModels.NetworkTransfer;
 
@@ -26,10 +29,16 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
     private readonly IUserService _userService;
     private readonly IServerPathSettingService _serverPathSettingService;
     private readonly IArchiveRegisterService _archiveRegisterService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ElectronicMediaEditingViewModel _electronicMediaEditor;
     private readonly NetworkTransferWorkspaceMode _mode;
     private bool _suppressProjectBinding;
     private bool _suppressServerPathSelection;
+    private bool _suppressDestinationDependentUi;
+    private bool _isInitializing;
+    private readonly SemaphoreSlim _dialogDbGate = new(1, 1);
+    private readonly SemaphoreSlim _archiveFilingAppendTargetsGate = new(1, 1);
+    private int _archiveFilingAppendTargetsGeneration;
     private NetworkOutboundRecord _record;
     private bool _hasCommittedChanges;
     private string _outboundNo = string.Empty;
@@ -65,6 +74,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         IUserService userService,
         IServerPathSettingService serverPathSettingService,
         IArchiveRegisterService archiveRegisterService,
+        IServiceScopeFactory scopeFactory,
         ElectronicMediaEditingViewModel electronicMediaEditor,
         NetworkOutboundRecord record,
         NetworkTransferWorkspaceMode mode)
@@ -77,6 +87,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         _userService = userService;
         _serverPathSettingService = serverPathSettingService;
         _archiveRegisterService = archiveRegisterService;
+        _scopeFactory = scopeFactory;
         _electronicMediaEditor = electronicMediaEditor;
         _record = record;
         _mode = mode;
@@ -106,13 +117,22 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
 
     public int RecordId => _record.Id;
 
-    public string WindowTitle =>
-        $"出网申请 · {(string.IsNullOrWhiteSpace(OutboundNo) ? "待编单" : OutboundNo)} · {StatusDisplay}";
+    /// <summary>页眉标题（流程名 · 单号 · 状态）；流程名与菜单「出网申请 / 出网审批」对齐。</summary>
+    public string WindowTitle
+    {
+        get
+        {
+            string flowName = _mode == NetworkTransferWorkspaceMode.Approval
+                ? "出网审批"
+                : "出网申请";
+            return $"{flowName} · {(string.IsNullOrWhiteSpace(OutboundNo) ? "待编单" : OutboundNo)} · {StatusDisplay}";
+        }
+    }
 
     public string StatusDisplay => NetworkTransferDomainValues.ToStatusDisplay(_record.Status);
 
     public string BannerText =>
-        "本系统与生产网隔离：请手工填写资料信息与电子介质明细；拷贝完成后可从离线介质读取目录与数据量。办结后写入出网台账；目的地为资料室存档时生成待立档任务，归档载体在资料立档时选择。";
+        "本系统与生产网隔离：请手工填写资料信息与电子介质明细；拷贝完成后可从离线介质读取目录与数据量。办结后写入出网台账；目的地为资料室存档时，归档载体在本申请确定，办结后按该载体生成待立档任务。";
 
     public string BusinessChainProgressDisplay => _record.BusinessChainProgressDisplay;
 
@@ -134,8 +154,10 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
     public bool CanEditHeader =>
         _mode == NetworkTransferWorkspaceMode.Application
         && _record.Status == NetworkOutboundRecord.StatusDraft
-        && (ArchiveRegisterBusinessRules.CanSubmitApplication(_userContextService.CurrentUser)
-            || ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser));
+        && ArchiveRegisterBusinessRules.CanSubmitApplication(_userContextService.CurrentUser)
+        && (_record.Id <= 0
+            || (_userContextService.CurrentUser != null
+                && _record.ApplicantUserId == _userContextService.CurrentUser.Id));
 
     public bool CanSubmit => CanEditHeader && GetExternalMediaItemCount() > 0;
 
@@ -173,6 +195,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         get => _destinationKind;
         set
         {
+            string previous = _destinationKind;
             if (SetProperty(ref _destinationKind, value))
             {
                 OnPropertyChanged(nameof(DestinationKindDisplay));
@@ -186,7 +209,11 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
                     SelectedArchivePurpose = ArchivePurposeOptions.FirstOrDefault() ?? string.Empty;
                 }
 
-                NotifyOutboundDestinationDependentUi();
+                ApplyDestinationUnitSideEffectsForDestinationKind(previous);
+                if (!_suppressDestinationDependentUi)
+                {
+                    NotifyOutboundDestinationDependentUi();
+                }
             }
         }
     }
@@ -259,7 +286,11 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         {
             if (SetProperty(ref _projectName, value))
             {
-                RefreshMaterialPath();
+                if (!_suppressProjectBinding)
+                {
+                    RefreshMaterialPath();
+                    RequestArchiveFilingAppendTargetRefresh();
+                }
             }
         }
     }
@@ -269,10 +300,19 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         get => _year;
         set
         {
-            if (SetProperty(ref _year, value) && !_suppressProjectBinding)
+            string normalized = value?.Trim() ?? string.Empty;
+            if (!SetProperty(ref _year, normalized))
+            {
+                return;
+            }
+
+            // ComboBox 绑定的是 SelectedProjectYear，必须同步通知，否则回显空白。
+            OnPropertyChanged(nameof(SelectedProjectYear));
+            if (!_suppressProjectBinding)
             {
                 LoadProjects();
                 RefreshMaterialPath();
+                RequestArchiveFilingAppendTargetRefresh();
             }
         }
     }
@@ -288,7 +328,12 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         get => _selectedProject;
         set
         {
-            if (SetProperty(ref _selectedProject, value) && !_suppressProjectBinding)
+            if (!SetProperty(ref _selectedProject, value))
+            {
+                return;
+            }
+
+            if (!_suppressProjectBinding)
             {
                 ProjectName = value?.ProjectName?.Trim() ?? string.Empty;
             }
@@ -407,11 +452,13 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
 
     private async Task InitializeAsync()
     {
+        await _dialogDbGate.WaitAsync().ConfigureAwait(true);
+        _isInitializing = true;
         try
         {
             if (_record.Id > 0)
             {
-                var latest = await _service.GetOutboundByIdAsync(_record.Id);
+                var latest = await _service.GetOutboundByIdAsync(_record.Id).ConfigureAwait(true);
                 if (latest != null)
                 {
                     _record = latest;
@@ -419,36 +466,55 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
             }
             else if (string.IsNullOrWhiteSpace(_record.OutboundNo))
             {
-                _record.OutboundNo = await _service.GenerateNextOutboundNoAsync();
+                _record.OutboundNo = await _service.GenerateNextOutboundNoAsync().ConfigureAwait(true);
             }
 
             LoadProjectYears();
+            LoadInternalDepartments();
             BindFromRecord();
-            await TryAutoFillDefaultApprovalInfoAsync();
-            await ApplyApprovalChainEnableFlagsAsync();
-            await LoadConfidentialLevelOptionsAsync();
-            await LoadArchivePurposeOptionsAsync();
-            await InitializeElectronicMediaEditorAsync();
+            await TryAutoFillDefaultApprovalInfoAsync().ConfigureAwait(true);
+            await ApplyApprovalChainEnableFlagsAsync().ConfigureAwait(true);
+            await LoadConfidentialLevelOptionsAsync().ConfigureAwait(true);
+            await LoadArchivePurposeOptionsAsync().ConfigureAwait(true);
+            await InitializeElectronicMediaEditorAsync().ConfigureAwait(true);
             LoadApplicantServerPathOptions();
-            await ReloadAttachmentsAsync();
+            await ReloadAttachmentsAsync().ConfigureAwait(true);
             UpdateApprovalUiState();
             CommandManager.InvalidateRequerySuggested();
         }
         catch (Exception ex)
         {
-            _dialogService.ShowError(ex.Message);
+            _dialogService.ShowError(ex.GetBaseException().Message);
+        }
+        finally
+        {
+            _isInitializing = false;
+            _dialogDbGate.Release();
         }
     }
 
     private void BindFromRecord()
     {
         OutboundNo = _record.OutboundNo;
-        DestinationKind = NetworkTransferDomainValues.NormalizeOutboundDestinationKind(_record.DestinationKind);
+        _suppressDestinationUnitDefault = true;
+        _suppressDestinationDependentUi = true;
+        try
+        {
+            DestinationKind = NetworkTransferDomainValues.NormalizeOutboundDestinationKind(_record.DestinationKind);
+            BindDestinationUnitFromRecord();
+        }
+        finally
+        {
+            _suppressDestinationUnitDefault = false;
+            _suppressDestinationDependentUi = false;
+        }
+
         BindProjectSelectionFromRecord();
         SelectedArchivePurpose = _record.ArchivePurpose?.Trim() ?? string.Empty;
         ApplicantName = _record.ApplicantName;
         ApplicantDept = _record.ApplicantDept;
         ApplyTime = _record.ApplyTime == default ? DateTime.Now : _record.ApplyTime;
+        EnsureDestinationUnitDefaultAfterBind();
         ProductionHead = _record.ProductionHead;
         ProductionHeadDate = _record.ProductionHeadDate ?? DateTime.Today;
         ArchiveRoomHead = _record.ArchiveRoomHead;
@@ -473,6 +539,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanEditForm));
         OnPropertyChanged(nameof(CanSubmit));
         OnPropertyChanged(nameof(CanPrintApplication));
+        NotifyDestinationUnitEditState();
     }
 
     private void BindProjectSelectionFromRecord()
@@ -480,11 +547,43 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         _suppressProjectBinding = true;
         try
         {
-            Year = _record.Year;
-            LoadProjects();
-            SelectedProject = Projects.FirstOrDefault(item =>
-                string.Equals(item.ProjectName?.Trim(), _record.ProjectName?.Trim(), StringComparison.Ordinal));
-            ProjectName = _record.ProjectName;
+            string preferredYear = string.IsNullOrWhiteSpace(_record.Year)
+                ? DateTime.Today.Year.ToString()
+                : _record.Year.Trim();
+            string preferredProject = _record.ProjectName?.Trim() ?? string.Empty;
+
+            EnsureYearOption(preferredYear);
+            _year = preferredYear;
+            OnPropertyChanged(nameof(Year));
+            OnPropertyChanged(nameof(SelectedProjectYear));
+
+            ReloadProjectsForCurrentYear();
+
+            ProjectInfo? matched = FindProjectByName(preferredProject, Projects);
+            if (matched == null && !string.IsNullOrWhiteSpace(preferredProject))
+            {
+                // 项目可能挂在其它实施年度：全表匹配后回填年度并重载下拉。
+                matched = _projectService.SearchProjects(year: null, keyword: null)
+                    .FirstOrDefault(project =>
+                        string.Equals(project.ProjectName?.Trim(), preferredProject, StringComparison.Ordinal));
+                if (matched != null && !string.IsNullOrWhiteSpace(matched.ImplementYear))
+                {
+                    preferredYear = matched.ImplementYear.Trim();
+                    EnsureYearOption(preferredYear);
+                    _year = preferredYear;
+                    OnPropertyChanged(nameof(Year));
+                    OnPropertyChanged(nameof(SelectedProjectYear));
+                    ReloadProjectsForCurrentYear();
+                    matched = FindProjectByName(preferredProject, Projects) ?? matched;
+                    if (matched != null && Projects.All(item => item.Id != matched.Id))
+                    {
+                        Projects.Insert(0, matched);
+                    }
+                }
+            }
+
+            SelectedProject = matched;
+            ProjectName = preferredProject;
         }
         finally
         {
@@ -494,11 +593,33 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
 
     private void LoadProjectYears()
     {
-        ProjectYears.Clear();
-        int currentYear = DateTime.Today.Year;
-        for (int year = currentYear; year >= currentYear - 10; year--)
+        // Clear 前先记住年度，避免 ComboBox TwoWay 把 SelectedProjectYear/Year 冲空后写入草稿。
+        string preferred = !string.IsNullOrWhiteSpace(Year)
+            ? Year.Trim()
+            : (_record.Year?.Trim() ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(preferred))
         {
-            ProjectYears.Add(year.ToString());
+            preferred = DateTime.Today.Year.ToString();
+        }
+
+        _suppressProjectBinding = true;
+        try
+        {
+            ProjectYears.Clear();
+            int currentYear = DateTime.Today.Year;
+            for (int year = currentYear; year >= currentYear - 10; year--)
+            {
+                ProjectYears.Add(year.ToString());
+            }
+
+            EnsureYearOption(preferred);
+            _year = preferred;
+            OnPropertyChanged(nameof(Year));
+            OnPropertyChanged(nameof(SelectedProjectYear));
+        }
+        finally
+        {
+            _suppressProjectBinding = false;
         }
     }
 
@@ -506,22 +627,76 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
     {
         try
         {
-            if (string.IsNullOrEmpty(Year))
+            if (string.IsNullOrWhiteSpace(Year))
             {
                 return;
             }
 
-            string searchYear = Year == "全部" ? string.Empty : Year.Trim();
-            Projects.Clear();
-            foreach (ProjectInfo project in _projectService.SearchProjects(searchYear, keyword: null))
+            string preferredProject = !_suppressProjectBinding
+                ? (SelectedProject?.ProjectName?.Trim()
+                   ?? ProjectName?.Trim()
+                   ?? string.Empty)
+                : (ProjectName?.Trim() ?? string.Empty);
+
+            ReloadProjectsForCurrentYear();
+
+            if (_suppressProjectBinding)
             {
-                Projects.Add(project);
+                return;
+            }
+
+            // 切换年度后：仍在新列表中的项目保留，否则清空，避免留下错年项目名。
+            ProjectInfo? matched = FindProjectByName(preferredProject, Projects);
+            SelectedProject = matched;
+            if (matched == null)
+            {
+                ProjectName = string.Empty;
             }
         }
         catch (Exception ex)
         {
             _dialogService.ShowError("加载项目异常: " + ex.Message);
         }
+    }
+
+    private void ReloadProjectsForCurrentYear()
+    {
+        string searchYear = string.Equals(Year?.Trim(), "全部", StringComparison.Ordinal)
+            ? string.Empty
+            : (Year?.Trim() ?? string.Empty);
+        Projects.Clear();
+        foreach (ProjectInfo project in _projectService.SearchProjects(searchYear, keyword: null))
+        {
+            Projects.Add(project);
+        }
+    }
+
+    private void EnsureYearOption(string year)
+    {
+        if (string.IsNullOrWhiteSpace(year))
+        {
+            return;
+        }
+
+        string trimmed = year.Trim();
+        if (ProjectYears.Any(option => string.Equals(option, trimmed, StringComparison.Ordinal)))
+        {
+            return;
+        }
+
+        ProjectYears.Insert(0, trimmed);
+    }
+
+    private static ProjectInfo? FindProjectByName(string? projectName, IEnumerable<ProjectInfo> projects)
+    {
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return null;
+        }
+
+        string trimmed = projectName.Trim();
+        return projects.FirstOrDefault(item =>
+            string.Equals(item.ProjectName?.Trim(), trimmed, StringComparison.Ordinal));
     }
 
     private void LoadApplicantServerPathOptions()
@@ -573,6 +748,13 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
     private async Task LoadConfidentialLevelOptionsAsync()
     {
         var domainOptions = await _archiveRegisterService.GetPageDomainOptionsAsync();
+
+        // 行内密级下拉共用此列表；Clear 前快照，避免已加载明细的密级被 TwoWay 冲空。
+        var persistedLevels = _electronicMediaEditor.MediaEntries
+            .SelectMany(entry => entry.Items)
+            .Select(item => (Item: item, Level: item.ConfidentialLevel?.Trim() ?? string.Empty))
+            .ToList();
+
         ConfidentialLevelOptions.Clear();
         foreach (string level in domainOptions.ConfidentialLevels)
         {
@@ -586,11 +768,36 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         {
             ConfidentialLevelOptions.Add(ArchiveRegisterDomainValues.ConfidentialLevelNone);
         }
+
+        foreach (var (item, level) in persistedLevels)
+        {
+            if (string.IsNullOrWhiteSpace(level))
+            {
+                continue;
+            }
+
+            if (!ConfidentialLevelOptions.Any(option =>
+                    string.Equals(option, level, StringComparison.OrdinalIgnoreCase)))
+            {
+                ConfidentialLevelOptions.Add(level);
+            }
+
+            if (!string.Equals(item.ConfidentialLevel?.Trim(), level, StringComparison.Ordinal))
+            {
+                item.ConfidentialLevel = level;
+            }
+        }
     }
 
     private async Task LoadArchivePurposeOptionsAsync()
     {
         var domainOptions = await _archiveRegisterService.GetPageDomainOptionsAsync();
+
+        // Clear 前先记住已选库管模式，避免 ComboBox TwoWay 回写清空草稿值。
+        string preferred = !string.IsNullOrWhiteSpace(SelectedArchivePurpose)
+            ? SelectedArchivePurpose.Trim()
+            : (_record.ArchivePurpose?.Trim() ?? string.Empty);
+
         ArchivePurposeOptions.Clear();
         foreach (string purpose in domainOptions.ArchivePurposes)
         {
@@ -600,28 +807,49 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
             }
         }
 
-        if (IsArchiveFilingDestination && string.IsNullOrWhiteSpace(SelectedArchivePurpose))
+        if (!IsArchiveFilingDestination)
         {
-            SelectedArchivePurpose = ArchivePurposeOptions.FirstOrDefault() ?? string.Empty;
+            return;
         }
+
+        string? matched = ArchivePurposeOptions.FirstOrDefault(option =>
+            string.Equals(option, preferred, StringComparison.OrdinalIgnoreCase));
+        SelectedArchivePurpose = matched
+            ?? (string.IsNullOrWhiteSpace(SelectedArchivePurpose)
+                ? (ArchivePurposeOptions.FirstOrDefault() ?? string.Empty)
+                : SelectedArchivePurpose);
     }
 
     private NetworkOutboundRecord BuildDraftSnapshot()
     {
+        // 保存前按当前表头重算资料路径，避免年度/项目曾被 Clear 冲空后留下脏路径。
+        if (CanEditServerPath)
+        {
+            _record.MaterialPath = NetworkOutboundMaterialPathSupport.BuildMaterialPath(
+                SelectedServerPath,
+                ApplicantDept,
+                Year,
+                ProjectName,
+                _record.MaterialName);
+        }
+
         var draft = new NetworkOutboundRecord
         {
             Id = _record.Id,
-            OutboundNo = OutboundNo,
-            DestinationKind = DestinationKind,
-            MaterialName = MaterialName,
+            OutboundNo = OutboundNo?.Trim() ?? string.Empty,
+            DestinationKind = DestinationKind?.Trim() ?? string.Empty,
+            DestinationUnit = ResolveDraftDestinationUnit(),
+            MaterialName = MaterialName?.Trim() ?? string.Empty,
             ServerPath = SelectedServerPath?.PathName?.Trim() ?? _record.ServerPath?.Trim() ?? string.Empty,
             MaterialPath = _record.MaterialPath?.Trim() ?? string.Empty,
-            ProjectName = ProjectName,
-            ArchivePurpose = IsArchiveFilingDestination ? SelectedArchivePurpose : string.Empty,
-            Year = Year,
-            Reason = _record.Reason,
-            OtherRequests = _record.OtherRequests,
-            Remark = _record.Remark,
+            ProjectName = ProjectName?.Trim() ?? string.Empty,
+            ArchivePurpose = IsArchiveFilingDestination
+                ? (SelectedArchivePurpose?.Trim() ?? string.Empty)
+                : string.Empty,
+            Year = Year?.Trim() ?? string.Empty,
+            Reason = _record.Reason?.Trim() ?? string.Empty,
+            OtherRequests = _record.OtherRequests?.Trim() ?? string.Empty,
+            Remark = _record.Remark?.Trim() ?? string.Empty,
             MediaEntries = BuildExternalMediaEntriesForSave()
         };
         if (!HasProofMaterial)
@@ -630,7 +858,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         }
         else
         {
-            draft.ProofMaterialNote = ProofMaterialName;
+            draft.ProofMaterialNote = ProofMaterialName?.Trim() ?? string.Empty;
         }
 
         return draft;
@@ -647,10 +875,12 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
                 : await _service.CreateOutboundDraftAsync(draft, [], user);
             _hasCommittedChanges = true;
             BindFromRecord();
-            // 保存后仅同步表头字段，避免重载电子介质区把已选类型重置为域值首项（U盘）。
+            // 保存后仅同步表头字段，避免重载电子介质区把已选类型重置为允许列表首项（光盘）。
             LoadApplicantServerPathOptions();
             OnPropertyChanged(nameof(WindowTitle));
             OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(MaterialPathDisplay));
+            OnPropertyChanged(nameof(SelectedProjectYear));
             CommandManager.InvalidateRequerySuggested();
             _dialogService.ShowMessage("草稿已保存。");
         }
@@ -799,8 +1029,6 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
     {
         try
         {
-            await PersistOutboundMediaIfNeededAsync();
-
             IReadOnlyList<string> validationErrors = CollectCompleteValidationErrors();
             if (validationErrors.Count > 0)
             {
@@ -811,6 +1039,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
                 return;
             }
 
+            await PersistOutboundMediaIfNeededAsync();
             await _service.CompleteOutboundAsync(_record.Id, RequireUser());
             _hasCommittedChanges = true;
             if (NetworkTransferDomainValues.IsArchiveFilingDestination(_record.DestinationKind))
@@ -895,7 +1124,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 重载单据表头、审批态与附件；不重载电子介质明细，避免已选类型被域值首项（U盘）覆盖。
+    /// 重载单据表头、审批态与附件；不重载电子介质明细，避免已选类型被允许列表首项（光盘）覆盖。
     /// </summary>
     private async Task ReloadRecordAsync()
     {
@@ -907,11 +1136,13 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
 
         _record = latest;
         BindFromRecord();
-        await TryAutoFillDefaultApprovalInfoAsync();
-        await ApplyApprovalChainEnableFlagsAsync();
+        await TryAutoFillDefaultApprovalInfoAsync().ConfigureAwait(true);
+        await ApplyApprovalChainEnableFlagsAsync().ConfigureAwait(true);
         SyncElectronicMediaEditorEditState();
+        // BindFromRecord 已抑制目的地副作用，此处补刷并档目标。
+        await RefreshArchiveFilingAppendTargetsAsync().ConfigureAwait(true);
         LoadApplicantServerPathOptions();
-        await ReloadAttachmentsAsync();
+        await ReloadAttachmentsAsync().ConfigureAwait(true);
         UpdateApprovalUiState();
     }
 

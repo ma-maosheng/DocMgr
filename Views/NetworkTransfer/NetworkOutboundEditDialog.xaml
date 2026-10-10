@@ -20,25 +20,24 @@
                     <StackPanel Orientation="Vertical">
                         <GroupBox Header="1. 申请信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
                             <StackPanel>
-                                <DockPanel Margin="0,2" LastChildFill="True">
-                                    <TextBlock DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="申请人 *："/>
-                                    <TextBox DockPanel.Dock="Left" Width="88" Margin="0,0,12,0"
+                                <StackPanel Orientation="Horizontal" Margin="0,2" VerticalAlignment="Center">
+                                    <TextBlock Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="申请人 *："/>
+                                    <TextBox Width="88" Margin="0,0,12,0"
                                              Text="{Binding CurrentRecord.ApplicantName, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"
                                              Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
-                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource ArchiveRegisterInlineLabelStyle}" Text="部门 *："/>
-                                    <TextBox DockPanel.Dock="Left" Width="150" Margin="0,0,12,0"
+                                    <TextBlock Style="{StaticResource ArchiveRegisterInlineLabelStyle}" Text="部门 *："/>
+                                    <TextBox Width="150" Margin="0,0,12,0"
                                              Text="{Binding CurrentRecord.ApplicantDept, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"
                                              Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
-                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource ArchiveRegisterInlineLabelStyle}" Text="日期 *："/>
-                                    <DatePicker DockPanel.Dock="Left" Width="120"
+                                    <TextBlock Style="{StaticResource ArchiveRegisterInlineLabelStyle}" Text="日期 *："/>
+                                    <DatePicker Width="120"
                                                 SelectedDate="{Binding CurrentRecord.ApplyTime, Mode=OneWay}"
                                                 IsEnabled="False"
                                                 Style="{StaticResource ArchiveRegisterFormDatePickerStyle}"/>
-                                </DockPanel>
+                                </StackPanel>
                                 <DockPanel Margin="0,2" LastChildFill="True">
                                     <TextBlock DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="申请说明 *："/>
                                     <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                                             Height="48" AcceptsReturn="True" TextWrapping="Wrap"
                                              Text="{Binding CurrentRecord.Reason, UpdateSourceTrigger=PropertyChanged}"
                                              IsEnabled="{Binding CanEditForm}"/>
                                 </DockPanel>
@@ -79,7 +78,6 @@
                                 <DockPanel Margin="0,2" LastChildFill="True">
                                     <TextBlock DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="备注："/>
                                     <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                                             Height="36" AcceptsReturn="True" TextWrapping="Wrap"
                                              Text="{Binding CurrentRecord.Remark, UpdateSourceTrigger=PropertyChanged}"
                                              IsEnabled="{Binding CanEditForm}"/>
                                 </DockPanel>
@@ -105,13 +103,71 @@
                                               SelectedItem="{Binding SelectedProject, UpdateSourceTrigger=PropertyChanged}"
                                               IsEnabled="{Binding CanEditForm}"/>
                                 </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,4">
+                                <StackPanel Orientation="Horizontal" Margin="0,4" VerticalAlignment="Center">
                                     <TextBlock Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="目的地 *："/>
                                     <ComboBox Width="200"
                                               ItemsSource="{Binding OutboundDestinationKindOptions}"
                                               SelectedItem="{Binding DestinationKind}"
                                               Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
                                               IsEnabled="{Binding CanEditForm}"/>
+                                    <TextBlock Text="接收部门(单位) *：">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource FormLabelTextBlockStyle}">
+                                                <Setter Property="Width" Value="140"/>
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ShowDestinationUnit}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <ComboBox Width="260"
+                                              ItemsSource="{Binding InternalDepartments}"
+                                              DisplayMemberPath="Name"
+                                              SelectedValuePath="Name"
+                                              SelectedValue="{Binding DestinationUnit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                        <ComboBox.Style>
+                                            <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ShowDestinationUnitDepartmentCombo}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ComboBox.Style>
+                                    </ComboBox>
+                                    <TextBox Width="260"
+                                             Text="{Binding DestinationUnit, UpdateSourceTrigger=PropertyChanged}">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ShowDestinationUnitExternalTextBox}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
+                                    <TextBox Width="260"
+                                             Text="{Binding DestinationUnitDisplay, Mode=OneWay}"
+                                             IsReadOnly="True"
+                                             Background="#F5F5F5"
+                                             VerticalContentAlignment="Center">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ShowDestinationUnitReadOnlyText}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,4">
                                     <StackPanel.Style>
@@ -131,7 +187,7 @@
                                               Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
                                               IsEnabled="{Binding CanEditForm}"/>
                                     <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Foreground="#64748B" FontSize="11"
-                                               Text="归档载体（光盘/空白硬盘/并档）在资料立档时选择。"/>
+                                               Text="归档载体在下方电子介质中选择：光盘，或硬盘（库内空盘 / 并入本项目已立档硬盘）。"/>
                                 </StackPanel>
                                 <GroupBox Header="出网明细 *" Margin="0,8,0,0" BorderBrush="#DDD" Padding="6">
                                     <StackPanel Margin="4">

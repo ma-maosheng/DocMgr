@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -24,6 +25,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
     private readonly IUserContextService _userContextService;
     private readonly IUserService _userService;
     private readonly IApprovalWorkflowService _approvalWorkflowService;
+    private readonly SemaphoreSlim _persistReviewSignersGate = new(1, 1);
     private HistoryArchiveDisposalRecord _record;
     private bool _hasCommittedChanges;
     private bool _suppressReviewSignerPersist;
@@ -909,41 +911,49 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
 
     private async Task PersistReviewSignersAsync()
     {
-        if (_suppressReviewSignerPersist || !CanEditReviewSigners || _record.Id <= 0)
-        {
-            return;
-        }
-
+        await _persistReviewSignersGate.WaitAsync().ConfigureAwait(true);
         try
         {
-            await _service.UpdateReviewSignersAsync(
-                _record.Id,
-                _deptHead,
-                _deptHeadDate,
-                _archiveRoomHead,
-                _archiveRoomHeadDate,
-                _productionHead,
-                _productionHeadDate,
-                _archiveDeputyPresident,
-                _archiveDeputyPresidentDate,
-                _productionVicePresident,
-                _productionVicePresidentDate,
-                RequireUser());
-            _hasCommittedChanges = true;
-            _record.DeptHead = _deptHead.Trim();
-            _record.DeptHeadDate = _deptHeadDate;
-            _record.ArchiveRoomHead = _archiveRoomHead.Trim();
-            _record.ArchiveRoomHeadDate = _archiveRoomHeadDate;
-            _record.ProductionHead = _productionHead.Trim();
-            _record.ProductionHeadDate = _productionHeadDate;
-            _record.ArchiveDeputyPresident = _archiveDeputyPresident.Trim();
-            _record.ArchiveDeputyPresidentDate = _archiveDeputyPresidentDate;
-            _record.ProductionVicePresident = _productionVicePresident.Trim();
-            _record.ProductionVicePresidentDate = _productionVicePresidentDate;
+            if (_suppressReviewSignerPersist || !CanEditReviewSigners || _record.Id <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                await _service.UpdateReviewSignersAsync(
+                    _record.Id,
+                    _deptHead,
+                    _deptHeadDate,
+                    _archiveRoomHead,
+                    _archiveRoomHeadDate,
+                    _productionHead,
+                    _productionHeadDate,
+                    _archiveDeputyPresident,
+                    _archiveDeputyPresidentDate,
+                    _productionVicePresident,
+                    _productionVicePresidentDate,
+                    RequireUser());
+                _hasCommittedChanges = true;
+                _record.DeptHead = _deptHead.Trim();
+                _record.DeptHeadDate = _deptHeadDate;
+                _record.ArchiveRoomHead = _archiveRoomHead.Trim();
+                _record.ArchiveRoomHeadDate = _archiveRoomHeadDate;
+                _record.ProductionHead = _productionHead.Trim();
+                _record.ProductionHeadDate = _productionHeadDate;
+                _record.ArchiveDeputyPresident = _archiveDeputyPresident.Trim();
+                _record.ArchiveDeputyPresidentDate = _archiveDeputyPresidentDate;
+                _record.ProductionVicePresident = _productionVicePresident.Trim();
+                _record.ProductionVicePresidentDate = _productionVicePresidentDate;
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
         }
-        catch (Exception ex)
+        finally
         {
-            _dialogService.ShowError(ex.Message);
+            _persistReviewSignersGate.Release();
         }
     }
 

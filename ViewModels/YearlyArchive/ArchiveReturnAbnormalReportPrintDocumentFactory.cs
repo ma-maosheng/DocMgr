@@ -140,13 +140,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
                 + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
 
-            string footerText = BuildFooterNoteText();
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
-                footerText,
-                PrintPageLayoutSupport.ContentWidthDip,
-                fontSizeDip: 10,
-                lineHeightDip: 16,
-                topMarginDip: 8);
+            double footerHeight = PrintFormNoteLayoutSupport.EstimateHeightDip(
+                "说明：",
+                BuildFooterLines(),
+                BodyFont,
+                fontSize: 10,
+                lineHeight: 16,
+                topMargin: 8);
             double reservedHeight =
                 TitleTopSpacerHeight
                 + TitleBlockHeight
@@ -230,27 +230,21 @@ namespace DocMgr.ViewModels.YearlyArchive
             return table;
         }
 
-        private static Paragraph CreateFooterParagraph()
-        {
-            var footer = new Paragraph
-            {
-                FontSize = 10,
-                Margin = new Thickness(0, 8, 0, 0),
-                LineHeight = 16
-            };
-
-            footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
-            footer.Inlines.Add(new Run("1、资料灭失须由借出人与借出时全部审核审批人（部门审核、资料室签字、生产科签字、分管生产院长签字）手签确认。\n"));
-            footer.Inlines.Add(new Run("      2、签字后的灭失情况表应上传系统留存，方可继续打印归还回执并办结入库。"));
-
-            return footer;
-        }
+        private static Table CreateFooterParagraph() =>
+            PrintFormNoteLayoutSupport.Create(
+                "说明：",
+                BuildFooterLines(),
+                BodyFont,
+                fontSize: 10,
+                lineHeight: 16,
+                topMargin: 8);
 
         /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
-        private static string BuildFooterNoteText() =>
-            "说明：" +
-            "1、资料灭失须由借出人与借出时全部审核审批人（部门审核、资料室签字、生产科签字、分管生产院长签字）手签确认。\n" +
-            "      2、签字后的灭失情况表应上传系统留存，方可继续打印归还回执并办结入库。";
+        private static IReadOnlyList<string> BuildFooterLines() =>
+        [
+            "1、资料灭失须由借出人与借出时全部审核审批人（部门审核、资料室签字、生产科签字、分管生产院长签字）手签确认。",
+            "2、签字后的灭失情况表应上传系统留存，方可继续打印归还回执并办结入库。"
+        ];
 
         private static TableRow CreateSingleRow(
             string label,

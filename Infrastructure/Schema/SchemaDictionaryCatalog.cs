@@ -163,12 +163,12 @@ public static class SchemaDictionaryCatalog
             : entityType.Name;
 
     /// <summary>
-    /// 创建仅用于模型 introspection 的内存 SQLite <see cref="AppDbContext"/>。
+    /// 创建仅用于模型 introspection 的设计时 <see cref="AppDbContext"/>（不实际打开连接）。
     /// </summary>
     public static AppDbContext CreateDesignTimeContext()
     {
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseSqlite("Data Source=:memory:");
+        optionsBuilder.UseSqlServer(DocMgr.Config.DocMgrDatabaseConfiguration.DefaultConnectionString);
         return new AppDbContext(optionsBuilder.Options);
     }
 }

@@ -100,6 +100,8 @@ namespace DocMgr.ViewModels.NetworkTransfer
             IsLoadingOptions = true;
             try
             {
+                // Clear 前先记住已保存档口，避免 ComboBox TwoWay 回写清空 TargetBlankSlotLocation。
+                string persisted = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(Item.TargetBlankSlotLocation);
                 SlotLocationOptions.Clear();
                 var options = await _hardDiskMediaService.GetReturnTargetLocationOptionsAsync(
                     HardDiskMediaApplication.TypeReturnBlankRegistration,
@@ -111,7 +113,6 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     SlotLocationOptions.Add(option);
                 }
 
-                string persisted = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(Item.TargetBlankSlotLocation);
                 if (!string.IsNullOrWhiteSpace(persisted)
                     && SlotLocationOptions.All(item => !string.Equals(item.Location, persisted, StringComparison.OrdinalIgnoreCase)))
                 {

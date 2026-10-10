@@ -24,6 +24,28 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string ElectronicFilingMediumAvailableCapacityText { get; private set; } = "—";
 
+        /// <summary>第四步介质容量说明：可用容量（总容量，已占用）。已占用含本批拟立档数据量。</summary>
+        public string ElectronicFilingMediumCapacityDescription { get; private set; } = "—";
+
+        private string _copyTargetHardDiskCapacityDescription = string.Empty;
+        private string _selectedExistingHardDiskCapacityDescription = string.Empty;
+        private int _copyTargetHardDiskCapacityVersion;
+        private int _selectedExistingHardDiskCapacityVersion;
+
+        /// <summary>新建硬盘立档时所选库内空盘的可用容量说明。</summary>
+        public string CopyTargetHardDiskCapacityDescription
+        {
+            get => _copyTargetHardDiskCapacityDescription;
+            private set => SetProperty(ref _copyTargetHardDiskCapacityDescription, value);
+        }
+
+        /// <summary>所选已立档硬盘袋的可用容量说明。</summary>
+        public string SelectedExistingHardDiskCapacityDescription
+        {
+            get => _selectedExistingHardDiskCapacityDescription;
+            private set => SetProperty(ref _selectedExistingHardDiskCapacityDescription, value);
+        }
+
         /// <summary>
         /// 原光盘直接留袋时不可编辑立档路径；拷贝型立档与原硬盘直接立档可编辑。
         /// </summary>
@@ -121,6 +143,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 OnPropertyChanged(nameof(ElectronicFilingTargetMediumSummary));
                 OnPropertyChanged(nameof(ElectronicFilingMediumTotalCapacityText));
                 OnPropertyChanged(nameof(ElectronicFilingMediumAvailableCapacityText));
+                OnPropertyChanged(nameof(ElectronicFilingMediumCapacityDescription));
                 OnPropertyChanged(nameof(IsElectronicFilingStoragePathEditable));
                 SyncElectronicStoragePathFromPendingFilingRows();
             }).ConfigureAwait(false);
@@ -185,18 +208,84 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 ElectronicFilingMediumTotalCapacityText = "—";
                 ElectronicFilingMediumAvailableCapacityText = "—";
+                ElectronicFilingMediumCapacityDescription = "—";
                 return;
             }
 
             decimal totalMb = await ResolveTargetMediumTotalCapacityMbAsync(repository, mediumCode).ConfigureAwait(false);
             decimal usedMb = existingRows.Sum(row => row.DataSizeMb)
                 + EnumeratePendingElectronicMediaItemRows().Sum(row => row.DataSizeMb);
+            decimal availableMb = Math.Max(0, totalMb - usedMb);
 
             ElectronicFilingMediumTotalCapacityText = ElectronicMediaCapacitySupport.FormatCapacityMb(totalMb);
             ElectronicFilingMediumAvailableCapacityText = totalMb > 0
-                ? ElectronicMediaCapacitySupport.FormatCapacityMb(Math.Max(0, totalMb - usedMb))
+                ? ElectronicMediaCapacitySupport.FormatCapacityMb(availableMb)
                 : "—";
+            ElectronicFilingMediumCapacityDescription = totalMb > 0
+                ? $"可用容量 {FormatCapacityMbOrZero(availableMb)}（总容量 {ElectronicMediaCapacitySupport.FormatCapacityMb(totalMb)}，已占用 {FormatCapacityMbOrZero(usedMb)}）"
+                : "未登记容量";
         }
+
+        private void RequestCopyTargetHardDiskCapacityRefresh()
+        {
+            int version = ++_copyTargetHardDiskCapacityVersion;
+            string diskCode = SelectedElectronicSubmissionMode == ElectronicArchiveSubmissionMode.CopyNewHardDisk
+                ? ElectronicLinkedMediumCodes
+                : string.Empty;
+            if (IsPendingMediumCode(diskCode))
+            {
+                diskCode = string.Empty;
+            }
+
+            _ = ApplySelectionHardDiskCapacityAsync(
+                version,
+                () => _copyTargetHardDiskCapacityVersion,
+                FirstHardDiskCode(diskCode),
+                value => CopyTargetHardDiskCapacityDescription = value);
+        }
+
+        private void RequestSelectedExistingHardDiskCapacityRefresh()
+        {
+            int version = ++_selectedExistingHardDiskCapacityVersion;
+            string diskCode = SelectedExistingElectronicUnitItem is { IsOpticalDiscBag: false }
+                ? SelectedExistingElectronicUnitItem.LinkedMediumCodesDisplay
+                : string.Empty;
+            _ = ApplySelectionHardDiskCapacityAsync(
+                version,
+                () => _selectedExistingHardDiskCapacityVersion,
+                FirstHardDiskCode(diskCode),
+                value => SelectedExistingHardDiskCapacityDescription = value);
+        }
+
+        private async Task ApplySelectionHardDiskCapacityAsync(
+            int version,
+            Func<int> currentVersion,
+            string diskCode,
+            Action<string> assign)
+        {
+            string description = await HardDiskCapacityDescriptionLoader.LoadAsync(_filingService, diskCode);
+            if (version != currentVersion())
+            {
+                return;
+            }
+
+            assign(description);
+        }
+
+        private static string FirstHardDiskCode(string? linkedMediumCodes)
+        {
+            if (string.IsNullOrWhiteSpace(linkedMediumCodes))
+            {
+                return string.Empty;
+            }
+
+            return linkedMediumCodes
+                .Split([',', '，', ';', '；'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .FirstOrDefault() ?? string.Empty;
+        }
+
+        private static string FormatCapacityMbOrZero(decimal capacityMb) =>
+            capacityMb <= 0 ? "0 MB" : ElectronicMediaCapacitySupport.FormatCapacityMb(capacityMb);
 
         private static async Task<decimal> ResolveTargetMediumTotalCapacityMbAsync(IArchiveFilingRepository repository, string mediumCode)
         {
@@ -342,6 +431,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ElectronicFilingTargetMediumSummary = string.Empty;
             ElectronicFilingMediumTotalCapacityText = "—";
             ElectronicFilingMediumAvailableCapacityText = "—";
+            ElectronicFilingMediumCapacityDescription = "—";
         }
     }
 }

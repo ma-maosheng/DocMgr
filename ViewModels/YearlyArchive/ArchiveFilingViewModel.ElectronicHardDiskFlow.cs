@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
@@ -110,6 +111,28 @@ namespace DocMgr.ViewModels.YearlyArchive
             return _borrowedHardDiskReturnCandidate with { };
         }
 
+        private async Task EnsurePredeterminedAppendUnitListedAsync(int unitId)
+        {
+            if (ExistingElectronicUnits.Any(item => item.Unit.Id == unitId))
+            {
+                return;
+            }
+
+            YearlyElectronicArchiveUnit? unit;
+            using (IServiceScope scope = _scopeFactory.CreateScope())
+            {
+                IArchiveFilingService filing = scope.ServiceProvider.GetRequiredService<IArchiveFilingService>();
+                unit = await filing.FindElectronicArchiveUnitAsync(unitId).ConfigureAwait(true);
+            }
+
+            if (unit == null)
+            {
+                return;
+            }
+
+            ExistingElectronicUnits.Add(ExistingElectronicArchiveUnitListItem.From(unit));
+        }
+
         private async Task PrefillElectronicFieldsFromSelectedRecordsAsync()
         {
             var selectedElectronicItems = EnumerateSelectedElectronicMediaEntryRows().ToList();
@@ -182,6 +205,17 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     ElectronicContentSummary = sourceItemNameSummary;
                 }
+            }
+
+            int? predeterminedAppendUnitId = selectedElectronicItems
+                .Where(item => item.IsOutboundArchiveFiling
+                    && !item.UseInStockBlankHardDisk
+                    && item.AppendTargetElectronicUnitId is > 0)
+                .Select(item => item.AppendTargetElectronicUnitId)
+                .FirstOrDefault();
+            if (predeterminedAppendUnitId is > 0)
+            {
+                await EnsurePredeterminedAppendUnitListedAsync(predeterminedAppendUnitId.Value);
             }
 
             RefreshElectronicScenario();
@@ -1000,22 +1034,29 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            string cabinetName = SelectedElectronicCabinet.Name;
+            string side = SelectedElectronicSide;
+
             try
             {
-                _currentElectronicCellMediumCount = await _filingService.GetElectronicUnitCountInCellAsync(
-                    SelectedElectronicCabinet.Name,
-                    SelectedElectronicSide,
-                    row,
-                    column);
-                _resolvedElectronicSequenceIndex = await _filingService.GetMinimumAvailableElectronicSequenceInCellAsync(
-                    SelectedElectronicCabinet.Name,
-                    SelectedElectronicSide,
-                    row,
-                    column);
+                using (IServiceScope scope = _scopeFactory.CreateScope())
+                {
+                    var filing = scope.ServiceProvider.GetRequiredService<IArchiveFilingService>();
+                    _currentElectronicCellMediumCount = await filing.GetElectronicUnitCountInCellAsync(
+                        cabinetName,
+                        side,
+                        row,
+                        column).ConfigureAwait(true);
+                    _resolvedElectronicSequenceIndex = await filing.GetMinimumAvailableElectronicSequenceInCellAsync(
+                        cabinetName,
+                        side,
+                        row,
+                        column).ConfigureAwait(true);
+                }
 
                 ElectronicStorageLocation = ArchiveSlotLocationSupport.BuildFullElectronicLocation(
-                    SelectedElectronicCabinet.Name,
-                    SelectedElectronicSide,
+                    cabinetName,
+                    side,
                     row,
                     column,
                     _resolvedElectronicSequenceIndex);
@@ -1025,7 +1066,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 ElectronicStorageLocation = string.Empty;
                 ElectronicCellCountText = "位置计算失败";
-                MessageBox.Show("计算电子介质档口位置失败: " + ex.Message);
+                MessageBox.Show("计算电子介质档口位置失败: " + ex.GetBaseException().Message);
             }
         }
 
@@ -1052,7 +1093,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             IReadOnlyList<HardDiskMediaReturnTargetLocationOption> options;
             try
             {
-                options = await _hardDiskMediaService.GetDedicatedTargetLocationOptionsAsync(categoryName);
+                // 独立 scope：与模拟档口加载相同，避免页面级 scoped 服务并发打同一 DbContext。
+                using (IServiceScope scope = _scopeFactory.CreateScope())
+                {
+                    var hardDiskMedia = scope.ServiceProvider.GetRequiredService<IHardDiskMediaService>();
+                    options = await hardDiskMedia.GetDedicatedTargetLocationOptionsAsync(categoryName)
+                        .ConfigureAwait(true);
+                }
             }
             catch (Exception ex)
             {
@@ -1062,7 +1109,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 // 刷新失败时保留原有 items，仅提示错误。
-                SetElectronicLocationSuggestion($"加载专用档口失败：{ex.Message}", isWarning: true);
+                SetElectronicLocationSuggestion($"加载专用档口失败：{ex.GetBaseException().Message}", isWarning: true);
                 return;
             }
 

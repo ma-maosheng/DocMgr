@@ -64,6 +64,20 @@
                         <Style TargetType="StackPanel">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
+                                <DataTrigger Binding="{Binding ShowDestinationUnit}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="接收部门(单位)：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                    <TextBlock Text="{Binding DestinationUnitDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,0,8">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsArchiveFilingDestination}" Value="True">
                                     <Setter Property="Visibility" Value="Visible"/>
                                 </DataTrigger>
@@ -73,7 +87,7 @@
                     <TextBlock Text="库管模式：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                     <TextBlock Text="{Binding SelectedArchivePurpose, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     <TextBlock Margin="0,4,0,0" Foreground="#64748B" FontSize="11" TextWrapping="Wrap"
-                               Text="归档载体（光盘/空白硬盘/并入同项目资料盘）在资料立档时确定。"/>
+                               Text="归档载体已在出网申请中确定，见下方电子介质。"/>
                 </StackPanel>
                 <Border Margin="0,0,0,8" Padding="8,6" Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="3"
                         Visibility="{Binding CanEditApprovalPaths, Converter={StaticResource BooleanToVisibilityConverter}}">

@@ -4,7 +4,7 @@
       xmlns:local="clr-namespace:DocMgr.Views.YearlyArchive"
       xmlns:models="clr-namespace:DocMgr.Models.Shared"
       xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
-      Title="资料归还工作台"
+      Title="归还申请"
       Background="#F0F2F5">
     <Page.Resources>
         <ResourceDictionary>

@@ -270,14 +270,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             t.RowGroups.Add(g);
             doc.Blocks.Add(t);
 
-            var foot = new Paragraph { FontSize = 10.5, Margin = new Thickness(0, 15, 0, 0), LineHeight = 18 };
-            foot.Inlines.Add(new Run("备注：") { FontWeight = FontWeights.Bold });
-
-            foot.Inlines.Add(new Run("1、审核、审批时，生产科负责人必须在各资料子项的[密级]处手签具体密级和本人姓名。\n"));
-            foot.Inlines.Add(new Run("      2、审批完成后，申请人（交接人）携带拟归档所有资料、材料(包括本表单、相关附件等）到资料室办理登记、交接工作。\n"));
-            foot.Inlines.Add(new Run("      3、交接人、资料管理员应对照本表单中的各项内容共同完成归档资料、材料的查验和拍照，确认账实相符后分别在表单上签名确认。\n"));
-            foot.Inlines.Add(new Run("      4、本表单、资料照片电子件应上传到本系统，同时表单原件由资料室存档保管，资料交接人有自存需要的可采用复印或拍照方式留存。"));
-            doc.Blocks.Add(foot);
+            doc.Blocks.Add(PrintFormNoteLayoutSupport.Create(
+                "备注：",
+                BuildFooterLines(),
+                FontBody,
+                fontSize: 10.5,
+                lineHeight: 18,
+                topMargin: 15));
 
             return doc;
         }
@@ -311,13 +310,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
                 + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
 
-            string footerText = BuildFooterNoteText();
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
-                footerText,
-                PrintPageLayoutSupport.ContentWidthDip,
-                fontSizeDip: 10.5,
-                lineHeightDip: 18,
-                topMarginDip: 15);
+            double footerHeight = PrintFormNoteLayoutSupport.EstimateHeightDip(
+                "备注：",
+                BuildFooterLines(),
+                FontBody,
+                fontSize: 10.5,
+                lineHeight: 18,
+                topMargin: 15);
             double reservedHeight =
                 PrintPageLayoutSupport.ApprovalFormTitleBlockHeightDip
                 + HeaderInfoHeight
@@ -360,13 +359,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             return count;
         }
 
-        /// <summary>与表后说明段落渲染文案一致，供估高。</summary>
-        private static string BuildFooterNoteText() =>
-            "备注：" +
-            "1、审核、审批时，生产科负责人必须在各资料子项的[密级]处手签具体密级和本人姓名。\n" +
-            "      2、审批完成后，申请人（交接人）携带拟归档所有资料、材料(包括本表单、相关附件等）到资料室办理登记、交接工作。\n" +
-            "      3、交接人、资料管理员应对照本表单中的各项内容共同完成归档资料、材料的查验和拍照，确认账实相符后分别在表单上签名确认。\n" +
-            "      4、本表单、资料照片电子件应上传到本系统，同时表单原件由资料室存档保管，资料交接人有自存需要的可采用复印或拍照方式留存。";
+        /// <summary>与表后说明渲染文案一致，供估高。</summary>
+        private static IReadOnlyList<string> BuildFooterLines() =>
+        [
+            "1、审核、审批时，生产科负责人必须在各资料子项的[密级]处手签具体密级和本人姓名。",
+            "2、审批完成后，申请人（交接人）携带拟归档所有资料、材料(包括本表单、相关附件等）到资料室办理登记、交接工作。",
+            "3、交接人、资料管理员应对照本表单中的各项内容共同完成归档资料、材料的查验和拍照，确认账实相符后分别在表单上签名确认。",
+            "4、本表单、资料照片电子件应上传到本系统，同时表单原件由资料室存档保管，资料交接人有自存需要的可采用复印或拍照方式留存。"
+        ];
 
         private static TableRow CreateRow(string label, string content, int contentColSpan, double minHeight = 0, VerticalAlignment contentVerticalAlignment = VerticalAlignment.Center)
         {

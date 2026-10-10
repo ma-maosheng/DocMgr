@@ -9,6 +9,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using DocMgr.ViewModels.Base;
@@ -102,12 +104,16 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public bool IsMediumSelectionEnabled => IsRegistrationEditable && SelectedApplicant != null;
 
-        /// <summary>仅申请模式下、草稿状态（或新建）时表单可编辑；审批模式表单只读。</summary>
+        /// <summary>
+        /// 仅申请模式下、部门资料员可编辑草稿（或新建）。
+        /// 归还单 ApplicantName 为原借用人，不能按姓名做办理人所有权判断。
+        /// </summary>
         public bool IsRegistrationEditable =>
-            _workspaceMode == HardDiskReturnWorkspaceMode.Application &&
-            _editingApplication != null &&
-            (_editingApplication.Id == 0 ||
-             _editingApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft);
+            _workspaceMode == HardDiskReturnWorkspaceMode.Application
+            && _editingApplication != null
+            && HardDiskMediaApplicationViewModelHelper.CanSubmitApplication(_userContextService.CurrentUser)
+            && (_editingApplication.Id == 0
+                || _editingApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft);
 
         public bool CanApprove =>
             ShowApprovalActions &&
@@ -1904,41 +1910,55 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task UpdateReturnTargetLocationAsync()
         {
-            bool preferRecommended = _preferRecommendedTargetLocationForCurrentKind;
-            _preferRecommendedTargetLocationForCurrentKind = false;
-
-            // 先清空再异步加载；不在清空时立刻通知可见性，避免推荐后 TargetLocation 未变时
-            // 下拉/推荐按钮一直停留在 Collapsed，只读框只显示档口码而丢失“现有 N 盘”。
-            ReturnTargetLocationOptions.Clear();
-            SelectedReturnTargetLocationOption = null;
-
-            if (SelectedMedium == null)
+            int generation = Interlocked.Increment(ref _returnTargetLocationGeneration);
+            await _returnTargetLocationGate.WaitAsync().ConfigureAwait(true);
+            try
             {
-                TargetLocation = string.Empty;
-                NotifyTargetLocationSelectionChanged();
-                return;
-            }
+                if (generation != Volatile.Read(ref _returnTargetLocationGeneration))
+                {
+                    return;
+                }
 
-            if (IsLossInspectionScenario)
-            {
-                TargetLocation = HardDiskMediaReturnDomainValues.LossReturnTargetLocationDisplay;
-                NotifyTargetLocationSelectionChanged();
-                return;
-            }
+                bool preferRecommended = _preferRecommendedTargetLocationForCurrentKind;
+                _preferRecommendedTargetLocationForCurrentKind = false;
 
-            if (IsDamagedInspectionScenario)
-            {
+                // 先清空再异步加载；不在清空时立刻通知可见性，避免推荐后 TargetLocation 未变时
+                // 下拉/推荐按钮一直停留在 Collapsed，只读框只显示档口码而丢失“现有 N 盘”。
+                ReturnTargetLocationOptions.Clear();
+                SelectedReturnTargetLocationOption = null;
+
+                if (SelectedMedium == null)
+                {
+                    TargetLocation = string.Empty;
+                    NotifyTargetLocationSelectionChanged();
+                    return;
+                }
+
+                if (IsLossInspectionScenario)
+                {
+                    TargetLocation = HardDiskMediaReturnDomainValues.LossReturnTargetLocationDisplay;
+                    NotifyTargetLocationSelectionChanged();
+                    return;
+                }
+
+                if (IsDamagedInspectionScenario)
+                {
+                    await LoadDedicatedReturnTargetLocationOptionsAsync(
+                        HardDiskMediaApplication.TypeReturnDamagedRegistration,
+                        autoSelectRecommended: true,
+                        preferRecommendedForCurrentKind: preferRecommended);
+                    return;
+                }
+
                 await LoadDedicatedReturnTargetLocationOptionsAsync(
-                    HardDiskMediaApplication.TypeReturnDamagedRegistration,
+                    HardDiskMediaApplication.TypeReturnBlankRegistration,
                     autoSelectRecommended: true,
                     preferRecommendedForCurrentKind: preferRecommended);
-                return;
             }
-
-            await LoadDedicatedReturnTargetLocationOptionsAsync(
-                HardDiskMediaApplication.TypeReturnBlankRegistration,
-                autoSelectRecommended: true,
-                preferRecommendedForCurrentKind: preferRecommended);
+            finally
+            {
+                _returnTargetLocationGate.Release();
+            }
         }
 
         private async Task LoadDedicatedReturnTargetLocationOptionsAsync(

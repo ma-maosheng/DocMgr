@@ -20,9 +20,35 @@ namespace DocMgr.Services.YearlyArchive
         {
             ArgumentNullException.ThrowIfNull(facts);
 
-            var candidates = facts
+            var eligibleFacts = facts
                 .Where(fact => fact.Id > 0 || (fact.SourceLinkId > 0 && !string.IsNullOrWhiteSpace(fact.SourceLinkType)))
-                .Select(ArchiveMaterialTransactionSupport.BuildFilingTransaction)
+                .ToList();
+            if (eligibleFacts.Count == 0)
+            {
+                return;
+            }
+
+            var registerRecordIds = eligibleFacts
+                .Select(fact => fact.RegisterRecordId)
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+            IReadOnlyDictionary<int, NetworkOutboundFilingOrigin> outboundOrigins = registerRecordIds.Count == 0
+                ? new Dictionary<int, NetworkOutboundFilingOrigin>()
+                : await _repository.GetOutboundFilingOriginsByRegisterRecordIdsAsync(registerRecordIds);
+
+            var candidates = eligibleFacts
+                .Select(fact =>
+                {
+                    if (fact.RegisterRecordId > 0
+                        && outboundOrigins.TryGetValue(fact.RegisterRecordId, out NetworkOutboundFilingOrigin? origin)
+                        && origin.OutboundRecordId > 0)
+                    {
+                        return ArchiveMaterialTransactionSupport.BuildNetworkOutboundFilingTransaction(fact, origin);
+                    }
+
+                    return ArchiveMaterialTransactionSupport.BuildFilingTransaction(fact);
+                })
                 .ToList();
 
             await AppendIfNotExistsAsync(candidates);

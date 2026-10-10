@@ -34,6 +34,7 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
     public Task<YearlyArchiveRegisterRecord?> GetByFormNoWithDetailsAsync(string formNo)
     {
         return _dbContext.YearlyArchiveRegisterRecords
+            .AsSplitQuery()
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ElectronicDetail!)
@@ -57,6 +58,7 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
     public Task<YearlyArchiveRegisterRecord?> GetByIdWithDetailsAsync(int id)
     {
         return _dbContext.YearlyArchiveRegisterRecords
+            .AsSplitQuery()
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ElectronicDetail!)
@@ -80,6 +82,7 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
     public Task<List<YearlyArchiveRegisterRecord>> SearchRecordsAsync(string keyword, int? year, int? status, int? projectId)
     {
         IQueryable<YearlyArchiveRegisterRecord> query = _dbContext.YearlyArchiveRegisterRecords
+            .AsSplitQuery()
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ArchiveBoxLinks)
@@ -145,6 +148,7 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
         ArgumentNullException.ThrowIfNull(record);
 
         var existingRecord = await _dbContext.YearlyArchiveRegisterRecords
+            .AsSplitQuery()
             .Include(item => item.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(mediaItem => mediaItem.ElectronicDetail!)
@@ -347,6 +351,7 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
     {
         return _dbContext.YearlyArchiveRegisterRecords
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ArchiveBoxLinks)
@@ -364,6 +369,7 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
     {
         return _dbContext.YearlyArchiveRegisterRecords
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ArchiveBoxLinks)
@@ -553,6 +559,8 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
     {
         return _dbContext.SaveChangesAsync();
     }
+
+    public void ClearChangeTracker() => _dbContext.ChangeTracker.Clear();
 
     private static YearlyArchiveRegisterMediaItem MapMediaItem(YearlyArchiveRegisterMediaItem source, string mediaKind)
     {

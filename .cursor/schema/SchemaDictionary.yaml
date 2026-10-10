@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-09-24T04:14:51Z
+generatedAt: 2026-10-10T01:59:35Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -4857,6 +4857,18 @@ tables:
         clrType: DateTime?
         needsReview: false
         aliases: []
+      AppendTargetElectronicUnitId:
+        chineseName: 并档目标电子袋ID
+        description: 资料室存档且硬盘不使用库内空盘时，预定并入的本项目当年硬盘袋。
+        clrType: Int32?
+        needsReview: false
+        aliases: []
+      AppendTargetHardDiskCode:
+        chineseName: 并档目标硬盘编号
+        description: 申请时目标硬盘袋内硬盘编号快照。
+        clrType: String
+        needsReview: false
+        aliases: []
   YearlyArchiveRegisterRecord:
     tableName: YearlyArchiveRegisterRecords
     chineseName: 年度资料登记申请
@@ -7580,6 +7592,12 @@ tables:
       DestinationKind:
         chineseName: 目的地类别
         description: 出网（院内） / 出网（院外） / 资料室存档
+        clrType: String
+        needsReview: false
+        aliases: []
+      DestinationUnit:
+        chineseName: 接收部门（单位）
+        description: 目的地为出网（院内/院外）时填写；资料室存档时为空。
         clrType: String
         needsReview: false
         aliases: []

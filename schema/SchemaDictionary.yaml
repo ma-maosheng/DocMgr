@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-09-24T02:57:51Z
+generatedAt: 2026-10-10T01:59:35Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -3556,7 +3556,7 @@ tables:
   YearlyArchiveInventoryRegisterRecord:
     tableName: YearlyArchiveInventoryRegisterRecords
     chineseName: 资料盘库登记单
-    description: 年度资料盘库登记主单（模拟丢失/电子损坏丢失；草稿直接办结）。
+    description: 年度资料盘库登记主单（模拟/电子；B 流线下签批确认可上传）。
     isView: false
     deprecated: false
     aliases: []
@@ -3587,7 +3587,7 @@ tables:
         aliases: []
       RegisterKind:
         chineseName: 登记类型
-        description: 盘失登记/损坏登记
+        description: 盘失登记/损坏登记/拟销登记
         clrType: String
         needsReview: false
         aliases: []
@@ -3627,6 +3627,114 @@ tables:
         clrType: DateTime
         needsReview: false
         aliases: []
+      ApprovedBy:
+        chineseName: 审批人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApprovedTime:
+        chineseName: 审批时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ApprovalOpinion:
+        chineseName: 审批意见
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DeptHead:
+        chineseName: 部门审核签字
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DeptHeadDate:
+        chineseName: 部门审核日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ArchiveRoomHead:
+        chineseName: 资料室负责人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ArchiveRoomHeadDate:
+        chineseName: 资料室负责人日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ProductionHead:
+        chineseName: 生产科签字
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ProductionHeadDate:
+        chineseName: 生产科签字日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ArchiveDeputyPresident:
+        chineseName: 分管资料副院长
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ArchiveDeputyPresidentDate:
+        chineseName: 分管资料副院长日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ProductionVicePresident:
+        chineseName: 分管生产院长签字
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ProductionVicePresidentDate:
+        chineseName: 分管生产院长签字日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ConfirmedBy:
+        chineseName: 确认可上传人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ConfirmedTime:
+        chineseName: 确认可上传时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploaded:
+        chineseName: 已上传签批单
+        description: ''
+        clrType: Boolean
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploadedTime:
+        chineseName: 签批单上传时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploader:
+        chineseName: 签批单上传人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
       CompletedAt:
         chineseName: 办结时间
         description: ''
@@ -3639,6 +3747,12 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      SubmittedAt:
+        chineseName: 提交时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
       WithdrawnAt:
         chineseName: 撤回时间
         description: ''
@@ -3649,6 +3763,24 @@ tables:
         chineseName: 撤回原因
         description: ''
         clrType: String
+        needsReview: false
+        aliases: []
+      PrintCount:
+        chineseName: 打印数量
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      LastPrintedAt:
+        chineseName: 最后打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      FirstPrintedAt:
+        chineseName: 首次打印时间
+        description: ''
+        clrType: DateTime?
         needsReview: false
         aliases: []
       CreatedAt:
@@ -4723,6 +4855,18 @@ tables:
         chineseName: 预计归还日期
         description: ''
         clrType: DateTime?
+        needsReview: false
+        aliases: []
+      AppendTargetElectronicUnitId:
+        chineseName: 并档目标电子袋ID
+        description: 资料室存档且硬盘不使用库内空盘时，预定并入的本项目当年硬盘袋。
+        clrType: Int32?
+        needsReview: false
+        aliases: []
+      AppendTargetHardDiskCode:
+        chineseName: 并档目标硬盘编号
+        description: 申请时目标硬盘袋内硬盘编号快照。
+        clrType: String
         needsReview: false
         aliases: []
   YearlyArchiveRegisterRecord:
@@ -6060,7 +6204,7 @@ tables:
   HardDiskInventoryRegisterRecord:
     tableName: HardDiskInventoryRegisterRecords
     chineseName: 硬盘盘库登记单
-    description: 硬盘盘库登记单（主表，一单多盘；轻量草稿/办结/作废）。
+    description: 硬盘盘库登记单（主表，一单多盘；B 流线下签批确认可上传）。
     isView: false
     deprecated: false
     aliases: []
@@ -6125,6 +6269,132 @@ tables:
         clrType: DateTime
         needsReview: false
         aliases: []
+      ApprovedBy:
+        chineseName: 审批人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ApprovedTime:
+        chineseName: 审批时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ApprovalOpinion:
+        chineseName: 审批意见
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DeptHead:
+        chineseName: 部门审核签字
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DeptHeadDate:
+        chineseName: 部门审核日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ArchiveRoomHead:
+        chineseName: 资料室签字
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ArchiveRoomHeadDate:
+        chineseName: 资料室签字日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ProductionHead:
+        chineseName: 生产科签字
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ProductionHeadDate:
+        chineseName: 生产科签字日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ArchiveDeputyPresident:
+        chineseName: 分管资料院长签字
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ArchiveDeputyPresidentDate:
+        chineseName: 分管资料院长签字日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ProductionVicePresident:
+        chineseName: 分管生产院长签字
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ProductionVicePresidentDate:
+        chineseName: 分管生产院长签字日期
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      ConfirmedBy:
+        chineseName: 确认可上传人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      ConfirmedTime:
+        chineseName: 确认可上传时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploaded:
+        chineseName: 已上传签批单
+        description: ''
+        clrType: Boolean
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploadedTime:
+        chineseName: 签批单上传时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      SignedAttachmentUploader:
+        chineseName: 签批单上传人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      DamagedDiskRelocationConfirmed:
+        chineseName: 已完成损坏硬盘迁档
+        description: 损坏登记在确认可上传附件信息前须勾选；确认后锁定。
+        clrType: Boolean
+        needsReview: false
+        aliases: []
+      DamagedDiskRelocationConfirmedAt:
+        chineseName: 损坏硬盘迁档确认时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      DamagedDiskRelocationConfirmedBy:
+        chineseName: 损坏硬盘迁档确认人
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
       CompletedAt:
         chineseName: 办结时间
         description: ''
@@ -6137,6 +6407,12 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      SubmittedAt:
+        chineseName: 提交时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
       WithdrawnAt:
         chineseName: 撤回时间
         description: ''
@@ -6147,6 +6423,24 @@ tables:
         chineseName: 撤回原因
         description: ''
         clrType: String
+        needsReview: false
+        aliases: []
+      PrintCount:
+        chineseName: 打印次数
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      LastPrintedAt:
+        chineseName: 最后打印时间
+        description: ''
+        clrType: DateTime?
+        needsReview: false
+        aliases: []
+      FirstPrintedAt:
+        chineseName: 首次打印时间
+        description: ''
+        clrType: DateTime?
         needsReview: false
         aliases: []
       CreatedAt:
@@ -7298,6 +7592,12 @@ tables:
       DestinationKind:
         chineseName: 目的地类别
         description: 出网（院内） / 出网（院外） / 资料室存档
+        clrType: String
+        needsReview: false
+        aliases: []
+      DestinationUnit:
+        chineseName: 接收部门（单位）
+        description: 目的地为出网（院内/院外）时填写；资料室存档时为空。
         clrType: String
         needsReview: false
         aliases: []

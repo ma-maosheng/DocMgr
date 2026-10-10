@@ -5,7 +5,7 @@ using DocMgr.ViewModels.Base;
 namespace DocMgr.ViewModels.NetworkTransfer;
 
 /// <summary>
-/// 在网台账候选勾选项（出网/处置等业务共用），字段与 NT-DSP 资产表一致。
+/// 在网台账候选勾选项（出网/处置等业务共用），字段与 NT-ONL-LDG 资产表一致。
 /// </summary>
 public sealed class NetworkOnNetAssetCandidate : ViewModelBase
 {

@@ -108,13 +108,13 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, RowChromeDip) * fixedRowCount
                 + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
 
-            string footerText = BuildFooterNoteText(data);
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
-                footerText,
-                PrintPageLayoutSupport.ContentWidthDip,
-                fontSizeDip: 10.5,
-                lineHeightDip: 18,
-                topMarginDip: 15);
+            double footerHeight = PrintFormNoteLayoutSupport.EstimateHeightDip(
+                "说明：",
+                BuildFooterLines(data),
+                BodyFont,
+                fontSize: 10.5,
+                lineHeight: 18,
+                topMargin: 15);
             double reservedHeight = TitleChromeHeight + HeaderHeight + footerHeight + fixedTableHeight;
             double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
                 itemListText,
@@ -215,32 +215,22 @@ namespace DocMgr.ViewModels.NetworkTransfer
             return $"{label}：{signer}    日期：{date}";
         }
 
-        private static Paragraph CreateFooterParagraph(NetworkOnNetDisposalPrintData data)
-        {
-            var footer = new Paragraph
-            {
-                FontSize = 10.5,
-                Margin = new Thickness(0, 15, 0, 0),
-                LineHeight = 18
-            };
-
-            footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
-            footer.Inlines.Add(new Run(
-                "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批通过、上传签批单、办结”流程办理。\n"));
-            footer.Inlines.Add(new Run(
-                "      2、审核为资料室签字、审批为分管资料院长签字，仅需签字与日期；请线下完成后回传签批单。\n"));
-            footer.Inlines.Add(new Run(
-                $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
-
-            return footer;
-        }
+        private static Table CreateFooterParagraph(NetworkOnNetDisposalPrintData data) =>
+            PrintFormNoteLayoutSupport.Create(
+                "说明：",
+                BuildFooterLines(data),
+                BodyFont,
+                fontSize: 10.5,
+                lineHeight: 18,
+                topMargin: 15);
 
         /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
-        private static string BuildFooterNoteText(NetworkOnNetDisposalPrintData data) =>
-            "说明：" +
-            "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批通过、上传签批单、办结”流程办理。\n" +
-            "      2、审核为资料室签字、审批为分管资料院长签字，仅需签字与日期；请线下完成后回传签批单。\n" +
-            $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。";
+        private static IReadOnlyList<string> BuildFooterLines(NetworkOnNetDisposalPrintData data) =>
+        [
+            "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批通过、上传签批单、办结”流程办理。",
+            "2、审核为资料室签字、审批为分管资料院长签字，仅需签字与日期；请线下完成后回传签批单。",
+            $"3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"
+        ];
 
         private static Table CreateHeaderTable(string left, string right)
         {

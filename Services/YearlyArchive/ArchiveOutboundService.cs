@@ -211,11 +211,21 @@ namespace DocMgr.Services.YearlyArchive
                     return ArchiveOutboundFlowResult.Fail("只有“未提交”状态的申请单才能保存。");
                 }
 
+                if (existing.ApplicantUserId != user.Id)
+                {
+                    return ArchiveOutboundFlowResult.Fail("仅申请人本人可保存该申请。");
+                }
+
                 record.Status = existing.Status;
+                record.ApplicantUserId = existing.ApplicantUserId;
             }
             else if (record.Status != YearlyArchiveOutboundRecord.Unsubmitted)
             {
                 return ArchiveOutboundFlowResult.Fail("只有“未提交”状态的申请单才能保存。");
+            }
+            else
+            {
+                record.ApplicantUserId = user.Id;
             }
             if (string.Equals(record.DestinationKind, ArchiveOutboundDomainValues.DestinationInternal, StringComparison.Ordinal))
             {
@@ -319,6 +329,7 @@ namespace DocMgr.Services.YearlyArchive
                 record.UpdatedAt = DateTime.Now;
 
                 int savedId = await _outboundRepository.SaveOrUpdateRecordGraphAsync(record);
+                _outboundRepository.ClearChangeTracker();
                 record = await _outboundRepository.GetByIdWithDetailsAsync(savedId)
                     ?? throw new InvalidOperationException("提交后未能重新加载申请单。");
 

@@ -360,15 +360,10 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 
         public string PageTitle => _workspaceMode switch
-
         {
-
-            ArchiveOutboundWorkspaceMode.Approval => "资料借出审批出库",
-
-            ArchiveOutboundWorkspaceMode.Handover => "资料借出审批出库",
-
-            _ => "资料借出申请"
-
+            ArchiveOutboundWorkspaceMode.Approval => "审批出库",
+            ArchiveOutboundWorkspaceMode.Handover => "审批出库",
+            _ => "借出申请"
         };
 
 
@@ -688,9 +683,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                     forceVoidEligible: overdueEligible);
             }
 
+            var user = _userContextService.CurrentUser;
+            bool isOwnerApplicant = user != null
+                && OfflineApprovalPermissionSupport.CanApplicantOperate(user)
+                && SelectedRecord.ApplicantUserId == user.Id;
             return ApplicationListActionSupport.CanApplicantWithdraw(
                 SelectedRecord.Status,
-                isOwnerApplicant: true,
+                isOwnerApplicant,
                 domainAllows: SelectedRecord.CanApplicantWithdraw);
         }
 

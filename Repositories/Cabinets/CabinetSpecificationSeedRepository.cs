@@ -21,6 +21,7 @@ public class CabinetSpecificationSeedRepository : ICabinetSpecificationSeedRepos
     public void AddSlotSpecification(CabinetSlotSpecification specification)
     {
         ArgumentNullException.ThrowIfNull(specification);
+        specification.Id = 0;
         _dbContext.CabinetSlotSpecifications.Add(specification);
     }
 
@@ -33,6 +34,7 @@ public class CabinetSpecificationSeedRepository : ICabinetSpecificationSeedRepos
     public void AddSpecialRule(CabinetSlotSpecialRule rule)
     {
         ArgumentNullException.ThrowIfNull(rule);
+        rule.Id = 0;
         _dbContext.CabinetSlotSpecialRules.Add(rule);
     }
 
@@ -45,6 +47,7 @@ public class CabinetSpecificationSeedRepository : ICabinetSpecificationSeedRepos
     public void AddArchiveBoxSpecification(ArchiveBoxSpecification specification)
     {
         ArgumentNullException.ThrowIfNull(specification);
+        specification.Id = 0;
         _dbContext.ArchiveBoxSpecifications.Add(specification);
     }
 

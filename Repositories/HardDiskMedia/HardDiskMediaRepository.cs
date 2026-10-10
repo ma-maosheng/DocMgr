@@ -1133,6 +1133,16 @@ public partial class HardDiskMediaRepository : IHardDiskMediaRepository
     public void RemoveApplication(HardDiskMediaApplication application)
     {
         ArgumentNullException.ThrowIfNull(application);
+
+        // SQL Server 端 ApplicationId 外键为 NO ACTION；删除申请单前先清空流水引用。
+        var linkedTransactions = _dbContext.HardDiskMediaTransactions
+            .Where(item => item.ApplicationId == application.Id)
+            .ToList();
+        foreach (var transaction in linkedTransactions)
+        {
+            transaction.ApplicationId = null;
+        }
+
         _dbContext.HardDiskMediaApplications.Remove(application);
     }
 

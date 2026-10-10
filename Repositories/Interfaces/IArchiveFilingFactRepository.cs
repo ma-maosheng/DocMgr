@@ -34,6 +34,10 @@ namespace DocMgr.Repositories.Interfaces
         Task<IReadOnlyDictionary<int, string>> GetArchivePurposesByRegisterRecordIdsAsync(
             IReadOnlyCollection<int> registerRecordIds);
 
+        /// <summary>按建档申请 ID 批量判断是否关联出网申请（网内资料立档）。</summary>
+        Task<IReadOnlyDictionary<int, bool>> GetHasSourceNetworkOutboundByRegisterRecordIdsAsync(
+            IReadOnlyCollection<int> registerRecordIds);
+
         /// <summary>按项目 ID 批量取实施年度（ImplementYear）。</summary>
         Task<IReadOnlyDictionary<int, string>> GetProjectImplementYearsByIdsAsync(
             IReadOnlyCollection<int> projectIds);

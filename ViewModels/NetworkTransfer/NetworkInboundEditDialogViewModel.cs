@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using DocMgr.Models;
@@ -34,10 +36,14 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private readonly ICabinetService _cabinetService;
         private readonly ElectronicMediaEditingViewModel _electronicMediaEditor;
         private readonly NetworkTransferWorkspaceMode _mode;
+        private readonly SemaphoreSlim _rebuildItemRowsGate = new(1, 1);
+        private int _rebuildItemRowsGeneration;
         private bool _suppressProjectBinding;
         private bool _suppressSourceKindSideEffects;
         private bool _suppressSearchResultSetSelection;
         private bool _suppressServerPathSelection;
+        private bool _isInitializing;
+        private readonly SemaphoreSlim _dialogDbGate = new(1, 1);
         private NetworkInboundRecord _record;
         private bool _hasCommittedChanges;
 
@@ -154,8 +160,17 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         public bool HasCommittedChanges => _hasCommittedChanges;
 
-        public string WindowTitle =>
-            $"入网申请 · {(string.IsNullOrWhiteSpace(InboundNo) ? "待编单" : InboundNo)} · {StatusDisplay}";
+        /// <summary>页眉标题（流程名 · 单号 · 状态）；流程名与菜单「入网申请 / 入网审批」对齐。</summary>
+        public string WindowTitle
+        {
+            get
+            {
+                string flowName = _mode == NetworkTransferWorkspaceMode.Approval
+                    ? "入网审批"
+                    : "入网申请";
+                return $"{flowName} · {(string.IsNullOrWhiteSpace(InboundNo) ? "待编单" : InboundNo)} · {StatusDisplay}";
+            }
+        }
 
         public string StatusDisplay => NetworkTransferDomainValues.ToStatusDisplay(_record.Status);
 
@@ -197,8 +212,10 @@ namespace DocMgr.ViewModels.NetworkTransfer
         public bool CanEditHeader =>
             _mode == NetworkTransferWorkspaceMode.Application
             && _record.Status == NetworkInboundRecord.StatusDraft
-            && (ArchiveRegisterBusinessRules.CanSubmitApplication(_userContextService.CurrentUser)
-                || ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContextService.CurrentUser));
+            && ArchiveRegisterBusinessRules.CanSubmitApplication(_userContextService.CurrentUser)
+            && (_record.Id <= 0
+                || (_userContextService.CurrentUser != null
+                    && _record.ApplicantUserId == _userContextService.CurrentUser.Id));
 
         public bool CanSubmit => CanEditHeader && (IsArchivedSource ? Items.Count > 0 : GetExternalMediaItemCount() > 0);
 
@@ -255,7 +272,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     OnPropertyChanged(nameof(IsExternalSource));
                     OnPropertyChanged(nameof(ShowExternalItemToolbar));
                     OnPropertyChanged(nameof(IsInboundItemGridReadOnly));
-                    if (!_suppressSourceKindSideEffects)
+                    if (!_suppressSourceKindSideEffects && !_isInitializing)
                     {
                         ApplyProvideUnitSideEffectsForSourceKind(previousSourceKind);
                         if (IsArchivedSource)
@@ -518,11 +535,13 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         private async Task InitializeAsync()
         {
+            await _dialogDbGate.WaitAsync().ConfigureAwait(true);
+            _isInitializing = true;
             try
             {
                 if (_record.Id > 0)
                 {
-                    var latest = await _service.GetInboundByIdAsync(_record.Id);
+                    var latest = await _service.GetInboundByIdAsync(_record.Id).ConfigureAwait(true);
                     if (latest != null)
                     {
                         _record = latest;
@@ -530,33 +549,38 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 }
                 else if (string.IsNullOrWhiteSpace(_record.InboundNo))
                 {
-                    _record.InboundNo = await _service.GenerateNextInboundNoAsync();
+                    _record.InboundNo = await _service.GenerateNextInboundNoAsync().ConfigureAwait(true);
                 }
 
                 LoadProjectYears();
                 LoadInternalDepartments();
                 BindFromRecord();
-                await TryAutoFillDefaultApprovalInfoAsync();
-                await ApplyApprovalChainEnableFlagsAsync();
-                await LoadConfidentialLevelOptionsAsync();
-                await InitializeElectronicMediaEditorAsync();
+                await TryAutoFillDefaultApprovalInfoAsync().ConfigureAwait(true);
+                await ApplyApprovalChainEnableFlagsAsync().ConfigureAwait(true);
+                await LoadConfidentialLevelOptionsAsync().ConfigureAwait(true);
+                await InitializeElectronicMediaEditorAsync().ConfigureAwait(true);
                 if (IsArchivedSource)
                 {
-                    await LoadApplicantSearchResultSetsAsync();
+                    await LoadApplicantSearchResultSetsAsync().ConfigureAwait(true);
                     SyncSelectedSearchResultSetFromRecord();
                 }
 
                 LoadApplicantServerPathOptions();
                 SyncSelectedServerPathFromItems();
-                await RebuildItemRowsAsync();
-                await InitializeReturnHardDiskSectionsAsync();
-                await ReloadAttachmentsAsync();
+                await RebuildItemRowsAsync().ConfigureAwait(true);
+                await InitializeReturnHardDiskSectionsAsync().ConfigureAwait(true);
+                await ReloadAttachmentsAsync().ConfigureAwait(true);
                 UpdateApprovalUiState();
                 CommandManager.InvalidateRequerySuggested();
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError(ex.Message);
+                _dialogService.ShowError(ex.GetBaseException().Message);
+            }
+            finally
+            {
+                _isInitializing = false;
+                _dialogDbGate.Release();
             }
         }
 
@@ -1038,10 +1062,19 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     : ApplicantDept.Trim();
             }
 
-            ApplicantServerPathOptions.Clear();
-            foreach (ServerPathSetting path in _serverPathSettingService.GetWritablePathsForDepartment(department))
+            // 必须先抑制：Clear() 会把 ComboBox.SelectedItem 置空并回写 SelectedServerPath。
+            _suppressServerPathSelection = true;
+            try
             {
-                ApplicantServerPathOptions.Add(path);
+                ApplicantServerPathOptions.Clear();
+                foreach (ServerPathSetting path in _serverPathSettingService.GetWritablePathsForDepartment(department))
+                {
+                    ApplicantServerPathOptions.Add(path);
+                }
+            }
+            finally
+            {
+                _suppressServerPathSelection = false;
             }
         }
 
@@ -1118,43 +1151,57 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         private async Task RebuildItemRowsAsync()
         {
-            List<int> factIds = Items
-                .Where(item => item.SourceFilingFactId is > 0)
-                .Select(item => item.SourceFilingFactId!.Value)
-                .Distinct()
-                .ToList();
-            IReadOnlyDictionary<int, YearlyArchiveFilingFact> filingFacts =
-                await _service.GetFilingFactsByIdsAsync(factIds);
-            IReadOnlyDictionary<int, FiledArchiveSearchHit> hits = IsArchivedSource
-                ? await _searchService.GetSearchHitsByFilingFactIdsAsync(factIds)
-                : new Dictionary<int, FiledArchiveSearchHit>();
-            IReadOnlyDictionary<int, string> currentLocations = IsArchivedSource
-                ? await _searchService.GetCurrentStorageLocationsByFilingFactIdsAsync(factIds)
-                : new Dictionary<int, string>();
-            IReadOnlyDictionary<int, YearlyArchiveSearchResultSetItem> resultSetItems =
-                await LoadLinkedSearchResultSetItemsAsync();
-
-            bool isExternalSource = IsExternalSource;
-            ItemRows.Clear();
-            foreach (NetworkInboundItem item in Items.OrderBy(row => row.SortOrder).ThenBy(row => row.Id))
+            int generation = Interlocked.Increment(ref _rebuildItemRowsGeneration);
+            await _rebuildItemRowsGate.WaitAsync().ConfigureAwait(true);
+            try
             {
-                YearlyArchiveFilingFact? filingFact = null;
-                if (item.SourceFilingFactId is int factId && factId > 0)
+                if (generation != Volatile.Read(ref _rebuildItemRowsGeneration))
                 {
-                    filingFacts.TryGetValue(factId, out filingFact);
+                    return;
                 }
 
-                if (IsArchivedSource)
-                {
-                    NetworkInboundItemDisplaySupport.ApplyFilingFactSnapshot(item, filingFact);
-                }
+                List<int> factIds = Items
+                    .Where(item => item.SourceFilingFactId is > 0)
+                    .Select(item => item.SourceFilingFactId!.Value)
+                    .Distinct()
+                    .ToList();
+                IReadOnlyDictionary<int, YearlyArchiveFilingFact> filingFacts =
+                    await _service.GetFilingFactsByIdsAsync(factIds);
+                IReadOnlyDictionary<int, FiledArchiveSearchHit> hits = IsArchivedSource
+                    ? await _searchService.GetSearchHitsByFilingFactIdsAsync(factIds)
+                    : new Dictionary<int, FiledArchiveSearchHit>();
+                IReadOnlyDictionary<int, string> currentLocations = IsArchivedSource
+                    ? await _searchService.GetCurrentStorageLocationsByFilingFactIdsAsync(factIds)
+                    : new Dictionary<int, string>();
+                IReadOnlyDictionary<int, YearlyArchiveSearchResultSetItem> resultSetItems =
+                    await LoadLinkedSearchResultSetItemsAsync();
 
-                SearchPoolItemRow? poolItem = TryBuildArchivedSearchPoolItemRow(
-                    item,
-                    hits,
-                    currentLocations,
-                    resultSetItems);
-                ItemRows.Add(NetworkInboundItemRowViewModel.Create(item, filingFacts, isExternalSource, poolItem));
+                bool isExternalSource = IsExternalSource;
+                ItemRows.Clear();
+                foreach (NetworkInboundItem item in Items.OrderBy(row => row.SortOrder).ThenBy(row => row.Id))
+                {
+                    YearlyArchiveFilingFact? filingFact = null;
+                    if (item.SourceFilingFactId is int factId && factId > 0)
+                    {
+                        filingFacts.TryGetValue(factId, out filingFact);
+                    }
+
+                    if (IsArchivedSource)
+                    {
+                        NetworkInboundItemDisplaySupport.ApplyFilingFactSnapshot(item, filingFact);
+                    }
+
+                    SearchPoolItemRow? poolItem = TryBuildArchivedSearchPoolItemRow(
+                        item,
+                        hits,
+                        currentLocations,
+                        resultSetItems);
+                    ItemRows.Add(NetworkInboundItemRowViewModel.Create(item, filingFacts, isExternalSource, poolItem));
+                }
+            }
+            finally
+            {
+                _rebuildItemRowsGate.Release();
             }
         }
 

@@ -286,6 +286,7 @@ namespace DocMgr.Repositories.YearlyArchive
         public Task<YearlyElectronicArchiveUnit?> GetElectronicUnitForRelocationAsync(int unitId)
         {
             return _dbContext.YearlyElectronicArchiveUnits
+                .AsSplitQuery()
                 .Include(unit => unit.MediumLinks)
                     .ThenInclude(link => link.HardDiskMedium)
                         .ThenInclude(medium => medium!.RegisterLock)
@@ -306,6 +307,7 @@ namespace DocMgr.Repositories.YearlyArchive
         {
             string normalized = archiveNo.Trim();
             return _dbContext.YearlyElectronicArchiveUnits
+                .AsSplitQuery()
                 .Include(unit => unit.MediumLinks)
                     .ThenInclude(link => link.HardDiskMedium)
                         .ThenInclude(medium => medium.Ledger)
@@ -417,6 +419,7 @@ namespace DocMgr.Repositories.YearlyArchive
 
             return _dbContext.YearlyElectronicArchiveUnits
                 .AsNoTracking()
+                .AsSplitQuery()
                 .Include(unit => unit.MediaItemLinks)
                 .Include(unit => unit.MediumLinks)
                     .ThenInclude(link => link.HardDiskMedium)
@@ -438,6 +441,7 @@ namespace DocMgr.Repositories.YearlyArchive
             string slotPrefix = slotKey + "-";
 
             return _dbContext.YearlyElectronicArchiveUnits
+                .AsSplitQuery()
                 .Include(unit => unit.MediumLinks)
                     .ThenInclude(link => link.HardDiskMedium)
                         .ThenInclude(medium => medium!.RegisterLock)

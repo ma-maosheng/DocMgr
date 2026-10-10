@@ -79,4 +79,7 @@ public interface IArchiveRegisterRepository
     void RemoveHardDiskRegisterLock(HardDiskRegisterLock registerLock);
 
     Task<int> SaveChangesAsync();
+
+    /// <summary>清空跟踪缓存；保存图后重载详情前调用，避免同键实体重复跟踪。</summary>
+    void ClearChangeTracker();
 }

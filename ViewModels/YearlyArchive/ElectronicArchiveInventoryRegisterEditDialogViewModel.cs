@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -26,6 +27,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IUserService _userService;
         private readonly IApprovalWorkflowService _approvalWorkflowService;
         private readonly List<ElectronicInventoryCandidateRow> _candidatePool = new();
+        private readonly SemaphoreSlim _persistReviewSignersGate = new(1, 1);
         private const string SlotFilterAll = "全部";
 
         private YearlyArchiveInventoryRegisterRecord _record;
@@ -117,7 +119,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool HasCommittedChanges => _hasCommittedChanges;
 
         public string WindowTitle =>
-            $"电子资料盘库登记 · {(string.IsNullOrWhiteSpace(RegisterNo) ? "待编单" : RegisterNo)} · {StatusDisplay}";
+            $"电子资料盘库 · {(string.IsNullOrWhiteSpace(RegisterNo) ? "待编单" : RegisterNo)} · {StatusDisplay}";
 
         public string StatusDisplay => ArchiveInventoryRegisterDomainValues.ToStatusDisplay(_record.Status);
 
@@ -785,39 +787,47 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task PersistReviewSignersAsync()
         {
-            if (_suppressReviewSignerPersist || !CanEditReviewSigners || _record.Id <= 0)
-                return;
-
+            await _persistReviewSignersGate.WaitAsync().ConfigureAwait(true);
             try
             {
-                await _registerService.UpdateReviewSignersAsync(
-                    _record.Id,
-                    _deptHead,
-                    _deptHeadDate,
-                    _archiveRoomHead,
-                    _archiveRoomHeadDate,
-                    _productionHead,
-                    _productionHeadDate,
-                    _archiveDeputyPresident,
-                    _archiveDeputyPresidentDate,
-                    _productionVicePresident,
-                    _productionVicePresidentDate,
-                    RequireUser());
-                _hasCommittedChanges = true;
-                _record.DeptHead = _deptHead.Trim();
-                _record.DeptHeadDate = _deptHeadDate;
-                _record.ArchiveRoomHead = _archiveRoomHead.Trim();
-                _record.ArchiveRoomHeadDate = _archiveRoomHeadDate;
-                _record.ProductionHead = _productionHead.Trim();
-                _record.ProductionHeadDate = _productionHeadDate;
-                _record.ArchiveDeputyPresident = _archiveDeputyPresident.Trim();
-                _record.ArchiveDeputyPresidentDate = _archiveDeputyPresidentDate;
-                _record.ProductionVicePresident = _productionVicePresident.Trim();
-                _record.ProductionVicePresidentDate = _productionVicePresidentDate;
+                if (_suppressReviewSignerPersist || !CanEditReviewSigners || _record.Id <= 0)
+                    return;
+
+                try
+                {
+                    await _registerService.UpdateReviewSignersAsync(
+                        _record.Id,
+                        _deptHead,
+                        _deptHeadDate,
+                        _archiveRoomHead,
+                        _archiveRoomHeadDate,
+                        _productionHead,
+                        _productionHeadDate,
+                        _archiveDeputyPresident,
+                        _archiveDeputyPresidentDate,
+                        _productionVicePresident,
+                        _productionVicePresidentDate,
+                        RequireUser());
+                    _hasCommittedChanges = true;
+                    _record.DeptHead = _deptHead.Trim();
+                    _record.DeptHeadDate = _deptHeadDate;
+                    _record.ArchiveRoomHead = _archiveRoomHead.Trim();
+                    _record.ArchiveRoomHeadDate = _archiveRoomHeadDate;
+                    _record.ProductionHead = _productionHead.Trim();
+                    _record.ProductionHeadDate = _productionHeadDate;
+                    _record.ArchiveDeputyPresident = _archiveDeputyPresident.Trim();
+                    _record.ArchiveDeputyPresidentDate = _archiveDeputyPresidentDate;
+                    _record.ProductionVicePresident = _productionVicePresident.Trim();
+                    _record.ProductionVicePresidentDate = _productionVicePresidentDate;
+                }
+                catch (Exception ex)
+                {
+                    _dialogService.ShowError(FormatExceptionMessage(ex));
+                }
             }
-            catch (Exception ex)
+            finally
             {
-                _dialogService.ShowError(FormatExceptionMessage(ex));
+                _persistReviewSignersGate.Release();
             }
         }
 

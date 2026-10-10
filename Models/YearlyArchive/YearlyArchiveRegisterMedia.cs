@@ -29,20 +29,26 @@ namespace DocMgr.Models.YearlyArchive
         /// </summary>
         public string BorrowedHardDiskCode { get; set; } = string.Empty;
 
-        /// <summary>出网外部离线·硬盘·介质带回：是否使用资料室库存空盘。</summary>
+        /// <summary>出网使用库内空盘。院外为征用离室；资料室存档为预定在库空盘，盘不出室。</summary>
         public bool UseInStockBlankHardDisk { get; set; }
 
-        /// <summary>出网外部离线征用库内空盘时的介质 Id。</summary>
+        /// <summary>征用或预定的库内空盘介质 Id。</summary>
         public int? RequisitionedMediumId { get; set; }
 
-        /// <summary>出网外部离线征用库内空盘时的硬盘编号。</summary>
+        /// <summary>征用或预定的库内空盘硬盘编号。</summary>
         public string RequisitionedHardDiskCode { get; set; } = string.Empty;
 
-        /// <summary>出网外部离线征用库内空盘后，该盘是否需归还。</summary>
+        /// <summary>出网外部离线征用库内空盘后，该盘是否需归还。资料室存档固定为否。</summary>
         public bool RequisitionedDiskNeedReturn { get; set; }
 
         /// <summary>出网外部离线征用库内空盘且需归还时的预计归还日期。</summary>
         public DateTime? ExpectedReturnDate { get; set; }
+
+        /// <summary>资料室存档·硬盘并档：目标电子立档单元 Id。</summary>
+        public int? AppendTargetElectronicUnitId { get; set; }
+
+        /// <summary>资料室存档·硬盘并档：申请时的目标硬盘编号快照。</summary>
+        public string AppendTargetHardDiskCode { get; set; } = string.Empty;
 
         public virtual YearlyArchiveRegisterRecord? RegisterRecord { get; set; }
 

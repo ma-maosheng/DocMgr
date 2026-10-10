@@ -6,7 +6,7 @@
       mc:Ignorable="d"
       d:DesignHeight="800"
       d:DesignWidth="1200"
-      Title="资料登记（申请）"
+      Title="建档申请"
       Background="#F0F2F5">
     <Grid Margin="0">
         <Grid.RowDefinitions>

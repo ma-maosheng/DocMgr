@@ -11,7 +11,7 @@ public static class DefaultAdministratorBootstrap
     /// <summary>默认管理员登录名。</summary>
     public const string LoginName = "admin";
 
-    /// <summary>空库初始口令；首次登录须修改。</summary>
+    /// <summary>空库初始口令；Release 下首次登录须修改。</summary>
     public const string InitialPassword = "123456";
 
     /// <summary>
@@ -35,7 +35,11 @@ public static class DefaultAdministratorBootstrap
             Role = "Administrator",
             Password = PasswordHashingSupport.Hash(InitialPassword),
             CreatedDate = DateTime.Now,
+#if DEBUG
+            MustChangePassword = false,
+#else
             MustChangePassword = true,
+#endif
             FailedLoginCount = 0
         });
         userRepository.SaveChanges();

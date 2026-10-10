@@ -134,6 +134,7 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
     {
         return _dbContext.YearlyElectronicArchiveUnitMediumLinks
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(link => link.ElectronicArchiveUnit)
                 .ThenInclude(unit => unit.MediaItemLinks)
                     .ThenInclude(itemLink => itemLink.MediaItem)
@@ -152,6 +153,7 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
     {
         return _dbContext.YearlyElectronicArchiveUnitDiscLinks
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(link => link.ElectronicArchiveUnit)
                 .ThenInclude(unit => unit.MediaItemLinks)
                     .ThenInclude(itemLink => itemLink.MediaItem)

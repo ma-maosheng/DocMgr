@@ -44,6 +44,17 @@ namespace DocMgr.Services.Interfaces
         /// </summary>
         Task<List<YearlyElectronicArchiveUnit>> GetExistingElectronicUnitsForProjectAsync(string projectName, string year);
 
+        /// <summary>按主键读取电子立档单元（含关联），供出网并档预定与立档预选。</summary>
+        Task<YearlyElectronicArchiveUnit?> FindElectronicArchiveUnitAsync(int unitId);
+
+        /// <summary>核验资料室存档出网预定的并档硬盘袋仍属于本项目、该年度且在用。</summary>
+        Task EnsureOutboundArchiveAppendTargetAsync(int unitId, string projectName, string year, string diskCode);
+
+        /// <summary>
+        /// 描述硬盘可用容量。已占用为该硬盘已立档资料的数据量合计；库内空盘通常为 0。
+        /// </summary>
+        Task<string> DescribeHardDiskAvailableCapacityAsync(string? diskCode);
+
         /// <summary>
         /// 生成下一个年度档案编号 (例如: 2026-001)
         /// </summary>

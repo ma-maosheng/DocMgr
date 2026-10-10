@@ -242,10 +242,19 @@ namespace DocMgr.Services.YearlyArchive
                             ? "已提交的归还申请不可再修改，请前往审批或作废。"
                             : "当前状态的归还单不可修改。");
                 }
+
+                if (existing.RegisteredByUserId != user.Id)
+                {
+                    return ArchiveReturnFlowResult.Fail("仅登记人本人可保存或提交该归还申请。");
+                }
             }
             else if (await _returnRepository.HasActiveReturnForOutboundAsync(record.SourceOutboundRecordId))
             {
                 return ArchiveReturnFlowResult.Fail("该出库单已存在未作废的归还单，请勿重复发起。");
+            }
+            else
+            {
+                record.RegisteredByUserId = user.Id;
             }
 
             if (request.SubmitForRegistration)

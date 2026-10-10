@@ -73,7 +73,7 @@ internal static class NetworkArchiveBusinessChainSupport
             NetworkTransferDomainValues.TaskKindArchiveCopy,
             NetworkTransferDomainValues.BusinessTypeArchiveMaterialTransaction,
             NetworkTransferDomainValues.IsArchivedElectronicSearchSource(record.SourceKind),
-            "立档资料复制入网（原件保持在库）",
+            "立档转入网（复制、原件仍在资料室）",
             now);
         SetOptionalTask(
             chain,
@@ -123,7 +123,7 @@ internal static class NetworkArchiveBusinessChainSupport
     public static void MarkInboundCompleted(NetworkArchiveBusinessChain? chain, DateTime now)
     {
         MarkTask(chain, NetworkTransferDomainValues.TaskKindArchiveCopy,
-            NetworkTransferDomainValues.BusinessTaskStatusCompleted, "已记录档案复制入网履历", now);
+            NetworkTransferDomainValues.BusinessTaskStatusCompleted, "已记录立档转入网履历（复制、原件仍在资料室）", now);
         MarkTask(chain, NetworkTransferDomainValues.TaskKindOnNetRegistration,
             NetworkTransferDomainValues.BusinessTaskStatusCompleted, "在网台账已登记", now);
         MarkTask(chain, NetworkTransferDomainValues.TaskKindHardDiskReturn,

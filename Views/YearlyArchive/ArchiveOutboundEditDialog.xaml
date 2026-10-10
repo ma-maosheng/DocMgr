@@ -276,7 +276,7 @@
                                                                   SelectedValuePath="Value" DisplayMemberPath="Display" Height="30"
                                                                   VerticalAlignment="Top"/>
                                                     </StackPanel>
-                                                    <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="200" MaxWidth="240"
+                                                    <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="200" MaxWidth="320"
                                                                 Visibility="{Binding ShowBlankDiskFields, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                         <TextBlock Text="库内空盘选择：" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
                                                         <Grid Height="30">
@@ -291,6 +291,21 @@
                                                                     VerticalAlignment="Center"
                                                                     IsEnabled="{Binding CanPickBlankDisk}"/>
                                                         </Grid>
+                                                        <TextBlock Margin="0,4,0,0" Foreground="#059669" FontSize="12" TextWrapping="Wrap"
+                                                                   Text="{Binding HardDiskCapacityDescription, Mode=OneWay}">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding HardDiskCapacityDescription}" Value="">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding HardDiskCapacityDescription}" Value="{x:Null}">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
                                                     </StackPanel>
                                                     <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="140"
                                                                 Visibility="{Binding ShowRequisitionedDiskNeedReturn, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -361,6 +376,21 @@
                                                             Visibility="{Binding ShowBlankDiskFields, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                     <TextBlock Text="库内空盘：" Style="{StaticResource OutboundUnitSettingLabelStyle}"/>
                                                     <TextBlock Text="{Binding RequisitionedDiskCode}" Height="22" VerticalAlignment="Center" Foreground="#1E293B"/>
+                                                    <TextBlock Margin="0,2,0,0" Foreground="#059669" FontSize="12" TextWrapping="Wrap"
+                                                               Text="{Binding HardDiskCapacityDescription, Mode=OneWay}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HardDiskCapacityDescription}" Value="">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding HardDiskCapacityDescription}" Value="{x:Null}">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                 </StackPanel>
                                                 <StackPanel Style="{StaticResource OutboundUnitSettingSlotStyle}" MinWidth="120"
                                                             Visibility="{Binding ShowRequisitionedDiskNeedReturn, Converter={StaticResource BooleanToVisibilityConverter}}">

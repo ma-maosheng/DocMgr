@@ -112,14 +112,20 @@ public sealed partial class ArchiveDisposalService
         DateTime now,
         int? excludeRecordId)
     {
-        var factIds = requested.Select(item => item.FilingFactId).Where(id => id > 0).Distinct().ToList();
+        var factIds = requested.Select(item => item.FilingFactId).Where(id => id > 0).ToList();
         if (factIds.Count == 0)
         {
             throw new InvalidOperationException("请至少选择一条模拟资料明细。");
         }
 
-        var facts = await _repository.GetFilingFactsByIdsAsync(factIds);
-        if (facts.Count != factIds.Count)
+        var distinctFactIds = factIds.Distinct().ToList();
+        if (distinctFactIds.Count != factIds.Count)
+        {
+            throw new InvalidOperationException("所选模拟资料明细存在重复。");
+        }
+
+        var facts = await _repository.GetFilingFactsByIdsAsync(distinctFactIds);
+        if (facts.Count != distinctFactIds.Count)
         {
             throw new InvalidOperationException("部分立档事实不存在，无法保存。");
         }
@@ -203,10 +209,20 @@ public sealed partial class ArchiveDisposalService
             .ToDictionary(item => item.SelectionKey, StringComparer.Ordinal);
 
         var result = new List<YearlyArchiveDisposalItem>();
+        var seenMediaKeys = new HashSet<string>(StringComparer.Ordinal);
         int sort = 1;
         foreach (var req in requested.OrderBy(item => item.SortOrder))
         {
             string key = $"M:{req.MediumKind}:{req.MediumId}";
+            if (!seenMediaKeys.Add(key))
+            {
+                string code = req.MediumCode?.Trim() ?? string.Empty;
+                throw new InvalidOperationException(
+                    string.IsNullOrWhiteSpace(code)
+                        ? "所选电子介质存在重复。"
+                        : $"所选电子介质存在重复：{code}");
+            }
+
             if (!selectable.TryGetValue(key, out var candidate))
             {
                 throw new InvalidOperationException(

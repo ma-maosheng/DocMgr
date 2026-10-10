@@ -63,7 +63,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         }
 
         public string WindowTitle =>
-            $"硬盘借出 · {(string.IsNullOrWhiteSpace(ApplicationNo) ? "待编单" : ApplicationNo)} · {StatusDisplay}";
+            $"出库申请 · {(string.IsNullOrWhiteSpace(ApplicationNo) ? "待编单" : ApplicationNo)} · {StatusDisplay}";
 
         public string StatusDisplay => _sourceApplication.StatusStr;
 
@@ -85,16 +85,23 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public string PrintButtonText => "打印申请";
 
-        public bool CanSaveApplicationDraft => ResolveApplicationFormActions().CanSaveDraft;
+        public bool CanSaveApplicationDraft =>
+            CanEditApplicationForm && ResolveApplicationFormActions().CanSaveDraft;
 
-        public bool CanSubmitApplication => ResolveApplicationFormActions().CanSubmitApplication;
+        public bool CanSubmitApplication =>
+            CanEditApplicationForm && ResolveApplicationFormActions().CanSubmitApplication;
 
         public bool CanPrintApplication => ResolveApplicationFormActions().CanPrintApplication;
 
-        /// <summary>仅草稿可编辑申请信息；已提交后只读（可打印/撤回）。</summary>
+        /// <summary>仅部门资料员本人草稿可编辑；已提交后只读（可打印/浏览）。</summary>
         public bool CanEditApplicationForm =>
-            _sourceApplication.Id == 0
-            || _sourceApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft;
+            HardDiskMediaApplicationViewModelHelper.CanSubmitApplication(_userContextService.CurrentUser)
+            && (_sourceApplication.Id == 0
+                || (_sourceApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft
+                    && string.Equals(
+                        _sourceApplication.ApplicantName?.Trim(),
+                        _userContextService.CurrentUser?.RealName?.Trim(),
+                        StringComparison.OrdinalIgnoreCase)));
 
         public string ApplicationTypeGuidanceText =>
             "临时出库归还期限为1个月，可提前填写预计归还日期；长期出库不设归还期限；永久出库表示硬盘另有他用无需归还。";

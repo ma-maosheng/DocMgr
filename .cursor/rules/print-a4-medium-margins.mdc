@@ -37,7 +37,7 @@ globs: **/*Print*.cs,**/*Printing*.cs,**/*WordExport*.cs
 
 可变文本行（原因/申请说明/备注/其他要求等）：用 `ResolveSpannedContentRowHeightDip`（申请审批单合并内容列）或 `ResolveRowContentHeightDip`（其它列宽），按正文估行并设上限（说明类通常 max 5，备注类 max 3）。
 
-表后说明预留：按与 `CreateFooterParagraph` 一致的实际文案，调用 `EstimateNoteBlockHeightFromTextWithSafetyDip`（匹配该工厂 FontSize / LineHeight / Margin）；勿仅用固定行数估算。
+表后说明预留：按与 `CreateFooterParagraph` 一致的实际文案估高。多条序号说明必须用 `PrintFormNoteLayoutSupport`（Word 专用导出用 `WordExportNoteLayoutSupport`）：标签独占左列，1、2、3 在右列左对齐。禁止用半角空格模拟缩进。估高走 `PrintFormNoteLayoutSupport.EstimateHeightDip`（内部按右列宽度折行并留 1 行余量）。
 
 可伸缩明细行：`CalculateStretchRowHeightDip(reserved, contentNeeded, cellPadding)`，其中 `contentNeeded` 来自明细正文的 `ResolveSpannedContentRowHeightDip`（或等价估高），**不得**用 `StandardRowHeight * N` 之类魔法下限代替。撑满高度取剩余页高，**不得超过**剩余空间（`LayoutSlackDip` 当前为 **12**），优先保证表后说明同页。
 

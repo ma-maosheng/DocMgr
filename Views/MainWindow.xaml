@@ -501,48 +501,38 @@
                               Margin="0,10,0,0">
                     <StackPanel x:Name="NavMenuPanel">
 
-                        <!-- 1. 历史存档资料管理 -->
-                        <Expander x:Name="ExpHistoryArchive" Header="历史存档资料管理" Style="{StaticResource NavExpander}">
+                        <!-- 1. 历史存档（扁平） -->
+                        <Expander x:Name="ExpHistoryArchive" Header="历史存档" Style="{StaticResource NavExpander}">
                             <StackPanel>
-                                <Expander Header="资料录入与编辑" Style="{StaticResource SubNavExpander}">
-                                    <StackPanel>
-                                        <Button x:Name="BtnHistMap" Content="地形图图件" Style="{StaticResource SubSubNavButton}" Click="BtnTopoMap_Click"/>
-                                        <Button x:Name="BtnHistAerial" Content="航摄胶片、像片" Style="{StaticResource SubSubNavButton}" Click="BtnAerialPhoto_Click"/>
-                                        <Button x:Name="BtnOtherData" Content="其他资料" Style="{StaticResource SubSubNavButton}" Click="BtnOtherMap_Click"/>
-                                    </StackPanel>
-                                </Expander>
+                                <Button x:Name="BtnHistMap" Content="地形图图件" Style="{StaticResource SubNavButton}" Click="BtnTopoMap_Click"/>
+                                <Button x:Name="BtnHistAerial" Content="航摄胶片、像片" Style="{StaticResource SubNavButton}" Click="BtnAerialPhoto_Click"/>
+                                <Button x:Name="BtnOtherData" Content="其他资料" Style="{StaticResource SubNavButton}" Click="BtnOtherMap_Click"/>
                                 <Button x:Name="BtnHistDisposal" Content="资料离库处置" Style="{StaticResource SubNavButton}" Click="BtnHistDisposal_Click"/>
                             </StackPanel>
                         </Expander>
 
-                        <!-- 2. 年度项目管理 -->
-                        <Expander x:Name="ExpProjects" Header="年度项目管理" Style="{StaticResource NavExpander}">
+                        <!-- 2. 年度资料：生命周期主线（含项目、出入网） -->
+                        <Expander x:Name="ExpYearlyArchive" Header="年度资料" Style="{StaticResource NavExpander}">
                             <StackPanel>
-                                <Button x:Name="BtnProjectInfo" Content="项目信息设置" Style="{StaticResource SubNavButton}" Click="BtnProjectSetting_Click"/>
-                            </StackPanel>
-                        </Expander>
-
-                        <!-- 3. 年度资料档案化管理 -->
-                        <Expander x:Name="ExpYearlyArchive" Header="年度资料档案化管理" Style="{StaticResource NavExpander}">
-                            <StackPanel>
-                                <Expander Header="资料建档" Style="{StaticResource SubNavExpander}">
+                                <Button x:Name="BtnProjectInfo" Content="项目信息" Style="{StaticResource SubNavButton}" Click="BtnProjectSetting_Click"/>
+                                <Expander Header="建档与立档" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
                                         <Button x:Name="BtnArchiveRegisterApply" Content="建档申请" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveRegisterApply_Click"/>
-                                        <Button x:Name="BtnArchiveRegisterApprove" Content="申请审批" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveRegisterApprove_Click"/>
+                                        <Button x:Name="BtnArchiveRegisterApprove" Content="建档审批" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveRegisterApprove_Click"/>
                                         <Button x:Name="BtnArchiveFiling" Content="资料立档" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveFiling_Click"/>
-                                        <Button x:Name="BtnStockHardDiskDirectFiling" Content="存量硬盘资料直办立档" Style="{StaticResource SubSubNavButton}" Click="BtnStockHardDiskDirectFiling_Click"/>
-                                        <Button x:Name="BtnStockTextArchiveDirectFiling" Content="存档文本资料直办立档" Style="{StaticResource SubSubNavButton}" Click="BtnStockTextArchiveDirectFiling_Click"/>
+                                        <Button x:Name="BtnStockHardDiskDirectFiling" Content="存量硬盘直办" Style="{StaticResource SubSubNavButton}" Click="BtnStockHardDiskDirectFiling_Click"/>
+                                        <Button x:Name="BtnStockTextArchiveDirectFiling" Content="存档文本直办" Style="{StaticResource SubSubNavButton}" Click="BtnStockTextArchiveDirectFiling_Click"/>
+                                        <Button x:Name="BtnArchiveFilingLedger" Content="立档台账" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveFilingLedger_Click"/>
                                     </StackPanel>
                                 </Expander>
-                                <Expander Header="资料迁档" Style="{StaticResource SubNavExpander}">
+                                <Expander Header="迁档" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
                                         <Button x:Name="BtnArchiveSimulatedRelocation" Content="模拟介质资料迁档" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveSimulatedRelocation_Click"/>
                                         <Button x:Name="BtnArchiveElectronicRelocation" Content="电子介质资料迁档" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveElectronicRelocation_Click"/>
                                         <Button x:Name="BtnArchiveRelocationLedger" Content="迁档台账" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveRelocationLedger_Click"/>
                                     </StackPanel>
                                 </Expander>
-                                <Button x:Name="BtnArchiveFilingLedger" Content="立档台账" Style="{StaticResource SubNavButton}" Click="BtnArchiveFilingLedger_Click"/>
-                                <Expander Header="资料检索" Style="{StaticResource SubNavExpander}">
+                                <Expander Header="检索" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
                                         <Button x:Name="BtnArchiveSearch" Content="资料检索(综合模式)" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveSearch_Click"/>
                                         <Button x:Name="BtnArchiveElectronicFilingSearch" Content="电子介质资料检索" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveElectronicFilingSearch_Click"/>
@@ -550,24 +540,30 @@
                                         <Button x:Name="BtnArchiveFilingSearchPool" Content="检索池" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveFilingSearchPool_Click"/>
                                     </StackPanel>
                                 </Expander>
-                                <Expander Header="资料流转" Style="{StaticResource SubNavExpander}">
+                                <Expander Header="实物流转" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
                                         <Button x:Name="BtnArchiveOutboundApply" Content="借出申请" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveOutboundApply_Click"/>
-                                        <Button x:Name="BtnArchiveOutboundApproval" Content="审批出库" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveOutboundApproval_Click"/>
+                                        <Button x:Name="BtnArchiveOutboundApproval" Content="借出审批" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveOutboundApproval_Click"/>
                                         <Button x:Name="BtnArchiveReturnApply" Content="归还申请" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveReturnApply_Click"/>
-                                        <Button x:Name="BtnArchiveReturnApproval" Content="审批入库" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveReturnApproval_Click"/>
+                                        <Button x:Name="BtnArchiveReturnApproval" Content="归还审批" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveReturnApproval_Click"/>
                                         <Button x:Name="BtnArchiveCirculationLedger" Content="流转台账" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveCirculationLedger_Click"/>
+                                    </StackPanel>
+                                </Expander>
+                                <Expander x:Name="ExpNetworkMgr" Header="出入网" Style="{StaticResource SubNavExpander}">
+                                    <StackPanel>
+                                        <Button x:Name="BtnNetInboundApply" Content="入网申请" Style="{StaticResource SubSubNavButton}" Click="BtnNetInboundApply_Click"/>
+                                        <Button x:Name="BtnNetInboundApprove" Content="入网审批" Style="{StaticResource SubSubNavButton}" Click="BtnNetInboundApprove_Click"/>
+                                        <Button x:Name="BtnNetOutboundApply" Content="出网申请" Style="{StaticResource SubSubNavButton}" Click="BtnNetOutboundApply_Click"/>
+                                        <Button x:Name="BtnNetOutboundApprove" Content="出网审批" Style="{StaticResource SubSubNavButton}" Click="BtnNetOutboundApprove_Click"/>
+                                        <Button x:Name="BtnNetOnNetLedger" Content="在网数据台账" Style="{StaticResource SubSubNavButton}" Click="BtnNetOnNetLedger_Click"/>
+                                        <Button x:Name="BtnNetDispose" Content="在网数据处置" Style="{StaticResource SubSubNavButton}" Click="BtnNetDispose_Click"/>
                                         <Button x:Name="BtnArchiveCrossDomainTransferLedger" Content="跨域流转台账" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveCrossDomainTransferLedger_Click"/>
                                     </StackPanel>
                                 </Expander>
-                                <Expander Header="盘库登记" Style="{StaticResource SubNavExpander}">
+                                <Expander Header="盘库与离库" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
                                         <Button x:Name="BtnArchiveSimulatedInventoryRegister" Content="模拟资料盘库" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveSimulatedInventoryRegister_Click"/>
                                         <Button x:Name="BtnArchiveElectronicInventoryRegister" Content="电子资料盘库" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveElectronicInventoryRegister_Click"/>
-                                    </StackPanel>
-                                </Expander>
-                                <Expander Header="离库处置" Style="{StaticResource SubNavExpander}">
-                                    <StackPanel>
                                         <Button x:Name="BtnArchiveSimulatedDisposal" Content="模拟资料离库处置" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveSimulatedDisposal_Click"/>
                                         <Button x:Name="BtnArchiveElectronicDisposal" Content="电子资料离库处置" Style="{StaticResource SubSubNavButton}" Click="BtnArchiveElectronicDisposal_Click"/>
                                     </StackPanel>
@@ -575,49 +571,32 @@
                             </StackPanel>
                         </Expander>
 
-                        <!-- 4. 年度资料出入网管理 -->
-                        <Expander x:Name="ExpNetworkMgr" Header="年度资料出入网管理" Style="{StaticResource NavExpander}">
+                        <!-- 3. 库房与介质（总览 + 柜 + 硬盘/光盘） -->
+                        <Expander x:Name="ExpFacility" Header="库房与介质" Style="{StaticResource NavExpander}">
                             <StackPanel>
-                                <Button x:Name="BtnNetInboundApply"   Content="入网申请" Style="{StaticResource SubNavButton}" Click="BtnNetInboundApply_Click"/>
-                                <Button x:Name="BtnNetInboundApprove" Content="入网审批" Style="{StaticResource SubNavButton}" Click="BtnNetInboundApprove_Click"/>
-                                <Button x:Name="BtnNetOutboundApply"  Content="出网申请" Style="{StaticResource SubNavButton}" Click="BtnNetOutboundApply_Click"/>
-                                <Button x:Name="BtnNetOutboundApprove" Content="出网审批" Style="{StaticResource SubNavButton}" Click="BtnNetOutboundApprove_Click"/>
-                                <Button x:Name="BtnNetDispose"        Content="在网数据处置" Style="{StaticResource SubNavButton}" Click="BtnNetDispose_Click"/>
-                            </StackPanel>
-                        </Expander>
-
-                        <!-- 5. 库管资料总览 -->
-                        <Button x:Name="BtnStockContainerOverview"
-                                Content="库管资料总览"
-                                Style="{StaticResource NavButton}"
-                                FontWeight="SemiBold"
-                                Click="BtnStockContainerOverview_Click"/>
-
-                        <!-- 6. 档案柜管理 -->
-                        <Expander x:Name="ExpCabinets" Header="档案柜管理" Style="{StaticResource NavExpander}">
-                            <StackPanel>
-                                <Button x:Name="BtnCabRegister" Content="档案柜登记" Style="{StaticResource SubNavButton}" Click="BtnCabRegister_Click"/>
-                                <Button x:Name="BtnCabSearch"   Content="开柜查看" Style="{StaticResource SubNavButton}" Click="BtnCabSearch_Click"/>
-                            </StackPanel>
-                        </Expander>
-
-                        <!-- 7. 介质管理 -->
-                        <Expander x:Name="ExpMediaMgr" Header="介质管理" Style="{StaticResource NavExpander}">
-                            <StackPanel>
+                                <Button x:Name="BtnStockContainerOverview"
+                                        Content="库管资料总览"
+                                        Style="{StaticResource SubNavButton}"
+                                        Click="BtnStockContainerOverview_Click"/>
+                                <Expander x:Name="ExpCabinets" Header="档案柜" Style="{StaticResource SubNavExpander}">
+                                    <StackPanel>
+                                        <Button x:Name="BtnCabRegister" Content="档案柜登记" Style="{StaticResource SubSubNavButton}" Click="BtnCabRegister_Click"/>
+                                        <Button x:Name="BtnCabSearch" Content="开柜查看" Style="{StaticResource SubSubNavButton}" Click="BtnCabSearch_Click"/>
+                                    </StackPanel>
+                                </Expander>
                                 <Expander x:Name="ExpHardDiskSection" Header="硬盘" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
-                                        <Button x:Name="BtnDiskSearch"   Content="概览" Style="{StaticResource SubSubNavButton}" Click="BtnDiskImportExport_Click"/>
+                                        <Button x:Name="BtnDiskSearch" Content="概览" Style="{StaticResource SubSubNavButton}" Click="BtnDiskImportExport_Click"/>
                                         <Button x:Name="BtnDiskRegister" Content="初始登记" Style="{StaticResource SubSubNavButton}" Click="BtnDiskLedger_Click"/>
-                                        <Button x:Name="BtnDiskBorrow"   Content="出库申请" Style="{StaticResource SubSubNavButton}" Click="BtnDiskOutboundApplication_Click"/>
+                                        <Button x:Name="BtnDiskBorrow" Content="出库申请" Style="{StaticResource SubSubNavButton}" Click="BtnDiskOutboundApplication_Click"/>
                                         <Button x:Name="BtnDiskApproval" Content="出库办理" Style="{StaticResource SubSubNavButton}" Click="BtnDiskApproval_Click"/>
                                         <Button x:Name="BtnDiskReturnApply" Content="归还申请" Style="{StaticResource SubSubNavButton}" Click="BtnDiskReturnApply_Click"/>
                                         <Button x:Name="BtnDiskReturnApproval" Content="归还办理" Style="{StaticResource SubSubNavButton}" Click="BtnDiskReturnApproval_Click"/>
                                         <Button x:Name="BtnDiskInventoryRegister" Content="盘库登记" Style="{StaticResource SubSubNavButton}" Click="BtnDiskInventoryRegister_Click"/>
                                         <Button x:Name="BtnDiskOffWarehouse" Content="离库处置" Style="{StaticResource SubSubNavButton}" Click="BtnDiskOffWarehouse_Click"/>
-                                        <Button x:Name="BtnDiskDispose"  Content="硬盘台账" Style="{StaticResource SubSubNavButton}" Click="BtnDiskTransaction_Click"/>
+                                        <Button x:Name="BtnDiskDispose" Content="硬盘台账" Style="{StaticResource SubSubNavButton}" Click="BtnDiskTransaction_Click"/>
                                     </StackPanel>
                                 </Expander>
-
                                 <Expander x:Name="ExpOpticalDiscSection" Header="光盘" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
                                         <Button x:Name="BtnOpticalDiscOverview" Content="概览" Style="{StaticResource SubSubNavButton}" Click="BtnOpticalDiscOverview_Click"/>
@@ -627,9 +606,13 @@
                             </StackPanel>
                         </Expander>
 
-                        <!-- 8. 系统设置 -->
+                        <!-- 4. 系统设置 -->
                         <Expander x:Name="SystemSettingsExpander" Header="系统设置" Style="{StaticResource NavExpander}">
                             <StackPanel>
+                                <Button x:Name="BtnUserPreference"
+                                        Content="个人设置"
+                                        Style="{StaticResource SubNavButton}"
+                                        Click="BtnUserPreference_Click"/>
                                 <Button x:Name="BtnUserMgr" Content="用户管理" Style="{StaticResource SubNavButton}" Click="BtnUserManagement_Click"/>
                                 <Button x:Name="BtnDeptMgr" Content="部门设置" Style="{StaticResource SubNavButton}" Click="BtnDeptSetting_Click"/>
                                 <Button x:Name="BtnRoleMgr" Content="角色概览" Style="{StaticResource SubNavButton}" Click="BtnRoleSetting_Click"/>
@@ -638,24 +621,23 @@
                                         Style="{StaticResource SubNavButton}"
                                         Click="BtnApprovalWorkflow_Click"/>
                                 <Button x:Name="BtnServerPathMgr" Content="服务器路径设置" Style="{StaticResource SubNavButton}" Click="BtnServerPathSetting_Click"/>
-                                <Button x:Name="BtnAdvancedData" Content="⚠️ 高级数据管理" Style="{StaticResource SubNavButton}" Click="BtnAdvancedData_Click"/>
                                 <Button x:Name="BtnBusinessLogicSettings"
                                         Content="逾期设置"
                                         Style="{StaticResource SubNavButton}"
                                         Click="BtnBusinessLogicSettings_Click"/>
-                                <!-- 在“系统设置”Expander 内新增一个入口按钮 -->
-                                <Button x:Name="BtnUserPreference"
-                                        Content="个人设置"
-                                        Style="{StaticResource SubNavButton}"
-                                        Click="BtnUserPreference_Click"/>
                                 <Button x:Name="BtnDbOperationLog"
                                         Content="数据库操作日志"
                                         Style="{StaticResource SubNavButton}"
                                         Click="BtnDbOperationLog_Click"/>
+                                <Button x:Name="BtnUserSessionMonitor"
+                                        Content="在线用户与登录记录"
+                                        Style="{StaticResource SubNavButton}"
+                                        Click="BtnUserSessionMonitor_Click"/>
+                                <Button x:Name="BtnAdvancedData" Content="⚠️ 高级数据管理" Style="{StaticResource SubNavButton}" Click="BtnAdvancedData_Click"/>
                             </StackPanel>
                         </Expander>
 
-                        <!-- 9. 帮助 -->
+                        <!-- 5. 帮助 -->
                         <Expander x:Name="ExpHelp" Header="帮助" Style="{StaticResource NavExpander}">
                             <StackPanel>
                                 <Button x:Name="BtnHelpDoc" Content="操作手册" Style="{StaticResource SubNavButton}" Click="BtnHelpDoc_Click"/>
@@ -843,7 +825,7 @@
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="从哪里开始" Foreground="#D6FFF8" FontSize="12" FontWeight="SemiBold"/>
                                         <TextBlock Text="先看右上角待办角标，再按角色进入左侧菜单。" Foreground="White" FontSize="15" FontWeight="Bold" Margin="0,6,0,8" TextWrapping="Wrap"/>
-                                        <TextBlock Text="无权限的菜单会显示为灰色。详细操作说明见「帮助 → 帮助文档」。" Foreground="#E8FFFB" FontSize="12" TextWrapping="Wrap"/>
+                                        <TextBlock Text="无权限的菜单会显示为灰色。详细操作说明见「帮助 → 操作手册」。" Foreground="#E8FFFB" FontSize="12" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </Border>
                             </Grid>
@@ -853,38 +835,20 @@
                         <UniformGrid Columns="3" Margin="0,0,8,8">
                             <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,10,10" Padding="14">
                                 <StackPanel>
-                                    <TextBlock Text="年度项目管理" Style="{StaticResource HomeModuleTitleStyle}"/>
-                                    <TextBlock Text="维护项目名称、编号、实施年度，供建档申请与立档台账引用。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,10,10" Padding="14">
-                                <StackPanel>
-                                    <TextBlock Text="年度资料档案化" Style="{StaticResource HomeModuleTitleStyle}"/>
-                                    <TextBlock Text="建档、立档、迁档、检索、借还、盘库、离库；存量硬盘/文本可直办立档。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,0,10" Padding="14">
-                                <StackPanel>
-                                    <TextBlock Text="年度资料出入网" Style="{StaticResource HomeModuleTitleStyle}"/>
-                                    <TextBlock Text="入网、出网申请与审批，以及在网数据处置；可与检索池、建档、硬盘归还衔接。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,10,10" Padding="14">
-                                <StackPanel>
-                                    <TextBlock Text="历史存档资料" Style="{StaticResource HomeModuleTitleStyle}"/>
+                                    <TextBlock Text="历史存档" Style="{StaticResource HomeModuleTitleStyle}"/>
                                     <TextBlock Text="地形图、航摄影像、其他图件按盒号落柜；支持历史资料离库处置。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,10,10" Padding="14">
                                 <StackPanel>
-                                    <TextBlock Text="档案柜管理" Style="{StaticResource HomeModuleTitleStyle}"/>
-                                    <TextBlock Text="登记柜体布局与档口用途，检索盒位/硬盘槽位占用，支撑立档落柜与迁档。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
+                                    <TextBlock Text="年度资料" Style="{StaticResource HomeModuleTitleStyle}"/>
+                                    <TextBlock Text="项目信息 → 建档立档 → 迁档 → 检索 → 实物流转 → 出入网 → 盘库与离库；按生命周期办理。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,0,10" Padding="14">
                                 <StackPanel>
-                                    <TextBlock Text="介质管理" Style="{StaticResource HomeModuleTitleStyle}"/>
-                                    <TextBlock Text="硬盘：登记、出库、归还、盘库、离库与台账。光盘：概览与光盘台账。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
+                                    <TextBlock Text="库房与介质" Style="{StaticResource HomeModuleTitleStyle}"/>
+                                    <TextBlock Text="库管总览、档案柜登记与开柜查看；硬盘出库/归还/盘库/离库；光盘概览与台账。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
                                 </StackPanel>
                             </Border>
                         </UniformGrid>
@@ -925,8 +889,8 @@
                                             <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#7B1FA2"/>
                                         </Border>
                                         <StackPanel>
-                                            <TextBlock Text="出库交接 → 归还入库" FontWeight="SemiBold" Foreground="#1F2937"/>
-                                            <TextBlock Text="审批出库后办理实物交接；需归还的资料走归还申请与审批入库，盒袋位置随之回写。" Style="{StaticResource HomeBodyStyle}"/>
+                                            <TextBlock Text="借出交接 → 归还入库" FontWeight="SemiBold" Foreground="#1F2937"/>
+                                            <TextBlock Text="借出审批后办理实物交接；需归还的资料走归还申请与归还审批，盒袋位置随之回写。" Style="{StaticResource HomeBodyStyle}"/>
                                         </StackPanel>
                                     </DockPanel>
                                     <DockPanel Margin="0,0,0,8">
@@ -956,7 +920,7 @@
                                         <TextBlock Text="出入网与跨域" Style="{StaticResource HomeSectionTitleStyle}"/>
                                         <TextBlock Text="入网把资料写入指定服务器路径并形成在网台账；出网从在网数据导出，可衔接后续建档。跨域流转台账汇总入网、出网与关联硬盘借用。"
                                                    Style="{StaticResource HomeBodyStyle}" Margin="0,4,0,8"/>
-                                        <TextBlock Text="在网数据处置用于注销或销毁已入网数据，流程与签批要求对齐资料离库。" Style="{StaticResource HomeBodyStyle}"/>
+                                        <TextBlock Text="在网数据台账查看当前在网资产；在网数据处置用于注销或销毁已入网数据，流程与签批要求对齐资料离库。" Style="{StaticResource HomeBodyStyle}"/>
                                     </StackPanel>
                                 </Border>
                                 <Border Style="{StaticResource HomeCardStyle}" Padding="16" Margin="0,0,0,10">
@@ -979,7 +943,7 @@
                                         </DockPanel>
                                         <DockPanel>
                                             <Ellipse Width="8" Height="8" Fill="#AB47BC" Margin="0,5,8,0"/>
-                                            <TextBlock Text="系统设置含用户、部门、角色、服务器路径、逾期规则与操作日志；个人设置控制待办弹窗与刷新。" TextWrapping="Wrap" Foreground="#374151" FontSize="12.5"/>
+                                            <TextBlock Text="系统设置含用户、部门、角色、服务器路径、逾期规则、操作日志与在线会话；个人设置控制待办弹窗与刷新。" TextWrapping="Wrap" Foreground="#374151" FontSize="12.5"/>
                                         </DockPanel>
                                     </StackPanel>
                                 </Border>

@@ -1,16 +1,15 @@
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DocMgr.Data;
 using DocMgr.Services.Interfaces;
-using Microsoft.Data.Sqlite;
+using Microsoft.Data.SqlClient;
 
 namespace DocMgr.Services.SystemSettings;
 
 /// <summary>
-/// 用 SQLite 在线备份接口复制当前库，避免直接拷贝正在写入的 <c>.db</c> / WAL 文件。
+/// 使用 SQL Server BACKUP / RESTORE 备份与还原当前业务库。
 /// </summary>
 public sealed class DatabaseBackupService : IDatabaseBackupService
 {
@@ -22,23 +21,31 @@ public sealed class DatabaseBackupService : IDatabaseBackupService
     }
 
     /// <inheritdoc />
-    public string DatabasePath => _databaseSettings.DbPath;
+    public string DatabasePath => _databaseSettings.TargetDisplay;
 
     /// <inheritdoc />
-    public bool IsNetworkPath => _databaseSettings.IsNetworkPath;
+    public bool IsNetworkPath => !IsLocalDataSource(_databaseSettings.DataSource);
 
     /// <inheritdoc />
     public Task BackupToFileAsync(string destinationPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         string destination = Path.GetFullPath(destinationPath.Trim());
-        EnsureNotSameFile(DatabasePath, destination, "不能把当前库备份到它自己的路径。");
         EnsureParentDirectoryExists(destination);
 
-        return Task.Run(() =>
+        string catalog = QuoteIdentifier(_databaseSettings.InitialCatalog);
+        string diskPath = EscapeSqlLiteral(destination);
+
+        return Task.Run(async () =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            CopyDatabase(_databaseSettings.ConnectionString, BuildFileConnectionString(destination));
+            await using var connection = new SqlConnection(_databaseSettings.ConnectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandTimeout = 0;
+            command.CommandText =
+                $"BACKUP DATABASE {catalog} TO DISK = N'{diskPath}' WITH COPY_ONLY, INIT, FORMAT, STATS = 10;";
+            await command.ExecuteNonQueryAsync(cancellationToken);
         }, cancellationToken);
     }
 
@@ -52,34 +59,97 @@ public sealed class DatabaseBackupService : IDatabaseBackupService
             throw new InvalidOperationException($"找不到备份文件：{source}");
         }
 
-        EnsureNotSameFile(source, DatabasePath, "所选文件就是当前正在使用的数据库，无需还原。");
+        string catalog = QuoteIdentifier(_databaseSettings.InitialCatalog);
+        string diskPath = EscapeSqlLiteral(source);
 
-        return Task.Run(() =>
+        return Task.Run(async () =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            CopyDatabase(BuildFileConnectionString(source), _databaseSettings.ConnectionString);
+            await using var connection = new SqlConnection(_databaseSettings.BuildMasterConnectionString());
+            await connection.OpenAsync(cancellationToken);
+
+            await ExecuteNonQueryAsync(
+                connection,
+                $"ALTER DATABASE {catalog} SET SINGLE_USER WITH ROLLBACK IMMEDIATE;",
+                cancellationToken);
+
+            try
+            {
+                await ExecuteNonQueryAsync(
+                    connection,
+                    $"RESTORE DATABASE {catalog} FROM DISK = N'{diskPath}' WITH REPLACE, STATS = 10;",
+                    cancellationToken);
+            }
+            finally
+            {
+                await ExecuteNonQueryAsync(
+                    connection,
+                    $"ALTER DATABASE {catalog} SET MULTI_USER;",
+                    cancellationToken);
+            }
         }, cancellationToken);
     }
 
-    private static void CopyDatabase(string sourceConnectionString, string destinationConnectionString)
+    private static async Task ExecuteNonQueryAsync(
+        SqlConnection connection,
+        string commandText,
+        CancellationToken cancellationToken)
     {
-        using var source = new SqliteConnection(sourceConnectionString);
-        using var destination = new SqliteConnection(destinationConnectionString);
-        source.Open();
-        destination.Open();
-        source.BackupDatabase(destination);
+        await using var command = connection.CreateCommand();
+        command.CommandTimeout = 0;
+        command.CommandText = commandText;
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    private string BuildFileConnectionString(string path)
+    private static bool IsLocalDataSource(string dataSource)
     {
-        var builder = new SqliteConnectionStringBuilder
+        if (string.IsNullOrWhiteSpace(dataSource))
         {
-            DataSource = path,
-            Mode = SqliteOpenMode.ReadWriteCreate,
-            DefaultTimeout = _databaseSettings.BusyTimeoutSeconds
-        };
-        return builder.ConnectionString;
+            return true;
+        }
+
+        string normalized = dataSource.Trim();
+        if (normalized.StartsWith("(local)", StringComparison.OrdinalIgnoreCase)
+            || normalized.StartsWith(".", StringComparison.Ordinal)
+            || string.Equals(normalized, "localhost", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(normalized, "127.0.0.1", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // localhost\INSTANCE 或 .\INSTANCE
+        int slash = normalized.IndexOf('\\');
+        if (slash > 0)
+        {
+            string host = normalized[..slash];
+            return string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(host, ".", StringComparison.Ordinal)
+                || string.Equals(host, "(local)", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(host, "127.0.0.1", StringComparison.OrdinalIgnoreCase);
+        }
+
+        try
+        {
+            return string.Equals(normalized, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
     }
+
+    private static string QuoteIdentifier(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new InvalidOperationException("数据库名无效。");
+        }
+
+        return "[" + name.Replace("]", "]]", StringComparison.Ordinal) + "]";
+    }
+
+    private static string EscapeSqlLiteral(string value)
+        => value.Replace("'", "''", StringComparison.Ordinal);
 
     private static void EnsureParentDirectoryExists(string filePath)
     {
@@ -90,13 +160,5 @@ public sealed class DatabaseBackupService : IDatabaseBackupService
         }
 
         Directory.CreateDirectory(directory);
-    }
-
-    private static void EnsureNotSameFile(string leftPath, string rightPath, string message)
-    {
-        if (string.Equals(leftPath, rightPath, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException(message);
-        }
     }
 }

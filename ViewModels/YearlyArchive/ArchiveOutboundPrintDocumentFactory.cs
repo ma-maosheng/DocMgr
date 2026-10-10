@@ -152,13 +152,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
                 + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
 
-            string footerText = BuildFooterNoteText(data);
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
-                footerText,
-                PrintPageLayoutSupport.ContentWidthDip,
-                fontSizeDip: 10,
-                lineHeightDip: 16,
-                topMarginDip: 8);
+            double footerHeight = PrintFormNoteLayoutSupport.EstimateHeightDip(
+                "备注：",
+                BuildFooterLines(data),
+                BodyFont,
+                fontSize: 10,
+                lineHeight: 16,
+                topMargin: 8);
             double reservedHeight =
                 PrintPageLayoutSupport.ApprovalFormTitleBlockHeightDip
                 + HeaderInfoHeight
@@ -275,29 +275,22 @@ namespace DocMgr.ViewModels.YearlyArchive
             return table;
         }
 
-        private static Paragraph CreateFooterParagraph(ArchiveOutboundPrintData data)
-        {
-            var footer = new Paragraph
-            {
-                FontSize = 10,
-                Margin = new Thickness(0, 8, 0, 0),
-                LineHeight = 16
-            };
-
-            footer.Inlines.Add(new Run("备注：") { FontWeight = FontWeights.Bold });
-            footer.Inlines.Add(new Run("1、申请提交后，按“线上申请、打印表单、线下审批签字、上传签字件、资料出库交接”的流程办理。\n"));
-            footer.Inlines.Add(new Run("      2、签字后的审批单应回传系统，作为办理依据和归档附件。\n"));
-            footer.Inlines.Add(new Run($"      3、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
-
-            return footer;
-        }
+        private static Table CreateFooterParagraph(ArchiveOutboundPrintData data) =>
+            PrintFormNoteLayoutSupport.Create(
+                "备注：",
+                BuildFooterLines(data),
+                BodyFont,
+                fontSize: 10,
+                lineHeight: 16,
+                topMargin: 8);
 
         /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
-        private static string BuildFooterNoteText(ArchiveOutboundPrintData data) =>
-            "备注：" +
-            "1、申请提交后，按“线上申请、打印表单、线下审批签字、上传签字件、资料出库交接”的流程办理。\n" +
-            "      2、签字后的审批单应回传系统，作为办理依据和归档附件。\n" +
-            $"      3、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。";
+        private static IReadOnlyList<string> BuildFooterLines(ArchiveOutboundPrintData data) =>
+        [
+            "1、申请提交后，按“线上申请、打印表单、线下审批签字、上传签字件、资料出库交接”的流程办理。",
+            "2、签字后的审批单应回传系统，作为办理依据和归档附件。",
+            $"3、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"
+        ];
 
         private static string BuildItemText(ArchiveOutboundPrintData data) =>
             data.ItemLines.Count > 0 ? string.Join("\n", data.ItemLines) : "(无)";

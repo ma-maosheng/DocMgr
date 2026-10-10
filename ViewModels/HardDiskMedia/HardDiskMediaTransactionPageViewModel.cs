@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.Shared;
 using DocMgr.Services.Interfaces;
@@ -24,6 +26,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private string _selectedRegisterLockFilter = HardDiskRegisterLockFilterSupport.All;
         private HardDiskLedgerQuickFilter _quickFilter = HardDiskLedgerQuickFilter.None;
         private HardDiskMedium? _selectedMedium;
+        private readonly SemaphoreSlim _searchGate = new(1, 1);
+        private int _searchGeneration;
 
         public HardDiskMediaTransactionPageViewModel(IHardDiskMediaService hardDiskMediaService, IDialogService dialogService)
         {
@@ -215,8 +219,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task SearchAsync()
         {
+            int generation = Interlocked.Increment(ref _searchGeneration);
+            await _searchGate.WaitAsync().ConfigureAwait(true);
             try
             {
+                if (generation != Volatile.Read(ref _searchGeneration))
+                {
+                    return;
+                }
+
                 int? selectedId = SelectedMedium?.Id;
                 string? status = SelectedStatus == "全部" || _quickFilter != HardDiskLedgerQuickFilter.None
                     ? null
@@ -224,10 +235,16 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 string? nature = SelectedNature == "全部" ? null : SelectedNature;
 
                 var items = HardDiskRegisterLockFilterSupport.ApplyFilter(
-                    await _hardDiskMediaService.SearchMediaAsync(SearchKeyword, status, nature),
+                    await _hardDiskMediaService.SearchMediaAsync(SearchKeyword, status, nature)
+                        .ConfigureAwait(true),
                     SelectedRegisterLockFilter);
 
                 items = ApplyQuickFilter(items, _quickFilter);
+
+                if (generation != Volatile.Read(ref _searchGeneration))
+                {
+                    return;
+                }
 
                 MediaItems.Clear();
                 foreach (var item in items)
@@ -235,7 +252,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     MediaItems.Add(item);
                 }
 
-                await LoadTransactionCacheAsync();
+                await LoadTransactionCacheAsync().ConfigureAwait(true);
+
+                if (generation != Volatile.Read(ref _searchGeneration))
+                {
+                    return;
+                }
 
                 SelectedMedium = selectedId.HasValue
                     ? MediaItems.FirstOrDefault(item => item.Id == selectedId.Value)
@@ -243,7 +265,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"加载硬盘台账失败：{ex.Message}");
+                if (generation == Volatile.Read(ref _searchGeneration))
+                {
+                    _dialogService.ShowError($"加载硬盘台账失败：{ex.GetBaseException().Message}");
+                }
+            }
+            finally
+            {
+                _searchGate.Release();
             }
         }
 

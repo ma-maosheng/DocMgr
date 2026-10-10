@@ -146,13 +146,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, RowChromeDip) * fixedRowCount
                 + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
 
-            string footerText = BuildFooterNoteText(data);
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
-                footerText,
-                PrintPageLayoutSupport.ContentWidthDip,
-                fontSizeDip: 10.5,
-                lineHeightDip: 18,
-                topMarginDip: 15);
+            double footerHeight = PrintFormNoteLayoutSupport.EstimateHeightDip(
+                "说明：",
+                BuildFooterLines(data),
+                BodyFont,
+                fontSize: 10.5,
+                lineHeight: 18,
+                topMargin: 15);
             double reservedHeight = TitleChromeHeight + HeaderHeight + footerHeight + fixedTableHeight;
             double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
                 itemListText,
@@ -249,32 +249,22 @@ namespace DocMgr.ViewModels.HardDiskMedia
             lines.Add(PrintApprovalSignatureSupport.FormatLabeledInline(label, name, dateText));
         }
 
-        private static Paragraph CreateFooterParagraph(HardDiskDisposalPrintData data)
-        {
-            var footer = new Paragraph
-            {
-                FontSize = 10.5,
-                Margin = new Thickness(0, 15, 0, 0),
-                LineHeight = 18
-            };
-
-            footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
-            footer.Inlines.Add(new Run(
-                "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批、上传签批单与硬盘照片、办结”流程办理。\n"));
-            footer.Inlines.Add(new Run(
-                "      2、请按启用的审核审批节点线下签字后回传系统；办结前须同时上传签批单与待处置硬盘照片。\n"));
-            footer.Inlines.Add(new Run(
-                $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
-
-            return footer;
-        }
+        private static Table CreateFooterParagraph(HardDiskDisposalPrintData data) =>
+            PrintFormNoteLayoutSupport.Create(
+                "说明：",
+                BuildFooterLines(data),
+                BodyFont,
+                fontSize: 10.5,
+                lineHeight: 18,
+                topMargin: 15);
 
         /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
-        private static string BuildFooterNoteText(HardDiskDisposalPrintData data) =>
-            "说明：" +
-            "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批、上传签批单与硬盘照片、办结”流程办理。\n" +
-            "      2、请按启用的审核审批节点线下签字后回传系统；办结前须同时上传签批单与待处置硬盘照片。\n" +
-            $"      3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。";
+        private static IReadOnlyList<string> BuildFooterLines(HardDiskDisposalPrintData data) =>
+        [
+            "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批、上传签批单与硬盘照片、办结”流程办理。",
+            "2、请按启用的审核审批节点线下签字后回传系统；办结前须同时上传签批单与待处置硬盘照片。",
+            $"3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"
+        ];
 
         private static Table CreateHeaderTable(string left, string right)
         {

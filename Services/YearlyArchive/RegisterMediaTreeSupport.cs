@@ -79,7 +79,9 @@ namespace DocMgr.Services.YearlyArchive
                 RequisitionedMediumId = media.RequisitionedMediumId,
                 RequisitionedHardDiskCode = media.RequisitionedHardDiskCode,
                 RequisitionedDiskNeedReturn = media.RequisitionedDiskNeedReturn,
-                ExpectedReturnDate = media.ExpectedReturnDate?.Date
+                ExpectedReturnDate = media.ExpectedReturnDate?.Date,
+                AppendTargetElectronicUnitId = media.AppendTargetElectronicUnitId,
+                AppendTargetHardDiskCode = media.AppendTargetHardDiskCode
             };
 
             if (media.Items == null)
@@ -158,11 +160,14 @@ namespace DocMgr.Services.YearlyArchive
                     BorrowedHardDiskCode = m.IsRetainedHardDiskScenario && m.IsBorrowedHardDisk
                         ? (m.BorrowedHardDiskCode?.Trim() ?? string.Empty)
                         : string.Empty,
-                    UseInStockBlankHardDisk = m.IsExternalOfflineReturnedHardDiskScenario && m.UseInStockBlankHardDisk,
-                    RequisitionedMediumId = m.IsExternalOfflineReturnedHardDiskScenario && m.UseInStockBlankHardDisk
+                    UseInStockBlankHardDisk = (m.IsExternalOfflineReturnedHardDiskScenario || m.IsArchiveFilingHardDiskScenario)
+                                              && m.UseInStockBlankHardDisk,
+                    RequisitionedMediumId = (m.IsExternalOfflineReturnedHardDiskScenario || m.IsArchiveFilingHardDiskScenario)
+                                            && m.UseInStockBlankHardDisk
                         ? m.RequisitionedMediumId
                         : null,
-                    RequisitionedHardDiskCode = m.IsExternalOfflineReturnedHardDiskScenario && m.UseInStockBlankHardDisk
+                    RequisitionedHardDiskCode = (m.IsExternalOfflineReturnedHardDiskScenario || m.IsArchiveFilingHardDiskScenario)
+                                                && m.UseInStockBlankHardDisk
                         ? (m.RequisitionedHardDiskCode?.Trim() ?? string.Empty)
                         : string.Empty,
                     RequisitionedDiskNeedReturn = m.IsExternalOfflineReturnedHardDiskScenario
@@ -173,6 +178,12 @@ namespace DocMgr.Services.YearlyArchive
                                        && m.RequiresExpectedReturnDate
                         ? m.ExpectedReturnDate?.Date
                         : null,
+                    AppendTargetElectronicUnitId = m.IsArchiveFilingHardDiskScenario && !m.UseInStockBlankHardDisk
+                        ? m.AppendTargetElectronicUnitId
+                        : null,
+                    AppendTargetHardDiskCode = m.IsArchiveFilingHardDiskScenario && !m.UseInStockBlankHardDisk
+                        ? (m.AppendTargetHardDiskCode?.Trim() ?? string.Empty)
+                        : string.Empty,
                     Items = m.Items.Select((item, index) => MapMediaItemEntity(item, isElectronic: true, index)).ToList()
                 })
                 .ToList();

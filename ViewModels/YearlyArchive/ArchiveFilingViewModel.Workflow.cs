@@ -46,16 +46,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                 using (IServiceScope scope = _scopeFactory.CreateScope())
                 {
                     var filing = scope.ServiceProvider.GetRequiredService<IArchiveFilingService>();
-                    // 在独立 scope + 线程池延续上读库，避免 SQLite/EF 长时间占满 UI 调度线程导致整窗无法响应。
-                    Task<List<YearlyArchiveRegisterRecord>> simulatedTask = filing.GetPendingSimulatedRecordsAsync(year);
-                    Task<List<YearlyArchiveRegisterRecord>> electronicTask = filing.GetPendingElectronicRecordsAsync(year);
-                    Task<int> simulatedFiledTask = filing.GetFiledSimulatedRecordCountAsync(year);
-                    Task<int> electronicFiledTask = filing.GetFiledElectronicRecordCountAsync(year);
-                    await Task.WhenAll(simulatedTask, electronicTask, simulatedFiledTask, electronicFiledTask).ConfigureAwait(false);
-                    simulatedRecords = await simulatedTask.ConfigureAwait(false);
-                    electronicRecords = await electronicTask.ConfigureAwait(false);
-                    simulatedFiledCount = await simulatedFiledTask.ConfigureAwait(false);
-                    electronicFiledCount = await electronicFiledTask.ConfigureAwait(false);
+                    // 在独立 scope + 线程池延续上读库，避免 EF 长时间占满 UI 调度线程导致整窗无法响应。
+                    // 同一 scoped DbContext 不可并发查询，须顺序 await（勿 Task.WhenAll）。
+                    simulatedRecords = await filing.GetPendingSimulatedRecordsAsync(year).ConfigureAwait(false);
+                    electronicRecords = await filing.GetPendingElectronicRecordsAsync(year).ConfigureAwait(false);
+                    simulatedFiledCount = await filing.GetFiledSimulatedRecordCountAsync(year).ConfigureAwait(false);
+                    electronicFiledCount = await filing.GetFiledElectronicRecordCountAsync(year).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -708,6 +704,16 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ElectronicStorageLocation = storageLocation;
             }
 
+            string archiveYear = TargetYear;
+            string archiveProject = TargetProject;
+            if (!IsNewBoxMode && SelectedExistingElectronicUnit != null)
+            {
+                archiveYear = SelectedExistingElectronicUnit.Year?.Trim() ?? archiveYear;
+                archiveProject = string.IsNullOrWhiteSpace(SelectedExistingElectronicUnit.ProjectName)
+                    ? archiveProject
+                    : SelectedExistingElectronicUnit.ProjectName.Trim();
+            }
+
             return new ElectronicArchiveSubmissionRequest
             {
                 ArchiveUnit = new YearlyElectronicArchiveUnit
@@ -716,8 +722,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                     ElectronicArchiveNo = IsNewBoxMode
                         ? ElectronicArchiveNo.Trim()
                         : SelectedExistingElectronicUnit?.ElectronicArchiveNo?.Trim() ?? ElectronicArchiveNo.Trim(),
-                    ProjectName = TargetProject,
-                    Year = TargetYear,
+                    ProjectName = archiveProject,
+                    Year = archiveYear,
                     StorageCarrierType = ElectronicStorageCarrierType.Trim(),
                     StoragePath = ElectronicStoragePath.Trim(),
                     StorageLocation = storageLocation,

@@ -39,6 +39,9 @@ namespace DocMgr.ViewModels.SystemSettings
         private UserOptionItem? _editProductionVicePresidentUser;
         private bool _editIsEnabled = true;
         private int _editingRuleId;
+        private readonly SemaphoreSlim _rulesLoadGate = new(1, 1);
+        private int _rulesLoadGeneration;
+        private Task _rulesLoadTask = Task.CompletedTask;
 
         public ApprovalWorkflowSettingsViewModel(
             IApprovalWorkflowService approvalWorkflowService,
@@ -102,8 +105,9 @@ namespace DocMgr.ViewModels.SystemSettings
             {
                 if (SetProperty(ref _selectedBusinessType, value))
                 {
-                    _ = LoadRulesAsync();
                     RefreshConditionFields();
+                    // 切换业务类型时排队加载。初始化处只等待这一次，避免同一 DbContext 上重叠查询。
+                    _rulesLoadTask = LoadRulesAsync();
                 }
             }
         }
@@ -286,7 +290,7 @@ namespace DocMgr.ViewModels.SystemSettings
                 _isInitialized = true;
                 ReloadUsers();
                 SelectedBusinessType = BusinessTypes.FirstOrDefault();
-                await LoadRulesAsync();
+                await _rulesLoadTask;
             }
             catch (Exception ex)
             {
@@ -318,29 +322,48 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private async Task LoadRulesAsync()
         {
-            Rules.Clear();
-            if (SelectedBusinessType == null)
+            int generation = Interlocked.Increment(ref _rulesLoadGeneration);
+            await _rulesLoadGate.WaitAsync();
+            try
             {
-                SelectedRule = null;
-                if (!IsEditing)
+                if (generation != Volatile.Read(ref _rulesLoadGeneration))
                 {
-                    LoadEditorFromSelectedRule();
+                    return;
                 }
 
-                return;
-            }
+                Rules.Clear();
+                if (SelectedBusinessType == null)
+                {
+                    SelectedRule = null;
+                    if (!IsEditing)
+                    {
+                        LoadEditorFromSelectedRule();
+                    }
 
-            var rules = await _approvalWorkflowService.GetRulesAsync(SelectedBusinessType.BusinessType);
-            foreach (var rule in rules.OrderBy(item => item.Priority).ThenBy(item => item.Id))
-            {
-                Rules.Add(ApprovalWorkflowRuleRow.FromEntity(rule, SelectedBusinessType));
-            }
+                    return;
+                }
 
-            SelectedRule = Rules.FirstOrDefault();
-            if (!IsEditing)
+                var rules = await _approvalWorkflowService.GetRulesAsync(SelectedBusinessType.BusinessType);
+                if (generation != Volatile.Read(ref _rulesLoadGeneration))
+                {
+                    return;
+                }
+
+                foreach (var rule in rules.OrderBy(item => item.Priority).ThenBy(item => item.Id))
+                {
+                    Rules.Add(ApprovalWorkflowRuleRow.FromEntity(rule, SelectedBusinessType));
+                }
+
+                SelectedRule = Rules.FirstOrDefault();
+                if (!IsEditing)
+                {
+                    // SelectedRule 未变化时仍强制同步右侧表单（例如恢复默认后首条仍同名）。
+                    LoadEditorFromSelectedRule();
+                }
+            }
+            finally
             {
-                // SelectedRule 未变化时仍强制同步右侧表单（例如恢复默认后首条仍同名）。
-                LoadEditorFromSelectedRule();
+                _rulesLoadGate.Release();
             }
         }
 

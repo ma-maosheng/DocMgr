@@ -5,29 +5,16 @@ namespace DocMgr.Config;
 /// </summary>
 public sealed class DocMgrDatabaseOptions
 {
-    public DocMgrDatabaseOptions(string databasePath, int busyTimeoutSeconds, bool isNetworkPath)
+    public DocMgrDatabaseOptions(string connectionString)
     {
-        if (string.IsNullOrWhiteSpace(databasePath))
+        if (string.IsNullOrWhiteSpace(connectionString))
         {
-            throw new ArgumentException("数据库路径不能为空。", nameof(databasePath));
+            throw new ArgumentException("数据库连接字符串不能为空。", nameof(connectionString));
         }
 
-        if (busyTimeoutSeconds <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(busyTimeoutSeconds), "BusyTimeoutSeconds 必须大于 0。");
-        }
-
-        DatabasePath = databasePath;
-        BusyTimeoutSeconds = busyTimeoutSeconds;
-        IsNetworkPath = isNetworkPath;
+        ConnectionString = connectionString.Trim();
     }
 
-    /// <summary>SQLite 数据库文件完整路径。</summary>
-    public string DatabasePath { get; }
-
-    /// <summary>数据库忙等待超时（秒）。共享库场景建议 120 及以上。</summary>
-    public int BusyTimeoutSeconds { get; }
-
-    /// <summary>是否为 UNC 等网络路径。</summary>
-    public bool IsNetworkPath { get; }
+    /// <summary>SQL Server 连接字符串。</summary>
+    public string ConnectionString { get; }
 }

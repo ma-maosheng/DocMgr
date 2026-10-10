@@ -10,11 +10,12 @@ namespace DocMgr.Services.NetworkTransfer;
 internal static class NetworkOutboundRegisterMediaRulesSupport
 {
     /// <summary>
-    /// 资料室存档：出网不定归档载体，建档/立档侧按「内网」拷贝型再选光盘、空盘或并档。
+    /// 资料室存档：申请时确定归档载体，只允许光盘或硬盘。
     /// </summary>
     private static readonly string[] ArchiveFilingElectronicMediaTypes =
     [
-        ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork
+        ArchiveRegisterDomainValues.ElectronicMediaTypeOpticalDisc,
+        ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk
     ];
 
     private static readonly string[] ExternalOfflineElectronicMediaTypes =
@@ -25,7 +26,7 @@ internal static class NetworkOutboundRegisterMediaRulesSupport
     ];
 
     /// <summary>
-    /// 出网：资料室存档固定「内网」（归档载体立档时再定）；外部离线允许光盘/硬盘/U 盘。
+    /// 出网：资料室存档允许光盘/硬盘；外部离线允许光盘/硬盘/U 盘。
     /// </summary>
     internal static IReadOnlyList<string> GetAllowedElectronicMediaTypes(
         string? destinationKind,
@@ -56,7 +57,7 @@ internal static class NetworkOutboundRegisterMediaRulesSupport
     }
 
     /// <summary>
-    /// 出网：资料室存档→无需处置（载体待立档确定）；外部离线（含 U 盘）→介质带走。
+    /// 出网：资料室存档→无需处置；外部离线（含 U 盘）→介质带走。
     /// </summary>
     internal static IReadOnlyList<string> GetAllowedElectronicDispositions(
         string? destinationKind,
@@ -119,10 +120,24 @@ internal static class NetworkOutboundRegisterMediaRulesSupport
         return string.Join("、", allowedTypes);
     }
 
+    internal static bool IsArchiveFilingHardDisk(YearlyArchiveRegisterMedia media) =>
+        RegisterMediaTreeSupport.IsElectronicMediaEntity(media)
+        && string.Equals(
+            media.MediaType?.Trim(),
+            ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk,
+            StringComparison.OrdinalIgnoreCase);
+
+    internal static bool IsArchiveFilingOpticalDisc(YearlyArchiveRegisterMedia media) =>
+        RegisterMediaTreeSupport.IsElectronicMediaEntity(media)
+        && string.Equals(
+            media.MediaType?.Trim(),
+            ArchiveRegisterDomainValues.ElectronicMediaTypeOpticalDisc,
+            StringComparison.OrdinalIgnoreCase);
+
     /// <summary>
-    /// 资料室存档：将电子介质规范为「内网 + 无需处置」，归档载体由立档操作台选择。
+    /// 资料室存档：保留申请时选定的光盘/硬盘，处置固定为无需处置，并清掉与该载体无关的硬盘字段。
     /// </summary>
-    internal static void ApplyPendingFilingCarrier(IEnumerable<YearlyArchiveRegisterMedia>? mediaEntries)
+    internal static void NormalizeArchiveFilingCarrier(IEnumerable<YearlyArchiveRegisterMedia>? mediaEntries)
     {
         foreach (YearlyArchiveRegisterMedia media in mediaEntries ?? [])
         {
@@ -131,9 +146,150 @@ internal static class NetworkOutboundRegisterMediaRulesSupport
                 continue;
             }
 
-            media.MediaType = ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork;
             media.Disposition = ArchiveRegisterDomainValues.ElectronicDispositionNone;
+            media.IsBorrowedHardDisk = false;
+            media.BorrowedHardDiskCode = string.Empty;
+
+            if (!IsArchiveFilingHardDisk(media))
+            {
+                ClearBlankReservation(media);
+                ClearAppendTarget(media);
+                continue;
+            }
+
+            if (media.UseInStockBlankHardDisk)
+            {
+                media.RequisitionedDiskNeedReturn = false;
+                media.ExpectedReturnDate = null;
+                media.RequisitionedHardDiskCode = media.RequisitionedHardDiskCode?.Trim() ?? string.Empty;
+                ClearAppendTarget(media);
+                continue;
+            }
+
+            ClearBlankReservation(media);
+            media.AppendTargetHardDiskCode = media.AppendTargetHardDiskCode?.Trim() ?? string.Empty;
+            if (media.AppendTargetElectronicUnitId is not > 0)
+            {
+                media.AppendTargetElectronicUnitId = null;
+                media.AppendTargetHardDiskCode = string.Empty;
+            }
         }
+    }
+
+    /// <summary>
+    /// 资料室存档提交校验：光盘不带硬盘；硬盘必须在库内空盘与并档目标中二选一。
+    /// </summary>
+    internal static void ValidateArchiveFilingCarrier(
+        IEnumerable<YearlyArchiveRegisterMedia>? mediaEntries,
+        List<string> errors)
+    {
+        List<YearlyArchiveRegisterMedia> entries = mediaEntries?
+            .Where(RegisterMediaTreeSupport.IsElectronicMediaEntity)
+            .ToList()
+            ?? [];
+        if (entries.Count == 0)
+        {
+            return;
+        }
+
+        bool seenBlank = false;
+        bool seenAppend = false;
+        int? appendUnitId = null;
+        var blankCodes = new List<string>();
+        int mediaSeq = 0;
+        foreach (YearlyArchiveRegisterMedia media in entries)
+        {
+            mediaSeq++;
+            if (IsArchiveFilingOpticalDisc(media))
+            {
+                if (media.UseInStockBlankHardDisk
+                    || media.RequisitionedMediumId is > 0
+                    || media.AppendTargetElectronicUnitId is > 0)
+                {
+                    errors.Add($"• 第{mediaSeq}条介质：类型为光盘时不能选择库内空盘或并档硬盘");
+                }
+
+                continue;
+            }
+
+            if (!IsArchiveFilingHardDisk(media))
+            {
+                continue;
+            }
+
+            bool hasBlank = media.UseInStockBlankHardDisk;
+            bool hasAppend = media.AppendTargetElectronicUnitId is > 0
+                && !string.IsNullOrWhiteSpace(media.AppendTargetHardDiskCode);
+            if (hasBlank == hasAppend)
+            {
+                errors.Add(hasBlank
+                    ? $"• 第{mediaSeq}条介质：使用库内空盘时不能同时指定并档硬盘"
+                    : $"• 第{mediaSeq}条介质：请选择库内空盘，或选择本项目当年可并档硬盘");
+                continue;
+            }
+
+            if (hasBlank)
+            {
+                seenBlank = true;
+                if (media.RequisitionedMediumId is not > 0
+                    || string.IsNullOrWhiteSpace(media.RequisitionedHardDiskCode))
+                {
+                    errors.Add($"• 第{mediaSeq}条介质：使用库内空盘时须选择资料室库存空盘硬盘编号");
+                }
+                else
+                {
+                    blankCodes.Add(media.RequisitionedHardDiskCode.Trim());
+                }
+
+                if (media.RequisitionedDiskNeedReturn || media.ExpectedReturnDate != null)
+                {
+                    errors.Add($"• 第{mediaSeq}条介质：资料室存档的硬盘不出资料室，不需要填写归还信息");
+                }
+            }
+            else
+            {
+                seenAppend = true;
+                if (appendUnitId == null)
+                {
+                    appendUnitId = media.AppendTargetElectronicUnitId;
+                }
+                else if (appendUnitId != media.AppendTargetElectronicUnitId)
+                {
+                    errors.Add("• 同一申请单只能并入一块本项目当年已立档硬盘");
+                }
+            }
+        }
+
+        if (seenBlank && seenAppend)
+        {
+            errors.Add("• 同一申请单只能预定一种硬盘归档方式（库内空盘或并档）");
+        }
+
+        List<string> duplicatedBlankCodes = blankCodes
+            .GroupBy(code => code, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .OrderBy(code => code, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (duplicatedBlankCodes.Count > 0)
+        {
+            errors.Add($"• 同一申请单内“库内空盘硬盘编号”不能重复：{string.Join("、", duplicatedBlankCodes)}");
+        }
+    }
+
+    private static void ClearBlankReservation(YearlyArchiveRegisterMedia media)
+    {
+        media.UseInStockBlankHardDisk = false;
+        media.RequisitionedMediumId = null;
+        media.RequisitionedHardDiskCode = string.Empty;
+        media.RequisitionedDiskNeedReturn = false;
+        media.ExpectedReturnDate = null;
+    }
+
+    private static void ClearAppendTarget(YearlyArchiveRegisterMedia media)
+    {
+        media.AppendTargetElectronicUnitId = null;
+        media.AppendTargetHardDiskCode = string.Empty;
     }
 
     private static string[] ResolveAllowedMediaTypes(string? destinationKind)

@@ -121,6 +121,21 @@
                                                FontWeight="SemiBold" Foreground="#00695C" VerticalAlignment="Center"
                                                TextWrapping="Wrap"/>
                                 </StackPanel>
+                                <TextBlock Margin="0,4,0,0" Foreground="#059669" TextWrapping="Wrap"
+                                           Text="{Binding SourceHardDiskCapacityDescription, Mode=OneWay}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SourceHardDiskCapacityDescription}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding SourceHardDiskCapacityDescription}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                                 <StackPanel Margin="0,8,0,0">
                                     <TextBlock Text="关联资料：" Style="{StaticResource FieldLabelStyle}"/>
                                     <TextBlock Text="{Binding SourceItemsDescriptionText, Mode=OneWay}"
@@ -148,6 +163,21 @@
                                         Style="{StaticResource ToolbarActionButtonStyle}"
                                         Command="{Binding SelectBlankHardDiskCommand}"/>
                             </Grid>
+                            <TextBlock Margin="0,4,0,0" Foreground="#059669" TextWrapping="Wrap"
+                                       Text="{Binding BlankHardDiskCapacityDescription, Mode=OneWay}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BlankHardDiskCapacityDescription}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding BlankHardDiskCapacityDescription}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
 
                         <TextBlock Margin="0,0,0,12" Foreground="#666" TextWrapping="Wrap"
@@ -212,6 +242,21 @@
                                                    FontWeight="SemiBold" Foreground="#00695C" VerticalAlignment="Center"
                                                    TextWrapping="Wrap"/>
                                     </StackPanel>
+                                    <TextBlock Margin="0,4,0,0" Foreground="#059669" TextWrapping="Wrap"
+                                               Text="{Binding TargetHardDiskCapacityDescription, Mode=OneWay}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding TargetHardDiskCapacityDescription}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding TargetHardDiskCapacityDescription}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <StackPanel Margin="0,8,0,0">
                                         <TextBlock Text="关联资料：" Style="{StaticResource FieldLabelStyle}"/>
                                         <TextBlock Text="{Binding TargetItemsDescriptionText, Mode=OneWay}"

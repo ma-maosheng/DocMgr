@@ -29,6 +29,11 @@ namespace DocMgr.Models.NetworkTransfer
 
         public string DestinationKind { get; set; } = string.Empty;
 
+        /// <summary>
+        /// 接收部门（单位）；目的地为出网（院内/院外）时填写，资料室存档时为空。
+        /// </summary>
+        public string DestinationUnit { get; set; } = string.Empty;
+
         /// <summary>资料名称（整单摘要）。</summary>
         public string MaterialName { get; set; } = string.Empty;
 

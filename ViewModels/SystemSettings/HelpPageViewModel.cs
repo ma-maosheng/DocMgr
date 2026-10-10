@@ -46,8 +46,8 @@ public sealed class HelpPageViewModel : ViewModelBase
         VersionDisplay = $"版本 {AppVersionInfo.DisplayVersion}";
         DatabasePathText = databaseBackupService.DatabasePath;
         DatabaseKindText = databaseBackupService.IsNetworkPath
-            ? "当前为共享数据库（局域网路径）。"
-            : "当前为程序目录下的本地数据库。";
+            ? "当前为远程 SQL Server 数据库。"
+            : "当前为本机 SQL Server 数据库。";
         Sections = LoadSections();
         if (Sections.Count > 0)
         {
@@ -58,10 +58,10 @@ public sealed class HelpPageViewModel : ViewModelBase
     /// <summary>登录窗/主窗口同一套版本号。</summary>
     public string VersionDisplay { get; }
 
-    /// <summary>当前 SQLite 文件路径。</summary>
+    /// <summary>当前 SQL Server 目标（服务器 / 库名）。</summary>
     public string DatabasePathText { get; }
 
-    /// <summary>本地库或共享库说明。</summary>
+    /// <summary>本机或远程库说明。</summary>
     public string DatabaseKindText { get; }
 
     /// <summary>手册章节列表。</summary>
@@ -98,7 +98,7 @@ public sealed class HelpPageViewModel : ViewModelBase
             sections.Add(new HelpManualSection(
                 1,
                 "说明",
-                "未找到帮助文件。请在「系统设置 → 高级数据管理」备份当前库；覆盖安装时只替换程序文件，不要覆盖 DocMgr.db。"));
+                "未找到帮助文件。请在「系统设置 → 高级数据管理」备份当前库；覆盖安装时只替换程序文件，数据库在 SQL Server 中保留。"));
             return sections;
         }
 

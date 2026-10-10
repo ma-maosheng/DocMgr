@@ -36,6 +36,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<Func<NetworkTransferWorkspaceMode, int, NetworkOutboundWorkbenchPageViewModel>>(sp =>
             (mode, initialRecordId) => ActivatorUtilities.CreateInstance<NetworkOutboundWorkbenchPageViewModel>(
                 sp, mode, initialRecordId));
+        services.AddTransient<NetworkOnNetAssetLedgerPageViewModel>();
         services.AddTransient<NetworkOnNetDisposalPageViewModel>();
         services.AddTransient<HistoryArchiveDisposalPageViewModel>();
         services.AddTransient<Func<HardDiskReturnWorkspaceMode, HardDiskMediaReturnRegistrationPageViewModel>>(sp =>
@@ -81,6 +82,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<BusinessLogicSettingsViewModel>();
         services.AddTransient<ApprovalWorkflowSettingsViewModel>();
         services.AddTransient<DbOperationLogPageViewModel>();
+        services.AddTransient<UserSessionMonitorViewModel>();
         return services;
     }
 }

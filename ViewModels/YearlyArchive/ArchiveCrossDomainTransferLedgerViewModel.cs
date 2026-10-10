@@ -115,6 +115,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                 Label = MaterialTransactionDomainValues.MapTypeDisplay(
                     MaterialTransactionDomainValues.TypeNetworkInboundCopy),
                 Value = MaterialTransactionDomainValues.TypeNetworkInboundCopy
+            },
+            new FilterOption
+            {
+                Label = MaterialTransactionDomainValues.MapTypeDisplay(
+                    MaterialTransactionDomainValues.TypeNetworkOutboundFiling),
+                Value = MaterialTransactionDomainValues.TypeNetworkOutboundFiling
             }
         ];
 
@@ -399,7 +405,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 .Count();
 
             return distinctBusinessCount > 0
-                ? $"共 {count} 条跨域流转流水，涉及 {distinctBusinessCount} 个入网单号"
+                ? $"共 {count} 条跨域流转流水，涉及 {distinctBusinessCount} 个业务单号"
                 : $"共 {count} 条跨域流转流水";
         }
 
@@ -426,7 +432,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             if (!string.IsNullOrWhiteSpace(BusinessNo))
             {
-                parts.Add($"入网单号 {BusinessNo.Trim()}");
+                parts.Add($"业务单号 {BusinessNo.Trim()}");
             }
 
             FilterScopeHint = parts.Count == 0

@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.Cabinets;
@@ -16,6 +17,7 @@ using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
@@ -30,6 +32,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
         private readonly IUserService _userService;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly SemaphoreSlim _yearSideEffectsGate = new(1, 1);
 
         private string _year = string.Empty;
         private string _projectName = string.Empty;
@@ -64,7 +68,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             ICabinetService cabinetService,
             IDialogService dialogService,
             IUserContextService userContextService,
-            IUserService userService)
+            IUserService userService,
+            IServiceScopeFactory scopeFactory)
         {
             _filingService = filingService;
             _archiveRegisterService = archiveRegisterService;
@@ -72,6 +77,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _dialogService = dialogService;
             _userContextService = userContextService;
             _userService = userService;
+            _scopeFactory = scopeFactory;
 
             MediaGroups = new ObservableCollection<StockTextArchiveMediaGroupViewModel>();
             MediaGroups.CollectionChanged += OnMediaGroupsCollectionChanged;
@@ -149,9 +155,25 @@ namespace DocMgr.ViewModels.YearlyArchive
                     RefreshProjectNameOptions();
                     RefreshProjectHint();
                     RefreshYearProjectHint();
-                    _ = RefreshPreviewArchiveSequenceNoAsync();
-                    _ = LoadSlotOptionsAsync();
+                    _ = OnYearChangedAsync();
                 }
+            }
+        }
+
+        /// <summary>
+        /// 年度变更时顺序刷新盒号预览与可选档口，避免并行打同一页面级 DbContext。
+        /// </summary>
+        private async Task OnYearChangedAsync()
+        {
+            await _yearSideEffectsGate.WaitAsync().ConfigureAwait(true);
+            try
+            {
+                await RefreshPreviewArchiveSequenceNoAsync().ConfigureAwait(true);
+                await LoadSlotOptionsAsync().ConfigureAwait(true);
+            }
+            finally
+            {
+                _yearSideEffectsGate.Release();
             }
         }
 
@@ -222,7 +244,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 string archiveNo = string.IsNullOrWhiteSpace(PreviewArchiveSequenceNo)
                     ? "待填写年度"
                     : PreviewArchiveSequenceNo.Trim();
-                return $"存档文本直办立档 · {archiveNo}";
+                return $"存档文本资料直办立档 · {archiveNo}";
             }
         }
 
@@ -588,12 +610,19 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            string projectName = ProjectName;
+            string year = Year;
+            string boxSpecification = SelectedSpec;
             try
             {
-                var options = await _filingService.GetBoxSlotOptionsAsync(
-                    ProjectName,
-                    Year,
-                    SelectedSpec);
+                IReadOnlyList<ArchiveBoxTargetLocationOption> options;
+                using (IServiceScope scope = _scopeFactory.CreateScope())
+                {
+                    var filing = scope.ServiceProvider.GetRequiredService<IStockTextArchiveDirectFilingService>();
+                    options = await filing.GetBoxSlotOptionsAsync(projectName, year, boxSpecification)
+                        .ConfigureAwait(true);
+                }
+
                 string? previousLocation = SelectedSlotOption?.Location;
                 SlotOptions.Clear();
                 foreach (var option in options)
@@ -613,11 +642,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                     _suppressSlotApply = false;
                 }
 
-                await ApplySelectedSlotAsync(SelectedSlotOption);
+                await ApplySelectedSlotAsync(SelectedSlotOption).ConfigureAwait(true);
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError("加载可选档口失败：" + ex.Message);
+                _dialogService.ShowError("加载可选档口失败：" + ex.GetBaseException().Message);
             }
         }
 
@@ -635,8 +664,14 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            await LoadSlotOptionsAsync();
-            var suggestion = await _filingService.SuggestBoxSlotAsync(ProjectName, Year, SelectedSpec);
+            await LoadSlotOptionsAsync().ConfigureAwait(true);
+            ArchiveBoxLocationSuggestion? suggestion;
+            using (IServiceScope scope = _scopeFactory.CreateScope())
+            {
+                var filing = scope.ServiceProvider.GetRequiredService<IStockTextArchiveDirectFilingService>();
+                suggestion = await filing.SuggestBoxSlotAsync(ProjectName, Year, SelectedSpec).ConfigureAwait(true);
+            }
+
             if (suggestion == null || string.IsNullOrWhiteSpace(suggestion.CabinetName))
             {
                 _dialogService.ShowMessage("未找到可用的年度资料专用档口，请先在标准档案柜开柜界面完成用途设置。");
@@ -706,11 +741,17 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                string preview = await _filingService.PeekNextBoxLocationCodeAsync(
-                    option.CabinetName,
-                    option.Side,
-                    option.Row,
-                    option.Column);
+                string preview;
+                using (IServiceScope scope = _scopeFactory.CreateScope())
+                {
+                    var filing = scope.ServiceProvider.GetRequiredService<IStockTextArchiveDirectFilingService>();
+                    preview = await filing.PeekNextBoxLocationCodeAsync(
+                        option.CabinetName,
+                        option.Side,
+                        option.Row,
+                        option.Column).ConfigureAwait(true);
+                }
+
                 if (token != _physicalLocationPreviewToken)
                 {
                     return;
@@ -730,7 +771,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 PhysicalLocationCode = string.Empty;
-                BoxLocationHint = "物理位置编号预览失败：" + ex.Message;
+                BoxLocationHint = "物理位置编号预览失败：" + ex.GetBaseException().Message;
             }
         }
 
@@ -831,7 +872,13 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                string preview = await _filingService.PeekNextArchiveSequenceNoAsync(year);
+                string preview;
+                using (IServiceScope scope = _scopeFactory.CreateScope())
+                {
+                    var filing = scope.ServiceProvider.GetRequiredService<IStockTextArchiveDirectFilingService>();
+                    preview = await filing.PeekNextArchiveSequenceNoAsync(year).ConfigureAwait(true);
+                }
+
                 if (token != _archiveNoPreviewToken)
                 {
                     return;
@@ -1489,16 +1536,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             var options = domainOptions.Count > 0
                 ? domainOptions
                 : ArchiveRegisterDomainValues.GetSimulatedSubCategories(_materialCategory);
+
+            string preferred = SubCategory?.Trim() ?? string.Empty;
             AvailableSubCategories.Clear();
             foreach (var option in options)
             {
                 AvailableSubCategories.Add(option);
             }
 
-            if (string.IsNullOrWhiteSpace(SubCategory) || !AvailableSubCategories.Contains(SubCategory))
-            {
-                SubCategory = AvailableSubCategories.FirstOrDefault() ?? string.Empty;
-            }
+            string? matched = AvailableSubCategories.FirstOrDefault(option =>
+                string.Equals(option, preferred, StringComparison.OrdinalIgnoreCase));
+            SubCategory = matched ?? (AvailableSubCategories.FirstOrDefault() ?? string.Empty);
         }
     }
 }

@@ -338,6 +338,22 @@ namespace DocMgr.Services.HardDiskMedia
         private static bool CanSubmitHardDiskApplication(User? currentUser) =>
             ArchiveRegisterBusinessRules.CanSubmitApplication(currentUser);
 
+        /// <summary>
+        /// 出库申请按申请人姓名匹配办理人。归还单勿用：其 ApplicantName 为原借用人。
+        /// </summary>
+        private static bool IsApplicantOwner(HardDiskMediaApplication application, User? currentUser)
+        {
+            if (currentUser == null)
+            {
+                return false;
+            }
+
+            string applicantName = application.ApplicantName?.Trim() ?? string.Empty;
+            string userName = currentUser.RealName?.Trim() ?? string.Empty;
+            return !string.IsNullOrWhiteSpace(applicantName)
+                   && string.Equals(applicantName, userName, StringComparison.OrdinalIgnoreCase);
+        }
+
         private static void ValidateApplicationRules(string applicationType, HardDiskMedium medium, User? currentUser)
         {
             var ledger = medium.Ledger;

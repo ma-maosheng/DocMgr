@@ -1,4 +1,5 @@
 using DocMgr.Models.ArchiveContainers;
+using DocMgr.Models.NetworkTransfer;
 using System.Collections.Generic;
 
 namespace DocMgr.Services.SystemSettings
@@ -293,6 +294,111 @@ namespace DocMgr.Services.SystemSettings
             [nameof(YearlyElectronicArchiveUnitMediaItemLink)] = new(
                 "电子立档单元与登记介质明细的多对一关联及立档路径快照。",
                 "→ 引用 YearlyElectronicArchiveUnits、YearlyArchiveRegisterMediaItems。",
+                "只读浏览。"),
+
+            [nameof(ApprovalWorkflowRule)] = new(
+                "审核审批规则：按业务类型配置启用节点、条件与默认签字人。",
+                "逻辑关联 Users（默认签字人用户 ID）；业务类型键与单据模块对应。",
+                "只读浏览。请通过「系统设置 → 审核审批」维护。"),
+
+            [nameof(HardDiskDisposalRecord)] = new(
+                "硬盘离库处置主单，办理空白/损坏/盘失/拟销盘的离库销毁或注销。",
+                "← 被 HardDiskDisposalItems 引用（一对多）。",
+                "只读浏览。办结会写介质台账与位置，请勿手工改状态。"),
+
+            [nameof(HardDiskDisposalItem)] = new(
+                "硬盘离库处置明细，一盘一行，固化处置前状态、位置与处置方式。",
+                "→ 引用 HardDiskDisposalRecords（DisposalRecordId，级联删除）；→ 引用 HardDiskMedia（MediumId）。",
+                "只读浏览。"),
+
+            [nameof(HardDiskInventoryRegisterRecord)] = new(
+                "硬盘盘库登记主单（损坏登记 / 盘失登记等），确认登记即办结。",
+                "← 被 HardDiskInventoryRegisterItems 引用（一对多）。",
+                "只读浏览。由「库房与介质 → 硬盘 → 盘库登记」维护。"),
+
+            [nameof(HardDiskInventoryRegisterItem)] = new(
+                "硬盘盘库登记明细，一盘一行，记录登记前状态/位置与目标档口。",
+                "→ 引用 HardDiskInventoryRegisterRecords（RegisterRecordId，级联删除）；→ 引用 HardDiskMedia（MediumId）。",
+                "只读浏览。"),
+
+            [nameof(HistoryArchiveBox)] = new(
+                "历史存档档案盒主数据：盒号、规格、放置方式与生命周期。",
+                "← 被 HistoryArchiveBoxLedgerLinks 引用；离库处置办结后标已离库并撤柜。",
+                "只读浏览。盒与地形图/航片/其他图件台账通过链接表关联。"),
+
+            [nameof(HistoryArchiveBoxLedgerLink)] = new(
+                "历史档案盒与台账行的软关联（资料类别 + 台账行 ID，无硬外键）。",
+                "→ 引用 HistoryArchiveBoxes（HistoryArchiveBoxId，级联删除）。",
+                "只读浏览。由历史台账录入/导入自动维护。"),
+
+            [nameof(NetworkInboundRecord)] = new(
+                "入网申请主单：将资料写入服务器路径并形成在网台账。",
+                "← 被 NetworkInboundItems、NetworkInboundReturnHardDiskItems 引用；可关联跨域业务链。",
+                "只读浏览。由「年度资料 → 出入网 → 入网」流程维护。"),
+
+            [nameof(NetworkInboundItem)] = new(
+                "入网申请明细，含资料名称、密级、目标路径及来源立档/检索集快照。",
+                "→ 引用 NetworkInboundRecords（InboundRecordId，级联删除）；可回写 NetworkOnNetAssets。",
+                "只读浏览。"),
+
+            [nameof(NetworkInboundReturnHardDiskItem)] = new(
+                "入网时一并归还借用硬盘的明细及目标空白档口。",
+                "→ 引用 NetworkInboundRecords（InboundRecordId，级联删除）；→ 引用 HardDiskMedia（MediumId）。",
+                "只读浏览。"),
+
+            [nameof(NetworkOutboundRecord)] = new(
+                "出网申请主单：从在网数据导出，可衔接后续建档。",
+                "← 被 NetworkOutboundItems 引用；可关联跨域业务链与目标建档申请。",
+                "只读浏览。由「年度资料 → 出入网 → 出网」流程维护。"),
+
+            [nameof(NetworkOutboundItem)] = new(
+                "出网申请明细，固化在网资产快照（名称、路径、密级、数据量等）。",
+                "→ 引用 NetworkOutboundRecords（OutboundRecordId，级联删除）；可引用 NetworkOnNetAssets。",
+                "只读浏览。"),
+
+            [nameof(NetworkOnNetAsset)] = new(
+                "在网台账：已入生产网的资产当前态（路径、密级、生命周期等）。",
+                "← 被出网明细、在网处置明细引用；可追溯入网/出网明细或立档事实。",
+                "只读浏览。入网办结写入，出网/处置办结更新生命周期。"),
+
+            [nameof(NetworkOnNetDisposalRecord)] = new(
+                "在网数据处置主单，用于注销或销毁已入网数据。",
+                "← 被 NetworkOnNetDisposalItems 引用（一对多）。",
+                "只读浏览。仅资料室办理；办结后更新在网台账生命周期。"),
+
+            [nameof(NetworkOnNetDisposalItem)] = new(
+                "在网数据处置明细，固化处置前生命周期、原因与方式。",
+                "→ 引用 NetworkOnNetDisposalRecords（DisposalRecordId，级联删除）；→ 引用 NetworkOnNetAssets。",
+                "只读浏览。"),
+
+            [nameof(NetworkArchiveBusinessChain)] = new(
+                "跨域业务链：串联入网/出网/建档等主单的进度摘要。",
+                "← 被 NetworkArchiveBusinessTasks 引用；主单类型+主单 ID 定位源业务。",
+                "只读浏览。由跨域流程自动创建与更新。"),
+
+            [nameof(NetworkArchiveBusinessTask)] = new(
+                "跨域业务执行任务：链内单步任务状态、去重键与执行结果。",
+                "→ 引用 NetworkArchiveBusinessChains（BusinessChainId，级联删除）。",
+                "只读浏览。"),
+
+            [nameof(YearlyArchiveDisposalRecord)] = new(
+                "年度资料离库处置主单（模拟/电子），清理盘库产生的中间态。",
+                "← 被 YearlyArchiveDisposalItems 引用（一对多）。",
+                "只读浏览。由「年度资料 → 盘库与离库」维护；办结清账/撤柜/低格留盘。"),
+
+            [nameof(YearlyArchiveDisposalItem)] = new(
+                "年度资料离库处置明细，含立档事实/容器/介质及处置前状态快照。",
+                "→ 引用 YearlyArchiveDisposalRecords（DisposalRecordId，级联删除）；逻辑关联立档事实与介质。",
+                "只读浏览。"),
+
+            [nameof(YearlyArchiveInventoryRegisterRecord)] = new(
+                "资料盘库登记主单（模拟/电子），记录盘失等中间态。",
+                "← 被 YearlyArchiveInventoryRegisterItems 引用（一对多）。",
+                "只读浏览。由「年度资料 → 盘库与离库 → 盘库」维护。"),
+
+            [nameof(YearlyArchiveInventoryRegisterItem)] = new(
+                "资料盘库登记明细，含立档事实、丢失份数及登记前介质/位置快照。",
+                "→ 引用 YearlyArchiveInventoryRegisterRecords（RegisterRecordId，级联删除）；逻辑关联立档事实。",
                 "只读浏览。"),
         };
     }

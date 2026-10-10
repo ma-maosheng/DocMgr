@@ -115,7 +115,7 @@
                 <Border Grid.Row="0" Background="#B98A2E"/>
 
                 <TextBlock Grid.Row="1"
-                           Text="硬盘出库办理表"
+                           Text="出库办理"
                            Margin="0,12,0,4"
                            FontSize="22"
                            FontWeight="Bold"

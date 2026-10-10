@@ -26,12 +26,50 @@ internal static class NetworkInboundOnNetAssetMappingSupport
         }
     }
 
+    /// <summary>
+    /// 档外入网登记介质子项 → 入网明细快照（办结写台账时挂 <see cref="NetworkOnNetAsset.OriginInboundItemId"/>）。
+    /// </summary>
+    internal static List<NetworkInboundItem> BuildItemSnapshots(
+        NetworkInboundRecord header,
+        IEnumerable<YearlyArchiveRegisterMedia>? mediaEntries)
+    {
+        var result = new List<NetworkInboundItem>();
+        int sort = 1;
+        DateTime now = DateTime.Now;
+        foreach (YearlyArchiveRegisterMediaItem mediaItem in EnumerateElectronicMediaItems(mediaEntries ?? []))
+        {
+            YearlyArchiveRegisterElectronicMediaItemDetail? detail = mediaItem.ElectronicDetail;
+            string dataSizeText = detail == null || detail.DataSizeMb <= 0
+                ? string.Empty
+                : NetworkInboundItemDisplaySupport.ComposeDataSizeText(
+                    detail.DataSizeMb,
+                    NetworkInboundItemDisplaySupport.DefaultDataSizeUnit);
+
+            result.Add(new NetworkInboundItem
+            {
+                SortOrder = sort++,
+                AssetKind = ResolveAssetKind(detail?.MaterialCategory, detail?.SubCategory),
+                AssetName = header.MaterialName?.Trim() ?? string.Empty,
+                ItemName = mediaItem.ContentDesc?.Trim() ?? string.Empty,
+                MaterialName = header.MaterialName?.Trim() ?? string.Empty,
+                ConfidentialLevel = mediaItem.ConfidentialLevel?.Trim() ?? string.Empty,
+                DataSizeText = dataSizeText,
+                TargetServerPath = header.TargetServerPath?.Trim() ?? string.Empty,
+                SourceKind = header.SourceKind?.Trim() ?? string.Empty,
+                CreatedAt = now
+            });
+        }
+
+        return result;
+    }
+
     internal static NetworkOnNetAsset CreateOnNetAsset(
         NetworkInboundRecord inbound,
         YearlyArchiveRegisterMediaItem mediaItem,
         string assetNo,
         string operatorName,
-        DateTime now)
+        DateTime now,
+        int? originInboundItemId = null)
     {
         YearlyArchiveRegisterElectronicMediaItemDetail? detail = mediaItem.ElectronicDetail;
         string assetKind = ResolveAssetKind(
@@ -54,6 +92,7 @@ internal static class NetworkInboundOnNetAssetMappingSupport
             ConfidentialLevel = mediaItem.ConfidentialLevel?.Trim() ?? string.Empty,
             DataSizeText = dataSizeText,
             OriginKind = NetworkTransferDomainValues.OriginKindInbound,
+            OriginInboundItemId = originInboundItemId is > 0 ? originInboundItemId : null,
             LifecycleStatus = NetworkTransferDomainValues.LifecycleOnNet,
             RegisteredBy = operatorName,
             RegisteredAt = now,

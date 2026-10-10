@@ -41,19 +41,19 @@ namespace DocMgr.Models.SystemSettings
         /// </summary>
         public static string ToDisplay(string? businessType) => businessType?.Trim() switch
         {
-            HistoryArchiveDisposal => "历史存档资料管理·资料离库处置",
-            YearlyArchiveRegister => "年度资料档案化管理·资料建档·建档申请",
-            YearlyArchiveOutbound => "年度资料档案化管理·资料流转·借出申请",
-            YearlyArchiveReturn => "年度资料档案化管理·资料流转·归还申请",
-            YearlyArchiveInventoryRegister => "年度资料档案化管理·盘库登记·模拟/电子资料盘库",
-            YearlyArchiveDisposal => "年度资料档案化管理·离库处置·模拟/电子资料离库处置",
-            NetworkInbound => "年度资料出入网管理·入网申请",
-            NetworkOutbound => "年度资料出入网管理·出网申请",
-            NetworkOnNetDisposal => "年度资料出入网管理·在网数据处置",
-            HardDiskOutbound => "介质管理·硬盘·出库申请",
-            HardDiskReturn => "介质管理·硬盘·归还申请",
-            HardDiskInventoryRegister => "介质管理·硬盘·盘库登记",
-            HardDiskDisposal => "介质管理·硬盘·离库处置",
+            HistoryArchiveDisposal => "历史存档·资料离库处置",
+            YearlyArchiveRegister => "年度资料·建档与立档·建档申请",
+            YearlyArchiveOutbound => "年度资料·实物流转·借出申请",
+            YearlyArchiveReturn => "年度资料·实物流转·归还申请",
+            YearlyArchiveInventoryRegister => "年度资料·盘库与离库·模拟/电子资料盘库",
+            YearlyArchiveDisposal => "年度资料·盘库与离库·模拟/电子资料离库处置",
+            NetworkInbound => "年度资料·出入网·入网申请",
+            NetworkOutbound => "年度资料·出入网·出网申请",
+            NetworkOnNetDisposal => "年度资料·出入网·在网数据处置",
+            HardDiskOutbound => "库房与介质·硬盘·出库申请",
+            HardDiskReturn => "库房与介质·硬盘·归还申请",
+            HardDiskInventoryRegister => "库房与介质·硬盘·盘库登记",
+            HardDiskDisposal => "库房与介质·硬盘·离库处置",
             _ => businessType?.Trim() ?? string.Empty
         };
     }

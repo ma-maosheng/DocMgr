@@ -143,8 +143,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         public string PageTitle => _workspaceMode == ArchiveRegisterWorkspaceMode.Approval
-            ? "资料登记审批办理表"
-            : "资料登记申请办理表";
+            ? "申请审批"
+            : "建档申请";
 
         public string PageSubtitle => _workspaceMode == ArchiveRegisterWorkspaceMode.Approval
             ? "Archive Register Approval Ledger"
@@ -445,9 +445,16 @@ namespace DocMgr.ViewModels.YearlyArchive
                     forceVoidEligible: overdueEligible);
             }
 
+            var user = _userContextService.CurrentUser;
+            bool isOwnerApplicant = user != null
+                && _archiveRegisterService.IsApplicantUser(user)
+                && string.Equals(
+                    SelectedRecord.ApplicantName?.Trim(),
+                    user.RealName?.Trim(),
+                    StringComparison.Ordinal);
             return ApplicationListActionSupport.CanApplicantWithdraw(
                 SelectedRecord.Status,
-                isOwnerApplicant: _archiveRegisterService.IsApplicantUser(_userContextService.CurrentUser),
+                isOwnerApplicant,
                 domainAllows: SelectedRecord.CanCancelRegister);
         }
 

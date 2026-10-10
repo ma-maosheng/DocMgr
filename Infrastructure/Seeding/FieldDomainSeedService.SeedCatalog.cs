@@ -132,7 +132,6 @@ public static partial class FieldDomainSeedService
                         new("MediaKind=电子", "U盘", "U盘", true, 10),
                         new("MediaKind=电子", "光盘", "光盘", true, 20),
                         new("MediaKind=电子", "硬盘", "硬盘", true, 30),
-                        new("MediaKind=电子", "内网", "内网", true, 40),
                         new("MediaKind=模拟", ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper, ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper, true, 50),
                         new("MediaKind=模拟", ArchiveRegisterDomainValues.SimulatedMediaTypeDrawingPaper, ArchiveRegisterDomainValues.SimulatedMediaTypeDrawingPaper, true, 60),
                         new("MediaKind=模拟", ArchiveRegisterDomainValues.SimulatedMediaTypePhotoPaper, ArchiveRegisterDomainValues.SimulatedMediaTypePhotoPaper, true, 70),

@@ -604,6 +604,8 @@ public sealed class ArchiveInventoryRegisterRepository : IArchiveInventoryRegist
 
     public Task SaveChangesAsync() => _dbContext.SaveChangesAsync();
 
+    public void ClearChangeTracker() => _dbContext.ChangeTracker.Clear();
+
     private async Task<IReadOnlyDictionary<int, SimulatedFilingFactCopyCountSnapshot>> LoadCopySnapshotsAsync(
         IReadOnlyCollection<int> filingFactIds)
     {

@@ -218,13 +218,13 @@ namespace DocMgr.ViewModels.SystemSettings
             set => SetProperty(ref _dictionaryStatusText, value);
         }
 
-        /// <summary>当前 SQLite 库路径，便于确认备份/还原目标。</summary>
+        /// <summary>当前 SQL Server 目标，便于确认备份/还原对象。</summary>
         public string DatabasePathText => _databaseBackupService.DatabasePath;
 
-        /// <summary>共享库时提醒其他终端先退出。</summary>
+        /// <summary>备份/还原提示。</summary>
         public string DatabaseBackupHintText => _databaseBackupService.IsNetworkPath
-            ? "当前为共享数据库。备份/还原前请先让其他终端退出；覆盖安装只替换程序文件，不要覆盖 DocMgr.db。"
-            : "覆盖安装只替换程序文件即可，数据库按迁移升级，不会冲库。不要把安装目录里的 DocMgr.db 一并覆盖。";
+            ? "当前为远程 SQL Server。备份/还原前请先让其他终端退出；覆盖安装只替换程序文件，不会改服务器上的库。"
+            : "备份生成 .bak 文件。覆盖安装只替换程序文件，数据库在 SQL Server 中按迁移升级，不会冲库。";
 
         public RelayCommand RefreshCommand { get; }
         public RelayCommand DeleteSelectedCommand { get; }
@@ -760,9 +760,9 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private async Task BackupDatabaseAsync()
         {
-            string defaultName = $"DocMgr-backup-{DateTime.Now:yyyyMMdd-HHmmss}.db";
+            string defaultName = $"DocMgr-backup-{DateTime.Now:yyyyMMdd-HHmmss}.bak";
             string? savePath = _dialogService.SaveFileDialog(
-                "SQLite 数据库|*.db|所有文件|*.*",
+                "SQL Server 备份|*.bak|所有文件|*.*",
                 "备份当前数据库",
                 defaultName);
             if (string.IsNullOrWhiteSpace(savePath))
@@ -799,14 +799,14 @@ namespace DocMgr.ViewModels.SystemSettings
 
             if (_databaseBackupService.IsNetworkPath
                 && !_dialogService.ShowConfirm(
-                    "当前使用共享数据库。还原会覆盖该共享库。\n\n请确认其他终端已退出后再继续。是否继续选择备份文件？",
-                    "共享库还原"))
+                    "当前使用远程 SQL Server。还原会覆盖该库。\n\n请确认其他终端已退出后再继续。是否继续选择备份文件？",
+                    "远程库还原"))
             {
                 return;
             }
 
             string? sourcePath = _dialogService.OpenFileDialog(
-                "SQLite 数据库|*.db|所有文件|*.*",
+                "SQL Server 备份|*.bak|所有文件|*.*",
                 "选择要还原的备份文件");
             if (string.IsNullOrWhiteSpace(sourcePath))
             {

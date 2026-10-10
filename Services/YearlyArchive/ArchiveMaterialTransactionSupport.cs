@@ -50,8 +50,8 @@ namespace DocMgr.Services.YearlyArchive
                 AfterContainerCode = fact.CurrentContainerCode,
                 BeforeStorageLocation = fact.CurrentStorageLocation,
                 AfterStorageLocation = fact.CurrentStorageLocation,
-                Summary = $"立档电子资料复制入网 · {item.AssetName}",
-                Remark = "仅复制数据，档案原件及保管关系不变。",
+                Summary = $"立档转入网 · {item.AssetName}",
+                Remark = "立档转入网为复制入网：仅复制数据，原件仍在资料室，保管关系不变。",
                 OperatorName = operatorName.Trim(),
                 OperatedAt = operatedAt,
                 CreatedAt = DateTime.Now
@@ -79,6 +79,63 @@ namespace DocMgr.Services.YearlyArchive
                 OperatedAt = operatedAt,
                 CreatedAt = DateTime.Now
             };
+        }
+
+        /// <summary>
+        /// 出网办结转建档后的立档履历（跨域：生产网 → 资料室）；与普通立档共用去重键，避免双写。
+        /// </summary>
+        public static YearlyArchiveMaterialTransaction BuildNetworkOutboundFilingTransaction(
+            YearlyArchiveFilingFact fact,
+            NetworkOutboundFilingOrigin origin)
+        {
+            ArgumentNullException.ThrowIfNull(fact);
+            ArgumentNullException.ThrowIfNull(origin);
+
+            DateTime operatedAt = fact.FiledAt;
+            string networkPath = ResolveOutboundNetworkPath(origin);
+            string outboundNo = origin.OutboundNo?.Trim() ?? string.Empty;
+
+            return new YearlyArchiveMaterialTransaction
+            {
+                FilingFactId = fact.Id,
+                TransactionType = MaterialTransactionDomainValues.TypeNetworkOutboundFiling,
+                BusinessNo = string.IsNullOrWhiteSpace(outboundNo) ? fact.FilingFactNo : outboundNo,
+                SourceKind = MaterialTransactionDomainValues.SourceNetworkOutboundRecord,
+                SourceId = origin.OutboundRecordId,
+                DedupKey = fact.Id > 0
+                    ? BuildFilingDedupKeyFromFactId(fact.Id)
+                    : BuildFilingDedupKey(fact),
+                AfterLifecycleStatus = FilingFactLifecycleStatus.InArchive,
+                AfterContainerCode = fact.ContainerCode,
+                AfterStorageLocation = fact.StorageLocation,
+                BeforeStorageLocation = networkPath,
+                Summary = $"出网转立档 · {fact.ContainerCode} · {fact.StorageLocation}",
+                Remark = string.IsNullOrWhiteSpace(outboundNo)
+                    ? "由出网申请转入资料室立档。"
+                    : $"由来源出网单 {outboundNo} 转入资料室立档。",
+                OperatorName = fact.FiledBy.Trim(),
+                OperatedAt = operatedAt,
+                CreatedAt = DateTime.Now
+            };
+        }
+
+        public static string ResolveOutboundNetworkPath(NetworkOutboundFilingOrigin origin)
+        {
+            ArgumentNullException.ThrowIfNull(origin);
+
+            string serverPath = origin.ServerPath?.Trim() ?? string.Empty;
+            string materialPath = origin.MaterialPath?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(serverPath))
+            {
+                return materialPath;
+            }
+
+            if (string.IsNullOrWhiteSpace(materialPath))
+            {
+                return serverPath;
+            }
+
+            return $"{serverPath.TrimEnd('\\', '/')}\\{materialPath.TrimStart('\\', '/')}";
         }
 
         public static YearlyArchiveMaterialTransaction BuildRelocationTransaction(

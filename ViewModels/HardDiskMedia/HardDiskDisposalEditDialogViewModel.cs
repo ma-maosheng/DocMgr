@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using DocMgr.Models.HardDiskMedia;
@@ -27,6 +28,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly IUserService _userService;
         private readonly IApprovalWorkflowService _approvalWorkflowService;
         private readonly List<HardDiskDisposalCandidateViewModel> _mediaPool = new();
+        private readonly SemaphoreSlim _persistReviewSignersGate = new(1, 1);
         private HardDiskDisposalRecord _record;
         private bool _hasCommittedChanges;
         private bool _isApplyingFilters;
@@ -1467,45 +1469,53 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task PersistReviewSignersAsync()
         {
-            if (_suppressReviewSignerPersist
-                || _record.Id <= 0
-                || _record.Status is not (HardDiskDisposalRecord.StatusApproved
-                    or HardDiskDisposalRecord.StatusSignedUploaded)
-                || !CanOperate)
-            {
-                return;
-            }
-
+            await _persistReviewSignersGate.WaitAsync().ConfigureAwait(true);
             try
             {
-                await _disposalService.UpdateReviewSignersAsync(
-                    _record.Id,
-                    _deptHead,
-                    _deptHeadDate,
-                    _archiveRoomHead,
-                    _archiveRoomHeadDate,
-                    _productionHead,
-                    _productionHeadDate,
-                    _archiveDeputyPresident,
-                    _archiveDeputyPresidentDate,
-                    _productionVicePresident,
-                    _productionVicePresidentDate,
-                    RequireCurrentUser());
-                _hasCommittedChanges = true;
-                _record.DeptHead = _deptHead.Trim();
-                _record.DeptHeadDate = _deptHeadDate;
-                _record.ArchiveRoomHead = _archiveRoomHead.Trim();
-                _record.ArchiveRoomHeadDate = _archiveRoomHeadDate;
-                _record.ProductionHead = _productionHead.Trim();
-                _record.ProductionHeadDate = _productionHeadDate;
-                _record.ArchiveDeputyPresident = _archiveDeputyPresident.Trim();
-                _record.ArchiveDeputyPresidentDate = _archiveDeputyPresidentDate;
-                _record.ProductionVicePresident = _productionVicePresident.Trim();
-                _record.ProductionVicePresidentDate = _productionVicePresidentDate;
+                if (_suppressReviewSignerPersist
+                    || _record.Id <= 0
+                    || _record.Status is not (HardDiskDisposalRecord.StatusApproved
+                        or HardDiskDisposalRecord.StatusSignedUploaded)
+                    || !CanOperate)
+                {
+                    return;
+                }
+
+                try
+                {
+                    await _disposalService.UpdateReviewSignersAsync(
+                        _record.Id,
+                        _deptHead,
+                        _deptHeadDate,
+                        _archiveRoomHead,
+                        _archiveRoomHeadDate,
+                        _productionHead,
+                        _productionHeadDate,
+                        _archiveDeputyPresident,
+                        _archiveDeputyPresidentDate,
+                        _productionVicePresident,
+                        _productionVicePresidentDate,
+                        RequireCurrentUser());
+                    _hasCommittedChanges = true;
+                    _record.DeptHead = _deptHead.Trim();
+                    _record.DeptHeadDate = _deptHeadDate;
+                    _record.ArchiveRoomHead = _archiveRoomHead.Trim();
+                    _record.ArchiveRoomHeadDate = _archiveRoomHeadDate;
+                    _record.ProductionHead = _productionHead.Trim();
+                    _record.ProductionHeadDate = _productionHeadDate;
+                    _record.ArchiveDeputyPresident = _archiveDeputyPresident.Trim();
+                    _record.ArchiveDeputyPresidentDate = _archiveDeputyPresidentDate;
+                    _record.ProductionVicePresident = _productionVicePresident.Trim();
+                    _record.ProductionVicePresidentDate = _productionVicePresidentDate;
+                }
+                catch (Exception ex)
+                {
+                    _dialogService.ShowError(ex.Message);
+                }
             }
-            catch (Exception ex)
+            finally
             {
-                _dialogService.ShowError(ex.Message);
+                _persistReviewSignersGate.Release();
             }
         }
 

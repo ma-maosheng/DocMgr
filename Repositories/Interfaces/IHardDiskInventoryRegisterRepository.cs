@@ -47,4 +47,7 @@ public interface IHardDiskInventoryRegisterRepository
     void RemoveAttachment(SystemAttachment attachment);
 
     Task SaveChangesAsync();
+
+    /// <summary>清空跟踪缓存；弹窗内多次保存草稿前/后调用，避免同键实体重复跟踪。</summary>
+    void ClearChangeTracker();
 }

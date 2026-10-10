@@ -7,6 +7,7 @@ using DocMgr.Models.Shared;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.NetworkTransfer;
 using DocMgr.Services.SystemSettings;
 
 namespace DocMgr.Services.YearlyArchive
@@ -398,11 +399,33 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveRegisterFlowResult.Fail("仅部门资料员可保存资料登记申请草稿。");
             }
 
+            if (record.Id > 0)
+            {
+                var existing = await _archiveRegisterRepository.GetByIdWithDetailsAsync(record.Id);
+                if (existing == null)
+                {
+                    return ArchiveRegisterFlowResult.Fail("未找到指定的登记申请单。");
+                }
+
+                if (!existing.IsDraft)
+                {
+                    return ArchiveRegisterFlowResult.Fail("只有“未提交”状态的登记单才能保存。");
+                }
+
+                string operatorName = operatorUser!.RealName?.Trim() ?? string.Empty;
+                if (!string.Equals(existing.ApplicantName?.Trim(), operatorName, StringComparison.Ordinal))
+                {
+                    return ArchiveRegisterFlowResult.Fail("仅申请人本人可保存该登记申请。");
+                }
+            }
+
             await EnsureFormNoAsync(record);
 
             record.ProofMaterialNote = ArchiveRegisterDomainValues.NormalizeProofMaterialNote(record.ProofMaterialNote);
             record.MarkAsDraft();
             record.MediaEntries = mediaEntries?.ToList() ?? new List<YearlyArchiveRegisterMedia>();
+            // 先清空跟踪：上方可能已 AsNoTracking/跟踪加载过同单，避免 SaveOrUpdate 再挂图时同键冲突。
+            _archiveRegisterRepository.ClearChangeTracker();
             await SaveOrUpdateAsync(record);
             await ApplyBorrowedHardDiskRegisterLockAsync(record);
             await _archiveRegisterRepository.SaveChangesAsync();
@@ -572,6 +595,25 @@ namespace DocMgr.Services.YearlyArchive
             if (!ArchiveRegisterBusinessRules.CanSubmitApplication(operatorUser))
             {
                 return ArchiveRegisterFlowResult.Fail("仅部门资料员可提交资料登记申请。");
+            }
+
+            string operatorName = operatorUser!.RealName?.Trim() ?? string.Empty;
+            if (record.Id > 0)
+            {
+                var existing = await _archiveRegisterRepository.GetByIdWithDetailsAsync(record.Id);
+                if (existing == null)
+                {
+                    return ArchiveRegisterFlowResult.Fail("未找到指定的登记申请单。");
+                }
+
+                if (!string.Equals(existing.ApplicantName?.Trim(), operatorName, StringComparison.Ordinal))
+                {
+                    return ArchiveRegisterFlowResult.Fail("仅申请人本人可提交该登记申请。");
+                }
+            }
+            else if (!string.Equals(record.ApplicantName?.Trim(), operatorName, StringComparison.Ordinal))
+            {
+                return ArchiveRegisterFlowResult.Fail("仅申请人本人可提交该登记申请。");
             }
 
             await EnsureFormNoAsync(record);
@@ -1167,20 +1209,19 @@ namespace DocMgr.Services.YearlyArchive
                         if (!IsAllowedDomainValue(media.MediaType, dataElectronicMediaTypeOptions))
                             errors.Add($"• 第{seq}条电子介质类型不在域值定义中（允许值：{string.Join("、", dataElectronicMediaTypeOptions)}）");
 
-                        bool isInnerNetworkMedia = string.Equals(
-                            media.MediaType?.Trim(),
-                            ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork,
-                            StringComparison.Ordinal);
-                        if (isInnerNetworkMedia && !isNetworkOutboundTransfer)
-                        {
-                            errors.Add("• 「内网」介质类型仅允许出网转入建档使用，请通过出网申请（资料室存档）发起");
-                        }
-
                         if (isNetworkOutboundTransfer)
                         {
-                            if (!isInnerNetworkMedia)
+                            bool isArchiveFilingCarrier = string.Equals(
+                                    media.MediaType?.Trim(),
+                                    ArchiveRegisterDomainValues.ElectronicMediaTypeOpticalDisc,
+                                    StringComparison.Ordinal)
+                                || string.Equals(
+                                    media.MediaType?.Trim(),
+                                    ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk,
+                                    StringComparison.Ordinal);
+                            if (!isArchiveFilingCarrier)
                             {
-                                errors.Add($"• 出网转入建档申请的第{seq}条电子介质类型须为「{ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork}」");
+                                errors.Add($"• 出网转入建档申请的第{seq}条电子介质类型须为「光盘」或「硬盘」");
                             }
 
                             if (!string.Equals(
@@ -1246,6 +1287,11 @@ namespace DocMgr.Services.YearlyArchive
 
                 if (electronicDispositions.Count > 1)
                     errors.Add("• 电子介质只能使用同一种处置方式");
+
+                if (isNetworkOutboundTransfer)
+                {
+                    NetworkOutboundRegisterMediaRulesSupport.ValidateArchiveFilingCarrier(electronicEntries, errors);
+                }
 
                 var simulatedEntries = entries
                     .Where(m => string.Equals(m.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.OrdinalIgnoreCase))

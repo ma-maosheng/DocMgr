@@ -25,7 +25,16 @@ public interface IDevSystemSettingsSeedRepository
 
     ProjectInfo? GetProjectInfoById(int id);
 
+    ProjectInfo? GetProjectInfoByCode(string projectCode);
+
+    ProjectInfo? GetProjectInfoByNameAndYear(string projectName, string implementYear);
+
     void AddProjectInfo(ProjectInfo projectInfo);
 
     int SaveChanges();
+
+    /// <summary>
+    /// 丢弃当前上下文未提交变更（种子失败时避免污染同作用域后续写入）。
+    /// </summary>
+    void RejectPendingChanges();
 }

@@ -7,6 +7,8 @@ using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -36,6 +38,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         private HardDiskMediaReturnTargetLocationOption? _selectedSourceHardDiskReturnLocationOption;
         private string _selectedBlankHardDiskCode = string.Empty;
         private int? _selectedBlankHardDiskMediumId;
+        private string _blankHardDiskCapacityDescription = string.Empty;
+        private string _sourceHardDiskCapacityDescription = string.Empty;
+        private string _targetHardDiskCapacityDescription = string.Empty;
+        private int _blankHardDiskCapacityVersion;
+        private int _sourceHardDiskCapacityVersion;
+        private int _targetHardDiskCapacityVersion;
         private bool _confirmHardDiskFormatted;
         private bool _confirmOpticalDiscDestroyed;
         private bool _executeBackupMechanism;
@@ -43,6 +51,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _isInitialized;
         private string _relocationNo = "待编单";
         private string _statusDisplay = "待办理";
+        private int _relocationModeChangeGeneration;
 
         public ArchiveElectronicRelocationViewModel(
             IArchiveRelocationService relocationService,
@@ -373,22 +382,55 @@ namespace DocMgr.ViewModels.YearlyArchive
                     PreviewText = string.Empty;
                     SelectedBlankHardDiskCode = string.Empty;
                     SelectedBlankHardDiskMediumId = null;
-                    _ = RefreshTargetsAsync();
+                    RequestTargetHardDiskCapacityRefresh();
                     RefreshDisplayItems();
-                    if (SourceSummary != null && (IsPhysicalMode || IsMoveToBlankCarrierMode))
-                    {
-                        _ = ResetTargetSlotSelectionAsync(preferSourceLocation: ShouldPreferSourceTargetSlot);
-                    }
-                    else
-                    {
-                        ClearTargetSlotSelection();
-                    }
-
-                    if (SourceSummary != null)
-                    {
-                        _ = RefreshSourceHardDiskReturnLocationOptionsAsync();
-                    }
+                    _ = ApplyRelocationModeChangedAsync();
                 }
+            }
+        }
+
+        /// <summary>
+        /// 迁档方式切换后顺序刷新目标列表/档口/原盘归位，避免并行打同一页面级 DbContext。
+        /// </summary>
+        private async Task ApplyRelocationModeChangedAsync()
+        {
+            int generation = Interlocked.Increment(ref _relocationModeChangeGeneration);
+            try
+            {
+                await RefreshTargetsAsync().ConfigureAwait(true);
+                if (generation != Volatile.Read(ref _relocationModeChangeGeneration))
+                {
+                    return;
+                }
+
+                if (SourceSummary != null && (IsPhysicalMode || IsMoveToBlankCarrierMode))
+                {
+                    await ResetTargetSlotSelectionAsync(preferSourceLocation: ShouldPreferSourceTargetSlot)
+                        .ConfigureAwait(true);
+                }
+                else
+                {
+                    ClearTargetSlotSelection();
+                }
+
+                if (generation != Volatile.Read(ref _relocationModeChangeGeneration))
+                {
+                    return;
+                }
+
+                if (SourceSummary != null)
+                {
+                    await RefreshSourceHardDiskReturnLocationOptionsAsync().ConfigureAwait(true);
+                }
+            }
+            catch (Exception ex)
+            {
+                if (generation != Volatile.Read(ref _relocationModeChangeGeneration))
+                {
+                    return;
+                }
+
+                _dialogService.ShowError(ex.GetBaseException().Message, "切换迁档方式失败");
             }
         }
 
@@ -405,6 +447,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     OnPropertyChanged(nameof(ShowSourceCurrentLocation));
                     OnPropertyChanged(nameof(SourceLinkedMediumCodesDisplayText));
                     OnPropertyChanged(nameof(SourceItemsDescriptionText));
+                    RequestSourceHardDiskCapacityRefresh();
                     OnPropertyChanged(nameof(RequiresHardDiskConfirmation));
                     OnPropertyChanged(nameof(RequiresOpticalDiscConfirmation));
                     OnPropertyChanged(nameof(RequiresHardDiskReturnLocation));
@@ -461,6 +504,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     OnPropertyChanged(nameof(TargetSummaryText));
                     OnPropertyChanged(nameof(TargetLinkedMediumCodesDisplayText));
                     OnPropertyChanged(nameof(TargetItemsDescriptionText));
+                    RequestTargetHardDiskCapacityRefresh();
                     OnPropertyChanged(nameof(ShowTargetDescription));
                     OnPropertyChanged(nameof(ItemsSectionHeader));
                     OnPropertyChanged(nameof(ShowItemsEmptyHint));
@@ -503,7 +547,34 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string SelectedBlankHardDiskCode
         {
             get => _selectedBlankHardDiskCode;
-            private set => SetProperty(ref _selectedBlankHardDiskCode, value);
+            private set
+            {
+                if (SetProperty(ref _selectedBlankHardDiskCode, value))
+                {
+                    RequestBlankHardDiskCapacityRefresh();
+                }
+            }
+        }
+
+        /// <summary>拟迁入空白硬盘的可用容量说明。</summary>
+        public string BlankHardDiskCapacityDescription
+        {
+            get => _blankHardDiskCapacityDescription;
+            private set => SetProperty(ref _blankHardDiskCapacityDescription, value);
+        }
+
+        /// <summary>源电子袋已立档硬盘的可用容量说明。</summary>
+        public string SourceHardDiskCapacityDescription
+        {
+            get => _sourceHardDiskCapacityDescription;
+            private set => SetProperty(ref _sourceHardDiskCapacityDescription, value);
+        }
+
+        /// <summary>并档目标硬盘的可用容量说明。</summary>
+        public string TargetHardDiskCapacityDescription
+        {
+            get => _targetHardDiskCapacityDescription;
+            private set => SetProperty(ref _targetHardDiskCapacityDescription, value);
         }
 
         public int? SelectedBlankHardDiskMediumId
@@ -868,6 +939,53 @@ namespace DocMgr.ViewModels.YearlyArchive
             SelectedBlankHardDiskCode = targetMedium.DiskCode;
             SelectedBlankHardDiskMediumId = targetMedium.Id;
             PreviewText = string.Empty;
+        }
+
+        private void RequestBlankHardDiskCapacityRefresh()
+        {
+            int version = ++_blankHardDiskCapacityVersion;
+            _ = ApplyHardDiskCapacityAsync(
+                version,
+                () => _blankHardDiskCapacityVersion,
+                IsMoveToBlankHardDiskMode ? SelectedBlankHardDiskCode : string.Empty,
+                value => BlankHardDiskCapacityDescription = value);
+        }
+
+        private void RequestSourceHardDiskCapacityRefresh()
+        {
+            int version = ++_sourceHardDiskCapacityVersion;
+            _ = ApplyHardDiskCapacityAsync(
+                version,
+                () => _sourceHardDiskCapacityVersion,
+                SourceSummary?.ActiveLinkedMediumCode,
+                value => SourceHardDiskCapacityDescription = value);
+        }
+
+        private void RequestTargetHardDiskCapacityRefresh()
+        {
+            int version = ++_targetHardDiskCapacityVersion;
+            _ = ApplyHardDiskCapacityAsync(
+                version,
+                () => _targetHardDiskCapacityVersion,
+                IsMergeMode ? TargetSummary?.ActiveLinkedMediumCode : string.Empty,
+                value => TargetHardDiskCapacityDescription = value);
+        }
+
+        private async Task ApplyHardDiskCapacityAsync(
+            int version,
+            Func<int> currentVersion,
+            string? diskCode,
+            Action<string> assign)
+        {
+            string description = await HardDiskCapacityDescriptionLoader.LoadAsync(
+                _filingService,
+                diskCode?.Trim() ?? string.Empty);
+            if (version != currentVersion())
+            {
+                return;
+            }
+
+            assign(description);
         }
 
         private void ShowSourceHardDiskReturnSlotSnapshot()

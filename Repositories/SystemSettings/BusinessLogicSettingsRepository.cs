@@ -16,15 +16,18 @@ namespace DocMgr.Repositories.SystemSettings
 
         public async Task<BusinessLogicSettings> GetOrCreateAsync(Func<BusinessLogicSettings> defaultFactory)
         {
+            // 单例表：取现存第一行（约定为首次插入由 IDENTITY 得到 Id=1）。
             var settings = await _dbContext.BusinessLogicSettings
-                .FirstOrDefaultAsync(item => item.Id == BusinessLogicSettings.SingletonId);
+                .OrderBy(item => item.Id)
+                .FirstOrDefaultAsync();
             if (settings != null)
             {
                 return settings;
             }
 
             settings = defaultFactory();
-            settings.Id = BusinessLogicSettings.SingletonId;
+            // Id 保持 0，由数据库 IDENTITY 生成，避免 SQL Server「IDENTITY_INSERT=OFF」错误。
+            settings.Id = 0;
             settings.UpdatedAt = DateTime.Now;
             _dbContext.BusinessLogicSettings.Add(settings);
 
@@ -35,8 +38,11 @@ namespace DocMgr.Repositories.SystemSettings
             }
             catch (DbUpdateException)
             {
+                // 并发首插：清空跟踪后读已有行。
+                _dbContext.ChangeTracker.Clear();
                 var existing = await _dbContext.BusinessLogicSettings
-                    .FirstOrDefaultAsync(item => item.Id == BusinessLogicSettings.SingletonId);
+                    .OrderBy(item => item.Id)
+                    .FirstOrDefaultAsync();
                 if (existing != null)
                 {
                     return existing;
@@ -50,7 +56,11 @@ namespace DocMgr.Repositories.SystemSettings
         {
             ArgumentNullException.ThrowIfNull(settings);
 
-            settings.Id = BusinessLogicSettings.SingletonId;
+            if (settings.Id <= 0)
+            {
+                throw new InvalidOperationException("业务逻辑设置尚未初始化，无法保存。");
+            }
+
             settings.UpdatedAt = DateTime.Now;
             _dbContext.BusinessLogicSettings.Update(settings);
             await _dbContext.SaveChangesAsync();

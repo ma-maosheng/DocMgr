@@ -280,4 +280,6 @@ public sealed class HardDiskDisposalRepository : IHardDiskDisposalRepository
     }
 
     public Task SaveChangesAsync() => _dbContext.SaveChangesAsync();
+
+    public void ClearChangeTracker() => _dbContext.ChangeTracker.Clear();
 }

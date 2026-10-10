@@ -1,8 +1,10 @@
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.Shared;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -27,9 +29,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveRegisterService _archiveRegisterService;
         private readonly IDialogService _dialogService;
         private readonly IElectronicMediaContentScanService _electronicMediaContentScanService;
-        private readonly IHardDiskMediaService _hardDiskMediaService;
         private readonly IUserContextService _userContextService;
         private readonly IUserService _userService;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         private readonly List<string> _allElectronicDispositionOptions = new();
         private readonly List<string> _electronicDocumentSubCategoryOptions = new();
@@ -38,8 +40,20 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly Dictionary<MediaItemViewModel, NotifyCollectionChangedEventHandler> _contentEntryQuantityHandlers = new();
 
         private bool _isInitialized;
-        private bool _isSyncingElectronicMediaSettings;
+        private int _electronicMediaSettingsSyncDepth;
         private bool _borrowedHardDiskCodesRefreshInProgress;
+
+        private bool IsSyncingElectronicMediaSettings => _electronicMediaSettingsSyncDepth > 0;
+
+        private void BeginElectronicMediaSettingsSync() => _electronicMediaSettingsSyncDepth++;
+
+        private void EndElectronicMediaSettingsSync()
+        {
+            if (_electronicMediaSettingsSyncDepth > 0)
+            {
+                _electronicMediaSettingsSyncDepth--;
+            }
+        }
 
         private bool _canEditForm;
         private bool _canEditItemConfidentialLevel;
@@ -47,6 +61,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _restrictRetainedHardDiskToBorrowedOnly;
         private bool _enableRetainedHardDiskBorrowedRegistration = true;
         private bool _showOutboundExternalHardDiskRequisitionFields;
+        private bool _showArchiveFilingHardDiskFields;
         private bool _showElectronicDispositionInHeader = true;
         private bool _allowElectronicContentScan = true;
         private string _sectionHeader = "资料介质（电子）";
@@ -58,16 +73,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             IArchiveRegisterService archiveRegisterService,
             IDialogService dialogService,
             IElectronicMediaContentScanService electronicMediaContentScanService,
-            IHardDiskMediaService hardDiskMediaService,
             IUserContextService userContextService,
-            IUserService userService)
+            IUserService userService,
+            IServiceScopeFactory scopeFactory)
         {
             _archiveRegisterService = archiveRegisterService ?? throw new ArgumentNullException(nameof(archiveRegisterService));
             _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
             _electronicMediaContentScanService = electronicMediaContentScanService ?? throw new ArgumentNullException(nameof(electronicMediaContentScanService));
-            _hardDiskMediaService = hardDiskMediaService ?? throw new ArgumentNullException(nameof(hardDiskMediaService));
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
             _userService = userService ?? throw new ArgumentNullException(nameof(userService));
+            _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
 
             DataElectronicMediaView = new ListCollectionView(MediaEntries)
             {
@@ -96,7 +111,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 item => item != null && item.HasScannedEntries && CanViewElectronicContentEntries());
             PickOutboundBlankHardDiskCommand = new RelayCommand<MediaEntryViewModel>(
                 media => PickOutboundBlankHardDisk(media),
-                media => CanEditForm && media != null && ShowOutboundExternalHardDiskRequisitionFields && media.OutboundBlankHardDiskFieldsVisibility);
+                media => CanPickOutboundBlankHardDisk(media));
         }
 
         public ObservableCollection<MediaEntryViewModel> MediaEntries { get; } = new();
@@ -126,7 +141,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             get => _selectedElectronicMediaType;
             set
             {
-                if (!_isSyncingElectronicMediaSettings
+                if (!IsSyncingElectronicMediaSettings
                     && LockElectronicMediaTypeAndDisposition
                     && !string.IsNullOrWhiteSpace(_selectedElectronicMediaType)
                     && !string.Equals(value, _selectedElectronicMediaType, StringComparison.Ordinal))
@@ -134,8 +149,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                if (SetProperty(ref _selectedElectronicMediaType, value))
+                if (SetProperty(ref _selectedElectronicMediaType, value)
+                    && !IsSyncingElectronicMediaSettings)
                 {
+                    // 同步重建选项时跳过副作用，避免 Clear 触发的 null 回写冲掉明细 MediaType。
                     RefreshElectronicDispositionOptions();
                     ApplySelectedElectronicMediaSettingsToEntries();
                 }
@@ -147,7 +164,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             get => _selectedElectronicDisposition;
             set
             {
-                if (!_isSyncingElectronicMediaSettings
+                if (!IsSyncingElectronicMediaSettings
                     && LockElectronicMediaTypeAndDisposition
                     && !string.IsNullOrWhiteSpace(_selectedElectronicDisposition)
                     && !string.Equals(value, _selectedElectronicDisposition, StringComparison.Ordinal))
@@ -155,7 +172,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                if (SetProperty(ref _selectedElectronicDisposition, value))
+                if (SetProperty(ref _selectedElectronicDisposition, value)
+                    && !IsSyncingElectronicMediaSettings)
                 {
                     ApplySelectedElectronicMediaSettingsToEntries();
                 }
@@ -274,6 +292,112 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         /// <summary>
+        /// 资料室存档：硬盘可选库内空盘或并档目标，不展示归还。
+        /// </summary>
+        public bool ShowArchiveFilingHardDiskFields
+        {
+            get => _showArchiveFilingHardDiskFields;
+            set
+            {
+                if (SetProperty(ref _showArchiveFilingHardDiskFields, value))
+                {
+                    foreach (MediaEntryViewModel media in MediaEntries)
+                    {
+                        media.NotifyArchiveFilingHardDiskPropertiesChanged();
+                    }
+
+                    CommandManager.InvalidateRequerySuggested();
+                }
+            }
+        }
+
+        public ObservableCollection<ArchiveFilingAppendTargetOption> ArchiveFilingAppendTargets { get; } = new();
+
+        /// <summary>
+        /// 替换并档候选，并按已保存的电子袋 Id 回选。
+        /// </summary>
+        /// <param name="retainUnlistedSavedTargets">
+        /// 为 true 时，已保存但不在本次候选中的并入硬盘仍保留并显示，避免刷新下拉后丢失。
+        /// 离开资料室存档场景时应传 false，以便清空不再适用的并档选择。
+        /// </param>
+        public void ReplaceArchiveFilingAppendTargets(
+            IReadOnlyList<ArchiveFilingAppendTargetOption> options,
+            bool retainUnlistedSavedTargets = false)
+        {
+            List<MediaEntryViewModel> medias = MediaEntries
+                .Where(RegisterMediaTreeSupport.IsDataElectronic)
+                .ToList();
+            var snapshots = medias
+                .Select(media => (
+                    media,
+                    media.AppendTargetElectronicUnitId,
+                    media.AppendTargetHardDiskCode))
+                .ToList();
+
+            var merged = new List<ArchiveFilingAppendTargetOption>(options);
+            if (retainUnlistedSavedTargets)
+            {
+                foreach (var (_, unitId, diskCode) in snapshots)
+                {
+                    if (unitId is not > 0 || merged.Any(option => option.UnitId == unitId.Value))
+                    {
+                        continue;
+                    }
+
+                    string code = diskCode?.Trim() ?? string.Empty;
+                    merged.Insert(0, new ArchiveFilingAppendTargetOption
+                    {
+                        UnitId = unitId.Value,
+                        DiskCode = code,
+                        DisplayText = string.IsNullOrWhiteSpace(code)
+                            ? $"已选并档硬盘（袋 {unitId.Value}）"
+                            : code
+                    });
+                }
+            }
+
+            foreach (MediaEntryViewModel media in medias)
+            {
+                media.BeginAppendTargetSelectionWritebackSuppression();
+            }
+
+            try
+            {
+                // 必须先抑制：Clear 会让 ComboBox 把 SelectedItem 写成 null，并回写清空并入硬盘。
+                ArchiveFilingAppendTargets.Clear();
+                foreach (ArchiveFilingAppendTargetOption option in merged)
+                {
+                    ArchiveFilingAppendTargets.Add(option);
+                }
+
+                foreach (var (media, unitId, diskCode) in snapshots)
+                {
+                    if (media.AppendTargetElectronicUnitId is not > 0 && unitId is > 0)
+                    {
+                        media.AppendTargetElectronicUnitId = unitId;
+                        if (string.IsNullOrWhiteSpace(media.AppendTargetHardDiskCode))
+                        {
+                            media.AppendTargetHardDiskCode = diskCode ?? string.Empty;
+                        }
+                    }
+
+                    media.SyncAppendTargetSelection(ArchiveFilingAppendTargets, clearIfMissing: !retainUnlistedSavedTargets);
+                }
+            }
+            finally
+            {
+                foreach (MediaEntryViewModel media in medias)
+                {
+                    media.EndAppendTargetSelectionWritebackSuppression();
+                }
+            }
+
+            OnPropertyChanged(nameof(HasArchiveFilingAppendTargets));
+        }
+
+        public bool HasArchiveFilingAppendTargets => ArchiveFilingAppendTargets.Count > 0;
+
+        /// <summary>
         /// 硬盘·介质留存时仅允许资料室借出硬盘，且必须填写借出硬盘编号。
         /// </summary>
         public bool RestrictRetainedHardDiskToBorrowedOnly
@@ -356,28 +480,51 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// </summary>
         public async Task LoadDomainOptionsAsync()
         {
-            var domainOptions = await _archiveRegisterService.GetPageDomainOptionsAsync();
+            // 独立 scope：本方法常在宿主 Initialize 期间执行，且容量/借出列表会 fire-and-forget，
+            // 不可与宿主页面级 DbContext 叠查。
+            ArchiveRegisterPageDomainOptions domainOptions;
+            using (IServiceScope scope = _scopeFactory.CreateScope())
+            {
+                var register = scope.ServiceProvider.GetRequiredService<IArchiveRegisterService>();
+                domainOptions = await register.GetPageDomainOptionsAsync().ConfigureAwait(true);
+            }
 
-            ApplyOptions(DataElectronicMediaTypeOptions,
-                GetAllowedElectronicMediaTypeOptions(domainOptions.DataElectronicMediaTypes));
-            _allElectronicMediaTypeOptions.Clear();
-            _allElectronicMediaTypeOptions.AddRange(
-                ArchiveRegisterBusinessRules.FilterManualSelectableElectronicMediaTypes(domainOptions.DataElectronicMediaTypes));
-            ApplyOptions(DataElectronicDispositionOptions, domainOptions.DataElectronicDispositions);
-            _allElectronicDispositionOptions.Clear();
-            _allElectronicDispositionOptions.AddRange(domainOptions.DataElectronicDispositions);
-            ApplyOptions(ElectronicMaterialCategoryOptions, domainOptions.ElectronicMaterialCategories);
-            ApplyOptions(ElectronicDataOrganizationFormOptions, domainOptions.ElectronicDataOrganizationForms);
-            _electronicDocumentSubCategoryOptions.Clear();
-            _electronicDocumentSubCategoryOptions.AddRange(domainOptions.ElectronicDocumentSubCategories);
-            _electronicDataSubCategoryOptions.Clear();
-            _electronicDataSubCategoryOptions.AddRange(domainOptions.ElectronicDataSubCategories);
-            _electronicSoftwareSubCategoryOptions.Clear();
-            _electronicSoftwareSubCategoryOptions.AddRange(domainOptions.ElectronicSoftwareSubCategories);
-            ApplyOptions(ConfidentialLevelOptions, domainOptions.ConfidentialLevels);
-            ApplyOptions(SourceTypeOptions, domainOptions.SourceTypes);
-            LoadDepartments();
+            string preferredMediaType = SelectedElectronicMediaType;
+            string preferredDisposition = SelectedElectronicDisposition;
 
+            BeginElectronicMediaSettingsSync();
+            try
+            {
+                ApplyOptions(DataElectronicMediaTypeOptions,
+                    GetAllowedElectronicMediaTypeOptions(domainOptions.DataElectronicMediaTypes));
+                _allElectronicMediaTypeOptions.Clear();
+                _allElectronicMediaTypeOptions.AddRange(
+                    ArchiveRegisterBusinessRules.FilterManualSelectableElectronicMediaTypes(domainOptions.DataElectronicMediaTypes));
+                ApplyOptions(DataElectronicDispositionOptions, domainOptions.DataElectronicDispositions);
+                _allElectronicDispositionOptions.Clear();
+                _allElectronicDispositionOptions.AddRange(domainOptions.DataElectronicDispositions);
+                ApplyOptions(ElectronicMaterialCategoryOptions, domainOptions.ElectronicMaterialCategories);
+                ApplyOptions(ElectronicDataOrganizationFormOptions, domainOptions.ElectronicDataOrganizationForms);
+                _electronicDocumentSubCategoryOptions.Clear();
+                _electronicDocumentSubCategoryOptions.AddRange(domainOptions.ElectronicDocumentSubCategories);
+                _electronicDataSubCategoryOptions.Clear();
+                _electronicDataSubCategoryOptions.AddRange(domainOptions.ElectronicDataSubCategories);
+                _electronicSoftwareSubCategoryOptions.Clear();
+                _electronicSoftwareSubCategoryOptions.AddRange(domainOptions.ElectronicSoftwareSubCategories);
+                ApplyOptions(ConfidentialLevelOptions, domainOptions.ConfidentialLevels);
+                ApplyOptions(SourceTypeOptions, domainOptions.SourceTypes);
+                LoadDepartments();
+
+                SelectedElectronicMediaType = ComboBoxSelectionPreserveSupport.ResolvePreferredOrFirst(
+                    DataElectronicMediaTypeOptions,
+                    preferredMediaType);
+            }
+            finally
+            {
+                EndElectronicMediaSettingsSync();
+            }
+
+            SelectedElectronicDisposition = preferredDisposition;
             RefreshElectronicDispositionOptions();
             EnsureElectronicMediaSelections();
             foreach (var item in MediaEntries.SelectMany(entry => entry.Items))
@@ -425,6 +572,39 @@ namespace DocMgr.ViewModels.YearlyArchive
             EnsureUserBorrowedHardDiskListIncludesSelected();
             EnforceRetainedHardDiskBorrowedRegistration();
             RefreshOutboundItemStoragePaths();
+            // 并档候选在回填介质之前加载。这里按已保存的电子袋 Id 补进下拉并回选，否则容量能显示、选中文本为空。
+            EnsureSavedAppendTargetsListed();
+            foreach (MediaEntryViewModel media in MediaEntries.Where(RegisterMediaTreeSupport.IsDataElectronic))
+            {
+                media.SyncAppendTargetSelection(ArchiveFilingAppendTargets, clearIfMissing: false);
+                RequestHardDiskCapacityRefresh(media);
+            }
+        }
+
+        /// <summary>
+        /// 已保存的并入硬盘若不在当前候选中，补一条只读选项，保证下拉能显示编号。
+        /// </summary>
+        private void EnsureSavedAppendTargetsListed()
+        {
+            foreach (MediaEntryViewModel media in MediaEntries.Where(RegisterMediaTreeSupport.IsDataElectronic))
+            {
+                if (media.AppendTargetElectronicUnitId is not > 0
+                    || ArchiveFilingAppendTargets.Any(option => option.UnitId == media.AppendTargetElectronicUnitId.Value))
+                {
+                    continue;
+                }
+
+                string code = media.AppendTargetHardDiskCode?.Trim() ?? string.Empty;
+                int unitId = media.AppendTargetElectronicUnitId.Value;
+                ArchiveFilingAppendTargets.Insert(0, new ArchiveFilingAppendTargetOption
+                {
+                    UnitId = unitId,
+                    DiskCode = code,
+                    DisplayText = string.IsNullOrWhiteSpace(code)
+                        ? $"已选并档硬盘（袋 {unitId}）"
+                        : code
+                });
+            }
         }
 
         /// <summary>
@@ -464,13 +644,29 @@ namespace DocMgr.ViewModels.YearlyArchive
             ApplyBorrowedHardDiskRegistrationVisibilityToEntries();
             foreach (MediaEntryViewModel media in MediaEntries.Where(RegisterMediaTreeSupport.IsDataElectronic))
             {
-                if (!ShowOutboundExternalHardDiskRequisitionFields)
+                if (!ShowOutboundExternalHardDiskRequisitionFields && !ShowArchiveFilingHardDiskFields)
                 {
                     media.UseInStockBlankHardDisk = false;
                     media.ClearOutboundRequisitionedDiskState();
+                    media.ClearAppendTarget();
+                }
+                else if (ShowArchiveFilingHardDiskFields)
+                {
+                    media.RequisitionedDiskNeedReturn = false;
+                    media.ExpectedReturnDate = null;
+                    if (!media.IsArchiveFilingHardDiskScenario)
+                    {
+                        media.ClearAppendTarget();
+                    }
+                }
+                else
+                {
+                    media.ClearAppendTarget();
                 }
 
                 media.NotifyOutboundHardDiskRequisitionPropertiesChanged();
+                media.NotifyArchiveFilingHardDiskPropertiesChanged();
+                RequestHardDiskCapacityRefresh(media);
             }
 
             RefreshOutboundItemStoragePaths();
@@ -479,42 +675,38 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// <summary>
         /// 按当前解析器刷新可选电子介质类型。
         /// </summary>
+        /// <remarks>
+        /// 必须先记住当前/明细上的类型，再 Clear 选项集合：ComboBox 默认 TwoWay，
+        /// Clear 时会把 SelectedItem 写成 null 并回写到本属性，进而经
+        /// <see cref="ApplySelectedElectronicMediaSettingsToEntries"/> 把明细 MediaType
+        /// 冲成空，随后又落到允许列表首项（出网外部离线为「光盘」）。
+        /// </remarks>
         public void RefreshAllowedElectronicMediaTypeOptions()
         {
             var allowedTypes = GetAllowedElectronicMediaTypeOptions(_allElectronicMediaTypeOptions);
-            ApplyOptions(DataElectronicMediaTypeOptions, allowedTypes);
 
-            string? entryMediaType = MediaEntries
+            // Clear 选项前先固化偏好，避免 WPF ComboBox 绑定在集合重建时冲掉已选类型。
+            string preferredMediaType = MediaEntries
                 .FirstOrDefault(RegisterMediaTreeSupport.IsDataElectronic)
-                ?.MediaType?.Trim();
-            if (!string.IsNullOrWhiteSpace(entryMediaType))
+                ?.MediaType?.Trim()
+                ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(preferredMediaType))
             {
-                string? entryMatched = allowedTypes.FirstOrDefault(option =>
-                    string.Equals(option, entryMediaType, StringComparison.OrdinalIgnoreCase));
-                if (entryMatched != null)
-                {
-                    if (!string.Equals(SelectedElectronicMediaType, entryMatched, StringComparison.Ordinal))
-                    {
-                        SelectedElectronicMediaType = entryMatched;
-                    }
-
-                    return;
-                }
+                preferredMediaType = SelectedElectronicMediaType?.Trim() ?? string.Empty;
             }
 
-            string current = SelectedElectronicMediaType?.Trim() ?? string.Empty;
-            string? matched = allowedTypes.FirstOrDefault(option =>
-                string.Equals(option, current, StringComparison.OrdinalIgnoreCase));
-            if (matched != null)
+            BeginElectronicMediaSettingsSync();
+            try
             {
-                if (!string.Equals(SelectedElectronicMediaType, matched, StringComparison.Ordinal))
-                {
-                    SelectedElectronicMediaType = matched;
-                }
+                ApplyOptions(DataElectronicMediaTypeOptions, allowedTypes);
+
+                string? matched = allowedTypes.FirstOrDefault(option =>
+                    string.Equals(option, preferredMediaType, StringComparison.OrdinalIgnoreCase));
+                SelectedElectronicMediaType = matched ?? (allowedTypes.FirstOrDefault() ?? string.Empty);
             }
-            else
+            finally
             {
-                SelectedElectronicMediaType = allowedTypes.FirstOrDefault() ?? string.Empty;
+                EndElectronicMediaSettingsSync();
             }
         }
 
@@ -596,6 +788,14 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void MediaEntry_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
+            if (sender is MediaEntryViewModel capacityMedia
+                && e.PropertyName is nameof(MediaEntryViewModel.RequisitionedHardDiskCode)
+                    or nameof(MediaEntryViewModel.AppendTargetHardDiskCode)
+                    or nameof(MediaEntryViewModel.UseInStockBlankHardDisk))
+            {
+                RequestHardDiskCapacityRefresh(capacityMedia);
+            }
+
             if (e.PropertyName == nameof(MediaEntryViewModel.MediaKind)
                 || e.PropertyName == nameof(MediaEntryViewModel.MediaType)
                 || e.PropertyName == nameof(MediaEntryViewModel.Disposition)
@@ -702,9 +902,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 IsBorrowedHardDisk = false,
                 BorrowedHardDiskCode = string.Empty
             };
+            entry.ResolveAppendTargetOption = ResolveAppendTargetOption;
             entry.SetShowBorrowedHardDiskRegistrationUi(EnableRetainedHardDiskBorrowedRegistration);
             entry.Items.Add(CreateDefaultElectronicMediaItem());
             MediaEntries.Add(entry);
+            entry.SyncAppendTargetSelection(ArchiveFilingAppendTargets);
             RecalculateQuantities(entry);
             ApplySelectedElectronicMediaSettingsToEntries();
         }
@@ -745,13 +947,17 @@ namespace DocMgr.ViewModels.YearlyArchive
                 media,
                 ResolveConfidentialLevelFromRecord,
                 ConfigureElectronicMediaItem);
+            vm.ResolveAppendTargetOption = ResolveAppendTargetOption;
             RecalculateQuantities(vm);
             return vm;
         }
 
+        private ArchiveFilingAppendTargetOption? ResolveAppendTargetOption(int unitId) =>
+            ArchiveFilingAppendTargets.FirstOrDefault(option => option.UnitId == unitId);
+
         private void EnsureElectronicMediaSelections()
         {
-            _isSyncingElectronicMediaSettings = true;
+            BeginElectronicMediaSettingsSync();
             try
             {
                 if (string.IsNullOrWhiteSpace(SelectedElectronicMediaType))
@@ -766,7 +972,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             finally
             {
-                _isSyncingElectronicMediaSettings = false;
+                EndElectronicMediaSettingsSync();
             }
 
             SyncBorrowedHardDiskSettingsFromSelections();
@@ -799,7 +1005,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             var firstElectronicMedia = MediaEntries.FirstOrDefault(RegisterMediaTreeSupport.IsDataElectronic);
 
-            _isSyncingElectronicMediaSettings = true;
+            BeginElectronicMediaSettingsSync();
             try
             {
                 string rawMediaType = string.IsNullOrWhiteSpace(firstElectronicMedia?.MediaType)
@@ -824,7 +1030,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             finally
             {
-                _isSyncingElectronicMediaSettings = false;
+                EndElectronicMediaSettingsSync();
             }
 
             SyncBorrowedHardDiskSettingsFromSelections();
@@ -832,7 +1038,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void ApplySelectedElectronicMediaSettingsToEntries()
         {
-            if (_isSyncingElectronicMediaSettings)
+            if (IsSyncingElectronicMediaSettings)
             {
                 return;
             }
@@ -873,20 +1079,28 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void RefreshElectronicDispositionOptions()
         {
             var allowedOptions = GetAllowedElectronicDispositionOptions();
-            ApplyOptions(DataElectronicDispositionOptions, allowedOptions);
 
-            string current = SelectedElectronicDisposition?.Trim() ?? string.Empty;
-            string? canon = allowedOptions.FirstOrDefault(o => string.Equals(o, current, StringComparison.OrdinalIgnoreCase));
-            if (canon != null)
+            string preferredDisposition = MediaEntries
+                .FirstOrDefault(RegisterMediaTreeSupport.IsDataElectronic)
+                ?.Disposition?.Trim()
+                ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(preferredDisposition))
             {
-                if (!string.Equals(SelectedElectronicDisposition, canon, StringComparison.Ordinal))
-                {
-                    SelectedElectronicDisposition = canon;
-                }
+                preferredDisposition = SelectedElectronicDisposition?.Trim() ?? string.Empty;
             }
-            else
+
+            BeginElectronicMediaSettingsSync();
+            try
             {
-                SelectedElectronicDisposition = allowedOptions.FirstOrDefault() ?? string.Empty;
+                ApplyOptions(DataElectronicDispositionOptions, allowedOptions);
+
+                string? canon = allowedOptions.FirstOrDefault(o =>
+                    string.Equals(o, preferredDisposition, StringComparison.OrdinalIgnoreCase));
+                SelectedElectronicDisposition = canon ?? (allowedOptions.FirstOrDefault() ?? string.Empty);
+            }
+            finally
+            {
+                EndElectronicMediaSettingsSync();
             }
 
             SyncBorrowedHardDiskSettingsFromSelections();
@@ -902,9 +1116,62 @@ namespace DocMgr.ViewModels.YearlyArchive
             return ArchiveRegisterBusinessRules.FilterManualSelectableElectronicMediaTypes(allMediaTypeOptions);
         }
 
+        private void RequestHardDiskCapacityRefresh(MediaEntryViewModel media)
+        {
+            _ = RefreshHardDiskCapacityDescriptionAsync(media);
+        }
+
+        private async Task RefreshHardDiskCapacityDescriptionAsync(MediaEntryViewModel media)
+        {
+            string diskCode = ResolveHardDiskCapacityDiskCode(media);
+            if (string.IsNullOrWhiteSpace(diskCode))
+            {
+                media.HardDiskCapacityDescription = string.Empty;
+                return;
+            }
+
+            string description;
+            using (IServiceScope scope = _scopeFactory.CreateScope())
+            {
+                var filing = scope.ServiceProvider.GetRequiredService<IArchiveFilingService>();
+                description = await HardDiskCapacityDescriptionLoader.LoadAsync(filing, diskCode)
+                    .ConfigureAwait(true);
+            }
+
+            if (string.Equals(ResolveHardDiskCapacityDiskCode(media), diskCode, StringComparison.Ordinal))
+            {
+                media.HardDiskCapacityDescription = description;
+            }
+        }
+
+        private string ResolveHardDiskCapacityDiskCode(MediaEntryViewModel media)
+        {
+            if (!ShowOutboundExternalHardDiskRequisitionFields && !ShowArchiveFilingHardDiskFields)
+            {
+                return string.Empty;
+            }
+
+            if (media.OutboundBlankHardDiskFieldsVisibility || media.ArchiveFilingBlankDiskFieldsVisibility)
+            {
+                return media.RequisitionedHardDiskCode?.Trim() ?? string.Empty;
+            }
+
+            if (media.ArchiveFilingAppendTargetVisibility)
+            {
+                return media.AppendTargetHardDiskCode?.Trim() ?? string.Empty;
+            }
+
+            return string.Empty;
+        }
+
+        private bool CanPickOutboundBlankHardDisk(MediaEntryViewModel? media) =>
+            CanEditForm
+            && media != null
+            && (media.OutboundBlankHardDiskFieldsVisibility || media.ArchiveFilingBlankDiskFieldsVisibility);
+
         private void PickOutboundBlankHardDisk(MediaEntryViewModel? media)
         {
-            if (media == null || !CanEditForm || !ShowOutboundExternalHardDiskRequisitionFields || !media.OutboundBlankHardDiskFieldsVisibility)
+            if (!CanPickOutboundBlankHardDisk(media) || media == null)
             {
                 return;
             }
@@ -927,7 +1194,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            media.ApplyOutboundRequisitionedDisk(selectedMedia[0].Id, selectedMedia[0].DiskCode);
+            media.ApplyOutboundRequisitionedDisk(
+                selectedMedia[0].Id,
+                selectedMedia[0].DiskCode,
+                needReturn: media.IsExternalOfflineReturnedHardDiskScenario);
         }
 
         private IReadOnlyList<string> GetAllowedElectronicDispositionOptions()
@@ -1039,7 +1309,14 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 try
                 {
-                    var codes = await _hardDiskMediaService.GetCurrentUserBorrowedHardDiskCodesAsync(user);
+                    IReadOnlyList<string> codes;
+                    using (IServiceScope scope = _scopeFactory.CreateScope())
+                    {
+                        var hardDiskMedia = scope.ServiceProvider.GetRequiredService<IHardDiskMediaService>();
+                        codes = await hardDiskMedia.GetCurrentUserBorrowedHardDiskCodesAsync(user)
+                            .ConfigureAwait(true);
+                    }
+
                     foreach (var code in codes)
                     {
                         if (!string.IsNullOrWhiteSpace(code))
@@ -1052,7 +1329,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
                 catch (Exception ex)
                 {
-                    _dialogService.ShowError("加载借出硬盘列表失败: " + ex.Message);
+                    _dialogService.ShowError("加载借出硬盘列表失败: " + ex.GetBaseException().Message);
                     RestoreBorrowedHardDiskUiAfterCodesReload(preservedSnapshots);
                 }
             }
@@ -1195,17 +1472,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                         ? _electronicSoftwareSubCategoryOptions
                         : Array.Empty<string>();
 
-            item.AvailableSubCategories.Clear();
-            foreach (var option in options)
-            {
-                item.AvailableSubCategories.Add(option);
-            }
-
-            if (!string.IsNullOrWhiteSpace(item.SubCategory)
-                && !options.Any(option => string.Equals(option, item.SubCategory, StringComparison.OrdinalIgnoreCase)))
-            {
-                item.SubCategory = string.Empty;
-            }
+            ComboBoxSelectionPreserveSupport.RefreshBoundStringOptions(
+                item.AvailableSubCategories,
+                options,
+                () => item.SubCategory,
+                value => item.SubCategory = value,
+                fallbackToFirst: false,
+                clearWhenInvalid: true);
         }
 
         private static ElectronicMediaItemEntryViewModel CreateContentEntryViewModel(ElectronicMediaContentScanEntry entry)
@@ -1282,6 +1555,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            if (!TryEnsureArchiveFilingScannedPathAllowed(item, folder, out string pathError))
+            {
+                _dialogService.ShowError(pathError);
+                return;
+            }
+
             await ScanDirectoriesContentAsync(item, [folder]);
         }
 
@@ -1299,6 +1578,15 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            string storageRoot = string.IsNullOrWhiteSpace(item.StorageRootFullPath)
+                ? directories[0]
+                : item.StorageRootFullPath;
+            if (!TryEnsureArchiveFilingScannedPathAllowed(item, storageRoot, out string pathError))
+            {
+                _dialogService.ShowError(pathError);
+                return;
+            }
+
             await ScanDirectoriesContentAsync(
                 item,
                 directories,
@@ -1311,6 +1599,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 var result = await Task.Run(() => _electronicMediaContentScanService.ScanDirectories(folders, storageRootDirectory));
+                if (!TryEnsureArchiveFilingScannedPathAllowed(item, result.RootPath, out string pathError))
+                {
+                    _dialogService.ShowError(pathError);
+                    return;
+                }
+
                 ApplyScanResult(item, result, scannedDirectoryPaths: folders.ToList());
             }
             catch (Exception ex)
@@ -1432,16 +1726,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                    ?? normalized;
         }
 
-        private static void ApplyOptions(ObservableCollection<string> target, IReadOnlyCollection<string> values)
-        {
-            target.Clear();
-            foreach (var item in values
-                .Where(static value => !string.IsNullOrWhiteSpace(value))
-                .Select(static value => value.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase))
-            {
-                target.Add(item);
-            }
-        }
+        private static void ApplyOptions(ObservableCollection<string> target, IReadOnlyCollection<string> values) =>
+            ComboBoxSelectionPreserveSupport.ReplaceStringOptions(target, values);
     }
 }

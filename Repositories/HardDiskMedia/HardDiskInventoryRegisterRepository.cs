@@ -269,4 +269,6 @@ public sealed class HardDiskInventoryRegisterRepository : IHardDiskInventoryRegi
     }
 
     public Task SaveChangesAsync() => _dbContext.SaveChangesAsync();
+
+    public void ClearChangeTracker() => _dbContext.ChangeTracker.Clear();
 }

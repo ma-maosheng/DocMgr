@@ -14,6 +14,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private const string BlankTargetSelectionMode = "BlankTarget";
 
         private readonly IDialogService _dialogService;
+        private readonly IArchiveFilingService _filingService;
         private readonly Action<ArchiveOutboundContainerUnitViewModel>? _onSharedDiskStateChanged;
         private readonly Func<ArchiveOutboundContainerUnitViewModel, Task>? _revokeGroupRegistrationAsync;
         private readonly string _needReturnRadioGroup = Guid.NewGuid().ToString("N");
@@ -32,6 +33,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _suppressSharedDiskCallback;
         private bool _isSharedDiskSettingsReadOnly;
         private string _sharedDiskSettingsHint = string.Empty;
+        private string _hardDiskCapacityDescription = string.Empty;
+        private int _hardDiskCapacityVersion;
 
         public ArchiveOutboundContainerUnitViewModel(
             string unitKey,
@@ -41,6 +44,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IEnumerable<ArchiveOutboundItemRowViewModel> itemRows,
             bool canEdit,
             IDialogService dialogService,
+            IArchiveFilingService filingService,
             int unitIndex = 1,
             Action<ArchiveOutboundContainerUnitViewModel>? onSharedDiskStateChanged = null,
             Func<ArchiveOutboundContainerUnitViewModel, Task>? revokeGroupRegistrationAsync = null)
@@ -52,6 +56,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             UnitIndex = unitIndex;
             _canEdit = canEdit;
             _dialogService = dialogService;
+            _filingService = filingService;
             _onSharedDiskStateChanged = onSharedDiskStateChanged;
             _revokeGroupRegistrationAsync = revokeGroupRegistrationAsync;
 
@@ -384,6 +389,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             private set => SetProperty(ref _requisitionedDiskCode, value);
         }
 
+        /// <summary>所选库内空盘的可用容量说明。</summary>
+        public string HardDiskCapacityDescription
+        {
+            get => _hardDiskCapacityDescription;
+            private set => SetProperty(ref _hardDiskCapacityDescription, value);
+        }
+
         public bool CanPickBlankDisk => CanEdit && ShowBlankDiskFields;
 
         public int? RequisitionedMediumId =>
@@ -522,6 +534,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             EnsureValidElectronicUsageMode();
             NotifyUsageRelatedPropertiesChanged();
             NotifyDuplicateRelatedPropertiesChanged();
+            RequestHardDiskCapacityRefresh();
         }
 
         private void ApplySettingsToItem(YearlyArchiveOutboundItem item)
@@ -617,6 +630,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             NotifyDuplicateRelatedPropertiesChanged();
             UpdateExpectedReturnDateApplicability();
             RaiseSharedDiskStateChanged();
+            RequestHardDiskCapacityRefresh();
         }
 
         private void ClearRequisitionedDisk()
@@ -802,6 +816,28 @@ namespace DocMgr.ViewModels.YearlyArchive
                 row.Source.RequisitionedDiskNeedReturn = false;
                 row.RefreshDisplayProperties();
             }
+
+            RequestHardDiskCapacityRefresh();
+        }
+
+        private void RequestHardDiskCapacityRefresh()
+        {
+            int version = ++_hardDiskCapacityVersion;
+            string diskCode = ShowBlankDiskFields ? RequisitionedDiskCode?.Trim() ?? string.Empty : string.Empty;
+            _ = ApplyHardDiskCapacityAsync(version, diskCode);
+        }
+
+        private async Task ApplyHardDiskCapacityAsync(int version, string diskCode)
+        {
+            string description = string.IsNullOrWhiteSpace(diskCode)
+                ? string.Empty
+                : await HardDiskCapacityDescriptionLoader.LoadAsync(_filingService, diskCode);
+            if (version != _hardDiskCapacityVersion)
+            {
+                return;
+            }
+
+            HardDiskCapacityDescription = description;
         }
 
         private void NotifyUsageRelatedPropertiesChanged(bool refreshUsageModeBinding = true)
@@ -858,6 +894,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ExpectedReturnDateFieldLabel));
             OnPropertyChanged(nameof(CanEditRequisitionedDiskNeedReturn));
             OnPropertyChanged(nameof(CanEditExpectedReturnDate));
+            RequestHardDiskCapacityRefresh();
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         }
 

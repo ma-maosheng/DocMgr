@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.Shared;
@@ -49,45 +50,59 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async void OnCurrentRecordChanged()
         {
-            if (CurrentRecord == null) return;
-            UpdateUIState();
-            SyncCollectionsFromRecord();
-            ApplyArchivePurposeSelection();
-            if (CurrentRecord.ProjectId.HasValue)
+            int generation = Interlocked.Increment(ref _currentRecordSideEffectsGeneration);
+            await _currentRecordSideEffectsGate.WaitAsync().ConfigureAwait(true);
+            try
             {
-                var proj = Projects.FirstOrDefault(p => p.Id == CurrentRecord.ProjectId.Value);
-                if (proj != null) SelectedProject = proj;
-            }
-            await LoadAttachments();
-            await RefreshAttachmentRequirementsAsync();
-            OnPropertyChanged(nameof(WindowTitle));
-            OnPropertyChanged(nameof(IsExternalSource));
-            OnPropertyChanged(nameof(SourceProvideUnitDisplay));
-            OnPropertyChanged(nameof(MaterialNameDisplay));
-            NotifyNetworkOutboundTransferUiState();
-            if (_userContextService.CurrentUser != null)
-            {
-                bool shouldAutoFillDefaultApproval =
-                    _workspaceMode == ArchiveRegisterWorkspaceMode.Approval
-                    && CurrentRecord.IsSubmitted
-                    && _archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser);
-
-                if (shouldAutoFillDefaultApproval)
+                if (generation != Volatile.Read(ref _currentRecordSideEffectsGeneration))
                 {
-                    try
-                    {
-                        await _archiveRegisterService.ApplyDefaultApprovalInfoAsync(CurrentRecord, _userContextService.CurrentUser);
-                    }
-                    catch
-                    {
-                        // 自动回填失败不阻断页面打开，用户仍可手工录入审批信息。
-                    }
-                    OnPropertyChanged(nameof(CurrentRecord));
+                    return;
                 }
-            }
 
-            await ApplyApprovalChainEnableFlagsAsync();
-            OnPropertyChanged(nameof(IsArchivePurposeOtherSelected));
+                if (CurrentRecord == null) return;
+                UpdateUIState();
+                SyncCollectionsFromRecord();
+                ApplyArchivePurposeSelection();
+                if (CurrentRecord.ProjectId.HasValue)
+                {
+                    var proj = Projects.FirstOrDefault(p => p.Id == CurrentRecord.ProjectId.Value);
+                    if (proj != null) SelectedProject = proj;
+                }
+                await LoadAttachments();
+                await RefreshAttachmentRequirementsAsync();
+                OnPropertyChanged(nameof(WindowTitle));
+                OnPropertyChanged(nameof(IsExternalSource));
+                OnPropertyChanged(nameof(SourceProvideUnitDisplay));
+                OnPropertyChanged(nameof(MaterialNameDisplay));
+                NotifyNetworkOutboundTransferUiState();
+                if (_userContextService.CurrentUser != null)
+                {
+                    bool shouldAutoFillDefaultApproval =
+                        _workspaceMode == ArchiveRegisterWorkspaceMode.Approval
+                        && CurrentRecord.IsSubmitted
+                        && _archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser);
+
+                    if (shouldAutoFillDefaultApproval)
+                    {
+                        try
+                        {
+                            await _archiveRegisterService.ApplyDefaultApprovalInfoAsync(CurrentRecord, _userContextService.CurrentUser);
+                        }
+                        catch
+                        {
+                            // 自动回填失败不阻断页面打开，用户仍可手工录入审批信息。
+                        }
+                        OnPropertyChanged(nameof(CurrentRecord));
+                    }
+                }
+
+                await ApplyApprovalChainEnableFlagsAsync();
+                OnPropertyChanged(nameof(IsArchivePurposeOtherSelected));
+            }
+            finally
+            {
+                _currentRecordSideEffectsGate.Release();
+            }
         }
 
         private async Task ResetRecordWithAutoFormNoAsync()

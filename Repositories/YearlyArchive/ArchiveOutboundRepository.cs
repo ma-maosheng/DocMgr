@@ -45,6 +45,7 @@ namespace DocMgr.Repositories.YearlyArchive
         public Task<YearlyArchiveOutboundRecord?> GetByIdWithDetailsAsync(int id)
         {
             return _dbContext.YearlyArchiveOutboundRecords
+                .AsSplitQuery()
                 .Include(record => record.Items.OrderBy(item => item.SortOrder).ThenBy(item => item.Id))
                 .Include(record => record.SyncEntries)
                 .FirstOrDefaultAsync(record => record.Id == id);
@@ -54,6 +55,7 @@ namespace DocMgr.Repositories.YearlyArchive
         {
             string normalized = outboundNo.Trim();
             return _dbContext.YearlyArchiveOutboundRecords
+                .AsSplitQuery()
                 .Include(record => record.Items.OrderBy(item => item.SortOrder).ThenBy(item => item.Id))
                 .Include(record => record.SyncEntries)
                 .FirstOrDefaultAsync(record => record.OutboundNo == normalized);
@@ -109,6 +111,7 @@ namespace DocMgr.Repositories.YearlyArchive
             else
             {
                 var existing = await _dbContext.YearlyArchiveOutboundRecords
+                    .AsSplitQuery()
                     .Include(r => r.Items)
                     .Include(r => r.SyncEntries)
                     .FirstOrDefaultAsync(r => r.Id == record.Id);
@@ -216,6 +219,8 @@ namespace DocMgr.Repositories.YearlyArchive
         }
 
         public Task SaveChangesAsync() => _dbContext.SaveChangesAsync();
+
+        public void ClearChangeTracker() => _dbContext.ChangeTracker.Clear();
 
         public Task<YearlyArchiveFilingFact?> GetFilingFactByIdAsync(int filingFactId)
         {

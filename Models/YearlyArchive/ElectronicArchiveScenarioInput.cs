@@ -48,6 +48,11 @@ namespace DocMgr.Models.YearlyArchive
         public ElectronicArchiveSubmissionMode? SelectedSubmissionMode { get; init; }
 
         /// <summary>
+        /// 出网资料室存档已预定的立档方式。有值时立档页只允许该方式。
+        /// </summary>
+        public ElectronicArchiveSubmissionMode? PredeterminedSubmissionMode { get; init; }
+
+        /// <summary>
         /// 当前选中的既有电子介质袋主键。
         /// </summary>
         public int? SelectedExistingElectronicUnitId { get; init; }

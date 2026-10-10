@@ -1,18 +1,23 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using Microsoft.Data.SqlClient;
 
 namespace DocMgr.Config;
 
 /// <summary>
-/// 从 appsettings.json 加载 SQLite 数据库路径与网络访问参数。
+/// 从 appsettings.json 加载 SQL Server 连接字符串。
 /// </summary>
 public static class DocMgrDatabaseConfiguration
 {
-    private const string DefaultDatabaseFileName = "DocMgr.db";
     private const string AppSettingsFileName = "appsettings.json";
-    private const int DefaultLocalBusyTimeoutSeconds = 30;
-    private const int DefaultNetworkBusyTimeoutSeconds = 120;
+
+    /// <summary>
+    /// 本机默认实例（MSSQLSERVER）+ Windows 身份 + 信任证书。
+    /// 混合模式安装下仍可先用 Windows 登录；若需 sa，请在 appsettings 中改为 User Id/Password。
+    /// </summary>
+    public const string DefaultConnectionString =
+        "Server=localhost;Database=DocMgr;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true";
 
     /// <summary>
     /// 加载当前应用应使用的数据库配置。
@@ -24,90 +29,45 @@ public static class DocMgrDatabaseConfiguration
             : baseDirectory;
 
         var settings = TryReadSettings(Path.Combine(appBaseDirectory, AppSettingsFileName));
-        string databasePath = ResolveDatabasePath(appBaseDirectory, settings?.Database?.Path);
-        bool isNetworkPath = IsNetworkDatabasePath(databasePath);
-        int busyTimeoutSeconds = ResolveBusyTimeoutSeconds(settings?.Database?.BusyTimeoutSeconds, isNetworkPath);
-
-        ValidateDatabasePath(databasePath);
-        return new DocMgrDatabaseOptions(databasePath, busyTimeoutSeconds, isNetworkPath);
+        string connectionString = ResolveConnectionString(settings?.Database?.ConnectionString);
+        ValidateConnectionString(connectionString);
+        return new DocMgrDatabaseOptions(connectionString);
     }
 
-    private static string ResolveDatabasePath(string appBaseDirectory, string? configuredPath)
+    private static string ResolveConnectionString(string? configured)
     {
-        if (string.IsNullOrWhiteSpace(configuredPath))
+        if (string.IsNullOrWhiteSpace(configured))
         {
-            return Path.Combine(appBaseDirectory, DefaultDatabaseFileName);
+            return DefaultConnectionString;
         }
 
-        return NormalizeConfiguredPath(configuredPath.Trim(), appBaseDirectory);
+        return configured.Trim();
     }
 
-    private static int ResolveBusyTimeoutSeconds(int? configuredValue, bool isNetworkPath)
+    private static void ValidateConnectionString(string connectionString)
     {
-        if (configuredValue is > 0)
-        {
-            return configuredValue.Value;
-        }
-
-        return isNetworkPath ? DefaultNetworkBusyTimeoutSeconds : DefaultLocalBusyTimeoutSeconds;
-    }
-
-    internal static bool IsNetworkDatabasePath(string databasePath)
-    {
-        if (string.IsNullOrWhiteSpace(databasePath))
-        {
-            return false;
-        }
-
-        if (databasePath.StartsWith(@"\\", StringComparison.Ordinal))
-        {
-            return true;
-        }
-
+        SqlConnectionStringBuilder builder;
         try
         {
-            string root = Path.GetPathRoot(databasePath) ?? string.Empty;
-            if (root.StartsWith(@"\\", StringComparison.Ordinal))
-            {
-                return true;
-            }
-
-            DriveInfo drive = new(root);
-            return drive.DriveType == DriveType.Network;
+            builder = new SqlConnectionStringBuilder(connectionString);
         }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static string NormalizeConfiguredPath(string configuredPath, string appBaseDirectory)
-    {
-        if (Path.IsPathRooted(configuredPath))
-        {
-            return configuredPath;
-        }
-
-        return Path.GetFullPath(Path.Combine(appBaseDirectory, configuredPath));
-    }
-
-    private static void ValidateDatabasePath(string databasePath)
-    {
-        if (File.Exists(databasePath))
-        {
-            return;
-        }
-
-        string? directory = Path.GetDirectoryName(databasePath);
-        if (string.IsNullOrWhiteSpace(directory))
-        {
-            throw new InvalidOperationException($"数据库路径无效：{databasePath}");
-        }
-
-        if (!Directory.Exists(directory))
+        catch (ArgumentException ex)
         {
             throw new InvalidOperationException(
-                $"数据库目录不存在或无法访问：{directory}。请确认 appsettings.json 中 Database:Path 配置正确，且当前用户对该共享目录有读写权限。");
+                $"无法解析数据库连接字符串：{ex.Message}",
+                ex);
+        }
+
+        if (string.IsNullOrWhiteSpace(builder.DataSource))
+        {
+            throw new InvalidOperationException(
+                "数据库连接字符串缺少 Server/Data Source。默认实例请使用 Server=localhost。");
+        }
+
+        if (string.IsNullOrWhiteSpace(builder.InitialCatalog))
+        {
+            throw new InvalidOperationException(
+                "数据库连接字符串缺少 Database/Initial Catalog。请指定业务库名（如 DocMgr）。");
         }
     }
 
@@ -141,8 +101,6 @@ public static class DocMgrDatabaseConfiguration
 
     private sealed class DatabaseSettings
     {
-        public string? Path { get; set; }
-
-        public int? BusyTimeoutSeconds { get; set; }
+        public string? ConnectionString { get; set; }
     }
 }

@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.Shared;
@@ -32,6 +34,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly List<HardDiskMediaApplication> _allApplications = new();
         private readonly List<HardDiskMediaReturnCandidate> _allReturnCandidates = new();
         private readonly Dictionary<int, string> _sourceBorrowApplicationNoByReturnId = new();
+        private readonly SemaphoreSlim _returnTargetLocationGate = new(1, 1);
+        private int _returnTargetLocationGeneration;
         private bool _isPageInitialized;
         private bool _overdueOnly;
         private bool _matchAllYears;
@@ -93,8 +97,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public HardDiskReturnWorkspaceMode WorkspaceMode => _workspaceMode;
 
         public string PageTitle => _workspaceMode == HardDiskReturnWorkspaceMode.Approval
-            ? "硬盘归还办理"
-            : "硬盘归还申请";
+            ? "归还办理"
+            : "归还申请";
 
         public string PageSubtitle => _workspaceMode == HardDiskReturnWorkspaceMode.Approval
             ? "对已提交的归还申请进行审批、实物交接、上传签批交接单并办结。"
@@ -678,17 +682,19 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private bool CanWithdrawSelectedApplication()
         {
-            if (_workspaceMode != HardDiskReturnWorkspaceMode.Application)
+            if (_workspaceMode != HardDiskReturnWorkspaceMode.Application
+                || !HardDiskMediaApplicationViewModelHelper.CanSubmitApplication(_userContextService.CurrentUser))
             {
                 return false;
             }
 
             HardDiskMediaApplication? target = ResolveVoidTargetApplication();
-            if (target == null || !IsCurrentUserApplicant(target))
+            if (target == null)
             {
                 return false;
             }
 
+            // 归还单 ApplicantName 为借用人，不能作办理人所有权键；申请侧仅限部门资料员。
             return ApplicationListActionSupport.CanApplicantWithdraw(
                 target.ApplicationStatus,
                 isOwnerApplicant: true);
@@ -722,14 +728,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 ? _editingApplication
                 : SelectedApplication;
             return target is { Id: > 0 } ? target : null;
-        }
-
-        private bool IsCurrentUserApplicant(HardDiskMediaApplication application)
-        {
-            return string.Equals(
-                application.ApplicantName?.Trim(),
-                _userContextService.CurrentUser?.RealName?.Trim(),
-                StringComparison.OrdinalIgnoreCase);
         }
 
         private bool IsCurrentUserArchiveAdmin()

@@ -52,9 +52,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
             string remarkText = EmptyAsPlaceholder(data.Remark);
             string mediumSummary = CreateMediumSummary(data);
             const string outboundFooterLine1 =
-                "1、申请提交后，按“线上申请、打印表单、线下签字、拍照上传、业务办理”的流程办理。\n";
+                "1、申请提交后，按“线上申请、打印表单、线下签字、拍照上传、业务办理”的流程办理。";
             const string outboundFooterLine2 =
-                "      2、签字后的纸质审批单应回传系统，作为办理依据和归档附件。\n";
+                "2、签字后的纸质审批单应回传系统，作为办理依据和归档附件。";
             double reasonRowHeight = ResolveVariableTextRowHeight(reasonText, ReasonMaxLines);
             double remarkRowHeight = ResolveVariableTextRowHeight(remarkText, RemarkMaxLines);
             double mediumRowHeight = CalculateOutboundMediumRowHeight(
@@ -144,9 +144,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
             string reasonText = EmptyAsPlaceholder(data.Reason);
             string remarkText = EmptyAsPlaceholder(data.Remark);
             const string registrationFooterLine1 =
-                "1、登记提交后，按“打印登记单、线下签字、拍照上传、业务办理”的流程完成归还/挂失登记。\n";
+                "1、登记提交后，按“打印登记单、线下签字、拍照上传、业务办理”的流程完成归还/挂失登记。";
             const string registrationFooterLine2 =
-                "      2、签字后的登记单应回传系统，作为归还登记办理依据和归档附件。\n";
+                "2、签字后的登记单应回传系统，作为归还登记办理依据和归档附件。";
             double reasonRowHeight = ResolveVariableTextRowHeight(reasonText, ReasonMaxLines);
             double remarkRowHeight = ResolveVariableTextRowHeight(remarkText, RemarkMaxLines);
             double mediumRowHeight = CalculateRegistrationMediumRowHeight(
@@ -305,22 +305,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return table;
         }
 
-        private static Paragraph CreateFooterParagraph(HardDiskMediaPrintData data, string line1, string line2)
-        {
-            var footer = new Paragraph
-            {
-                FontSize = 10.5,
-                Margin = new Thickness(0, 15, 0, 0),
-                LineHeight = 18
-            };
-
-            footer.Inlines.Add(new Run("备注：") { FontWeight = FontWeights.Bold });
-            footer.Inlines.Add(new Run(line1));
-            footer.Inlines.Add(new Run(line2));
-            footer.Inlines.Add(new Run($"      3、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
-
-            return footer;
-        }
+        private static Table CreateFooterParagraph(HardDiskMediaPrintData data, string line1, string line2) =>
+            PrintFormNoteLayoutSupport.Create(
+                "备注：",
+                BuildFooterLines(data, line1, line2),
+                BodyFont,
+                fontSize: 10.5,
+                lineHeight: 18,
+                topMargin: 15);
 
         /// <summary>
         /// 按实际表后说明文案（含折行）预留高度，并多留 1 行余量，避免末行掉页。
@@ -328,19 +320,21 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private static double EstimateHardDiskFooterNoteHeightDip(
             HardDiskMediaPrintData data,
             string line1,
-            string line2)
-        {
-            string noteText =
-                "备注：" + line1 + line2 +
-                $"      3、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。";
+            string line2) =>
+            PrintFormNoteLayoutSupport.EstimateHeightDip(
+                "备注：",
+                BuildFooterLines(data, line1, line2),
+                BodyFont,
+                fontSize: 10.5,
+                lineHeight: 18,
+                topMargin: 15);
 
-            return PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
-                noteText,
-                PrintPageLayoutSupport.ContentWidthDip,
-                fontSizeDip: 10.5,
-                lineHeightDip: 18,
-                topMarginDip: 15);
-        }
+        private static IReadOnlyList<string> BuildFooterLines(HardDiskMediaPrintData data, string line1, string line2) =>
+        [
+            line1,
+            line2,
+            $"3、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"
+        ];
 
         private static string CreateMediumSummary(HardDiskMediaPrintData data)
         {

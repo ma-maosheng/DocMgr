@@ -1376,6 +1376,178 @@ namespace DocMgr.Services.YearlyArchive
                 .Where(segment => !string.IsNullOrWhiteSpace(segment));
         }
 
+        private async Task EnsureOutboundArchiveFilingCarrierAsync(
+            ElectronicArchiveSubmissionRequest request,
+            IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries,
+            bool releaseBlankHold)
+        {
+            List<YearlyArchiveRegisterMedia> outboundMedia = mediaEntries
+                .Where(media => media.RegisterRecord?.SourceNetworkOutboundRecordId is > 0
+                    && string.Equals(
+                        media.Disposition?.Trim(),
+                        ArchiveRegisterDomainValues.ElectronicDispositionNone,
+                        StringComparison.Ordinal))
+                .ToList();
+            if (outboundMedia.Count == 0)
+            {
+                return;
+            }
+
+            ElectronicArchiveSubmissionMode? expectedMode = null;
+            foreach (YearlyArchiveRegisterMedia media in outboundMedia)
+            {
+                ElectronicArchiveSubmissionMode mode = ResolveOutboundArchiveFilingMode(media);
+                if (expectedMode == null)
+                {
+                    expectedMode = mode;
+                }
+                else if (expectedMode != mode)
+                {
+                    throw new InvalidOperationException("同一出网转入建档单只能使用一种预定归档载体。");
+                }
+            }
+
+            if (request.SubmissionMode != expectedMode)
+            {
+                throw new InvalidOperationException("立档方式与出网申请预定的归档载体不一致。");
+            }
+
+            if (expectedMode == ElectronicArchiveSubmissionMode.CopyNewHardDisk)
+            {
+                await EnsureOutboundArchiveBlankHoldAsync(request, outboundMedia, releaseBlankHold);
+                return;
+            }
+
+            if (expectedMode == ElectronicArchiveSubmissionMode.CopyAppendExistingHardDisk)
+            {
+                await EnsureOutboundArchiveAppendSelectionAsync(request, outboundMedia);
+            }
+        }
+
+        private static ElectronicArchiveSubmissionMode ResolveOutboundArchiveFilingMode(YearlyArchiveRegisterMedia media)
+        {
+            if (string.Equals(media.MediaType?.Trim(), ArchiveRegisterDomainValues.ElectronicMediaTypeOpticalDisc, StringComparison.Ordinal))
+            {
+                if (media.UseInStockBlankHardDisk || media.AppendTargetElectronicUnitId is > 0)
+                {
+                    throw new InvalidOperationException("预定光盘立档不能同时占用库内空盘或并档目标。");
+                }
+
+                return ElectronicArchiveSubmissionMode.CopyNewOpticalDisc;
+            }
+
+            if (!string.Equals(media.MediaType?.Trim(), ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("出网转入建档只允许光盘或硬盘。");
+            }
+
+            bool reservedBlank = media.UseInStockBlankHardDisk && media.RequisitionedMediumId is > 0;
+            bool reservedAppend = !media.UseInStockBlankHardDisk && media.AppendTargetElectronicUnitId is > 0;
+            if (reservedBlank == reservedAppend)
+            {
+                throw new InvalidOperationException("出网预定硬盘必须在库内空盘与并档目标中二选一。");
+            }
+
+            return reservedBlank
+                ? ElectronicArchiveSubmissionMode.CopyNewHardDisk
+                : ElectronicArchiveSubmissionMode.CopyAppendExistingHardDisk;
+        }
+
+        private async Task EnsureOutboundArchiveBlankHoldAsync(
+            ElectronicArchiveSubmissionRequest request,
+            IReadOnlyList<YearlyArchiveRegisterMedia> outboundMedia,
+            bool releaseBlankHold)
+        {
+            List<string> diskCodes = outboundMedia
+                .Select(media => media.RequisitionedHardDiskCode?.Trim() ?? string.Empty)
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            if (diskCodes.Count != 1)
+            {
+                throw new InvalidOperationException("出网预定的库内空盘编号不一致。");
+            }
+
+            List<string> outboundNos = outboundMedia
+                .Select(media => media.RegisterRecord?.SourceNetworkOutboundNo?.Trim() ?? string.Empty)
+                .Where(no => !string.IsNullOrWhiteSpace(no))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (outboundNos.Count != 1)
+            {
+                throw new InvalidOperationException("出网预定空盘缺少来源出网单号。");
+            }
+
+            string linkedCode = ParseMediumCodes(request.ArchiveUnit.LinkedMediumCodes).FirstOrDefault() ?? string.Empty;
+            if (!string.Equals(linkedCode, diskCodes[0], StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"立档介质须使用出网申请预定的库内空盘 [{diskCodes[0]}]。");
+            }
+
+            List<HardDiskMedium> media = await _archiveFilingRepository.GetHardDiskMediaByCodesWithLedgerAsync(diskCodes);
+            HardDiskMedium? medium = media.FirstOrDefault(item =>
+                string.Equals(item.DiskCode, diskCodes[0], StringComparison.OrdinalIgnoreCase));
+            if (medium?.Ledger == null)
+            {
+                throw new InvalidOperationException($"未找到出网预定的库内空盘 [{diskCodes[0]}]。");
+            }
+
+            string status = medium.Ledger.MediaStatus?.Trim() ?? string.Empty;
+            if (!string.Equals(status, HardDiskMedium.StatusInStockBlank, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"硬盘 [{medium.DiskCode}] 当前状态为“{status}”，已不是在库空盘，不能按出网预定立档。");
+            }
+
+            HardDiskRegisterLock? lockItem = medium.RegisterLock;
+            if (!HardDiskRegisterLock.IsNetworkOutboundArchiveHold(lockItem)
+                || !HardDiskRegisterLock.IsOwnedByOutbound(lockItem, outboundNos[0]))
+            {
+                throw new InvalidOperationException($"硬盘 [{medium.DiskCode}] 的占用不属于出网单 [{outboundNos[0]}]，不能按预定空盘立档。");
+            }
+
+            if (releaseBlankHold)
+            {
+                medium.RegisterLock = null;
+                medium.UpdatedTime = DateTime.Now;
+            }
+        }
+
+        private async Task EnsureOutboundArchiveAppendSelectionAsync(
+            ElectronicArchiveSubmissionRequest request,
+            IReadOnlyList<YearlyArchiveRegisterMedia> outboundMedia)
+        {
+            List<int> unitIds = outboundMedia
+                .Select(media => media.AppendTargetElectronicUnitId ?? 0)
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+            if (unitIds.Count != 1)
+            {
+                throw new InvalidOperationException("出网预定的并档硬盘袋不一致。");
+            }
+
+            if (request.ExistingElectronicArchiveUnitId != unitIds[0])
+            {
+                throw new InvalidOperationException("立档必须并入出网申请预定的硬盘袋。");
+            }
+
+            string diskCode = outboundMedia
+                .Select(media => media.AppendTargetHardDiskCode?.Trim() ?? string.Empty)
+                .FirstOrDefault(code => !string.IsNullOrWhiteSpace(code))
+                ?? string.Empty;
+            string projectName = outboundMedia
+                .Select(media => media.RegisterRecord?.ProjectName?.Trim() ?? string.Empty)
+                .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name))
+                ?? string.Empty;
+            YearlyElectronicArchiveUnit? unit = await _archiveFilingRepository.GetElectronicArchiveUnitWithDetailsAsync(unitIds[0]);
+            if (unit == null)
+            {
+                throw new InvalidOperationException("出网申请预定的并档硬盘袋已不存在。");
+            }
+
+            await EnsureOutboundArchiveAppendTargetAsync(unit.Id, projectName, unit.Year, diskCode);
+        }
+
         private static List<string> ParseMediumCodes(string linkedMediumCodes)
         {
             if (string.IsNullOrWhiteSpace(linkedMediumCodes))

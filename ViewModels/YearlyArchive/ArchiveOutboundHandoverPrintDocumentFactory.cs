@@ -163,13 +163,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
                 + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
 
-            string footerText = BuildFooterNoteText(data);
-            double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
-                footerText,
-                PrintPageLayoutSupport.ContentWidthDip,
-                fontSizeDip: 10,
-                lineHeightDip: 16,
-                topMarginDip: 8);
+            double footerHeight = PrintFormNoteLayoutSupport.EstimateHeightDip(
+                "说明：",
+                BuildFooterLines(data),
+                BodyFont,
+                fontSize: 10,
+                lineHeight: 16,
+                topMargin: 8);
             double reservedHeight = TitleBlockHeight + HeaderInfoHeight + footerHeight + fixedTableHeight;
             double contentNeededHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
                 itemDetailText,
@@ -229,29 +229,22 @@ namespace DocMgr.ViewModels.YearlyArchive
             return table;
         }
 
-        private static Paragraph CreateFooterParagraph(ArchiveOutboundHandoverPrintData data)
-        {
-            var footer = new Paragraph
-            {
-                FontSize = 10,
-                Margin = new Thickness(0, 8, 0, 0),
-                LineHeight = 16
-            };
-
-            footer.Inlines.Add(new Run("说明：") { FontWeight = FontWeights.Bold });
-            footer.Inlines.Add(new Run("1、实物交接完成后，领用人与资料室资料员须在交接单上签字确认。\n"));
-            footer.Inlines.Add(new Run("      2、签字后的交接单及资料照片应上传系统，作为出库办结依据。\n"));
-            footer.Inlines.Add(new Run($"      3、本交接单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
-
-            return footer;
-        }
+        private static Table CreateFooterParagraph(ArchiveOutboundHandoverPrintData data) =>
+            PrintFormNoteLayoutSupport.Create(
+                "说明：",
+                BuildFooterLines(data),
+                BodyFont,
+                fontSize: 10,
+                lineHeight: 16,
+                topMargin: 8);
 
         /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
-        private static string BuildFooterNoteText(ArchiveOutboundHandoverPrintData data) =>
-            "说明：" +
-            "1、实物交接完成后，领用人与资料室资料员须在交接单上签字确认。\n" +
-            "      2、签字后的交接单及资料照片应上传系统，作为出库办结依据。\n" +
-            $"      3、本交接单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。";
+        private static IReadOnlyList<string> BuildFooterLines(ArchiveOutboundHandoverPrintData data) =>
+        [
+            "1、实物交接完成后，领用人与资料室资料员须在交接单上签字确认。",
+            "2、签字后的交接单及资料照片应上传系统，作为出库办结依据。",
+            $"3、本交接单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"
+        ];
 
         private static TableRow CreateSingleRow(
             string label,

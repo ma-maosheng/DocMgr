@@ -51,7 +51,7 @@ namespace DocMgr.Services.HardDiskMedia
         public string GetMediaImportTemplateDescription()
         {
             return "导入模板字段：硬盘编号*、序列号*、硬盘类型*、品牌*、容量、接口类型、出厂日期、当前存放位置、备注。"
-                + " 当前存放位置须能解析为防磁磁盘柜档口（如 壬A-1-2），且对应该柜空白硬盘专用档口；无法对应的记录须先整改再导入。"
+                + " 当前存放位置须能解析为防磁磁盘柜档口（如 壬A-1-2），且对应该柜空白硬盘专用档口或用途未设置的档口；已设为其他专用用途的档口禁止导入。"
                 + " 若未填写当前存放位置，系统将按空白专用档口用途与各柜档口容量自动入位；"
                 + " 导入完成后请资料管理员前往【硬盘台账】核对存放位置。";
         }
@@ -275,7 +275,7 @@ namespace DocMgr.Services.HardDiskMedia
         }
 
         /// <summary>
-        /// 导入前核验已填写的存放位置能否对应防磁磁盘柜空白专用档口，并预检档口容量。
+        /// 导入前核验已填写的存放位置能否作为空白硬盘落位（空白专用档口或用途未设置），并预检档口容量。
         /// </summary>
         private async Task ValidateImportedBlankSlotCorrespondenceAsync(
             IReadOnlyList<ImportedMediumRow> importedItems,
@@ -350,13 +350,19 @@ namespace DocMgr.Services.HardDiskMedia
                     }
 
                     string categoryName = cachedCategory ?? string.Empty;
+                    bool isUnsetCategory = string.IsNullOrWhiteSpace(categoryName);
+                    bool isBlankCategory = CabinetHardDiskSlotCategoryAssignment.MatchesCategory(
+                        categoryName,
+                        CabinetHardDiskSlotCategoryAssignment.CategoryBlank);
 
-                    string categoryText = string.IsNullOrWhiteSpace(categoryName)
-                        ? "未设置"
-                        : CabinetHardDiskSlotCategoryAssignment.NormalizeCategoryName(categoryName);
-                    errors.Add(
-                        $"第 {item.RowNumber} 行硬盘编号 [{diskCode}] 的当前存放位置 [{slotKey}] 用途为「{categoryText}」，不能作为空白硬盘导入落位（须对应空白硬盘专用档口）。");
-                    continue;
+                    // 用途未设置的档口按可落空白盘处理；已设为其他专用用途的仍禁止。
+                    if (!isUnsetCategory && !isBlankCategory)
+                    {
+                        string categoryText = CabinetHardDiskSlotCategoryAssignment.NormalizeCategoryName(categoryName);
+                        errors.Add(
+                            $"第 {item.RowNumber} 行硬盘编号 [{diskCode}] 的当前存放位置 [{slotKey}] 用途为「{categoryText}」，不能作为空白硬盘导入落位（须对应空白硬盘专用档口或用途未设置的档口）。");
+                        continue;
+                    }
                 }
 
                 if (!filledSlotRowNumbers.TryGetValue(slotKey, out var rowNumbers))
@@ -370,15 +376,19 @@ namespace DocMgr.Services.HardDiskMedia
 
             var occupancy = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var capacityBySlot = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            foreach (string slotCode in blankSlotCodes)
+            var slotsForOccupancy = blankSlotCodes
+                .Concat(filledSlotRowNumbers.Keys)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            foreach (string slotCode in slotsForOccupancy)
             {
                 occupancy[slotCode] = 0;
                 capacityBySlot[slotCode] = await ResolveHardDiskSlotCapacityForLocationAsync(slotCode);
             }
 
-            if (importMode != ImportMode.Recreate && blankSlotCodes.Count > 0)
+            if (importMode != ImportMode.Recreate && slotsForOccupancy.Count > 0)
             {
-                var existingCounts = await _hardDiskMediaRepository.GetInStockBlankLedgerCountsBySlotCodesAsync(blankSlotCodes);
+                var existingCounts = await _hardDiskMediaRepository.GetInStockBlankLedgerCountsBySlotCodesAsync(slotsForOccupancy);
                 foreach (var pair in existingCounts)
                 {
                     occupancy[pair.Key] = pair.Value;
@@ -684,7 +694,7 @@ namespace DocMgr.Services.HardDiskMedia
             row6.CreateCell(1).SetCellValue("可选；格式 yyyy-MM-dd");
             var row7 = sheet.CreateRow(7);
             row7.CreateCell(0).SetCellValue("当前存放位置");
-            row7.CreateCell(1).SetCellValue("可选；须对应防磁磁盘柜空白硬盘专用档口（如 壬A-1-2）；无法对应则禁止导入。留空时按空白专用档口用途与各柜配置容量自动入位");
+            row7.CreateCell(1).SetCellValue("可选；须对应防磁磁盘柜空白硬盘专用档口或用途未设置的档口（如 壬A-1-2）；已设为其他专用用途则禁止导入。留空时按空白专用档口用途与各柜配置容量自动入位");
         }
 
         private sealed record ImportedMediumRow(int RowNumber, HardDiskMedium Medium);

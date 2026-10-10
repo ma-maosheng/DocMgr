@@ -114,6 +114,7 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
 
         _repository.AddRecord(record);
         await _repository.SaveChangesAsync();
+        _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(record.Id))!;
     }
 
@@ -130,6 +131,7 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
             throw new InvalidOperationException("处置单无效，无法保存。");
         }
 
+        _repository.ClearChangeTracker();
         var existing = await _repository.GetRecordByIdForUpdateAsync(draft.Id)
             ?? throw new InvalidOperationException("未找到资料离库处置单。");
 
@@ -164,6 +166,7 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
         }
 
         await _repository.SaveChangesAsync();
+        _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(existing.Id))!;
     }
 

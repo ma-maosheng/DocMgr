@@ -19,6 +19,8 @@ public sealed class NetworkOutboundPrintData
 
     public string DestinationKindText { get; init; } = string.Empty;
 
+    public string DestinationUnitText { get; init; } = string.Empty;
+
     public string ArchivePurposeText { get; init; } = string.Empty;
 
     public string Reason { get; init; } = string.Empty;

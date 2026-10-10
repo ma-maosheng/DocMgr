@@ -9,7 +9,7 @@
       mc:Ignorable="d"
       d:DesignHeight="800"
       d:DesignWidth="1200"
-      Title="硬盘归还登记工作台"
+      Title="归还申请"
       Background="#F0F2F5">
     <Page.Resources>
         <ResourceDictionary>

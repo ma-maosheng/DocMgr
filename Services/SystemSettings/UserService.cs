@@ -1,5 +1,6 @@
 ﻿using DocMgr.Models.SystemSettings;
 using DocMgr.Repositories.Interfaces;
+using DocMgr.Services.YearlyArchive;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocMgr.Services.SystemSettings
@@ -246,6 +247,52 @@ namespace DocMgr.Services.SystemSettings
             _userRepository.SaveChanges();
         }
 
+        /// <inheritdoc />
+        public IReadOnlyList<UserSessionMonitorItem> GetOnlineUsers(User operatorUser)
+        {
+            EnsureCanViewSessions(operatorUser);
+
+            var now = DateTime.Now;
+            int deactivated = _userRepository.DeactivateExpiredSessions(now - SessionTimeout, now);
+            if (deactivated > 0)
+            {
+                _userRepository.SaveChanges();
+            }
+
+            return _userRepository
+                .GetOnlineSessions(now - SessionTimeout)
+                .Select(session => ToMonitorItem(session, now))
+                .ToList();
+        }
+
+        /// <inheritdoc />
+        public IReadOnlyList<UserSessionMonitorItem> SearchLoginRecords(
+            User operatorUser,
+            DateTime? loginFromInclusive,
+            DateTime? loginToInclusive,
+            string? keyword,
+            int limit = 500)
+        {
+            EnsureCanViewSessions(operatorUser);
+
+            var now = DateTime.Now;
+            int deactivated = _userRepository.DeactivateExpiredSessions(now - SessionTimeout, now);
+            if (deactivated > 0)
+            {
+                _userRepository.SaveChanges();
+            }
+
+            DateTime? toExclusive = loginToInclusive.HasValue
+                ? loginToInclusive.Value.Date.AddDays(1)
+                : null;
+            DateTime? fromInclusive = loginFromInclusive?.Date;
+
+            return _userRepository
+                .SearchSessions(fromInclusive, toExclusive, keyword, limit)
+                .Select(session => ToMonitorItem(session, now))
+                .ToList();
+        }
+
         // === 用户 CRUD ===
         public List<User> GetAllUsers()
         {
@@ -464,6 +511,43 @@ namespace DocMgr.Services.SystemSettings
         private static bool IsExpired(DateTime lastHeartbeatTime, DateTime now)
         {
             return lastHeartbeatTime < now - SessionTimeout;
+        }
+
+        private static void EnsureCanViewSessions(User? operatorUser)
+        {
+            if (ArchiveRegisterBusinessRules.IsSystemAdministrator(operatorUser)
+                || ArchiveRegisterBusinessRules.IsArchiveAdminUser(operatorUser))
+            {
+                return;
+            }
+
+            throw new InvalidOperationException("仅系统管理员或资料管理员可查看在线用户与登录记录。");
+        }
+
+        private static UserSessionMonitorItem ToMonitorItem(UserSession session, DateTime now)
+        {
+            User? user = session.User;
+            bool isOnline = session.IsActive && !IsExpired(session.LastHeartbeatTime, now);
+            string status = isOnline
+                ? "在线"
+                : session.IsActive
+                    ? "心跳超时"
+                    : "已结束";
+
+            return new UserSessionMonitorItem
+            {
+                Id = session.Id,
+                LoginName = user?.LoginName ?? string.Empty,
+                RealName = user?.RealName ?? string.Empty,
+                Department = user?.Department ?? string.Empty,
+                Role = user?.Role ?? string.Empty,
+                TerminalName = session.TerminalName ?? string.Empty,
+                LoginTime = session.LoginTime,
+                LastHeartbeatTime = session.LastHeartbeatTime,
+                LogoutTime = session.LogoutTime,
+                IsActive = session.IsActive,
+                StatusDisplay = status
+            };
         }
 
         private static void RecordFailedLogin(User user, DateTime now)

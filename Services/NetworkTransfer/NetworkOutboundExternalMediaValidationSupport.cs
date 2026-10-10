@@ -32,6 +32,10 @@ internal static class NetworkOutboundExternalMediaValidationSupport
         {
             NetworkOutboundExternalHardDiskRequisitionSupport.ValidateForSubmit(mediaEntries, errors);
         }
+        else if (NetworkTransferDomainValues.IsArchiveFilingDestination(header.DestinationKind))
+        {
+            NetworkOutboundRegisterMediaRulesSupport.ValidateArchiveFilingCarrier(mediaEntries, errors);
+        }
     }
 
     internal static void ValidateForComplete(
@@ -43,6 +47,10 @@ internal static class NetworkOutboundExternalMediaValidationSupport
         if (NetworkTransferDomainValues.IsExternalOfflineDestination(destinationKind))
         {
             NetworkOutboundExternalHardDiskRequisitionSupport.ValidateForSubmit(mediaEntries, errors);
+        }
+        else if (NetworkTransferDomainValues.IsArchiveFilingDestination(destinationKind))
+        {
+            NetworkOutboundRegisterMediaRulesSupport.ValidateArchiveFilingCarrier(mediaEntries, errors);
         }
     }
 

@@ -105,8 +105,31 @@ public static class NetworkOutboundItemPrintSupport
         }
 
         AppendExternalOfflineHardDiskRequisitionSegments(media, segments);
+        AppendArchiveFilingCarrierSegments(media, segments);
 
         return string.Join("；", segments);
+    }
+
+    private static void AppendArchiveFilingCarrierSegments(
+        YearlyArchiveRegisterMedia media,
+        List<string> segments)
+    {
+        if (!string.Equals(media.Disposition?.Trim(), ArchiveRegisterDomainValues.ElectronicDispositionNone, StringComparison.Ordinal)
+            || !string.Equals(media.MediaType?.Trim(), ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (media.UseInStockBlankHardDisk)
+        {
+            segments.Add($"库内空盘：{Empty(media.RequisitionedHardDiskCode)}");
+            return;
+        }
+
+        if (media.AppendTargetElectronicUnitId is > 0)
+        {
+            segments.Add($"并入已立档硬盘：{Empty(media.AppendTargetHardDiskCode)}");
+        }
     }
 
     private static void AppendExternalOfflineHardDiskRequisitionSegments(

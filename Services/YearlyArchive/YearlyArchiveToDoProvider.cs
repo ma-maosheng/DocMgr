@@ -69,11 +69,12 @@ namespace DocMgr.Services.YearlyArchive
                     Priority = "高"
                 }));
 
+                // 已办结、尚未完成模拟/电子立档的建档单 → 资料管理员待办（含出网转入待立档）。
                 var pendingFiling = await _archiveFilingRepository.GetCompletedUnfiledRecordsForToDoAsync(200);
                 result.AddRange(pendingFiling.Select(r => new ToDoItem
                 {
                     Id = $"YAR-{r.Id}-PENDING-FILING",
-                    Title = $"【资料立档】已办结待立档：{r.MaterialName}",
+                    Title = $"【资料立档】待立档：{BuildPendingFilingTitle(r)}",
                     BizType = "YearlyArchiveFiling",
                     BizId = r.Id,
                     BizNo = r.FormNo,
@@ -273,6 +274,18 @@ namespace DocMgr.Services.YearlyArchive
                 record.Status,
                 record.SignedAttachmentUploaded);
 
+        private static string BuildPendingFilingTitle(YearlyArchiveRegisterRecord record)
+        {
+            string formNo = record.FormNo?.Trim() ?? string.Empty;
+            string material = record.MaterialName?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(formNo) && !string.IsNullOrWhiteSpace(material))
+            {
+                return $"{formNo} {material}";
+            }
+
+            return string.IsNullOrWhiteSpace(formNo) ? material : formNo;
+        }
+
         private static string BuildPendingFilingStage(YearlyArchiveRegisterRecord record)
         {
             bool hasSimulated = record.HasSimulatedMedia;
@@ -280,22 +293,26 @@ namespace DocMgr.Services.YearlyArchive
             bool simulatedPending = hasSimulated && record.SimulatedArchiveStatus != YearlyArchiveRegisterRecord.TrackArchived;
             bool electronicPending = hasElectronic && record.ElectronicArchiveStatus != YearlyArchiveRegisterRecord.TrackArchived;
 
+            string source = string.IsNullOrWhiteSpace(record.SourceNetworkOutboundNo)
+                ? string.Empty
+                : $"；来源出网 {record.SourceNetworkOutboundNo.Trim()}";
+
             if (simulatedPending && electronicPending)
             {
-                return "已办结未立档（模拟介质 + 电子介质）";
+                return $"已办结未立档（模拟介质 + 电子介质）{source}";
             }
 
             if (simulatedPending)
             {
-                return "已办结未立档（模拟介质）";
+                return $"已办结未立档（模拟介质）{source}";
             }
 
             if (electronicPending)
             {
-                return "已办结未立档（电子介质）";
+                return $"已办结未立档（电子介质）{source}";
             }
 
-            return "已办结未立档";
+            return $"已办结未立档{source}";
         }
     }
 }

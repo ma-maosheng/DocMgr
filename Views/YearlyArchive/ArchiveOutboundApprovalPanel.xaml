@@ -108,7 +108,7 @@
                 <Button DockPanel.Dock="Left" Content="业务助手"
                         Command="{Binding OpenBusinessAssistantCommand}"
                         Padding="10,4"
-                        ToolTip="打开资料出库业务助手，辅助办理交接"/>
+                        ToolTip="打开审批出库业务助手，辅助办理交接"/>
             </DockPanel>
         </viewShared:ApprovalHandoverWorkspaceShell.SignatureExtraContent>
 

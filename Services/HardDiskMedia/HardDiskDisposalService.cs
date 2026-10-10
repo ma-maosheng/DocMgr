@@ -156,6 +156,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
 
         _repository.AddRecord(record);
         await _repository.SaveChangesAsync();
+        _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(record.Id))!;
     }
 
@@ -172,6 +173,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             throw new InvalidOperationException("处置单无效，无法保存。");
         }
 
+        _repository.ClearChangeTracker();
         var existing = await _repository.GetRecordByIdForUpdateAsync(draft.Id)
             ?? throw new InvalidOperationException("未找到离库处置单。");
 
@@ -208,6 +210,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
         }
 
         await _repository.SaveChangesAsync();
+        _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(existing.Id))!;
     }
 
@@ -820,10 +823,16 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
             throw new InvalidOperationException("请至少选择一块待处置硬盘。");
         }
 
-        List<int> ids = mediumIds.Where(id => id > 0).Distinct().ToList();
-        if (ids.Count == 0)
+        List<int> rawIds = mediumIds.Where(id => id > 0).ToList();
+        if (rawIds.Count == 0)
         {
             throw new InvalidOperationException("请至少选择一块待处置硬盘。");
+        }
+
+        List<int> ids = rawIds.Distinct().ToList();
+        if (ids.Count != rawIds.Count)
+        {
+            throw new InvalidOperationException("所选硬盘无效或存在重复。");
         }
 
         var media = await _repository.GetMediaWithLedgerByIdsAsync(ids);

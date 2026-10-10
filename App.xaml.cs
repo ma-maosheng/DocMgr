@@ -1,7 +1,6 @@
 using DocMgr.Config;
 using DocMgr.Config.DependencyInjection;
 using DocMgr.Data;
-using DocMgr.Data.Sqlite;
 using DocMgr.Infrastructure.DbOperationLog;
 using DocMgr.Infrastructure.Seeding;
 using DocMgr.Infrastructure.Startup;
@@ -162,21 +161,8 @@ namespace DocMgr
                 initializationState.ReportProgress("正在连接并初始化数据库（首次启动可能较慢）…");
 
                 using var scope = CurrentProvider.CreateScope();
-                var databaseSettings = scope.ServiceProvider.GetRequiredService<DocMgrDatabaseSettings>();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                var databaseOptions = new DocMgrDatabaseOptions(
-                    databaseSettings.DbPath,
-                    databaseSettings.BusyTimeoutSeconds,
-                    databaseSettings.IsNetworkPath);
-
-                try
-                {
-                    SqliteNetworkAccessSupport.MigrateWithRetry(db, databaseOptions, initializationState);
-                }
-                catch (Exception ex) when (SqliteNetworkAccessSupport.IsSqliteLockException(ex))
-                {
-                    throw SqliteNetworkAccessSupport.CreateSharedDatabaseUnavailableException(ex);
-                }
+                db.Database.Migrate();
 
                 initializationState.ReportProgress("正在检查系统基础数据…");
                 var devSeedRepository = scope.ServiceProvider.GetRequiredService<IDevSystemSettingsSeedRepository>();
@@ -214,8 +200,23 @@ namespace DocMgr
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.Message);
-                initializationState.ReportProgress("后台数据同步未完成，部分功能可能受限。可重启应用后重试。");
+                System.Diagnostics.Debug.WriteLine(ex.ToString());
+                DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
+                    "E",
+                    "App.RunDeferredDatabaseMaintenanceSafe",
+                    "deferred maintenance failed",
+                    ex);
+
+                string detail = ex.GetBaseException().Message;
+                if (string.IsNullOrWhiteSpace(detail))
+                {
+                    detail = ex.Message;
+                }
+
+                initializationState.ReportProgress(
+                    "后台数据同步未完成，部分功能可能受限。可重启应用后重试。"
+                    + Environment.NewLine
+                    + detail);
             }
         }
 

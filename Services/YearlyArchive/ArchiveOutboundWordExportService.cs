@@ -189,24 +189,14 @@ namespace DocMgr.Services.YearlyArchive
 
         private static void AddFooterNotes(XWPFDocument document, int printSequence)
         {
-            var titleParagraph = document.CreateParagraph();
-            ApplyDocumentParagraph(titleParagraph);
-            var titleRun = titleParagraph.CreateRun();
-            titleRun.SetText("备注：");
-            WordExportFontSupport.ApplyFooter(titleRun, bold: true);
-
-            AddFooterParagraph(document, "1、申请提交后，按“线上申请、打印表单、线下审批签字、上传签字件、资料出库交接”的流程办理。");
-            AddFooterParagraph(document, "      2、签字后的审批单应回传系统，作为办理依据和归档附件。");
-            AddFooterParagraph(document, $"      3、本申请单已累计打印 {printSequence} 次，最新打印请与系统记录核对。");
-        }
-
-        private static void AddFooterParagraph(XWPFDocument document, string text)
-        {
-            var paragraph = document.CreateParagraph();
-            ApplyDocumentParagraph(paragraph);
-            var run = paragraph.CreateRun();
-            run.SetText(text);
-            WordExportFontSupport.ApplyFooter(run);
+            WordExportNoteLayoutSupport.AddAlignedNotes(
+                document,
+                "备注：",
+                [
+                    "1、申请提交后，按“线上申请、打印表单、线下审批签字、上传签字件、资料出库交接”的流程办理。",
+                    "2、签字后的审批单应回传系统，作为办理依据和归档附件。",
+                    $"3、本申请单已累计打印 {printSequence} 次，最新打印请与系统记录核对。"
+                ]);
         }
 
         private enum WordTableRowStyle

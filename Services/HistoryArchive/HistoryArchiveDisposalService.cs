@@ -104,6 +104,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
 
         _repository.AddRecord(record);
         await _repository.SaveChangesAsync();
+        _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(record.Id))!;
     }
 
@@ -115,6 +116,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
     {
         EnsureArchiveAdmin(currentUser);
         ArgumentNullException.ThrowIfNull(draft);
+        _repository.ClearChangeTracker();
         var existing = await _repository.GetRecordByIdAsync(draft.Id, tracking: true)
             ?? throw new InvalidOperationException("未找到历史存档离库处置单。");
 
@@ -152,6 +154,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         }
 
         await _repository.SaveChangesAsync();
+        _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(existing.Id))!;
     }
 

@@ -228,6 +228,17 @@ public static class NetworkOutboundApplicationValidationSupport
             errors.Add("目的地为资料室存档时，请选择库管模式。");
         }
 
+        if (NetworkTransferDomainValues.IsExternalOfflineDestination(header.DestinationKind)
+            && string.IsNullOrWhiteSpace(
+                NetworkTransferDomainValues.ResolveOutboundDestinationUnit(
+                    header.DestinationKind,
+                    header.DestinationUnit)))
+        {
+            errors.Add(NetworkTransferDomainValues.IsOutboundExternalDestination(header.DestinationKind)
+                ? "请填写接收部门（单位）。"
+                : "请选择接收部门（单位）。");
+        }
+
         if (string.IsNullOrWhiteSpace(header.MaterialName))
         {
             errors.Add("请填写资料名称。");

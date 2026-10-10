@@ -75,7 +75,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool IsSimulated =>
             string.Equals(_mediaKind, ArchiveInventoryRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal);
 
-        public string PageTitle => IsSimulated ? "模拟资料盘库登记办理表" : "电子资料盘库登记办理表";
+        public string PageTitle => IsSimulated ? "模拟资料盘库" : "电子资料盘库";
 
         public string BannerText => IsSimulated
             ? "按资料子项登记库内丢失或拟销份数。拟销用于无存档价值资料。流程：草稿→提交→打印签批→线下签字→审批通过→确认可上传→上传签批单→办结。办结后即时扣减可借份数并写履历；空盒仍占档口并标「失」「销」，正式清账请后期走「离库处置」。"

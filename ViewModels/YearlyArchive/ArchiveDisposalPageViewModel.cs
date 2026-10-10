@@ -71,7 +71,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool IsSimulated =>
             string.Equals(_mediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal);
 
-        public string PageTitle => IsSimulated ? "模拟资料离库处置办理表" : "电子资料离库处置办理表";
+        public string PageTitle => IsSimulated ? "模拟资料离库处置" : "电子资料离库处置";
 
         public string BannerText => IsSimulated
             ? "仅清账盘库登记产生的丢失/拟销资料。流程对齐硬盘离库处置：草稿→提交→审批→确认可上传→上传签批→办结。办结将事实置为已处置；空盒释档前须确认物理移除。"

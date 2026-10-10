@@ -55,8 +55,15 @@ namespace DocMgr.Services.YearlyArchive
 
             var mediaItems = await _filingFactRepository.GetRegisterMediaItemsWithSupplementsAsync(mediaItemIds);
             var registerMedias = await _filingFactRepository.GetRegisterMediasByIdsAsync(registerMediaIds);
+            var registerRecordIds = facts
+                .Select(fact => fact.RegisterRecordId)
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
             var archivePurposeByRegisterRecordId = await _filingFactRepository.GetArchivePurposesByRegisterRecordIdsAsync(
-                facts.Select(fact => fact.RegisterRecordId).Where(id => id > 0).Distinct().ToList());
+                registerRecordIds);
+            var hasSourceNetworkOutboundByRegisterRecordId =
+                await _filingFactRepository.GetHasSourceNetworkOutboundByRegisterRecordIdsAsync(registerRecordIds);
 
             var supplementByMediaItemId = mediaItems.ToDictionary(
                 item => item.Id,
@@ -82,6 +89,7 @@ namespace DocMgr.Services.YearlyArchive
                     supplementByMediaItemId,
                     mediaTypeByRegisterMediaId,
                     archivePurposeByRegisterRecordId,
+                    hasSourceNetworkOutboundByRegisterRecordId,
                     copySnapshots))
                 .ToList();
         }
@@ -126,6 +134,7 @@ namespace DocMgr.Services.YearlyArchive
                 [
                     "立档事实编号",
                     "介质类型",
+                    "立档方式",
                     "表单号",
                     "资料名称",
                     "子项名称",
@@ -174,6 +183,7 @@ namespace DocMgr.Services.YearlyArchive
                     int col = 0;
                     row.CreateCell(col++).SetCellValue(item.FilingFactNo);
                     row.CreateCell(col++).SetCellValue(item.MediaKind);
+                    row.CreateCell(col++).SetCellValue(item.FilingMethod);
                     row.CreateCell(col++).SetCellValue(item.FormNo);
                     row.CreateCell(col++).SetCellValue(item.MaterialName);
                     row.CreateCell(col++).SetCellValue(item.ItemName);
@@ -219,6 +229,7 @@ namespace DocMgr.Services.YearlyArchive
             IReadOnlyDictionary<int, FilingLedgerRegisterSupplement> supplementByMediaItemId,
             IReadOnlyDictionary<int, string> mediaTypeByRegisterMediaId,
             IReadOnlyDictionary<int, string> archivePurposeByRegisterRecordId,
+            IReadOnlyDictionary<int, bool> hasSourceNetworkOutboundByRegisterRecordId,
             IReadOnlyDictionary<int, SimulatedFilingFactCopyCountSnapshot> copySnapshots)
         {
             var supplement = fact.MediaItemId > 0 && supplementByMediaItemId.TryGetValue(fact.MediaItemId, out var resolvedSupplement)
@@ -233,6 +244,9 @@ namespace DocMgr.Services.YearlyArchive
                 && archivePurposeByRegisterRecordId.TryGetValue(fact.RegisterRecordId, out string? purpose)
                 ? purpose
                 : string.Empty;
+            bool hasSourceNetworkOutbound = fact.RegisterRecordId > 0
+                && hasSourceNetworkOutboundByRegisterRecordId.TryGetValue(fact.RegisterRecordId, out bool linked)
+                && linked;
 
             bool isSimulated = string.Equals(
                 fact.MediaKind,
@@ -250,6 +264,7 @@ namespace DocMgr.Services.YearlyArchive
                 FilingFactId = fact.Id,
                 FilingFactNo = fact.FilingFactNo,
                 MediaKind = fact.MediaKind,
+                FilingMethod = FilingLedgerFilingMethod.ResolveDisplay(hasSourceNetworkOutbound),
                 RegisterMediaType = registerMediaType,
                 MaterialCategory = supplement.MaterialCategory,
                 SubCategory = supplement.SubCategory,

@@ -17,7 +17,8 @@ internal static class NetworkOnNetAssetDisplaySupport
         IReadOnlyDictionary<int, NetworkOutboundRecord> outboundRecords,
         IReadOnlyDictionary<string, ServerPathSetting> serverPathsByName,
         IReadOnlyDictionary<int, YearlyArchiveFilingFact> filingFacts,
-        IReadOnlyList<NetworkOnNetElectronicMediaSnapshot> electronicSnapshots)
+        IReadOnlyList<NetworkOnNetElectronicMediaSnapshot> electronicSnapshots,
+        IReadOnlyDictionary<int, NetworkInboundRecord>? orphanInboundRecordsByAssetId = null)
     {
         Dictionary<int, NetworkOnNetElectronicMediaSnapshot> snapshotByMediaItemId = electronicSnapshots
             .GroupBy(item => item.MediaItemId)
@@ -47,15 +48,7 @@ internal static class NetworkOnNetAssetDisplaySupport
                         : null);
                 if (inbound != null)
                 {
-                    asset.ApplicationNo = inbound.InboundNo?.Trim() ?? string.Empty;
-                    asset.MaterialPath = inbound.MaterialPath?.Trim() ?? string.Empty;
-                    asset.MaterialName = ResolveMaterialName(
-                        inbound.MaterialName,
-                        inboundItem.MaterialName,
-                        inboundItem.ItemName,
-                        asset.AssetName);
-                    asset.ProvideUnit = inbound.ProvideUnit?.Trim() ?? string.Empty;
-                    asset.ApplicantDept = inbound.ApplicantDept?.Trim() ?? string.Empty;
+                    ApplyInboundHeaderDisplay(asset, inbound, inboundItem);
                 }
             }
             else if (asset.OriginOutboundItemId is int outboundItemId
@@ -76,6 +69,13 @@ internal static class NetworkOnNetAssetDisplaySupport
                         asset.AssetName);
                     asset.ApplicantDept = outbound.ApplicantDept?.Trim() ?? string.Empty;
                 }
+            }
+            else if (orphanInboundRecordsByAssetId != null
+                     && orphanInboundRecordsByAssetId.TryGetValue(asset.Id, out NetworkInboundRecord? orphanInbound))
+            {
+                // 历史档外入网办结未写 OriginInboundItemId：按介质子项名回退挂到入网主单。
+                inbound = orphanInbound;
+                ApplyInboundHeaderDisplay(asset, orphanInbound, inboundItem: null);
             }
 
             ApplyElectronicSnapshot(
@@ -148,6 +148,22 @@ internal static class NetworkOnNetAssetDisplaySupport
         asset.DataOrganizationForm = string.Empty;
         asset.EntryCountDisplay = string.Empty;
         asset.ElectronicMediaItemId = null;
+    }
+
+    private static void ApplyInboundHeaderDisplay(
+        NetworkOnNetAsset asset,
+        NetworkInboundRecord inbound,
+        NetworkInboundItem? inboundItem)
+    {
+        asset.ApplicationNo = inbound.InboundNo?.Trim() ?? string.Empty;
+        asset.MaterialPath = inbound.MaterialPath?.Trim() ?? string.Empty;
+        asset.MaterialName = ResolveMaterialName(
+            inbound.MaterialName,
+            inboundItem?.MaterialName,
+            inboundItem?.ItemName,
+            asset.AssetName);
+        asset.ProvideUnit = inbound.ProvideUnit?.Trim() ?? string.Empty;
+        asset.ApplicantDept = inbound.ApplicantDept?.Trim() ?? string.Empty;
     }
 
     private static void ApplyElectronicSnapshot(

@@ -9,6 +9,9 @@ namespace DocMgr.Models.HardDiskMedia
         public const string BusinessTypeOutboundApplication = "硬盘借出申请";
         public const string BusinessTypeArchiveOutboundRequisition = "资料出库征用";
         public const string BusinessTypeNetworkOutboundRequisition = "出网征用";
+
+        /// <summary>资料室存档出网预定库内空盘：只占用，不做出库。</summary>
+        public const string BusinessTypeNetworkOutboundArchiveHold = "出网存档占盘";
         public const string BusinessTypeDisposal = "硬盘离库处置";
         public const string BusinessTypeInventoryRegister = "硬盘盘库登记";
         public const string BusinessTypeArchiveInventoryRegister = "资料盘库登记";
@@ -61,6 +64,22 @@ namespace DocMgr.Models.HardDiskMedia
         {
             return lockItem != null
                 && string.Equals(lockItem.BusinessType, BusinessTypeArchiveRegister, StringComparison.Ordinal);
+        }
+
+        /// <summary>是否为资料室存档出网对库内空盘的占用锁。</summary>
+        public static bool IsNetworkOutboundArchiveHold(HardDiskRegisterLock? lockItem)
+        {
+            return lockItem != null
+                && string.Equals(lockItem.BusinessType, BusinessTypeNetworkOutboundArchiveHold, StringComparison.Ordinal);
+        }
+
+        /// <summary>占用锁是否归属指定出网单。</summary>
+        public static bool IsOwnedByOutbound(HardDiskRegisterLock? lockItem, string? outboundNo)
+        {
+            string trimmed = outboundNo?.Trim() ?? string.Empty;
+            return lockItem != null
+                && !string.IsNullOrWhiteSpace(trimmed)
+                && string.Equals(lockItem.BusinessNo, trimmed, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

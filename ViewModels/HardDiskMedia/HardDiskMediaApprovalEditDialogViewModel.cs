@@ -117,7 +117,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _ = InitializeAsync();
         }
 
-        public string WindowTitle => $"硬盘借出 · {ApplicationNo} · {ApplicationStatusDisplay}";
+        public string WindowTitle => $"出库办理 · {ApplicationNo} · {ApplicationStatusDisplay}";
 
         /// <summary>界面展示用流程状态（上传签批交接单后会与库内状态区分）。</summary>
         public string ApplicationStatusDisplay =>

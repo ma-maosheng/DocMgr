@@ -84,6 +84,77 @@ public class UserRepository : IUserRepository
             .ToList();
     }
 
+    public IReadOnlyList<UserSession> GetOnlineSessions(DateTime heartbeatNotBefore)
+    {
+        return _dbContext.UserSessions
+            .AsNoTracking()
+            .Include(session => session.User)
+            .Where(session => session.IsActive && session.LastHeartbeatTime >= heartbeatNotBefore)
+            .OrderByDescending(session => session.LastHeartbeatTime)
+            .ToList();
+    }
+
+    public int DeactivateExpiredSessions(DateTime expiredBefore, DateTime logoutTime)
+    {
+        var expiredSessions = _dbContext.UserSessions
+            .Where(session => session.IsActive && session.LastHeartbeatTime < expiredBefore)
+            .ToList();
+
+        if (expiredSessions.Count == 0)
+        {
+            return 0;
+        }
+
+        foreach (var session in expiredSessions)
+        {
+            session.IsActive = false;
+            session.LogoutTime = logoutTime;
+        }
+
+        return expiredSessions.Count;
+    }
+
+    public IReadOnlyList<UserSession> SearchSessions(
+        DateTime? loginFromInclusive,
+        DateTime? loginToExclusive,
+        string? keyword,
+        int limit)
+    {
+        int take = limit <= 0 ? 500 : Math.Min(limit, 2000);
+        IQueryable<UserSession> query = _dbContext.UserSessions
+            .AsNoTracking()
+            .Include(session => session.User);
+
+        if (loginFromInclusive.HasValue)
+        {
+            DateTime from = loginFromInclusive.Value;
+            query = query.Where(session => session.LoginTime >= from);
+        }
+
+        if (loginToExclusive.HasValue)
+        {
+            DateTime to = loginToExclusive.Value;
+            query = query.Where(session => session.LoginTime < to);
+        }
+
+        string key = (keyword ?? string.Empty).Trim();
+        if (!string.IsNullOrEmpty(key))
+        {
+            query = query.Where(session =>
+                session.TerminalName.Contains(key)
+                || (session.User != null
+                    && (session.User.LoginName.Contains(key)
+                        || session.User.RealName.Contains(key)
+                        || session.User.Department.Contains(key)
+                        || session.User.Role.Contains(key))));
+        }
+
+        return query
+            .OrderByDescending(session => session.LoginTime)
+            .Take(take)
+            .ToList();
+    }
+
     public UserSession? GetSessionBySessionId(string sessionId, bool asNoTracking = false)
     {
         IQueryable<UserSession> query = _dbContext.UserSessions;

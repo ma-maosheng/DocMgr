@@ -36,6 +36,10 @@ namespace DocMgr.Repositories.Interfaces
 
         Task<IReadOnlyList<string>> GetCrossDomainTransferBusinessNoOptionsAsync(int maxCount = 50);
 
+        /// <summary>按建档申请 Id 批量解析出网转立档来源（关联出网申请）。</summary>
+        Task<IReadOnlyDictionary<int, NetworkOutboundFilingOrigin>> GetOutboundFilingOriginsByRegisterRecordIdsAsync(
+            IReadOnlyCollection<int> registerRecordIds);
+
         Task SaveChangesAsync();
     }
 }

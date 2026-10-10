@@ -10,6 +10,7 @@ using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.Views.Cabinets;
 using DocMgr.Views.HardDiskMedia;
 using DocMgr.Views.HistoryArchive;
@@ -417,8 +418,8 @@ namespace DocMgr.Views
             }
 
             TxtPageTitle.Text = searchHighlight == null
-                ? "年度资料档案化管理（资料查看）"
-                : "年度资料档案化管理（资料查看·检索定位）";
+                ? "年度资料（资料查看）"
+                : "年度资料（资料查看·检索定位）";
             MainContentFrame.Navigate(new ArchiveDetailPage(recordId, searchHighlight, filterPoolMediaKind, filingFactId));
         }
 
@@ -585,6 +586,7 @@ namespace DocMgr.Views
                 NetworkInboundApprovalPage => BtnNetInboundApprove,
                 NetworkOutboundApplicationPage => BtnNetOutboundApply,
                 NetworkOutboundApprovalPage => BtnNetOutboundApprove,
+                NetworkOnNetAssetLedgerPage => BtnNetOnNetLedger,
                 NetworkOnNetDisposalPage => BtnNetDispose,
                 TopoMapPage => BtnHistMap,
                 AerialPhotoPage => BtnHistAerial,
@@ -698,69 +700,71 @@ namespace DocMgr.Views
             return content switch
             {
                 null => "首页",
-                ArchiveRegisterApplicationPage => "年度资料档案化管理（资料建档·建档申请）",
-                ArchiveRegisterApprovalPage => "年度资料档案化管理（资料建档·申请审批）",
-                ArchiveDetailPage => "年度资料档案化管理（资料查看）",
-                ArchiveFilingPage => "年度资料档案化管理（资料建档·资料立档）",
-                StockHardDiskDirectFilingPage => "年度资料档案化管理（资料建档·存量硬盘直办立档）",
-                StockTextArchiveDirectFilingPage => "年度资料档案化管理（资料建档·存档文本直办立档）",
-                ArchiveFilingLedgerPage => "年度资料档案化管理（立档台账）",
-                StockContainerOverviewPage => "库管资料总览",
-                ArchiveRelocationLedgerPage => "年度资料档案化管理（资料迁档·迁档台账）",
-                ArchiveCirculationLedgerPage => "年度资料档案化管理（资料流转·流转台账）",
-                ArchiveCrossDomainTransferLedgerPage => "年度资料档案化管理（资料流转·跨域流转台账）",
+                ArchiveRegisterApplicationPage => "年度资料（建档与立档·建档申请）",
+                ArchiveRegisterApprovalPage => "年度资料（建档与立档·建档审批）",
+                ArchiveDetailPage => "年度资料（资料查看）",
+                ArchiveFilingPage => "年度资料（建档与立档·资料立档）",
+                StockHardDiskDirectFilingPage => "年度资料（建档与立档·存量硬盘直办）",
+                StockTextArchiveDirectFilingPage => "年度资料（建档与立档·存档文本直办）",
+                ArchiveFilingLedgerPage => "年度资料（建档与立档·立档台账）",
+                StockContainerOverviewPage => "库房与介质（库管资料总览）",
+                ArchiveRelocationLedgerPage => "年度资料（迁档·迁档台账）",
+                ArchiveCirculationLedgerPage => "年度资料（实物流转·流转台账）",
+                ArchiveCrossDomainTransferLedgerPage => "年度资料（出入网·跨域流转台账）",
                 ArchiveInventoryRegisterPage page => string.Equals(
                         page.MediaKind,
                         ArchiveInventoryRegisterDomainValues.MediaKindElectronic,
                         StringComparison.Ordinal)
-                    ? "年度资料档案化管理（盘库登记·电子资料盘库）"
-                    : "年度资料档案化管理（盘库登记·模拟资料盘库）",
+                    ? "年度资料（盘库与离库·电子资料盘库）"
+                    : "年度资料（盘库与离库·模拟资料盘库）",
                 ArchiveDisposalPage page => string.Equals(
                         page.MediaKind,
                         ArchiveRegisterDomainValues.MediaKindElectronic,
                         StringComparison.Ordinal)
-                    ? "年度资料档案化管理（离库处置·电子资料离库处置）"
-                    : "年度资料档案化管理（离库处置·模拟资料离库处置）",
-                ArchiveSimulatedRelocationPage => "年度资料档案化管理（资料迁档·模拟介质资料迁档）",
-                ArchiveElectronicRelocationPage => "年度资料档案化管理（资料迁档·电子介质资料迁档）",
-                ArchiveOutboundApplyPage => "年度资料档案化管理（资料流转·借出申请）",
-                ArchiveOutboundApprovalPage => "年度资料档案化管理（资料流转·审批出库）",
-                NetworkInboundApplicationPage => "年度资料出入网管理（入网申请）",
-                NetworkInboundApprovalPage => "年度资料出入网管理（入网审批）",
-                NetworkOutboundApplicationPage => "年度资料出入网管理（出网申请）",
-                NetworkOutboundApprovalPage => "年度资料出入网管理（出网审批）",
-                NetworkOnNetDisposalPage => "年度资料出入网管理（在网数据处置）",
+                    ? "年度资料（盘库与离库·电子资料离库处置）"
+                    : "年度资料（盘库与离库·模拟资料离库处置）",
+                ArchiveSimulatedRelocationPage => "年度资料（迁档·模拟介质资料迁档）",
+                ArchiveElectronicRelocationPage => "年度资料（迁档·电子介质资料迁档）",
+                ArchiveOutboundApplyPage => "年度资料（实物流转·借出申请）",
+                ArchiveOutboundApprovalPage => "年度资料（实物流转·借出审批）",
+                NetworkInboundApplicationPage => "年度资料（出入网·入网申请）",
+                NetworkInboundApprovalPage => "年度资料（出入网·入网审批）",
+                NetworkOutboundApplicationPage => "年度资料（出入网·出网申请）",
+                NetworkOutboundApprovalPage => "年度资料（出入网·出网审批）",
+                NetworkOnNetAssetLedgerPage => "年度资料（出入网·在网数据台账）",
+                NetworkOnNetDisposalPage => "年度资料（出入网·在网数据处置）",
                 ArchiveReturnWorkbenchPage page => page.WorkspaceMode == ArchiveReturnWorkspaceMode.Application
-                    ? "年度资料档案化管理（资料流转·归还申请）"
-                    : "年度资料档案化管理（资料流转·审批入库）",
-                ArchiveSearchPage => "年度资料档案化管理（资料检索·资料检索(综合模式)）",
-                ProjectSettingPage => "年度项目管理（项目信息设置）",
-                CabinetLayoutPage => "档案柜管理（档案柜登记）",
-                CabinetSearchPage => "档案柜管理（开柜查看）",
-                TopoMapPage => "历史存档资料管理（地形图）",
-                OtherMapPage => "历史存档资料管理（其他图件）",
-                AerialPhotoPage => "历史存档资料管理（航摄影像）",
-                HistoryArchiveDisposalPage => "历史存档资料管理（资料离库处置）",
-                HardDiskMediumLedgerPage => "介质管理（硬盘·初始登记）",
-                OpticalDiscMediaPage => "介质管理（光盘·概览）",
-                OpticalDiscMediumLedgerPage => "介质管理（光盘·光盘台账）",
-                HardDiskMediaOutboundApplicationPage => "介质管理（硬盘·出库申请）",
+                    ? "年度资料（实物流转·归还申请）"
+                    : "年度资料（实物流转·归还审批）",
+                ArchiveSearchPage => "年度资料（检索·资料检索(综合模式)）",
+                ProjectSettingPage => "年度资料（项目信息）",
+                CabinetLayoutPage => "库房与介质（档案柜·档案柜登记）",
+                CabinetSearchPage => "库房与介质（档案柜·开柜查看）",
+                TopoMapPage => "历史存档（地形图图件）",
+                OtherMapPage => "历史存档（其他资料）",
+                AerialPhotoPage => "历史存档（航摄胶片、像片）",
+                HistoryArchiveDisposalPage => "历史存档（资料离库处置）",
+                HardDiskMediumLedgerPage => "库房与介质（硬盘·初始登记）",
+                OpticalDiscMediaPage => "库房与介质（光盘·概览）",
+                OpticalDiscMediumLedgerPage => "库房与介质（光盘·光盘台账）",
+                HardDiskMediaOutboundApplicationPage => "库房与介质（硬盘·出库申请）",
                 HardDiskMediaReturnRegistrationPage page => page.WorkspaceMode == HardDiskReturnWorkspaceMode.Approval
-                    ? "介质管理（硬盘·归还办理）"
-                    : "介质管理（硬盘·归还申请）",
-                HardDiskMediaTransactionPage => "介质管理（硬盘·硬盘台账）",
-                HardDiskMediaApprovalPage => "介质管理（硬盘·出库办理）",
-                HardDiskInventoryRegisterPage => "介质管理（硬盘·盘库登记）",
-                HardDiskDisposalPage => "介质管理（硬盘·离库处置）",
-                HardDiskMediaPage => "介质管理（硬盘·概览）",
+                    ? "库房与介质（硬盘·归还办理）"
+                    : "库房与介质（硬盘·归还申请）",
+                HardDiskMediaTransactionPage => "库房与介质（硬盘·硬盘台账）",
+                HardDiskMediaApprovalPage => "库房与介质（硬盘·出库办理）",
+                HardDiskInventoryRegisterPage => "库房与介质（硬盘·盘库登记）",
+                HardDiskDisposalPage => "库房与介质（硬盘·离库处置）",
+                HardDiskMediaPage => "库房与介质（硬盘·概览）",
                 UserManagementPage => "系统设置（用户管理）",
                 DeptSettingPage => "系统设置（部门设置）",
                 RoleSettingPage => "系统设置（角色概览）",
                 ApprovalWorkflowSettingsPage => "系统设置（审核审批）",
                 ServerPathSettingPage => "系统设置（服务器路径设置）",
                 UserPreferencePage => "系统设置（个人设置）",
-                BusinessLogicSettingsPage => "系统设置（业务逻辑设置）",
+                BusinessLogicSettingsPage => "系统设置（逾期设置）",
                 DbOperationLogPage => "系统设置（数据库操作日志）",
+                UserSessionMonitorPage => "系统设置（在线用户与登录记录）",
                 AdvancedDataPage => "高级数据管理",
                 _ => "首页"
             };
@@ -783,7 +787,7 @@ namespace DocMgr.Views
 
             if (item.BizType == "YearlyArchiveFiling")
             {
-                TxtPageTitle.Text = "年度资料档案化管理（资料建档·资料立档）";
+                TxtPageTitle.Text = "年度资料（建档与立档·资料立档）";
                 MainContentFrame.Navigate(new ArchiveFilingPage());
                 return Task.CompletedTask;
             }
@@ -802,21 +806,21 @@ namespace DocMgr.Views
 
             if (item.BizType == "HardDiskDisposal")
             {
-                TxtPageTitle.Text = "介质管理（硬盘·离库处置）";
+                TxtPageTitle.Text = "库房与介质（硬盘·离库处置）";
                 MainContentFrame.Navigate(new HardDiskDisposalPage());
                 return Task.CompletedTask;
             }
 
             if (item.BizType == "HardDiskInventoryRegister")
             {
-                TxtPageTitle.Text = "介质管理（硬盘·盘库登记）";
+                TxtPageTitle.Text = "库房与介质（硬盘·盘库登记）";
                 MainContentFrame.Navigate(new HardDiskInventoryRegisterPage());
                 return Task.CompletedTask;
             }
 
             if (item.BizType == "HistoryArchiveDisposal")
             {
-                TxtPageTitle.Text = "历史存档资料管理（资料离库处置）";
+                TxtPageTitle.Text = "历史存档（资料离库处置）";
                 MainContentFrame.Navigate(new HistoryArchiveDisposalPage());
                 return Task.CompletedTask;
             }
@@ -849,7 +853,7 @@ namespace DocMgr.Views
 
             if (item.BizType == "NetworkOnNetDisposal")
             {
-                TxtPageTitle.Text = "年度资料出入网管理（在网数据处置）";
+                TxtPageTitle.Text = "年度资料（出入网·在网数据处置）";
                 MainContentFrame.Navigate(new NetworkOnNetDisposalPage());
                 return Task.CompletedTask;
             }
@@ -857,21 +861,21 @@ namespace DocMgr.Views
             if (item.BizType == "YearlyArchiveOutboundApproval"
                 || item.BizType == "YearlyArchiveOutboundHandover")
             {
-                TxtPageTitle.Text = "年度资料档案化管理（资料流转·审批出库）";
+                TxtPageTitle.Text = "年度资料（实物流转·借出审批）";
                 MainContentFrame.Navigate(new ArchiveOutboundApprovalPage(item.BizId));
                 return Task.CompletedTask;
             }
 
             if (item.BizType == "NetworkInboundApproval" || item.BizType == "NetworkInboundHandover")
             {
-                TxtPageTitle.Text = "年度资料出入网管理（入网审批）";
+                TxtPageTitle.Text = "年度资料（出入网·入网审批）";
                 MainContentFrame.Navigate(new NetworkInboundApprovalPage(item.BizId));
                 return Task.CompletedTask;
             }
 
             if (item.BizType == "NetworkOutboundApproval" || item.BizType == "NetworkOutboundHandover")
             {
-                TxtPageTitle.Text = "年度资料出入网管理（出网审批）";
+                TxtPageTitle.Text = "年度资料（出入网·出网审批）";
                 MainContentFrame.Navigate(new NetworkOutboundApprovalPage(item.BizId));
                 return Task.CompletedTask;
             }
@@ -920,12 +924,11 @@ namespace DocMgr.Views
             SystemSettingsExpander.Visibility = Visibility.Visible;
             SystemSettingsExpander.IsEnabled = true;
 
+            ExpHistoryArchive.IsEnabled = true;
             ExpYearlyArchive.IsEnabled = true;
             ExpNetworkMgr.IsEnabled = true;
-            ExpHistoryArchive.IsEnabled = true;
+            ExpFacility.IsEnabled = true;
             ExpCabinets.IsEnabled = true;
-            ExpMediaMgr.IsEnabled = true;
-            ExpProjects.IsEnabled = true;
 
             SetNavButton(BtnUserMgr, true);
             SetNavButton(BtnDeptMgr, true);
@@ -936,6 +939,12 @@ namespace DocMgr.Views
             SetNavButton(BtnBusinessLogicSettings, true);
             SetNavButton(BtnUserPreference, true);
             SetNavButton(BtnDbOperationLog, true);
+
+            // 在线会话含终端与登录履历，仅系统管理员与资料管理员可见
+            bool canViewUserSessions = ArchiveRegisterBusinessRules.IsSystemAdministrator(CurrentUser)
+                                       || ArchiveRegisterBusinessRules.IsArchiveAdminUser(CurrentUser);
+            BtnUserSessionMonitor.Visibility = canViewUserSessions ? Visibility.Visible : Visibility.Collapsed;
+            BtnUserSessionMonitor.IsEnabled = canViewUserSessions;
 
             SetNavButton(BtnProjectInfo, true);
 
@@ -968,6 +977,7 @@ namespace DocMgr.Views
             SetNavButton(BtnNetInboundApprove, true);
             SetNavButton(BtnNetOutboundApply, true);
             SetNavButton(BtnNetOutboundApprove, true);
+            SetNavButton(BtnNetOnNetLedger, true);
             SetNavButton(BtnNetDispose, true);
 
             SetNavButton(BtnHistMap, true);
@@ -1056,43 +1066,43 @@ namespace DocMgr.Views
 
         private void BtnCabRegister_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "档案柜管理（档案柜登记）";
+            TxtPageTitle.Text = "库房与介质（档案柜·档案柜登记）";
             MainContentFrame.Navigate(new CabinetLayoutPage());
         }
 
         private void BtnCabSearch_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "档案柜管理（开柜查看）";
+            TxtPageTitle.Text = "库房与介质（档案柜·开柜查看）";
             MainContentFrame.Navigate(new CabinetSearchPage());
         }
 
         private void BtnHistDisposal_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "历史存档资料管理（资料离库处置）";
+            TxtPageTitle.Text = "历史存档（资料离库处置）";
             MainContentFrame.Navigate(new HistoryArchiveDisposalPage());
         }
 
         private void BtnTopoMap_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "历史存档资料管理（地形图）";
+            TxtPageTitle.Text = "历史存档（地形图图件）";
             MainContentFrame.Navigate(new TopoMapPage());
         }
 
         private void BtnOtherMap_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "历史存档资料管理（其他图件）";
+            TxtPageTitle.Text = "历史存档（其他资料）";
             MainContentFrame.Navigate(new OtherMapPage());
         }
 
         private void BtnAerialPhoto_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "历史存档资料管理（航摄影像）";
+            TxtPageTitle.Text = "历史存档（航摄胶片、像片）";
             MainContentFrame.Navigate(new AerialPhotoPage());
         }
 
         private void BtnProjectSetting_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度项目管理（项目信息设置）";
+            TxtPageTitle.Text = "年度资料（项目信息）";
             MainContentFrame.Navigate(new ProjectSettingPage());
         }
 
@@ -1115,38 +1125,38 @@ namespace DocMgr.Views
 
         private void BtnArchiveFilingLedger_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（立档台账）";
+            TxtPageTitle.Text = "年度资料（建档与立档·立档台账）";
             MainContentFrame.Navigate(new ArchiveFilingLedgerPage());
         }
 
         private void BtnStockContainerOverview_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "库管资料总览";
+            TxtPageTitle.Text = "库房与介质（库管资料总览）";
             MainContentFrame.Navigate(new StockContainerOverviewPage());
         }
 
         public void NavigateToArchiveFilingLedger(int filingFactId)
         {
             ArchiveFilingLedgerNavigationState.PendingFilingFactId = filingFactId;
-            TxtPageTitle.Text = "年度资料档案化管理（立档台账）";
+            TxtPageTitle.Text = "年度资料（建档与立档·立档台账）";
             MainContentFrame.Navigate(new ArchiveFilingLedgerPage());
         }
 
         private void BtnArchiveRelocationLedger_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料迁档·迁档台账）";
+            TxtPageTitle.Text = "年度资料（迁档·迁档台账）";
             MainContentFrame.Navigate(new ArchiveRelocationLedgerPage());
         }
 
         private void BtnArchiveCirculationLedger_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料流转·流转台账）";
+            TxtPageTitle.Text = "年度资料（实物流转·流转台账）";
             MainContentFrame.Navigate(new ArchiveCirculationLedgerPage());
         }
 
         private void BtnArchiveCrossDomainTransferLedger_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料流转·跨域流转台账）";
+            TxtPageTitle.Text = "年度资料（出入网·跨域流转台账）";
             MainContentFrame.Navigate(new ArchiveCrossDomainTransferLedgerPage());
         }
 
@@ -1167,8 +1177,8 @@ namespace DocMgr.Views
                 ArchiveInventoryRegisterDomainValues.MediaKindElectronic,
                 StringComparison.Ordinal);
             TxtPageTitle.Text = isElectronic
-                ? "年度资料档案化管理（盘库登记·电子资料盘库）"
-                : "年度资料档案化管理（盘库登记·模拟资料盘库）";
+                ? "年度资料（盘库与离库·电子资料盘库）"
+                : "年度资料（盘库与离库·模拟资料盘库）";
             MainContentFrame.Navigate(new ArchiveInventoryRegisterPage(mediaKind));
         }
 
@@ -1184,7 +1194,7 @@ namespace DocMgr.Views
 
         private void BtnArchiveFiling_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料建档·资料立档）";
+            TxtPageTitle.Text = "年度资料（建档与立档·资料立档）";
 
             try
             {
@@ -1203,7 +1213,7 @@ namespace DocMgr.Views
 
         private void BtnStockHardDiskDirectFiling_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料建档·存量硬盘直办立档）";
+            TxtPageTitle.Text = "年度资料（建档与立档·存量硬盘直办）";
 
             try
             {
@@ -1213,7 +1223,7 @@ namespace DocMgr.Views
             {
                 MessageBox.Show(
                     this,
-                    "无法打开存量硬盘直办立档页面：\n\n" + ex.Message,
+                    "无法打开存量硬盘资料直办立档页面：\n\n" + ex.Message,
                     "错误",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -1222,7 +1232,7 @@ namespace DocMgr.Views
 
         private void BtnStockTextArchiveDirectFiling_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料建档·存档文本直办立档）";
+            TxtPageTitle.Text = "年度资料（建档与立档·存档文本直办）";
 
             try
             {
@@ -1232,7 +1242,7 @@ namespace DocMgr.Views
             {
                 MessageBox.Show(
                     this,
-                    "无法打开存档文本直办立档页面：\n\n" + ex.Message,
+                    "无法打开存档文本资料直办立档页面：\n\n" + ex.Message,
                     "错误",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -1241,27 +1251,27 @@ namespace DocMgr.Views
 
         private void BtnArchiveSearch_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料检索·资料检索(综合模式)）";
+            TxtPageTitle.Text = "年度资料（检索·资料检索(综合模式)）";
             MainContentFrame.Navigate(new ArchiveSearchPage());
         }
 
         private void BtnArchiveElectronicFilingSearch_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料检索·电子介质资料检索）";
+            TxtPageTitle.Text = "年度资料（检索·电子介质资料检索）";
             MainContentFrame.Navigate(new ArchiveFilingSearchPage(ArchiveRegisterDomainValues.MediaKindElectronic));
         }
 
         private void BtnArchiveSimulatedFilingSearch_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料检索·模拟介质资料检索）";
+            TxtPageTitle.Text = "年度资料（检索·模拟介质资料检索）";
             MainContentFrame.Navigate(new ArchiveFilingSearchPage(ArchiveRegisterDomainValues.MediaKindSimulated));
         }
 
         public void NavigateToArchiveFilingSearchPoolPage(string mediaKind)
         {
             TxtPageTitle.Text = string.Equals(mediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal)
-                ? "年度资料档案化管理（资料检索·电子介质检索池）"
-                : "年度资料档案化管理（资料检索·模拟介质检索池）";
+                ? "年度资料（检索·电子介质检索池）"
+                : "年度资料（检索·模拟介质检索池）";
             MainContentFrame.Navigate(new ArchiveFilingSearchPoolPage(mediaKind));
         }
 
@@ -1272,7 +1282,7 @@ namespace DocMgr.Views
 
         public void NavigateToArchiveOutboundApplyPage(int? recordId = null)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料流转·借出申请）";
+            TxtPageTitle.Text = "年度资料（实物流转·借出申请）";
             MainContentFrame.Navigate(new ArchiveOutboundApplyPage(recordId.GetValueOrDefault()));
         }
 
@@ -1283,7 +1293,7 @@ namespace DocMgr.Views
 
         private void BtnArchiveOutboundApproval_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料流转·审批出库）";
+            TxtPageTitle.Text = "年度资料（实物流转·借出审批）";
             MainContentFrame.Navigate(new ArchiveOutboundApprovalPage());
         }
 
@@ -1299,27 +1309,27 @@ namespace DocMgr.Views
 
         private void NavigateToArchiveReturnPage(ArchiveReturnWorkspaceMode mode)
         {
-            // 旧 Handover 入口统一并入审批入库。
+            // 旧 Handover 入口统一并入归还审批。
             if (mode == ArchiveReturnWorkspaceMode.Handover)
             {
                 mode = ArchiveReturnWorkspaceMode.Approval;
             }
 
             TxtPageTitle.Text = mode == ArchiveReturnWorkspaceMode.Application
-                ? "年度资料档案化管理（资料流转·归还申请）"
-                : "年度资料档案化管理（资料流转·审批入库）";
+                ? "年度资料（实物流转·归还申请）"
+                : "年度资料（实物流转·归还审批）";
             MainContentFrame.Navigate(new ArchiveReturnWorkbenchPage(mode));
         }
 
         private void BtnArchiveSimulatedRelocation_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料流转·模拟介质资料迁档）";
+            TxtPageTitle.Text = "年度资料（迁档·模拟介质资料迁档）";
             MainContentFrame.Navigate(new ArchiveSimulatedRelocationPage());
         }
 
         private void BtnArchiveElectronicRelocation_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料档案化管理（资料流转·电子介质资料迁档）";
+            TxtPageTitle.Text = "年度资料（迁档·电子介质资料迁档）";
             MainContentFrame.Navigate(new ArchiveElectronicRelocationPage());
         }
 
@@ -1340,8 +1350,8 @@ namespace DocMgr.Views
                 ArchiveRegisterDomainValues.MediaKindElectronic,
                 StringComparison.Ordinal);
             TxtPageTitle.Text = isElectronic
-                ? "年度资料档案化管理（离库处置·电子资料离库处置）"
-                : "年度资料档案化管理（离库处置·模拟资料离库处置）";
+                ? "年度资料（盘库与离库·电子资料离库处置）"
+                : "年度资料（盘库与离库·模拟资料离库处置）";
             MainContentFrame.Navigate(new ArchiveDisposalPage(mediaKind));
         }
 
@@ -1357,7 +1367,7 @@ namespace DocMgr.Views
 
         public void NavigateToNetworkInboundApplyPage(int recordId = 0)
         {
-            TxtPageTitle.Text = "年度资料出入网管理（入网申请）";
+            TxtPageTitle.Text = "年度资料（出入网·入网申请）";
             MainContentFrame.Navigate(new NetworkInboundApplicationPage(recordId));
         }
 
@@ -1368,31 +1378,37 @@ namespace DocMgr.Views
 
         private void BtnNetInboundApprove_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料出入网管理（入网审批）";
+            TxtPageTitle.Text = "年度资料（出入网·入网审批）";
             MainContentFrame.Navigate(new NetworkInboundApprovalPage());
         }
 
         private void BtnNetOutboundApply_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料出入网管理（出网申请）";
+            TxtPageTitle.Text = "年度资料（出入网·出网申请）";
             MainContentFrame.Navigate(new NetworkOutboundApplicationPage());
         }
 
         private void BtnNetOutboundApprove_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料出入网管理（出网审批）";
+            TxtPageTitle.Text = "年度资料（出入网·出网审批）";
             MainContentFrame.Navigate(new NetworkOutboundApprovalPage());
+        }
+
+        private void BtnNetOnNetLedger_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "年度资料（出入网·在网数据台账）";
+            MainContentFrame.Navigate(new NetworkOnNetAssetLedgerPage());
         }
 
         private void BtnNetDispose_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "年度资料出入网管理（在网数据处置）";
+            TxtPageTitle.Text = "年度资料（出入网·在网数据处置）";
             MainContentFrame.Navigate(new NetworkOnNetDisposalPage());
         }
 
         private void BtnDiskLedger_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "介质管理（硬盘·初始登记）";
+            TxtPageTitle.Text = "库房与介质（硬盘·初始登记）";
             MainContentFrame.Navigate(new HardDiskMediumLedgerPage());
         }
 
@@ -1403,7 +1419,7 @@ namespace DocMgr.Views
 
         private void BtnOpticalDiscOverview_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "介质管理（光盘·概览）";
+            TxtPageTitle.Text = "库房与介质（光盘·概览）";
             MainContentFrame.Navigate(new OpticalDiscMediaPage());
         }
 
@@ -1413,8 +1429,8 @@ namespace DocMgr.Views
             bool recentTransactionsOnly = false)
         {
             TxtPageTitle.Text = recentTransactionsOnly
-                ? "介质管理（光盘·光盘台账·近90天）"
-                : "介质管理（光盘·光盘台账）";
+                ? "库房与介质（光盘·光盘台账·近90天）"
+                : "库房与介质（光盘·光盘台账）";
             MainContentFrame.Navigate(new OpticalDiscMediumLedgerPage(initialStatus, quickFilter, recentTransactionsOnly));
         }
 
@@ -1466,13 +1482,13 @@ namespace DocMgr.Views
 
         private void BtnDiskApplication_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "介质管理（硬盘·出库申请）";
+            TxtPageTitle.Text = "库房与介质（硬盘·出库申请）";
             MainContentFrame.Navigate(new HardDiskMediaOutboundApplicationPage());
         }
 
         private void BtnDiskOutboundApplication_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "介质管理（硬盘·出库申请）";
+            TxtPageTitle.Text = "库房与介质（硬盘·出库申请）";
             MainContentFrame.Navigate(new HardDiskMediaOutboundApplicationPage());
         }
 
@@ -1493,13 +1509,13 @@ namespace DocMgr.Views
 
         private void BtnDiskInventoryRegister_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "介质管理（硬盘·盘库登记）";
+            TxtPageTitle.Text = "库房与介质（硬盘·盘库登记）";
             MainContentFrame.Navigate(new HardDiskInventoryRegisterPage());
         }
 
         private void BtnDiskOffWarehouse_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "介质管理（硬盘·离库处置）";
+            TxtPageTitle.Text = "库房与介质（硬盘·离库处置）";
             MainContentFrame.Navigate(new HardDiskDisposalPage());
         }
 
@@ -1514,10 +1530,10 @@ namespace DocMgr.Views
             bool matchAllYears)
         {
             TxtPageTitle.Text = mode == HardDiskReturnWorkspaceMode.Approval
-                ? "介质管理（硬盘·归还办理）"
+                ? "库房与介质（硬盘·归还办理）"
                 : overdueOnly
-                    ? "介质管理（硬盘·归还申请·逾期）"
-                    : "介质管理（硬盘·归还申请）";
+                    ? "库房与介质（硬盘·归还申请·逾期）"
+                    : "库房与介质（硬盘·归还申请）";
             MainContentFrame.Navigate(new HardDiskMediaReturnRegistrationPage(mode, overdueOnly, matchAllYears));
         }
 
@@ -1528,7 +1544,7 @@ namespace DocMgr.Views
 
         private void BtnDiskImportExport_Click(object sender, RoutedEventArgs e)
         {
-            NavigateToHardDiskMedia(HardDiskMediaWorkbenchSection.Overview, "介质管理（硬盘·概览）");
+            NavigateToHardDiskMedia(HardDiskMediaWorkbenchSection.Overview, "库房与介质（硬盘·概览）");
         }
 
         private void BtnUserPreference_Click(object sender, RoutedEventArgs e)
@@ -1547,6 +1563,12 @@ namespace DocMgr.Views
         {
             TxtPageTitle.Text = "系统设置（数据库操作日志）";
             MainContentFrame.Navigate(new DbOperationLogPage());
+        }
+
+        private void BtnUserSessionMonitor_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "系统设置（在线用户与登录记录）";
+            MainContentFrame.Navigate(new UserSessionMonitorPage());
         }
 
         private void BtnHelpDoc_Click(object sender, RoutedEventArgs e)
@@ -1577,7 +1599,7 @@ namespace DocMgr.Views
             bool? signedAttachmentUploadedFilter,
             bool matchAllYears)
         {
-            TxtPageTitle.Text = "介质管理（硬盘·出库办理）";
+            TxtPageTitle.Text = "库房与介质（硬盘·出库办理）";
             MainContentFrame.Navigate(new HardDiskMediaApprovalPage(
                 applicationId,
                 initialStatusLabel,
@@ -1590,7 +1612,7 @@ namespace DocMgr.Views
             string? initialLockFilter = null,
             HardDiskLedgerQuickFilter quickFilter = HardDiskLedgerQuickFilter.None)
         {
-            TxtPageTitle.Text = "介质管理（硬盘·硬盘台账）";
+            TxtPageTitle.Text = "库房与介质（硬盘·硬盘台账）";
             MainContentFrame.Navigate(new HardDiskMediaTransactionPage(initialStatus, initialLockFilter, quickFilter));
         }
 
@@ -1661,11 +1683,11 @@ namespace DocMgr.Views
                     NavigateToHardDiskTransactionPage(initialLockFilter: HardDiskRegisterLockFilterSupport.Any);
                     break;
                 case HardDiskOverviewKpiKind.PendingDisposal:
-                    TxtPageTitle.Text = "介质管理（硬盘·离库处置）";
+                    TxtPageTitle.Text = "库房与介质（硬盘·离库处置）";
                     MainContentFrame.Navigate(new HardDiskDisposalPage(pendingInProgress: true, matchAllYears: true));
                     break;
                 case HardDiskOverviewKpiKind.DraftInventory:
-                    TxtPageTitle.Text = "介质管理（硬盘·盘库登记）";
+                    TxtPageTitle.Text = "库房与介质（硬盘·盘库登记）";
                     MainContentFrame.Navigate(new HardDiskInventoryRegisterPage(
                         ApplicationWorkflowStatus.TextDraft,
                         matchAllYears: true));

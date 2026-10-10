@@ -15,6 +15,7 @@ namespace DocMgr.Models.YearlyArchive
         public const string TypeInventoryRegisterScrap = "InventoryRegisterScrap";
         public const string TypeDisposal = "Disposal";
         public const string TypeNetworkInboundCopy = "NetworkInboundCopy";
+        public const string TypeNetworkOutboundFiling = "NetworkOutboundFiling";
 
         public const string SourceFilingFact = "FilingFact";
         public const string SourceRelocationItem = "RelocationItem";
@@ -23,6 +24,7 @@ namespace DocMgr.Models.YearlyArchive
         public const string SourceInventoryItem = "InventoryRegisterItem";
         public const string SourceDisposalItem = "DisposalItem";
         public const string SourceNetworkInboundItem = "NetworkInboundItem";
+        public const string SourceNetworkOutboundRecord = "NetworkOutboundRecord";
 
         public const string ProcessNodeCategoryReservation = "Reservation";
         public const string ProcessNodeCategoryCancelled = "Cancelled";
@@ -39,9 +41,29 @@ namespace DocMgr.Models.YearlyArchive
             TypeInventoryRegisterDamage => "盘库登记(损坏)",
             TypeInventoryRegisterScrap => "盘库登记(拟销)",
             TypeDisposal => "资料离库处置",
-            TypeNetworkInboundCopy => "立档资料复制入网",
+            TypeNetworkInboundCopy => "立档转入网",
+            TypeNetworkOutboundFiling => "出网转立档",
             _ => transactionType
         };
+
+        /// <summary>跨域流转台账收录的履历类型。</summary>
+        public static readonly string[] CrossDomainTransferTypes =
+        [
+            TypeNetworkInboundCopy,
+            TypeNetworkOutboundFiling
+        ];
+
+        public static bool IsCrossDomainTransferType(string? transactionType)
+        {
+            if (string.IsNullOrWhiteSpace(transactionType))
+            {
+                return false;
+            }
+
+            string trimmed = transactionType.Trim();
+            return string.Equals(trimmed, TypeNetworkInboundCopy, StringComparison.Ordinal)
+                   || string.Equals(trimmed, TypeNetworkOutboundFiling, StringComparison.Ordinal);
+        }
 
         public static string MapRelocationModeDisplay(string mode) => mode switch
         {

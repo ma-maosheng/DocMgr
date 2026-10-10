@@ -33,7 +33,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public ICollectionView GroupedItems { get; }
 
-        public string WindowTitle => "资料出库业务助手";
+        public string WindowTitle => "审批出库业务助手";
 
         public string HeaderText => $"申请单 { _record.OutboundNo }";
 

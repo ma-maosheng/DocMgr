@@ -85,6 +85,21 @@
                                     Visibility="{Binding ShowBlankDiskFields, Converter={StaticResource OutboundDetailCardBooleanToVisibilityConverter}}">
                             <TextBlock Text="库内空盘：" Style="{StaticResource OutboundDetailCardSettingLabelStyle}"/>
                             <TextBlock Text="{Binding RequisitionedDiskCode}" Style="{StaticResource OutboundDetailCardSettingValueStyle}" FontWeight="SemiBold"/>
+                            <TextBlock Margin="0,2,0,0" Foreground="#059669" FontSize="12" TextWrapping="Wrap"
+                                       Text="{Binding HardDiskCapacityDescription, Mode=OneWay}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HardDiskCapacityDescription}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HardDiskCapacityDescription}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
                         <StackPanel Style="{StaticResource OutboundDetailCardSettingSlotStyle}"
                                     Visibility="{Binding ShowRequisitionedDiskNeedReturn, Converter={StaticResource OutboundDetailCardBooleanToVisibilityConverter}}">

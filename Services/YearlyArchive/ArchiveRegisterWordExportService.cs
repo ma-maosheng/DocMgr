@@ -242,24 +242,15 @@ namespace DocMgr.Services.YearlyArchive
 
         private static void AddFooterNotes(XWPFDocument document)
         {
-            var titleParagraph = document.CreateParagraph();
-            ApplyDocumentParagraph(titleParagraph);
-            var titleRun = titleParagraph.CreateRun();
-            titleRun.SetText("备注：");
-            WordExportFontSupport.ApplyFooter(titleRun, bold: true);
-            AddFooterParagraph(document, "1、审核、审批时，生产科负责人必须在各资料子项的[密级]处手签具体密级和本人姓名。");
-            AddFooterParagraph(document, "      2、审批完成后，申请人（交接人）携带拟归档所有资料、材料(包括本表单、相关附件等）到资料室办理登记、交接工作。");
-            AddFooterParagraph(document, "      3、交接人、资料管理员应对照本表单中的各项内容共同完成归档资料、材料的查验和拍照，确认账实相符后分别在表单上签名确认。");
-            AddFooterParagraph(document, "      4、本表单、资料照片电子件应上传到本系统，同时表单原件由资料室存档保管，资料交接人有自存需要的可采用复印或拍照方式留存。");
-        }
-
-        private static void AddFooterParagraph(XWPFDocument document, string text)
-        {
-            var paragraph = document.CreateParagraph();
-            ApplyDocumentParagraph(paragraph);
-            var run = paragraph.CreateRun();
-            run.SetText(text);
-            WordExportFontSupport.ApplyFooter(run);
+            WordExportNoteLayoutSupport.AddAlignedNotes(
+                document,
+                "备注：",
+                [
+                    "1、审核、审批时，生产科负责人必须在各资料子项的[密级]处手签具体密级和本人姓名。",
+                    "2、审批完成后，申请人（交接人）携带拟归档所有资料、材料(包括本表单、相关附件等）到资料室办理登记、交接工作。",
+                    "3、交接人、资料管理员应对照本表单中的各项内容共同完成归档资料、材料的查验和拍照，确认账实相符后分别在表单上签名确认。",
+                    "4、本表单、资料照片电子件应上传到本系统，同时表单原件由资料室存档保管，资料交接人有自存需要的可采用复印或拍照方式留存。"
+                ]);
         }
 
         private static int CalculateContentRowHeightTwips(bool hasRetainedHardDisk, bool hasOpticalDiscLedger)

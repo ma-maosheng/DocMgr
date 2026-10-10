@@ -64,6 +64,15 @@ public interface INetworkTransferRepository
 
     Task<List<NetworkOutboundItem>> GetOutboundItemsByIdsAsync(IReadOnlyCollection<int> itemIds);
 
+    /// <summary>按入网单 Id 批量读取主单（列表补全用）。</summary>
+    Task<Dictionary<int, NetworkInboundRecord>> GetInboundRecordsByIdsAsync(IReadOnlyCollection<int> recordIds);
+
+    /// <summary>
+    /// 按介质子项名称匹配挂在入网单上的电子介质快照（补全无 OriginInboundItemId 的入网产生台账）。
+    /// </summary>
+    Task<List<NetworkOnNetElectronicMediaSnapshot>> GetElectronicMediaSnapshotsByInboundContentDescsAsync(
+        IReadOnlyCollection<string> contentDescs);
+
     Task<NetworkOnNetAsset?> GetOnNetAssetByIdAsync(int assetId, bool tracking = false);
 
     Task<NetworkOnNetAsset?> GetOnNetAssetByOriginInboundItemIdAsync(int inboundItemId, bool tracking = false);
@@ -111,4 +120,9 @@ public interface INetworkTransferRepository
     void AddMaterialTransactions(IEnumerable<YearlyArchiveMaterialTransaction> transactions);
 
     Task SaveChangesAsync();
+
+    /// <summary>
+    /// 清空当前 DbContext 跟踪缓存。弹窗 Scoped 生命周期内多次保存/重载前调用，避免同键实体重复跟踪。
+    /// </summary>
+    void ClearChangeTracker();
 }

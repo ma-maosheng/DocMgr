@@ -517,4 +517,6 @@ public sealed class ArchiveDisposalRepository : IArchiveDisposalRepository
     public void RemoveAttachment(SystemAttachment attachment) => _dbContext.SystemAttachments.Remove(attachment);
 
     public Task SaveChangesAsync() => _dbContext.SaveChangesAsync();
+
+    public void ClearChangeTracker() => _dbContext.ChangeTracker.Clear();
 }

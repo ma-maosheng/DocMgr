@@ -50,7 +50,19 @@ internal static class NetworkOutboundPrintDocumentFactory
         var rowGroup = new TableRowGroup();
         rowGroup.Rows.Add(CreateDoubleRow("申请人", data.ApplicantName, "申请部门", data.ApplicantDept));
         rowGroup.Rows.Add(CreateDoubleRow("年度", EmptyAsPlaceholder(data.YearText), "项目", EmptyAsPlaceholder(data.ProjectName)));
-        rowGroup.Rows.Add(CreateSingleRow("目的地", EmptyAsPlaceholder(data.DestinationKindText)));
+        if (!string.IsNullOrWhiteSpace(data.DestinationUnitText))
+        {
+            rowGroup.Rows.Add(CreateDoubleRow(
+                "目的地",
+                EmptyAsPlaceholder(data.DestinationKindText),
+                "接收部门(单位)",
+                EmptyAsPlaceholder(data.DestinationUnitText)));
+        }
+        else
+        {
+            rowGroup.Rows.Add(CreateSingleRow("目的地", EmptyAsPlaceholder(data.DestinationKindText)));
+        }
+
         if (hasArchivePurpose)
         {
             rowGroup.Rows.Add(CreateSingleRow("库管模式", EmptyAsPlaceholder(data.ArchivePurposeText)));
@@ -123,13 +135,13 @@ internal static class NetworkOutboundPrintDocumentFactory
             + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount
             + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
 
-        string footerText = BuildFooterNoteText(data);
-        double footerHeight = PrintPageLayoutSupport.EstimateNoteBlockHeightFromTextWithSafetyDip(
-            footerText,
-            PrintPageLayoutSupport.ContentWidthDip,
-            fontSizeDip: 10,
-            lineHeightDip: 16,
-            topMarginDip: 8);
+        double footerHeight = PrintFormNoteLayoutSupport.EstimateHeightDip(
+            "备注：",
+            BuildFooterLines(data),
+            BodyFont,
+            fontSize: 10,
+            lineHeight: 16,
+            topMargin: 8);
         double reservedHeight =
             PrintPageLayoutSupport.ApprovalFormTitleBlockHeightDip
             + HeaderInfoHeight
@@ -242,50 +254,32 @@ internal static class NetworkOutboundPrintDocumentFactory
         return table;
     }
 
-    private static Paragraph CreateFooterParagraph(NetworkOutboundPrintData data)
-    {
-        var footer = new Paragraph
-        {
-            FontSize = 10,
-            Margin = new Thickness(0, 8, 0, 0),
-            LineHeight = 16
-        };
-
-        footer.Inlines.Add(new Run("备注：") { FontWeight = FontWeights.Bold });
-
-        int noteIndex = 1;
-        if (data.HasPendingItemDetailCapture)
-        {
-            footer.Inlines.Add(new Run($"{noteIndex}、本单子项资料的目录、数据量等具体信息尚未录入，资料室办理前需从离线拷贝介质读取并补录。\n"));
-            noteIndex++;
-        }
-
-        footer.Inlines.Add(new Run($"      {noteIndex}、申请提交后，按“线上申请、打印表单、线下审批签字、上传签批单、确认出网交接”的流程办理。\n"));
-        noteIndex++;
-        footer.Inlines.Add(new Run($"      {noteIndex}、签字后的审批单应回传系统，作为办理依据和归档附件。\n"));
-        noteIndex++;
-        footer.Inlines.Add(new Run($"      {noteIndex}、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"));
-
-        return footer;
-    }
+    private static Table CreateFooterParagraph(NetworkOutboundPrintData data) =>
+        PrintFormNoteLayoutSupport.Create(
+            "备注：",
+            BuildFooterLines(data),
+            BodyFont,
+            fontSize: 10,
+            lineHeight: 16,
+            topMargin: 8);
 
     /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
-    private static string BuildFooterNoteText(NetworkOutboundPrintData data)
+    private static IReadOnlyList<string> BuildFooterLines(NetworkOutboundPrintData data)
     {
-        var sb = new System.Text.StringBuilder("备注：");
+        var lines = new List<string>();
         int noteIndex = 1;
         if (data.HasPendingItemDetailCapture)
         {
-            sb.Append($"{noteIndex}、本单子项资料的目录、数据量等具体信息尚未录入，资料室办理前需从离线拷贝介质读取并补录。\n");
+            lines.Add($"{noteIndex}、本单子项资料的目录、数据量等具体信息尚未录入，资料室办理前需从离线拷贝介质读取并补录。");
             noteIndex++;
         }
 
-        sb.Append($"      {noteIndex}、申请提交后，按“线上申请、打印表单、线下审批签字、上传签批单、确认出网交接”的流程办理。\n");
+        lines.Add($"{noteIndex}、申请提交后，按“线上申请、打印表单、线下审批签字、上传签批单、确认出网交接”的流程办理。");
         noteIndex++;
-        sb.Append($"      {noteIndex}、签字后的审批单应回传系统，作为办理依据和归档附件。\n");
+        lines.Add($"{noteIndex}、签字后的审批单应回传系统，作为办理依据和归档附件。");
         noteIndex++;
-        sb.Append($"      {noteIndex}、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。");
-        return sb.ToString();
+        lines.Add($"{noteIndex}、本申请单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。");
+        return lines;
     }
 
     private static string BuildItemText(NetworkOutboundPrintData data) =>

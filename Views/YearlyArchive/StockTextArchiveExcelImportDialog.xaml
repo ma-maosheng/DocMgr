@@ -1,7 +1,7 @@
 <Window x:Class="DocMgr.Views.YearlyArchive.StockTextArchiveExcelImportDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="存档文本直办 · Excel 导入预览"
+        Title="存档文本资料直办立档 · Excel 导入预览"
         Width="1280"
         Height="620"
         MinWidth="960"

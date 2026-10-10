@@ -61,6 +61,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     OnPropertyChanged(nameof(BorrowedHardDiskRegistrationRowVisibility));
                     OnPropertyChanged(nameof(BorrowedHardDiskDetailsVisibility));
                     NotifyOutboundHardDiskRequisitionPropertiesChanged();
+                    NotifyArchiveFilingHardDiskPropertiesChanged();
                 }
             }
         }
@@ -91,6 +92,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     OnPropertyChanged(nameof(BorrowedHardDiskRegistrationRowVisibility));
                     OnPropertyChanged(nameof(BorrowedHardDiskDetailsVisibility));
                     NotifyOutboundHardDiskRequisitionPropertiesChanged();
+                    NotifyArchiveFilingHardDiskPropertiesChanged();
                 }
             }
         }
@@ -180,6 +182,18 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool OutboundBlankHardDiskFieldsVisibility =>
             IsExternalOfflineReturnedHardDiskScenario && UseInStockBlankHardDisk;
 
+        /// <summary>资料室存档·硬盘·无需处置。盘不出室，不询问归还。</summary>
+        public bool IsArchiveFilingHardDiskScenario =>
+            string.Equals(MediaKind?.Trim(), ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(MediaType?.Trim(), ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(Disposition?.Trim(), ArchiveRegisterDomainValues.ElectronicDispositionNone, StringComparison.OrdinalIgnoreCase);
+
+        public bool ArchiveFilingBlankDiskFieldsVisibility =>
+            IsArchiveFilingHardDiskScenario && UseInStockBlankHardDisk;
+
+        public bool ArchiveFilingAppendTargetVisibility =>
+            IsArchiveFilingHardDiskScenario && !UseInStockBlankHardDisk;
+
         public bool OutboundRequisitionedDiskNeedReturnVisibility =>
             OutboundBlankHardDiskFieldsVisibility && RequisitionedMediumId is > 0;
 
@@ -188,6 +202,12 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private readonly string _useInStockBlankHardDiskRadioGroup = Guid.NewGuid().ToString("N");
         public string UseInStockBlankHardDiskRadioGroup => _useInStockBlankHardDiskRadioGroup;
+
+        /// <summary>
+        /// 资料室存档的空盘单选必须与院外征用分开分组。折叠面板里的 Radio 仍在同一分组内互斥，会把「是」立刻写回 false。
+        /// </summary>
+        private readonly string _archiveFilingBlankHardDiskRadioGroup = Guid.NewGuid().ToString("N");
+        public string ArchiveFilingBlankHardDiskRadioGroup => _archiveFilingBlankHardDiskRadioGroup;
 
         private readonly string _requisitionedDiskNeedReturnRadioGroup = Guid.NewGuid().ToString("N");
         public string RequisitionedDiskNeedReturnRadioGroup => _requisitionedDiskNeedReturnRadioGroup;
@@ -204,12 +224,20 @@ namespace DocMgr.ViewModels.YearlyArchive
                     {
                         ClearOutboundRequisitionedDiskState();
                     }
+                    else if (IsArchiveFilingHardDiskScenario)
+                    {
+                        RequisitionedDiskNeedReturn = false;
+                        ExpectedReturnDate = null;
+                        ClearAppendTarget();
+                    }
                     else
                     {
                         RequisitionedDiskNeedReturn = true;
+                        ClearAppendTarget();
                     }
 
                     NotifyOutboundHardDiskRequisitionPropertiesChanged();
+                    NotifyArchiveFilingHardDiskPropertiesChanged();
                 }
             }
         }
@@ -259,12 +287,206 @@ namespace DocMgr.ViewModels.YearlyArchive
             set => SetProperty(ref _expectedReturnDate, value?.Date);
         }
 
-        internal void ApplyOutboundRequisitionedDisk(int mediumId, string diskCode)
+        private string _hardDiskCapacityDescription = string.Empty;
+
+        /// <summary>所选库内空盘或并档硬盘的可用容量说明。</summary>
+        public string HardDiskCapacityDescription
+        {
+            get => _hardDiskCapacityDescription;
+            internal set => SetProperty(ref _hardDiskCapacityDescription, value);
+        }
+
+        internal void ApplyOutboundRequisitionedDisk(int mediumId, string diskCode, bool needReturn)
         {
             RequisitionedMediumId = mediumId;
             RequisitionedHardDiskCode = diskCode?.Trim() ?? string.Empty;
-            RequisitionedDiskNeedReturn = true;
+            RequisitionedDiskNeedReturn = needReturn;
+            if (!needReturn)
+            {
+                ExpectedReturnDate = null;
+            }
+
             NotifyOutboundHardDiskRequisitionPropertiesChanged();
+        }
+
+        private int? _appendTargetElectronicUnitId;
+        public int? AppendTargetElectronicUnitId
+        {
+            get => _appendTargetElectronicUnitId;
+            set
+            {
+                if (SetProperty(ref _appendTargetElectronicUnitId, value))
+                {
+                    OnPropertyChanged(nameof(AppendTargetSelectionUnitId));
+                    OnPropertyChanged(nameof(AppendTargetDisplayText));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 并入硬盘下拉的选中值。按电子袋 Id 匹配，避免替换候选项后 SelectedItem 引用对不上、关闭状态下文本空白。
+        /// 0 表示未选。下拉重建把选中值写成 0 时，已保存的 Id 予以保留。
+        /// </summary>
+        public int AppendTargetSelectionUnitId
+        {
+            get => _appendTargetElectronicUnitId ?? 0;
+            set
+            {
+                if (value <= 0)
+                {
+                    // 下拉重建期间只吞掉回写，不立刻回推，避免候选项已清空时来回写 0。
+                    if (_appendTargetElectronicUnitId is > 0
+                        && _appendTargetSelectionWritebackSuppression == 0)
+                    {
+                        OnPropertyChanged(nameof(AppendTargetSelectionUnitId));
+                    }
+
+                    return;
+                }
+
+                if (_appendTargetElectronicUnitId != value)
+                {
+                    _appendTargetElectronicUnitId = value;
+                    OnPropertyChanged(nameof(AppendTargetElectronicUnitId));
+                    OnPropertyChanged(nameof(AppendTargetSelectionUnitId));
+                }
+
+                ApplyMatchedAppendTargetOption(value);
+            }
+        }
+
+        /// <summary>按电子袋 Id 在当前并档候选中查找选项，供下拉选中后回写编号。</summary>
+        internal Func<int, ArchiveFilingAppendTargetOption?>? ResolveAppendTargetOption { get; set; }
+
+        private void ApplyMatchedAppendTargetOption(int unitId)
+        {
+            ArchiveFilingAppendTargetOption? option = ResolveAppendTargetOption?.Invoke(unitId);
+            if (option == null)
+            {
+                OnPropertyChanged(nameof(AppendTargetDisplayText));
+                return;
+            }
+
+            if (!string.Equals(_appendTargetHardDiskCode, option.DiskCode, StringComparison.Ordinal))
+            {
+                AppendTargetHardDiskCode = option.DiskCode ?? string.Empty;
+            }
+
+            if (!ReferenceEquals(_selectedAppendTarget, option))
+            {
+                _selectedAppendTarget = option;
+                OnPropertyChanged(nameof(SelectedAppendTarget));
+            }
+
+            OnPropertyChanged(nameof(AppendTargetDisplayText));
+        }
+
+        private string _appendTargetHardDiskCode = string.Empty;
+        public string AppendTargetHardDiskCode
+        {
+            get => _appendTargetHardDiskCode;
+            set
+            {
+                if (SetProperty(ref _appendTargetHardDiskCode, value))
+                {
+                    OnPropertyChanged(nameof(AppendTargetDisplayText));
+                }
+            }
+        }
+
+        /// <summary>并入硬盘只读展示：优先下拉项全文，否则用已保存的硬盘编号。</summary>
+        public string AppendTargetDisplayText =>
+            !string.IsNullOrWhiteSpace(_selectedAppendTarget?.DisplayText)
+                ? _selectedAppendTarget.DisplayText
+                : (_appendTargetHardDiskCode?.Trim() ?? string.Empty);
+
+        private int _appendTargetSelectionWritebackSuppression;
+
+        /// <summary>
+        /// 重建并档下拉期间，忽略 ComboBox 把 SelectedItem 回写成 null，避免清掉已保存的并入硬盘。
+        /// </summary>
+        internal void BeginAppendTargetSelectionWritebackSuppression()
+            => _appendTargetSelectionWritebackSuppression++;
+
+        /// <summary>结束并档下拉重建期间的回写抑制。</summary>
+        internal void EndAppendTargetSelectionWritebackSuppression()
+        {
+            if (_appendTargetSelectionWritebackSuppression > 0)
+            {
+                _appendTargetSelectionWritebackSuppression--;
+            }
+        }
+
+        private ArchiveFilingAppendTargetOption? _selectedAppendTarget;
+        public ArchiveFilingAppendTargetOption? SelectedAppendTarget
+        {
+            get => _selectedAppendTarget;
+            set
+            {
+                // 下拉重建或禁用时，ComboBox 会把 SelectedItem 写成 null。
+                // 已保存的并档硬盘以电子袋 Id / 编号为准，不能在这里清掉。
+                if (value == null
+                    && (_appendTargetSelectionWritebackSuppression > 0 || AppendTargetElectronicUnitId is > 0))
+                {
+                    if (_selectedAppendTarget != null)
+                    {
+                        OnPropertyChanged(nameof(SelectedAppendTarget));
+                        OnPropertyChanged(nameof(AppendTargetDisplayText));
+                    }
+
+                    return;
+                }
+
+                if (SetProperty(ref _selectedAppendTarget, value))
+                {
+                    if (value != null)
+                    {
+                        AppendTargetElectronicUnitId = value.UnitId;
+                        AppendTargetHardDiskCode = value.DiskCode ?? string.Empty;
+                    }
+
+                    OnPropertyChanged(nameof(AppendTargetDisplayText));
+                }
+            }
+        }
+
+        internal void SyncAppendTargetSelection(
+            IEnumerable<ArchiveFilingAppendTargetOption> options,
+            bool clearIfMissing = false)
+        {
+            ArchiveFilingAppendTargetOption? matched = AppendTargetElectronicUnitId is > 0
+                ? options.FirstOrDefault(option => option.UnitId == AppendTargetElectronicUnitId)
+                : null;
+            if (!ReferenceEquals(_selectedAppendTarget, matched))
+            {
+                _selectedAppendTarget = matched;
+                OnPropertyChanged(nameof(SelectedAppendTarget));
+            }
+
+            if (matched != null)
+            {
+                AppendTargetHardDiskCode = matched.DiskCode;
+            }
+            else if (clearIfMissing)
+            {
+                AppendTargetElectronicUnitId = null;
+                AppendTargetHardDiskCode = string.Empty;
+            }
+
+            // 候选项替换后重新按 Id 选中，关闭状态才能显示硬盘编号。
+            OnPropertyChanged(nameof(AppendTargetSelectionUnitId));
+            OnPropertyChanged(nameof(AppendTargetDisplayText));
+        }
+
+        internal void ClearAppendTarget()
+        {
+            AppendTargetElectronicUnitId = null;
+            AppendTargetHardDiskCode = string.Empty;
+            if (_selectedAppendTarget != null)
+            {
+                _selectedAppendTarget = null;
+                OnPropertyChanged(nameof(SelectedAppendTarget));
+            }
         }
 
         internal void ClearOutboundRequisitionedDiskState()
@@ -282,6 +504,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(OutboundBlankHardDiskFieldsVisibility));
             OnPropertyChanged(nameof(OutboundRequisitionedDiskNeedReturnVisibility));
             OnPropertyChanged(nameof(RequiresExpectedReturnDate));
+        }
+
+        internal void NotifyArchiveFilingHardDiskPropertiesChanged()
+        {
+            OnPropertyChanged(nameof(IsArchiveFilingHardDiskScenario));
+            OnPropertyChanged(nameof(ArchiveFilingBlankDiskFieldsVisibility));
+            OnPropertyChanged(nameof(ArchiveFilingAppendTargetVisibility));
         }
 
         private void ResetBorrowedHardDiskRegistrationIfNotApplicable()
@@ -303,7 +532,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 OnPropertyChanged(nameof(BorrowedHardDiskCode));
             }
 
-            if (!IsExternalOfflineReturnedHardDiskScenario)
+            if (!IsExternalOfflineReturnedHardDiskScenario && !IsArchiveFilingHardDiskScenario)
             {
                 if (_useInStockBlankHardDisk)
                 {
@@ -312,6 +541,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 ClearOutboundRequisitionedDiskState();
+                ClearAppendTarget();
             }
         }
 
@@ -451,12 +681,20 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         internal bool HasCustomizedOutboundStoragePath { get; set; }
 
+        /// <summary>
+        /// 出网存储目录是否已完成「是否用户自定义」的首次判定。
+        /// 避免子项名称/表头变化导致旧自动路径被误判为自定义而不再刷新。
+        /// </summary>
+        internal bool OutboundStoragePathCustomizationResolved { get; set; }
+
         internal void SetStoragePathFromSystem(string path)
         {
             _suppressOutboundStoragePathUserEdit = true;
             try
             {
                 StoragePath = path ?? string.Empty;
+                HasCustomizedOutboundStoragePath = false;
+                OutboundStoragePathCustomizationResolved = true;
             }
             finally
             {

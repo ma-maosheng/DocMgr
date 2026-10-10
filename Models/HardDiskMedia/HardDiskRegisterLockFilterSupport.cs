@@ -11,10 +11,11 @@ namespace DocMgr.Models.HardDiskMedia
 
         private static readonly (string BusinessType, string DisplayLabel)[] BusinessTypeOptions =
         [
-            (HardDiskRegisterLock.BusinessTypeArchiveRegister, "年度资料登记（已借出硬盘）"),
+            (HardDiskRegisterLock.BusinessTypeArchiveRegister, "建档申请（已借出硬盘）"),
             (HardDiskRegisterLock.BusinessTypeOutboundApplication, "硬盘借出申请（库内空盘）"),
             (HardDiskRegisterLock.BusinessTypeArchiveOutboundRequisition, "资料出库征用（库内空盘）"),
             (HardDiskRegisterLock.BusinessTypeNetworkOutboundRequisition, "出网征用（库内空盘）"),
+            (HardDiskRegisterLock.BusinessTypeNetworkOutboundArchiveHold, "出网存档占盘（库内空盘）"),
             (HardDiskRegisterLock.BusinessTypeInventoryRegister, "硬盘盘库登记"),
             (HardDiskRegisterLock.BusinessTypeDisposal, "硬盘离库处置"),
             (HardDiskRegisterLock.BusinessTypeArchiveInventoryRegister, "资料盘库登记"),

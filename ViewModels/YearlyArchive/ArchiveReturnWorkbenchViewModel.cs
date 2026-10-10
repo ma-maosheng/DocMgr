@@ -12,6 +12,8 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 
@@ -48,6 +50,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _isAdmin;
         private bool _isLeftPanelExpanded = true;
         private bool _isActive = true;
+        private int _editingLoadGeneration;
+        private readonly SemaphoreSlim _editingDbGate = new(1, 1);
 
         /// <summary>页面卸载时调用，阻止卸载后继续访问已释放的页面作用域服务。</summary>
         public void Deactivate() => _isActive = false;
@@ -106,8 +110,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string PageTitle => _workspaceMode switch
         {
-            ArchiveReturnWorkspaceMode.Application => "资料归还申请",
-            _ => "资料审批入库"
+            ArchiveReturnWorkspaceMode.Application => "归还申请",
+            _ => "审批入库"
         };
 
         public string PageSubtitle => _workspaceMode switch
@@ -296,19 +300,34 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool IsEditing => EditingRecord != null;
 
-        public bool IsEditable => EditingRecord is { Status: YearlyArchiveReturnRecord.Draft }
-            && _workspaceMode == ArchiveReturnWorkspaceMode.Application;
+        public bool IsEditable
+        {
+            get
+            {
+                if (EditingRecord is not { Status: YearlyArchiveReturnRecord.Draft }
+                    || _workspaceMode != ArchiveReturnWorkspaceMode.Application)
+                {
+                    return false;
+                }
+
+                var user = _userContextService.CurrentUser;
+                if (user == null || !_returnService.CanSubmitApplication(user))
+                {
+                    return false;
+                }
+
+                return EditingRecord.Id <= 0 || EditingRecord.RegisteredByUserId == user.Id;
+            }
+        }
 
         public bool CanStartReturn =>
             _workspaceMode == ArchiveReturnWorkspaceMode.Application
             && SelectedOutbound != null
             && _returnService.CanSubmitApplication(_userContextService.CurrentUser);
 
-        public bool CanSaveDraft =>
-            IsEditable && _returnService.CanSubmitApplication(_userContextService.CurrentUser);
+        public bool CanSaveDraft => IsEditable;
 
-        public bool CanSubmit =>
-            IsEditable && _returnService.CanSubmitApplication(_userContextService.CurrentUser);
+        public bool CanSubmit => IsEditable;
 
         public bool CanApprove =>
             IsAdminWorkbenchMode
@@ -404,9 +423,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (_workspaceMode == ArchiveReturnWorkspaceMode.Application)
                 {
                     var user = _userContextService.CurrentUser;
+                    bool isOwnerApplicant = user != null
+                        && OfflineApprovalPermissionSupport.CanApplicantOperate(user)
+                        && record.RegisteredByUserId == user.Id;
                     return ApplicationListActionSupport.CanApplicantWithdraw(
                         record.Status,
-                        isOwnerApplicant: user != null && record.RegisteredByUserId == user.Id);
+                        isOwnerApplicant);
                 }
 
                 return ApplicationListActionSupport.CanForceVoid(
@@ -1158,9 +1180,45 @@ namespace DocMgr.ViewModels.YearlyArchive
             EditingRecord = record;
             EditHeader = $"归还单 {record.ReturnNo}　源出库单 {record.SourceOutboundNo}　借出人 {record.BorrowerName}　状态 {record.StatusStr}";
             OnPropertyChanged(nameof(LossDescription));
-            _ = LoadApprovalFormFieldsAsync(record);
-            _ = LoadAttachmentsAsync(record.Id);
+            int generation = Interlocked.Increment(ref _editingLoadGeneration);
+            _ = LoadEditingSideEffectsAsync(record, generation);
             NotifyEditCommandStates();
+        }
+
+        /// <summary>
+        /// 打开编辑时顺序加载审批字段与附件，避免并行打同一页面级 DbContext。
+        /// </summary>
+        private async Task LoadEditingSideEffectsAsync(YearlyArchiveReturnRecord record, int generation)
+        {
+            await _editingDbGate.WaitAsync().ConfigureAwait(true);
+            try
+            {
+                if (generation != Volatile.Read(ref _editingLoadGeneration) || !_isActive)
+                {
+                    return;
+                }
+
+                await LoadApprovalFormFieldsAsync(record).ConfigureAwait(true);
+                if (generation != Volatile.Read(ref _editingLoadGeneration) || !_isActive)
+                {
+                    return;
+                }
+
+                await LoadAttachmentsAsync(record.Id).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                if (generation != Volatile.Read(ref _editingLoadGeneration) || !_isActive)
+                {
+                    return;
+                }
+
+                _dialogService.ShowError("加载归还单编辑信息失败：" + ex.GetBaseException().Message);
+            }
+            finally
+            {
+                _editingDbGate.Release();
+            }
         }
 
         private void OnReturnCopyCountsChanged()

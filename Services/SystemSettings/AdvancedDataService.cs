@@ -44,8 +44,8 @@ namespace DocMgr.Services.SystemSettings
             var result = new List<TableBrowseEntryDto>();
 
             var entityTypes = _advancedDataRepository.GetEntityTypes()
-                .Where(e => !e.IsOwned() && e.GetTableName() != null)
-                .OrderBy(e => e.GetTableName())
+                .Where(e => !e.IsOwned() && GetStoreObjectName(e) != null)
+                .OrderBy(e => GetStoreObjectName(e))
                 .ThenBy(e => e.Name)
                 .ToList();
 
@@ -58,7 +58,7 @@ namespace DocMgr.Services.SystemSettings
                 var shortName = entity.ClrType != null && !isSharedType
                     ? entity.ClrType.Name
                     : entity.Name;
-                var tableName = entity.GetTableName() ?? entity.Name;
+                var tableName = GetStoreObjectName(entity) ?? entity.Name;
                 var chineseName = GetEntityDisplayNameZh(shortName, tableName, isSharedType);
                 var baseDisplayName = $"{shortName}（{chineseName}）";
                 var displayName = baseDisplayName;
@@ -78,6 +78,12 @@ namespace DocMgr.Services.SystemSettings
 
             return result;
         }
+
+        /// <summary>
+        /// 物理表名或视图名；owned / 未映射存储对象返回 null。
+        /// </summary>
+        private static string? GetStoreObjectName(IEntityType entityType)
+            => entityType.GetTableName() ?? entityType.GetViewName();
 
         public bool CanMaintainTable(string entityTypeName)
         {
@@ -117,7 +123,7 @@ namespace DocMgr.Services.SystemSettings
             var shortName = entityMeta.ClrType != null && !isSharedType
                 ? entityMeta.ClrType.Name
                 : entityMeta.Name;
-            var tableName = entityMeta.GetTableName() ?? shortName;
+            var tableName = GetStoreObjectName(entityMeta) ?? shortName;
             var canMaintain = CanMaintainTable(entityTypeName);
 
             AdvancedDataTableMetadata.TryGet(shortName, out var metadata);
@@ -374,7 +380,7 @@ namespace DocMgr.Services.SystemSettings
                 data = page.Data;
             }
 
-            var sheetName = entityMeta.GetTableName() ?? entityTypeName;
+            var sheetName = GetStoreObjectName(entityMeta) ?? entityTypeName;
             await Task.Run(() => AdvancedDataExcelExportSupport.Write(filePath, sheetName, fields, data));
         }
 
@@ -557,7 +563,7 @@ namespace DocMgr.Services.SystemSettings
 
         private static DataTable CreateEmptyDataTable(IEntityType entityMeta, IReadOnlyList<IProperty> properties)
         {
-            var table = new DataTable(entityMeta.GetTableName() ?? entityMeta.Name);
+            var table = new DataTable(GetStoreObjectName(entityMeta) ?? entityMeta.Name);
             foreach (var property in properties)
             {
                 var columnType = Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType;
@@ -612,7 +618,7 @@ namespace DocMgr.Services.SystemSettings
 
             foreach (var foreignKey in entityType.GetForeignKeys())
             {
-                var principalTable = foreignKey.PrincipalEntityType.GetTableName()
+                var principalTable = GetStoreObjectName(foreignKey.PrincipalEntityType)
                                      ?? foreignKey.PrincipalEntityType.ClrType?.Name
                                      ?? foreignKey.PrincipalEntityType.Name;
                 var dependentColumns = string.Join(", ", foreignKey.Properties.Select(property => property.Name));
@@ -621,7 +627,7 @@ namespace DocMgr.Services.SystemSettings
 
             foreach (var referencingForeignKey in entityType.GetReferencingForeignKeys())
             {
-                var dependentTable = referencingForeignKey.DeclaringEntityType.GetTableName()
+                var dependentTable = GetStoreObjectName(referencingForeignKey.DeclaringEntityType)
                                      ?? referencingForeignKey.DeclaringEntityType.ClrType?.Name
                                      ?? referencingForeignKey.DeclaringEntityType.Name;
                 var dependentColumns = string.Join(", ", referencingForeignKey.Properties.Select(property => property.Name));

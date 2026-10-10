@@ -6,7 +6,7 @@ using System.Windows.Input;
 namespace DocMgr.Views.NetworkTransfer;
 
 /// <summary>
-/// 在网台账资产表：NT-DSP、处置候选与已选明细共用列定义。
+/// 在网台账资产表：NT-ONL-LDG、NT-DSP 处置候选与已选明细共用列定义。
 /// </summary>
 public partial class NetworkOnNetAssetDataGrid : DataGrid
 {

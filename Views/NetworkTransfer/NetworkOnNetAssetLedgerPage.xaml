@@ -1,0 +1,115 @@
+<Page x:Class="DocMgr.Views.NetworkTransfer.NetworkOnNetAssetLedgerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:nt="clr-namespace:DocMgr.Views.NetworkTransfer"
+      Title="在网数据台账"
+      Background="#F0F2F5">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Margin="0" CornerRadius="0" Padding="16,12">
+      <DockPanel LastChildFill="True">
+        <Button DockPanel.Dock="Right"
+                Content="台账简介"
+                Command="{Binding ShowIntroCommand}"
+                Style="{StaticResource ToolbarActionButtonStyle}"
+                Width="96"
+                Margin="12,0,0,0"
+                VerticalAlignment="Center"
+                ToolTip="查看本台账的业务范围、关联对象与写入逻辑"/>
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="来源：" VerticalAlignment="Center"/>
+            <ComboBox Width="110"
+                      Style="{StaticResource ToolbarFilterComboBoxStyle}"
+                      ItemsSource="{Binding OriginKindOptions}"
+                      SelectedItem="{Binding AssetOriginKind}"/>
+            <TextBlock Text="状态：" VerticalAlignment="Center" Margin="12,0,0,0"/>
+            <ComboBox Width="100"
+                      Style="{StaticResource ToolbarFilterComboBoxStyle}"
+                      ItemsSource="{Binding LifecycleOptions}"
+                      SelectedItem="{Binding AssetLifecycle}"/>
+            <TextBlock Text="服务器路径：" VerticalAlignment="Center" Margin="12,0,0,0"/>
+            <ComboBox Width="140"
+                      Style="{StaticResource ToolbarFilterComboBoxStyle}"
+                      ItemsSource="{Binding ServerPathOptions}"
+                      SelectedItem="{Binding AssetServerPath}"/>
+            <TextBlock Text="资料存储区：" VerticalAlignment="Center" Margin="12,0,0,0"/>
+            <ComboBox Width="120"
+                      Style="{StaticResource ToolbarFilterComboBoxStyle}"
+                      ItemsSource="{Binding DepartmentOptions}"
+                      SelectedItem="{Binding AssetDepartment}"/>
+            <TextBlock Text="关键词：" VerticalAlignment="Center" Margin="12,0,0,0"/>
+            <TextBox Width="180"
+                     Height="32"
+                     Margin="0,0,10,0"
+                     VerticalContentAlignment="Center"
+                     Text="{Binding AssetKeyword, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="在网资产编号、资料名称、项目、服务器路径">
+              <TextBox.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
+              </TextBox.InputBindings>
+            </TextBox>
+            <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72" Margin="0,0,8,0"/>
+            <Button Content="查看详情" Command="{Binding ViewAssetDetailCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88" Margin="0,0,8,0"/>
+            <Button Content="刷新" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72"/>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <Border Grid.Row="1"
+            Margin="0,12,0,12"
+            Padding="0"
+            Background="#FFFDF7"
+            BorderBrush="#E2C98F"
+            BorderThickness="1">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="4"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Border Grid.Row="0" Background="#B98A2E"/>
+        <TextBlock Grid.Row="1"
+                   Text="在网数据台账"
+                   Margin="0,12,0,4"
+                   FontSize="22"
+                   FontWeight="Bold"
+                   Foreground="#6F4A00"
+                   HorizontalAlignment="Center"
+                   TextDecorations="Underline"/>
+        <TextBlock Grid.Row="2"
+                   Text="Production-Network On-Net Asset Ledger"
+                   Margin="0,0,0,8"
+                   FontSize="12"
+                   Foreground="#9A7B3F"
+                   HorizontalAlignment="Center"/>
+        <Border Grid.Row="3"
+                Margin="16,0,16,12"
+                Padding="12,10"
+                Background="#FFFBEB"
+                BorderBrush="#E2C98F"
+                BorderThickness="1"
+                CornerRadius="4">
+          <TextBlock Text="展示已入生产网的在网资产当前态（来源、路径、密级、生命周期等）。入网办结写入、出网办结可标记曾出网；注销或销毁请使用「在网数据处置」。"
+                     Foreground="#6F4A00"
+                     TextWrapping="Wrap"
+                     HorizontalAlignment="Center"/>
+        </Border>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="2" Background="White" Padding="10">
+      <nt:NetworkOnNetAssetDataGrid ItemsSource="{Binding Assets}"
+                                    SelectedItem="{Binding SelectedAsset}"
+                                    ViewDetailCommand="{Binding ViewAssetDetailCommand}"
+                                    IsReadOnly="True"/>
+    </Border>
+  </Grid>
+</Page>

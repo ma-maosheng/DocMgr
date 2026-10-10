@@ -24,6 +24,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     private readonly IUserService _userService;
     private readonly IApprovalWorkflowService _approvalWorkflowService;
     private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
+    private readonly IArchiveFilingService _archiveFilingService;
 
     public NetworkTransferService(
         INetworkTransferRepository repository,
@@ -35,7 +36,8 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         IProjectService projectService,
         IUserService userService,
         IApprovalWorkflowService approvalWorkflowService,
-        IBusinessLogicSettingsService businessLogicSettingsService)
+        IBusinessLogicSettingsService businessLogicSettingsService,
+        IArchiveFilingService archiveFilingService)
     {
         _repository = repository;
         _businessRuleService = businessRuleService;
@@ -47,6 +49,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         _userService = userService;
         _approvalWorkflowService = approvalWorkflowService;
         _businessLogicSettingsService = businessLogicSettingsService;
+        _archiveFilingService = archiveFilingService;
     }
 
     public Task<string> GenerateNextInboundNoAsync() =>
@@ -192,6 +195,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
 
         NetworkArchiveBusinessChainSupport.SynchronizeInboundTasks(record.BusinessChain, record, now);
         await _repository.SaveChangesAsync();
+        _repository.ClearChangeTracker();
         return (await _repository.GetInboundByIdAsync(record.Id))!;
     }
 
@@ -202,6 +206,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     {
         EnsureApplicant(currentUser);
         ArgumentNullException.ThrowIfNull(draft);
+        _repository.ClearChangeTracker();
         var existing = await _repository.GetInboundByIdAsync(draft.Id, tracking: true)
             ?? throw new InvalidOperationException("未找到入网申请单。");
 
@@ -210,7 +215,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅草稿状态的入网单可编辑。");
         }
 
-        EnsureOwnerOrAdmin(existing.ApplicantUserId, currentUser);
+        EnsureApplicantOwner(existing.ApplicantUserId, currentUser);
         bool isExternalOffline = NetworkTransferDomainValues.IsExternalOfflineSource(draft.SourceKind);
         var builtItems = isExternalOffline
             ? []
@@ -257,6 +262,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             await _repository.SaveChangesAsync();
         }
 
+        _repository.ClearChangeTracker();
         return (await _repository.GetInboundByIdAsync(existing.Id))!;
     }
 
@@ -271,7 +277,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅草稿状态可提交。");
         }
 
-        EnsureOwnerOrAdmin(existing.ApplicantUserId, currentUser);
+        EnsureApplicantOwner(existing.ApplicantUserId, currentUser);
         ValidateInboundHeader(existing);
         NetworkInboundApplicationValidationSupport.EnsureValidForSubmit(
             existing,
@@ -614,7 +620,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许撤回。");
         }
 
-        EnsureOwnerOrAdmin(existing.ApplicantUserId, currentUser);
+        EnsureApplicantOwner(existing.ApplicantUserId, currentUser);
         DateTime now = DateTime.Now;
         existing.Status = gate.NextStatus ?? NetworkInboundRecord.StatusWithdrawn;
         existing.WithdrawnAt = now;
@@ -654,6 +660,9 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             OutboundNo = outboundNo,
             Status = NetworkOutboundRecord.StatusDraft,
             DestinationKind = draft.DestinationKind?.Trim() ?? string.Empty,
+            DestinationUnit = NetworkTransferDomainValues.ResolveOutboundDestinationUnit(
+                draft.DestinationKind,
+                draft.DestinationUnit),
             MaterialName = draft.MaterialName?.Trim() ?? string.Empty,
             ServerPath = draft.ServerPath?.Trim() ?? string.Empty,
             MaterialPath = draft.MaterialPath?.Trim() ?? string.Empty,
@@ -679,6 +688,8 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         await ReplaceOutboundMediaAndItemsAsync(record, draft.MediaEntries?.ToList() ?? []);
         NetworkArchiveBusinessChainSupport.SynchronizeOutboundTasks(record.BusinessChain, record, now);
         await _repository.SaveChangesAsync();
+        // 弹窗 Scoped DbContext 会跨多次「保存草稿」复用；清空跟踪后再重载，避免 Tasks 同键冲突。
+        _repository.ClearChangeTracker();
         return (await _repository.GetOutboundByIdAsync(record.Id))!;
     }
 
@@ -689,6 +700,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     {
         EnsureApplicant(currentUser);
         ArgumentNullException.ThrowIfNull(draft);
+        _repository.ClearChangeTracker();
         var existing = await _repository.GetOutboundByIdAsync(draft.Id, tracking: true)
             ?? throw new InvalidOperationException("未找到出网申请单。");
 
@@ -697,7 +709,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅草稿状态的出网单可编辑。");
         }
 
-        EnsureOwnerOrAdmin(existing.ApplicantUserId, currentUser);
+        EnsureApplicantOwner(existing.ApplicantUserId, currentUser);
         ApplyOutboundHeader(existing, draft);
         existing.UpdatedAt = DateTime.Now;
         existing.BusinessChain ??= NetworkArchiveBusinessChainSupport.CreateForOutbound(existing, DateTime.Now);
@@ -707,6 +719,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         await _repository.SaveChangesAsync();
         await ReplaceOutboundMediaAndItemsAsync(existing, draft.MediaEntries?.ToList() ?? []);
         await _repository.SaveChangesAsync();
+        _repository.ClearChangeTracker();
         return (await _repository.GetOutboundByIdAsync(existing.Id))!;
     }
 
@@ -721,11 +734,12 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("仅草稿状态可提交。");
         }
 
-        EnsureOwnerOrAdmin(existing.ApplicantUserId, currentUser);
+        EnsureApplicantOwner(existing.ApplicantUserId, currentUser);
         ValidateOutboundHeader(existing);
         NetworkOutboundApplicationValidationSupport.EnsureValidForSubmit(
             existing,
             existing.MediaEntries?.ToList());
+        await EnsureArchiveFilingAppendTargetsAsync(existing);
 
         DateTime now = DateTime.Now;
         existing.BusinessChain ??= NetworkArchiveBusinessChainSupport.CreateForOutbound(existing, now);
@@ -734,6 +748,9 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         try
         {
             await NetworkOutboundHardDiskRequisitionSyncSupport.ApplyRequisitionLocksAsync(
+                _hardDiskMediaRepository,
+                existing);
+            await NetworkOutboundHardDiskRequisitionSyncSupport.ApplyArchiveFilingHoldsAsync(
                 _hardDiskMediaRepository,
                 existing);
             existing.Status = NetworkOutboundRecord.StatusSubmitted;
@@ -893,7 +910,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
 
         if (NetworkTransferDomainValues.IsArchiveFilingDestination(existing.DestinationKind))
         {
-            NetworkOutboundRegisterMediaRulesSupport.ApplyPendingFilingCarrier(existing.MediaEntries);
+            NetworkOutboundRegisterMediaRulesSupport.NormalizeArchiveFilingCarrier(existing.MediaEntries);
         }
 
         var attachments = await _repository.GetAttachmentsAsync(
@@ -956,9 +973,12 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException(gate.DenyMessage ?? "当前状态不允许撤回。");
         }
 
-        EnsureOwnerOrAdmin(existing.ApplicantUserId, currentUser);
+        EnsureApplicantOwner(existing.ApplicantUserId, currentUser);
         DateTime now = DateTime.Now;
         await NetworkOutboundHardDiskRequisitionSyncSupport.ReleaseRequisitionLocksAsync(
+            _hardDiskMediaRepository,
+            existing);
+        await NetworkOutboundHardDiskRequisitionSyncSupport.ReleaseArchiveFilingHoldsAsync(
             _hardDiskMediaRepository,
             existing);
         existing.Status = gate.NextStatus ?? NetworkOutboundRecord.StatusWithdrawn;
@@ -1037,6 +1057,9 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             .GroupBy(item => item.PathName.Trim(), StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
 
+        Dictionary<int, NetworkInboundRecord> orphanInboundByAssetId =
+            await ResolveOrphanInboundRecordsByAssetIdAsync(assets);
+
         List<int> filingFactIds = assets
             .Select(item => item.SourceFilingFactId)
             .Concat(inboundItems.Select(item => item.SourceFilingFactId))
@@ -1051,7 +1074,10 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             .Where(id => id > 0)
             .Distinct()
             .ToList();
-        List<int> inboundRecordIds = inboundRecordMap.Keys.ToList();
+        List<int> inboundRecordIds = inboundRecordMap.Keys
+            .Concat(orphanInboundByAssetId.Values.Select(item => item.Id))
+            .Distinct()
+            .ToList();
         List<int> outboundRecordIds = outboundRecordMap.Keys.ToList();
         List<NetworkOnNetElectronicMediaSnapshot> electronicSnapshots =
             await _repository.GetElectronicMediaSnapshotsAsync(mediaItemIds, inboundRecordIds, outboundRecordIds);
@@ -1064,7 +1090,106 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             outboundRecordMap,
             serverPathMap,
             filingFactMap,
-            electronicSnapshots);
+            electronicSnapshots,
+            orphanInboundByAssetId);
+    }
+
+    /// <summary>
+    /// 入网产生台账缺少 OriginInboundItemId 时，按资料子项名匹配挂在入网单上的电子介质，回退定位主单。
+    /// </summary>
+    private async Task<Dictionary<int, NetworkInboundRecord>> ResolveOrphanInboundRecordsByAssetIdAsync(
+        IReadOnlyList<NetworkOnNetAsset> assets)
+    {
+        List<NetworkOnNetAsset> orphans = assets
+            .Where(item =>
+                item.OriginInboundItemId is not > 0
+                && item.OriginOutboundItemId is not > 0
+                && string.Equals(
+                    item.OriginKind?.Trim(),
+                    NetworkTransferDomainValues.OriginKindInbound,
+                    StringComparison.Ordinal))
+            .ToList();
+        if (orphans.Count == 0)
+        {
+            return new Dictionary<int, NetworkInboundRecord>();
+        }
+
+        List<string> contentDescs = orphans
+            .Select(item => item.AssetName?.Trim() ?? string.Empty)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        List<NetworkOnNetElectronicMediaSnapshot> snapshots =
+            await _repository.GetElectronicMediaSnapshotsByInboundContentDescsAsync(contentDescs);
+        if (snapshots.Count == 0)
+        {
+            return new Dictionary<int, NetworkInboundRecord>();
+        }
+
+        Dictionary<int, NetworkInboundRecord> inboundRecords =
+            await _repository.GetInboundRecordsByIdsAsync(
+                snapshots
+                    .Where(item => item.InboundRecordId is > 0)
+                    .Select(item => item.InboundRecordId!.Value)
+                    .Distinct()
+                    .ToList());
+        if (inboundRecords.Count == 0)
+        {
+            return new Dictionary<int, NetworkInboundRecord>();
+        }
+
+        ILookup<string, NetworkOnNetElectronicMediaSnapshot> snapshotsByName = snapshots
+            .Where(item => item.InboundRecordId is > 0)
+            .ToLookup(item => item.ContentDesc?.Trim() ?? string.Empty, StringComparer.Ordinal);
+
+        var result = new Dictionary<int, NetworkInboundRecord>();
+        foreach (NetworkOnNetAsset asset in orphans)
+        {
+            string assetName = asset.AssetName?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(assetName))
+            {
+                continue;
+            }
+
+            List<NetworkOnNetElectronicMediaSnapshot> candidates = snapshotsByName[assetName].ToList();
+            NetworkOnNetElectronicMediaSnapshot? matched = MatchOrphanInboundSnapshot(asset, candidates, inboundRecords);
+            if (matched?.InboundRecordId is int inboundRecordId
+                && inboundRecords.TryGetValue(inboundRecordId, out NetworkInboundRecord? inbound))
+            {
+                result[asset.Id] = inbound;
+            }
+        }
+
+        return result;
+    }
+
+    private static NetworkOnNetElectronicMediaSnapshot? MatchOrphanInboundSnapshot(
+        NetworkOnNetAsset asset,
+        IReadOnlyList<NetworkOnNetElectronicMediaSnapshot> candidates,
+        IReadOnlyDictionary<int, NetworkInboundRecord> inboundRecords)
+    {
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
+
+        if (candidates.Count == 1)
+        {
+            return candidates[0];
+        }
+
+        string serverPath = asset.ServerPath?.Trim() ?? string.Empty;
+        string projectName = asset.ProjectName?.Trim() ?? string.Empty;
+        string year = asset.Year?.Trim() ?? string.Empty;
+        List<NetworkOnNetElectronicMediaSnapshot> narrowed = candidates
+            .Where(item =>
+                item.InboundRecordId is int inboundRecordId
+                && inboundRecords.TryGetValue(inboundRecordId, out NetworkInboundRecord? inbound)
+                && string.Equals(inbound.TargetServerPath?.Trim(), serverPath, StringComparison.Ordinal)
+                && string.Equals(inbound.ProjectName?.Trim(), projectName, StringComparison.Ordinal)
+                && string.Equals(inbound.Year?.Trim(), year, StringComparison.Ordinal))
+            .ToList();
+        return narrowed.Count == 1 ? narrowed[0] : null;
     }
 
     public async Task<IReadOnlyList<NetworkOnNetDisposalRecord>> SearchDisposalRecordsAsync(
@@ -1143,6 +1268,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
 
         _repository.AddDisposal(record);
         await _repository.SaveChangesAsync();
+        _repository.ClearChangeTracker();
         return (await _repository.GetDisposalByIdAsync(record.Id))!;
     }
 
@@ -1153,6 +1279,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     {
         EnsureArchiveAdmin(currentUser);
         ArgumentNullException.ThrowIfNull(draft);
+        _repository.ClearChangeTracker();
         var existing = await _repository.GetDisposalByIdAsync(draft.Id, tracking: true)
             ?? throw new InvalidOperationException("未找到在网处置单。");
 
@@ -1185,6 +1312,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         }
 
         await _repository.SaveChangesAsync();
+        _repository.ClearChangeTracker();
         return (await _repository.GetDisposalByIdAsync(existing.Id))!;
     }
 
@@ -1844,6 +1972,9 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     private static void ApplyOutboundHeader(NetworkOutboundRecord target, NetworkOutboundRecord draft)
     {
         target.DestinationKind = draft.DestinationKind?.Trim() ?? string.Empty;
+        target.DestinationUnit = NetworkTransferDomainValues.ResolveOutboundDestinationUnit(
+            draft.DestinationKind,
+            draft.DestinationUnit);
         target.MaterialName = draft.MaterialName?.Trim() ?? string.Empty;
         target.ServerPath = draft.ServerPath?.Trim() ?? string.Empty;
         target.MaterialPath = draft.MaterialPath?.Trim() ?? string.Empty;
@@ -1856,13 +1987,35 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         target.ProofMaterialNote = NormalizeOutboundProofMaterialNote(draft.ProofMaterialNote);
     }
 
+    private async Task EnsureArchiveFilingAppendTargetsAsync(NetworkOutboundRecord record)
+    {
+        if (!NetworkTransferDomainValues.IsArchiveFilingDestination(record.DestinationKind))
+        {
+            return;
+        }
+
+        foreach (YearlyArchiveRegisterMedia media in record.MediaEntries ?? [])
+        {
+            if (media.AppendTargetElectronicUnitId is not > 0)
+            {
+                continue;
+            }
+
+            await _archiveFilingService.EnsureOutboundArchiveAppendTargetAsync(
+                media.AppendTargetElectronicUnitId.Value,
+                record.ProjectName,
+                record.Year,
+                media.AppendTargetHardDiskCode);
+        }
+    }
+
     private async Task ReplaceOutboundMediaAndItemsAsync(
         NetworkOutboundRecord record,
         IReadOnlyList<YearlyArchiveRegisterMedia> mediaEntries)
     {
         if (NetworkTransferDomainValues.IsArchiveFilingDestination(record.DestinationKind))
         {
-            NetworkOutboundRegisterMediaRulesSupport.ApplyPendingFilingCarrier(mediaEntries);
+            NetworkOutboundRegisterMediaRulesSupport.NormalizeArchiveFilingCarrier(mediaEntries);
         }
 
         await _repository.ReplaceOutboundMediaEntriesAsync(record.Id, mediaEntries);
@@ -2129,7 +2282,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         }
         else
         {
-            NetworkOutboundRegisterMediaRulesSupport.ApplyPendingFilingCarrier(register.MediaEntries);
+            NetworkOutboundRegisterMediaRulesSupport.NormalizeArchiveFilingCarrier(register.MediaEntries);
         }
 
         if (register.Status != YearlyArchiveRegisterRecord.Completed)
@@ -2167,7 +2320,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             register.MediaEntries.Add(new YearlyArchiveRegisterMedia
             {
                 MediaKind = ArchiveRegisterDomainValues.MediaKindElectronic,
-                MediaType = ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork,
+                MediaType = ArchiveRegisterDomainValues.ElectronicMediaTypeOpticalDisc,
                 MediaCount = 1,
                 Disposition = ArchiveRegisterDomainValues.ElectronicDispositionNone
             });
@@ -2198,7 +2351,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         register.ApplicantDept = outbound.ApplicantDept?.Trim() ?? string.Empty;
         register.ApplicantDate = outbound.ApplyTime == default ? now : outbound.ApplyTime;
         register.OtherRequests = string.IsNullOrWhiteSpace(outbound.OtherRequests)
-            ? $"由出网单 {outbound.OutboundNo} 办结转入待立档；归档载体（光盘/空白硬盘/并档）请在资料立档中选择。"
+            ? $"由出网单 {outbound.OutboundNo} 办结转入待立档；归档载体已在出网申请中确定。"
             : outbound.OtherRequests.Trim();
         register.SourceNetworkOutboundRecordId = outbound.Id;
         register.SourceNetworkOutboundNo = outbound.OutboundNo;
@@ -2298,7 +2451,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         if (missingFactIds.Count > 0)
         {
             throw new InvalidOperationException(
-                $"有 {missingFactIds.Count} 条来源立档事实已不存在，无法办结复制入网。");
+                $"有 {missingFactIds.Count} 条来源立档事实已不存在，无法办结立档转入网。");
         }
 
         foreach (YearlyArchiveFilingFact fact in facts.Values)
@@ -2307,7 +2460,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             {
                 throw new InvalidOperationException(
                     $"立档资料「{fact.MaterialName}/{fact.ItemName}」当前状态为"
-                    + $"“{MaterialTransactionDomainValues.MapLifecycleStatusDisplay(fact.LifecycleStatus)}”，不可办结复制入网。");
+                    + $"“{MaterialTransactionDomainValues.MapLifecycleStatusDisplay(fact.LifecycleStatus)}”，不可办结立档转入网。");
             }
         }
 
@@ -2361,7 +2514,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         if (unavailable.Count > 0)
         {
             throw new InvalidOperationException(
-                "以下立档资料当前不可复制入网：" + Environment.NewLine
+                "以下立档资料当前不可立档转入网（复制入网）：" + Environment.NewLine
                 + string.Join(Environment.NewLine, unavailable.Select(item => $"• {item}")));
         }
     }
@@ -2405,7 +2558,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         if (unavailable.Count > 0)
         {
             throw new InvalidOperationException(
-                "以下立档资料当前不可复制入网：" + Environment.NewLine
+                "以下立档资料当前不可立档转入网（复制入网）：" + Environment.NewLine
                 + string.Join(Environment.NewLine, unavailable.Select(item => $"• {item}")));
         }
     }
@@ -2469,6 +2622,21 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             throw new InvalidOperationException("目的地为资料室存档时，请选择库管模式。");
         }
 
+        if (NetworkTransferDomainValues.IsExternalOfflineDestination(record.DestinationKind)
+            && string.IsNullOrWhiteSpace(
+                NetworkTransferDomainValues.ResolveOutboundDestinationUnit(
+                    record.DestinationKind,
+                    record.DestinationUnit)))
+        {
+            throw new InvalidOperationException(
+                NetworkTransferDomainValues.IsOutboundExternalDestination(record.DestinationKind)
+                    ? "请填写接收部门（单位）。"
+                    : "请选择接收部门（单位）。");
+        }
+
+        record.DestinationUnit = NetworkTransferDomainValues.ResolveOutboundDestinationUnit(
+            record.DestinationKind,
+            record.DestinationUnit);
         record.ProofMaterialNote = NormalizeOutboundProofMaterialNote(record.ProofMaterialNote);
     }
 
@@ -2517,22 +2685,55 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         List<YearlyArchiveRegisterMediaItem> mediaItems = NetworkInboundOnNetAssetMappingSupport
             .EnumerateElectronicMediaItems(inbound.MediaEntries)
             .ToList();
-        foreach (YearlyArchiveRegisterMediaItem mediaItem in mediaItems)
+        if (mediaItems.Count == 0)
         {
+            return;
+        }
+
+        // 档外入网平时只挂登记介质、不写明细；办结时补写明细快照，供台账列表按 OriginInboundItemId 补全展示字段。
+        if (inbound.Items.Count == 0)
+        {
+            foreach (NetworkInboundItem snapshot in NetworkInboundOnNetAssetMappingSupport.BuildItemSnapshots(
+                         inbound,
+                         inbound.MediaEntries))
+            {
+                inbound.Items.Add(snapshot);
+            }
+
+            await _repository.SaveChangesAsync();
+        }
+
+        List<NetworkInboundItem> itemSnapshots = inbound.Items
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Id)
+            .ToList();
+        for (int index = 0; index < mediaItems.Count; index++)
+        {
+            YearlyArchiveRegisterMediaItem mediaItem = mediaItems[index];
+            NetworkInboundItem? itemSnapshot = index < itemSnapshots.Count ? itemSnapshots[index] : null;
+            if (itemSnapshot?.OnNetAssetId is > 0)
+            {
+                continue;
+            }
+
             string assetNo = await GenerateNextOnNetAssetNoAsync();
             NetworkOnNetAsset asset = NetworkInboundOnNetAssetMappingSupport.CreateOnNetAsset(
                 inbound,
                 mediaItem,
                 assetNo,
                 operatorName,
-                now);
+                now,
+                itemSnapshot?.Id);
             _repository.AddOnNetAsset(asset);
+            await _repository.SaveChangesAsync();
+            if (itemSnapshot != null)
+            {
+                itemSnapshot.OnNetAssetId = asset.Id;
+                asset.OriginInboundItemId = itemSnapshot.Id;
+            }
         }
 
-        if (mediaItems.Count > 0)
-        {
-            await _repository.SaveChangesAsync();
-        }
+        await _repository.SaveChangesAsync();
     }
 
     private static void EnsureInboundReturnHardDiskSlotsReady(NetworkInboundRecord record)
@@ -2715,10 +2916,9 @@ public sealed partial class NetworkTransferService : INetworkTransferService
 
     private static void EnsureApplicant(User? user)
     {
-        if (!ArchiveRegisterBusinessRules.CanSubmitApplication(user)
-            && !ArchiveRegisterBusinessRules.IsArchiveAdminUser(user))
+        if (!ArchiveRegisterBusinessRules.CanSubmitApplication(user))
         {
-            throw new InvalidOperationException("当前用户无权办理该业务。");
+            throw new InvalidOperationException("仅部门资料员可办理入网/出网申请。");
         }
     }
 
@@ -2730,13 +2930,9 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         }
     }
 
-    private static void EnsureOwnerOrAdmin(int applicantUserId, User currentUser)
+    private static void EnsureApplicantOwner(int applicantUserId, User currentUser)
     {
-        if (ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
-        {
-            return;
-        }
-
+        // 申请侧写操作已由 EnsureApplicant 限定为部门资料员；此处仅校验本人单据。
         if (applicantUserId != currentUser.Id)
         {
             throw new InvalidOperationException("仅申请人本人可操作本单。");

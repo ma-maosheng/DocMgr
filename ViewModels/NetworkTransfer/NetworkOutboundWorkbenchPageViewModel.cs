@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.Shared;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
@@ -43,7 +44,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
             SearchCommand = new RelayCommand(async _ => await RefreshAsync());
-            AddCommand = new RelayCommand(async _ => await AddAsync(), _ => IsApplicationMode && CanApplicantOperate);
+            AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanAdd);
             OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null);
             WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => CanWithdrawSelected);
         }
@@ -78,15 +79,30 @@ namespace DocMgr.ViewModels.NetworkTransfer
             set { if (SetProperty(ref _selectedRecord, value)) CommandManager.InvalidateRequerySuggested(); }
         }
 
-        private bool CanApplicantOperate =>
-            OfflineApprovalPermissionSupport.CanApplicantOperate(_userContextService.CurrentUser)
-            || OfflineApprovalPermissionSupport.CanOperateApprovalWorkbench(_userContextService.CurrentUser);
-
-        private bool CanWithdrawSelected =>
+        private bool CanAdd =>
             IsApplicationMode
-            && ApplicationListActionSupport.CanApplicantWithdraw(
-                SelectedRecord?.Status ?? ApplicationWorkflowStatus.Completed,
-                isOwnerApplicant: SelectedRecord != null);
+            && OfflineApprovalPermissionSupport.CanCreateDraft(
+                _userContextService.CurrentUser,
+                ApprovalWorkflowBusinessTypes.NetworkOutbound);
+
+        private bool CanWithdrawSelected
+        {
+            get
+            {
+                if (!IsApplicationMode || SelectedRecord == null)
+                {
+                    return false;
+                }
+
+                var user = _userContextService.CurrentUser;
+                bool isOwnerApplicant = user != null
+                    && OfflineApprovalPermissionSupport.CanApplicantOperate(user)
+                    && SelectedRecord.ApplicantUserId == user.Id;
+                return ApplicationListActionSupport.CanApplicantWithdraw(
+                    SelectedRecord.Status,
+                    isOwnerApplicant);
+            }
+        }
 
         public RelayCommand RefreshCommand { get; }
         public RelayCommand SearchCommand { get; }

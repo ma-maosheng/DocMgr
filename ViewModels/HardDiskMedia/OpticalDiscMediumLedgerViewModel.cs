@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.Shared;
 using DocMgr.Services.Interfaces;
@@ -17,6 +19,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly IDialogService _dialogService;
         private bool _isInitialized;
         private bool _suppressSelectionReload;
+        private readonly SemaphoreSlim _transactionLoadGate = new(1, 1);
+        private int _transactionLoadGeneration;
         private string _searchKeyword = string.Empty;
         private string _transactionDiscCodeKeyword = string.Empty;
         private string _transactionBusinessNoKeyword = string.Empty;
@@ -381,8 +385,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task LoadTransactionsAsync()
         {
+            int generation = Interlocked.Increment(ref _transactionLoadGeneration);
+            await _transactionLoadGate.WaitAsync().ConfigureAwait(true);
             try
             {
+                if (generation != Volatile.Read(ref _transactionLoadGeneration))
+                {
+                    return;
+                }
+
                 int? selectedTxnId = SelectedTransaction?.Id;
                 int? mediumId = FollowSelectedMedium ? SelectedMedium?.Id : null;
                 string? discCodeKeyword = string.IsNullOrWhiteSpace(TransactionDiscCodeKeyword)
@@ -404,7 +415,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
                         discCodeKeyword,
                         businessNoKeyword,
                         mediumId,
-                        transactionType);
+                        transactionType).ConfigureAwait(true);
+
+                if (generation != Volatile.Read(ref _transactionLoadGeneration))
+                {
+                    return;
+                }
 
                 if (_recentTransactionsOnly)
                 {
@@ -428,7 +444,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"加载光盘台账失败：{ex.Message}");
+                if (generation == Volatile.Read(ref _transactionLoadGeneration))
+                {
+                    _dialogService.ShowError($"加载光盘台账失败：{ex.GetBaseException().Message}");
+                }
+            }
+            finally
+            {
+                _transactionLoadGate.Release();
             }
         }
 

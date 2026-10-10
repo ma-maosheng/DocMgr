@@ -98,6 +98,21 @@ internal static class NetworkInboundReturnHardDiskSupport
         if (items == null || items.Count == 0)
         {
             errors.Add("已在资料介质（电子）中声明借出硬盘归还，请选择介质编号。");
+            return;
+        }
+
+        var duplicatedDiskCodes = items
+            .Select(item => item.DiskCode?.Trim() ?? string.Empty)
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .GroupBy(code => code, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .OrderBy(code => code, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (duplicatedDiskCodes.Count > 0)
+        {
+            errors.Add($"• 同一申请单内归还借出硬盘编号不能重复：{string.Join("、", duplicatedDiskCodes)}");
         }
     }
 

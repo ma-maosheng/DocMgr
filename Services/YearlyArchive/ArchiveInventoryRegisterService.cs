@@ -140,6 +140,7 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
             await _repository.SaveChangesAsync();
         }
 
+        _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(record.Id))!;
     }
 
@@ -157,6 +158,7 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
             throw new InvalidOperationException("登记单无效。");
         }
 
+        _repository.ClearChangeTracker();
         var existing = await _repository.GetRecordByIdForUpdateAsync(draft.Id)
             ?? throw new InvalidOperationException("未找到盘库登记单。");
 
@@ -199,6 +201,7 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
         LockHardDisksIfNeeded(existing, await LoadHardDisksForElectronicDraftAsync(existing.MediaKind, items), now);
         await _repository.SaveChangesAsync();
 
+        _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(existing.Id))!;
     }
 

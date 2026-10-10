@@ -1,345 +1,324 @@
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
-using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
 
-namespace DocMgr.ViewModels.NetworkTransfer
+namespace DocMgr.ViewModels.NetworkTransfer;
+
+/// <summary>
+/// 在网数据处置列表页 ViewModel。
+/// </summary>
+public sealed class NetworkOnNetDisposalPageViewModel : ViewModelBase
 {
-    /// <summary>
-    /// 在网数据处置页：台账浏览 + 处置单。
-    /// </summary>
-    public sealed class NetworkOnNetDisposalPageViewModel : ViewModelBase
+    public const string PendingInProgressStatus = "进行中（待办结前）";
+
+    private readonly INetworkTransferService _service;
+    private readonly IDialogService _dialogService;
+    private readonly IUserContextService _userContextService;
+    private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
+    private readonly List<NetworkOnNetDisposalRecord> _allRecords = new();
+
+    private bool _isInitialized;
+    private bool _matchAllYears;
+    private int _applyYear = DateTime.Today.Year;
+    private string _searchKeyword = string.Empty;
+    private string _selectedStatus = "全部";
+    private NetworkOnNetDisposalRecord? _selectedRecord;
+    private string _applicationOverdueSettingCode = string.Empty;
+
+    public NetworkOnNetDisposalPageViewModel(
+        INetworkTransferService service,
+        IDialogService dialogService,
+        IUserContextService userContextService,
+        IBusinessLogicSettingsService businessLogicSettingsService)
     {
-        public const string PendingInProgressStatus = "进行中（待办结前）";
+        _service = service;
+        _dialogService = dialogService;
+        _userContextService = userContextService;
+        _businessLogicSettingsService = businessLogicSettingsService;
 
-        private readonly INetworkTransferService _service;
-        private readonly IDialogService _dialogService;
-        private readonly IUserContextService _userContextService;
-        private readonly IServerPathSettingService _serverPathSettingService;
-        private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
-        private readonly List<NetworkOnNetDisposalRecord> _allRecords = new();
-        private bool _isInitialized;
-        private int _applyYear = DateTime.Today.Year;
-        private string _searchKeyword = string.Empty;
-        private string _selectedStatus = "全部";
-        private string _assetKeyword = string.Empty;
-        private string _assetOriginKind = "全部";
-        private string _assetLifecycle = "全部";
-        private string _assetServerPath = "全部";
-        private string _assetDepartment = "全部";
-        private NetworkOnNetDisposalRecord? _selectedRecord;
-        private NetworkOnNetAsset? _selectedAsset;
-        private string _applicationOverdueSettingCode = string.Empty;
+        RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
+        SearchCommand = new RelayCommand(async _ => await RefreshAsync());
+        AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanOperate);
+        OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null);
+        WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => CanWithdrawSelected);
+        ForceVoidCommand = new RelayCommand(async _ => await ForceVoidAsync(), _ => CanForceVoidSelected);
+    }
 
-        public NetworkOnNetDisposalPageViewModel(
-            INetworkTransferService service,
-            IDialogService dialogService,
-            IUserContextService userContextService,
-            IServerPathSettingService serverPathSettingService,
-            IBusinessLogicSettingsService businessLogicSettingsService)
-        {
-            _service = service;
-            _dialogService = dialogService;
-            _userContextService = userContextService;
-            _serverPathSettingService = serverPathSettingService;
-            _businessLogicSettingsService = businessLogicSettingsService;
+    public ObservableCollection<NetworkOnNetDisposalRecord> Records { get; } = new();
 
-            RefreshCommand = new RelayCommand(async _ => await RefreshAllAsync());
-            SearchCommand = new RelayCommand(async _ => await RefreshDisposalsAsync());
-            SearchAssetsCommand = new RelayCommand(async _ => await RefreshAssetsAsync());
-            ViewAssetDetailCommand = new RelayCommand(async item => await ViewAssetDetailAsync(item), item =>
-                NetworkOnNetAssetDetailTextSupport.Resolve(item, SelectedAsset) != null);
-            AddDisposalCommand = new RelayCommand(async _ => await AddDisposalAsync(), _ => CanOperate);
-            OpenDisposalCommand = new RelayCommand(async _ => await OpenDisposalAsync(), _ => SelectedRecord != null);
-            WithdrawDisposalCommand = new RelayCommand(async _ => await WithdrawDisposalAsync(), _ => CanWithdrawSelected);
-            ForceVoidDisposalCommand = new RelayCommand(async _ => await ForceVoidDisposalAsync(), _ => CanForceVoidSelected);
-            ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.OnNetAsset));
-        }
+    public ObservableCollection<int> ApplyYears { get; } = new();
 
-        public ObservableCollection<NetworkOnNetAsset> Assets { get; } = new();
-        public ObservableCollection<NetworkOnNetDisposalRecord> Records { get; } = new();
-        public ObservableCollection<int> ApplyYears { get; } = new();
-        public ObservableCollection<string> StatusOptions { get; } = new();
-        public ObservableCollection<string> OriginKindOptions { get; } = new() { "全部", NetworkTransferDomainValues.OriginKindInbound, NetworkTransferDomainValues.OriginKindProcessedOutput };
-        public ObservableCollection<string> ServerPathOptions { get; } = new() { "全部" };
-        public ObservableCollection<string> DepartmentOptions { get; } = new() { "全部" };
-        public ObservableCollection<string> LifecycleOptions { get; } = new()
-        {
-            "全部",
-            NetworkTransferDomainValues.LifecycleOnNet,
-            NetworkTransferDomainValues.LifecycleOutboundLocked,
-            NetworkTransferDomainValues.LifecycleOutbounded,
-            NetworkTransferDomainValues.LifecycleDisposalLocked,
-            NetworkTransferDomainValues.LifecycleDisposed
-        };
+    public ObservableCollection<string> StatusOptions { get; } = new();
 
-        public string SearchKeyword { get => _searchKeyword; set => SetProperty(ref _searchKeyword, value); }
-        public string AssetKeyword { get => _assetKeyword; set => SetProperty(ref _assetKeyword, value); }
-        public string AssetOriginKind
-        {
-            get => _assetOriginKind;
-            set { if (SetProperty(ref _assetOriginKind, value) && _isInitialized) _ = RefreshAssetsAsync(); }
-        }
-        public string AssetLifecycle
-        {
-            get => _assetLifecycle;
-            set { if (SetProperty(ref _assetLifecycle, value) && _isInitialized) _ = RefreshAssetsAsync(); }
-        }
-        public string AssetServerPath
-        {
-            get => _assetServerPath;
-            set { if (SetProperty(ref _assetServerPath, value) && _isInitialized) _ = RefreshAssetsAsync(); }
-        }
-        public string AssetDepartment
-        {
-            get => _assetDepartment;
-            set { if (SetProperty(ref _assetDepartment, value) && _isInitialized) _ = RefreshAssetsAsync(); }
-        }
-        public int ApplyYear
-        {
-            get => _applyYear;
-            set { if (SetProperty(ref _applyYear, value) && _isInitialized) ApplyFilters(); }
-        }
-        public string SelectedStatus
-        {
-            get => _selectedStatus;
-            set { if (SetProperty(ref _selectedStatus, value) && _isInitialized) ApplyFilters(); }
-        }
-        public NetworkOnNetDisposalRecord? SelectedRecord
-        {
-            get => _selectedRecord;
-            set { if (SetProperty(ref _selectedRecord, value)) CommandManager.InvalidateRequerySuggested(); }
-        }
+    public string SearchKeyword
+    {
+        get => _searchKeyword;
+        set => SetProperty(ref _searchKeyword, value);
+    }
 
-        public NetworkOnNetAsset? SelectedAsset
+    public int ApplyYear
+    {
+        get => _applyYear;
+        set
         {
-            get => _selectedAsset;
-            set { if (SetProperty(ref _selectedAsset, value)) CommandManager.InvalidateRequerySuggested(); }
-        }
-
-        private bool CanOperate =>
-            OfflineApprovalPermissionSupport.CanCreateDraft(
-                _userContextService.CurrentUser,
-                ApprovalWorkflowBusinessTypes.NetworkOnNetDisposal);
-        private bool CanWithdrawSelected =>
-            ApplicationListActionSupport.CanAdminWithdrawDisposal(
-                SelectedRecord?.Status ?? ApplicationWorkflowStatus.Completed,
-                CanOperate);
-
-        private bool CanForceVoidSelected =>
-            SelectedRecord != null
-            && ApplicationListActionSupport.CanForceVoid(
-                SelectedRecord.Status,
-                CanOperate,
-                _businessLogicSettingsService.IsEligibleForAdminForceVoid(
-                    SelectedRecord.ApplyTime,
-                    _applicationOverdueSettingCode));
-
-        public RelayCommand RefreshCommand { get; }
-        public RelayCommand SearchCommand { get; }
-        public RelayCommand SearchAssetsCommand { get; }
-        public RelayCommand ViewAssetDetailCommand { get; }
-        public RelayCommand AddDisposalCommand { get; }
-        public RelayCommand OpenDisposalCommand { get; }
-        public RelayCommand WithdrawDisposalCommand { get; }
-        public RelayCommand ForceVoidDisposalCommand { get; }
-        public RelayCommand ShowIntroCommand { get; }
-
-        public async Task InitializeAsync()
-        {
-            if (_isInitialized) { ApplyFilters(); return; }
-            StatusOptions.Clear();
-            StatusOptions.Add("全部");
-            StatusOptions.Add(PendingInProgressStatus);
-            foreach (var option in ApplicationWorkflowStatus.AllOptions)
-                StatusOptions.Add(option.Label);
-            ApplyYears.Clear();
-            int currentYear = DateTime.Today.Year;
-            for (int year = currentYear; year >= currentYear - 5; year--)
-                ApplyYears.Add(year);
-            LoadAssetFilterOptions();
-            await RefreshAllAsync();
-            _isInitialized = true;
-        }
-
-        private void LoadAssetFilterOptions()
-        {
-            ServerPathOptions.Clear();
-            ServerPathOptions.Add("全部");
-            foreach (string pathName in _serverPathSettingService.GetAll()
-                         .Select(item => item.PathName?.Trim() ?? string.Empty)
-                         .Where(item => !string.IsNullOrWhiteSpace(item))
-                         .Distinct(StringComparer.Ordinal)
-                         .OrderBy(item => item, StringComparer.Ordinal))
+            if (SetProperty(ref _applyYear, value) && _isInitialized)
             {
-                ServerPathOptions.Add(pathName);
-            }
-
-            DepartmentOptions.Clear();
-            DepartmentOptions.Add("全部");
-            foreach (string department in _serverPathSettingService.GetAll()
-                         .Select(item => item.DepartmentName?.Trim() ?? string.Empty)
-                         .Where(item => !string.IsNullOrWhiteSpace(item))
-                         .Distinct(StringComparer.Ordinal)
-                         .OrderBy(item => item, StringComparer.Ordinal))
-            {
-                DepartmentOptions.Add(department);
-            }
-        }
-
-        private async Task RefreshAllAsync()
-        {
-            await RefreshAssetsAsync();
-            await RefreshDisposalsAsync();
-        }
-
-        private async Task RefreshAssetsAsync()
-        {
-            try
-            {
-                string? origin = string.Equals(AssetOriginKind, "全部", StringComparison.Ordinal) ? null : AssetOriginKind;
-                string? life = string.Equals(AssetLifecycle, "全部", StringComparison.Ordinal) ? null : AssetLifecycle;
-                string? serverPath = string.Equals(AssetServerPath, "全部", StringComparison.Ordinal) ? null : AssetServerPath;
-                string? department = string.Equals(AssetDepartment, "全部", StringComparison.Ordinal) ? null : AssetDepartment;
-                string? keyword = string.IsNullOrWhiteSpace(AssetKeyword) ? null : AssetKeyword.Trim();
-                var list = await _service.SearchOnNetAssetsAsync(keyword, origin, life, serverPath, department);
-                Assets.Clear();
-                foreach (var item in list) Assets.Add(item);
-                if (SelectedAsset != null)
-                    SelectedAsset = Assets.FirstOrDefault(item => item.Id == SelectedAsset.Id);
-            }
-            catch (Exception ex) { _dialogService.ShowError(ex.Message); }
-        }
-
-        private async Task ViewAssetDetailAsync(object? parameter)
-        {
-            NetworkOnNetAsset? asset = NetworkOnNetAssetDetailTextSupport.Resolve(parameter, SelectedAsset);
-            if (asset == null)
-            {
-                _dialogService.ShowMessage("请先选择一条在网对象。");
-                return;
-            }
-
-            try
-            {
-                await NetworkOnNetAssetDetailTextSupport.ShowAsync(_service, _dialogService, asset);
-            }
-            catch (Exception ex) { _dialogService.ShowError(ex.Message); }
-        }
-
-        private async Task RefreshDisposalsAsync()
-        {
-            try
-            {
-                _applicationOverdueSettingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
-                int? selectedId = SelectedRecord?.Id;
-                string? keyword = string.IsNullOrWhiteSpace(SearchKeyword) ? null : SearchKeyword.Trim();
-                var list = await _service.SearchDisposalRecordsAsync(keyword, null, null);
-                _allRecords.Clear();
-                _allRecords.AddRange(list);
+                _matchAllYears = false;
                 ApplyFilters();
-                if (selectedId.HasValue)
-                    SelectedRecord = Records.FirstOrDefault(item => item.Id == selectedId.Value);
-            }
-            catch (Exception ex) { _dialogService.ShowError(ex.Message); }
-        }
-
-        private void ApplyFilters()
-        {
-            IEnumerable<NetworkOnNetDisposalRecord> query = _allRecords.Where(item => item.ApplyTime.Year == ApplyYear);
-            if (string.Equals(SelectedStatus, PendingInProgressStatus, StringComparison.Ordinal))
-            {
-                query = query.Where(item =>
-                    item.Status is NetworkOnNetDisposalRecord.StatusSubmitted
-                        or NetworkOnNetDisposalRecord.StatusApproved
-                        or NetworkOnNetDisposalRecord.StatusSignedUploaded);
-            }
-            else if (!string.Equals(SelectedStatus, "全部", StringComparison.Ordinal)
-                     && !string.IsNullOrWhiteSpace(SelectedStatus))
-            {
-                var matched = ApplicationWorkflowStatus.AllOptions
-                    .FirstOrDefault(item => string.Equals(item.Label, SelectedStatus, StringComparison.Ordinal));
-                if (!string.IsNullOrWhiteSpace(matched.Label))
-                    query = query.Where(item => item.Status == matched.Value);
-            }
-
-            Records.Clear();
-            foreach (var item in query.OrderByDescending(r => r.ApplyTime).ThenByDescending(r => r.Id))
-                Records.Add(item);
-            CommandManager.InvalidateRequerySuggested();
-        }
-
-        private async Task AddDisposalAsync()
-        {
-            var draft = new NetworkOnNetDisposalRecord
-            {
-                ApplyTime = DateTime.Now,
-                ApplicantName = _userContextService.CurrentUser?.RealName?.Trim() ?? string.Empty,
-                ApplicantDept = _userContextService.CurrentUser?.Department?.Trim() ?? string.Empty,
-                Status = NetworkOnNetDisposalRecord.StatusDraft
-            };
-            if (_dialogService.ShowNetworkOnNetDisposalEditDialog(draft))
-            {
-                await RefreshDisposalsAsync();
-                await RefreshAssetsAsync();
             }
         }
+    }
 
-        private async Task OpenDisposalAsync()
+    public string SelectedStatus
+    {
+        get => _selectedStatus;
+        set
         {
-            if (SelectedRecord == null) return;
-            var latest = await _service.GetDisposalByIdAsync(SelectedRecord.Id);
-            if (latest == null)
+            if (SetProperty(ref _selectedStatus, value) && _isInitialized)
             {
-                _dialogService.ShowError("未找到处置单。");
-                await RefreshDisposalsAsync();
+                ApplyFilters();
+            }
+        }
+    }
+
+    public NetworkOnNetDisposalRecord? SelectedRecord
+    {
+        get => _selectedRecord;
+        set
+        {
+            if (SetProperty(ref _selectedRecord, value))
+            {
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
+    }
+
+    public bool CanOperate =>
+        OfflineApprovalPermissionSupport.CanCreateDraft(
+            _userContextService.CurrentUser,
+            ApprovalWorkflowBusinessTypes.NetworkOnNetDisposal);
+
+    public bool CanWithdrawSelected =>
+        ApplicationListActionSupport.CanAdminWithdrawDisposal(
+            SelectedRecord?.Status ?? ApplicationWorkflowStatus.Completed,
+            CanOperate);
+
+    public bool CanForceVoidSelected =>
+        SelectedRecord != null
+        && ApplicationListActionSupport.CanForceVoid(
+            SelectedRecord.Status,
+            CanOperate,
+            _businessLogicSettingsService.IsEligibleForAdminForceVoid(
+                SelectedRecord.ApplyTime,
+                _applicationOverdueSettingCode));
+
+    public RelayCommand RefreshCommand { get; }
+    public RelayCommand SearchCommand { get; }
+    public RelayCommand AddCommand { get; }
+    public RelayCommand OpenCommand { get; }
+    public RelayCommand WithdrawCommand { get; }
+    public RelayCommand ForceVoidCommand { get; }
+
+    public async Task InitializeAsync(bool pendingInProgress = false, bool matchAllYears = false)
+    {
+        if (_isInitialized)
+        {
+            _matchAllYears = matchAllYears;
+            if (pendingInProgress)
+            {
+                SelectedStatus = PendingInProgressStatus;
+            }
+
+            ApplyFilters();
+            return;
+        }
+
+        StatusOptions.Clear();
+        StatusOptions.Add("全部");
+        StatusOptions.Add(PendingInProgressStatus);
+        foreach (var option in ApplicationWorkflowStatus.AllOptions)
+        {
+            StatusOptions.Add(option.Label);
+        }
+
+        ApplyYears.Clear();
+        int currentYear = DateTime.Today.Year;
+        for (int year = currentYear; year >= currentYear - 5; year--)
+        {
+            ApplyYears.Add(year);
+        }
+
+        _matchAllYears = matchAllYears;
+        if (pendingInProgress)
+        {
+            _selectedStatus = PendingInProgressStatus;
+            OnPropertyChanged(nameof(SelectedStatus));
+        }
+
+        await RefreshAsync();
+        _isInitialized = true;
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            _applicationOverdueSettingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
+            int? selectedId = SelectedRecord?.Id;
+            string? keyword = string.IsNullOrWhiteSpace(SearchKeyword) ? null : SearchKeyword.Trim();
+            var list = await _service.SearchDisposalRecordsAsync(keyword, null, null);
+            _allRecords.Clear();
+            _allRecords.AddRange(list);
+            ApplyFilters();
+            if (selectedId.HasValue)
+            {
+                SelectedRecord = Records.FirstOrDefault(item => item.Id == selectedId.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            _dialogService.ShowError(ex.Message);
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        IEnumerable<NetworkOnNetDisposalRecord> query = _allRecords;
+        if (!_matchAllYears)
+        {
+            query = query.Where(item => item.ApplyTime.Year == ApplyYear);
+        }
+
+        if (string.Equals(SelectedStatus, PendingInProgressStatus, StringComparison.Ordinal))
+        {
+            query = query.Where(item =>
+                item.Status is NetworkOnNetDisposalRecord.StatusSubmitted
+                    or NetworkOnNetDisposalRecord.StatusApproved
+                    or NetworkOnNetDisposalRecord.StatusSignedUploaded);
+        }
+        else if (!string.Equals(SelectedStatus, "全部", StringComparison.Ordinal)
+                 && !string.IsNullOrWhiteSpace(SelectedStatus))
+        {
+            var matched = ApplicationWorkflowStatus.AllOptions
+                .FirstOrDefault(item => string.Equals(item.Label, SelectedStatus, StringComparison.Ordinal));
+            if (!string.IsNullOrWhiteSpace(matched.Label))
+            {
+                query = query.Where(item => item.Status == matched.Value);
+            }
+        }
+
+        Records.Clear();
+        foreach (var item in query.OrderByDescending(r => r.ApplyTime).ThenByDescending(r => r.Id))
+        {
+            Records.Add(item);
+        }
+
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    private async Task AddAsync()
+    {
+        if (!CanOperate)
+        {
+            _dialogService.ShowError("仅资料管理员可办理在网数据处置。");
+            return;
+        }
+
+        var draft = new NetworkOnNetDisposalRecord
+        {
+            ApplyTime = DateTime.Now,
+            ApplicantName = _userContextService.CurrentUser?.RealName?.Trim() ?? string.Empty,
+            ApplicantDept = _userContextService.CurrentUser?.Department?.Trim() ?? string.Empty,
+            Status = NetworkOnNetDisposalRecord.StatusDraft
+        };
+        if (_dialogService.ShowNetworkOnNetDisposalEditDialog(draft))
+        {
+            await RefreshAsync();
+        }
+    }
+
+    private async Task OpenAsync()
+    {
+        if (SelectedRecord == null)
+        {
+            return;
+        }
+
+        var latest = await _service.GetDisposalByIdAsync(SelectedRecord.Id);
+        if (latest == null)
+        {
+            _dialogService.ShowError("未找到处置单。");
+            await RefreshAsync();
+            return;
+        }
+
+        if (_dialogService.ShowNetworkOnNetDisposalEditDialog(latest))
+        {
+            await RefreshAsync();
+        }
+    }
+
+    private async Task WithdrawAsync()
+    {
+        if (SelectedRecord == null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!_dialogService.ShowConfirm($"确认撤回作废处置单【{SelectedRecord.DisposalNo}】？"))
+            {
                 return;
             }
 
-            if (_dialogService.ShowNetworkOnNetDisposalEditDialog(latest))
-            {
-                await RefreshDisposalsAsync();
-                await RefreshAssetsAsync();
-            }
+            await _service.WithdrawDisposalAsync(
+                SelectedRecord.Id,
+                null,
+                _userContextService.CurrentUser
+                    ?? throw new InvalidOperationException("当前用户无效。"));
+            await RefreshAsync();
+            _dialogService.ShowMessage("已撤回作废。");
+        }
+        catch (Exception ex)
+        {
+            _dialogService.ShowError(ex.Message);
+        }
+    }
+
+    private async Task ForceVoidAsync()
+    {
+        if (SelectedRecord == null || !CanForceVoidSelected)
+        {
+            return;
         }
 
-        private async Task WithdrawDisposalAsync()
+        try
         {
-            if (SelectedRecord == null) return;
-            try
+            if (!_dialogService.ShowConfirm(
+                    $"确定要强制作废处置单【{SelectedRecord.DisposalNo}】吗？仅草稿或已提交且已达逾期时限的单据可强制作废。",
+                    "强制作废确认"))
             {
-                if (!_dialogService.ShowConfirm($"确认撤回作废处置单【{SelectedRecord.DisposalNo}】？"))
-                    return;
-                await _service.WithdrawDisposalAsync(SelectedRecord.Id, null,
-                    _userContextService.CurrentUser ?? throw new InvalidOperationException("当前用户无效。"));
-                await RefreshDisposalsAsync();
-                await RefreshAssetsAsync();
-                _dialogService.ShowMessage("已撤回作废。");
+                return;
             }
-            catch (Exception ex) { _dialogService.ShowError(ex.Message); }
-        }
 
-        private async Task ForceVoidDisposalAsync()
+            await _service.ForceVoidDisposalAsync(
+                SelectedRecord.Id,
+                "列表强制作废",
+                _userContextService.CurrentUser
+                    ?? throw new InvalidOperationException("当前用户无效。"));
+            await RefreshAsync();
+            _dialogService.ShowMessage("已强制作废。");
+        }
+        catch (Exception ex)
         {
-            if (SelectedRecord == null || !CanForceVoidSelected) return;
-            try
-            {
-                if (!_dialogService.ShowConfirm(
-                        $"确定要强制作废处置单【{SelectedRecord.DisposalNo}】吗？仅草稿或已提交且已达逾期时限的单据可强制作废。",
-                        "强制作废确认"))
-                    return;
-                await _service.ForceVoidDisposalAsync(SelectedRecord.Id, "列表强制作废",
-                    _userContextService.CurrentUser ?? throw new InvalidOperationException("当前用户无效。"));
-                await RefreshDisposalsAsync();
-                await RefreshAssetsAsync();
-                _dialogService.ShowMessage("已强制作废。");
-            }
-            catch (Exception ex) { _dialogService.ShowError(ex.Message); }
+            _dialogService.ShowError(ex.Message);
         }
     }
 }

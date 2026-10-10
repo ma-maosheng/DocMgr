@@ -268,7 +268,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 string archiveNo = string.IsNullOrWhiteSpace(PreviewElectronicArchiveNo)
                     ? "待扫描年度"
                     : PreviewElectronicArchiveNo.Trim();
-                return $"存量硬盘直办立档 · {archiveNo}";
+                return $"存量硬盘资料直办立档 · {archiveNo}";
             }
         }
 
@@ -1336,6 +1336,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void RefreshSubCategoryOptions(bool preferDefaultForDataCategory)
         {
             IReadOnlyList<string> options = _owner.ResolveSubCategoryOptions(Item.MaterialCategory);
+
+            // Clear 前先记住子类，避免 ComboBox TwoWay 冲空后再误判为「无选中」。
+            string capturedSubCategory = Item.SubCategory?.Trim() ?? string.Empty;
             AvailableSubCategories.Clear();
             foreach (string option in options.Where(item => !string.IsNullOrWhiteSpace(item)).Select(item => item.Trim()).Distinct(StringComparer.Ordinal))
             {
@@ -1347,20 +1350,25 @@ namespace DocMgr.ViewModels.YearlyArchive
                     Item.MaterialCategory,
                     ArchiveRegisterDomainValues.ElectronicMaterialCategoryData,
                     StringComparison.Ordinal)
-                && (string.IsNullOrWhiteSpace(Item.SubCategory) || !AvailableSubCategories.Contains(Item.SubCategory))
+                && (string.IsNullOrWhiteSpace(capturedSubCategory) || !AvailableSubCategories.Contains(capturedSubCategory))
                     ? ArchiveRegisterDomainValues.DefaultStockDirectSubCategory
-                    : Item.SubCategory;
+                    : capturedSubCategory;
 
             if (!string.IsNullOrWhiteSpace(preferred) && !AvailableSubCategories.Contains(preferred))
             {
                 AvailableSubCategories.Insert(0, preferred);
             }
 
-            if (string.IsNullOrWhiteSpace(Item.SubCategory) || !AvailableSubCategories.Contains(Item.SubCategory))
+            string restored = !string.IsNullOrWhiteSpace(preferred) && AvailableSubCategories.Contains(preferred)
+                ? preferred
+                : AvailableSubCategories.FirstOrDefault() ?? string.Empty;
+            if (!string.Equals(Item.SubCategory, restored, StringComparison.Ordinal))
             {
-                Item.SubCategory = !string.IsNullOrWhiteSpace(preferred) && AvailableSubCategories.Contains(preferred)
-                    ? preferred
-                    : AvailableSubCategories.FirstOrDefault() ?? string.Empty;
+                Item.SubCategory = restored;
+                OnPropertyChanged(nameof(SubCategory));
+            }
+            else if (!string.Equals(SubCategory, restored, StringComparison.Ordinal))
+            {
                 OnPropertyChanged(nameof(SubCategory));
             }
         }

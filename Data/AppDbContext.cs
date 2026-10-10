@@ -124,6 +124,32 @@ namespace DocMgr.Data
 
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
+            // SQL Server decimal 默认 (18,2)；显式声明避免迁移警告并统一精度。
+            modelBuilder.Entity<ArchiveBoxSpecification>(entity =>
+            {
+                entity.Property(item => item.WidthCm).HasPrecision(18, 2);
+                entity.Property(item => item.HeightCm).HasPrecision(18, 2);
+                entity.Property(item => item.ThicknessCm).HasPrecision(18, 2);
+            });
+            modelBuilder.Entity<CabinetSlotSpecification>(entity =>
+            {
+                entity.Property(item => item.WidthCm).HasPrecision(18, 2);
+                entity.Property(item => item.HeightCm).HasPrecision(18, 2);
+                entity.Property(item => item.DepthCm).HasPrecision(18, 2);
+            });
+            modelBuilder.Entity<YearlyArchiveFilingFact>(entity =>
+            {
+                entity.Property(item => item.DataSizeMb).HasPrecision(18, 2);
+            });
+            modelBuilder.Entity<YearlyArchiveOutboundItem>(entity =>
+            {
+                entity.Property(item => item.DataSizeMb).HasPrecision(18, 2);
+            });
+            modelBuilder.Entity<YearlyElectronicArchiveUnitMediaItemLink>(entity =>
+            {
+                entity.Property(item => item.DataSizeMb).HasPrecision(18, 2);
+            });
+
             modelBuilder.Entity<ArchiveContainerProjection>(entity =>
             {
                 entity.HasNoKey();
@@ -267,10 +293,13 @@ namespace DocMgr.Data
                     .HasForeignKey(transaction => transaction.MediumId)
                     .OnDelete(DeleteBehavior.Cascade);
 
+                // SQL Server 禁止同一起点的多重级联路径：
+                // Medium → Transactions(Cascade) 与 Medium → Applications → Transactions(SetNull)。
+                // 改为 ClientSetNull：删申请单时由 EF 在客户端清空 ApplicationId，库端不建级联。
                 entity.HasOne(item => item.Application)
                     .WithMany()
                     .HasForeignKey(item => item.ApplicationId)
-                    .OnDelete(DeleteBehavior.SetNull);
+                    .OnDelete(DeleteBehavior.ClientSetNull);
             });
 
             modelBuilder.Entity<HardDiskDisposalRecord>(entity =>

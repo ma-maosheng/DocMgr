@@ -57,13 +57,17 @@ namespace DocMgr.Services.YearlyArchive
             bool hasExistingOpticalDiscArchive = input.ExistingElectronicUnits.Any(unit => IsOpticalDiscArchiveCarrierType(unit.StorageCarrierType));
 
             bool isUsbScenario = mediaTypes.Count == 1 && string.Equals(mediaTypes[0], ArchiveRegisterDomainValues.ElectronicMediaTypeUsbDrive, StringComparison.Ordinal);
-            bool isInnerNetworkScenario = mediaTypes.Count == 1 && string.Equals(mediaTypes[0], ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork, StringComparison.Ordinal);
             bool isOpticalDiscScenario = mediaTypes.Count == 1 && string.Equals(mediaTypes[0], ArchiveRegisterDomainValues.ElectronicMediaTypeOpticalDisc, StringComparison.Ordinal);
             bool isHardDiskScenario = mediaTypes.Count == 1 && string.Equals(mediaTypes[0], ArchiveRegisterDomainValues.ElectronicMediaTypeHardDisk, StringComparison.Ordinal);
             bool isHardDiskReturnScenario = isHardDiskScenario && string.Equals(normalizedDisposition, ArchiveRegisterDomainValues.ElectronicDispositionReturn, StringComparison.Ordinal);
             bool isHardDiskRetainedScenario = isHardDiskScenario && string.Equals(normalizedDisposition, ArchiveRegisterDomainValues.ElectronicDispositionRetain, StringComparison.Ordinal);
             bool isOpticalDiscArchiveScenario = isOpticalDiscScenario && string.Equals(normalizedDisposition, ArchiveRegisterDomainValues.ElectronicDispositionRetain, StringComparison.Ordinal);
-            bool isCopyScenario = isUsbScenario || isInnerNetworkScenario || isHardDiskReturnScenario;
+            bool isCopyScenario = isUsbScenario || isHardDiskReturnScenario;
+
+            if (input.PredeterminedSubmissionMode is ElectronicArchiveSubmissionMode predeterminedMode)
+            {
+                return BuildPredeterminedDecision(input, predeterminedMode);
+            }
 
             string retainedSourceForRules = isHardDiskRetainedScenario
                 ? ResolveRetainedHardDiskSourceFromStepOneMediumCode(input.StepOneMediumCode)
@@ -107,6 +111,51 @@ namespace DocMgr.Services.YearlyArchive
             return string.Equals(hardDiskCopyTargetMode?.Trim(), BlankHardDiskSourceOption, StringComparison.Ordinal)
                 ? HardDiskSelectionModeBlankTarget
                 : string.Empty;
+        }
+
+        private static ElectronicArchiveUiDecision BuildPredeterminedDecision(
+            ElectronicArchiveScenarioInput input,
+            ElectronicArchiveSubmissionMode predeterminedMode)
+        {
+            ElectronicArchiveSubmissionModeOption option = predeterminedMode switch
+            {
+                ElectronicArchiveSubmissionMode.CopyNewOpticalDisc => new ElectronicArchiveSubmissionModeOption(
+                    predeterminedMode,
+                    SingleOpticalDiscSourceOption,
+                    "出网申请已预定新光盘立档。本步选择年度数据光盘专用档口并赋码。",
+                    true,
+                    string.Empty,
+                    false,
+                    true),
+                ElectronicArchiveSubmissionMode.CopyNewHardDisk => new ElectronicArchiveSubmissionModeOption(
+                    predeterminedMode,
+                    BlankHardDiskSourceOption,
+                    "出网申请已预定库内空盘。介质编号不可改，本步选择年度数据硬盘专用档口。",
+                    true,
+                    string.Empty,
+                    false,
+                    true),
+                ElectronicArchiveSubmissionMode.CopyAppendExistingHardDisk => new ElectronicArchiveSubmissionModeOption(
+                    predeterminedMode,
+                    AppendExistingHardDiskOption,
+                    "出网申请已预定并入本项目当年硬盘袋。",
+                    true,
+                    string.Empty,
+                    true,
+                    true),
+                _ => throw new InvalidOperationException("出网申请预定的归档载体无法立档。")
+            };
+
+            bool isAppend = predeterminedMode == ElectronicArchiveSubmissionMode.CopyAppendExistingHardDisk;
+            return new ElectronicArchiveUiDecision(
+                Input: input,
+                AvailableModes: [option],
+                SelectedMode: predeterminedMode,
+                CanAppend: isAppend,
+                AppendRestrictionReason: isAppend ? string.Empty : "出网申请已预定归档载体，不能改选其他立档方式。",
+                StepFourLayout: BuildStepFourLayout(predeterminedMode, string.Empty, false),
+                StorageCarrierType: ResolveStorageCarrierType(predeterminedMode),
+                SummaryHint: "归档载体已在出网申请中确定。");
         }
 
         private static IReadOnlyList<ElectronicArchiveSubmissionModeOption> BuildAvailableModes(

@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Windows.Data;
 using System.Windows.Input;
 
@@ -33,6 +34,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IHardDiskMediaService _hardDiskMediaService;
         private readonly IElectronicMediaContentScanService _electronicMediaContentScanService;
         private readonly IArchiveRegisterWordExportService _archiveRegisterWordExportService;
+        private readonly SemaphoreSlim _currentRecordSideEffectsGate = new(1, 1);
+        private int _currentRecordSideEffectsGeneration;
 
         #region Properties
 
@@ -567,13 +570,13 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string RegisterWorkspaceBannerText => _workspaceMode switch
         {
             ArchiveRegisterWorkspaceMode.Application =>
-                "请填写资料与介质明细，可使用「保存草稿」「提交申请」。提交后由资料室在「资料登记（审批）」办理。",
+                "请填写资料与介质明细，可使用「保存草稿」「提交申请」。提交后由资料室在「申请审批」办理。",
             ArchiveRegisterWorkspaceMode.Approval =>
                 "请先根据线下审批结果核实并登记各资料子项密级，再填写审批流程，按“审批通过→确认实物交接→上传签批交接单→确认办结→打印交接单”办理。",
             _ => string.Empty
         };
 
-        /// <summary>窗体标题栏与页眉标题（流程名 · 单号 · 状态）。</summary>
+        /// <summary>窗体标题栏与页眉标题（流程名 · 单号 · 状态）；流程名与菜单「建档申请 / 申请审批」对齐。</summary>
         public string WindowTitle
         {
             get
@@ -582,15 +585,21 @@ namespace DocMgr.ViewModels.YearlyArchive
                     ? "待编单"
                     : CurrentRecord.FormNo.Trim();
                 string status = CurrentRecord?.StatusStr ?? "未提交";
-                return $"资料立档 · {formNo} · {status}";
+                string flowName = _workspaceMode switch
+                {
+                    ArchiveRegisterWorkspaceMode.Application => "建档申请",
+                    ArchiveRegisterWorkspaceMode.Approval => "申请审批",
+                    _ => "资料建档"
+                };
+                return $"{flowName} · {formNo} · {status}";
             }
         }
 
         public string DialogTitle => _workspaceMode switch
         {
-            ArchiveRegisterWorkspaceMode.Application => "资料登记（申请）",
-            ArchiveRegisterWorkspaceMode.Approval => "资料登记（审批）",
-            _ => "资料登记"
+            ArchiveRegisterWorkspaceMode.Application => "建档申请",
+            ArchiveRegisterWorkspaceMode.Approval => "申请审批",
+            _ => "资料建档"
         };
 
         public bool HasCommittedChanges
@@ -626,7 +635,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private bool CanExecuteApplicationSaveDraft()
         {
-            if (_workspaceMode != ArchiveRegisterWorkspaceMode.Application)
+            if (_workspaceMode != ArchiveRegisterWorkspaceMode.Application || !CanEditForm)
             {
                 return false;
             }
@@ -638,7 +647,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private bool CanExecuteApplicationSubmit()
         {
-            if (_workspaceMode != ArchiveRegisterWorkspaceMode.Application)
+            if (_workspaceMode != ArchiveRegisterWorkspaceMode.Application || !CanEditForm)
             {
                 return false;
             }

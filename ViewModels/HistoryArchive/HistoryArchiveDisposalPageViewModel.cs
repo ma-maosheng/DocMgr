@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.HistoryArchive;
 using DocMgr.Models.Shared;
@@ -24,6 +26,8 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
     private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
     private readonly List<HistoryArchiveDisposalRecord> _allRecords = new();
     private readonly List<HistoryArchiveDisposalBoxCandidateRow> _allCandidates = new();
+    private readonly SemaphoreSlim _refreshCandidatesGate = new(1, 1);
+    private int _refreshCandidatesGeneration;
     private bool _isInitialized;
     private int _applyYear = DateTime.Today.Year;
     private string _searchKeyword = string.Empty;
@@ -225,39 +229,53 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
 
     private async Task RefreshCandidatesAsync()
     {
+        int generation = Interlocked.Increment(ref _refreshCandidatesGeneration);
+        await _refreshCandidatesGate.WaitAsync().ConfigureAwait(true);
         try
         {
-            string kind = HistoryArchiveDisposalDomainValues.NormalizeMaterialKind(MaterialKindDisplay);
-            IReadOnlyList<HistoryArchiveDisposalBoxCandidate> list =
-                await _service.GetSelectableBoxesAsync(kind);
-            ClearCandidates();
-            foreach (var item in list.Where(candidate => candidate.IsSelectable))
+            if (generation != Volatile.Read(ref _refreshCandidatesGeneration))
             {
-                AttachCandidate(new HistoryArchiveDisposalBoxCandidateRow(item));
+                return;
             }
 
-            CabinetNameOptions.Clear();
-            CabinetNameOptions.Add(AllOption);
-            foreach (string name in _allCandidates
-                         .Select(item => item.CabinetName?.Trim() ?? string.Empty)
-                         .Where(item => !string.IsNullOrWhiteSpace(item))
-                         .Distinct(StringComparer.OrdinalIgnoreCase)
-                         .OrderBy(item => item, StringComparer.OrdinalIgnoreCase))
+            try
             {
-                CabinetNameOptions.Add(name);
-            }
+                string kind = HistoryArchiveDisposalDomainValues.NormalizeMaterialKind(MaterialKindDisplay);
+                IReadOnlyList<HistoryArchiveDisposalBoxCandidate> list =
+                    await _service.GetSelectableBoxesAsync(kind);
+                ClearCandidates();
+                foreach (var item in list.Where(candidate => candidate.IsSelectable))
+                {
+                    AttachCandidate(new HistoryArchiveDisposalBoxCandidateRow(item));
+                }
 
-            if (!CabinetNameOptions.Contains(CabinetName, StringComparer.OrdinalIgnoreCase))
+                CabinetNameOptions.Clear();
+                CabinetNameOptions.Add(AllOption);
+                foreach (string name in _allCandidates
+                             .Select(item => item.CabinetName?.Trim() ?? string.Empty)
+                             .Where(item => !string.IsNullOrWhiteSpace(item))
+                             .Distinct(StringComparer.OrdinalIgnoreCase)
+                             .OrderBy(item => item, StringComparer.OrdinalIgnoreCase))
+                {
+                    CabinetNameOptions.Add(name);
+                }
+
+                if (!CabinetNameOptions.Contains(CabinetName, StringComparer.OrdinalIgnoreCase))
+                {
+                    _cabinetName = AllOption;
+                    OnPropertyChanged(nameof(CabinetName));
+                }
+
+                ApplyBoxFilters();
+            }
+            catch (Exception ex)
             {
-                _cabinetName = AllOption;
-                OnPropertyChanged(nameof(CabinetName));
+                _dialogService.ShowError(ex.Message);
             }
-
-            ApplyBoxFilters();
         }
-        catch (Exception ex)
+        finally
         {
-            _dialogService.ShowError(ex.Message);
+            _refreshCandidatesGate.Release();
         }
     }
 

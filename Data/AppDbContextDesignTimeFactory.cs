@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using DocMgr.Config;
-using DocMgr.Data.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -24,8 +23,8 @@ namespace DocMgr.Data
             var databaseSettings = new DocMgrDatabaseSettings(databaseOptions);
 
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-            optionsBuilder.UseSqlite(databaseSettings.ConnectionString);
-            optionsBuilder.AddInterceptors(new SqliteConnectionPragmaInterceptor(databaseSettings));
+            optionsBuilder.UseSqlServer(databaseSettings.ConnectionString);
+            optionsBuilder.AddInterceptors(new Interceptors.SqlServerIdentityKeyNormalizeInterceptor());
 
             return new AppDbContext(optionsBuilder.Options);
         }

@@ -1023,7 +1023,7 @@ namespace DocMgr.Services.Shared
             }
             catch (Exception ex)
             {
-                ShowError($"打开硬盘借出申请编辑窗口失败：{ex.Message}");
+                ShowError($"打开出库申请编辑窗口失败：{ex.Message}");
                 return false;
             }
             finally

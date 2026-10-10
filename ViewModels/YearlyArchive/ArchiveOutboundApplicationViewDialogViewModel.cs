@@ -26,6 +26,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveOutboundWordExportService _outboundWordExportService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly IArchiveFilingService _filingService;
         private YearlyArchiveOutboundRecord _record;
         private string[] _uniformOpinions = [];
 
@@ -34,18 +35,21 @@ namespace DocMgr.ViewModels.YearlyArchive
             IArchiveOutboundWordExportService outboundWordExportService,
             IDialogService dialogService,
             IUserContextService userContextService,
+            IArchiveFilingService filingService,
             YearlyArchiveOutboundRecord record)
         {
             ArgumentNullException.ThrowIfNull(outboundService);
             ArgumentNullException.ThrowIfNull(outboundWordExportService);
             ArgumentNullException.ThrowIfNull(dialogService);
             ArgumentNullException.ThrowIfNull(userContextService);
+            ArgumentNullException.ThrowIfNull(filingService);
             ArgumentNullException.ThrowIfNull(record);
 
             _outboundService = outboundService;
             _outboundWordExportService = outboundWordExportService;
             _dialogService = dialogService;
             _userContextService = userContextService;
+            _filingService = filingService;
             _record = record;
             RefreshUniformOpinions();
 
@@ -198,6 +202,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     rows,
                     canEdit: false,
                     _dialogService,
+                    _filingService,
                     unitIndex++));
             }
 

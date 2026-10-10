@@ -1,7 +1,7 @@
 <Page x:Class="DocMgr.Views.YearlyArchive.StockHardDiskDirectFilingPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      Title="存量硬盘直办立档"
+      Title="存量硬盘资料直办立档"
       Background="#F0F2F5">
     <Page.Resources>
         <Style x:Key="LabelStyle" TargetType="TextBlock">

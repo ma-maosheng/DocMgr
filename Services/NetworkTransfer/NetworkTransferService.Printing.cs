@@ -241,6 +241,9 @@ public sealed partial class NetworkTransferService
             YearText = record.Year?.Trim() ?? string.Empty,
             ProjectName = record.ProjectName?.Trim() ?? string.Empty,
             DestinationKindText = record.DestinationKind?.Trim() ?? string.Empty,
+            DestinationUnitText = NetworkTransferDomainValues.ResolveOutboundDestinationUnit(
+                record.DestinationKind,
+                record.DestinationUnit),
             ArchivePurposeText = record.ArchivePurpose?.Trim() ?? string.Empty,
             Reason = record.Reason?.Trim() ?? string.Empty,
             ProofMaterialNote = proofMaterial,

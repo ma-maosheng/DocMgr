@@ -28,7 +28,6 @@ namespace DocMgr.Models.YearlyArchive
         public const string ElectronicMediaTypeUsbDrive = "U盘";
         public const string ElectronicMediaTypeOpticalDisc = "光盘";
         public const string ElectronicMediaTypeHardDisk = "硬盘";
-        public const string ElectronicMediaTypeInnerNetwork = "内网";
 
         /// <summary>历史模拟介质类型：装订文本（迁移后拆为载体+分类）。</summary>
         public const string LegacySimulatedMediaTypeBoundText = "装订文本";

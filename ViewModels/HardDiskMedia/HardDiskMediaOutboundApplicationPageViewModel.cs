@@ -62,7 +62,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         public ObservableCollection<string> ApplicationTypeOptions { get; } = new();
 
-        public string PageTitle => "介质出库申请";
+        public string PageTitle => "出库申请";
 
         public string AddActionText => "新增申请";
 
@@ -289,7 +289,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
 
             var application = HardDiskMediaApplicationViewModelHelper.CloneApplication(SelectedApplication);
-            if (IsEditableDraftApplication(SelectedApplication))
+            if (SelectedApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft
+                && IsCurrentUserApplicantOwner(SelectedApplication))
             {
                 await OpenAndReopenApplicationDialogAsync(application);
                 return;
@@ -480,37 +481,20 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 : Applications.FirstOrDefault();
         }
 
-        private bool CanOpenSelectedApplication()
+        private bool CanOpenSelectedApplication() => SelectedApplication != null;
+
+        private bool IsCurrentUserApplicantOwner(HardDiskMediaApplication application)
         {
-            if (SelectedApplication == null)
-            {
-                return false;
-            }
-
-            if (IsEditableDraftApplication(SelectedApplication))
-            {
-                return true;
-            }
-
-            return IsCurrentUserApplicant(SelectedApplication);
-        }
-
-        private static bool IsEditableDraftApplication(HardDiskMediaApplication application)
-        {
-            return application.ApplicationStatus == HardDiskMediaApplication.StatusDraft;
-        }
-
-        private bool IsCurrentUserApplicant(HardDiskMediaApplication application)
-        {
-            return string.Equals(
-                application.ApplicantName?.Trim(),
-                _userContextService.CurrentUser?.RealName?.Trim(),
-                StringComparison.OrdinalIgnoreCase);
+            return HardDiskMediaApplicationViewModelHelper.CanSubmitApplication(_userContextService.CurrentUser)
+                   && string.Equals(
+                       application.ApplicantName?.Trim(),
+                       _userContextService.CurrentUser?.RealName?.Trim(),
+                       StringComparison.OrdinalIgnoreCase);
         }
 
         private bool CanWithdrawSelectedApplication()
         {
-            if (SelectedApplication == null || !IsCurrentUserApplicant(SelectedApplication))
+            if (SelectedApplication == null || !IsCurrentUserApplicantOwner(SelectedApplication))
             {
                 return false;
             }
@@ -525,8 +509,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             return ApplicationListActionSupport.CanSubmit(
                        SelectedApplication?.ApplicationStatus ?? ApplicationWorkflowStatus.Completed,
                        isOwnerApplicant: SelectedApplication != null
-                           && IsCurrentUserApplicant(SelectedApplication))
-                   && HardDiskMediaApplicationViewModelHelper.CanSubmitApplication(_userContextService.CurrentUser);
+                           && IsCurrentUserApplicantOwner(SelectedApplication));
         }
 
     }

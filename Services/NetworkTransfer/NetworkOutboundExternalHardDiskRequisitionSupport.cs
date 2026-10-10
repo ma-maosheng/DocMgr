@@ -69,5 +69,23 @@ internal static class NetworkOutboundExternalHardDiskRequisitionSupport
                 errors.Add($"• 第{mediaSeq}条介质：未使用库内空盘时不应保留征用硬盘编号");
             }
         }
+
+        // 同一申请单内，多块硬盘介质不得征用相同编号
+        var duplicatedRequisitionCodes = mediaEntries
+            .Where(IsExternalOfflineReturnedHardDiskMedia)
+            .Where(media =>
+                media.UseInStockBlankHardDisk
+                && !string.IsNullOrWhiteSpace(media.RequisitionedHardDiskCode))
+            .Select(media => media.RequisitionedHardDiskCode!.Trim())
+            .GroupBy(code => code, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .OrderBy(code => code, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (duplicatedRequisitionCodes.Count > 0)
+        {
+            errors.Add($"• 同一申请单内“库内空盘硬盘编号”不能重复：{string.Join("、", duplicatedRequisitionCodes)}");
+        }
     }
 }

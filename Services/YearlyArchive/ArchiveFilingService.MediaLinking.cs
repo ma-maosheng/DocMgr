@@ -323,6 +323,16 @@ namespace DocMgr.Services.YearlyArchive
             foreach (var record in records)
             {
                 string recordProject = record.ProjectName?.Trim() ?? string.Empty;
+                if (record.SourceNetworkOutboundRecordId is > 0)
+                {
+                    if (!string.Equals(existingProject, recordProject, StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException($"登记单 [{record.FormNo}] 与电子立档单元 [{existingUnit.ElectronicArchiveNo}] 项目不一致，禁止跨项目并入。");
+                    }
+
+                    continue;
+                }
+
                 string recordYear = record.CreatedDate.Year.ToString();
 
                 if (!string.Equals(existingProject, recordProject, StringComparison.Ordinal))

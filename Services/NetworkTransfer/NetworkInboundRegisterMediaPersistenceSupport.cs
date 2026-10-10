@@ -15,6 +15,7 @@ internal static class NetworkInboundRegisterMediaPersistenceSupport
         IReadOnlyList<YearlyArchiveRegisterMedia> mediaEntries)
     {
         List<YearlyArchiveRegisterMedia> existing = await dbContext.YearlyArchiveRegisterMedias
+            .AsSplitQuery()
             .Include(media => media.Items)
                 .ThenInclude(item => item.ElectronicDetail)
                     .ThenInclude(detail => detail!.Entries)

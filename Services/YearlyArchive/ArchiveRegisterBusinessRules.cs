@@ -14,7 +14,6 @@ namespace DocMgr.Services.YearlyArchive
         {
             ["U盘"] = ["介质带回"],
             ["光盘"] = ["介质留存"],
-            ["内网"] = ["无需处置"],
             ["硬盘"] = ["介质留存", "介质带回"]
         };
 
@@ -32,7 +31,7 @@ namespace DocMgr.Services.YearlyArchive
         }
 
         /// <summary>
-        /// 手工新建建档申请时可选的电子介质类型（隐藏「内网」，由出网转立档自动带入）。
+        /// 手工新建建档申请时可选的电子介质类型。
         /// </summary>
         public static IReadOnlyList<string> FilterManualSelectableElectronicMediaTypes(
             IReadOnlyCollection<string> options)
@@ -42,12 +41,7 @@ namespace DocMgr.Services.YearlyArchive
                 return Array.Empty<string>();
             }
 
-            return options
-                .Where(option => !string.Equals(
-                    option?.Trim(),
-                    ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork,
-                    StringComparison.Ordinal))
-                .ToList();
+            return options.Where(option => !string.IsNullOrWhiteSpace(option)).Select(option => option.Trim()).ToList();
         }
 
         /// <summary>
@@ -137,9 +131,15 @@ namespace DocMgr.Services.YearlyArchive
 
             bool isArchiveAdmin = IsArchiveAdminUser(user);
             bool isApplicant = IsDepartmentArchiveAdmin(user);
+            bool isOwner = currentRecord == null
+                || currentRecord.Id <= 0
+                || string.Equals(
+                    currentRecord.ApplicantName?.Trim(),
+                    user.RealName?.Trim(),
+                    StringComparison.Ordinal);
 
             // 已提交待审批：申请信息冻结，仅草稿可改；密级仍允许资料管理员在审批态补录。
-            bool canEditForm = isApplicant && isDraft;
+            bool canEditForm = isApplicant && isDraft && isOwner;
             bool canApprove = isArchiveAdmin && isSubmitted;
             bool canUpload = isArchiveAdmin && (isApproved || isSignedUploaded);
             bool canEditItemConfidentialLevel = !isCompleted

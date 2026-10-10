@@ -92,9 +92,20 @@ internal static class NetworkOutboundOnNetAssetMappingSupport
             var clone = new YearlyArchiveRegisterMedia
             {
                 MediaKind = source.MediaKind,
-                MediaType = ArchiveRegisterDomainValues.ElectronicMediaTypeInnerNetwork,
+                MediaType = source.MediaType?.Trim() ?? string.Empty,
                 MediaCount = source.MediaCount > 0 ? source.MediaCount : 1,
-                Disposition = ArchiveRegisterDomainValues.ElectronicDispositionNone
+                Disposition = ArchiveRegisterDomainValues.ElectronicDispositionNone,
+                UseInStockBlankHardDisk = source.UseInStockBlankHardDisk,
+                RequisitionedMediumId = source.UseInStockBlankHardDisk ? source.RequisitionedMediumId : null,
+                RequisitionedHardDiskCode = source.UseInStockBlankHardDisk
+                    ? source.RequisitionedHardDiskCode?.Trim() ?? string.Empty
+                    : string.Empty,
+                RequisitionedDiskNeedReturn = false,
+                ExpectedReturnDate = null,
+                AppendTargetElectronicUnitId = source.UseInStockBlankHardDisk ? null : source.AppendTargetElectronicUnitId,
+                AppendTargetHardDiskCode = source.UseInStockBlankHardDisk
+                    ? string.Empty
+                    : source.AppendTargetHardDiskCode?.Trim() ?? string.Empty
             };
 
             foreach (YearlyArchiveRegisterMediaItem item in source.Items ?? [])

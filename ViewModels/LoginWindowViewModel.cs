@@ -136,6 +136,7 @@ namespace DocMgr.ViewModels
 
                 _userContextService.SetCurrentSession(loginResult.User, loginResult.SessionId);
 
+#if !DEBUG
                 if (loginResult.User.MustChangePassword)
                 {
                     bool changed = _dialogService.ShowChangePasswordDialog(isMandatory: true);
@@ -147,6 +148,7 @@ namespace DocMgr.ViewModels
                         return;
                     }
                 }
+#endif
 
                 LoginSucceeded?.Invoke(loginResult.User);
             }

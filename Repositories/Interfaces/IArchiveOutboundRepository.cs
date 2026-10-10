@@ -31,6 +31,9 @@ namespace DocMgr.Repositories.Interfaces
 
         Task SaveChangesAsync();
 
+        /// <summary>清空跟踪缓存；保存图后重载详情前调用，避免同键实体重复跟踪。</summary>
+        void ClearChangeTracker();
+
         Task<YearlyArchiveFilingFact?> GetFilingFactByIdAsync(int filingFactId);
 
         Task<Dictionary<int, YearlyArchiveFilingFact>> GetFilingFactsByIdsForUpdateAsync(IReadOnlyCollection<int> filingFactIds);

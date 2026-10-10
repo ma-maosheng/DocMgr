@@ -84,6 +84,82 @@ namespace DocMgr.Services.YearlyArchive
             return OrderContainersByCode(units);
         }
 
+        /// <inheritdoc/>
+        public Task<YearlyElectronicArchiveUnit?> FindElectronicArchiveUnitAsync(int unitId)
+        {
+            if (unitId <= 0)
+            {
+                return Task.FromResult<YearlyElectronicArchiveUnit?>(null);
+            }
+
+            return _archiveFilingRepository.GetElectronicArchiveUnitWithDetailsAsync(unitId);
+        }
+
+        /// <inheritdoc/>
+        public async Task EnsureOutboundArchiveAppendTargetAsync(int unitId, string projectName, string year, string diskCode)
+        {
+            YearlyElectronicArchiveUnit? unit = await FindElectronicArchiveUnitAsync(unitId);
+            if (unit == null)
+            {
+                throw new InvalidOperationException("预定的并档硬盘袋已不存在，请重新选择。");
+            }
+
+            if (!string.Equals(unit.ProjectName?.Trim(), projectName?.Trim(), StringComparison.Ordinal)
+                || !string.Equals(unit.Year?.Trim(), year?.Trim(), StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"电子袋 [{unit.ElectronicArchiveNo}] 不属于当前项目「{projectName}」的 {year} 年度，不能作为并档目标。");
+            }
+
+            if (!string.Equals(unit.UnitLifecycleStatus?.Trim(), ArchiveContainerLifecycleStatus.InUse, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"电子袋 [{unit.ElectronicArchiveNo}] 已不在用，不能作为并档目标。");
+            }
+
+            if (!ArchiveFilingBusinessRules.IsHardDiskArchiveCarrierType(unit.StorageCarrierType)
+                || string.IsNullOrWhiteSpace(unit.LinkedMediumCodes))
+            {
+                throw new InvalidOperationException($"电子袋 [{unit.ElectronicArchiveNo}] 不是在用硬盘袋，不能作为并档目标。");
+            }
+
+            if (!string.Equals(unit.LinkedMediumCodes.Trim(), diskCode?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"电子袋 [{unit.ElectronicArchiveNo}] 当前硬盘为 [{unit.LinkedMediumCodes}]，与申请时的 [{diskCode}] 不一致，请重新选择。");
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<string> DescribeHardDiskAvailableCapacityAsync(string? diskCode)
+        {
+            string code = diskCode?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                return string.Empty;
+            }
+
+            HardDiskMedium? medium = await _archiveFilingRepository.GetHardDiskMediumByDiskCodeWithLedgerAsync(code);
+            if (medium == null)
+            {
+                return "未找到该硬盘的容量登记";
+            }
+
+            decimal totalMb = ElectronicMediaCapacitySupport.ParseCapacityTextToMb(medium.Capacity);
+            if (totalMb <= 0)
+            {
+                return "未登记容量";
+            }
+
+            List<YearlyElectronicArchiveUnitMediaItemLink> links = await _archiveFilingRepository
+                .GetElectronicArchiveUnitMediaItemLinksByMediumCodeAsync(code);
+            decimal usedMb = links.Sum(link => link.DataSizeMb);
+            decimal availableMb = Math.Max(0, totalMb - usedMb);
+            return $"可用容量 {FormatCapacityMbOrZero(availableMb)}（总容量 {ElectronicMediaCapacitySupport.FormatCapacityMb(totalMb)}，已占用 {FormatCapacityMbOrZero(usedMb)}）";
+        }
+
+        private static string FormatCapacityMbOrZero(decimal capacityMb) =>
+            capacityMb <= 0 ? "0 MB" : ElectronicMediaCapacitySupport.FormatCapacityMb(capacityMb);
+
         public async Task<string> GenerateNextArchiveSequenceNoAsync(string year)
         {
             if (string.IsNullOrWhiteSpace(year)) year = DateTime.Now.Year.ToString();
@@ -128,6 +204,7 @@ namespace DocMgr.Services.YearlyArchive
             mediaItemIds = resolvedItemIds;
             EnrichBorrowedHardDiskSubmissionAsync(request, mediaEntries);
             ValidateElectronicSubmissionRequest(request, mediaItemIds, mediaEntries, requireExistingUnitId: false);
+            await EnsureOutboundArchiveFilingCarrierAsync(request, mediaEntries, releaseBlankHold: false);
             await ValidateCopySubmissionMediumCapacityAsync(request, mediaItems);
 
             var archiveUnit = CreateSubmissionArchiveUnit(request.ArchiveUnit, currentUser);
@@ -157,6 +234,7 @@ namespace DocMgr.Services.YearlyArchive
                 AppendRetainedHardDiskUsageSummary(changeTracker, request, archiveUnit);
 
                 await PersistPendingExternalHardDiskAsync(request.PendingExternalHardDisk, currentUser);
+                await EnsureOutboundArchiveFilingCarrierAsync(request, mediaEntries, releaseBlankHold: true);
                 var borrowedHardDiskCandidate = await ResolveBorrowedHardDiskCandidateForSubmissionAsync(request, mediaEntries);
                 await CreateElectronicArchiveUnitCoreAsync(
                     archiveUnit,
@@ -198,6 +276,7 @@ namespace DocMgr.Services.YearlyArchive
             var (mediaItemIds, mediaItems, mediaEntries) = await ResolveElectronicSubmissionAsync(request);
             EnrichBorrowedHardDiskSubmissionAsync(request, mediaEntries);
             ValidateElectronicSubmissionRequest(request, mediaItemIds, mediaEntries, requireExistingUnitId: true);
+            await EnsureOutboundArchiveFilingCarrierAsync(request, mediaEntries, releaseBlankHold: false);
             await ValidateCopySubmissionMediumCapacityAsync(request, mediaItems);
 
             var archiveUnit = CreateSubmissionArchiveUnit(request.ArchiveUnit, currentUser);
@@ -215,6 +294,7 @@ namespace DocMgr.Services.YearlyArchive
                 AppendRetainedHardDiskUsageSummary(changeTracker, request, archiveUnit);
 
                 await PersistPendingExternalHardDiskAsync(request.PendingExternalHardDisk, currentUser);
+                await EnsureOutboundArchiveFilingCarrierAsync(request, mediaEntries, releaseBlankHold: true);
                 var borrowedHardDiskCandidate = await ResolveBorrowedHardDiskCandidateForSubmissionAsync(request, mediaEntries);
                 await AppendToElectronicArchiveUnitCoreAsync(
                     request.ExistingElectronicArchiveUnitId!.Value,

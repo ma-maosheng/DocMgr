@@ -107,7 +107,7 @@
             <StackPanel>
                 <TextBlock Text="跨域流转台账" Style="{StaticResource PageTitleStyle}"/>
                 <TextBlock Style="{StaticResource PageSubtitleStyle}"
-                           Text="横向浏览立档电子资料复制上传入网等跨域流转流水；原件保管关系不变，生产网侧见在网资产编号与服务器路径。"/>
+                           Text="横向浏览跨域流转流水：立档转入网（资料室→生产网）与出网转立档（生产网→资料室）。立档转入网为复制入网，原件仍在资料室，保管关系不变。"/>
             </StackPanel>
         </DockPanel>
 
@@ -161,7 +161,7 @@
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedTransactionType, Mode=TwoWay}"
-                                  ToolTip="立档资料复制入网等跨域流转类型"/>
+                                  ToolTip="立档转入网（复制、原件仍在资料室）、出网转立档等跨域流转类型"/>
 
                         <TextBlock Grid.Column="11" Text="介质：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <ComboBox Grid.Column="12" Style="{StaticResource FilterInputStyle}"
@@ -177,7 +177,7 @@
                         <TextBlock Grid.Column="17" Text="关键字：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <TextBox Grid.Column="18" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="立档编号、资料名称、服务器路径、在网资产编号等">
+                                 ToolTip="立档编号、资料名称、服务器路径、在网资产编号、出网单号等">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
                             </TextBox.InputBindings>
@@ -212,7 +212,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="入网单号：" Style="{StaticResource FilterRowLabelStyle}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="业务单号：" Style="{StaticResource FilterRowLabelStyle}"/>
                     <ComboBox Grid.Row="0" Grid.Column="2"
                               Style="{StaticResource FilterInputStyle}"
                               Height="{StaticResource ToolbarControlHeight}"
@@ -221,16 +221,16 @@
                               StaysOpenOnEdit="True"
                               ItemsSource="{Binding BusinessNoOptions}"
                               Text="{Binding BusinessNo, UpdateSourceTrigger=PropertyChanged}"
-                              ToolTip="可直接输入、下拉选择历史办结入网单号，或点选最近单号"/>
+                              ToolTip="可直接输入、下拉选择历史入网/出网业务单号，或点选最近单号"/>
                     <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Content="用选中行" MinWidth="84"
                                 Command="{Binding UseSelectedRowBusinessNoCommand}"
                                 Style="{StaticResource CompactToolbarButtonStyle}"
-                                ToolTip="将当前列表选中行的入网单号填入筛选框"/>
+                                ToolTip="将当前列表选中行的业务单号填入筛选框"/>
                         <Button Content="清空单号" MinWidth="84" Margin="4,0,0,0"
                                 Command="{Binding ClearBusinessNoCommand}"
                                 Style="{StaticResource CompactToolbarButtonStyle}"
-                                ToolTip="清空上方入网单号筛选条件"/>
+                                ToolTip="清空上方业务单号筛选条件"/>
                     </StackPanel>
 
                     <TextBlock Grid.Row="0" Grid.Column="6" Text="时间快捷：" Style="{StaticResource FilterRowLabelStyle}"/>
@@ -272,7 +272,7 @@
                     <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="7"
                                Margin="0,4,0,0"
                                Style="{StaticResource FilterCardHintStyle}"
-                               Text="最近单号来自当前查询结果或最近办结入网单；可直接输入、下拉选择，或点选上方最近单号。"/>
+                               Text="最近单号来自当前查询结果或最近跨域业务单（入网/出网）；可直接输入、下拉选择，或点选上方最近单号。"/>
                 </Grid>
             </Grid>
         </Border>
@@ -294,7 +294,7 @@
                 <Border Style="{StaticResource SectionHeaderBarStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="跨域流转流水" Style="{StaticResource SectionTitleStyle}"/>
-                        <TextBlock Text="一行对应一条复制上传入网等跨域落账记录" Style="{StaticResource SectionHintStyle}"/>
+                        <TextBlock Text="一行对应一条立档转入网（复制、原件仍在资料室）或出网转立档等跨域落账记录" Style="{StaticResource SectionHintStyle}"/>
                     </StackPanel>
                 </Border>
                 <DataGrid Grid.Row="1" Margin="8"
@@ -312,7 +312,7 @@
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="操作时间" Binding="{Binding OperatedAtDisplay, Mode=OneWay}" Width="130"/>
                         <DataGridTextColumn Header="流转类型" Binding="{Binding TransactionTypeDisplay, Mode=OneWay}" Width="130"/>
-                        <DataGridTextColumn Header="入网单号" Binding="{Binding BusinessNo, Mode=OneWay}" Width="140"/>
+                        <DataGridTextColumn Header="业务单号" Binding="{Binding BusinessNo, Mode=OneWay}" Width="140"/>
                         <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo, Mode=OneWay}" Width="130"/>
                         <DataGridTextColumn Header="表单编号" Binding="{Binding FormNo, Mode=OneWay}" Width="120"/>
                         <DataGridTextColumn Header="介质" Binding="{Binding MediaKind, Mode=OneWay}" Width="72"/>

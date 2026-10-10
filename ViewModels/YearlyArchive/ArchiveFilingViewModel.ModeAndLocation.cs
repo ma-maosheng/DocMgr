@@ -162,7 +162,22 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             if (SelectedElectronicSubmissionMode == ElectronicArchiveSubmissionMode.CopyNewHardDisk)
             {
-                ClearSelectedHardDisk();
+                if (!IsOutboundArchiveBlankDiskCodeReadOnly)
+                {
+                    ClearSelectedHardDisk();
+                }
+                else
+                {
+                    string reservedCode = EnumerateSelectedElectronicMediaEntryRows()
+                        .Select(row => row.RequisitionedHardDiskCode?.Trim())
+                        .FirstOrDefault(code => !string.IsNullOrWhiteSpace(code))
+                        ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(reservedCode))
+                    {
+                        ElectronicLinkedMediumCodes = reservedCode;
+                    }
+                }
+
                 EnsureElectronicBagDefaults();
                 ElectronicSelectedMediumStatus = HardDiskMedium.StatusInStockBlank;
             }
@@ -445,13 +460,23 @@ namespace DocMgr.ViewModels.YearlyArchive
                     ?? ArchiveSlotLocationSupport.BuildSlotKey(PhysicalCodeResult);
             }
 
+            string projectName = TargetProject;
+            string year = TargetYear;
+            string boxSpecification = SelectedSpec;
+
             IReadOnlyList<ArchiveBoxTargetLocationOption> options;
             try
             {
-                options = await _filingService.GetArchiveBoxTargetLocationOptionsAsync(
-                    TargetProject,
-                    TargetYear,
-                    SelectedSpec);
+                // 独立 scope：本方法常被 SelectedSpec / 初始化 / 选中记录等路径并发触发，
+                // 不可与页面级 _filingService（同一 DbContext）并行查询。
+                using (IServiceScope scope = _scopeFactory.CreateScope())
+                {
+                    var filing = scope.ServiceProvider.GetRequiredService<IArchiveFilingService>();
+                    options = await filing.GetArchiveBoxTargetLocationOptionsAsync(
+                        projectName,
+                        year,
+                        boxSpecification).ConfigureAwait(true);
+                }
             }
             catch (Exception ex)
             {
@@ -460,7 +485,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                MessageBox.Show("加载可选档口失败: " + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("加载可选档口失败: " + ex.GetBaseException().Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
