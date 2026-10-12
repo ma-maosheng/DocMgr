@@ -143,6 +143,18 @@ public class ArchiveRegisterRepository : IArchiveRegisterRepository
             .ToListAsync();
     }
 
+    public Task<List<YearlyArchiveRegisterRecord>> GetDraftRecordsForApplicantToDoAsync(int applicantUserId, int takeCount)
+    {
+        // applicantUserId <= 0：总览查询全部申请人草稿。
+        return _dbContext.YearlyArchiveRegisterRecords
+            .AsNoTracking()
+            .Where(record => record.Status == YearlyArchiveRegisterRecord.Unsubmitted
+                && (applicantUserId <= 0 || record.ApplicantUserId == applicantUserId))
+            .OrderByDescending(record => record.CreatedDate)
+            .Take(takeCount)
+            .ToListAsync();
+    }
+
     public async Task<int> SaveOrUpdateRecordGraphAsync(YearlyArchiveRegisterRecord record)
     {
         ArgumentNullException.ThrowIfNull(record);

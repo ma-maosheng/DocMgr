@@ -129,6 +129,27 @@ namespace DocMgr.Views.Shared
         public static readonly DependencyProperty SignedZoneTitleProperty =
             SignedZoneTitlePropertyKey.DependencyProperty;
 
+        private static readonly DependencyPropertyKey SignedZoneHintPropertyKey =
+            DependencyProperty.RegisterReadOnly(
+                nameof(SignedZoneHint),
+                typeof(string),
+                typeof(ApprovalHandoverWorkspaceShell),
+                new PropertyMetadata(ApprovalWorkflowShellCopySupport.GetSignedZoneHint(
+                    ApprovalWorkflowShellKind.ApplicationHandover)));
+
+        public static readonly DependencyProperty SignedZoneHintProperty =
+            SignedZoneHintPropertyKey.DependencyProperty;
+
+        private static readonly DependencyPropertyKey OtherZoneHintPropertyKey =
+            DependencyProperty.RegisterReadOnly(
+                nameof(OtherZoneHint),
+                typeof(string),
+                typeof(ApprovalHandoverWorkspaceShell),
+                new PropertyMetadata(ApprovalWorkflowShellCopySupport.OtherAttachmentZoneHint));
+
+        public static readonly DependencyProperty OtherZoneHintProperty =
+            OtherZoneHintPropertyKey.DependencyProperty;
+
         private static readonly DependencyPropertyKey DefaultPhotoZoneTitlePropertyKey =
             DependencyProperty.RegisterReadOnly(
                 nameof(DefaultPhotoZoneTitle),
@@ -252,6 +273,8 @@ namespace DocMgr.Views.Shared
         public string ConfirmMidStepButtonText => (string)GetValue(ConfirmMidStepButtonTextProperty);
         public string PrintButtonText => (string)GetValue(PrintButtonTextProperty);
         public string SignedZoneTitle => (string)GetValue(SignedZoneTitleProperty);
+        public string SignedZoneHint => (string)GetValue(SignedZoneHintProperty);
+        public string OtherZoneHint => (string)GetValue(OtherZoneHintProperty);
         public string DefaultPhotoZoneTitle => (string)GetValue(DefaultPhotoZoneTitleProperty);
         public bool ShowsDraftSubmitWithdraw => (bool)GetValue(ShowsDraftSubmitWithdrawProperty);
 
@@ -288,6 +311,8 @@ namespace DocMgr.Views.Shared
             RefreshConfirmMidStepButtonText(kind);
             SetValue(PrintButtonTextPropertyKey, ApprovalWorkflowShellCopySupport.GetPrintButtonText(kind));
             SetValue(SignedZoneTitlePropertyKey, ApprovalWorkflowShellCopySupport.GetSignedZoneTitle(kind));
+            SetValue(SignedZoneHintPropertyKey, ApprovalWorkflowShellCopySupport.GetSignedZoneHint(kind));
+            SetValue(OtherZoneHintPropertyKey, ApprovalWorkflowShellCopySupport.OtherAttachmentZoneHint);
             SetValue(
                 DefaultPhotoZoneTitlePropertyKey,
                 kind == ApprovalWorkflowShellKind.DisposalUnlockUpload

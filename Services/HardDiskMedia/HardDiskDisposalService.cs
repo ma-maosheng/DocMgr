@@ -476,6 +476,7 @@ public sealed class HardDiskDisposalService : IHardDiskDisposalService
                 MediumId = medium.Id,
                 ApplicationId = null,
                 TransactionType = transactionType,
+                BusinessNo = existing.DisposalNo,
                 BeforeStatus = beforeStatus,
                 AfterStatus = afterStatus,
                 BeforeLocation = beforeLocation,

@@ -817,6 +817,9 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("ApplicantUserId")
+                        .HasColumnType("int");
+
                     b.Property<string>("ApplicationNo")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -1002,6 +1005,10 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("BeforeStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BusinessNo")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -1259,6 +1266,11 @@ namespace DocMgr.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<string>("LastStorageLocation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<string>("LifecycleStatus")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1275,7 +1287,8 @@ namespace DocMgr.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BoxCode")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[BoxCode] <> N''");
 
                     b.ToTable("HistoryArchiveBoxes");
                 });
@@ -5144,6 +5157,9 @@ namespace DocMgr.Data.Migrations
                     b.Property<string>("ApplicantName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ApplicantUserId")
+                        .HasColumnType("int");
 
                     b.Property<string>("ArchiveDeputyPresident")
                         .IsRequired()

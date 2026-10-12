@@ -17,8 +17,6 @@ namespace DocMgr.ViewModels.HardDiskMedia
     /// </summary>
     public class HardDiskMediaOutboundApplicationEditDialogViewModel : ViewModelBase
     {
-        public const int MaxSelectableMediumCount = 5;
-
         private readonly IHardDiskMediaService _hardDiskMediaService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
@@ -104,7 +102,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                         StringComparison.OrdinalIgnoreCase)));
 
         public string ApplicationTypeGuidanceText =>
-            "临时出库归还期限为1个月，可提前填写预计归还日期；长期出库不设归还期限；永久出库表示硬盘另有他用无需归还。";
+            "临时出库归还期限为1个月，可提前填写预计归还日期；长期出库不设归还期限；永久出库默认无需归还，事后仍可走归还申请收回（入档档口按当时库容重新指定）。";
 
         public bool CanEditExpectedReturnDate =>
             CanEditApplicationForm
@@ -155,14 +153,20 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 : string.Empty;
 
         public string MediumSelectionGuidanceText =>
-            $"关联介质最多选择 {MaxSelectableMediumCount} 块硬盘，每块硬盘对应一份申请单，归还时可分别办理。";
+            "一单仅关联一块硬盘（单选）；需借出多块请分别新建申请，归还时亦可分别办理。";
 
-        public string MediumSelectionSummary =>
-            GetSelectedMedia().Count == 0
-                ? "未选择"
-                : $"已选 {GetSelectedMedia().Count} 块";
-
-        public bool AllowsMultipleMediumSelection => _sourceApplication.Id == 0;
+        public string MediumSelectionSummary
+        {
+            get
+            {
+                var selected = GetSelectedMedium();
+                return selected == null
+                    ? "未选择"
+                    : string.IsNullOrWhiteSpace(selected.DiskCode)
+                        ? "已选 1 块"
+                        : $"已选：{selected.DiskCode.Trim()}";
+            }
+        }
 
         public string ApplicationNo
         {
@@ -469,20 +473,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task SaveAsync(int targetStatus)
         {
-            if (!TryValidateForm(targetStatus, out var selectedMedia))
+            if (!TryValidateForm(targetStatus, out var selectedMedium))
             {
                 return;
             }
 
             try
             {
-                if (_sourceApplication.Id == 0 && selectedMedia.Count > 1)
-                {
-                    await SaveBatchAsync(selectedMedia, targetStatus);
-                    return;
-                }
-
-                var application = BuildApplicationForSave(targetStatus, selectedMedia[0]);
+                var application = BuildApplicationForSave(targetStatus, selectedMedium!);
                 await _hardDiskMediaService.SaveApplicationAsync(application, _userContextService.CurrentUser);
                 SynchronizeSourceApplication(application);
                 HasCommittedChanges = true;
@@ -501,36 +499,25 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
         private async Task PrintAsync()
         {
-            if (!TryValidateForm(HardDiskMediaApplication.StatusSubmitted, out var selectedMedia))
+            // 打印仅在已提交后可用（ApplicationFormActionSupport）；不得再走 SaveApplicationAsync（仅草稿可保存）。
+            if (_sourceApplication.Id <= 0
+                || _sourceApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft)
             {
-                return;
-            }
-
-            if (_sourceApplication.Id == 0 && selectedMedia.Count > 1)
-            {
-                _dialogService.ShowMessage("多盘出库请先保存申请，再分别打开各申请单打印。");
+                _dialogService.ShowMessage("请先提交申请后再打印。");
                 return;
             }
 
             try
             {
-                int statusForPrint = _sourceApplication.ApplicationStatus;
-                var application = BuildApplicationForSave(statusForPrint, selectedMedia[0]);
-
-                await _hardDiskMediaService.SaveApplicationAsync(application, _userContextService.CurrentUser);
-                SynchronizeSourceApplication(application);
-                HasCommittedChanges = true;
-
-                var data = await _hardDiskMediaService.BuildPrintDataAsync(application);
+                var data = await _hardDiskMediaService.BuildPrintDataAsync(_sourceApplication);
                 var document = HardDiskMediaPrintDocumentFactory.Create(data);
                 var previewWindow = new PrintPreviewWindow(document)
                 {
                     Owner = Application.Current.MainWindow
                 };
 
-                await _hardDiskMediaService.MarkApplicationPrintedAsync(application);
+                await _hardDiskMediaService.MarkApplicationPrintedAsync(_sourceApplication);
                 previewWindow.ShowDialog();
-                RequestClose?.Invoke(true);
             }
             catch (InvalidOperationException ex)
             {
@@ -542,59 +529,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
             }
         }
 
-        private async Task SaveBatchAsync(IReadOnlyList<HardDiskMediaOutboundMediumOption> selectedMedia, int targetStatus)
-        {
-            string batchKey = ApplicationNo.Trim();
-            HardDiskMediaApplication? primaryApplication = null;
-
-            for (int index = 0; index < selectedMedia.Count; index++)
-            {
-                var medium = selectedMedia[index];
-                var application = BuildApplicationForSave(targetStatus, medium);
-                application.RelatedBatch = batchKey;
-
-                if (index > 0)
-                {
-                    application.Id = 0;
-                    application.ApplicationNo = string.Empty;
-                }
-
-                await _hardDiskMediaService.SaveApplicationAsync(application, _userContextService.CurrentUser);
-                primaryApplication ??= application;
-            }
-
-            if (primaryApplication != null)
-            {
-                SynchronizeSourceApplication(primaryApplication);
-            }
-
-            HasCommittedChanges = true;
-            _dialogService.ShowMessage($"已保存 {selectedMedia.Count} 份申请，每块硬盘对应一份申请单。");
-            RequestClose?.Invoke(true);
-        }
-
         private bool TryValidateForm(
             int targetStatus,
-            out IReadOnlyList<HardDiskMediaOutboundMediumOption> selectedMedia)
+            out HardDiskMediaOutboundMediumOption? selectedMedium)
         {
-            selectedMedia = GetSelectedMedia();
+            selectedMedium = GetSelectedMedium();
 
-            if (selectedMedia.Count == 0)
+            if (selectedMedium == null)
             {
-                _dialogService.ShowMessage("请至少选择一块关联介质。");
-                selectedMedia = Array.Empty<HardDiskMediaOutboundMediumOption>();
-                return false;
-            }
-
-            if (selectedMedia.Count > MaxSelectableMediumCount)
-            {
-                _dialogService.ShowMessage($"关联介质最多选择 {MaxSelectableMediumCount} 块硬盘。");
-                return false;
-            }
-
-            if (_sourceApplication.Id > 0 && selectedMedia.Count > 1)
-            {
-                _dialogService.ShowMessage("编辑已有申请时仅可关联单块硬盘。");
+                _dialogService.ShowMessage("请选择一块关联介质。");
                 return false;
             }
 
@@ -665,6 +608,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 SourceApplicationId = _sourceApplication.SourceApplicationId,
                 ApplicationType = ApplicationType.Trim(),
                 ApplicationStatus = targetStatus,
+                ApplicantUserId = _sourceApplication.ApplicantUserId,
                 ApplicantName = SelectedApplicant?.ApplicantName?.Trim() ?? string.Empty,
                 ApplicantDept = ApplicantDept.Trim(),
                 ApplyTime = ApplyTime,
@@ -818,10 +762,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             OnPropertyChanged(nameof(TargetLocationToolTip));
         }
 
-        private IReadOnlyList<HardDiskMediaOutboundMediumOption> GetSelectedMedia()
-        {
-            return MediumOptions.Where(item => item.IsSelected).ToList();
-        }
+        private HardDiskMediaOutboundMediumOption? GetSelectedMedium() =>
+            MediumOptions.FirstOrDefault(item => item.IsSelected);
 
         private void OnMediumOptionPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -830,13 +772,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
-            if (sender is not HardDiskMediaOutboundMediumOption changedOption || !changedOption.IsSelected)
-            {
-                UpdateSelectedMediumPresentation();
-                return;
-            }
-
-            if (_sourceApplication.Id > 0)
+            if (sender is HardDiskMediaOutboundMediumOption changedOption && changedOption.IsSelected)
             {
                 _isUpdatingMediumSelection = true;
                 foreach (var option in MediumOptions.Where(item => item != changedOption && item.IsSelected))
@@ -845,34 +781,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 }
 
                 _isUpdatingMediumSelection = false;
-                UpdateSelectedMediumPresentation();
-                return;
             }
 
-            int selectedCount = MediumOptions.Count(item => item.IsSelected);
-            if (selectedCount <= MaxSelectableMediumCount)
-            {
-                UpdateSelectedMediumPresentation();
-                return;
-            }
-
-            _isUpdatingMediumSelection = true;
-            changedOption.IsSelected = false;
-            _isUpdatingMediumSelection = false;
-            _dialogService.ShowMessage($"关联介质最多选择 {MaxSelectableMediumCount} 块硬盘。");
             UpdateSelectedMediumPresentation();
         }
 
         private void UpdateSelectedMediumPresentation()
         {
-            var selectedMedia = GetSelectedMedia();
-            CurrentLocation = selectedMedia.Count switch
-            {
-                0 => string.Empty,
-                1 => selectedMedia[0].CurrentLocation,
-                _ => string.Join("；", selectedMedia.Select(item => item.CurrentLocation).Distinct(StringComparer.Ordinal))
-            };
-
+            var selected = GetSelectedMedium();
+            CurrentLocation = selected?.CurrentLocation?.Trim() ?? string.Empty;
             OnPropertyChanged(nameof(MediumSelectionSummary));
         }
 

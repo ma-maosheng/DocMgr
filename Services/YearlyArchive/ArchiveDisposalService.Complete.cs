@@ -294,6 +294,7 @@ public sealed partial class ArchiveDisposalService
                 {
                     MediumId = medium.Id,
                     TransactionType = HardDiskMediaTransaction.TypeDisposal,
+                    BusinessNo = existing.DisposalNo,
                     BeforeStatus = beforeStatus,
                     AfterStatus = HardDiskMedium.StatusInStockBlank,
                     BeforeLocation = beforeLocation,
@@ -325,6 +326,7 @@ public sealed partial class ArchiveDisposalService
                 {
                     MediumId = medium.Id,
                     TransactionType = HardDiskMediaTransaction.TypeDisposal,
+                    BusinessNo = existing.DisposalNo,
                     BeforeStatus = beforeStatus,
                     AfterStatus = HardDiskMedium.StatusDisposed,
                     BeforeLocation = beforeLocation,

@@ -169,8 +169,9 @@ namespace DocMgr.Services.YearlyArchive
                         archivedAt,
                         $"电子立档 [{relatedBatch}] 完成后同步硬盘台账。",
                         "立档入袋关联后同步 HardDiskLedger 与流转记录",
-                        relatedBatch,
-                        relatedArchiveTitle));
+                        businessNo: relatedBatch,
+                        relatedBatch: relatedBatch,
+                        relatedArchiveTitle: relatedArchiveTitle));
             }
 
             if (_submissionChangeTracker != null)

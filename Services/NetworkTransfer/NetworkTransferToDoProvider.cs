@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
@@ -22,13 +26,38 @@ public sealed class NetworkTransferToDoProvider : IToDoProvider
     public async Task<List<ToDoItem>> GetToDosAsync(User currentUser)
     {
         var result = new List<ToDoItem>();
-        if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
+        if (currentUser == null)
         {
             return result;
         }
 
+        if (ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser)
+            || ArchiveRegisterBusinessRules.IsSystemAdministrator(currentUser))
+        {
+            result.AddRange(await BuildArchiveAdminPendingItemsAsync(200));
+            return result;
+        }
+
+        result.AddRange(await BuildApplicantDraftItemsAsync(currentUser.Id, 200));
+        return result;
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<ToDoItem>> GetOverviewToDosAsync(int takeCount)
+    {
+        int take = Math.Max(1, takeCount);
+        var result = new List<ToDoItem>();
+        result.AddRange(await BuildArchiveAdminPendingItemsAsync(take));
+        result.AddRange(await BuildApplicantDraftItemsAsync(applicantUserId: 0, take));
+        return result;
+    }
+
+    private async Task<List<ToDoItem>> BuildArchiveAdminPendingItemsAsync(int takeCount)
+    {
+        var result = new List<ToDoItem>();
+
         var inbounds = await _repository.SearchInboundRecordsAsync(null, null, null);
-        foreach (var record in inbounds.Where(IsPendingApprovalOrHandover))
+        foreach (var record in inbounds.Where(IsPendingApprovalOrHandover).Take(takeCount))
         {
             bool isSubmit = record.Status == NetworkInboundRecord.StatusSubmitted;
             result.Add(new ToDoItem
@@ -45,7 +74,7 @@ public sealed class NetworkTransferToDoProvider : IToDoProvider
         }
 
         var outbounds = await _repository.SearchOutboundRecordsAsync(null, null, null);
-        foreach (var record in outbounds.Where(IsPendingApprovalOrHandoverOutbound))
+        foreach (var record in outbounds.Where(IsPendingApprovalOrHandoverOutbound).Take(takeCount))
         {
             bool isSubmit = record.Status == NetworkOutboundRecord.StatusSubmitted;
             result.Add(new ToDoItem
@@ -61,7 +90,7 @@ public sealed class NetworkTransferToDoProvider : IToDoProvider
             });
         }
 
-        var pendingDisposals = await _repository.GetPendingDisposalRecordsForToDoAsync(200);
+        var pendingDisposals = await _repository.GetPendingDisposalRecordsForToDoAsync(takeCount);
         result.AddRange(pendingDisposals.Select(record => new ToDoItem
         {
             Id = $"NET-DSP-{record.Id}-PENDING",
@@ -72,6 +101,39 @@ public sealed class NetworkTransferToDoProvider : IToDoProvider
             Stage = ResolveDisposalStage(record),
             CreatedTime = record.SubmittedAt ?? record.ApplyTime,
             Priority = "高"
+        }));
+
+        return result;
+    }
+
+    private async Task<List<ToDoItem>> BuildApplicantDraftItemsAsync(int applicantUserId, int takeCount)
+    {
+        var result = new List<ToDoItem>();
+
+        var draftInbounds = await _repository.GetDraftInboundRecordsForApplicantToDoAsync(applicantUserId, takeCount);
+        result.AddRange(draftInbounds.Select(record => new ToDoItem
+        {
+            Id = $"NET-IN-{record.Id}-DRAFT",
+            Title = $"【入网申请】草稿待提交：{record.InboundNo}",
+            BizType = "NetworkInboundApproval",
+            BizId = record.Id,
+            BizNo = record.InboundNo,
+            Stage = "草稿-待提交",
+            CreatedTime = record.ApplyTime,
+            Priority = "中"
+        }));
+
+        var draftOutbounds = await _repository.GetDraftOutboundRecordsForApplicantToDoAsync(applicantUserId, takeCount);
+        result.AddRange(draftOutbounds.Select(record => new ToDoItem
+        {
+            Id = $"NET-OUT-{record.Id}-DRAFT",
+            Title = $"【出网申请】草稿待提交：{record.OutboundNo}",
+            BizType = "NetworkOutboundApproval",
+            BizId = record.Id,
+            BizNo = record.OutboundNo,
+            Stage = "草稿-待提交",
+            CreatedTime = record.ApplyTime,
+            Priority = "中"
         }));
 
         return result;

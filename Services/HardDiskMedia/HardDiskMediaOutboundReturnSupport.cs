@@ -31,6 +31,77 @@ namespace DocMgr.Services.HardDiskMedia
             RequiresExpectedReturnDate(applicationType) || IsNonReturnableOutboundType(applicationType);
 
         /// <summary>
+        /// 是否可作为硬盘归还候选的已办结出库申请类型（临时/长期/永久）。
+        /// 永久出库默认无需归还，但允许事后走归还申请收回。
+        /// </summary>
+        public static bool IsReturnCandidateOutboundApplicationType(string? applicationType) =>
+            string.Equals(applicationType, HardDiskMediaApplication.TypeOutboundTemporary, StringComparison.Ordinal) ||
+            string.Equals(applicationType, HardDiskMediaApplication.TypeOutboundLongTerm, StringComparison.Ordinal) ||
+            string.Equals(applicationType, HardDiskMediaApplication.TypeOutboundPermanent, StringComparison.Ordinal);
+
+        /// <summary>
+        /// 是否为可办理归还/挂失登记的出库介质状态（临时/长期/永久）。
+        /// </summary>
+        public static bool IsReturnableOutboundMediaStatus(string? mediaStatus) =>
+            string.Equals(mediaStatus, HardDiskMedium.StatusOutTemporary, StringComparison.Ordinal) ||
+            string.Equals(mediaStatus, HardDiskMedium.StatusOutLongTerm, StringComparison.Ordinal) ||
+            string.Equals(mediaStatus, HardDiskMedium.StatusOutPermanent, StringComparison.Ordinal);
+
+        /// <summary>
+        /// 解析待归还列表「借出类型」展示文案。
+        /// </summary>
+        public static string ResolveBorrowTypeText(string? outboundApplicationType, string? mediaStatus)
+        {
+            if (string.Equals(outboundApplicationType, HardDiskMediaApplication.TypeOutboundTemporary, StringComparison.Ordinal))
+            {
+                return HardDiskMedium.StatusOutTemporary;
+            }
+
+            if (string.Equals(outboundApplicationType, HardDiskMediaApplication.TypeOutboundLongTerm, StringComparison.Ordinal))
+            {
+                return HardDiskMedium.StatusOutLongTerm;
+            }
+
+            if (string.Equals(outboundApplicationType, HardDiskMediaApplication.TypeOutboundPermanent, StringComparison.Ordinal))
+            {
+                return HardDiskMedium.StatusOutPermanent;
+            }
+
+            string trimmedType = outboundApplicationType?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(trimmedType))
+            {
+                const string applicationSuffix = "申请";
+                if (trimmedType.EndsWith(applicationSuffix, StringComparison.Ordinal)
+                    && trimmedType.Length > applicationSuffix.Length)
+                {
+                    return trimmedType[..^applicationSuffix.Length];
+                }
+
+                return trimmedType;
+            }
+
+            return mediaStatus?.Trim() ?? string.Empty;
+        }
+
+        /// <summary>
+        /// 是否为永久出库借出（用于待归还列表默认隐藏）。
+        /// </summary>
+        public static bool IsPermanentOutboundBorrow(
+            string? outboundApplicationType,
+            string? mediaStatus,
+            string? borrowTypeText = null)
+        {
+            if (string.Equals(outboundApplicationType, HardDiskMediaApplication.TypeOutboundPermanent, StringComparison.Ordinal)
+                || string.Equals(mediaStatus, HardDiskMedium.StatusOutPermanent, StringComparison.Ordinal)
+                || string.Equals(borrowTypeText, HardDiskMedium.StatusOutPermanent, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// 是否为永久出库申请（需选择目标去向）。
         /// </summary>
         public static bool RequiresDestinationKind(string? applicationType) =>

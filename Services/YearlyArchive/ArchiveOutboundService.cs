@@ -108,6 +108,23 @@ namespace DocMgr.Services.YearlyArchive
             return record;
         }
 
+        public async Task<YearlyArchiveOutboundRecord?> GetRecordByOutboundNoAsync(string outboundNo)
+        {
+            if (string.IsNullOrWhiteSpace(outboundNo))
+            {
+                return null;
+            }
+
+            var record = await _outboundRepository.GetByOutboundNoWithDetailsAsync(outboundNo.Trim());
+            if (record != null)
+            {
+                await FillMissingOutboundItemArchivePurposesAsync(record.Items);
+                await EnrichOutboundItemFiledHardDiskCodesAsync(record.Items);
+            }
+
+            return record;
+        }
+
         public async Task<YearlyArchiveOutboundRecord> CreateDraftRecordAsync(User applicant)
         {
             ArgumentNullException.ThrowIfNull(applicant);

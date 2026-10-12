@@ -23,6 +23,9 @@ namespace DocMgr.Services.Interfaces
 
         Task<YearlyArchiveOutboundRecord?> GetRecordAsync(int id);
 
+        /// <summary>按出库单编号加载申请单（含明细）。</summary>
+        Task<YearlyArchiveOutboundRecord?> GetRecordByOutboundNoAsync(string outboundNo);
+
         Task<YearlyArchiveOutboundRecord> CreateDraftRecordAsync(User applicant);
 
         Task<YearlyArchiveOutboundRecord> CreateDraftFromSearchPoolAsync(CreateOutboundFromPoolRequest request, User applicant);

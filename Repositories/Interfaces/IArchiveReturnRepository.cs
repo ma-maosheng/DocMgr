@@ -32,6 +32,9 @@ namespace DocMgr.Repositories.Interfaces
         /// <summary>列出已登记、尚未办结的资料归还单，供待办提醒使用。</summary>
         Task<List<YearlyArchiveReturnRecord>> GetPendingReturnRecordsForToDoAsync(int take);
 
+        /// <summary>列出指定登记人尚未提交的归还草稿，供申请人待办使用。</summary>
+        Task<List<YearlyArchiveReturnRecord>> GetDraftRecordsForApplicantToDoAsync(int registeredByUserId, int take);
+
         Task<List<SystemAttachment>> GetAttachmentsByBusinessIdAsync(int businessId);
 
         Task<List<SystemAttachment>> GetAttachmentsByBusinessNoAsync(string businessNo, string businessType);

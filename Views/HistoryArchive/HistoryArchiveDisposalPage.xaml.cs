@@ -26,9 +26,9 @@ namespace DocMgr.Views.HistoryArchive
 
         private void DgRecords_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (DataContext is HistoryArchiveDisposalPageViewModel vm && vm.OpenDisposalCommand.CanExecute(null))
+            if (DataContext is HistoryArchiveDisposalPageViewModel vm && vm.OpenCommand.CanExecute(null))
             {
-                vm.OpenDisposalCommand.Execute(null);
+                vm.OpenCommand.Execute(null);
             }
         }
     }

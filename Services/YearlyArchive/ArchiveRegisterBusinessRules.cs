@@ -96,6 +96,27 @@ namespace DocMgr.Services.YearlyArchive
         public static bool IsApplicantUser(User? user) => IsDepartmentArchiveAdmin(user);
 
         /// <summary>
+        /// 是否为登记单申请人本人（优先 <see cref="YearlyArchiveRegisterRecord.ApplicantUserId"/>）。
+        /// </summary>
+        public static bool IsRegisterApplicantOwner(YearlyArchiveRegisterRecord? record, User? user)
+        {
+            if (record == null || user == null)
+            {
+                return false;
+            }
+
+            if (record.ApplicantUserId > 0)
+            {
+                return record.ApplicantUserId == user.Id;
+            }
+
+            string applicantName = record.ApplicantName?.Trim() ?? string.Empty;
+            string userName = user.RealName?.Trim() ?? string.Empty;
+            return !string.IsNullOrWhiteSpace(applicantName)
+                   && string.Equals(applicantName, userName, StringComparison.Ordinal);
+        }
+
+        /// <summary>
         /// 是否允许发起申请：仅部门资料员。系统管理员不替代本角色。
         /// </summary>
         public static bool CanSubmitApplication(User? user) =>
@@ -133,10 +154,7 @@ namespace DocMgr.Services.YearlyArchive
             bool isApplicant = IsDepartmentArchiveAdmin(user);
             bool isOwner = currentRecord == null
                 || currentRecord.Id <= 0
-                || string.Equals(
-                    currentRecord.ApplicantName?.Trim(),
-                    user.RealName?.Trim(),
-                    StringComparison.Ordinal);
+                || IsRegisterApplicantOwner(currentRecord, user);
 
             // 已提交待审批：申请信息冻结，仅草稿可改；密级仍允许资料管理员在审批态补录。
             bool canEditForm = isApplicant && isDraft && isOwner;

@@ -40,7 +40,7 @@ Service 标准写法：**领域校验 → `TryTransition` / `EvaluateAttachmentU
 2. **强制作废资格**（逾期设置等）由 Service 算好后传入 `forceVoidEligible`；引擎不读设置表。
 3. **软审批**（如 YA-OB `SaveApprovalFlow` 先存签字、齐后才 ApprovePass）可保留；真正改 `Status→Approved` 时必须过 `ApprovePass`。
 4. A 流申请人撤回仅 Draft/Submitted；B 流离库处置资料管理员可撤回至办结前（含已审批/已确认可上传）；**盘库登记例外**：仅草稿/已提交可撤回，审批通过后禁止。
-5. B 流（盘库 + 离库）待办：草稿起直至办结/撤回/强制作废前持续提醒资料管理员；逾期达系统「申请单逾期」时限后可「强制作废」（仅草稿/已提交）。
+5. A 流申请人待办：保存草稿、未提交前列入**申请人本人**待办（阶段「草稿-待提交」）；提交后消失。B 流（盘库 + 离库）待办：草稿起直至办结/撤回/强制作废前持续提醒**资料管理员**；逾期达系统「申请单逾期」时限后可「强制作废」（仅草稿/已提交）。
 6. 无 `SignedAttachmentUploaded` 字段的单据（如 YA-OB）：办结前从附件推导 `hasSignedForm` 再传入门禁。
 
 ## 第三阶段：列表动作门禁 + 附件策略/分区/打印签字组件化（强制）
@@ -102,7 +102,7 @@ Service 标准写法：**领域校验 → `TryTransition` / `EvaluateAttachmentU
 签字区统一控件：`Views/Shared/ApprovalSignatureCardsControl`（紧凑双列：签字 TextBox + 日期 DatePicker；`CanEditSigners` / `SignatureDateMin`；`Show*` 一律对标审批链 `Enable*`）。
 日期下限：`ApprovalSignatureDateSupport`（优先 `FirstPrintedAt`，否则 `LastPrintedAt`/`PrintedTime`；打印写入走 `RecordPrint`）。
 附件区：`ApprovalAttachmentZoneControl` 四区 **1 行 × 4 列** 均分；区内 `DataGrid` 随所属卡片宽度铺满（文件名列 `Width=*`）。
-「无需上传」统一原则：`ShowUploadButtons=False` → 标题旁显示「无需上传」+ **一条**说明（`ZoneHint` 优先，否则 `PlaceholderText`），**不**显示空附件表；可上传时才显示上传按钮与附件表（可上传态下 `ZoneHint` 仅作表下补充提示）。
+「无需上传」统一原则：`ShowUploadButtons=False` → 标题旁显示「无需上传」+ 等高占位（不显示空附件表）+ **表下一条说明**（`ZoneHint` 优先，否则 `PlaceholderText`）；可上传时显示上传按钮与附件表，说明同样在表下。四区（签批 / 照片 / 证明 / 其他）相关说明一律在对应表单下方；签批与其他默认文案见 `ApprovalWorkflowShellCopySupport.GetSignedZoneHint` / `OtherAttachmentZoneHint`。
 办结后查看窗附件区：`Views/Shared/ApprovalCompletedAttachmentPanel`（HD/YA-OB/YA-REG VW 已迁入）；增补权限走 `CanSupplementOtherAfterComplete`。
 办结后「其他附件」：办理壳分区列表须按策略装入 `OtherAttachments`（YA-RTN / HD-RTN 已接线）。
 申请态专用窗（如 `ArchiveOutboundEditDialog`）禁止残留审批/交接平行 UI；审批走 `ArchiveOutboundApprovalPanel` 等壳。

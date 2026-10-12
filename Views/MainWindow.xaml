@@ -507,7 +507,12 @@
                                 <Button x:Name="BtnHistMap" Content="地形图图件" Style="{StaticResource SubNavButton}" Click="BtnTopoMap_Click"/>
                                 <Button x:Name="BtnHistAerial" Content="航摄胶片、像片" Style="{StaticResource SubNavButton}" Click="BtnAerialPhoto_Click"/>
                                 <Button x:Name="BtnOtherData" Content="其他资料" Style="{StaticResource SubNavButton}" Click="BtnOtherMap_Click"/>
-                                <Button x:Name="BtnHistDisposal" Content="资料离库处置" Style="{StaticResource SubNavButton}" Click="BtnHistDisposal_Click"/>
+                                <Expander Header="资料台账与资料处置" Style="{StaticResource SubNavExpander}">
+                                    <StackPanel>
+                                        <Button x:Name="BtnHistBoxLedger" Content="台账" Style="{StaticResource SubSubNavButton}" Click="BtnHistBoxLedger_Click"/>
+                                        <Button x:Name="BtnHistDisposal" Content="处置" Style="{StaticResource SubSubNavButton}" Click="BtnHistDisposal_Click"/>
+                                    </StackPanel>
+                                </Expander>
                             </StackPanel>
                         </Expander>
 
@@ -633,6 +638,10 @@
                                         Content="在线用户与登录记录"
                                         Style="{StaticResource SubNavButton}"
                                         Click="BtnUserSessionMonitor_Click"/>
+                                <Button x:Name="BtnToDoOverview"
+                                        Content="待办事项总览"
+                                        Style="{StaticResource SubNavButton}"
+                                        Click="BtnToDoOverview_Click"/>
                                 <Button x:Name="BtnAdvancedData" Content="⚠️ 高级数据管理" Style="{StaticResource SubNavButton}" Click="BtnAdvancedData_Click"/>
                             </StackPanel>
                         </Expander>
@@ -836,7 +845,7 @@
                             <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,10,10" Padding="14">
                                 <StackPanel>
                                     <TextBlock Text="历史存档" Style="{StaticResource HomeModuleTitleStyle}"/>
-                                    <TextBlock Text="地形图、航摄影像、其他图件按盒号落柜；支持历史资料离库处置。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
+                                    <TextBlock Text="地形图、航摄影像、其他图件按盒号落柜；盒台账查看在柜状态，离库处置办理撤柜清账。" Style="{StaticResource HomeBodyStyle}" Margin="0,6,0,0"/>
                                 </StackPanel>
                             </Border>
                             <Border Style="{StaticResource HomeCardStyle}" Margin="0,0,10,10" Padding="14">

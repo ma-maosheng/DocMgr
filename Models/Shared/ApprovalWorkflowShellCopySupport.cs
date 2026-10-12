@@ -63,6 +63,15 @@ namespace DocMgr.Models.Shared
                 ? SignedFormZoneTitle
                 : SignedHandoverZoneTitle;
 
+        /// <summary>签批附件区说明（表单下方）。</summary>
+        public static string GetSignedZoneHint(ApprovalWorkflowShellKind kind) =>
+            kind == ApprovalWorkflowShellKind.DisposalUnlockUpload
+                ? "必传；格式限 PDF / 常见图像，须上传签批单后方可办结。"
+                : "必传；格式限 PDF / 常见图像，须上传签批交接单后方可办结。";
+
+        /// <summary>其他附件区说明（表单下方）。</summary>
+        public const string OtherAttachmentZoneHint = "可选；办结不强制，资料管理员办结后仍可增补。";
+
         /// <summary>
         /// 是否显示草稿/提交/撤回等发起态底栏按钮（处置流常见；申请审批窗通常为办理专用窗，不显示）。
         /// </summary>

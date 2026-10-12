@@ -121,6 +121,7 @@ public partial class HardDiskMediaService
             MediumId = medium.Id,
             ApplicationId = returnApplication.Id,
             TransactionType = HardDiskMediaTransaction.TypeReturnRegistration,
+            BusinessNo = returnApplication.ApplicationNo?.Trim() ?? string.Empty,
             BeforeStatus = beforeStatus,
             AfterStatus = ledger.MediaStatus,
             BeforeLocation = beforeLocation,

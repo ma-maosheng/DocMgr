@@ -76,8 +76,14 @@ public interface IHardDiskMediaRepository
     /// <summary>列出资料室尚未办结（已提交/已审批/已上传签字件）的硬盘出库类申请，供待办提醒使用。</summary>
     Task<List<HardDiskMediaApplication>> GetSubmittedApplicationsForToDoAsync(int takeCount);
 
+    /// <summary>列出指定申请人尚未提交的硬盘出库类草稿，供申请人待办使用。</summary>
+    Task<List<HardDiskMediaApplication>> GetDraftOutboundApplicationsForApplicantToDoAsync(int applicantUserId, int takeCount);
+
     /// <summary>列出资料室尚未办结（已提交/已审批/已上传签字件）的硬盘归还/挂失登记，供待办提醒使用。</summary>
     Task<List<HardDiskMediaApplication>> GetPendingReturnRegistrationsForToDoAsync(int takeCount);
+
+    /// <summary>列出指定登记人尚未提交的硬盘归还/挂失草稿，供申请人待办使用。</summary>
+    Task<List<HardDiskMediaApplication>> GetDraftReturnRegistrationsForApplicantToDoAsync(int applicantUserId, int takeCount);
 
     /// <summary>列出已超过预计归还期限、介质仍处于借出状态且无有效归还登记的出库申请（供超期待办使用）。</summary>
     Task<List<HardDiskMediaApplication>> GetOverdueOutboundApplicationsForToDoAsync(DateTime asOf, int takeCount);

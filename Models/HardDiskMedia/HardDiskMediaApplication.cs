@@ -110,6 +110,11 @@ namespace DocMgr.Models.HardDiskMedia
         public string StatusStr => ApplicationWorkflowStatus.ToDisplay(ApplicationStatus);
 
         /// <summary>
+        /// 申请人用户ID（草稿待办归属；归还/挂失登记为登记人）。
+        /// </summary>
+        public int ApplicantUserId { get; set; }
+
+        /// <summary>
         /// 申请人。
         /// </summary>
         public string ApplicantName { get; set; } = string.Empty;

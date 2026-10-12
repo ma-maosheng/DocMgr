@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.Shared;
 using DocMgr.Repositories.Interfaces;
@@ -38,60 +42,11 @@ namespace DocMgr.Services.HardDiskMedia
 
             if (isArchiveRoomAdmin)
             {
-                var submitted = await _hardDiskMediaRepository.GetSubmittedApplicationsForToDoAsync(200);
-
-                result.AddRange(submitted.Select(item => new ToDoItem
-                {
-                    Id = $"HDM-{item.Id}-APPROVAL-PENDING",
-                    Title = $"【硬盘介质】待审批：{item.ApplicationType} / {item.Medium?.DiskCode}",
-                    BizType = "HardDiskMediaApplication",
-                    BizId = item.Id,
-                    BizNo = item.ApplicationNo,
-                    Stage = BuildApprovalPendingStage(item),
-                    CreatedTime = item.ApplyTime,
-                    Priority = "高"
-                }));
-
-                var pendingReturnRegistrations = await _hardDiskMediaRepository.GetPendingReturnRegistrationsForToDoAsync(200);
-                result.AddRange(pendingReturnRegistrations.Select(item => new ToDoItem
-                {
-                    Id = $"HDM-{item.Id}-RETURN-PENDING",
-                    Title = $"【硬盘归还登记】待办理：{item.ApplicationType} / {item.Medium?.DiskCode}",
-                    BizType = "HardDiskMediaReturnRegistration",
-                    BizId = item.Id,
-                    BizNo = item.ApplicationNo,
-                    Stage = BuildApprovalPendingStage(item),
-                    CreatedTime = item.ApplyTime,
-                    Priority = "高"
-                }));
-
-                // 离库处置：草稿起直至办结前保留资料室待办。
-                var pendingDisposals = await _hardDiskDisposalRepository.GetPendingRecordsForToDoAsync(200);
-                result.AddRange(pendingDisposals.Select(item => new ToDoItem
-                {
-                    Id = $"HDD-{item.Id}-DISPOSAL-PENDING",
-                    Title = $"【硬盘离库处置】{ResolveDisposalToDoTitle(item)}：{BuildDisposalSummary(item)}",
-                    BizType = "HardDiskDisposal",
-                    BizId = item.Id,
-                    BizNo = item.DisposalNo,
-                    Stage = BuildDisposalPendingStage(item),
-                    CreatedTime = item.SubmittedAt ?? item.ApplyTime,
-                    Priority = "高"
-                }));
-
-                // 盘库登记：草稿起直至办结前保留资料室待办。
-                var pendingInventory = await _hardDiskInventoryRegisterRepository.GetPendingRecordsForToDoAsync(200);
-                result.AddRange(pendingInventory.Select(item => new ToDoItem
-                {
-                    Id = $"HDI-{item.Id}-INVENTORY-PENDING",
-                    Title = $"【硬盘盘库登记】{ResolveInventoryToDoTitle(item)}：{BuildInventorySummary(item)}",
-                    BizType = "HardDiskInventoryRegister",
-                    BizId = item.Id,
-                    BizNo = item.RegisterNo,
-                    Stage = BuildInventoryPendingStage(item),
-                    CreatedTime = item.SubmittedAt ?? item.ApplyTime,
-                    Priority = "高"
-                }));
+                result.AddRange(await BuildArchiveAdminPendingItemsAsync(200));
+            }
+            else
+            {
+                result.AddRange(await BuildApplicantDraftItemsAsync(currentUser.Id, 200));
             }
 
             var overdueReturns = await _hardDiskMediaRepository.GetOverdueOutboundApplicationsForToDoAsync(DateTime.Now, 200);
@@ -99,16 +54,123 @@ namespace DocMgr.Services.HardDiskMedia
 
             if (!isArchiveRoomAdmin)
             {
-                if (string.IsNullOrWhiteSpace(currentUserName))
-                {
-                    return result;
-                }
-
                 overdueForCurrentUser = overdueReturns.Where(item =>
-                    string.Equals(item.ApplicantName?.Trim(), currentUserName, StringComparison.OrdinalIgnoreCase));
+                    item.ApplicantUserId == currentUser.Id
+                    || (!string.IsNullOrWhiteSpace(currentUserName)
+                        && string.Equals(item.ApplicantName?.Trim(), currentUserName, StringComparison.OrdinalIgnoreCase)));
             }
 
-            result.AddRange(overdueForCurrentUser.Select(item => new ToDoItem
+            result.AddRange(BuildOverdueItems(overdueForCurrentUser));
+            return result;
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<ToDoItem>> GetOverviewToDosAsync(int takeCount)
+        {
+            int take = Math.Max(1, takeCount);
+            var result = new List<ToDoItem>();
+            result.AddRange(await BuildArchiveAdminPendingItemsAsync(take));
+            result.AddRange(await BuildApplicantDraftItemsAsync(applicantUserId: 0, take));
+            var overdueReturns = await _hardDiskMediaRepository.GetOverdueOutboundApplicationsForToDoAsync(DateTime.Now, take);
+            result.AddRange(BuildOverdueItems(overdueReturns));
+            return result;
+        }
+
+        private async Task<List<ToDoItem>> BuildArchiveAdminPendingItemsAsync(int takeCount)
+        {
+            var result = new List<ToDoItem>();
+
+            var submitted = await _hardDiskMediaRepository.GetSubmittedApplicationsForToDoAsync(takeCount);
+            result.AddRange(submitted.Select(item => new ToDoItem
+            {
+                Id = $"HDM-{item.Id}-APPROVAL-PENDING",
+                Title = $"【硬盘介质】待审批：{item.ApplicationType} / {item.Medium?.DiskCode}",
+                BizType = "HardDiskMediaApplication",
+                BizId = item.Id,
+                BizNo = item.ApplicationNo,
+                Stage = BuildApprovalPendingStage(item),
+                CreatedTime = item.ApplyTime,
+                Priority = "高"
+            }));
+
+            var pendingReturnRegistrations = await _hardDiskMediaRepository.GetPendingReturnRegistrationsForToDoAsync(takeCount);
+            result.AddRange(pendingReturnRegistrations.Select(item => new ToDoItem
+            {
+                Id = $"HDM-{item.Id}-RETURN-PENDING",
+                Title = $"【硬盘归还登记】待办理：{item.ApplicationType} / {item.Medium?.DiskCode}",
+                BizType = "HardDiskMediaReturnRegistration",
+                BizId = item.Id,
+                BizNo = item.ApplicationNo,
+                Stage = BuildApprovalPendingStage(item),
+                CreatedTime = item.ApplyTime,
+                Priority = "高"
+            }));
+
+            var pendingDisposals = await _hardDiskDisposalRepository.GetPendingRecordsForToDoAsync(takeCount);
+            result.AddRange(pendingDisposals.Select(item => new ToDoItem
+            {
+                Id = $"HDD-{item.Id}-DISPOSAL-PENDING",
+                Title = $"【硬盘离库处置】{ResolveDisposalToDoTitle(item)}：{BuildDisposalSummary(item)}",
+                BizType = "HardDiskDisposal",
+                BizId = item.Id,
+                BizNo = item.DisposalNo,
+                Stage = BuildDisposalPendingStage(item),
+                CreatedTime = item.SubmittedAt ?? item.ApplyTime,
+                Priority = "高"
+            }));
+
+            var pendingInventory = await _hardDiskInventoryRegisterRepository.GetPendingRecordsForToDoAsync(takeCount);
+            result.AddRange(pendingInventory.Select(item => new ToDoItem
+            {
+                Id = $"HDI-{item.Id}-INVENTORY-PENDING",
+                Title = $"【硬盘盘库登记】{ResolveInventoryToDoTitle(item)}：{BuildInventorySummary(item)}",
+                BizType = "HardDiskInventoryRegister",
+                BizId = item.Id,
+                BizNo = item.RegisterNo,
+                Stage = BuildInventoryPendingStage(item),
+                CreatedTime = item.SubmittedAt ?? item.ApplyTime,
+                Priority = "高"
+            }));
+
+            return result;
+        }
+
+        private async Task<List<ToDoItem>> BuildApplicantDraftItemsAsync(int applicantUserId, int takeCount)
+        {
+            var result = new List<ToDoItem>();
+
+            var draftOutbounds = await _hardDiskMediaRepository.GetDraftOutboundApplicationsForApplicantToDoAsync(applicantUserId, takeCount);
+            result.AddRange(draftOutbounds.Select(item => new ToDoItem
+            {
+                Id = $"HDM-{item.Id}-DRAFT",
+                Title = $"【硬盘介质】草稿待提交：{item.ApplicationType} / {item.Medium?.DiskCode}",
+                BizType = "HardDiskMediaApplication",
+                BizId = item.Id,
+                BizNo = item.ApplicationNo,
+                Stage = "草稿-待提交",
+                CreatedTime = item.ApplyTime,
+                Priority = "中"
+            }));
+
+            var draftReturns = await _hardDiskMediaRepository.GetDraftReturnRegistrationsForApplicantToDoAsync(applicantUserId, takeCount);
+            result.AddRange(draftReturns.Select(item => new ToDoItem
+            {
+                Id = $"HDM-{item.Id}-RETURN-DRAFT",
+                Title = $"【硬盘归还登记】草稿待提交：{item.ApplicationType} / {item.Medium?.DiskCode}",
+                BizType = "HardDiskMediaReturnRegistration",
+                BizId = item.Id,
+                BizNo = item.ApplicationNo,
+                Stage = "草稿-待提交",
+                CreatedTime = item.ApplyTime,
+                Priority = "中"
+            }));
+
+            return result;
+        }
+
+        private static List<ToDoItem> BuildOverdueItems(IEnumerable<HardDiskMediaApplication> overdueReturns)
+        {
+            return overdueReturns.Select(item => new ToDoItem
             {
                 Id = $"HDM-RETURN-OVERDUE-{item.Id}",
                 Title = $"【硬盘归还】已超期未归还：{item.Medium?.DiskCode} / {item.ApplicationType}",
@@ -118,9 +180,7 @@ namespace DocMgr.Services.HardDiskMedia
                 Stage = $"应还日期 {item.ExpectedReturnDate:yyyy-MM-dd}（申请人 {item.ApplicantName}）",
                 CreatedTime = item.ExpectedReturnDate ?? item.ExecutedTime ?? item.ApplyTime,
                 Priority = "高"
-            }));
-
-            return result;
+            }).ToList();
         }
 
         private static string BuildApprovalPendingStage(HardDiskMediaApplication application)

@@ -171,6 +171,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (currentUser != null)
             {
+                record.ApplicantUserId = currentUser.Id;
                 record.ApplicantName = currentUser.RealName;
                 record.ApplicantDept = currentUser.Department;
             }
@@ -412,11 +413,14 @@ namespace DocMgr.Services.YearlyArchive
                     return ArchiveRegisterFlowResult.Fail("只有“未提交”状态的登记单才能保存。");
                 }
 
-                string operatorName = operatorUser!.RealName?.Trim() ?? string.Empty;
-                if (!string.Equals(existing.ApplicantName?.Trim(), operatorName, StringComparison.Ordinal))
+                if (!ArchiveRegisterBusinessRules.IsRegisterApplicantOwner(existing, operatorUser))
                 {
                     return ArchiveRegisterFlowResult.Fail("仅申请人本人可保存该登记申请。");
                 }
+            }
+            else if (operatorUser != null && record.ApplicantUserId <= 0)
+            {
+                record.ApplicantUserId = operatorUser.Id;
             }
 
             await EnsureFormNoAsync(record);
@@ -597,7 +601,6 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveRegisterFlowResult.Fail("仅部门资料员可提交资料登记申请。");
             }
 
-            string operatorName = operatorUser!.RealName?.Trim() ?? string.Empty;
             if (record.Id > 0)
             {
                 var existing = await _archiveRegisterRepository.GetByIdWithDetailsAsync(record.Id);
@@ -606,14 +609,18 @@ namespace DocMgr.Services.YearlyArchive
                     return ArchiveRegisterFlowResult.Fail("未找到指定的登记申请单。");
                 }
 
-                if (!string.Equals(existing.ApplicantName?.Trim(), operatorName, StringComparison.Ordinal))
+                if (!ArchiveRegisterBusinessRules.IsRegisterApplicantOwner(existing, operatorUser))
                 {
                     return ArchiveRegisterFlowResult.Fail("仅申请人本人可提交该登记申请。");
                 }
             }
-            else if (!string.Equals(record.ApplicantName?.Trim(), operatorName, StringComparison.Ordinal))
+            else if (!ArchiveRegisterBusinessRules.IsRegisterApplicantOwner(record, operatorUser))
             {
                 return ArchiveRegisterFlowResult.Fail("仅申请人本人可提交该登记申请。");
+            }
+            else if (operatorUser != null && record.ApplicantUserId <= 0)
+            {
+                record.ApplicantUserId = operatorUser.Id;
             }
 
             await EnsureFormNoAsync(record);
@@ -675,8 +682,7 @@ namespace DocMgr.Services.YearlyArchive
                 return ArchiveRegisterFlowResult.Fail("仅申请人可执行撤回作废。");
             }
 
-            string currentApplicantName = currentUser?.RealName?.Trim() ?? string.Empty;
-            if (!string.Equals(record.ApplicantName?.Trim(), currentApplicantName, StringComparison.Ordinal))
+            if (!ArchiveRegisterBusinessRules.IsRegisterApplicantOwner(record, currentUser))
             {
                 return ArchiveRegisterFlowResult.Fail("仅申请人本人可撤销当前登记单。");
             }

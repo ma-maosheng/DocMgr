@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-10-10T01:59:35Z
+generatedAt: 2026-10-12T08:42:43Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -1395,6 +1395,12 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      ApplicantUserId:
+        chineseName: 申请人用户ID
+        description: 草稿待办归属；归还/挂失登记为登记人。
+        clrType: Int32
+        needsReview: false
+        aliases: []
       ApplicantName:
         chineseName: 申请人
         description: ''
@@ -1635,6 +1641,12 @@ tables:
         chineseName: 申请单ID
         description: ''
         clrType: Int32?
+        needsReview: false
+        aliases: []
+      BusinessNo:
+        chineseName: 业务单号
+        description: ''
+        clrType: String
         needsReview: false
         aliases: []
       TransactionType:
@@ -4973,6 +4985,12 @@ tables:
         clrType: String
         needsReview: false
         aliases: []
+      ApplicantUserId:
+        chineseName: 申请人用户ID
+        description: 草稿待办归属。
+        clrType: Int32
+        needsReview: false
+        aliases: []
       ApplicantName:
         chineseName: 申请人
         description: ''
@@ -6588,7 +6606,7 @@ tables:
   NetworkInboundItem:
     tableName: NetworkInboundItems
     chineseName: 入网申请明细
-    description: ''
+    description: 入网申请明细，含资料名称、密级、目标路径及来源立档/检索集快照。
     isView: false
     deprecated: false
     aliases: []
@@ -6704,7 +6722,7 @@ tables:
   NetworkInboundRecord:
     tableName: NetworkInboundRecords
     chineseName: 入网申请单
-    description: ''
+    description: 入网申请主单：将资料写入服务器路径并形成在网台账。
     isView: false
     deprecated: false
     aliases: []
@@ -7018,7 +7036,7 @@ tables:
   NetworkOnNetAsset:
     tableName: NetworkOnNetAssets
     chineseName: 在网台账
-    description: ''
+    description: 在网台账：已入生产网的资产当前态（路径、密级、生命周期等）。
     isView: false
     deprecated: false
     aliases: []
@@ -7152,7 +7170,7 @@ tables:
   NetworkOnNetDisposalItem:
     tableName: NetworkOnNetDisposalItems
     chineseName: 在网数据处置明细
-    description: ''
+    description: 在网数据处置明细，固化处置前生命周期、原因与方式。
     isView: false
     deprecated: false
     aliases: []
@@ -7232,7 +7250,7 @@ tables:
   NetworkOnNetDisposalRecord:
     tableName: NetworkOnNetDisposalRecords
     chineseName: 在网数据处置单
-    description: ''
+    description: 在网数据处置主单，用于注销或销毁已入网数据。
     isView: false
     deprecated: false
     aliases: []
@@ -7474,7 +7492,7 @@ tables:
   NetworkOutboundItem:
     tableName: NetworkOutboundItems
     chineseName: 出网申请明细
-    description: ''
+    description: 出网申请明细，固化在网资产快照（名称、路径、密级、数据量等）。
     isView: false
     deprecated: false
     aliases: []
@@ -7566,7 +7584,7 @@ tables:
   NetworkOutboundRecord:
     tableName: NetworkOutboundRecords
     chineseName: 出网申请单
-    description: ''
+    description: 出网申请主单：从在网数据导出，可衔接后续建档。
     isView: false
     deprecated: false
     aliases: []
@@ -8472,7 +8490,7 @@ tables:
   HistoryArchiveBox:
     tableName: HistoryArchiveBoxes
     chineseName: 历史存档档案盒
-    description: 历史存档资料（地形图/航片/其他图件）的实体化档案盒，盒号即四段位置编码。
+    description: 历史存档资料（地形图/航片/其他图件）的实体化档案盒，盒号即四段位置编码；已离库清空盒号并保留最后存放位置。
     isView: false
     deprecated: false
     aliases: []
@@ -8485,7 +8503,7 @@ tables:
         aliases: []
       BoxCode:
         chineseName: 盒号
-        description: 四段位置编码（柜名-面-行-列-序），全局唯一。
+        description: 四段位置编码（柜名-面-行-列-序）；在库时非空唯一，已离库清空以释放档位。
         clrType: String
         needsReview: false
         aliases: []
@@ -8504,6 +8522,12 @@ tables:
       LifecycleStatus:
         chineseName: 生命周期状态
         description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      LastStorageLocation:
+        chineseName: 最后存储位置
+        description: 离库办结清空盒号前保存的原四段盒号。
         clrType: String
         needsReview: false
         aliases: []
@@ -8528,7 +8552,7 @@ tables:
   ApprovalWorkflowRule:
     tableName: ApprovalWorkflowRules
     chineseName: 审核审批规则
-    description: ''
+    description: 审核审批规则：按业务类型配置启用节点、条件与默认签字人。
     isView: false
     deprecated: false
     aliases: []

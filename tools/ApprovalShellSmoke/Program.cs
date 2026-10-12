@@ -429,6 +429,16 @@ internal static class Program
         Assert("B·签批区=签批单",
             ApprovalWorkflowShellCopySupport.GetSignedZoneTitle(b)
             == ApprovalWorkflowShellCopySupport.SignedFormZoneTitle);
+        Assert(
+            "A·签批说明含签批交接单",
+            ApprovalWorkflowShellCopySupport.GetSignedZoneHint(a).Contains("签批交接单", StringComparison.Ordinal));
+        Assert(
+            "B·签批说明含签批单",
+            ApprovalWorkflowShellCopySupport.GetSignedZoneHint(b).Contains("签批单", StringComparison.Ordinal)
+            && !ApprovalWorkflowShellCopySupport.GetSignedZoneHint(b).Contains("签批交接单", StringComparison.Ordinal));
+        Assert(
+            "其他附件说明非空",
+            !string.IsNullOrWhiteSpace(ApprovalWorkflowShellCopySupport.OtherAttachmentZoneHint));
         Assert("A·不显示草稿底栏", !ApprovalWorkflowShellCopySupport.ShowsDraftSubmitWithdraw(a));
         Assert("B·显示草稿底栏", ApprovalWorkflowShellCopySupport.ShowsDraftSubmitWithdraw(b));
         Assert(

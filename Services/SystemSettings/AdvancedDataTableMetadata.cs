@@ -323,7 +323,7 @@ namespace DocMgr.Services.SystemSettings
 
             [nameof(HistoryArchiveBox)] = new(
                 "历史存档档案盒主数据：盒号、规格、放置方式与生命周期。",
-                "← 被 HistoryArchiveBoxLedgerLinks 引用；离库处置办结后标已离库并撤柜。",
+                "← 被 HistoryArchiveBoxLedgerLinks 引用；离库处置办结后标已离库、清空盒号并撤柜。",
                 "只读浏览。盒与地形图/航片/其他图件台账通过链接表关联。"),
 
             [nameof(HistoryArchiveBoxLedgerLink)] = new(

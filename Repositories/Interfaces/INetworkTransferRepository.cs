@@ -47,6 +47,12 @@ public interface INetworkTransferRepository
     /// <summary>资料室待办：草稿起至办结前的在网数据处置单。</summary>
     Task<List<NetworkOnNetDisposalRecord>> GetPendingDisposalRecordsForToDoAsync(int takeCount);
 
+    /// <summary>列出指定申请人尚未提交的入网草稿，供申请人待办使用。</summary>
+    Task<List<NetworkInboundRecord>> GetDraftInboundRecordsForApplicantToDoAsync(int applicantUserId, int takeCount);
+
+    /// <summary>列出指定申请人尚未提交的出网草稿，供申请人待办使用。</summary>
+    Task<List<NetworkOutboundRecord>> GetDraftOutboundRecordsForApplicantToDoAsync(int applicantUserId, int takeCount);
+
     void AddDisposal(NetworkOnNetDisposalRecord record);
 
     void RemoveDisposalItems(IEnumerable<NetworkOnNetDisposalItem> items);

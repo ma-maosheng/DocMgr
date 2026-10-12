@@ -9,10 +9,14 @@ namespace DocMgr.Data.Configurations
         public void Configure(EntityTypeBuilder<HistoryArchiveBox> builder)
         {
             builder.HasKey(b => b.Id);
-            builder.HasIndex(b => b.BoxCode).IsUnique();
+            // 已离库清空盒号后允许多条空串并存；仅非空盒号保持唯一（对齐年度盒销号释放档位）。
+            builder.HasIndex(b => b.BoxCode)
+                .IsUnique()
+                .HasFilter("[BoxCode] <> N''");
             builder.Property(b => b.BoxCode).HasMaxLength(64);
             builder.Property(b => b.BoxSpecification).HasMaxLength(64);
             builder.Property(b => b.PlacementMode).HasMaxLength(32);
+            builder.Property(b => b.LastStorageLocation).HasMaxLength(64);
         }
     }
 

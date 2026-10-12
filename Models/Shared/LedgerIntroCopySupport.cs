@@ -25,6 +25,7 @@ namespace DocMgr.Models.Shared
             LedgerIntroKind.AerialPhoto => AerialPhoto,
             LedgerIntroKind.OtherMap => OtherMap,
             LedgerIntroKind.OnNetAsset => OnNetAsset,
+            LedgerIntroKind.HistoryArchiveBox => HistoryArchiveBox,
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "未知的台账简介种类。")
         };
 
@@ -141,5 +142,17 @@ namespace DocMgr.Models.Shared
                 + " 可追溯到来源立档事实或入网/出网明细。",
             WriteLogic: "入网办结时写入在网台账；出网办结可标记曾出网等生命周期；在网数据处置办结后按处置方式注销或销毁对应资产。"
                 + " 本页以查询为主；注销或销毁请使用「在网数据处置」。");
+
+        private static readonly Content HistoryArchiveBox = new(
+            Title: "历史存档盒台账简介",
+            Scope: "展示历史档案盒台账：资料类别、盒号、柜位、盒内摘要、混放关联与可处置状态。"
+                + " 入口为「历史存档 → 资料台账与资料处置 → 台账」；不是地形图/航摄/其他图件明细台账，也不办理离库审批。"
+                + " 可按「在库 / 已离库」筛选；默认在库（含办理中的离库锁定）。",
+            RelatedObjects: "主数据：历史档案盒（HistoryArchiveBoxes）及盒—台账链接（HistoryArchiveBoxLedgerLinks）。"
+                + " 关联：地形图/航片/其他图件台账行；历史存档离库处置单。"
+                + " 与年度立档事实、在网台账无直接关联。",
+            WriteLogic: "本页为只读查询。"
+                + " 盒实体与链接由历史图件录入/导入维护；离库处置办结后将盒与台账标为已离库并撤柜。"
+                + " 离库销毁/转交请使用「资料台账与资料处置 → 处置」。");
     }
 }

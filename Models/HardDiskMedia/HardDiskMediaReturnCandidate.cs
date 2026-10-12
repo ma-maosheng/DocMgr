@@ -78,6 +78,16 @@ namespace DocMgr.Models.HardDiskMedia
         public string CurrentStatus { get; init; } = string.Empty;
 
         /// <summary>
+        /// 借出类型展示（如「出库(临时)」「出库(长期)」「出库(永久)」；资料出库/出网征用按其台账状态）。
+        /// </summary>
+        public string BorrowType { get; init; } = string.Empty;
+
+        /// <summary>
+        /// 是否为永久出库借出（含事后可收回的永久出库申请）。
+        /// </summary>
+        public bool IsPermanentOutbound { get; init; }
+
+        /// <summary>
         /// 预计归还日期。
         /// </summary>
         public DateTime? ExpectedReturnDate { get; init; }

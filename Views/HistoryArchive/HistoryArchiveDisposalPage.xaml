@@ -1,77 +1,114 @@
 <Page x:Class="DocMgr.Views.HistoryArchive.HistoryArchiveDisposalPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      Title="资料离库处置" Background="#F0F2F5">
-  <Grid Margin="12">
+      Title="资料离库处置"
+      Background="#F0F2F5">
+  <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="2*"/>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="3*"/>
+      <RowDefinition Height="*"/>
     </Grid.RowDefinitions>
-    <Border Style="{StaticResource ToolbarCardBorderStyle}" Padding="12,10" Margin="0,0,0,8">
+
+    <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Margin="0" CornerRadius="0" Padding="16,12">
       <StackPanel Orientation="Horizontal">
-        <Button Content="新增处置" Command="{Binding AddDisposalCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
-        <Button Content="打开处置" Command="{Binding OpenDisposalCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
-        <Button Content="撤回作废" Command="{Binding WithdrawDisposalCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="96" Margin="0,0,10,0"/>
-        <Button Content="强制作废" Command="{Binding ForceVoidDisposalCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="96" Margin="0,0,16,0"/>
-        <Button Content="刷新" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72"/>
-      </StackPanel>
-    </Border>
-    <DockPanel Grid.Row="1">
-      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-          <TextBlock Text="在柜档案盒" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
-          <TextBlock Text="资料类别：" VerticalAlignment="Center" Margin="0,0,0,0"/>
-          <ComboBox Width="150" ItemsSource="{Binding MaterialKindOptions}" SelectedItem="{Binding MaterialKindDisplay}"/>
-          <TextBlock Text="柜体：" VerticalAlignment="Center" Margin="12,0,0,0"/>
-          <ComboBox Width="140" ItemsSource="{Binding CabinetNameOptions}" SelectedItem="{Binding CabinetName}"/>
-          <TextBlock Text="关键字：" VerticalAlignment="Center" Margin="12,0,0,0"/>
-          <TextBox Width="200" Margin="0,0,8,0" Height="28" VerticalContentAlignment="Center"
-                   Text="{Binding BoxKeyword, UpdateSourceTrigger=PropertyChanged}"
-                   ToolTip="盒号、盒内摘要、关联混放盒号"/>
-          <Button Content="查询盒" Command="{Binding SearchBoxesCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"/>
-        </StackPanel>
-        <TextBlock Text="{Binding MixedGroupPreview, Mode=OneWay}" Foreground="#B45309" TextWrapping="Wrap"/>
-      </StackPanel>
-      <DataGrid ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}"
-                AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
-                SelectionMode="Single" AlternatingRowBackground="#F8FAFC">
-        <DataGrid.Columns>
-          <DataGridCheckBoxColumn Header="选" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="36"/>
-          <DataGridTextColumn Header="盒号" Binding="{Binding BoxCode, Mode=OneWay}" Width="140" IsReadOnly="True"/>
-          <DataGridTextColumn Header="规格" Binding="{Binding BoxSpecification, Mode=OneWay}" Width="90" IsReadOnly="True"/>
-          <DataGridTextColumn Header="盒内摘要" Binding="{Binding ContentSummary, Mode=OneWay}" Width="*" IsReadOnly="True"/>
-          <DataGridTextColumn Header="台账条数" Binding="{Binding LedgerRecordCount, Mode=OneWay}" Width="80" IsReadOnly="True"/>
-          <DataGridTextColumn Header="混放" Binding="{Binding MixedPlacementText, Mode=OneWay}" Width="50" IsReadOnly="True"/>
-          <DataGridTextColumn Header="关联盒数" Binding="{Binding RelatedBoxCount, Mode=OneWay}" Width="80" IsReadOnly="True"/>
-        </DataGrid.Columns>
-      </DataGrid>
-    </DockPanel>
-    <TextBlock Grid.Row="2" Text="处置单" FontWeight="Bold" Margin="0,10,0,6"/>
-    <DockPanel Grid.Row="3">
-      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-        <TextBlock Text="业务状态：" VerticalAlignment="Center" Margin="0,0,0,0"/>
-        <ComboBox Width="220" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"
+        <Button Content="新增处置" Command="{Binding AddCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
+        <Button Content="打开办理" Command="{Binding OpenCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="96" Margin="0,0,10,0"/>
+        <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="110" Margin="0,0,10,0"/>
+        <Button Content="强制作废" Command="{Binding ForceVoidCommand}" Style="{StaticResource ToolbarDangerButtonStyle}" Width="110" Margin="0,0,16,0"/>
+
+        <TextBlock Text="业务状态：" VerticalAlignment="Center"/>
+        <ComboBox Width="200"
+                  Style="{StaticResource ToolbarFilterComboBoxStyle}"
+                  ItemsSource="{Binding StatusOptions}"
+                  SelectedItem="{Binding SelectedStatus, Mode=TwoWay}"
                   ToolTip="可按业务状态筛选；选【全部】列出各状态申请（含未提交）"/>
-        <TextBlock Text="年度：" VerticalAlignment="Center" Margin="12,0,0,0"/>
-        <ComboBox Width="90" ItemsSource="{Binding ApplyYears}" SelectedItem="{Binding ApplyYear}"/>
-        <TextBox Width="160" Margin="12,0,8,0" Height="28" VerticalContentAlignment="Center"
+
+        <TextBlock Text="年度：" VerticalAlignment="Center" Margin="16,0,0,0"/>
+        <ComboBox Width="100"
+                  Style="{StaticResource ToolbarFilterComboBoxStyle}"
+                  ItemsSource="{Binding ApplyYears}"
+                  SelectedItem="{Binding ApplyYear, Mode=TwoWay}"/>
+
+        <TextBlock Text="关键词：" VerticalAlignment="Center" Margin="16,0,0,0"/>
+        <TextBox Width="180"
+                 Height="32"
+                 VerticalContentAlignment="Center"
                  Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
                  ToolTip="处置单号、申请说明、处置方式、申请人、明细盒号/摘要"/>
-        <Button Content="查询单据" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="88"/>
+        <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="80" Margin="10,0,0,0"/>
+        <Button Content="刷新" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="80" Margin="10,0,0,0"/>
       </StackPanel>
-      <DataGrid ItemsSource="{Binding Records}" SelectedItem="{Binding SelectedRecord}" AutoGenerateColumns="False" IsReadOnly="True"
+    </Border>
+
+    <Border Grid.Row="1"
+            Margin="0,12,0,12"
+            Padding="0"
+            Background="#FFFDF7"
+            BorderBrush="#E2C98F"
+            BorderThickness="1">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="4"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Border Grid.Row="0" Background="#B98A2E"/>
+        <TextBlock Grid.Row="1"
+                   Text="历史存档资料离库处置"
+                   Margin="0,12,0,4"
+                   FontSize="22"
+                   FontWeight="Bold"
+                   Foreground="#6F4A00"
+                   HorizontalAlignment="Center"
+                   TextDecorations="Underline"/>
+        <TextBlock Grid.Row="2"
+                   Text="History Archive Material Disposal Ledger"
+                   Margin="0,0,0,8"
+                   FontSize="12"
+                   Foreground="#9A7B3F"
+                   HorizontalAlignment="Center"/>
+        <Border Grid.Row="3"
+                Margin="16,0,16,12"
+                Padding="12,10"
+                Background="#FFFBEB"
+                BorderBrush="#E2C98F"
+                BorderThickness="1"
+                CornerRadius="4">
+          <TextBlock Text="用于历史存档在柜档案盒的离库销毁/转交/其他处置，流程与签批要求对齐在网数据处置。新建时在办理窗按资料类别选取档案盒；查询在柜盒当前态请使用「资料台账与资料处置 → 台账」。"
+                     Foreground="#6F4A00"
+                     TextWrapping="Wrap"
+                     HorizontalAlignment="Center"/>
+        </Border>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="2" Background="White" Padding="10">
+      <DataGrid ItemsSource="{Binding Records}"
+                SelectedItem="{Binding SelectedRecord}"
+                AutoGenerateColumns="False"
+                IsReadOnly="True"
+                CanUserAddRows="False"
+                SelectionMode="Single"
+                RowHeight="36"
+                ColumnHeaderHeight="40"
+                GridLinesVisibility="Horizontal"
+                BorderThickness="0"
                 MouseDoubleClick="DgRecords_MouseDoubleClick">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="处置单号" Binding="{Binding DisposalNo, Mode=OneWay}" Width="160"/>
-          <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="180" ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
+          <DataGridTextColumn Header="处置单编号" Binding="{Binding DisposalNo, Mode=OneWay}" Width="150"/>
           <DataGridTextColumn Header="资料类别" Binding="{Binding MaterialKindDisplay, Mode=OneWay}" Width="140"/>
-          <DataGridTextColumn Header="方式" Binding="{Binding DispositionMethod, Mode=OneWay}" Width="110"/>
-          <DataGridTextColumn Header="盒数" Binding="{Binding ItemCount, Mode=OneWay}" Width="60"/>
-          <DataGridTextColumn Header="申请时间" Binding="{Binding ApplyTime, Mode=OneWay, StringFormat={}{0:yyyy-MM-dd HH:mm}}" Width="140"/>
+          <DataGridTextColumn Header="处置方式" Binding="{Binding DispositionMethod, Mode=OneWay}" Width="110"/>
+          <DataGridTextColumn Header="明细数" Binding="{Binding ItemCount, Mode=OneWay}" Width="70"/>
+          <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="160" ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
+          <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName, Mode=OneWay}" Width="90"/>
+          <DataGridTextColumn Header="申请日期" Binding="{Binding ApplyTime, Mode=OneWay, StringFormat=yyyy-MM-dd}" Width="110"/>
+          <DataGridCheckBoxColumn Header="已传签批单" Binding="{Binding SignedAttachmentUploaded, Mode=OneWay}" Width="90"/>
+          <DataGridCheckBoxColumn Header="已传照片" Binding="{Binding ScenePhotoUploaded, Mode=OneWay}" Width="80"/>
+          <DataGridTextColumn Header="备注" Binding="{Binding Remark, Mode=OneWay}" Width="*"/>
         </DataGrid.Columns>
       </DataGrid>
-    </DockPanel>
+    </Border>
   </Grid>
 </Page>

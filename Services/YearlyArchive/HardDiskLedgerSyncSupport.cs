@@ -59,6 +59,7 @@ namespace DocMgr.Services.YearlyArchive
             DateTime operatedAt,
             string description,
             string remark,
+            string? businessNo,
             string relatedBatch,
             string relatedArchiveTitle)
         {
@@ -69,6 +70,7 @@ namespace DocMgr.Services.YearlyArchive
             {
                 MediumId = medium.Id,
                 TransactionType = ResolveSyncTransactionType(before, ledger),
+                BusinessNo = businessNo?.Trim() ?? string.Empty,
                 BeforeStatus = before.Status,
                 AfterStatus = ledger.MediaStatus?.Trim() ?? string.Empty,
                 BeforeLocation = before.Location,
@@ -76,7 +78,7 @@ namespace DocMgr.Services.YearlyArchive
                 OperatorName = operatorName,
                 OperateTime = operatedAt,
                 TargetOrganization = "资料室",
-                RelatedBatch = relatedBatch,
+                RelatedBatch = relatedBatch?.Trim() ?? string.Empty,
                 RelatedArchiveTitle = relatedArchiveTitle,
                 Description = description,
                 Remark = remark
@@ -133,6 +135,7 @@ namespace DocMgr.Services.YearlyArchive
                 MediumId = medium.Id,
                 ApplicationId = null,
                 TransactionType = ResolveArchiveOutboundTransactionType(needReturn, isExternalDestination),
+                BusinessNo = relatedBatch?.Trim() ?? string.Empty,
                 BeforeStatus = before.Status,
                 AfterStatus = ledger.MediaStatus?.Trim() ?? string.Empty,
                 BeforeLocation = before.Location,
@@ -143,7 +146,7 @@ namespace DocMgr.Services.YearlyArchive
                 TargetOrganization = targetOrganization,
                 NeedReturn = needReturn,
                 ExpectedReturnDate = needReturn ? expectedReturnDate : null,
-                RelatedBatch = relatedBatch,
+                RelatedBatch = relatedBatch?.Trim() ?? string.Empty,
                 RelatedArchiveTitle = relatedArchiveTitle,
                 Description = description,
                 Remark = remark
@@ -170,6 +173,7 @@ namespace DocMgr.Services.YearlyArchive
             {
                 MediumId = medium.Id,
                 TransactionType = HardDiskMediaTransaction.TypeReturnRegistration,
+                BusinessNo = businessNo?.Trim() ?? string.Empty,
                 BeforeStatus = before.Status,
                 AfterStatus = ledger.MediaStatus?.Trim() ?? string.Empty,
                 BeforeLocation = before.Location,
@@ -179,7 +183,7 @@ namespace DocMgr.Services.YearlyArchive
                 TargetOrganization = "资料室",
                 NeedReturn = false,
                 ActualReturnDate = operatedAt,
-                RelatedBatch = businessNo,
+                RelatedBatch = businessNo?.Trim() ?? string.Empty,
                 RelatedArchiveTitle = relatedArchiveTitle,
                 Description = description,
                 Remark = remark

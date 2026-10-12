@@ -7,8 +7,8 @@ namespace DocMgr.Views.Shared
 {
     /// <summary>
     /// 审批办理壳附件分区。
-    /// 可上传：标题 + 上传按钮 + 附件表（可选 ZoneHint 补充说明）。
-    /// 无需上传：标题 +「无需上传」+ 一条说明（ZoneHint 优先，否则 PlaceholderText），不显示空表。
+    /// 可上传：标题 + 上传按钮 + 附件表 + 表下说明（ZoneHint）。
+    /// 无需上传：标题 +「无需上传」+ 等高占位 + 表下说明（ZoneHint 优先，否则 PlaceholderText）。
     /// </summary>
     public partial class ApprovalAttachmentZoneControl : UserControl
     {
@@ -24,14 +24,14 @@ namespace DocMgr.Views.Shared
                 nameof(ZoneHint),
                 typeof(string),
                 typeof(ApprovalAttachmentZoneControl),
-                new PropertyMetadata(string.Empty, OnSkipReasonSourcesChanged));
+                new PropertyMetadata(string.Empty, OnHintSourcesChanged));
 
         public static readonly DependencyProperty PlaceholderTextProperty =
             DependencyProperty.Register(
                 nameof(PlaceholderText),
                 typeof(string),
                 typeof(ApprovalAttachmentZoneControl),
-                new PropertyMetadata(string.Empty, OnSkipReasonSourcesChanged));
+                new PropertyMetadata(string.Empty, OnHintSourcesChanged));
 
         public static readonly DependencyProperty AttachmentsProperty =
             DependencyProperty.Register(
@@ -45,7 +45,7 @@ namespace DocMgr.Views.Shared
                 nameof(ShowUploadButtons),
                 typeof(bool),
                 typeof(ApprovalAttachmentZoneControl),
-                new PropertyMetadata(true, OnSkipReasonSourcesChanged));
+                new PropertyMetadata(true, OnHintSourcesChanged));
 
         /// <summary>
         /// 兼容旧绑定；界面是否显示附件表已由 <see cref="ShowUploadButtons"/> 统一决定。
@@ -92,25 +92,25 @@ namespace DocMgr.Views.Shared
                 typeof(ApprovalAttachmentZoneControl),
                 new PropertyMetadata(null));
 
-        private static readonly DependencyPropertyKey SkipUploadReasonTextPropertyKey =
+        private static readonly DependencyPropertyKey FooterHintTextPropertyKey =
             DependencyProperty.RegisterReadOnly(
-                nameof(SkipUploadReasonText),
+                nameof(FooterHintText),
                 typeof(string),
                 typeof(ApprovalAttachmentZoneControl),
                 new PropertyMetadata(string.Empty));
 
-        public static readonly DependencyProperty SkipUploadReasonTextProperty =
-            SkipUploadReasonTextPropertyKey.DependencyProperty;
+        public static readonly DependencyProperty FooterHintTextProperty =
+            FooterHintTextPropertyKey.DependencyProperty;
 
-        private static readonly DependencyPropertyKey ShowActiveZoneHintPropertyKey =
+        private static readonly DependencyPropertyKey ShowFooterHintPropertyKey =
             DependencyProperty.RegisterReadOnly(
-                nameof(ShowActiveZoneHint),
+                nameof(ShowFooterHint),
                 typeof(bool),
                 typeof(ApprovalAttachmentZoneControl),
                 new PropertyMetadata(false));
 
-        public static readonly DependencyProperty ShowActiveZoneHintProperty =
-            ShowActiveZoneHintPropertyKey.DependencyProperty;
+        public static readonly DependencyProperty ShowFooterHintProperty =
+            ShowFooterHintPropertyKey.DependencyProperty;
 
         public ApprovalAttachmentZoneControl()
         {
@@ -210,13 +210,13 @@ namespace DocMgr.Views.Shared
             set => SetValue(DeleteCommandProperty, value);
         }
 
-        /// <summary>无需上传时展示的唯一说明文案。</summary>
-        public string SkipUploadReasonText => (string)GetValue(SkipUploadReasonTextProperty);
+        /// <summary>表单下方展示的说明文案。</summary>
+        public string FooterHintText => (string)GetValue(FooterHintTextProperty);
 
-        /// <summary>可上传态下是否显示 ZoneHint（补充提示，避免与无需上传说明重复）。</summary>
-        public bool ShowActiveZoneHint => (bool)GetValue(ShowActiveZoneHintProperty);
+        /// <summary>是否显示表单下方说明。</summary>
+        public bool ShowFooterHint => (bool)GetValue(ShowFooterHintProperty);
 
-        private static void OnSkipReasonSourcesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        private static void OnHintSourcesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is ApprovalAttachmentZoneControl control)
             {
@@ -228,14 +228,20 @@ namespace DocMgr.Views.Shared
         {
             string hint = ZoneHint?.Trim() ?? string.Empty;
             string placeholder = PlaceholderText?.Trim() ?? string.Empty;
-            string reason = !string.IsNullOrWhiteSpace(hint)
-                ? hint
-                : (!string.IsNullOrWhiteSpace(placeholder) ? placeholder : "本分区无需上传附件。");
+            string footer;
+            if (ShowUploadButtons)
+            {
+                footer = hint;
+            }
+            else
+            {
+                footer = !string.IsNullOrWhiteSpace(hint)
+                    ? hint
+                    : (!string.IsNullOrWhiteSpace(placeholder) ? placeholder : "本分区无需上传附件。");
+            }
 
-            SetValue(SkipUploadReasonTextPropertyKey, reason);
-            SetValue(
-                ShowActiveZoneHintPropertyKey,
-                ShowUploadButtons && !string.IsNullOrWhiteSpace(hint));
+            SetValue(FooterHintTextPropertyKey, footer);
+            SetValue(ShowFooterHintPropertyKey, !string.IsNullOrWhiteSpace(footer));
         }
     }
 }

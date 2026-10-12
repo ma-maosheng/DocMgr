@@ -49,6 +49,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _executeBackupMechanism;
         private bool _isBusy;
         private bool _isInitialized;
+        private int _cascadeReloadSuppressDepth;
         private string _relocationNo = "待编单";
         private string _statusDisplay = "待办理";
         private int _relocationModeChangeGeneration;
@@ -320,8 +321,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                LoadProjectOptions();
-                _ = ReloadSourceOptionsAsync();
+                // 刷新项目会改 SelectedProjectId：抑制其级联，避免与下方 Reload 并行打同一 DbContext。
+                using (BeginCascadeReloadSuppress())
+                {
+                    LoadProjectOptions();
+                }
+
+                RequestReloadSourceOptions();
             }
         }
 
@@ -335,7 +341,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = ReloadSourceOptionsAsync();
+                RequestReloadSourceOptions();
             }
         }
 
@@ -684,16 +690,60 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            _isInitialized = true;
-
             if (!IsArchiveAdmin)
             {
                 _dialogService.ShowMessage("仅资料管理员可执行资料迁档。", "权限不足");
             }
 
-            await LoadYearsAsync();
-            await LoadMagneticCabinetsAsync();
-            await RefreshPendingRelocationNoAsync();
+            // 初始化阶段串行装载；抑制年份/项目赋值触发的 fire-and-forget，避免并行占用页面级 DbContext。
+            using (BeginCascadeReloadSuppress())
+            {
+                await LoadYearsAsync();
+                await LoadMagneticCabinetsAsync();
+                await RefreshPendingRelocationNoAsync();
+            }
+
+            _isInitialized = true;
+            await ReloadSourceOptionsAsync();
+        }
+
+        private bool IsCascadeReloadSuppressed => _cascadeReloadSuppressDepth > 0;
+
+        private IDisposable BeginCascadeReloadSuppress()
+        {
+            _cascadeReloadSuppressDepth++;
+            return new CascadeReloadSuppressScope(this);
+        }
+
+        private void RequestReloadSourceOptions()
+        {
+            if (IsCascadeReloadSuppressed || !_isInitialized)
+            {
+                return;
+            }
+
+            _ = ReloadSourceOptionsAsync();
+        }
+
+        private sealed class CascadeReloadSuppressScope : IDisposable
+        {
+            private ArchiveElectronicRelocationViewModel? _owner;
+
+            public CascadeReloadSuppressScope(ArchiveElectronicRelocationViewModel owner)
+            {
+                _owner = owner;
+            }
+
+            public void Dispose()
+            {
+                if (_owner == null)
+                {
+                    return;
+                }
+
+                _owner._cascadeReloadSuppressDepth = Math.Max(0, _owner._cascadeReloadSuppressDepth - 1);
+                _owner = null;
+            }
         }
 
         private async Task RefreshPendingRelocationNoAsync()

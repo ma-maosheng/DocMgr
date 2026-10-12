@@ -38,6 +38,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private int _returnTargetLocationGeneration;
         private bool _isPageInitialized;
         private bool _overdueOnly;
+        private bool _includePermanentOutboundApplications;
         private bool _matchAllYears;
         private int _applicationYear = DateTime.Today.Year;
         private string _searchKeyword = string.Empty;
@@ -175,6 +176,24 @@ namespace DocMgr.ViewModels.HardDiskMedia
             set
             {
                 if (SetProperty(ref _selectedApplicationType, value))
+                {
+                    if (_isPageInitialized)
+                    {
+                        ApplyListFilters();
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 待归还列表是否包含「出库(永久)」借出；默认不勾选。
+        /// </summary>
+        public bool IncludePermanentOutboundApplications
+        {
+            get => _includePermanentOutboundApplications;
+            set
+            {
+                if (SetProperty(ref _includePermanentOutboundApplications, value))
                 {
                     if (_isPageInitialized)
                     {
@@ -339,6 +358,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 .Where(MatchesSelectedBorrowApplicationYear)
                 .Where(MatchesSelectedApplicantFilter)
                 .Where(MatchesOverdueOnlyFilter)
+                .Where(MatchesPermanentOutboundFilter)
                 .OrderBy(item => item.ExpectedReturnDate ?? DateTime.MaxValue)
                 .ThenBy(item => item.DiskCode, StringComparer.Ordinal)
                 .ToList();
@@ -490,6 +510,16 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             return HardDiskMediaApplicationNoSupport.TryParseBusinessNoYear(candidate.SourceApplicationNo, out int year)
                    && year == _applicationYear;
+        }
+
+        private bool MatchesPermanentOutboundFilter(HardDiskMediaReturnCandidate candidate)
+        {
+            if (IncludePermanentOutboundApplications)
+            {
+                return true;
+            }
+
+            return !candidate.IsPermanentOutbound;
         }
 
         private bool MatchesOverdueOnlyFilter(HardDiskMediaReturnCandidate candidate)

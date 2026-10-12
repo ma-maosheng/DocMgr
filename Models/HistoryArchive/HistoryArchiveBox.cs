@@ -12,7 +12,7 @@ namespace DocMgr.Models.HistoryArchive
     {
         public int Id { get; set; }
 
-        /// <summary>盒号（四段编码，全局唯一，即物理位置）。</summary>
+        /// <summary>盒号（四段编码，在库时全局唯一，即物理位置；已离库清空以释放档位）。</summary>
         public string BoxCode { get; set; } = string.Empty;
 
         /// <summary>档案盒规格（对齐 ArchiveBoxSpecifications 名称）。</summary>
@@ -23,6 +23,9 @@ namespace DocMgr.Models.HistoryArchive
 
         /// <summary>容器生命周期状态（在库 / 已离库，见 HistoryArchiveDisposalDomainValues）。</summary>
         public string LifecycleStatus { get; set; } = HistoryArchiveDisposalDomainValues.LifecycleInStock;
+
+        /// <summary>离库前最后盒号（办结清空 <see cref="BoxCode"/> 前写入，对齐年度盒销号）。</summary>
+        public string LastStorageLocation { get; set; } = string.Empty;
 
         public string ArchivedBy { get; set; } = string.Empty;
         public DateTime ArchivedDate { get; set; }

@@ -125,15 +125,26 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                            <StackPanel DockPanel.Dock="Right"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Right">
+                                <CheckBox Content="含永久出库借出申请"
+                                          IsChecked="{Binding IncludePermanentOutboundApplications}"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,10,0"
+                                          ToolTip="默认不显示永久出库借出；勾选后可对事后收回的永久出库盘发起归还。"/>
+                                <Button Content="发起归还" Command="{Binding StartReturnCommand}"
+                                        Width="96" Style="{StaticResource FormInlineButtonStyle}"/>
+                            </StackPanel>
                             <TextBlock Text="待归还介质" FontSize="14" FontWeight="Bold" Foreground="#37474F" VerticalAlignment="Center"/>
-                            <Button Content="发起归还" Command="{Binding StartReturnCommand}" DockPanel.Dock="Right"
-                                    HorizontalAlignment="Right" Width="96" Style="{StaticResource FormInlineButtonStyle}"/>
                         </DockPanel>
                         <DataGrid Grid.Row="1" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" SelectionMode="Single"
                                   ItemsSource="{Binding ReturnCandidates}" SelectedItem="{Binding SelectedCandidate}"
                                   MouseDoubleClick="DgCandidates_MouseDoubleClick">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="硬盘编号" Binding="{Binding DiskCode}" Width="90"/>
+                                <DataGridTextColumn Header="借出类型" Binding="{Binding BorrowType}" Width="80"/>
                                 <DataGridTextColumn Header="借出人" Binding="{Binding ApplicantName}" Width="70"/>
                                 <DataGridTextColumn Header="来源单号" Binding="{Binding SourceApplicationNo}" Width="*"/>
                                 <DataGridTextColumn Header="预计归还" Binding="{Binding ExpectedReturnDate, StringFormat=yyyy-MM-dd}" Width="90"/>
@@ -192,23 +203,23 @@
 
                     <Grid Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
+                            <!-- 表单与审批紧凑叠放，整区可滚；底栏按钮固定 -->
                             <RowDefinition Height="*"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <DockPanel Grid.Row="0" Margin="0,0,0,8">
-                            <TextBlock Text="归还登记详情" FontSize="14" FontWeight="Bold" Foreground="#37474F" VerticalAlignment="Center"/>
-                        </DockPanel>
+                        <ScrollViewer Grid.Row="0"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalAlignment="Stretch">
+                            <StackPanel VerticalAlignment="Top">
+                                <DockPanel Margin="0,0,0,6">
+                                    <TextBlock Text="归还登记详情" FontSize="14" FontWeight="Bold" Foreground="#37474F" VerticalAlignment="Center"/>
+                                </DockPanel>
 
-                        <TextBlock Grid.Row="1" Text="{Binding EditHeader}" TextWrapping="Wrap" Foreground="#546E7A" Margin="0,0,0,10"/>
+                                <TextBlock Text="{Binding EditHeader}" TextWrapping="Wrap" Foreground="#546E7A" Margin="0,0,0,8"/>
 
-                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <StackPanel>
-                                <Border Background="#F9FAFB" BorderBrush="#E0E0E0" BorderThickness="1" Padding="12" Margin="0,0,0,10">
+                                <Border Background="#F9FAFB" BorderBrush="#E0E0E0" BorderThickness="1" Padding="12" Margin="0,0,0,8">
                                     <StackPanel>
                                         <TextBlock Text="归还登记单号：" Foreground="#78909C" FontSize="12"/>
                                         <TextBlock Text="{Binding ApplicationNo}" FontWeight="SemiBold" Foreground="#263238" Margin="0,4,0,0"/>
@@ -217,121 +228,129 @@
                                     </StackPanel>
                                 </Border>
 
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="12"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-
-                                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
-                                        <TextBlock Text="归还人" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <TextBox Height="{StaticResource DialogFormControlHeight}"
-                                                 Text="{Binding SelectedApplicant.DisplayText, Mode=OneWay}"
-                                                 IsReadOnly="True"
-                                                 Background="#F9FAFB"
-                                                 ToolTip="由出库申请带入，不可更改"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10">
-                                        <TextBlock Text="归还介质" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <TextBox Height="{StaticResource DialogFormControlHeight}"
-                                                 Text="{Binding SelectedMedium.DisplayText, Mode=OneWay}"
-                                                 IsReadOnly="True"
-                                                 Background="#F9FAFB"
-                                                 ToolTip="由出库申请带入，不可更改"/>
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
-                                        <TextBlock Text="申请部门" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding ApplicantDept, Mode=OneWay}" IsReadOnly="True" Background="#F9FAFB"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10">
-                                        <TextBlock Text="归还日期" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <DatePicker Height="{StaticResource DialogFormControlHeight}" SelectedDate="{Binding ApplyTime, Mode=OneWay}" IsEnabled="False"/>
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,10">
-                                        <TextBlock Text="借出位置" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding CurrentLocation, Mode=OneWay}" IsReadOnly="True" Background="#F9FAFB"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,10">
-                                        <TextBlock Text="{Binding ReturnLocationLabel}" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <Grid>
+                                <Border Background="#FAFBFC"
+                                        BorderBrush="#E2E8F0"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="12"
+                                        Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,10">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Grid.Column="0"
-                                                     Height="{StaticResource DialogFormControlHeight}"
-                                                     Text="{Binding TargetLocationDisplay, Mode=OneWay}"
-                                                     IsReadOnly="True"
-                                                     Background="#F9FAFB"
-                                                     Visibility="{Binding TargetLocationReadOnlyVisibility}"/>
-                                            <ComboBox Grid.Column="0"
-                                                      Height="{StaticResource DialogFormControlHeight}"
-                                                      ItemsSource="{Binding ReturnTargetLocationOptions}"
-                                                      SelectedItem="{Binding SelectedReturnTargetLocationOption, Mode=TwoWay}"
-                                                      DisplayMemberPath="DisplayText"
-                                                      IsEnabled="{Binding CanEditTargetLocation}"
-                                                      Visibility="{Binding TargetLocationSelectionVisibility}"/>
-                                            <Button Grid.Column="1"
-                                                    Margin="8,0,0,0"
-                                                    Content="推荐档口"
-                                                    Style="{StaticResource FormInlineButtonStyle}"
-                                                    Command="{Binding RecommendTargetLocationCommand}"
-                                                    Visibility="{Binding RecommendTargetLocationButtonVisibility}"
-                                                    ToolTip="推荐归还目标空白档口（不预占用）"/>
-                                            <Button Grid.Column="2"
-                                                    Margin="8,0,0,0"
-                                                    Content="档口快照"
-                                                    Style="{StaticResource FormInlineButtonStyle}"
-                                                    Command="{Binding ShowTargetLocationSnapshotCommand}"
-                                                    IsEnabled="{Binding CanShowTargetLocationSnapshot}"
-                                                    Visibility="{Binding TargetLocationSnapshotButtonVisibility}"
-                                                    ToolTip="查看目标空白档口占用快照"/>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
+                                                <TextBlock Text="归还人" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <TextBox Height="{StaticResource DialogFormControlHeight}"
+                                                         Text="{Binding SelectedApplicant.DisplayText, Mode=OneWay}"
+                                                         IsReadOnly="True"
+                                                         Background="#F9FAFB"
+                                                         ToolTip="由出库申请带入，不可更改"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10">
+                                                <TextBlock Text="归还介质" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <TextBox Height="{StaticResource DialogFormControlHeight}"
+                                                         Text="{Binding SelectedMedium.DisplayText, Mode=OneWay}"
+                                                         IsReadOnly="True"
+                                                         Background="#F9FAFB"
+                                                         ToolTip="由出库申请带入，不可更改"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
+                                                <TextBlock Text="申请部门" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding ApplicantDept, Mode=OneWay}" IsReadOnly="True" Background="#F9FAFB"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10">
+                                                <TextBlock Text="归还日期" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <DatePicker Height="{StaticResource DialogFormControlHeight}" SelectedDate="{Binding ApplyTime, Mode=OneWay}" IsEnabled="False"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,10">
+                                                <TextBlock Text="借出位置" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <TextBox Height="{StaticResource DialogFormControlHeight}" Text="{Binding CurrentLocation, Mode=OneWay}" IsReadOnly="True" Background="#F9FAFB"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,10">
+                                                <TextBlock Text="{Binding ReturnLocationLabel}" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Grid.Column="0"
+                                                             Height="{StaticResource DialogFormControlHeight}"
+                                                             Text="{Binding TargetLocationDisplay, Mode=OneWay}"
+                                                             IsReadOnly="True"
+                                                             Background="#F9FAFB"
+                                                             Visibility="{Binding TargetLocationReadOnlyVisibility}"/>
+                                                    <ComboBox Grid.Column="0"
+                                                              Height="{StaticResource DialogFormControlHeight}"
+                                                              ItemsSource="{Binding ReturnTargetLocationOptions}"
+                                                              SelectedItem="{Binding SelectedReturnTargetLocationOption, Mode=TwoWay}"
+                                                              DisplayMemberPath="DisplayText"
+                                                              IsEnabled="{Binding CanEditTargetLocation}"
+                                                              Visibility="{Binding TargetLocationSelectionVisibility}"/>
+                                                    <Button Grid.Column="1"
+                                                            Margin="8,0,0,0"
+                                                            Content="推荐档口"
+                                                            Style="{StaticResource FormInlineButtonStyle}"
+                                                            Command="{Binding RecommendTargetLocationCommand}"
+                                                            Visibility="{Binding RecommendTargetLocationButtonVisibility}"
+                                                            ToolTip="推荐归还目标空白档口（不预占用）"/>
+                                                    <Button Grid.Column="2"
+                                                            Margin="8,0,0,0"
+                                                            Content="档口快照"
+                                                            Style="{StaticResource FormInlineButtonStyle}"
+                                                            Command="{Binding ShowTargetLocationSnapshotCommand}"
+                                                            IsEnabled="{Binding CanShowTargetLocationSnapshot}"
+                                                            Visibility="{Binding TargetLocationSnapshotButtonVisibility}"
+                                                            ToolTip="查看目标空白档口占用快照"/>
+                                                </Grid>
+                                                <TextBlock Text="{Binding TargetLocationHintText}"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="#78909C"
+                                                           FontSize="11"
+                                                           Margin="0,4,0,0"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,0,0">
+                                                <TextBlock Text="登记类型 *：" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <ComboBox Height="{StaticResource DialogFormControlHeight}"
+                                                          ItemsSource="{Binding InspectionResultOptions}"
+                                                          SelectedItem="{Binding InspectionResult, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsEnabled="{Binding IsRegistrationEditable}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,0,0,0">
+                                                <TextBlock Text="格式化确认 *：" Foreground="#666666" Margin="0,0,0,4"/>
+                                                <ComboBox Height="{StaticResource DialogFormControlHeight}"
+                                                          ItemsSource="{Binding FormatConfirmationOptions}"
+                                                          SelectedItem="{Binding FormatConfirmation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsEnabled="{Binding IsFormatConfirmationEditable}"/>
+                                            </StackPanel>
                                         </Grid>
-                                        <TextBlock Text="{Binding TargetLocationHintText}"
-                                                   TextWrapping="Wrap"
-                                                   Foreground="#78909C"
-                                                   FontSize="11"
-                                                   Margin="0,4,0,0"/>
-                                    </StackPanel>
 
-                                    <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,0,0">
-                                        <TextBlock Text="登记类型 *：" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <ComboBox Height="{StaticResource DialogFormControlHeight}"
-                                                  ItemsSource="{Binding InspectionResultOptions}"
-                                                  SelectedItem="{Binding InspectionResult, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                  IsEnabled="{Binding IsRegistrationEditable}"/>
+                                        <StackPanel Visibility="{Binding ShowNormalReturnReasonField, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <TextBlock Text="{Binding ReasonFieldLabel}" Foreground="#666666" Margin="0,0,0,4"/>
+                                            <TextBox Height="72"
+                                                     AcceptsReturn="True"
+                                                     TextWrapping="Wrap"
+                                                     VerticalContentAlignment="Top"
+                                                     Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
+                                                     IsEnabled="{Binding IsRegistrationEditable}"/>
+                                        </StackPanel>
                                     </StackPanel>
-                                    <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,0,0,0">
-                                        <TextBlock Text="格式化确认 *：" Foreground="#666666" Margin="0,0,0,4"/>
-                                        <ComboBox Height="{StaticResource DialogFormControlHeight}"
-                                                  ItemsSource="{Binding FormatConfirmationOptions}"
-                                                  SelectedItem="{Binding FormatConfirmation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                  IsEnabled="{Binding IsFormatConfirmationEditable}"/>
-                                    </StackPanel>
-                                </Grid>
+                                </Border>
 
-                                <StackPanel Margin="0,0,0,10"
-                                            Visibility="{Binding ShowNormalReturnReasonField, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <TextBlock Text="{Binding ReasonFieldLabel}" Foreground="#666666" Margin="0,0,0,4"/>
-                                    <TextBox Height="72"
-                                             AcceptsReturn="True"
-                                             TextWrapping="Wrap"
-                                             VerticalContentAlignment="Top"
-                                             Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"
-                                             IsEnabled="{Binding IsRegistrationEditable}"/>
-                                </StackPanel>
-
-                                <Border Padding="10" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1" Margin="0,0,0,10"
+                                <Border Padding="10" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1" Margin="0,0,0,8"
                                         Visibility="{Binding ShowAbnormalReturnPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <StackPanel>
                                         <TextBlock Text="非正常归还情况" FontWeight="SemiBold" Foreground="#E65100" Margin="0,0,0,8"/>
@@ -343,79 +362,67 @@
                                                  IsEnabled="{Binding IsRegistrationEditable}"/>
                                     </StackPanel>
                                 </Border>
+
+                                <!-- 与表单同列紧凑排布；勿设 MaxHeight，避免壳内 * 行被撑出大块空白 -->
+                                <viewShared:ApprovalHandoverWorkspaceShell
+                                        VerticalAlignment="Top"
+                                        Margin="0,0,0,0"
+                                        ShellKind="{x:Static models:ApprovalWorkflowShellKind.ApplicationHandover}"
+                                        ShowTitleChrome="False"
+                                        ShowBodyChrome="False"
+                                        ShowFooterChrome="True"
+                                        Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <viewShared:ApprovalHandoverWorkspaceShell.SignatureContent>
+                                        <viewShared:ApprovalSignatureCardsControl
+                                            ShowApprovalOpinion="True"
+                                            SignatureHintText="按启用节点填写签字人与日期。"/>
+                                    </viewShared:ApprovalHandoverWorkspaceShell.SignatureContent>
+
+                                    <viewShared:ApprovalHandoverWorkspaceShell.MidStepExtraContent>
+                                        <Border Background="#FAFBFC"
+                                                BorderBrush="#E2E8F0"
+                                                BorderThickness="1"
+                                                CornerRadius="3"
+                                                Padding="12,8"
+                                                IsEnabled="{Binding CanConfirmHandover}">
+                                            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,16,4">
+                                                    <TextBlock Text="归还人：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="0,0,0,0"/>
+                                                    <TextBox Width="100" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                             Text="{Binding HandoverApplicant, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,16,4">
+                                                    <TextBlock Text="资料管理员：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="0,0,0,0"/>
+                                                    <TextBox Width="100" Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
+                                                             Text="{Binding HandoverAdmin, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock Text="交接日期：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}" Margin="0,0,0,0"/>
+                                                    <DatePicker Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
+                                                                SelectedDate="{Binding HandoverDate}"/>
+                                                </StackPanel>
+                                            </WrapPanel>
+                                        </Border>
+                                    </viewShared:ApprovalHandoverWorkspaceShell.MidStepExtraContent>
+                                </viewShared:ApprovalHandoverWorkspaceShell>
+
+                                <Border Padding="10" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1" Margin="0,8,0,0">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ShowApplicationActions}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding WorkflowHintText}" TextWrapping="Wrap" Foreground="#E65100"/>
+                                </Border>
                             </StackPanel>
                         </ScrollViewer>
 
-                        <!-- 审批壳独立于表单滚动区：蓝卡可滚，打印/办结/关闭底栏固定在蓝卡外 -->
-                        <viewShared:ApprovalHandoverWorkspaceShell
-                                Grid.Row="3"
-                                Margin="0,10,0,0"
-                                MaxHeight="400"
-                                ShellKind="{x:Static models:ApprovalWorkflowShellKind.ApplicationHandover}"
-                                ShowTitleChrome="False"
-                                ShowBodyChrome="False"
-                                ShowFooterChrome="True"
-                                Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <viewShared:ApprovalHandoverWorkspaceShell.SignatureContent>
-                                <viewShared:ApprovalSignatureCardsControl
-                                    ShowApprovalOpinion="True"
-                                    SignatureHintText="按启用节点填写签字人与日期。"/>
-                            </viewShared:ApprovalHandoverWorkspaceShell.SignatureContent>
-
-                            <viewShared:ApprovalHandoverWorkspaceShell.MidStepExtraContent>
-                                <StackPanel>
-                                    <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
-                                            IsEnabled="{Binding CanConfirmHandover}">
-                                        <DockPanel LastChildFill="True">
-                                            <TextBlock DockPanel.Dock="Left" Text="办理交接人（归还人）："
-                                                       Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"
-                                                       Width="160"/>
-                                            <TextBox Width="160" HorizontalAlignment="Left"
-                                                     Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
-                                                     Text="{Binding HandoverApplicant, UpdateSourceTrigger=PropertyChanged}"/>
-                                        </DockPanel>
-                                    </Border>
-                                    <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
-                                            IsEnabled="{Binding CanConfirmHandover}">
-                                        <DockPanel LastChildFill="True">
-                                            <TextBlock DockPanel.Dock="Left" Text="办理交接人（资料管理员）："
-                                                       Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"
-                                                       Width="160"/>
-                                            <TextBox Width="160" HorizontalAlignment="Left"
-                                                     Style="{StaticResource ArchiveRegisterApprovalCompactTextBoxStyle}"
-                                                     Text="{Binding HandoverAdmin, UpdateSourceTrigger=PropertyChanged}"/>
-                                        </DockPanel>
-                                    </Border>
-                                    <Border Style="{StaticResource ArchiveRegisterApprovalCompactStepCardStyle}"
-                                            IsEnabled="{Binding CanConfirmHandover}">
-                                        <DockPanel LastChildFill="True">
-                                            <TextBlock DockPanel.Dock="Left" Text="办理交接日期："
-                                                       Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"
-                                                       Width="160"/>
-                                            <DatePicker Width="160" HorizontalAlignment="Left"
-                                                        Style="{StaticResource ArchiveRegisterApprovalCompactDatePickerStyle}"
-                                                        SelectedDate="{Binding HandoverDate}"/>
-                                        </DockPanel>
-                                    </Border>
-                                </StackPanel>
-                            </viewShared:ApprovalHandoverWorkspaceShell.MidStepExtraContent>
-                        </viewShared:ApprovalHandoverWorkspaceShell>
-
-                        <Border Grid.Row="4" Padding="10" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1" Margin="0,10,0,0">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding ShowApplicationActions}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <TextBlock Text="{Binding WorkflowHintText}" TextWrapping="Wrap" Foreground="#E65100"/>
-                        </Border>
-
-                        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
                             <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <Button Content="{Binding SaveButtonText}" Command="{Binding SaveDraftCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
                                 <Button Content="{Binding SubmitButtonText}" Command="{Binding SubmitCommand}" Width="112" Height="32" Margin="0,0,10,0"/>

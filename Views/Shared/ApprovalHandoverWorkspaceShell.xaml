@@ -167,10 +167,11 @@
                                        TextWrapping="Wrap"
                                        Margin="0,0,0,8"/>
 
-                            <!-- 1 行 × 4 列均分；「无需上传」态由 ShowUploadButtons=False 统一驱动（标题旁标签 + 一条说明，无空表） -->
+                            <!-- 1 行 × 4 列均分；「无需上传」态由 ShowUploadButtons=False 统一驱动（标题旁标签 + 等高占位 + 表下说明）；四区说明均在表单下方 -->
                             <UniformGrid Rows="1" Columns="4" HorizontalAlignment="Stretch">
                                 <local:ApprovalAttachmentZoneControl Margin="0,0,4,0"
                                     ZoneTitle="{Binding SignedZoneTitle, ElementName=Root, Mode=OneWay}"
+                                    ZoneHint="{Binding SignedZoneHint, ElementName=Root, Mode=OneWay}"
                                     Attachments="{Binding SignedAttachments}"
                                     ShowUploadButtons="True"
                                     CanUpload="{Binding CanUploadSignedAttachment}"
@@ -204,6 +205,7 @@
 
                                 <local:ApprovalAttachmentZoneControl
                                     ZoneTitle="其他附件"
+                                    ZoneHint="{Binding OtherZoneHint, ElementName=Root, Mode=OneWay}"
                                     Attachments="{Binding OtherAttachments}"
                                     ShowUploadButtons="True"
                                     CanUpload="{Binding CanUploadOtherAttachment}"

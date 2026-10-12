@@ -104,17 +104,11 @@ namespace DocMgr.Services.HardDiskMedia
                    status == HardDiskMedium.StatusInStockDamaged;
         }
 
-        private static bool IsOutTemporaryOrLongTerm(string status)
-        {
-            return status == HardDiskMedium.StatusOutTemporary ||
-                   status == HardDiskMedium.StatusOutLongTerm;
-        }
+        private static bool IsOutTemporaryOrLongTerm(string status) =>
+            HardDiskMediaOutboundReturnSupport.IsReturnableOutboundMediaStatus(status);
 
-        private static bool IsOutboundBorrowType(string applicationType)
-        {
-            return applicationType == HardDiskMediaApplication.TypeOutboundTemporary ||
-                   applicationType == HardDiskMediaApplication.TypeOutboundLongTerm;
-        }
+        private static bool IsOutboundBorrowType(string applicationType) =>
+            HardDiskMediaOutboundReturnSupport.IsReturnCandidateOutboundApplicationType(applicationType);
 
         /// <summary>
         /// 出库申请流程中需占用库内空盘征用锁的类型（临时/长期/永久）。
@@ -339,13 +333,18 @@ namespace DocMgr.Services.HardDiskMedia
             ArchiveRegisterBusinessRules.CanSubmitApplication(currentUser);
 
         /// <summary>
-        /// 出库申请按申请人姓名匹配办理人。归还单勿用：其 ApplicantName 为原借用人。
+        /// 出库申请按申请人用户ID（优先）或姓名匹配办理人。归还单勿用：其 ApplicantName 为原借用人。
         /// </summary>
         private static bool IsApplicantOwner(HardDiskMediaApplication application, User? currentUser)
         {
             if (currentUser == null)
             {
                 return false;
+            }
+
+            if (application.ApplicantUserId > 0)
+            {
+                return application.ApplicantUserId == currentUser.Id;
             }
 
             string applicantName = application.ApplicantName?.Trim() ?? string.Empty;
@@ -387,7 +386,7 @@ namespace DocMgr.Services.HardDiskMedia
 
             if (isReturnApply && !IsOutTemporaryOrLongTerm(mediaStatus))
             {
-                throw new InvalidOperationException("仅临时或长期出库的介质可办理归还/挂失登记。");
+                throw new InvalidOperationException("仅临时、长期或永久出库的介质可办理归还/挂失登记。");
             }
         }
 
@@ -436,7 +435,8 @@ namespace DocMgr.Services.HardDiskMedia
                     => new[]
                     {
                         HardDiskMedium.StatusOutTemporary,
-                        HardDiskMedium.StatusOutLongTerm
+                        HardDiskMedium.StatusOutLongTerm,
+                        HardDiskMedium.StatusOutPermanent
                     },
 
                 _ => Array.Empty<string>()

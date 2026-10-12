@@ -303,6 +303,30 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
             .ToListAsync();
     }
 
+    public Task<List<NetworkInboundRecord>> GetDraftInboundRecordsForApplicantToDoAsync(int applicantUserId, int takeCount)
+    {
+        // applicantUserId <= 0：总览查询全部申请人草稿。
+        return _dbContext.NetworkInboundRecords
+            .AsNoTracking()
+            .Where(item => item.Status == NetworkInboundRecord.StatusDraft
+                && (applicantUserId <= 0 || item.ApplicantUserId == applicantUserId))
+            .OrderByDescending(item => item.ApplyTime)
+            .Take(Math.Max(1, takeCount))
+            .ToListAsync();
+    }
+
+    public Task<List<NetworkOutboundRecord>> GetDraftOutboundRecordsForApplicantToDoAsync(int applicantUserId, int takeCount)
+    {
+        // applicantUserId <= 0：总览查询全部申请人草稿。
+        return _dbContext.NetworkOutboundRecords
+            .AsNoTracking()
+            .Where(item => item.Status == NetworkOutboundRecord.StatusDraft
+                && (applicantUserId <= 0 || item.ApplicantUserId == applicantUserId))
+            .OrderByDescending(item => item.ApplyTime)
+            .Take(Math.Max(1, takeCount))
+            .ToListAsync();
+    }
+
     public void AddDisposal(NetworkOnNetDisposalRecord record) => _dbContext.NetworkOnNetDisposalRecords.Add(record);
 
     public void RemoveDisposalItems(IEnumerable<NetworkOnNetDisposalItem> items) =>

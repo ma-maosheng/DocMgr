@@ -38,6 +38,7 @@ public static partial class ServiceCollectionExtensions
                 sp, mode, initialRecordId));
         services.AddTransient<NetworkOnNetAssetLedgerPageViewModel>();
         services.AddTransient<NetworkOnNetDisposalPageViewModel>();
+        services.AddTransient<HistoryArchiveBoxLedgerPageViewModel>();
         services.AddTransient<HistoryArchiveDisposalPageViewModel>();
         services.AddTransient<Func<HardDiskReturnWorkspaceMode, HardDiskMediaReturnRegistrationPageViewModel>>(sp =>
             mode => ActivatorUtilities.CreateInstance<HardDiskMediaReturnRegistrationPageViewModel>(sp, mode));
@@ -83,6 +84,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<ApprovalWorkflowSettingsViewModel>();
         services.AddTransient<DbOperationLogPageViewModel>();
         services.AddTransient<UserSessionMonitorViewModel>();
+        services.AddTransient<ToDoOverviewPageViewModel>();
         return services;
     }
 }

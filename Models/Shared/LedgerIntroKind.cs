@@ -14,6 +14,7 @@ namespace DocMgr.Models.Shared
         TopoMap,
         AerialPhoto,
         OtherMap,
-        OnNetAsset
+        OnNetAsset,
+        HistoryArchiveBox
     }
 }

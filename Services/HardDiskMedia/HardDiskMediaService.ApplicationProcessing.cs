@@ -476,6 +476,7 @@ namespace DocMgr.Services.HardDiskMedia
                 MediumId = medium.Id,
                 ApplicationId = existingApplication.Id,
                 TransactionType = MapTransactionType(existingApplication.ApplicationType),
+                BusinessNo = existingApplication.ApplicationNo?.Trim() ?? string.Empty,
                 BeforeStatus = beforeStatus,
                 AfterStatus = ledger.MediaStatus,
                 BeforeLocation = beforeLocation,
@@ -725,11 +726,9 @@ namespace DocMgr.Services.HardDiskMedia
                 if (sourceApplication?.Medium != null
                     && sourceApplication.MediumId == mediumId
                     && sourceApplication.ApplicationStatus == HardDiskMediaApplication.StatusCompleted
-                    && (sourceApplication.ApplicationType == HardDiskMediaApplication.TypeOutboundTemporary
-                        || sourceApplication.ApplicationType == HardDiskMediaApplication.TypeOutboundLongTerm)
+                    && HardDiskMediaOutboundReturnSupport.IsReturnCandidateOutboundApplicationType(sourceApplication.ApplicationType)
                     && sourceApplication.Medium.Ledger != null
-                    && (sourceApplication.Medium.Ledger.MediaStatus == HardDiskMedium.StatusOutTemporary
-                        || sourceApplication.Medium.Ledger.MediaStatus == HardDiskMedium.StatusOutLongTerm))
+                    && HardDiskMediaOutboundReturnSupport.IsReturnableOutboundMediaStatus(sourceApplication.Medium.Ledger.MediaStatus))
                 {
                     return CreateReturnRegistrationCandidateFromOutboundApplication(sourceApplication);
                 }

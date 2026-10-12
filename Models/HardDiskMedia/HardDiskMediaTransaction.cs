@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace DocMgr.Models.HardDiskMedia
 {
     /// <summary>
@@ -39,6 +41,87 @@ namespace DocMgr.Models.HardDiskMedia
         /// 关联申请单ID。
         /// </summary>
         public int? ApplicationId { get; set; }
+
+        /// <summary>
+        /// 业务单号。
+        /// </summary>
+        public string BusinessNo { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 展示用业务单号。无真实业务单时显示「-」（不回退到相关批次/硬盘编号）。
+        /// </summary>
+        [NotMapped]
+        public string BusinessNoDisplay
+        {
+            get
+            {
+                string? resolved = ResolveViewableBusinessNo();
+                return string.IsNullOrWhiteSpace(resolved) ? "-" : resolved;
+            }
+        }
+
+        /// <summary>
+        /// 是否存在可打开详情的真实业务单号。
+        /// </summary>
+        [NotMapped]
+        public bool HasViewableBusinessNo => !string.IsNullOrWhiteSpace(ResolveViewableBusinessNo());
+
+        /// <summary>
+        /// 解析可查看的业务单号；交互式/批量迁档等无独立单号时返回 null。
+        /// </summary>
+        public string? ResolveViewableBusinessNo()
+        {
+            if (Application != null && !string.IsNullOrWhiteSpace(Application.ApplicationNo))
+            {
+                return Application.ApplicationNo.Trim();
+            }
+
+            if (string.IsNullOrWhiteSpace(BusinessNo))
+            {
+                return null;
+            }
+
+            string trimmed = BusinessNo.Trim();
+            if (IsDiskCodePlaceholderBusinessNo(trimmed))
+            {
+                return null;
+            }
+
+            return trimmed;
+        }
+
+        /// <summary>
+        /// 位置调整且无申请单时，历史上曾用硬盘编号充业务单号；此类不可作业务详情入口。
+        /// </summary>
+        private bool IsDiskCodePlaceholderBusinessNo(string businessNo)
+        {
+            if (!string.Equals(TransactionType, TypeRelocate, StringComparison.Ordinal)
+                || ApplicationId.HasValue)
+            {
+                return false;
+            }
+
+            if (Medium != null
+                && !string.IsNullOrWhiteSpace(Medium.DiskCode)
+                && string.Equals(businessNo, Medium.DiskCode.Trim(), StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return ContainsCabinetRelocationHint(Description) || ContainsCabinetRelocationHint(Remark);
+        }
+
+        private static bool ContainsCabinetRelocationHint(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return false;
+            }
+
+            return text.Contains("交互式迁档", StringComparison.Ordinal)
+                || text.Contains("档口批量搬迁", StringComparison.Ordinal)
+                || text.Contains("单件迁档", StringComparison.Ordinal);
+        }
 
         /// <summary>
         /// 流转类型。

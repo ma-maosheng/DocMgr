@@ -136,14 +136,18 @@ namespace DocMgr.Services.HistoryArchive
                 .ExecuteDelete();
         }
 
-        /// <summary>清理孤儿盒：无任何台账关联的盒实体删除（盒生命周期随台账存在）。</summary>
+        /// <summary>
+        /// 清理孤儿盒：无台账关联且仍在库的盒实体删除。
+        /// 已离库盒保留（办结后已撤链接并清空盒号，供追溯，不可删）。
+        /// </summary>
         public static void CleanupOrphanBoxes(AppDbContext dbContext)
         {
             ArgumentNullException.ThrowIfNull(dbContext);
 
             dbContext.HistoryArchiveBoxes
-                .Where(box => !dbContext.HistoryArchiveBoxLedgerLinks
-                    .Any(link => link.HistoryArchiveBoxId == box.Id))
+                .Where(box => box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleInStock
+                    && !dbContext.HistoryArchiveBoxLedgerLinks
+                        .Any(link => link.HistoryArchiveBoxId == box.Id))
                 .ExecuteDelete();
         }
 

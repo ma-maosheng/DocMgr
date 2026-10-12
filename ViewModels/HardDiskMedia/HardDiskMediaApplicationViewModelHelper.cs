@@ -152,6 +152,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 SourceOutboundRecordId = source.SourceOutboundRecordId,
                 ApplicationType = source.ApplicationType,
                 ApplicationStatus = source.ApplicationStatus,
+                ApplicantUserId = source.ApplicantUserId,
                 ApplicantName = source.ApplicantName,
                 ApplicantDept = source.ApplicantDept,
                 ApplyTime = source.ApplyTime,

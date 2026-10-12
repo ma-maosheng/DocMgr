@@ -39,88 +39,13 @@ namespace DocMgr.Services.YearlyArchive
             var result = new List<ToDoItem>();
             if (currentUser == null) return result;
 
-            // 关键规则：资料管理员在申请提交后直至确认办结前，始终保留待办
             if (IsArchiveRoomAdmin(currentUser))
             {
-                var pendingRegisters = await _archiveRegisterRepository.GetSubmittedRecordsForToDoAsync(200);
-
-                result.AddRange(pendingRegisters.Select(r => new ToDoItem
-                {
-                    Id = $"YAR-{r.Id}-REGISTER-PENDING",
-                    Title = $"【资料申请】待资料室办理：{r.MaterialName}",
-                    BizType = "YearlyArchiveRegister",
-                    BizId = r.Id,
-                    BizNo = r.FormNo,
-                    Stage = BuildRegisterPendingStage(r),
-                    CreatedTime = r.CreatedDate,
-                    Priority = "高"
-                }));
-
-                var pendingOutbounds = await _archiveOutboundRepository.GetPendingRecordsForToDoAsync(200);
-                result.AddRange(pendingOutbounds.Select(r => new ToDoItem
-                {
-                    Id = $"YAO-{r.Id}-OUTBOUND-PENDING",
-                    Title = $"【资料借出】待办理：{BuildOutboundSummary(r)}",
-                    BizType = ResolveOutboundBizType(r.Status),
-                    BizId = r.Id,
-                    BizNo = r.OutboundNo,
-                    Stage = BuildOutboundPendingStage(r),
-                    CreatedTime = r.SubmittedAt ?? r.ApplyDate,
-                    Priority = "高"
-                }));
-
-                // 已办结、尚未完成模拟/电子立档的建档单 → 资料管理员待办（含出网转入待立档）。
-                var pendingFiling = await _archiveFilingRepository.GetCompletedUnfiledRecordsForToDoAsync(200);
-                result.AddRange(pendingFiling.Select(r => new ToDoItem
-                {
-                    Id = $"YAR-{r.Id}-PENDING-FILING",
-                    Title = $"【资料立档】待立档：{BuildPendingFilingTitle(r)}",
-                    BizType = "YearlyArchiveFiling",
-                    BizId = r.Id,
-                    BizNo = r.FormNo,
-                    Stage = BuildPendingFilingStage(r),
-                    CreatedTime = r.AdminDate ?? r.DeliverDate ?? r.CreatedDate,
-                    Priority = "高"
-                }));
-
-                var pendingReturnRecords = await _archiveReturnRepository.GetPendingReturnRecordsForToDoAsync(200);
-                result.AddRange(pendingReturnRecords.Select(r => new ToDoItem
-                {
-                    Id = $"YAR-RECORD-{r.Id}-PENDING",
-                    Title = $"【资料归还】{ResolveReturnToDoTitle(r)}：{BuildReturnRecordSummary(r)}",
-                    BizType = "YearlyArchiveReturnRecord",
-                    BizId = r.Id,
-                    BizNo = r.ReturnNo,
-                    Stage = ResolveReturnToDoStage(r),
-                    CreatedTime = r.SubmittedAt ?? r.RegisteredAt ?? r.ReturnDate,
-                    Priority = "高"
-                }));
-
-                var pendingDisposals = await _archiveDisposalRepository.GetPendingRecordsForToDoAsync(200);
-                result.AddRange(pendingDisposals.Select(r => new ToDoItem
-                {
-                    Id = $"YAD-{r.Id}-DISPOSAL-PENDING",
-                    Title = $"【{(string.Equals(r.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal) ? "电子" : "模拟")}资料离库处置】{ResolveDisposalToDoTitle(r)}：{BuildDisposalSummary(r)}",
-                    BizType = "ArchiveDisposal",
-                    BizId = r.Id,
-                    BizNo = r.DisposalNo,
-                    Stage = ResolveDisposalToDoStage(r),
-                    CreatedTime = r.SubmittedAt ?? r.ApplyTime,
-                    Priority = "高"
-                }));
-
-                var pendingInventory = await _archiveInventoryRegisterRepository.GetPendingRecordsForToDoAsync(200);
-                result.AddRange(pendingInventory.Select(r => new ToDoItem
-                {
-                    Id = $"YAI-{r.Id}-INVENTORY-PENDING",
-                    Title = $"【{(string.Equals(r.MediaKind, ArchiveInventoryRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal) ? "电子" : "模拟")}资料盘库登记】{ResolveInventoryToDoTitle(r)}：{BuildInventorySummary(r)}",
-                    BizType = "ArchiveInventoryRegister",
-                    BizId = r.Id,
-                    BizNo = r.RegisterNo,
-                    Stage = ResolveInventoryToDoStage(r),
-                    CreatedTime = r.SubmittedAt ?? r.ApplyTime,
-                    Priority = "高"
-                }));
+                result.AddRange(await BuildArchiveAdminPendingItemsAsync(200));
+            }
+            else
+            {
+                result.AddRange(await BuildApplicantDraftItemsAsync(currentUser.Id, 200));
             }
 
             var overdueReturns = await _archiveReturnRepository.GetOverdueReturnOutboundsAsync(DateTime.Now, 200);
@@ -131,7 +56,156 @@ namespace DocMgr.Services.YearlyArchive
                 overdueForCurrentUser = overdueReturns.Where(record => record.ApplicantUserId == currentUser.Id);
             }
 
-            result.AddRange(overdueForCurrentUser.Select(r => new ToDoItem
+            result.AddRange(BuildOverdueReturnItems(overdueForCurrentUser));
+            return result;
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<ToDoItem>> GetOverviewToDosAsync(int takeCount)
+        {
+            int take = Math.Max(1, takeCount);
+            var result = new List<ToDoItem>();
+            result.AddRange(await BuildArchiveAdminPendingItemsAsync(take));
+            result.AddRange(await BuildApplicantDraftItemsAsync(applicantUserId: 0, take));
+            var overdueReturns = await _archiveReturnRepository.GetOverdueReturnOutboundsAsync(DateTime.Now, take);
+            result.AddRange(BuildOverdueReturnItems(overdueReturns));
+            return result;
+        }
+
+        private async Task<List<ToDoItem>> BuildArchiveAdminPendingItemsAsync(int takeCount)
+        {
+            var result = new List<ToDoItem>();
+
+            var pendingRegisters = await _archiveRegisterRepository.GetSubmittedRecordsForToDoAsync(takeCount);
+            result.AddRange(pendingRegisters.Select(r => new ToDoItem
+            {
+                Id = $"YAR-{r.Id}-REGISTER-PENDING",
+                Title = $"【资料申请】待资料室办理：{r.MaterialName}",
+                BizType = "YearlyArchiveRegister",
+                BizId = r.Id,
+                BizNo = r.FormNo,
+                Stage = BuildRegisterPendingStage(r),
+                CreatedTime = r.CreatedDate,
+                Priority = "高"
+            }));
+
+            var pendingOutbounds = await _archiveOutboundRepository.GetPendingRecordsForToDoAsync(takeCount);
+            result.AddRange(pendingOutbounds.Select(r => new ToDoItem
+            {
+                Id = $"YAO-{r.Id}-OUTBOUND-PENDING",
+                Title = $"【资料借出】待办理：{BuildOutboundSummary(r)}",
+                BizType = ResolveOutboundBizType(r.Status),
+                BizId = r.Id,
+                BizNo = r.OutboundNo,
+                Stage = BuildOutboundPendingStage(r),
+                CreatedTime = r.SubmittedAt ?? r.ApplyDate,
+                Priority = "高"
+            }));
+
+            var pendingFiling = await _archiveFilingRepository.GetCompletedUnfiledRecordsForToDoAsync(takeCount);
+            result.AddRange(pendingFiling.Select(r => new ToDoItem
+            {
+                Id = $"YAR-{r.Id}-PENDING-FILING",
+                Title = $"【资料立档】待立档：{BuildPendingFilingTitle(r)}",
+                BizType = "YearlyArchiveFiling",
+                BizId = r.Id,
+                BizNo = r.FormNo,
+                Stage = BuildPendingFilingStage(r),
+                CreatedTime = r.AdminDate ?? r.DeliverDate ?? r.CreatedDate,
+                Priority = "高"
+            }));
+
+            var pendingReturnRecords = await _archiveReturnRepository.GetPendingReturnRecordsForToDoAsync(takeCount);
+            result.AddRange(pendingReturnRecords.Select(r => new ToDoItem
+            {
+                Id = $"YAR-RECORD-{r.Id}-PENDING",
+                Title = $"【资料归还】{ResolveReturnToDoTitle(r)}：{BuildReturnRecordSummary(r)}",
+                BizType = "YearlyArchiveReturnRecord",
+                BizId = r.Id,
+                BizNo = r.ReturnNo,
+                Stage = ResolveReturnToDoStage(r),
+                CreatedTime = r.SubmittedAt ?? r.RegisteredAt ?? r.ReturnDate,
+                Priority = "高"
+            }));
+
+            var pendingDisposals = await _archiveDisposalRepository.GetPendingRecordsForToDoAsync(takeCount);
+            result.AddRange(pendingDisposals.Select(r => new ToDoItem
+            {
+                Id = $"YAD-{r.Id}-DISPOSAL-PENDING",
+                Title = $"【{(string.Equals(r.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal) ? "电子" : "模拟")}资料离库处置】{ResolveDisposalToDoTitle(r)}：{BuildDisposalSummary(r)}",
+                BizType = "ArchiveDisposal",
+                BizId = r.Id,
+                BizNo = r.DisposalNo,
+                Stage = ResolveDisposalToDoStage(r),
+                CreatedTime = r.SubmittedAt ?? r.ApplyTime,
+                Priority = "高"
+            }));
+
+            var pendingInventory = await _archiveInventoryRegisterRepository.GetPendingRecordsForToDoAsync(takeCount);
+            result.AddRange(pendingInventory.Select(r => new ToDoItem
+            {
+                Id = $"YAI-{r.Id}-INVENTORY-PENDING",
+                Title = $"【{(string.Equals(r.MediaKind, ArchiveInventoryRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal) ? "电子" : "模拟")}资料盘库登记】{ResolveInventoryToDoTitle(r)}：{BuildInventorySummary(r)}",
+                BizType = "ArchiveInventoryRegister",
+                BizId = r.Id,
+                BizNo = r.RegisterNo,
+                Stage = ResolveInventoryToDoStage(r),
+                CreatedTime = r.SubmittedAt ?? r.ApplyTime,
+                Priority = "高"
+            }));
+
+            return result;
+        }
+
+        private async Task<List<ToDoItem>> BuildApplicantDraftItemsAsync(int applicantUserId, int takeCount)
+        {
+            var result = new List<ToDoItem>();
+
+            var draftRegisters = await _archiveRegisterRepository.GetDraftRecordsForApplicantToDoAsync(applicantUserId, takeCount);
+            result.AddRange(draftRegisters.Select(r => new ToDoItem
+            {
+                Id = $"YAR-{r.Id}-DRAFT",
+                Title = $"【资料申请】草稿待提交：{r.MaterialName}",
+                BizType = "YearlyArchiveRegister",
+                BizId = r.Id,
+                BizNo = r.FormNo,
+                Stage = "草稿-待提交",
+                CreatedTime = r.CreatedDate,
+                Priority = "中"
+            }));
+
+            var draftOutbounds = await _archiveOutboundRepository.GetDraftRecordsForApplicantToDoAsync(applicantUserId, takeCount);
+            result.AddRange(draftOutbounds.Select(r => new ToDoItem
+            {
+                Id = $"YAO-{r.Id}-DRAFT",
+                Title = $"【资料借出】草稿待提交：{BuildOutboundSummary(r)}",
+                BizType = "YearlyArchiveOutboundApproval",
+                BizId = r.Id,
+                BizNo = r.OutboundNo,
+                Stage = "草稿-待提交",
+                CreatedTime = r.ApplyDate,
+                Priority = "中"
+            }));
+
+            var draftReturns = await _archiveReturnRepository.GetDraftRecordsForApplicantToDoAsync(applicantUserId, takeCount);
+            result.AddRange(draftReturns.Select(r => new ToDoItem
+            {
+                Id = $"YAR-RECORD-{r.Id}-DRAFT",
+                Title = $"【资料归还】草稿待提交：{BuildReturnRecordSummary(r)}",
+                BizType = "YearlyArchiveReturnRecord",
+                BizId = r.Id,
+                BizNo = r.ReturnNo,
+                Stage = "草稿-待提交",
+                CreatedTime = r.RegisteredAt ?? r.ReturnDate,
+                Priority = "中"
+            }));
+
+            return result;
+        }
+
+        private static List<ToDoItem> BuildOverdueReturnItems(IEnumerable<YearlyArchiveOutboundRecord> overdueReturns)
+        {
+            return overdueReturns.Select(r => new ToDoItem
             {
                 Id = $"YAR-RETURN-OVERDUE-{r.Id}",
                 Title = $"【资料归还】已超期未归还：{r.MaterialSummary}",
@@ -141,9 +215,7 @@ namespace DocMgr.Services.YearlyArchive
                 Stage = $"应还日期 {r.ExpectedReturnDate:yyyy-MM-dd}（借出人 {r.ApplicantName}）",
                 CreatedTime = r.ExpectedReturnDate ?? r.CompletedAt ?? r.ApplyDate,
                 Priority = "高"
-            }));
-
-            return result;
+            }).ToList();
         }
 
         private static bool IsArchiveRoomAdmin(User user)

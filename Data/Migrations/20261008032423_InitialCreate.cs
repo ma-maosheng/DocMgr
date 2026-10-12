@@ -361,6 +361,7 @@ namespace DocMgr.Data.Migrations
                     BoxSpecification = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     PlacementMode = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
                     LifecycleStatus = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    LastStorageLocation = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     ArchivedBy = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ArchivedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Remarks = table.Column<string>(type: "nvarchar(max)", nullable: false)
@@ -1332,6 +1333,7 @@ namespace DocMgr.Data.Migrations
                     SourceNetworkOutboundRecordId = table.Column<int>(type: "int", nullable: true),
                     ApplicationType = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ApplicationStatus = table.Column<int>(type: "int", nullable: false),
+                    ApplicantUserId = table.Column<int>(type: "int", nullable: false),
                     ApplicantName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ApplicantDept = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ApplyTime = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -1642,6 +1644,7 @@ namespace DocMgr.Data.Migrations
                     ArchivePurpose = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ProofMaterialNote = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     OtherRequests = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ApplicantUserId = table.Column<int>(type: "int", nullable: false),
                     ApplicantName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ApplicantDept = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ApplicantDate = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -2130,6 +2133,7 @@ namespace DocMgr.Data.Migrations
                     MediumId = table.Column<int>(type: "int", nullable: false),
                     ApplicationId = table.Column<int>(type: "int", nullable: true),
                     TransactionType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    BusinessNo = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     BeforeStatus = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     AfterStatus = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     BeforeLocation = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -2667,7 +2671,8 @@ namespace DocMgr.Data.Migrations
                 name: "IX_HistoryArchiveBoxes_BoxCode",
                 table: "HistoryArchiveBoxes",
                 column: "BoxCode",
-                unique: true);
+                unique: true,
+                filter: "[BoxCode] <> N''");
 
             migrationBuilder.CreateIndex(
                 name: "IX_HistoryArchiveBoxLedgerLinks_HistoryArchiveBoxId_MaterialKind_RecordId",

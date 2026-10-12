@@ -517,6 +517,18 @@ namespace DocMgr.Repositories.YearlyArchive
                 .ToListAsync();
         }
 
+        public Task<List<YearlyArchiveOutboundRecord>> GetDraftRecordsForApplicantToDoAsync(int applicantUserId, int takeCount)
+        {
+            // applicantUserId <= 0：总览查询全部申请人草稿。
+            return _dbContext.YearlyArchiveOutboundRecords
+                .AsNoTracking()
+                .Where(record => record.Status == YearlyArchiveOutboundRecord.Unsubmitted
+                    && (applicantUserId <= 0 || record.ApplicantUserId == applicantUserId))
+                .OrderByDescending(record => record.ApplyDate)
+                .Take(takeCount)
+                .ToListAsync();
+        }
+
         public async Task<List<OpticalDiscMedium>> GetOpticalDiscMediaByElectronicUnitIdForUpdateAsync(int unitId)
         {
             if (unitId <= 0)

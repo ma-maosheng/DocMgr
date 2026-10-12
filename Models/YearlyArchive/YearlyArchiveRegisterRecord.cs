@@ -231,6 +231,11 @@ namespace DocMgr.Models.YearlyArchive
         private string _otherRequests = string.Empty;
 
         /// <summary>
+        /// 申请人用户ID（草稿待办归属）。
+        /// </summary>
+        public int ApplicantUserId { get; set; }
+
+        /// <summary>
         /// 申请人
         /// </summary>
         public string ApplicantName

@@ -317,7 +317,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     : "损坏归还的入柜位置由资料管理员在审批办理时指定。",
             HardDiskMediaReturnDomainValues.RegistrationKindLossRegistration => "挂失登记无需归位档口。",
             _ => CanEditTargetLocation
-                ? "正常归还请由资料管理员指定空白硬盘专用档口，可使用“推荐档口”和“档口快照”。"
+                ? "正常归还请由资料管理员指定空白硬盘专用档口，可使用“推荐档口”和“档口快照”（不必回到借出前原档口）。"
                 : "归还位置由资料管理员在审批办理时指定。"
         };
 
@@ -470,7 +470,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     RebuildFormatConfirmationOptions(forceSelection: true);
                     // 仅资料管理员编辑归还位置时自动推荐；申请侧不预填档口。
                     _preferRecommendedTargetLocationForCurrentKind = CanEditTargetLocation;
-                    RefreshReturnTargetLocationAsync();
+                    // 会话装载中由 LoadEditorApplicationAsync 末尾统一 await，避免与其它 DbContext 查询并发。
+                    if (_isEditorSessionReady)
+                    {
+                        RefreshReturnTargetLocationAsync();
+                    }
+
                     NotifyTargetLocationSelectionChanged();
                     RefreshAbnormalFlowHint();
                     OnPropertyChanged(nameof(RegisterHintText));
@@ -960,6 +965,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     SourceOutboundRecordId = SelectedMedium.SourceOutboundRecordId,
                     ApplicationType = effectiveApplicationType,
                     ApplicationStatus = targetStatus,
+                    ApplicantUserId = _editingApplication.ApplicantUserId,
                     ApplicantName = ApplicantName.Trim(),
                     ApplicantDept = ApplicantDept.Trim(),
                     ApplyTime = ApplyTime,
@@ -1882,7 +1888,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ExpectedReturnDate = preservePersistedValues && _editingApplication?.ExpectedReturnDate != null
                 ? _editingApplication.ExpectedReturnDate
                 : value?.ExpectedReturnDate;
-            RefreshReturnTargetLocationAsync();
+
+            // 会话装载中由 LoadEditorApplicationAsync 末尾统一 await，避免与其它 DbContext 查询并发。
+            if (_isEditorSessionReady)
+            {
+                RefreshReturnTargetLocationAsync();
+            }
         }
 
         private async Task ReloadEditingApplicationFromDatabaseAsync()

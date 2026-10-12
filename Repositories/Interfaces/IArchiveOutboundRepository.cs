@@ -82,6 +82,9 @@ namespace DocMgr.Repositories.Interfaces
         /// <summary>列出资料室尚未办结出库（已提交/已审批/已办结审批）的借出申请，供待办提醒使用。</summary>
         Task<List<YearlyArchiveOutboundRecord>> GetPendingRecordsForToDoAsync(int takeCount);
 
+        /// <summary>列出指定申请人尚未提交的借出草稿，供申请人待办使用。</summary>
+        Task<List<YearlyArchiveOutboundRecord>> GetDraftRecordsForApplicantToDoAsync(int applicantUserId, int takeCount);
+
         /// <summary>按电子立档单元 Id 加载关联的数据光盘（含台账与流转，供出库/归还同步更新）。</summary>
         Task<List<OpticalDiscMedium>> GetOpticalDiscMediaByElectronicUnitIdForUpdateAsync(int unitId);
 

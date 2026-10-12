@@ -16,6 +16,15 @@ public interface IHistoryArchiveDisposalService
         string materialKind,
         int? currentRecordId = null);
 
+    /// <summary>
+    /// 历史存档盒台账查询。
+    /// </summary>
+    /// <param name="materialKind">资料类别编码或显示名；空/全部则三类合并。</param>
+    /// <param name="lifecycleStatus">在库（含离库锁定）/ 已离库；空/全部则不过滤。</param>
+    Task<IReadOnlyList<HistoryArchiveBoxLedgerEntry>> SearchBoxLedgerAsync(
+        string? materialKind,
+        string? lifecycleStatus);
+
     Task<string> GenerateNextDisposalNoAsync();
 
     Task<HistoryArchiveDisposalRecord> CreateDraftAsync(

@@ -9,7 +9,7 @@ using DocMgr.ViewModels.Base;
 namespace DocMgr.ViewModels.Inventory
 {
     /// <summary>
-    /// 库管资料总览：按档案盒 / 电子介质袋 / 历史存档盒查询、下钻与导出。
+    /// 库管资料总览：按档案盒 / 电子介质袋 / 历史存档盒查询、下钻与导出；容器列表支持分页/全局浏览。
     /// </summary>
     public sealed class StockContainerOverviewViewModel : ViewModelBase
     {
@@ -26,11 +26,10 @@ namespace DocMgr.ViewModels.Inventory
         private bool _keywordCaseSensitive;
         private bool _includeElectronicEntryNames;
         private string _storageLocationKeyword = string.Empty;
-        private string _selectedLifecycleFilter = string.Empty;
+        private string _selectedLifecycleFilter = StockContainerLifecycleDisplay.FilterActive;
         private bool _includeYearlyBox = true;
         private bool _includeElectronicBag = true;
         private bool _includeHistoryBox = true;
-        private bool _includeInactive;
         private bool _exportIncludeContents = true;
         private DateTime? _archivedFrom;
         private DateTime? _archivedTo;
@@ -38,6 +37,10 @@ namespace DocMgr.ViewModels.Inventory
         private string _summaryText = "共 0 个容器";
         private string _contentSummaryText = "选择容器后显示内容明细";
         private readonly List<StockContainerOverviewRow> _sourceRows = new();
+        private bool _isGlobalBrowse;
+        private bool _isSwitchingBrowseMode;
+        private int _pageSize = 50;
+        private int _currentPage = 1;
 
         public StockContainerOverviewViewModel(
             IStockContainerOverviewService overviewService,
@@ -58,6 +61,10 @@ namespace DocMgr.ViewModels.Inventory
             ViewElectronicEntriesCommand = new RelayCommand(
                 async _ => await ViewElectronicEntriesAsync(),
                 _ => !IsBusy && SelectedContentItem is { IsElectronicMedia: true });
+            FirstPageCommand = new RelayCommand(_ => GoToPage(1), _ => CanGoPrevious);
+            PreviousPageCommand = new RelayCommand(_ => GoToPage(CurrentPage - 1), _ => CanGoPrevious);
+            NextPageCommand = new RelayCommand(_ => GoToPage(CurrentPage + 1), _ => CanGoNext);
+            LastPageCommand = new RelayCommand(_ => GoToPage(TotalPages), _ => CanGoNext);
         }
 
         public event Action<int>? OpenFilingLedgerRequested;
@@ -129,16 +136,36 @@ namespace DocMgr.ViewModels.Inventory
 
         public ObservableCollection<FilterOption> LifecycleFilterOptions { get; } =
         [
-            new FilterOption { Label = "全部状态", Value = string.Empty },
-            new FilterOption { Label = "在柜在用", Value = StockContainerLifecycleDisplay.FilterActive },
-            new FilterOption { Label = "含借出内容", Value = StockContainerLifecycleDisplay.FilterHasBorrowed },
-            new FilterOption { Label = "已停用/已离库", Value = StockContainerLifecycleDisplay.FilterInactive }
+            new FilterOption
+            {
+                Label = "在柜容器（含借出）",
+                Value = StockContainerLifecycleDisplay.FilterActive
+            },
+            new FilterOption
+            {
+                Label = "仅有借出内容",
+                Value = StockContainerLifecycleDisplay.FilterHasBorrowed
+            },
+            new FilterOption
+            {
+                Label = "已退库（销号/离库等）",
+                Value = StockContainerLifecycleDisplay.FilterInactive
+            },
+            new FilterOption
+            {
+                Label = "全部（含已退库）",
+                Value = StockContainerLifecycleDisplay.FilterAll
+            }
         ];
 
         public string SelectedLifecycleFilter
         {
             get => _selectedLifecycleFilter;
-            set => SetProperty(ref _selectedLifecycleFilter, value ?? string.Empty);
+            set => SetProperty(
+                ref _selectedLifecycleFilter,
+                string.IsNullOrWhiteSpace(value)
+                    ? StockContainerLifecycleDisplay.FilterActive
+                    : value.Trim());
         }
 
         public bool IncludeYearlyBox
@@ -157,12 +184,6 @@ namespace DocMgr.ViewModels.Inventory
         {
             get => _includeHistoryBox;
             set => SetProperty(ref _includeHistoryBox, value);
-        }
-
-        public bool IncludeInactive
-        {
-            get => _includeInactive;
-            set => SetProperty(ref _includeInactive, value);
         }
 
         public bool ExportIncludeContents
@@ -186,6 +207,79 @@ namespace DocMgr.ViewModels.Inventory
         public ObservableCollection<StockContainerOverviewRow> ContainerRows { get; } = new();
 
         public ObservableCollection<StockContainerContentItem> ContentItems { get; } = new();
+
+        public IReadOnlyList<int> PageSizeOptions { get; } = new[] { 50, 100, 200, 500 };
+
+        /// <summary>分页浏览：容器列表按页展示。</summary>
+        public bool IsPagedBrowse
+        {
+            get => !_isGlobalBrowse;
+            set
+            {
+                if (value)
+                {
+                    SwitchBrowseMode(isGlobal: false);
+                }
+            }
+        }
+
+        /// <summary>全局浏览：一次展示全部查询结果，不分页。</summary>
+        public bool IsGlobalBrowse
+        {
+            get => _isGlobalBrowse;
+            set
+            {
+                if (value)
+                {
+                    SwitchBrowseMode(isGlobal: true);
+                }
+            }
+        }
+
+        public int PageSize
+        {
+            get => _pageSize;
+            set
+            {
+                if (value <= 0 || _pageSize == value)
+                {
+                    return;
+                }
+
+                _pageSize = value;
+                OnPropertyChanged();
+                CurrentPage = 1;
+                RefreshDisplayedRows();
+            }
+        }
+
+        public int CurrentPage
+        {
+            get => _currentPage;
+            private set
+            {
+                if (SetProperty(ref _currentPage, value))
+                {
+                    NotifyPaginationChanged();
+                }
+            }
+        }
+
+        public int TotalCount => _sourceRows.Count;
+
+        public int TotalPages => TotalCount == 0 ? 1 : (int)Math.Ceiling(TotalCount / (double)PageSize);
+
+        public string PageInfo => TotalCount == 0
+            ? "暂无记录"
+            : IsGlobalBrowse
+                ? $"共 {TotalCount} 条"
+                : $"第 {CurrentPage} / {TotalPages} 页，本页 {ContainerRows.Count} 条，共 {TotalCount} 条";
+
+        public bool CanGoPrevious => IsPagedBrowse && CurrentPage > 1;
+
+        public bool CanGoNext => IsPagedBrowse && CurrentPage < TotalPages;
+
+        public bool ShowPaginationBar => IsPagedBrowse && _sourceRows.Count > 0;
 
         public StockContainerOverviewRow? SelectedRow
         {
@@ -239,6 +333,14 @@ namespace DocMgr.ViewModels.Inventory
 
         public ICommand ViewElectronicEntriesCommand { get; }
 
+        public ICommand FirstPageCommand { get; }
+
+        public ICommand PreviousPageCommand { get; }
+
+        public ICommand NextPageCommand { get; }
+
+        public ICommand LastPageCommand { get; }
+
         public async Task InitializeAsync()
         {
             if (_isInitialized)
@@ -291,16 +393,11 @@ namespace DocMgr.ViewModels.Inventory
 
                 _sourceRows.Clear();
                 _sourceRows.AddRange(rows);
-
-                ContainerRows.Clear();
-                foreach (var row in rows)
-                {
-                    ContainerRows.Add(row);
-                }
+                _currentPage = 1;
+                OnPropertyChanged(nameof(CurrentPage));
 
                 SummaryText = BuildSummaryText(rows);
-                SelectedRow = null;
-                ContentItems.Clear();
+                RefreshDisplayedRows(clearSelection: true);
                 ContentSummaryText = rows.Count == 0
                     ? "无匹配容器"
                     : "选择容器后显示内容明细";
@@ -314,6 +411,85 @@ namespace DocMgr.ViewModels.Inventory
                 IsBusy = false;
                 BusyStatus = string.Empty;
             }
+        }
+
+        private void SwitchBrowseMode(bool isGlobal)
+        {
+            if (_isSwitchingBrowseMode || _isGlobalBrowse == isGlobal)
+            {
+                return;
+            }
+
+            _isSwitchingBrowseMode = true;
+            try
+            {
+                _isGlobalBrowse = isGlobal;
+                OnPropertyChanged(nameof(IsGlobalBrowse));
+                OnPropertyChanged(nameof(IsPagedBrowse));
+                CurrentPage = 1;
+                RefreshDisplayedRows();
+            }
+            finally
+            {
+                _isSwitchingBrowseMode = false;
+            }
+        }
+
+        private void RefreshDisplayedRows(bool clearSelection = false)
+        {
+            string? selectedKind = clearSelection ? null : SelectedRow?.ContainerKind;
+            int selectedId = clearSelection ? 0 : SelectedRow?.ContainerId ?? 0;
+
+            IEnumerable<StockContainerOverviewRow> displayQuery = _sourceRows;
+            if (IsPagedBrowse && _sourceRows.Count > 0)
+            {
+                int page = Math.Clamp(CurrentPage, 1, TotalPages);
+                if (page != CurrentPage)
+                {
+                    _currentPage = page;
+                    OnPropertyChanged(nameof(CurrentPage));
+                }
+
+                displayQuery = _sourceRows
+                    .Skip((page - 1) * PageSize)
+                    .Take(PageSize);
+            }
+
+            ContainerRows.Clear();
+            foreach (var row in displayQuery)
+            {
+                ContainerRows.Add(row);
+            }
+
+            if (clearSelection || selectedId <= 0 || string.IsNullOrWhiteSpace(selectedKind))
+            {
+                SelectedRow = null;
+            }
+            else
+            {
+                SelectedRow = ContainerRows.FirstOrDefault(row =>
+                    row.ContainerId == selectedId
+                    && string.Equals(row.ContainerKind, selectedKind, StringComparison.Ordinal));
+            }
+
+            NotifyPaginationChanged();
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void GoToPage(int page)
+        {
+            CurrentPage = Math.Clamp(page, 1, TotalPages);
+            RefreshDisplayedRows();
+        }
+
+        private void NotifyPaginationChanged()
+        {
+            OnPropertyChanged(nameof(TotalCount));
+            OnPropertyChanged(nameof(TotalPages));
+            OnPropertyChanged(nameof(PageInfo));
+            OnPropertyChanged(nameof(CanGoPrevious));
+            OnPropertyChanged(nameof(CanGoNext));
+            OnPropertyChanged(nameof(ShowPaginationBar));
         }
 
         private async Task LoadContentsAsync(StockContainerOverviewRow? row)
@@ -493,11 +669,10 @@ namespace DocMgr.ViewModels.Inventory
             KeywordCaseSensitive = false;
             IncludeElectronicEntryNames = false;
             StorageLocationKeyword = string.Empty;
-            SelectedLifecycleFilter = string.Empty;
+            SelectedLifecycleFilter = StockContainerLifecycleDisplay.FilterActive;
             IncludeYearlyBox = true;
             IncludeElectronicBag = true;
             IncludeHistoryBox = true;
-            IncludeInactive = false;
             ArchivedFrom = null;
             ArchivedTo = null;
         }
@@ -520,6 +695,13 @@ namespace DocMgr.ViewModels.Inventory
                 kinds.Add(StockContainerKind.HistoryBox);
             }
 
+            string lifecycleFilter = string.IsNullOrWhiteSpace(SelectedLifecycleFilter)
+                ? StockContainerLifecycleDisplay.FilterActive
+                : SelectedLifecycleFilter.Trim();
+            bool includeInactive =
+                string.Equals(lifecycleFilter, StockContainerLifecycleDisplay.FilterInactive, StringComparison.Ordinal)
+                || string.Equals(lifecycleFilter, StockContainerLifecycleDisplay.FilterAll, StringComparison.Ordinal);
+
             return new StockContainerSearchCriteria
             {
                 ContainerKinds = kinds,
@@ -530,12 +712,8 @@ namespace DocMgr.ViewModels.Inventory
                 KeywordCaseSensitive = KeywordCaseSensitive,
                 IncludeElectronicEntryNames = IncludeElectronicEntryNames,
                 StorageLocationKeyword = StorageLocationKeyword,
-                LifecycleFilter = SelectedLifecycleFilter,
-                IncludeInactive = IncludeInactive
-                    || string.Equals(
-                        SelectedLifecycleFilter,
-                        StockContainerLifecycleDisplay.FilterInactive,
-                        StringComparison.Ordinal),
+                LifecycleFilter = lifecycleFilter,
+                IncludeInactive = includeInactive,
                 ArchivedFrom = ArchivedFrom,
                 ArchivedTo = ArchivedTo
             };

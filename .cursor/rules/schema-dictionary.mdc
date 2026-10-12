@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-10-10T01:59:35Z
+> 生成时间（UTC）：2026-10-12T08:42:43Z
 
 ## 表索引
 
@@ -452,6 +452,7 @@ alwaysApply: true
 | 来源出网申请单ID | `SourceNetworkOutboundRecordId` | `Int32?` | 否 |
 | 申请类型 | `ApplicationType` | `String` | 否 |
 | 业务状态 | `ApplicationStatus` | `String` | 否 |
+| 申请人用户ID | `ApplicantUserId` | `Int32` | 否 |
 | 申请人 | `ApplicantName` | `String` | 否 |
 | 申请部门 | `ApplicantDept` | `String` | 否 |
 | 申请时间 | `ApplyTime` | `DateTime` | 否 |
@@ -496,6 +497,7 @@ alwaysApply: true
 | ID | `Id` | `Int32` | 否 |
 | 介质ID | `MediumId` | `Int32` | 否 |
 | 申请单ID | `ApplicationId` | `Int32?` | 否 |
+| 业务单号 | `BusinessNo` | `String` | 否 |
 | 流转类型 | `TransactionType` | `String` | 否 |
 | 流转前状态 | `BeforeStatus` | `String` | 否 |
 | 流转后状态 | `AfterStatus` | `String` | 否 |
@@ -554,6 +556,7 @@ alwaysApply: true
 | 档案盒规格 | `BoxSpecification` | `String` | 否 |
 | 放置方式 | `PlacementMode` | `String` | 否 |
 | 生命周期状态 | `LifecycleStatus` | `String` | 否 |
+| 最后存储位置 | `LastStorageLocation` | `String` | 否 |
 | 归档人 | `ArchivedBy` | `String` | 否 |
 | 归档日期 | `ArchivedDate` | `DateTime` | 否 |
 | 备注 | `Remarks` | `String` | 否 |
@@ -1573,6 +1576,7 @@ alwaysApply: true
 | 库管模式 | `ArchivePurpose` | `String` | 否 |
 | 证明材料备注 | `ProofMaterialNote` | `String` | 否 |
 | 其他要求 | `OtherRequests` | `String` | 否 |
+| 申请人用户ID | `ApplicantUserId` | `Int32` | 否 |
 | 申请人 | `ApplicantName` | `String` | 否 |
 | 申请部门 | `ApplicantDept` | `String` | 否 |
 | 申请日期 | `ApplicantDate` | `DateTime` | 否 |

@@ -91,14 +91,21 @@ public partial class HardDiskMediaRepository : IHardDiskMediaRepository
                 .ThenInclude(medium => medium!.Ledger)
             .Where(item => item.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)
             .Where(item => item.ApplicationType == HardDiskMediaApplication.TypeOutboundTemporary ||
-                           item.ApplicationType == HardDiskMediaApplication.TypeOutboundLongTerm)
+                           item.ApplicationType == HardDiskMediaApplication.TypeOutboundLongTerm ||
+                           item.ApplicationType == HardDiskMediaApplication.TypeOutboundPermanent)
             .Where(item => !closedOutboundApplicationIds.Contains(item.Id))
             .Where(item => item.Medium != null &&
                            !item.Medium.IsDeleted &&
                            item.Medium.Ledger != null &&
-                           item.Medium.Ledger.NeedReturn &&
-                           (item.Medium.Ledger.MediaStatus == HardDiskMedium.StatusOutTemporary ||
-                            item.Medium.Ledger.MediaStatus == HardDiskMedium.StatusOutLongTerm))
+                           (
+                               // 临时/长期：仍要求归还且台账状态匹配
+                               (item.Medium.Ledger.NeedReturn &&
+                                (item.Medium.Ledger.MediaStatus == HardDiskMedium.StatusOutTemporary ||
+                                 item.Medium.Ledger.MediaStatus == HardDiskMedium.StatusOutLongTerm))
+                               // 永久：默认 NeedReturn=false，按状态识别可事后收回
+                               || (item.ApplicationType == HardDiskMediaApplication.TypeOutboundPermanent &&
+                                   item.Medium.Ledger.MediaStatus == HardDiskMedium.StatusOutPermanent)
+                           ))
             .OrderByDescending(item => item.ExecutedTime ?? item.UpdatedTime)
             .ThenByDescending(item => item.Id)
             .ToListAsync();
@@ -184,7 +191,8 @@ public partial class HardDiskMediaRepository : IHardDiskMediaRepository
                 .ThenInclude(medium => medium!.Ledger)
             .Where(item => item.ApplicationStatus == HardDiskMediaApplication.StatusCompleted)
             .Where(item => item.ApplicationType == HardDiskMediaApplication.TypeOutboundTemporary ||
-                           item.ApplicationType == HardDiskMediaApplication.TypeOutboundLongTerm)
+                           item.ApplicationType == HardDiskMediaApplication.TypeOutboundLongTerm ||
+                           item.ApplicationType == HardDiskMediaApplication.TypeOutboundPermanent)
             .Where(item => item.Medium != null &&
                            !item.Medium.IsDeleted &&
                            item.Medium.DiskCode == normalizedDiskCode &&
@@ -464,6 +472,23 @@ public partial class HardDiskMediaRepository : IHardDiskMediaRepository
             .ToListAsync();
     }
 
+    public Task<List<HardDiskMediaApplication>> GetDraftOutboundApplicationsForApplicantToDoAsync(int applicantUserId, int takeCount)
+    {
+        // applicantUserId <= 0：总览查询全部申请人草稿。
+        return _dbContext.HardDiskMediaApplications
+            .AsNoTracking()
+            .Include(item => item.Medium)
+            .Where(item => item.ApplicationStatus == HardDiskMediaApplication.StatusDraft
+                && (applicantUserId <= 0 || item.ApplicantUserId == applicantUserId))
+            .Where(item => item.ApplicationType != HardDiskMediaApplication.TypeReturnBlankRegistration &&
+                           item.ApplicationType != HardDiskMediaApplication.TypeReturnDataRegistration &&
+                           item.ApplicationType != HardDiskMediaApplication.TypeReturnDamagedRegistration &&
+                           item.ApplicationType != HardDiskMediaApplication.TypeLossRegistration)
+            .OrderByDescending(item => item.ApplyTime)
+            .Take(takeCount)
+            .ToListAsync();
+    }
+
     public Task<List<HardDiskMediaApplication>> GetPendingReturnRegistrationsForToDoAsync(int takeCount)
     {
         return _dbContext.HardDiskMediaApplications
@@ -472,6 +497,23 @@ public partial class HardDiskMediaRepository : IHardDiskMediaRepository
             .Where(item => item.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted
                 || item.ApplicationStatus == HardDiskMediaApplication.StatusApproved
                 || item.ApplicationStatus == HardDiskMediaApplication.StatusSignedUploaded)
+            .Where(item => item.ApplicationType == HardDiskMediaApplication.TypeReturnBlankRegistration ||
+                           item.ApplicationType == HardDiskMediaApplication.TypeReturnDataRegistration ||
+                           item.ApplicationType == HardDiskMediaApplication.TypeReturnDamagedRegistration ||
+                           item.ApplicationType == HardDiskMediaApplication.TypeLossRegistration)
+            .OrderByDescending(item => item.ApplyTime)
+            .Take(takeCount)
+            .ToListAsync();
+    }
+
+    public Task<List<HardDiskMediaApplication>> GetDraftReturnRegistrationsForApplicantToDoAsync(int applicantUserId, int takeCount)
+    {
+        // applicantUserId <= 0：总览查询全部登记人草稿。
+        return _dbContext.HardDiskMediaApplications
+            .AsNoTracking()
+            .Include(item => item.Medium)
+            .Where(item => item.ApplicationStatus == HardDiskMediaApplication.StatusDraft
+                && (applicantUserId <= 0 || item.ApplicantUserId == applicantUserId))
             .Where(item => item.ApplicationType == HardDiskMediaApplication.TypeReturnBlankRegistration ||
                            item.ApplicationType == HardDiskMediaApplication.TypeReturnDataRegistration ||
                            item.ApplicationType == HardDiskMediaApplication.TypeReturnDamagedRegistration ||

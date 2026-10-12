@@ -591,6 +591,7 @@ namespace DocMgr.Views
                 TopoMapPage => BtnHistMap,
                 AerialPhotoPage => BtnHistAerial,
                 OtherMapPage => BtnOtherData,
+                HistoryArchiveBoxLedgerPage => BtnHistBoxLedger,
                 HistoryArchiveDisposalPage => BtnHistDisposal,
                 CabinetLayoutPage => BtnCabRegister,
                 CabinetSearchPage => BtnCabSearch,
@@ -613,6 +614,7 @@ namespace DocMgr.Views
                 BusinessLogicSettingsPage => BtnBusinessLogicSettings,
                 UserPreferencePage => BtnUserPreference,
                 DbOperationLogPage => BtnDbOperationLog,
+                ToDoOverviewPage => BtnToDoOverview,
                 _ => null
             };
         }
@@ -743,7 +745,8 @@ namespace DocMgr.Views
                 TopoMapPage => "历史存档（地形图图件）",
                 OtherMapPage => "历史存档（其他资料）",
                 AerialPhotoPage => "历史存档（航摄胶片、像片）",
-                HistoryArchiveDisposalPage => "历史存档（资料离库处置）",
+                HistoryArchiveBoxLedgerPage => "历史存档（资料台账与资料处置·台账）",
+                HistoryArchiveDisposalPage => "历史存档（资料台账与资料处置·处置）",
                 HardDiskMediumLedgerPage => "库房与介质（硬盘·初始登记）",
                 OpticalDiscMediaPage => "库房与介质（光盘·概览）",
                 OpticalDiscMediumLedgerPage => "库房与介质（光盘·光盘台账）",
@@ -765,6 +768,7 @@ namespace DocMgr.Views
                 BusinessLogicSettingsPage => "系统设置（逾期设置）",
                 DbOperationLogPage => "系统设置（数据库操作日志）",
                 UserSessionMonitorPage => "系统设置（在线用户与登录记录）",
+                ToDoOverviewPage => "系统设置（待办事项总览）",
                 AdvancedDataPage => "高级数据管理",
                 _ => "首页"
             };
@@ -774,11 +778,13 @@ namespace DocMgr.Views
         {
             if (item == null) return Task.CompletedTask;
 
+            bool isApplicantDraft = IsApplicantDraftToDo(item);
+
             if (item.BizType == "YearlyArchiveRegister")
             {
                 using var scope = _scopeFactory.CreateScope();
                 var reg = scope.ServiceProvider.GetRequiredService<IArchiveRegisterService>();
-                var mode = reg.IsArchiveAdminUser(CurrentUser)
+                var mode = !isApplicantDraft && reg.IsArchiveAdminUser(CurrentUser)
                     ? ArchiveRegisterWorkspaceMode.Approval
                     : ArchiveRegisterWorkspaceMode.Application;
                 NavigateToArchiveRegisterPage(item.BizId > 0 ? item.BizId : null, mode);
@@ -794,13 +800,22 @@ namespace DocMgr.Views
 
             if (item.BizType == "HardDiskMediaApplication")
             {
+                if (isApplicantDraft)
+                {
+                    TxtPageTitle.Text = "库房与介质（硬盘·出库申请）";
+                    MainContentFrame.Navigate(new HardDiskMediaOutboundApplicationPage());
+                    return Task.CompletedTask;
+                }
+
                 NavigateToHardDiskApprovalPage(item.BizId);
                 return Task.CompletedTask;
             }
 
             if (item.BizType == "HardDiskMediaReturnRegistration")
             {
-                NavigateToHardDiskReturnPage(HardDiskReturnWorkspaceMode.Approval);
+                NavigateToHardDiskReturnPage(isApplicantDraft
+                    ? HardDiskReturnWorkspaceMode.Application
+                    : HardDiskReturnWorkspaceMode.Approval);
                 return Task.CompletedTask;
             }
 
@@ -820,7 +835,7 @@ namespace DocMgr.Views
 
             if (item.BizType == "HistoryArchiveDisposal")
             {
-                TxtPageTitle.Text = "历史存档（资料离库处置）";
+                TxtPageTitle.Text = "历史存档（资料台账与资料处置·处置）";
                 MainContentFrame.Navigate(new HistoryArchiveDisposalPage());
                 return Task.CompletedTask;
             }
@@ -861,6 +876,12 @@ namespace DocMgr.Views
             if (item.BizType == "YearlyArchiveOutboundApproval"
                 || item.BizType == "YearlyArchiveOutboundHandover")
             {
+                if (isApplicantDraft)
+                {
+                    NavigateToArchiveOutboundApplyPage(item.BizId > 0 ? item.BizId : null);
+                    return Task.CompletedTask;
+                }
+
                 TxtPageTitle.Text = "年度资料（实物流转·借出审批）";
                 MainContentFrame.Navigate(new ArchiveOutboundApprovalPage(item.BizId));
                 return Task.CompletedTask;
@@ -868,6 +889,12 @@ namespace DocMgr.Views
 
             if (item.BizType == "NetworkInboundApproval" || item.BizType == "NetworkInboundHandover")
             {
+                if (isApplicantDraft)
+                {
+                    NavigateToNetworkInboundApplyPage(item.BizId);
+                    return Task.CompletedTask;
+                }
+
                 TxtPageTitle.Text = "年度资料（出入网·入网审批）";
                 MainContentFrame.Navigate(new NetworkInboundApprovalPage(item.BizId));
                 return Task.CompletedTask;
@@ -875,6 +902,13 @@ namespace DocMgr.Views
 
             if (item.BizType == "NetworkOutboundApproval" || item.BizType == "NetworkOutboundHandover")
             {
+                if (isApplicantDraft)
+                {
+                    TxtPageTitle.Text = "年度资料（出入网·出网申请）";
+                    MainContentFrame.Navigate(new NetworkOutboundApplicationPage(item.BizId));
+                    return Task.CompletedTask;
+                }
+
                 TxtPageTitle.Text = "年度资料（出入网·出网审批）";
                 MainContentFrame.Navigate(new NetworkOutboundApprovalPage(item.BizId));
                 return Task.CompletedTask;
@@ -894,12 +928,27 @@ namespace DocMgr.Views
 
             if (item.BizType == "YearlyArchiveReturnRecord")
             {
-                NavigateToArchiveReturnPage(ArchiveReturnWorkspaceMode.Approval);
+                NavigateToArchiveReturnPage(isApplicantDraft
+                    ? ArchiveReturnWorkspaceMode.Application
+                    : ArchiveReturnWorkspaceMode.Approval);
                 return Task.CompletedTask;
             }
 
             MessageBox.Show($"暂不支持该待办类型跳转：{item.BizType}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return Task.CompletedTask;
+        }
+
+        private static bool IsApplicantDraftToDo(ToDoItem item)
+        {
+            if (!string.IsNullOrWhiteSpace(item.Stage)
+                && string.Equals(item.Stage.Trim(), "草稿-待提交", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            string id = item.Id?.Trim() ?? string.Empty;
+            return id.EndsWith("-DRAFT", StringComparison.Ordinal)
+                   || id.EndsWith("-RETURN-DRAFT", StringComparison.Ordinal);
         }
 
         public async Task AcknowledgeToDosAsync(IEnumerable<ToDoItem> items)
@@ -939,6 +988,8 @@ namespace DocMgr.Views
             SetNavButton(BtnBusinessLogicSettings, true);
             SetNavButton(BtnUserPreference, true);
             SetNavButton(BtnDbOperationLog, true);
+
+            SetNavButton(BtnToDoOverview, true);
 
             // 在线会话含终端与登录履历，仅系统管理员与资料管理员可见
             bool canViewUserSessions = ArchiveRegisterBusinessRules.IsSystemAdministrator(CurrentUser)
@@ -983,6 +1034,8 @@ namespace DocMgr.Views
             SetNavButton(BtnHistMap, true);
             SetNavButton(BtnHistAerial, true);
             SetNavButton(BtnOtherData, true);
+            SetNavButton(BtnHistBoxLedger, true);
+            SetNavButton(BtnHistDisposal, true);
 
             SetNavButton(BtnCabRegister, true);
             SetNavButton(BtnCabSearch, true);
@@ -1076,9 +1129,15 @@ namespace DocMgr.Views
             MainContentFrame.Navigate(new CabinetSearchPage());
         }
 
+        private void BtnHistBoxLedger_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "历史存档（资料台账与资料处置·台账）";
+            MainContentFrame.Navigate(new HistoryArchiveBoxLedgerPage());
+        }
+
         private void BtnHistDisposal_Click(object sender, RoutedEventArgs e)
         {
-            TxtPageTitle.Text = "历史存档（资料离库处置）";
+            TxtPageTitle.Text = "历史存档（资料台账与资料处置·处置）";
             MainContentFrame.Navigate(new HistoryArchiveDisposalPage());
         }
 
@@ -1569,6 +1628,12 @@ namespace DocMgr.Views
         {
             TxtPageTitle.Text = "系统设置（在线用户与登录记录）";
             MainContentFrame.Navigate(new UserSessionMonitorPage());
+        }
+
+        private void BtnToDoOverview_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "系统设置（待办事项总览）";
+            MainContentFrame.Navigate(new ToDoOverviewPage());
         }
 
         private void BtnHelpDoc_Click(object sender, RoutedEventArgs e)

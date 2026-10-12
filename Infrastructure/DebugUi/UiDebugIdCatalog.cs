@@ -150,7 +150,8 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<TopoMapPage>("HA-TOPO", "地形图图件");
             Add<AerialPhotoPage>("HA-AER", "航摄胶片、像片");
             Add<OtherMapPage>("HA-OTH", "其他资料");
-            Add<HistoryArchiveDisposalPage>("HA-DSP", "资料离库处置");
+            Add<HistoryArchiveBoxLedgerPage>("HA-BOX", "资料台账与资料处置·台账");
+            Add<HistoryArchiveDisposalPage>("HA-DSP", "资料台账与资料处置·处置");
             Add<TopoMapEditDialog>("HA-TOPO-ED", "地形图图件编辑");
             Add<AerialPhotoEditDialog>("HA-AER-ED", "航摄胶片、像片编辑");
             Add<OtherMapEditDialog>("HA-OTH-ED", "其他资料编辑");

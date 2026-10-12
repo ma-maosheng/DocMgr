@@ -350,6 +350,7 @@ namespace DocMgr.Services.YearlyArchive
 
             if (HardDiskLedgerSyncSupport.HasLedgerMaterialChange(before, ledger))
             {
+                // 开柜交互式/批量迁档无独立业务单；业务单号留空，相关批次仍记硬盘编号便于对照。
                 _filingRepository.AddHardDiskMediaTransaction(
                     HardDiskLedgerSyncSupport.BuildSyncTransaction(
                         medium,
@@ -358,8 +359,9 @@ namespace DocMgr.Services.YearlyArchive
                         operatedAt,
                         remark,
                         description,
-                        medium.DiskCode.Trim(),
-                        medium.DiskCode.Trim()));
+                        businessNo: string.Empty,
+                        relatedBatch: medium.DiskCode.Trim(),
+                        relatedArchiveTitle: medium.DiskCode.Trim()));
             }
         }
 

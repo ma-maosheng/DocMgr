@@ -817,8 +817,9 @@ namespace DocMgr.Services.YearlyArchive
                     operatedAt,
                     remark,
                     "资料迁档：空白硬盘转为数据盘并同步存放位置",
-                    relatedBatch,
-                    relatedArchiveTitle));
+                    businessNo: relatedBatch,
+                    relatedBatch: relatedBatch,
+                    relatedArchiveTitle: relatedArchiveTitle));
         }
 
         private async Task<ArchiveRelocationPreview> BuildElectronicMoveToBlankOpticalDiscPreviewAsync(

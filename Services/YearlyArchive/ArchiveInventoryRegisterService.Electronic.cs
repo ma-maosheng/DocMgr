@@ -160,6 +160,7 @@ public sealed partial class ArchiveInventoryRegisterService
             MediumId = medium.Id,
             ApplicationId = null,
             TransactionType = ArchiveInventoryRegisterDomainValues.ResolveHardDiskTransactionType(record.RegisterKind),
+            BusinessNo = record.RegisterNo,
             BeforeStatus = beforeStatus,
             AfterStatus = afterStatus,
             BeforeLocation = beforeLocation,

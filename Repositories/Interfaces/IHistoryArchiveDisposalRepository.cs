@@ -20,6 +20,9 @@ public interface IHistoryArchiveDisposalRepository
     /// <summary>全部在库历史档案盒（无跟踪），供处置候选构建。</summary>
     Task<List<HistoryArchiveBox>> GetInStockHistoryArchiveBoxesAsync();
 
+    /// <summary>全部历史档案盒（无跟踪），供盒台账按生命周期查询。</summary>
+    Task<List<HistoryArchiveBox>> GetAllHistoryArchiveBoxesAsync();
+
     Task<List<TopoMap>> GetTopoMapsAsync();
 
     Task<List<AerialPhoto>> GetAerialPhotosAsync();

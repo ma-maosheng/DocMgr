@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -35,15 +36,40 @@ namespace DocMgr.Services.Shared
                 }
             }
 
-            var merged = all
+            return MergeAndTake(all, topN);
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<ToDoItem>> GetOverviewToDosAsync(User currentUser, int topN = 500)
+        {
+            if (currentUser == null)
+            {
+                return new List<ToDoItem>();
+            }
+
+            int takePerProvider = Math.Max(50, topN);
+            var all = new List<ToDoItem>();
+
+            foreach (var provider in _providers)
+            {
+                var items = await provider.GetOverviewToDosAsync(takePerProvider);
+                if (items != null && items.Count > 0)
+                {
+                    all.AddRange(items);
+                }
+            }
+
+            return MergeAndTake(all, topN);
+        }
+
+        private static List<ToDoItem> MergeAndTake(List<ToDoItem> all, int topN)
+        {
+            return all
                 .GroupBy(x => x.Id)
                 .Select(g => g.First())
                 .OrderByDescending(x => x.Priority == "高")
                 .ThenByDescending(x => x.CreatedTime)
-                .ToList();
-
-            return merged
-                .Take(topN)
+                .Take(Math.Max(1, topN))
                 .ToList();
         }
 

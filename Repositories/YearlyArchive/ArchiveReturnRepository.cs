@@ -204,6 +204,19 @@ namespace DocMgr.Repositories.YearlyArchive
                 .ToListAsync();
         }
 
+        public Task<List<YearlyArchiveReturnRecord>> GetDraftRecordsForApplicantToDoAsync(int registeredByUserId, int take)
+        {
+            // registeredByUserId <= 0：总览查询全部登记人草稿。
+            return _dbContext.YearlyArchiveReturnRecords
+                .AsNoTracking()
+                .Include(record => record.Items)
+                .Where(record => record.Status == YearlyArchiveReturnRecord.Unsubmitted
+                    && (registeredByUserId <= 0 || record.RegisteredByUserId == registeredByUserId))
+                .OrderByDescending(record => record.RegisteredAt ?? record.ReturnDate)
+                .Take(take)
+                .ToListAsync();
+        }
+
         public Task<List<SystemAttachment>> GetAttachmentsByBusinessIdAsync(int businessId)
         {
             return _dbContext.SystemAttachments

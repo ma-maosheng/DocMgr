@@ -290,6 +290,7 @@ namespace DocMgr.Services.HardDiskMedia
         {
             ArgumentNullException.ThrowIfNull(source);
 
+            string borrowType = HardDiskMediaOutboundReturnSupport.ResolveBorrowTypeText(null, source.CurrentStatus);
             return new HardDiskMediaReturnCandidate
             {
                 MediumId = source.MediumId,
@@ -306,6 +307,11 @@ namespace DocMgr.Services.HardDiskMedia
                 BorrowedLocation = source.BorrowedLocation,
                 OriginalLocation = source.OriginalLocation,
                 CurrentStatus = source.CurrentStatus,
+                BorrowType = borrowType,
+                IsPermanentOutbound = HardDiskMediaOutboundReturnSupport.IsPermanentOutboundBorrow(
+                    null,
+                    source.CurrentStatus,
+                    borrowType),
                 ExpectedReturnDate = source.ExpectedReturnDate
             };
         }
@@ -316,6 +322,10 @@ namespace DocMgr.Services.HardDiskMedia
             ArgumentNullException.ThrowIfNull(application.Medium);
             ArgumentNullException.ThrowIfNull(application.Medium.Ledger);
 
+            string mediaStatus = application.Medium.Ledger.MediaStatus;
+            string borrowType = HardDiskMediaOutboundReturnSupport.ResolveBorrowTypeText(
+                application.ApplicationType,
+                mediaStatus);
             return new HardDiskMediaReturnCandidate
             {
                 MediumId = application.MediumId,
@@ -330,7 +340,12 @@ namespace DocMgr.Services.HardDiskMedia
                 InterfaceType = application.Medium.InterfaceType,
                 BorrowedLocation = application.Medium.Ledger.StorageLocation,
                 OriginalLocation = application.CurrentLocation,
-                CurrentStatus = application.Medium.Ledger.MediaStatus,
+                CurrentStatus = mediaStatus,
+                BorrowType = borrowType,
+                IsPermanentOutbound = HardDiskMediaOutboundReturnSupport.IsPermanentOutboundBorrow(
+                    application.ApplicationType,
+                    mediaStatus,
+                    borrowType),
                 ExpectedReturnDate = application.ExpectedReturnDate
             };
         }
@@ -340,6 +355,7 @@ namespace DocMgr.Services.HardDiskMedia
         {
             ArgumentNullException.ThrowIfNull(source);
 
+            string borrowType = HardDiskMediaOutboundReturnSupport.ResolveBorrowTypeText(null, source.CurrentStatus);
             return new HardDiskMediaReturnCandidate
             {
                 MediumId = source.MediumId,
@@ -355,6 +371,11 @@ namespace DocMgr.Services.HardDiskMedia
                 BorrowedLocation = source.BorrowedLocation,
                 OriginalLocation = source.OriginalLocation,
                 CurrentStatus = source.CurrentStatus,
+                BorrowType = borrowType,
+                IsPermanentOutbound = HardDiskMediaOutboundReturnSupport.IsPermanentOutboundBorrow(
+                    null,
+                    source.CurrentStatus,
+                    borrowType),
                 ExpectedReturnDate = source.ExpectedReturnDate
             };
         }
@@ -860,6 +881,9 @@ namespace DocMgr.Services.HardDiskMedia
                 application.ApplicationStatus = ApplicationWorkflowStatus.IsDefined(application.ApplicationStatus)
                     ? application.ApplicationStatus
                     : HardDiskMediaApplication.StatusDraft;
+                application.ApplicantUserId = application.ApplicantUserId > 0
+                    ? application.ApplicantUserId
+                    : currentUser?.Id ?? 0;
                 application.ApplicantName = string.IsNullOrWhiteSpace(applicantName)
                     ? currentUser?.RealName?.Trim() ?? string.Empty
                     : applicantName;
@@ -934,6 +958,13 @@ namespace DocMgr.Services.HardDiskMedia
                 existing.ApplicationStatus = ApplicationWorkflowStatus.IsDefined(application.ApplicationStatus)
                     ? application.ApplicationStatus
                     : existing.ApplicationStatus;
+                if (existing.ApplicantUserId <= 0)
+                {
+                    existing.ApplicantUserId = application.ApplicantUserId > 0
+                        ? application.ApplicantUserId
+                        : currentUser?.Id ?? 0;
+                }
+
                 existing.ApplicantName = applicantName;
                 existing.ApplicantDept = applicantDept;
                 existing.ApplyTime = application.ApplyTime;

@@ -38,14 +38,17 @@ namespace DocMgr.Models.Inventory
         public const string HistoryLocked = "离库锁定";
         public const string HistoryDisposed = "已离库";
 
-        /// <summary>筛选：在柜可用（含部分借出/借出中）。</summary>
+        /// <summary>筛选：在柜容器（年度在用/借出中、历史在库/离库锁定等，不含已退库）。</summary>
         public const string FilterActive = "Active";
 
-        /// <summary>筛选：含借出内容。</summary>
+        /// <summary>筛选：仅容器内仍有借出资料的在柜行。</summary>
         public const string FilterHasBorrowed = "HasBorrowed";
 
-        /// <summary>筛选：已停用/已离库。</summary>
+        /// <summary>筛选：已退库容器（年度已清空/销号/迁出/处置，历史已离库）。</summary>
         public const string FilterInactive = "Inactive";
+
+        /// <summary>筛选：全部容器（含已退库）。</summary>
+        public const string FilterAll = "All";
     }
 
     /// <summary>
@@ -71,14 +74,17 @@ namespace DocMgr.Models.Inventory
         public string StorageLocationKeyword { get; set; } = string.Empty;
 
         /// <summary>
-        /// 生命周期筛选：空=全部；
+        /// 生命周期筛选：
         /// <see cref="StockContainerLifecycleDisplay.FilterActive"/> /
         /// <see cref="StockContainerLifecycleDisplay.FilterHasBorrowed"/> /
-        /// <see cref="StockContainerLifecycleDisplay.FilterInactive"/>。
+        /// <see cref="StockContainerLifecycleDisplay.FilterInactive"/> /
+        /// <see cref="StockContainerLifecycleDisplay.FilterAll"/>。
         /// </summary>
-        public string LifecycleFilter { get; set; } = string.Empty;
+        public string LifecycleFilter { get; set; } = StockContainerLifecycleDisplay.FilterActive;
 
-        /// <summary>为 false 时默认排除已清空/销号/迁出/处置及历史已离库（除非筛选显式为已停用）。</summary>
+        /// <summary>
+        /// 查询是否装载已退库容器。由状态筛选推导：仅「已退库」或「全部」为 true。
+        /// </summary>
         public bool IncludeInactive { get; set; }
 
         public DateTime? ArchivedFrom { get; set; }

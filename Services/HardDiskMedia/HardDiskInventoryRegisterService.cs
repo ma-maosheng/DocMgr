@@ -517,6 +517,7 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
                 MediumId = medium.Id,
                 ApplicationId = null,
                 TransactionType = transactionType,
+                BusinessNo = record.RegisterNo,
                 BeforeStatus = beforeStatus,
                 AfterStatus = afterStatus,
                 BeforeLocation = beforeLocation,

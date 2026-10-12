@@ -243,7 +243,8 @@
                         <DataGrid.Columns>
                             <DataGridCheckBoxColumn Header="选"
                                                     Binding="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                    Width="40"/>
+                                                    Width="40"
+                                                    CanUserSort="False"/>
                             <DataGridTextColumn Header="硬盘编号"
                                                 Binding="{Binding DiskCode, Mode=OneWay}"
                                                 Width="90"

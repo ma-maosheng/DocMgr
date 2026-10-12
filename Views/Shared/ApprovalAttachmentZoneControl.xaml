@@ -63,7 +63,7 @@
                            Visibility="{Binding ShowUploadButtons, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBoolToVisConverter}}"/>
             </Grid>
 
-            <!-- 可上传：附件表；无需上传：不显示空表，改显示一条说明 -->
+            <!-- 可上传：附件表；无需上传：等高占位（说明统一放在表单下方） -->
             <DataGrid x:Name="AttachmentGrid"
                       Grid.Row="1"
                       ItemsSource="{Binding Attachments, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -114,23 +114,19 @@
                 </DataGrid.Columns>
             </DataGrid>
 
-            <TextBlock Grid.Row="1"
-                       Text="{Binding SkipUploadReasonText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
-                       Foreground="#94A3B8"
-                       FontSize="11"
-                       TextWrapping="Wrap"
-                       MinHeight="88"
-                       VerticalAlignment="Center"
-                       Visibility="{Binding ShowUploadButtons, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBoolToVisConverter}}"/>
+            <Border Grid.Row="1"
+                    Height="88"
+                    Background="Transparent"
+                    Visibility="{Binding ShowUploadButtons, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBoolToVisConverter}}"/>
 
-            <!-- 可上传时的补充提示（例如证明材料声明说明）；无需上传时说明已在 SkipUploadReasonText，不再重复 -->
+            <!-- 四区统一：相关说明一律在表单（或等高占位）下方 -->
             <TextBlock Grid.Row="2"
-                       Text="{Binding ZoneHint, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
+                       Text="{Binding FooterHintText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
                        Margin="0,4,0,0"
                        Foreground="#B45309"
                        TextWrapping="Wrap"
                        FontSize="11"
-                       Visibility="{Binding ShowActiveZoneHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                       Visibility="{Binding ShowFooterHint, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}"/>
         </Grid>
     </Border>
 </UserControl>

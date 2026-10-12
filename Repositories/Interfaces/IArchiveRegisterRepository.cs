@@ -18,6 +18,9 @@ public interface IArchiveRegisterRepository
     /// <summary>列出资料室尚未办结（已提交/已审批/已上传签字件）的登记申请，供待办提醒使用。</summary>
     Task<List<YearlyArchiveRegisterRecord>> GetSubmittedRecordsForToDoAsync(int takeCount);
 
+    /// <summary>列出指定申请人尚未提交的登记草稿，供申请人待办使用。</summary>
+    Task<List<YearlyArchiveRegisterRecord>> GetDraftRecordsForApplicantToDoAsync(int applicantUserId, int takeCount);
+
     Task<int> SaveOrUpdateRecordGraphAsync(YearlyArchiveRegisterRecord record);
 
     Task<int> LinkOrphanAttachmentsToRecordAsync(string formNo, int recordId);

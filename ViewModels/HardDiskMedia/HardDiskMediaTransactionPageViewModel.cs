@@ -4,7 +4,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.Shared;
+using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 
@@ -16,6 +18,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
     public class HardDiskMediaTransactionPageViewModel : ViewModelBase
     {
         private readonly IHardDiskMediaService _hardDiskMediaService;
+        private readonly IHardDiskDisposalService _hardDiskDisposalService;
+        private readonly IHardDiskInventoryRegisterService _hardDiskInventoryRegisterService;
+        private readonly IArchiveOutboundService _archiveOutboundService;
+        private readonly IArchiveDisposalService _archiveDisposalService;
+        private readonly IArchiveInventoryRegisterService _archiveInventoryRegisterService;
+        private readonly INetworkTransferService _networkTransferService;
         private readonly IDialogService _dialogService;
         private readonly List<HardDiskMediaTransaction> _transactionCache = new();
 
@@ -29,14 +37,32 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly SemaphoreSlim _searchGate = new(1, 1);
         private int _searchGeneration;
 
-        public HardDiskMediaTransactionPageViewModel(IHardDiskMediaService hardDiskMediaService, IDialogService dialogService)
+        public HardDiskMediaTransactionPageViewModel(
+            IHardDiskMediaService hardDiskMediaService,
+            IHardDiskDisposalService hardDiskDisposalService,
+            IHardDiskInventoryRegisterService hardDiskInventoryRegisterService,
+            IArchiveOutboundService archiveOutboundService,
+            IArchiveDisposalService archiveDisposalService,
+            IArchiveInventoryRegisterService archiveInventoryRegisterService,
+            INetworkTransferService networkTransferService,
+            IDialogService dialogService)
         {
             _hardDiskMediaService = hardDiskMediaService;
+            _hardDiskDisposalService = hardDiskDisposalService;
+            _hardDiskInventoryRegisterService = hardDiskInventoryRegisterService;
+            _archiveOutboundService = archiveOutboundService;
+            _archiveDisposalService = archiveDisposalService;
+            _archiveInventoryRegisterService = archiveInventoryRegisterService;
+            _networkTransferService = networkTransferService;
             _dialogService = dialogService;
 
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
             ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.HardDisk));
+            // 无真实业务单号时仍可点击，以便提示不可查看的原因。
+            ViewBusinessDetailCommand = new RelayCommand(
+                async param => await ViewBusinessDetailAsync(param as HardDiskMediaTransaction),
+                param => param is HardDiskMediaTransaction);
         }
 
         public ObservableCollection<HardDiskMedium> MediaItems { get; } = new();
@@ -148,6 +174,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public RelayCommand SearchCommand { get; }
         public RelayCommand RefreshCommand { get; }
         public RelayCommand ShowIntroCommand { get; }
+        public RelayCommand ViewBusinessDetailCommand { get; }
 
         public async Task InitializeAsync(
             string? initialStatus = null,
@@ -343,6 +370,227 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 SelectedMediumTransactions.Add(item);
             }
+        }
+
+        private async Task ViewBusinessDetailAsync(HardDiskMediaTransaction? transaction)
+        {
+            if (transaction == null)
+            {
+                return;
+            }
+
+            string? businessNo = transaction.ResolveViewableBusinessNo();
+            if (string.IsNullOrWhiteSpace(businessNo))
+            {
+                _dialogService.ShowMessage(BuildNoViewableBusinessNoMessage(transaction));
+                return;
+            }
+
+            try
+            {
+                if (transaction.Application != null)
+                {
+                    _dialogService.ShowHardDiskMediaApplicationViewDialog(transaction.Application);
+                    return;
+                }
+
+                if (await TryOpenHardDiskApplicationAsync(businessNo))
+                {
+                    return;
+                }
+
+                if (businessNo.StartsWith("盘离-申", StringComparison.Ordinal)
+                    || string.Equals(transaction.TransactionType, HardDiskMediaTransaction.TypeDisposal, StringComparison.Ordinal))
+                {
+                    if (await TryOpenHardDiskDisposalAsync(businessNo))
+                    {
+                        return;
+                    }
+                }
+
+                if (businessNo.StartsWith("盘库-登", StringComparison.Ordinal)
+                    || IsHardDiskInventoryTransactionType(transaction.TransactionType))
+                {
+                    if (await TryOpenHardDiskInventoryAsync(businessNo))
+                    {
+                        return;
+                    }
+                }
+
+                if (businessNo.StartsWith("资-出-申", StringComparison.Ordinal))
+                {
+                    var outbound = await _archiveOutboundService.GetRecordByOutboundNoAsync(businessNo);
+                    if (outbound != null)
+                    {
+                        _dialogService.ShowArchiveOutboundApplicationViewDialog(outbound);
+                        return;
+                    }
+                }
+
+                if (businessNo.StartsWith("资离-处", StringComparison.Ordinal)
+                    && await TryOpenArchiveDisposalAsync(businessNo))
+                {
+                    return;
+                }
+
+                if (businessNo.StartsWith("资盘-登", StringComparison.Ordinal)
+                    && await TryOpenArchiveInventoryAsync(businessNo))
+                {
+                    return;
+                }
+
+                if (businessNo.StartsWith("网-入-申", StringComparison.Ordinal)
+                    && await TryOpenNetworkInboundAsync(businessNo))
+                {
+                    return;
+                }
+
+                if (businessNo.StartsWith("资-还-登", StringComparison.Ordinal))
+                {
+                    _dialogService.ShowMessage($"业务单号 [{businessNo}] 为资料归还登记，请到「资料归还」工作台查看。");
+                    return;
+                }
+
+                if (await TryOpenHardDiskDisposalAsync(businessNo)
+                    || await TryOpenHardDiskInventoryAsync(businessNo)
+                    || await TryOpenArchiveDisposalAsync(businessNo)
+                    || await TryOpenArchiveInventoryAsync(businessNo))
+                {
+                    return;
+                }
+
+                _dialogService.ShowMessage($"未找到业务单号 [{businessNo}] 对应的业务详情。");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"打开业务详情失败：{ex.Message}");
+            }
+        }
+
+        private static string BuildNoViewableBusinessNoMessage(HardDiskMediaTransaction transaction)
+        {
+            if (string.Equals(transaction.TransactionType, HardDiskMediaTransaction.TypeRelocate, StringComparison.Ordinal)
+                && !transaction.ApplicationId.HasValue)
+            {
+                return "该流转由开柜交互式迁档或档口批量搬迁产生，无独立业务单号，无法查看业务详情。";
+            }
+
+            return "该流转记录没有关联业务单号，无法查看业务详情。";
+        }
+
+        private async Task<bool> TryOpenHardDiskApplicationAsync(string businessNo)
+        {
+            var applications = await _hardDiskMediaService.SearchApplicationsAsync(businessNo, null, null);
+            var match = applications.FirstOrDefault(item =>
+                string.Equals(item.ApplicationNo?.Trim(), businessNo, StringComparison.Ordinal));
+            if (match == null)
+            {
+                return false;
+            }
+
+            _dialogService.ShowHardDiskMediaApplicationViewDialog(match);
+            return true;
+        }
+
+        private async Task<bool> TryOpenHardDiskDisposalAsync(string businessNo)
+        {
+            var records = await _hardDiskDisposalService.SearchRecordsAsync(businessNo, null, null);
+            var match = records.FirstOrDefault(item =>
+                string.Equals(item.DisposalNo?.Trim(), businessNo, StringComparison.Ordinal));
+            if (match == null)
+            {
+                return false;
+            }
+
+            var full = await _hardDiskDisposalService.GetRecordByIdAsync(match.Id) ?? match;
+            _dialogService.ShowHardDiskDisposalEditDialog(full);
+            return true;
+        }
+
+        private async Task<bool> TryOpenHardDiskInventoryAsync(string businessNo)
+        {
+            var records = await _hardDiskInventoryRegisterService.SearchRecordsAsync(businessNo, null, null);
+            var match = records.FirstOrDefault(item =>
+                string.Equals(item.RegisterNo?.Trim(), businessNo, StringComparison.Ordinal));
+            if (match == null)
+            {
+                return false;
+            }
+
+            var full = await _hardDiskInventoryRegisterService.GetRecordByIdAsync(match.Id) ?? match;
+            _dialogService.ShowHardDiskInventoryRegisterEditDialog(full);
+            return true;
+        }
+
+        private async Task<bool> TryOpenArchiveDisposalAsync(string businessNo)
+        {
+            foreach (string mediaKind in new[]
+                     {
+                         ArchiveRegisterDomainValues.MediaKindElectronic,
+                         ArchiveRegisterDomainValues.MediaKindSimulated
+                     })
+            {
+                var records = await _archiveDisposalService.SearchRecordsAsync(businessNo, null, null, mediaKind);
+                var match = records.FirstOrDefault(item =>
+                    string.Equals(item.DisposalNo?.Trim(), businessNo, StringComparison.Ordinal));
+                if (match == null)
+                {
+                    continue;
+                }
+
+                var full = await _archiveDisposalService.GetRecordByIdAsync(match.Id) ?? match;
+                _dialogService.ShowArchiveDisposalEditDialog(full);
+                return true;
+            }
+
+            return false;
+        }
+
+        private async Task<bool> TryOpenArchiveInventoryAsync(string businessNo)
+        {
+            var records = await _archiveInventoryRegisterService.SearchRecordsAsync(null, businessNo, null, null);
+            var match = records.FirstOrDefault(item =>
+                string.Equals(item.RegisterNo?.Trim(), businessNo, StringComparison.Ordinal));
+            if (match == null)
+            {
+                return false;
+            }
+
+            var full = await _archiveInventoryRegisterService.GetRecordByIdAsync(match.Id) ?? match;
+            if (string.Equals(full.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal))
+            {
+                _dialogService.ShowSimulatedArchiveInventoryRegisterEditDialog(full);
+            }
+            else
+            {
+                _dialogService.ShowElectronicArchiveInventoryRegisterEditDialog(full);
+            }
+
+            return true;
+        }
+
+        private async Task<bool> TryOpenNetworkInboundAsync(string businessNo)
+        {
+            var records = await _networkTransferService.SearchInboundRecordsAsync(businessNo, null, null);
+            var match = records.FirstOrDefault(item =>
+                string.Equals(item.InboundNo?.Trim(), businessNo, StringComparison.Ordinal));
+            if (match == null)
+            {
+                return false;
+            }
+
+            var full = await _networkTransferService.GetInboundByIdAsync(match.Id) ?? match;
+            _dialogService.ShowNetworkInboundEditDialog(full, NetworkTransferWorkspaceMode.Application);
+            return true;
+        }
+
+        private static bool IsHardDiskInventoryTransactionType(string? transactionType)
+        {
+            return string.Equals(transactionType, HardDiskMediaTransaction.TypeInventoryRegisterDamage, StringComparison.Ordinal)
+                || string.Equals(transactionType, HardDiskMediaTransaction.TypeInventoryRegisterLost, StringComparison.Ordinal)
+                || string.Equals(transactionType, HardDiskMediaTransaction.TypeInventoryRegisterScrap, StringComparison.Ordinal)
+                || string.Equals(transactionType, HardDiskMediaTransaction.TypeInventoryRegisterRelocate, StringComparison.Ordinal)
+                || string.Equals(transactionType, HardDiskMediaTransaction.TypeInventoryLost, StringComparison.Ordinal);
         }
 
         private async Task RefreshAsync()

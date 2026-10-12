@@ -195,29 +195,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ? "后续：确认实物交接后，请按附件区提示分区上传材料。"
             : "请先执行“审批通过”，再确认实物交接。";
 
-        public string UploadHintText
-        {
-            get
-            {
-                if (!CanUploadSignedAttachment)
-                {
-                    return "请先确认实物交接，再上传附件。";
-                }
-
-                var required = new List<string> { "签批交接单" };
-                if (RequiresPhysicalPhotoAttachment)
-                {
-                    required.Add("实物照片");
-                }
-
-                if (RequiresProofMaterialAttachment)
-                {
-                    required.Add("证明材料");
-                }
-
-                return $"格式限 PDF / 常见图像；{string.Join("、", required)}必传，其他附件可选。";
-            }
-        }
+        public string UploadHintText => CanUploadSignedAttachment
+            ? "请按各分区表单下方说明上传附件。"
+            : "请先确认实物交接，再上传附件。";
 
         public string CompleteHintText
         {

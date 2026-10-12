@@ -8,6 +8,7 @@ using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -448,10 +449,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             var user = _userContextService.CurrentUser;
             bool isOwnerApplicant = user != null
                 && _archiveRegisterService.IsApplicantUser(user)
-                && string.Equals(
-                    SelectedRecord.ApplicantName?.Trim(),
-                    user.RealName?.Trim(),
-                    StringComparison.Ordinal);
+                && ArchiveRegisterBusinessRules.IsRegisterApplicantOwner(SelectedRecord, user);
             return ApplicationListActionSupport.CanApplicantWithdraw(
                 SelectedRecord.Status,
                 isOwnerApplicant,

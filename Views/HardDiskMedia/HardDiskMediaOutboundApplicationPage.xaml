@@ -107,7 +107,7 @@
                         <TextBlock Text="临时出库归还期限为1个月，可提前填写预计归还日期；长期出库不设归还期限；永久出库表示硬盘另有他用无需归还。"
                                    Foreground="#6F4A00"
                                    TextWrapping="Wrap"/>
-                        <TextBlock Text="关联介质最多选择5块硬盘，每块硬盘对应一份申请单，归还时可分别办理。"
+                        <TextBlock Text="一单仅关联一块硬盘；需借出多块请分别新建申请，归还时亦可分别办理。"
                                    Foreground="#6F4A00"
                                    TextWrapping="Wrap"
                                    Margin="0,6,0,0"/>

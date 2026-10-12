@@ -1,19 +1,17 @@
 using System.Collections.ObjectModel;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.HistoryArchive;
 using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
-using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
 
 namespace DocMgr.ViewModels.HistoryArchive;
 
 /// <summary>
-/// 历史存档资料离库处置页：在柜盒候选 + 处置单。
+/// 历史存档资料离库处置列表页。
 /// </summary>
 public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
 {
@@ -25,18 +23,13 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
     private readonly IUserContextService _userContextService;
     private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
     private readonly List<HistoryArchiveDisposalRecord> _allRecords = new();
-    private readonly List<HistoryArchiveDisposalBoxCandidateRow> _allCandidates = new();
-    private readonly SemaphoreSlim _refreshCandidatesGate = new(1, 1);
-    private int _refreshCandidatesGeneration;
+
     private bool _isInitialized;
+    private bool _matchAllYears;
     private int _applyYear = DateTime.Today.Year;
     private string _searchKeyword = string.Empty;
     private string _selectedStatus = AllOption;
-    private string _boxKeyword = string.Empty;
-    private string _materialKindDisplay = HistoryArchiveDisposalDomainValues.MaterialKindDisplayTopoMap;
-    private string _cabinetName = AllOption;
     private HistoryArchiveDisposalRecord? _selectedRecord;
-    private HistoryArchiveDisposalBoxCandidateRow? _selectedCandidate;
     private string _applicationOverdueSettingCode = string.Empty;
 
     public HistoryArchiveDisposalPageViewModel(
@@ -50,57 +43,24 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
         _userContextService = userContextService;
         _businessLogicSettingsService = businessLogicSettingsService;
 
-        RefreshCommand = new RelayCommand(async _ => await RefreshAllAsync());
-        SearchCommand = new RelayCommand(async _ => await RefreshDisposalsAsync());
-        SearchBoxesCommand = new RelayCommand(_ => ApplyBoxFilters());
-        AddDisposalCommand = new RelayCommand(async _ => await AddDisposalAsync(), _ => CanOperate);
-        OpenDisposalCommand = new RelayCommand(async _ => await OpenDisposalAsync(), _ => SelectedRecord != null);
-        WithdrawDisposalCommand = new RelayCommand(async _ => await WithdrawDisposalAsync(), _ => CanWithdrawSelected);
-        ForceVoidDisposalCommand = new RelayCommand(async _ => await ForceVoidDisposalAsync(), _ => CanForceVoidSelected);
+        RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
+        SearchCommand = new RelayCommand(async _ => await RefreshAsync());
+        AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanOperate);
+        OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null);
+        WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => CanWithdrawSelected);
+        ForceVoidCommand = new RelayCommand(async _ => await ForceVoidAsync(), _ => CanForceVoidSelected);
     }
 
-    public ObservableCollection<HistoryArchiveDisposalBoxCandidateRow> Candidates { get; } = new();
     public ObservableCollection<HistoryArchiveDisposalRecord> Records { get; } = new();
+
     public ObservableCollection<int> ApplyYears { get; } = new();
+
     public ObservableCollection<string> StatusOptions { get; } = new();
-    public ObservableCollection<string> MaterialKindOptions { get; } = new();
-    public ObservableCollection<string> CabinetNameOptions { get; } = new() { AllOption };
 
-    public string SearchKeyword { get => _searchKeyword; set => SetProperty(ref _searchKeyword, value); }
-    public string BoxKeyword
+    public string SearchKeyword
     {
-        get => _boxKeyword;
-        set
-        {
-            if (SetProperty(ref _boxKeyword, value) && _isInitialized)
-            {
-                ApplyBoxFilters();
-            }
-        }
-    }
-
-    public string MaterialKindDisplay
-    {
-        get => _materialKindDisplay;
-        set
-        {
-            if (SetProperty(ref _materialKindDisplay, value) && _isInitialized)
-            {
-                _ = RefreshCandidatesAsync();
-            }
-        }
-    }
-
-    public string CabinetName
-    {
-        get => _cabinetName;
-        set
-        {
-            if (SetProperty(ref _cabinetName, value) && _isInitialized)
-            {
-                ApplyBoxFilters();
-            }
-        }
+        get => _searchKeyword;
+        set => SetProperty(ref _searchKeyword, value);
     }
 
     public int ApplyYear
@@ -110,7 +70,8 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
         {
             if (SetProperty(ref _applyYear, value) && _isInitialized)
             {
-                ApplyRecordFilters();
+                _matchAllYears = false;
+                ApplyFilters();
             }
         }
     }
@@ -122,7 +83,7 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
         {
             if (SetProperty(ref _selectedStatus, value) && _isInitialized)
             {
-                ApplyRecordFilters();
+                ApplyFilters();
             }
         }
     }
@@ -139,38 +100,17 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
         }
     }
 
-    public HistoryArchiveDisposalBoxCandidateRow? SelectedCandidate
-    {
-        get => _selectedCandidate;
-        set => SetProperty(ref _selectedCandidate, value);
-    }
-
-    public string MixedGroupPreview
-    {
-        get
-        {
-            var related = Candidates
-                .Where(item => item.IsSelected && item.IsMixedPlacement)
-                .SelectMany(item => HistoryArchiveBoxCodeSupport.SplitBoxCodes(item.RelatedBoxCodesText))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(item => item, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            return related.Count == 0
-                ? string.Empty
-                : "勾选混放盒将整组纳入：" + string.Join("、", related);
-        }
-    }
-
-    private bool CanOperate =>
+    public bool CanOperate =>
         OfflineApprovalPermissionSupport.CanCreateDraft(
             _userContextService.CurrentUser,
             ApprovalWorkflowBusinessTypes.HistoryArchiveDisposal);
-    private bool CanWithdrawSelected =>
+
+    public bool CanWithdrawSelected =>
         ApplicationListActionSupport.CanAdminWithdrawDisposal(
             SelectedRecord?.Status ?? ApplicationWorkflowStatus.Completed,
             CanOperate);
 
-    private bool CanForceVoidSelected =>
+    public bool CanForceVoidSelected =>
         SelectedRecord != null
         && ApplicationListActionSupport.CanForceVoid(
             SelectedRecord.Status,
@@ -180,19 +120,28 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
                 _applicationOverdueSettingCode));
 
     public RelayCommand RefreshCommand { get; }
-    public RelayCommand SearchCommand { get; }
-    public RelayCommand SearchBoxesCommand { get; }
-    public RelayCommand AddDisposalCommand { get; }
-    public RelayCommand OpenDisposalCommand { get; }
-    public RelayCommand WithdrawDisposalCommand { get; }
-    public RelayCommand ForceVoidDisposalCommand { get; }
 
-    public async Task InitializeAsync()
+    public RelayCommand SearchCommand { get; }
+
+    public RelayCommand AddCommand { get; }
+
+    public RelayCommand OpenCommand { get; }
+
+    public RelayCommand WithdrawCommand { get; }
+
+    public RelayCommand ForceVoidCommand { get; }
+
+    public async Task InitializeAsync(bool pendingInProgress = false, bool matchAllYears = false)
     {
         if (_isInitialized)
         {
-            ApplyRecordFilters();
-            ApplyBoxFilters();
+            _matchAllYears = matchAllYears;
+            if (pendingInProgress)
+            {
+                SelectedStatus = PendingInProgressStatus;
+            }
+
+            ApplyFilters();
             return;
         }
 
@@ -204,12 +153,6 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
             StatusOptions.Add(option.Label);
         }
 
-        MaterialKindOptions.Clear();
-        foreach (string display in HistoryArchiveDisposalDomainValues.MaterialKindDisplayOptions)
-        {
-            MaterialKindOptions.Add(display);
-        }
-
         ApplyYears.Clear();
         int currentYear = DateTime.Today.Year;
         for (int year = currentYear; year >= currentYear - 5; year--)
@@ -217,69 +160,18 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
             ApplyYears.Add(year);
         }
 
-        await RefreshAllAsync();
+        _matchAllYears = matchAllYears;
+        if (pendingInProgress)
+        {
+            _selectedStatus = PendingInProgressStatus;
+            OnPropertyChanged(nameof(SelectedStatus));
+        }
+
+        await RefreshAsync();
         _isInitialized = true;
     }
 
-    private async Task RefreshAllAsync()
-    {
-        await RefreshCandidatesAsync();
-        await RefreshDisposalsAsync();
-    }
-
-    private async Task RefreshCandidatesAsync()
-    {
-        int generation = Interlocked.Increment(ref _refreshCandidatesGeneration);
-        await _refreshCandidatesGate.WaitAsync().ConfigureAwait(true);
-        try
-        {
-            if (generation != Volatile.Read(ref _refreshCandidatesGeneration))
-            {
-                return;
-            }
-
-            try
-            {
-                string kind = HistoryArchiveDisposalDomainValues.NormalizeMaterialKind(MaterialKindDisplay);
-                IReadOnlyList<HistoryArchiveDisposalBoxCandidate> list =
-                    await _service.GetSelectableBoxesAsync(kind);
-                ClearCandidates();
-                foreach (var item in list.Where(candidate => candidate.IsSelectable))
-                {
-                    AttachCandidate(new HistoryArchiveDisposalBoxCandidateRow(item));
-                }
-
-                CabinetNameOptions.Clear();
-                CabinetNameOptions.Add(AllOption);
-                foreach (string name in _allCandidates
-                             .Select(item => item.CabinetName?.Trim() ?? string.Empty)
-                             .Where(item => !string.IsNullOrWhiteSpace(item))
-                             .Distinct(StringComparer.OrdinalIgnoreCase)
-                             .OrderBy(item => item, StringComparer.OrdinalIgnoreCase))
-                {
-                    CabinetNameOptions.Add(name);
-                }
-
-                if (!CabinetNameOptions.Contains(CabinetName, StringComparer.OrdinalIgnoreCase))
-                {
-                    _cabinetName = AllOption;
-                    OnPropertyChanged(nameof(CabinetName));
-                }
-
-                ApplyBoxFilters();
-            }
-            catch (Exception ex)
-            {
-                _dialogService.ShowError(ex.Message);
-            }
-        }
-        finally
-        {
-            _refreshCandidatesGate.Release();
-        }
-    }
-
-    private async Task RefreshDisposalsAsync()
+    private async Task RefreshAsync()
     {
         try
         {
@@ -289,7 +181,7 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
             var list = await _service.SearchRecordsAsync(keyword, null, null);
             _allRecords.Clear();
             _allRecords.AddRange(list);
-            ApplyRecordFilters();
+            ApplyFilters();
             if (selectedId.HasValue)
             {
                 SelectedRecord = Records.FirstOrDefault(item => item.Id == selectedId.Value);
@@ -301,38 +193,14 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
         }
     }
 
-    private void ApplyBoxFilters()
+    private void ApplyFilters()
     {
-        IEnumerable<HistoryArchiveDisposalBoxCandidateRow> query = _allCandidates;
-        if (!string.Equals(CabinetName, AllOption, StringComparison.Ordinal)
-            && !string.IsNullOrWhiteSpace(CabinetName))
+        IEnumerable<HistoryArchiveDisposalRecord> query = _allRecords;
+        if (!_matchAllYears)
         {
-            query = query.Where(item =>
-                string.Equals(item.CabinetName?.Trim(), CabinetName.Trim(), StringComparison.OrdinalIgnoreCase));
+            query = query.Where(item => item.ApplyTime.Year == ApplyYear);
         }
 
-        string keyword = BoxKeyword?.Trim() ?? string.Empty;
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            query = query.Where(item =>
-                Contains(item.BoxCode, keyword)
-                || Contains(item.ContentSummary, keyword)
-                || Contains(item.RelatedBoxCodesText, keyword));
-        }
-
-        Candidates.Clear();
-        foreach (var item in query)
-        {
-            Candidates.Add(item);
-        }
-
-        OnPropertyChanged(nameof(MixedGroupPreview));
-        CommandManager.InvalidateRequerySuggested();
-    }
-
-    private void ApplyRecordFilters()
-    {
-        IEnumerable<HistoryArchiveDisposalRecord> query = _allRecords.Where(item => item.ApplyTime.Year == ApplyYear);
         if (string.Equals(SelectedStatus, PendingInProgressStatus, StringComparison.Ordinal))
         {
             query = query.Where(item =>
@@ -360,33 +228,29 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
         CommandManager.InvalidateRequerySuggested();
     }
 
-    private async Task AddDisposalAsync()
+    private async Task AddAsync()
     {
+        if (!CanOperate)
+        {
+            _dialogService.ShowError("仅资料管理员可办理资料离库处置。");
+            return;
+        }
+
         var draft = new HistoryArchiveDisposalRecord
         {
             ApplyTime = DateTime.Now,
             ApplicantName = _userContextService.CurrentUser?.RealName?.Trim() ?? string.Empty,
             ApplicantDept = _userContextService.CurrentUser?.Department?.Trim() ?? string.Empty,
-            Status = HistoryArchiveDisposalRecord.StatusDraft,
-            MaterialKind = HistoryArchiveDisposalDomainValues.NormalizeMaterialKind(MaterialKindDisplay)
+            Status = HistoryArchiveDisposalRecord.StatusDraft
         };
-
-        List<HistoryArchiveDisposalBoxCandidate> selected = Candidates
-            .Where(item => item.IsSelected)
-            .Select(item => item.Candidate)
-            .ToList();
-        foreach (var candidate in selected)
-        {
-            draft.Items.Add(new HistoryArchiveDisposalItemRow(candidate).ToItem(draft.Items.Count + 1));
-        }
 
         if (_dialogService.ShowHistoryArchiveDisposalEditDialog(draft))
         {
-            await RefreshAllAsync();
+            await RefreshAsync();
         }
     }
 
-    private async Task OpenDisposalAsync()
+    private async Task OpenAsync()
     {
         if (SelectedRecord == null)
         {
@@ -397,17 +261,17 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
         if (latest == null)
         {
             _dialogService.ShowError("未找到处置单。");
-            await RefreshDisposalsAsync();
+            await RefreshAsync();
             return;
         }
 
         if (_dialogService.ShowHistoryArchiveDisposalEditDialog(latest))
         {
-            await RefreshAllAsync();
+            await RefreshAsync();
         }
     }
 
-    private async Task WithdrawDisposalAsync()
+    private async Task WithdrawAsync()
     {
         if (SelectedRecord == null)
         {
@@ -425,7 +289,7 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
                 SelectedRecord.Id,
                 null,
                 _userContextService.CurrentUser ?? throw new InvalidOperationException("当前用户无效。"));
-            await RefreshAllAsync();
+            await RefreshAsync();
             _dialogService.ShowMessage("已撤回作废。");
         }
         catch (Exception ex)
@@ -434,7 +298,7 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
         }
     }
 
-    private async Task ForceVoidDisposalAsync()
+    private async Task ForceVoidAsync()
     {
         if (SelectedRecord == null || !CanForceVoidSelected)
         {
@@ -454,7 +318,7 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
                 SelectedRecord.Id,
                 "列表强制作废",
                 _userContextService.CurrentUser ?? throw new InvalidOperationException("当前用户无效。"));
-            await RefreshAllAsync();
+            await RefreshAsync();
             _dialogService.ShowMessage("已强制作废。");
         }
         catch (Exception ex)
@@ -462,26 +326,4 @@ public sealed class HistoryArchiveDisposalPageViewModel : ViewModelBase
             _dialogService.ShowError(ex.Message);
         }
     }
-
-    private void AttachCandidate(HistoryArchiveDisposalBoxCandidateRow row)
-    {
-        row.SelectionChanged += OnCandidateSelectionChanged;
-        _allCandidates.Add(row);
-    }
-
-    private void ClearCandidates()
-    {
-        foreach (var row in _allCandidates)
-        {
-            row.SelectionChanged -= OnCandidateSelectionChanged;
-        }
-
-        _allCandidates.Clear();
-        Candidates.Clear();
-    }
-
-    private void OnCandidateSelectionChanged() => OnPropertyChanged(nameof(MixedGroupPreview));
-
-    private static bool Contains(string? value, string keyword) =>
-        !string.IsNullOrWhiteSpace(value) && value.Contains(keyword, StringComparison.OrdinalIgnoreCase);
 }

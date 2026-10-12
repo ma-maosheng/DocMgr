@@ -125,6 +125,13 @@ public sealed class HistoryArchiveDisposalRepository : IHistoryArchiveDisposalRe
             .ToListAsync();
     }
 
+    public Task<List<HistoryArchiveBox>> GetAllHistoryArchiveBoxesAsync()
+    {
+        return _dbContext.HistoryArchiveBoxes
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
     public async Task<List<TopoMap>> GetTopoMapsAsync()
     {
         var list = await _dbContext.TopoMaps.AsNoTracking().ToListAsync();

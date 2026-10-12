@@ -12,5 +12,10 @@ namespace DocMgr.Services.Interfaces
     public interface IToDoProvider
     {
         Task<List<ToDoItem>> GetToDosAsync(User currentUser);
+
+        /// <summary>
+        /// 系统总览：汇总本业务域全部未办结待办（含各申请人草稿与资料室办理队列），不按当前用户过滤。
+        /// </summary>
+        Task<List<ToDoItem>> GetOverviewToDosAsync(int takeCount);
     }
 }

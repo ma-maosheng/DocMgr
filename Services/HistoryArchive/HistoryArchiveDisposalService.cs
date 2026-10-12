@@ -64,6 +64,49 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<HistoryArchiveBoxLedgerEntry>> SearchBoxLedgerAsync(
+        string? materialKind,
+        string? lifecycleStatus)
+    {
+        IReadOnlyList<string> kinds = ResolveLedgerMaterialKinds(materialKind);
+        bool includeInCabinet = ShouldIncludeInCabinetLifecycle(lifecycleStatus);
+        bool includeDisposed = ShouldIncludeDisposedLifecycle(lifecycleStatus);
+        if (kinds.Count == 0 || (!includeInCabinet && !includeDisposed))
+        {
+            return Array.Empty<HistoryArchiveBoxLedgerEntry>();
+        }
+
+        var allBoxes = await _repository.GetAllHistoryArchiveBoxesAsync();
+        HashSet<string> lockedByOther = await _repository.GetLockedBoxCodesAsync(null);
+        HashSet<string> crossTypeBoxes = (await _repository.GetCrossTypeMixedBoxCodesAsync())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var result = new List<HistoryArchiveBoxLedgerEntry>();
+        foreach (string kind in kinds)
+        {
+            if (includeInCabinet)
+            {
+                result.AddRange(await BuildInCabinetLedgerEntriesAsync(
+                    kind,
+                    allBoxes,
+                    lockedByOther,
+                    crossTypeBoxes));
+            }
+
+            if (includeDisposed)
+            {
+                result.AddRange(await BuildDisposedLedgerEntriesAsync(kind, allBoxes));
+            }
+        }
+
+        return result
+            .OrderBy(item => item.MaterialKindDisplay, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.CabinetName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.BoxCode, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<HistoryArchiveDisposalRecord> CreateDraftAsync(
         HistoryArchiveDisposalRecord draft,
         IReadOnlyList<HistoryArchiveDisposalItem> items,
@@ -416,8 +459,9 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             writeLastLocation: true,
             disposedBoxCodes);
 
-        // 盒已离库：清理其台账关联，避免残留链接指向离库盒
+        // 盒已离库：先按盒号删链接，再清空盒号释放档位（对齐年度盒销号）。
         await _repository.RemoveHistoryArchiveBoxLinksByBoxCodesAsync(disposedBoxCodes);
+        await ReleaseDisposedHistoryBoxLocationCodesAsync(disposedBoxCodes);
 
         existing.PhysicalRemovalConfirmed = true;
         existing.PhysicalRemovalConfirmedAt = now;
@@ -778,6 +822,275 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         return items;
     }
 
+    private static IReadOnlyList<string> ResolveLedgerMaterialKinds(string? materialKind)
+    {
+        string trimmed = materialKind?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmed)
+            || string.Equals(trimmed, "全部", StringComparison.Ordinal))
+        {
+            return HistoryArchiveDisposalDomainValues.MaterialKindOptions;
+        }
+
+        string kind = HistoryArchiveDisposalDomainValues.NormalizeMaterialKind(trimmed);
+        return HistoryArchiveDisposalDomainValues.IsValidMaterialKind(kind)
+            ? [kind]
+            : Array.Empty<string>();
+    }
+
+    private static bool ShouldIncludeInCabinetLifecycle(string? lifecycleStatus)
+    {
+        string normalized = lifecycleStatus?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalized)
+            || string.Equals(normalized, "全部", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        // 「在库」筛选项含离库锁定（仍在柜、办理中）
+        return string.Equals(normalized, HistoryArchiveDisposalDomainValues.LifecycleInStock, StringComparison.Ordinal);
+    }
+
+    private static bool ShouldIncludeDisposedLifecycle(string? lifecycleStatus)
+    {
+        string normalized = lifecycleStatus?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalized)
+            || string.Equals(normalized, "全部", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return string.Equals(normalized, HistoryArchiveDisposalDomainValues.LifecycleDisposed, StringComparison.Ordinal)
+            || string.Equals(normalized, "离库", StringComparison.Ordinal);
+    }
+
+    private static bool IsInCabinetBoxLifecycle(string? status) =>
+        HistoryArchiveDisposalDomainValues.IsInStockLifecycle(status)
+        || HistoryArchiveDisposalDomainValues.IsLockedLifecycle(status);
+
+    private async Task<IReadOnlyList<HistoryArchiveBoxLedgerEntry>> BuildInCabinetLedgerEntriesAsync(
+        string materialKind,
+        IReadOnlyList<HistoryArchiveBox> allBoxes,
+        HashSet<string> lockedByOther,
+        HashSet<string> crossTypeBoxes)
+    {
+        string kind = HistoryArchiveDisposalDomainValues.NormalizeMaterialKind(materialKind);
+        string kindDisplay = HistoryArchiveDisposalDomainValues.ToMaterialKindDisplay(kind);
+        var boxByCode = allBoxes
+            .Where(box => IsInCabinetBoxLifecycle(box.LifecycleStatus))
+            .ToDictionary(box => box.BoxCode, box => box, StringComparer.OrdinalIgnoreCase);
+
+        List<LedgerRow> ledgerRows = await LoadLedgerRowsAsync(kind, disposedOnly: false);
+        IReadOnlyDictionary<string, IReadOnlyList<string>> groups =
+            HistoryArchiveBoxCodeSupport.BuildRelatedGroups(ledgerRows.Select(item => item.BoxNumber));
+        Dictionary<string, List<LedgerRow>> rowsByBox = GroupLedgerRowsByBoxCode(ledgerRows, useLastLocation: false);
+
+        var result = new List<HistoryArchiveBoxLedgerEntry>();
+        foreach (var pair in rowsByBox)
+        {
+            string boxCode = pair.Key;
+            if (!boxByCode.TryGetValue(boxCode, out HistoryArchiveBox? box))
+            {
+                continue;
+            }
+
+            IReadOnlyList<string> related = HistoryArchiveBoxCodeSupport.ResolveRelatedGroup(groups, boxCode);
+            bool mixed = related.Count > 1;
+            bool crossType = related.Any(code => crossTypeBoxes.Contains(code));
+            bool locked = related.Any(code => lockedByOther.Contains(code))
+                || HistoryArchiveDisposalDomainValues.IsLockedLifecycle(box.LifecycleStatus);
+            HistoryArchiveBoxCodeSupport.TryParseBoxCode(
+                boxCode, out string cabinetName, out _, out _, out _);
+
+            result.Add(new HistoryArchiveBoxLedgerEntry
+            {
+                MaterialKind = kind,
+                MaterialKindDisplay = kindDisplay,
+                BoxCode = boxCode,
+                BoxSpecification = FirstNonEmpty(
+                    box.BoxSpecification,
+                    pair.Value.Select(item => item.BoxSpecification)),
+                CabinetName = cabinetName,
+                ContentSummary = BuildGroupSummary(kind, pair.Value),
+                LedgerRecordCount = pair.Value.Select(item => item.Id).Distinct().Count(),
+                IsMixedPlacement = mixed,
+                RelatedBoxCodes = related,
+                LifecycleStatus = HistoryArchiveDisposalDomainValues.NormalizeLifecycleStatus(box.LifecycleStatus),
+                IsCrossTypeMixed = crossType,
+                IsLockedByOther = locked
+            });
+        }
+
+        return result;
+    }
+
+    private async Task<IReadOnlyList<HistoryArchiveBoxLedgerEntry>> BuildDisposedLedgerEntriesAsync(
+        string materialKind,
+        IReadOnlyList<HistoryArchiveBox> allBoxes)
+    {
+        string kind = HistoryArchiveDisposalDomainValues.NormalizeMaterialKind(materialKind);
+        string kindDisplay = HistoryArchiveDisposalDomainValues.ToMaterialKindDisplay(kind);
+        // 办结后 BoxCode 已清空释放档位；已离库追溯键为 LastStorageLocation（对齐年度盒销号口径）。
+        var boxByLastLocation = new Dictionary<string, HistoryArchiveBox>(StringComparer.OrdinalIgnoreCase);
+        foreach (var box in allBoxes.Where(item =>
+                     HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(item.LifecycleStatus)))
+        {
+            string key = ResolveDisposedHistoryBoxTraceKey(box);
+            if (string.IsNullOrWhiteSpace(key) || boxByLastLocation.ContainsKey(key))
+            {
+                continue;
+            }
+
+            boxByLastLocation[key] = box;
+        }
+
+        List<LedgerRow> ledgerRows = await LoadLedgerRowsAsync(kind, disposedOnly: true);
+        IReadOnlyDictionary<string, IReadOnlyList<string>> groups =
+            HistoryArchiveBoxCodeSupport.BuildRelatedGroups(
+                ledgerRows.Select(item =>
+                    string.IsNullOrWhiteSpace(item.BoxNumber) ? item.LastStorageLocation : item.BoxNumber));
+        Dictionary<string, List<LedgerRow>> rowsByBox = GroupLedgerRowsByBoxCode(ledgerRows, useLastLocation: true);
+
+        var result = new List<HistoryArchiveBoxLedgerEntry>();
+        foreach (var pair in rowsByBox)
+        {
+            string boxCode = pair.Key;
+            if (!boxByLastLocation.TryGetValue(boxCode, out HistoryArchiveBox? box))
+            {
+                continue;
+            }
+
+            IReadOnlyList<string> related = HistoryArchiveBoxCodeSupport.ResolveRelatedGroup(groups, boxCode);
+            HistoryArchiveBoxCodeSupport.TryParseBoxCode(
+                boxCode, out string cabinetName, out _, out _, out _);
+
+            result.Add(new HistoryArchiveBoxLedgerEntry
+            {
+                MaterialKind = kind,
+                MaterialKindDisplay = kindDisplay,
+                BoxCode = boxCode,
+                BoxSpecification = FirstNonEmpty(
+                    box.BoxSpecification,
+                    pair.Value.Select(item => item.BoxSpecification)),
+                CabinetName = cabinetName,
+                ContentSummary = BuildGroupSummary(kind, pair.Value),
+                LedgerRecordCount = pair.Value.Select(item => item.Id).Distinct().Count(),
+                IsMixedPlacement = related.Count > 1,
+                RelatedBoxCodes = related,
+                LifecycleStatus = HistoryArchiveDisposalDomainValues.LifecycleDisposed,
+                IsCrossTypeMixed = false,
+                IsLockedByOther = false
+            });
+        }
+
+        return result;
+    }
+
+    /// <summary>已离库盒追溯键：优先 <see cref="HistoryArchiveBox.LastStorageLocation"/>，兼容尚未清空盒号的旧数据。</summary>
+    private static string ResolveDisposedHistoryBoxTraceKey(HistoryArchiveBox box)
+    {
+        string lastLocation = box.LastStorageLocation?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(lastLocation))
+        {
+            return lastLocation;
+        }
+
+        return box.BoxCode?.Trim() ?? string.Empty;
+    }
+
+    private async Task<List<LedgerRow>> LoadLedgerRowsAsync(string kind, bool disposedOnly)
+    {
+        var ledgerRows = new List<LedgerRow>();
+        if (string.Equals(kind, HistoryArchiveDisposalDomainValues.MaterialKindTopoMap, StringComparison.Ordinal))
+        {
+            foreach (var map in await _repository.GetTopoMapsAsync())
+            {
+                bool disposed = HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(map.LifecycleStatus);
+                if (disposed != disposedOnly)
+                {
+                    continue;
+                }
+
+                ledgerRows.Add(new LedgerRow(
+                    map.Id,
+                    map.BoxNumber,
+                    map.BoxSpecification,
+                    HistoryArchiveDisposalDomainValues.BuildSourceRecordKey(kind, map.Id),
+                    HistoryArchiveDisposalContentSummarySupport.BuildTopoMapSummary([map]),
+                    map.LastStorageLocation));
+            }
+        }
+        else if (string.Equals(kind, HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto, StringComparison.Ordinal))
+        {
+            foreach (var photo in await _repository.GetAerialPhotosAsync())
+            {
+                bool disposed = HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(photo.LifecycleStatus);
+                if (disposed != disposedOnly)
+                {
+                    continue;
+                }
+
+                ledgerRows.Add(new LedgerRow(
+                    photo.Id,
+                    photo.BoxNumber,
+                    photo.BoxSpecification,
+                    HistoryArchiveDisposalDomainValues.BuildSourceRecordKey(kind, photo.Id),
+                    HistoryArchiveDisposalContentSummarySupport.BuildAerialPhotoSummary([photo]),
+                    photo.LastStorageLocation));
+            }
+        }
+        else
+        {
+            foreach (var map in await _repository.GetOtherMapsAsync())
+            {
+                bool disposed = HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(map.LifecycleStatus);
+                if (disposed != disposedOnly)
+                {
+                    continue;
+                }
+
+                ledgerRows.Add(new LedgerRow(
+                    map.Id,
+                    map.BoxNumber,
+                    map.BoxSpecification,
+                    HistoryArchiveDisposalDomainValues.BuildSourceRecordKey(kind, map.Id),
+                    HistoryArchiveDisposalContentSummarySupport.BuildOtherMapSummary([map]),
+                    map.LastStorageLocation));
+            }
+        }
+
+        return ledgerRows;
+    }
+
+    private static Dictionary<string, List<LedgerRow>> GroupLedgerRowsByBoxCode(
+        IEnumerable<LedgerRow> ledgerRows,
+        bool useLastLocation)
+    {
+        var rowsByBox = new Dictionary<string, List<LedgerRow>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in ledgerRows)
+        {
+            string source = useLastLocation
+                ? (string.IsNullOrWhiteSpace(row.LastStorageLocation) ? row.BoxNumber : row.LastStorageLocation)
+                : row.BoxNumber;
+            foreach (string code in HistoryArchiveBoxCodeSupport.SplitBoxCodes(source))
+            {
+                if (!HistoryArchiveBoxCodeSupport.TryParseBoxCode(code, out _, out _, out _, out string normalized))
+                {
+                    continue;
+                }
+
+                if (!rowsByBox.TryGetValue(normalized, out List<LedgerRow>? list))
+                {
+                    list = new List<LedgerRow>();
+                    rowsByBox[normalized] = list;
+                }
+
+                list.Add(row);
+            }
+        }
+
+        return rowsByBox;
+    }
+
     private async Task<IReadOnlyList<HistoryArchiveDisposalBoxCandidate>> BuildCandidatesAsync(
         string materialKind,
         int? currentRecordId)
@@ -1000,6 +1313,31 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
     }
 
     /// <summary>
+    /// 办结后释放物理盒号：原盒号写入 <see cref="HistoryArchiveBox.LastStorageLocation"/> 并清空
+    /// <see cref="HistoryArchiveBox.BoxCode"/>，使档位可被迁档/立档复用（对齐年度盒销号）。
+    /// 须在按盒号删除台账链接之后调用。
+    /// </summary>
+    private async Task ReleaseDisposedHistoryBoxLocationCodesAsync(HashSet<string> boxCodes)
+    {
+        if (boxCodes.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var box in await _repository.GetHistoryArchiveBoxesByCodesAsync(boxCodes))
+        {
+            string lastLocation = box.BoxCode?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(lastLocation))
+            {
+                box.LastStorageLocation = lastLocation;
+            }
+
+            box.BoxCode = string.Empty;
+            box.LifecycleStatus = HistoryArchiveDisposalDomainValues.LifecycleDisposed;
+        }
+    }
+
+    /// <summary>
     /// 台账行生命周期落库。盒号为投影属性：不改写、只更新状态；
     /// 办结写 <c>LastStorageLocation</c> 时取水合后的当前盒号原文（删链接前）。
     /// </summary>
@@ -1122,5 +1460,6 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         string BoxNumber,
         string BoxSpecification,
         string SourceKey,
-        string SummaryHint);
+        string SummaryHint,
+        string LastStorageLocation = "");
 }

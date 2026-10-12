@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using DocMgr.Models.HistoryArchive;
 using DocMgr.Models.Shared;
 using DocMgr.Models.SystemSettings;
@@ -22,13 +26,24 @@ public sealed class HistoryArchiveToDoProvider : IToDoProvider
     public async Task<List<ToDoItem>> GetToDosAsync(User currentUser)
     {
         var result = new List<ToDoItem>();
-        if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser))
+        if (!ArchiveRegisterBusinessRules.IsArchiveAdminUser(currentUser)
+            && !ArchiveRegisterBusinessRules.IsSystemAdministrator(currentUser))
         {
             return result;
         }
 
-        var pending = await _repository.GetPendingRecordsForToDoAsync(200);
-        result.AddRange(pending.Select(record => new ToDoItem
+        result.AddRange(await BuildPendingItemsAsync(200));
+        return result;
+    }
+
+    /// <inheritdoc/>
+    public Task<List<ToDoItem>> GetOverviewToDosAsync(int takeCount) =>
+        BuildPendingItemsAsync(Math.Max(1, takeCount));
+
+    private async Task<List<ToDoItem>> BuildPendingItemsAsync(int takeCount)
+    {
+        var pending = await _repository.GetPendingRecordsForToDoAsync(takeCount);
+        return pending.Select(record => new ToDoItem
         {
             Id = $"HA-DSP-{record.Id}-PENDING",
             Title = $"【资料离库处置】{ResolveTitle(record)}：{BuildSummary(record)}",
@@ -40,8 +55,7 @@ public sealed class HistoryArchiveToDoProvider : IToDoProvider
                 : HistoryArchiveDisposalDomainValues.ToStatusDisplay(record.Status),
             CreatedTime = record.SubmittedAt ?? record.ApplyTime,
             Priority = "高"
-        }));
-        return result;
+        }).ToList();
     }
 
     private static string ResolveTitle(HistoryArchiveDisposalRecord record) =>

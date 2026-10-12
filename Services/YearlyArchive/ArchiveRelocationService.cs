@@ -1014,8 +1014,9 @@ namespace DocMgr.Services.YearlyArchive
                         operatedAt,
                         remark,
                         "资料迁档：同步更新关联硬盘台账存放位置",
-                        relatedBatch,
-                        relatedArchiveTitle));
+                        businessNo: relatedBatch,
+                        relatedBatch: relatedBatch,
+                        relatedArchiveTitle: relatedArchiveTitle));
             }
         }
 
@@ -1125,8 +1126,9 @@ namespace DocMgr.Services.YearlyArchive
                         operatedAt,
                         remark,
                         "资料迁档：原硬盘格式化后归位空盘档口",
-                        relatedBatch,
-                        relatedArchiveTitle));
+                        businessNo: relatedBatch,
+                        relatedBatch: relatedBatch,
+                        relatedArchiveTitle: relatedArchiveTitle));
             }
         }
 

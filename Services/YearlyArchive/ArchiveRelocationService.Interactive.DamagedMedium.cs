@@ -439,11 +439,12 @@ namespace DocMgr.Services.YearlyArchive
 
             if (OpticalDiscLedgerSyncSupport.HasLedgerMaterialChange(before, ledger))
             {
+                // 开柜交互式迁档无独立业务单；业务单号留空，相关批次仍记光盘编号便于对照。
                 medium.Transactions.Add(new OpticalDiscMediaTransaction
                 {
                     Medium = medium,
                     TransactionType = OpticalDiscMediaTransaction.TypeRelocate,
-                    BusinessNo = medium.DiscCode.Trim(),
+                    BusinessNo = string.Empty,
                     BeforeStatus = before.Status,
                     AfterStatus = ledger.MediaStatus?.Trim() ?? string.Empty,
                     BeforeLocation = before.Location,

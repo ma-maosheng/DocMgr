@@ -217,6 +217,19 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="办理时间" Binding="{Binding OperateTime, StringFormat=yyyy-MM-dd HH:mm}" Width="130"/>
                             <DataGridTextColumn Header="流转类型" Binding="{Binding TransactionType}" Width="95"/>
+                            <DataGridTextColumn Header="业务单号" Binding="{Binding BusinessNoDisplay}" Width="140"/>
+                            <DataGridTemplateColumn Header="操作" Width="70">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="查看"
+                                                Padding="6,1"
+                                                Margin="2,0"
+                                                ToolTip="打开关联业务单；无真实业务单号时会提示原因"
+                                                Command="{Binding DataContext.ViewBusinessDetailCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                CommandParameter="{Binding}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="流转前状态" Binding="{Binding BeforeStatus}" Width="100"/>
                             <DataGridTextColumn Header="流转后状态" Binding="{Binding AfterStatus}" Width="100"/>
                             <DataGridTextColumn Header="流转前位置" Binding="{Binding BeforeLocation}" Width="120"/>
