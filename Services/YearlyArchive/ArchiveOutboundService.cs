@@ -869,10 +869,11 @@ namespace DocMgr.Services.YearlyArchive
             return ArchiveOutboundFlowResult.Ok("资料出库办结成功（已办结出库），台账与立档事实已同步。");
         }
 
-        public Task<IReadOnlyList<SystemAttachment>> GetAttachmentsAsync(int recordId) =>
-            _outboundRepository.GetAttachmentsByBusinessIdAsync(recordId).ContinueWith(
-                task => (IReadOnlyList<SystemAttachment>)task.Result,
-                TaskScheduler.Default);
+        public async Task<IReadOnlyList<SystemAttachment>> GetAttachmentsAsync(int recordId)
+        {
+            var attachments = await _outboundRepository.GetAttachmentsByBusinessIdAsync(recordId).ConfigureAwait(false);
+            return attachments;
+        }
 
         private async Task ApplySubmitSyncAsync(YearlyArchiveOutboundRecord record, User user)
         {

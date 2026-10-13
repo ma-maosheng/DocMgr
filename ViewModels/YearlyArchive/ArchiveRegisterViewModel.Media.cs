@@ -129,7 +129,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             void Work()
             {
-                RefreshMediaViews();
+                // 增删介质行时 ListCollectionView 已随 ObservableCollection 更新；勿再 Refresh，
+                // 否则会重建已有卡片容器，打乱借出/空盘等 Radio 选中态。
+                NotifyMediaViewSummaries();
                 SyncElectronicMediaSettingsFromEntries();
                 SyncSimulatedMediaSettingsFromEntries();
                 OnPropertyChanged(nameof(IsBorrowedHardDiskRegistrationVisible));
@@ -162,6 +164,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        /// <summary>
+        /// 仅更新数量等汇总展示，不调用 CollectionView.Refresh（避免重建 ItemsControl 容器）。
+        /// </summary>
+        private void NotifyMediaViewSummaries()
+        {
+            OnPropertyChanged(nameof(DataElectronicMediaCount));
+            OnPropertyChanged(nameof(DataSimulatedMediaCount));
+            OnPropertyChanged(nameof(SourceProvideUnitDisplay));
+            OnPropertyChanged(nameof(IsExternalSource));
+        }
+
         private void AttachMediaEntry(MediaEntryViewModel media)
         {
             media.PropertyChanged += MediaEntry_PropertyChanged;
@@ -179,25 +192,76 @@ namespace DocMgr.ViewModels.YearlyArchive
             media.Items.CollectionChanged -= MediaItems_CollectionChanged;
             foreach (var item in media.Items)
             {
+                DetachMediaItemSourceProvideHandler(item);
                 DetachContentEntryQuantityHandler(item);
             }
         }
         private void MediaEntry_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(MediaEntryViewModel.MediaKind)
-                || e.PropertyName == nameof(MediaEntryViewModel.MediaType)
-                || e.PropertyName == nameof(MediaEntryViewModel.Disposition)
-                || e.PropertyName == nameof(MediaEntryViewModel.MediaCount)
-                || e.PropertyName == nameof(MediaEntryViewModel.IsBorrowedHardDisk)
-                || e.PropertyName == nameof(MediaEntryViewModel.BorrowedHardDiskCode))
+            // 介质卡片内 Bool Radio（借出/空盘/归还）绑定回写时禁止 CollectionView.Refresh：
+            // ItemsControl 重建容器 + GroupName 互斥会把刚选中的值立刻打回。
+            if (e.PropertyName == nameof(MediaEntryViewModel.IsBorrowedHardDisk)
+                || e.PropertyName == nameof(MediaEntryViewModel.BorrowedHardDiskCode)
+                || e.PropertyName == nameof(MediaEntryViewModel.UseInStockBlankHardDisk)
+                || e.PropertyName == nameof(MediaEntryViewModel.RequisitionedDiskNeedReturn)
+                || e.PropertyName == nameof(MediaEntryViewModel.RequisitionedHardDiskCode)
+                || e.PropertyName == nameof(MediaEntryViewModel.AppendTargetHardDiskCode)
+                || e.PropertyName == nameof(MediaEntryViewModel.ExpectedReturnDate))
             {
-                RefreshMediaViews();
+                if (e.PropertyName == nameof(MediaEntryViewModel.IsBorrowedHardDisk)
+                    || e.PropertyName == nameof(MediaEntryViewModel.BorrowedHardDiskCode))
+                {
+                    SyncBorrowedHardDiskProjectionFromEntries();
+                }
+
+                return;
+            }
+
+            if (e.PropertyName == nameof(MediaEntryViewModel.MediaKind))
+            {
+                // Filter 仅依赖 MediaKind：既有行改类别时才需要 Refresh。
+                ScheduleRefreshMediaViews();
+                SyncElectronicMediaSettingsFromEntries();
+                SyncSimulatedMediaSettingsFromEntries();
+                return;
+            }
+
+            if (e.PropertyName == nameof(MediaEntryViewModel.MediaType)
+                || e.PropertyName == nameof(MediaEntryViewModel.Disposition)
+                || e.PropertyName == nameof(MediaEntryViewModel.MediaCount))
+            {
+                NotifyMediaViewSummaries();
                 SyncElectronicMediaSettingsFromEntries();
             }
         }
+
+        /// <summary>
+        /// 仅同步借出硬盘投影与编号列表，不刷新介质 CollectionView。
+        /// </summary>
+        private void SyncBorrowedHardDiskProjectionFromEntries()
+        {
+            var firstElectronicMedia = MediaEntries.FirstOrDefault(m => IsDataElectronic(m));
+            IsBorrowedHardDisk = firstElectronicMedia?.IsRetainedHardDiskScenario == true
+                && firstElectronicMedia.IsBorrowedHardDisk;
+            BorrowedHardDiskCode = firstElectronicMedia?.IsRetainedHardDiskScenario == true
+                ? firstElectronicMedia.BorrowedHardDiskCode ?? string.Empty
+                : string.Empty;
+            OnPropertyChanged(nameof(IsBorrowedHardDiskCodeRequired));
+            SyncBorrowedHardDiskSettingsFromSelections();
+        }
+
         private void MediaItems_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             var media = FindMediaEntryByItemsCollection(sender);
+            if (e.OldItems != null)
+            {
+                foreach (MediaItemViewModel item in e.OldItems)
+                {
+                    DetachMediaItemSourceProvideHandler(item);
+                    DetachContentEntryQuantityHandler(item);
+                }
+            }
+
             if (e.NewItems != null)
             {
                 foreach (MediaItemViewModel item in e.NewItems)
@@ -214,16 +278,15 @@ namespace DocMgr.ViewModels.YearlyArchive
                 RecalculateQuantities(media);
             }
 
-            ScheduleRefreshMediaViews();
+            // 子项增删不影响电子/模拟 Filter，禁止 Refresh 以免重建介质卡片打乱 Radio。
+            NotifyMediaViewSummaries();
         }
+
         private void RefreshMediaViews()
         {
             DataElectronicMediaView.Refresh();
             DataSimulatedMediaView.Refresh();
-            OnPropertyChanged(nameof(DataElectronicMediaCount));
-            OnPropertyChanged(nameof(DataSimulatedMediaCount));
-            OnPropertyChanged(nameof(SourceProvideUnitDisplay));
-            OnPropertyChanged(nameof(IsExternalSource));
+            NotifyMediaViewSummaries();
         }
 
         private MediaEntryViewModel? FindMediaEntryByItemsCollection(object? sender)
@@ -835,6 +898,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         private readonly Dictionary<MediaItemViewModel, NotifyCollectionChangedEventHandler> _contentEntryQuantityHandlers = new();
+        private readonly Dictionary<MediaItemViewModel, PropertyChangedEventHandler> _mediaItemSourceProvideHandlers = new();
 
         private void EnsureSimulatedMediaSelections()
         {
@@ -1006,6 +1070,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void ConfigureMediaItem(MediaEntryViewModel media, MediaItemViewModel item)
         {
+            AttachMediaItemSourceProvideHandler(item);
+
             if (IsDataSimulated(media))
             {
                 ConfigureSimulatedMediaItem(item);
@@ -1013,6 +1079,37 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             ConfigureElectronicMediaItem(item);
+        }
+
+        /// <summary>
+        /// 子项资料来源/提供单位变更时刷新表头汇总（SourceProvideUnitDisplay）。
+        /// </summary>
+        private void AttachMediaItemSourceProvideHandler(MediaItemViewModel item)
+        {
+            if (_mediaItemSourceProvideHandlers.ContainsKey(item))
+            {
+                return;
+            }
+
+            PropertyChangedEventHandler handler = (_, e) =>
+            {
+                if (e.PropertyName == nameof(MediaItemViewModel.SourceType)
+                    || e.PropertyName == nameof(MediaItemViewModel.ProvideUnit))
+                {
+                    NotifyMediaViewSummaries();
+                }
+            };
+            _mediaItemSourceProvideHandlers[item] = handler;
+            item.PropertyChanged += handler;
+        }
+
+        private void DetachMediaItemSourceProvideHandler(MediaItemViewModel item)
+        {
+            if (_mediaItemSourceProvideHandlers.TryGetValue(item, out var handler))
+            {
+                item.PropertyChanged -= handler;
+                _mediaItemSourceProvideHandlers.Remove(item);
+            }
         }
 
         private void ConfigureElectronicMediaItem(MediaItemViewModel item)

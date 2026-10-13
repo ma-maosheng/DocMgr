@@ -467,7 +467,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 
 
-            PrintApplicationsCommand = new RelayCommand(_ => PrintApplication(), _ => CanExecuteApplicationPrint());
+            PrintApplicationsCommand = new RelayCommand(async _ => await PrintApplicationAsync(), _ => CanExecuteApplicationPrint());
             PrintApprovalCommand = new RelayCommand(_ => PrintApprovalPage(), _ => CanPrintHandoverSheet);
             CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanCompleteApproval);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));

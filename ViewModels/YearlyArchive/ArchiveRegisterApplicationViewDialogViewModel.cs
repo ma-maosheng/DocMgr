@@ -57,7 +57,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 async _ => await SupplementOtherAttachmentAsync(),
                 _ => CanSupplementOtherAttachments);
             ViewArchiveDetailCommand = new RelayCommand(_ => ViewArchiveDetail(), _ => CanViewArchiveDetail);
-            PrintCommand = new RelayCommand(_ => Print(), _ => CanPrint);
+            PrintCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrint);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
             _ = InitializeAsync();
@@ -276,7 +276,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _dialogService.ShowArchiveDetailWindow(new ArchiveDetailOpenRequest(_record.Id, null));
         }
 
-        private void Print()
+        private async Task PrintAsync()
         {
             if (!CanPrint)
             {
@@ -285,7 +285,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                var data = _archiveRegisterService.BuildPrintData(_record, _record.MediaEntries);
+                var data = await _archiveRegisterService.BuildPrintDataAsync(_record, _record.MediaEntries);
                 var document = ArchiveRegisterPrintDocumentFactory.Create(data, isApplicationPrint: false);
                 var exportOptions = new PrintPreviewExportOptions
                 {

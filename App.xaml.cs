@@ -247,7 +247,12 @@ namespace DocMgr
             FieldDomainSeedService.SeedDefaults(fieldDomainSeedRepository);
 
             var outboundService = scope.ServiceProvider.GetRequiredService<IArchiveOutboundService>();
-            int voidedCount = outboundService.ProcessOverdueAutoForceVoidAsync(DateTime.Now).GetAwaiter().GetResult();
+            // 本方法已在 Task.Run 线程池执行；ConfigureAwait(false) 避免误捕获同步上下文。
+            int voidedCount = outboundService
+                .ProcessOverdueAutoForceVoidAsync(DateTime.Now)
+                .ConfigureAwait(false)
+                .GetAwaiter()
+                .GetResult();
             if (voidedCount > 0)
             {
                 System.Diagnostics.Debug.WriteLine($"资料借出：已自动强制作废 {voidedCount} 条逾期未审批申请。");

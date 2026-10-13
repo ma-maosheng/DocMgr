@@ -9,10 +9,11 @@ namespace DocMgr.Services.YearlyArchive
     /// </summary>
     public sealed partial class ArchiveReturnService
     {
-        public Task<IReadOnlyList<SystemAttachment>> GetAttachmentsAsync(int recordId) =>
-            _returnRepository.GetAttachmentsByBusinessIdAsync(recordId).ContinueWith(
-                task => (IReadOnlyList<SystemAttachment>)task.Result,
-                TaskScheduler.Default);
+        public async Task<IReadOnlyList<SystemAttachment>> GetAttachmentsAsync(int recordId)
+        {
+            var attachments = await _returnRepository.GetAttachmentsByBusinessIdAsync(recordId).ConfigureAwait(false);
+            return attachments;
+        }
 
         public async Task<ArchiveReturnAttachmentFlowResult> UploadSignedHandoverAttachmentFlowAsync(
             int recordId,

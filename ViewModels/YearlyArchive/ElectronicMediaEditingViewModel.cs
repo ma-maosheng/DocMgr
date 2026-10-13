@@ -737,7 +737,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             void Work()
             {
-                RefreshMediaViews();
+                // 增删介质行时 ListCollectionView 已随集合更新；勿 Refresh，以免重建卡片打乱 Radio。
+                NotifyMediaViewSummaries();
                 SyncElectronicMediaSettingsFromEntries();
                 OnPropertyChanged(nameof(IsBorrowedHardDiskRegistrationVisible));
                 OnPropertyChanged(nameof(IsBorrowedHardDiskCodeRequired));
@@ -796,12 +797,36 @@ namespace DocMgr.ViewModels.YearlyArchive
                 RequestHardDiskCapacityRefresh(capacityMedia);
             }
 
-            if (e.PropertyName == nameof(MediaEntryViewModel.MediaKind)
-                || e.PropertyName == nameof(MediaEntryViewModel.MediaType)
+            // 介质卡片内 Bool Radio / 关联字段：禁止 CollectionView.Refresh，避免 GroupName 互斥把选中值打回。
+            if (e.PropertyName == nameof(MediaEntryViewModel.IsBorrowedHardDisk)
+                || e.PropertyName == nameof(MediaEntryViewModel.BorrowedHardDiskCode)
+                || e.PropertyName == nameof(MediaEntryViewModel.UseInStockBlankHardDisk)
+                || e.PropertyName == nameof(MediaEntryViewModel.RequisitionedDiskNeedReturn)
+                || e.PropertyName == nameof(MediaEntryViewModel.RequisitionedHardDiskCode)
+                || e.PropertyName == nameof(MediaEntryViewModel.AppendTargetHardDiskCode)
+                || e.PropertyName == nameof(MediaEntryViewModel.ExpectedReturnDate))
+            {
+                if (e.PropertyName == nameof(MediaEntryViewModel.IsBorrowedHardDisk)
+                    || e.PropertyName == nameof(MediaEntryViewModel.BorrowedHardDiskCode))
+                {
+                    OnPropertyChanged(nameof(IsBorrowedHardDiskCodeRequired));
+                    SyncBorrowedHardDiskSettingsFromSelections();
+                }
+
+                return;
+            }
+
+            if (e.PropertyName == nameof(MediaEntryViewModel.MediaKind))
+            {
+                ScheduleRefreshMediaViews();
+                SyncElectronicMediaSettingsFromEntries();
+                OnPropertyChanged(nameof(IsBorrowedHardDiskCodeRequired));
+                return;
+            }
+
+            if (e.PropertyName == nameof(MediaEntryViewModel.MediaType)
                 || e.PropertyName == nameof(MediaEntryViewModel.Disposition)
-                || e.PropertyName == nameof(MediaEntryViewModel.MediaCount)
-                || e.PropertyName == nameof(MediaEntryViewModel.IsBorrowedHardDisk)
-                || e.PropertyName == nameof(MediaEntryViewModel.BorrowedHardDiskCode))
+                || e.PropertyName == nameof(MediaEntryViewModel.MediaCount))
             {
                 if (RestrictRetainedHardDiskToBorrowedOnly
                     && e.PropertyName is nameof(MediaEntryViewModel.MediaType) or nameof(MediaEntryViewModel.Disposition)
@@ -812,7 +837,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     retainedMedia.IsBorrowedHardDisk = true;
                 }
 
-                RefreshMediaViews();
+                NotifyMediaViewSummaries();
                 SyncElectronicMediaSettingsFromEntries();
                 OnPropertyChanged(nameof(IsBorrowedHardDiskCodeRequired));
             }
@@ -834,7 +859,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 RecalculateQuantities(media);
             }
 
-            ScheduleRefreshMediaViews();
+            // 子项增删不影响 Filter，禁止 Refresh 以免重建介质卡片打乱 Radio。
+            NotifyMediaViewSummaries();
         }
 
         private void ScheduleRefreshMediaViews()
@@ -851,10 +877,18 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        /// <summary>
+        /// 仅更新数量汇总，不调用 CollectionView.Refresh。
+        /// </summary>
+        private void NotifyMediaViewSummaries()
+        {
+            OnPropertyChanged(nameof(DataElectronicMediaCount));
+        }
+
         private void RefreshMediaViews()
         {
             DataElectronicMediaView.Refresh();
-            OnPropertyChanged(nameof(DataElectronicMediaCount));
+            NotifyMediaViewSummaries();
         }
 
         private MediaEntryViewModel? FindMediaEntryByItemsCollection(object? sender)

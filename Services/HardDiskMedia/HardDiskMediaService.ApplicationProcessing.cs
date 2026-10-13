@@ -548,7 +548,7 @@ namespace DocMgr.Services.HardDiskMedia
                     ApplicantDept = existingApplication.ApplicantDept,
                     FieldValues = ApprovalChainApplySupport.BuildHardDiskApplicationFieldValues(existingApplication)
                 },
-                _userService.GetAllUsers());
+                _userService.GetAllUsers()).ConfigureAwait(false);
 
             bool blankApprovalSignatures = existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusDraft
                 || existingApplication.ApplicationStatus == HardDiskMediaApplication.StatusSubmitted;

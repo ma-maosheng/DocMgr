@@ -30,9 +30,12 @@
     <sys:Double x:Key="YaRegSimulatedOrganizationFormWidth">72</sys:Double>
     <sys:Double x:Key="YaRegActionButtonWidth">108</sys:Double>
     <sys:Double x:Key="YaRegItemLabelWidth">80</sys:Double>
+    <!-- 子项名称限宽，避免宽屏被 * 列拉飞导致右侧字段漂浮 -->
+    <sys:Double x:Key="YaRegContentDescMaxWidth">280</sys:Double>
     <GridLength x:Key="YaRegLabelColumn">110</GridLength>
     <GridLength x:Key="YaRegFieldGutterColumn">12</GridLength>
     <GridLength x:Key="YaRegItemLabelColumn">80</GridLength>
+    <GridLength x:Key="YaRegContentDescColumn">280</GridLength>
     <GridLength x:Key="YaRegCountColumn">48</GridLength>
     <GridLength x:Key="YaRegConfidentialColumn">72</GridLength>
     <GridLength x:Key="YaRegMediaKindColumn">56</GridLength>
@@ -48,6 +51,8 @@
     <Thickness x:Key="YaRegFormRowMargin">0,2</Thickness>
     <Thickness x:Key="YaRegFieldTrailingMargin">0,0,12,0</Thickness>
     <Thickness x:Key="YaRegFieldLeadingMargin">12,0,0,0</Thickness>
+    <!-- 同行字段组间距：右 gutter=12，折行时底边 2 -->
+    <Thickness x:Key="YaRegInlineFieldGroupMargin">0,0,12,2</Thickness>
     <Thickness x:Key="YaRegHintIndentMargin">80,0,0,2</Thickness>
     <Style x:Key="ItemDetailsPanelItemsControlStyle" TargetType="ItemsControl">
         <Style.Triggers>
@@ -666,11 +671,11 @@
                         <DataTemplate>
                             <Border Style="{StaticResource ArchiveRegisterMediaItemBorderStyle}">
                                 <StackPanel>
-                                    <!-- 子项名称 / 资料来源 / 提供单位 / 密级 / 份数 同一行 -->
+                                    <!-- 子项名称（限宽）/ 资料来源 / 提供单位 / 密级 / 份数；尾列 * 吸收宽屏余量 -->
                                     <Grid Margin="0,0,0,2">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="{StaticResource YaRegItemLabelColumn}"/>
-                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegContentDescColumn}"/>
                                             <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
                                             <ColumnDefinition Width="{StaticResource YaRegItemLabelColumn}"/>
                                             <ColumnDefinition Width="{StaticResource YaRegSourceTypeColumn}"/>
@@ -685,9 +690,12 @@
                                             <ColumnDefinition Width="{StaticResource YaRegCountColumn}"/>
                                             <ColumnDefinition Width="{StaticResource YaRegTightGutterColumn}"/>
                                             <ColumnDefinition Width="{StaticResource YaRegDeleteButtonColumn}"/>
+                                            <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="子项名称：" Style="{StaticResource ArchiveRegisterMediaCardLabelStyle}"/>
                                         <TextBox Grid.Column="1"
+                                                 MaxWidth="{StaticResource YaRegContentDescMaxWidth}"
+                                                 HorizontalAlignment="Stretch"
                                                  Text="{Binding ContentDesc, UpdateSourceTrigger=PropertyChanged}"
                                                  Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}"
                                                  ToolTip="电子资料子项名称"/>
@@ -820,30 +828,24 @@
                                         </TextBlock.Style>
                                     </TextBlock>
 
-                                    <!-- 资料类型/子类 + 数据量与扫描操作同一行（组织形式固定目录型，不再提供选择） -->
-                                    <Grid Margin="0,0,0,2">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="{StaticResource YaRegItemLabelColumn}"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegMaterialCategoryColumn}"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegItemLabelColumn}"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegSubCategoryColumn}"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegItemLabelColumn}"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="资料类型：" Style="{StaticResource ArchiveRegisterMediaCardLabelStyle}"/>
-                                        <ComboBox Grid.Column="1" Width="{StaticResource YaRegMaterialCategoryWidth}"
-                                                  Style="{StaticResource ArchiveRegisterCompactComboBoxStyle}"
-                                                  ItemsSource="{Binding DataContext.ElectronicMaterialCategoryOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                  SelectedItem="{Binding MaterialCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                        <TextBlock Grid.Column="3" Text="所属子类：" Style="{StaticResource ArchiveRegisterMediaCardLabelStyle}"/>
-                                        <ComboBox Grid.Column="4" Width="{StaticResource YaRegSubCategoryWidth}"
-                                                  Style="{StaticResource ArchiveRegisterCompactComboBoxStyle}"
-                                                  ItemsSource="{Binding AvailableSubCategories}"
-                                                  SelectedItem="{Binding SubCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                        <TextBlock Grid.Column="6" Text="数据量：" Style="{StaticResource ArchiveRegisterMediaCardLabelStyle}"/>
-                                        <StackPanel Grid.Column="7" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <!-- 资料类型 / 所属子类 / 数据量 / 扫描操作 同一行 -->
+                                    <WrapPanel Margin="0,0,0,2" Orientation="Horizontal">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                                            <TextBlock Text="资料类型：" Style="{StaticResource ArchiveRegisterMediaCardLabelStyle}"/>
+                                            <ComboBox Width="{StaticResource YaRegMaterialCategoryWidth}"
+                                                      Style="{StaticResource ArchiveRegisterCompactComboBoxStyle}"
+                                                      ItemsSource="{Binding DataContext.ElectronicMaterialCategoryOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                      SelectedItem="{Binding MaterialCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                                            <TextBlock Text="所属子类：" Style="{StaticResource ArchiveRegisterMediaCardLabelStyle}"/>
+                                            <ComboBox Width="{StaticResource YaRegSubCategoryWidth}"
+                                                      Style="{StaticResource ArchiveRegisterCompactComboBoxStyle}"
+                                                      ItemsSource="{Binding AvailableSubCategories}"
+                                                      SelectedItem="{Binding SubCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                                            <TextBlock Text="数据量：" Style="{StaticResource ArchiveRegisterMediaCardLabelStyle}"/>
                                             <TextBox Width="{StaticResource YaRegDataSizeWidth}" Text="{Binding DataSizeMb}" ToolTip="由扫描自动计算，可按需微调">
                                                 <TextBox.Style>
                                                     <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterCompactTextBoxStyle}">
@@ -869,27 +871,30 @@
                                                     </Style>
                                                 </TextBox.Style>
                                             </TextBox>
-                                            <TextBlock VerticalAlignment="Center" Margin="4,0,10,0" Foreground="#666" Text="MB"/>
-                                            <TextBlock VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#666" Text="{Binding ScannedEntryCountDisplay}"/>
-                                            <Button Content="选择父目录…" Width="96" Margin="0,0,4,0" Padding="4,2"
-                                                    ToolTip="选择子项所在文件夹（支持盘符），扫描其下文件与一级子目录"
-                                                    Command="{Binding DataContext.PickFolderAndScanElectronicContentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}"/>
-                                            <Button Content="重新扫描" Width="68" Margin="0,0,4,0" Padding="4,2"
-                                                    Command="{Binding DataContext.RescanElectronicContentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}"/>
-                                            <Button Content="清空明细" Width="68" Margin="0,0,4,0" Padding="4,2"
-                                                    Command="{Binding DataContext.ClearElectronicContentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}"/>
-                                            <Button Content="查看明细…" Width="84" Padding="4,2"
-                                                    Command="{Binding DataContext.ViewElectronicContentEntriesCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}"/>
+                                            <TextBlock VerticalAlignment="Center" Margin="4,0,8,0" Foreground="#666" Text="MB"/>
+                                            <TextBlock VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#666" Text="{Binding ScannedEntryCountDisplay}"/>
                                         </StackPanel>
-                                    </Grid>
-
-                                    <TextBlock Margin="{StaticResource YaRegHintIndentMargin}"
-                                               Foreground="#00695C" FontSize="12" TextWrapping="Wrap"
-                                               Text="{Binding ContentScanSummaryText}"/>
+                                        <Button Content="选择父目录…" Width="96" Margin="0,0,4,0" Padding="4,2"
+                                                VerticalAlignment="Center"
+                                                ToolTip="选择子项所在文件夹（支持盘符），扫描其下文件与一级子目录"
+                                                Command="{Binding DataContext.PickFolderAndScanElectronicContentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"/>
+                                        <Button Content="重新扫描" Width="68" Margin="0,0,4,0" Padding="4,2"
+                                                VerticalAlignment="Center"
+                                                Command="{Binding DataContext.RescanElectronicContentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"/>
+                                        <Button Content="清空明细" Width="68" Margin="0,0,4,0" Padding="4,2"
+                                                VerticalAlignment="Center"
+                                                Command="{Binding DataContext.ClearElectronicContentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"/>
+                                        <Button Content="查看明细…" Width="84" Margin="0,0,8,0" Padding="4,2"
+                                                VerticalAlignment="Center"
+                                                Command="{Binding DataContext.ViewElectronicContentEntriesCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"/>
+                                        <TextBlock VerticalAlignment="Center"
+                                                   Foreground="#00695C" FontSize="12" TextWrapping="Wrap"
+                                                   Text="{Binding ContentScanSummaryText}"/>
+                                    </WrapPanel>
 
                                     <Grid Margin="0,0,0,2">
                                         <Grid.ColumnDefinitions>
@@ -944,11 +949,11 @@
                         <DataTemplate>
                             <Border Style="{StaticResource ArchiveRegisterMediaItemBorderStyle}">
                                 <StackPanel>
-                                    <!-- 子项名称 / 资料来源 / 提供单位 / 密级 / 份数 同一行 -->
+                                    <!-- 子项名称（限宽）/ 资料来源 / 提供单位 / 密级 / 份数；尾列 * 吸收宽屏余量 -->
                                     <Grid Margin="0,0,0,2">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="{StaticResource YaRegItemLabelColumn}"/>
-                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="{StaticResource YaRegContentDescColumn}"/>
                                             <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
                                             <ColumnDefinition Width="{StaticResource YaRegItemLabelColumn}"/>
                                             <ColumnDefinition Width="{StaticResource YaRegSourceTypeColumn}"/>
@@ -963,9 +968,12 @@
                                             <ColumnDefinition Width="{StaticResource YaRegCountColumn}"/>
                                             <ColumnDefinition Width="{StaticResource YaRegTightGutterColumn}"/>
                                             <ColumnDefinition Width="{StaticResource YaRegDeleteButtonColumn}"/>
+                                            <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="子项名称：" Style="{StaticResource ArchiveRegisterMediaCardLabelStyle}"/>
                                         <TextBox Grid.Column="1"
+                                                 MaxWidth="{StaticResource YaRegContentDescMaxWidth}"
+                                                 HorizontalAlignment="Stretch"
                                                  Text="{Binding ContentDesc}" Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}" ToolTip="资料子项名称或内容"/>
                                         <TextBlock Grid.Column="3" Text="资料来源 *：" Style="{StaticResource ArchiveRegisterMediaCardLabelStyle}"/>
                                         <ComboBox Grid.Column="4"
@@ -1036,8 +1044,6 @@
                                             <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
                                             <ColumnDefinition Width="{StaticResource YaRegItemLabelColumn}"/>
                                             <ColumnDefinition Width="{StaticResource YaRegSimulatedOrganizationFormColumn}"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegItemLabelColumn}"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="资料类型：" Style="{StaticResource ArchiveRegisterMediaCardLabelStyle}"/>
@@ -1055,8 +1061,14 @@
                                                   Style="{StaticResource ArchiveRegisterCompactComboBoxStyle}"
                                                   ItemsSource="{Binding DataContext.SimulatedOrganizationFormOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                   SelectedItem="{Binding OrganizationForm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                        <TextBlock Grid.Column="9" Text="备注：" Style="{StaticResource ArchiveRegisterMediaCardLabelStyle}"/>
-                                        <TextBox Grid.Column="10"
+                                    </Grid>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="{StaticResource YaRegItemLabelColumn}"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="备注：" Style="{StaticResource ArchiveRegisterMediaCardLabelStyle}"/>
+                                        <TextBox Grid.Column="1"
                                                  Text="{Binding Note}" Style="{StaticResource ArchiveRegisterCompactTextBoxStyle}" ToolTip="备注"/>
                                     </Grid>
                                 </StackPanel>
@@ -1198,66 +1210,55 @@
     <Style x:Key="ArchiveRegisterApprovalFieldPanelStyle" TargetType="StackPanel">
         <Setter Property="Orientation" Value="Horizontal"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="Margin" Value="0,0,12,0"/>
+        <Setter Property="Margin" Value="{StaticResource YaRegInlineFieldGroupMargin}"/>
     </Style>
 
     <DataTemplate x:Key="MediaItemReadOnlyTemplate_Simulated">
         <Border Style="{StaticResource ArchiveRegisterApprovalSubItemCardStyle}">
             <StackPanel>
-                <Grid Margin="0,0,0,2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}" Margin="0,0,8,0">
+                <!-- 子项标识 + 密级/份数/备注 紧挨横排 -->
+                <WrapPanel Margin="{StaticResource YaRegFormRowMargin}" Orientation="Horizontal">
+                    <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="子项名称：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding ContentDesc, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" FontWeight="SemiBold"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}" Margin="0,0,8,0">
+                    <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="密级：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <ComboBox Width="72"
                                   Style="{StaticResource ArchiveRegisterConfidentialLevelComboBoxStyle}"
                                   ItemsSource="{Binding DataContext.ConfidentialLevelOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                   SelectedItem="{Binding ConfidentialLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}" Margin="0,0,8,0">
+                    <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="份数：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding ContentCount}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="备注：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding Note, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                </Grid>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
+                </WrapPanel>
+                <!-- 分类 + 来源 紧挨横排 -->
+                <WrapPanel Margin="{StaticResource YaRegFormRowMargin}" Orientation="Horizontal">
+                    <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="资料类型：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding MaterialCategory, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
+                    <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="所属子类：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding SubCategory, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="组织形式：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding OrganizationForm, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                </Grid>
-                <Grid Margin="0,2,0,0">
-                    <DockPanel LastChildFill="True">
-                        <TextBlock DockPanel.Dock="Left" Text="资料来源：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource YaRegFormRowMargin}">
+                        <TextBlock Text="资料来源：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding SourceProvideUnitDisplayText, Mode=OneWay}"
                                    Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"
                                    TextWrapping="Wrap"/>
-                    </DockPanel>
-                </Grid>
+                    </StackPanel>
+                </WrapPanel>
             </StackPanel>
         </Border>
     </DataTemplate>
@@ -1265,60 +1266,50 @@
     <DataTemplate x:Key="MediaItemReadOnlyTemplate_Electronic">
         <Border Style="{StaticResource ArchiveRegisterApprovalSubItemCardStyle}">
             <StackPanel>
-                <Grid Margin="0,0,0,2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="1.4*"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
+                <!-- 子项名称 + 存储目录 紧挨横排 -->
+                <WrapPanel Margin="{StaticResource YaRegFormRowMargin}" Orientation="Horizontal">
+                    <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="子项名称：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding ContentDesc, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" FontWeight="SemiBold"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource YaRegFormRowMargin}">
                         <TextBlock Text="存储目录：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding StoragePath, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                </Grid>
-                <Grid Margin="0,0,0,2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}" Margin="0,0,8,0">
+                </WrapPanel>
+                <!-- 密级/份数/类型/子类/来源 紧挨横排 -->
+                <WrapPanel Margin="{StaticResource YaRegFormRowMargin}" Orientation="Horizontal">
+                    <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="密级：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <ComboBox Width="72"
                                   Style="{StaticResource ArchiveRegisterConfidentialLevelComboBoxStyle}"
                                   ItemsSource="{Binding DataContext.ConfidentialLevelOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                   SelectedItem="{Binding ConfidentialLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}" Margin="0,0,8,0">
+                    <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="份数：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding ContentCount}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="2" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
+                    <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="资料类型：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding MaterialCategory, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="3" Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
+                    <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="所属子类：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding SubCategory, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                </Grid>
-                <Grid Margin="0,2,0,0">
-                    <DockPanel LastChildFill="True">
-                        <TextBlock DockPanel.Dock="Left" Text="资料来源：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource YaRegFormRowMargin}">
+                        <TextBlock Text="资料来源：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding SourceProvideUnitDisplayText, Mode=OneWay}"
                                    Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"
                                    TextWrapping="Wrap"/>
-                    </DockPanel>
-                </Grid>
-                <Border Margin="0,2,0,0" Padding="6,4" Background="#F0F7F6" BorderBrush="#D5E8E4" BorderThickness="1" CornerRadius="3">
+                    </StackPanel>
+                </WrapPanel>
+                <Border Margin="{StaticResource YaRegFormRowMargin}" Padding="6,4" Background="#F0F7F6" BorderBrush="#D5E8E4" BorderThickness="1" CornerRadius="3">
                     <DockPanel LastChildFill="True">
                         <Button DockPanel.Dock="Right"
                                 Content="查看明细…"
-                                Margin="12,0,0,0"
+                                Margin="{StaticResource YaRegFieldLeadingMargin}"
                                 Padding="8,2"
                                 VerticalAlignment="Center"
                                 Style="{StaticResource ButtonNormalStyle}"
@@ -1339,7 +1330,7 @@
         <Border Style="{StaticResource ArchiveRegisterApprovalMediaEntryCardStyle}">
             <StackPanel>
                 <TextBlock Text="资料介质（电子）" Style="{StaticResource ArchiveRegisterApprovalMediaEntryTitleStyle}"/>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <WrapPanel Margin="{StaticResource YaRegFormRowMargin}" Orientation="Horizontal">
                     <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="类型：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding MediaType, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
@@ -1352,7 +1343,7 @@
                         <TextBlock Text="处置：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding Disposition, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource YaRegFormRowMargin}">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">
                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -1377,10 +1368,10 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </StackPanel>
-                </StackPanel>
+                </WrapPanel>
                 <Border Style="{StaticResource ArchiveRegisterApprovalSubItemSectionStyle}">
                     <StackPanel>
-                        <viewShared:ItemDetailsPanelHeader DataContext="{Binding ItemDetailsPanel}" Margin="0,0,0,4"/>
+                        <viewShared:ItemDetailsPanelHeader DataContext="{Binding ItemDetailsPanel}" Margin="{StaticResource YaRegFormRowMargin}"/>
                         <ItemsControl ItemsSource="{Binding ItemDetailsPanel.PageItems}"
                                       ItemTemplate="{StaticResource MediaItemReadOnlyTemplate_Electronic}"
                                       Style="{StaticResource ItemDetailsPanelItemsControlStyle}"/>
@@ -1395,7 +1386,7 @@
         <Border Style="{StaticResource ArchiveRegisterApprovalMediaEntryCardStyle}">
             <StackPanel>
                 <TextBlock Text="资料介质（模拟）" Style="{StaticResource ArchiveRegisterApprovalMediaEntryTitleStyle}"/>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <WrapPanel Margin="{StaticResource YaRegFormRowMargin}" Orientation="Horizontal">
                     <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="介质：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding MediaKind, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
@@ -1404,14 +1395,14 @@
                         <TextBlock Text="类型：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding MediaType, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource YaRegFormRowMargin}">
                         <TextBlock Text="数量：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding MediaCount}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                </StackPanel>
+                </WrapPanel>
                 <Border Style="{StaticResource ArchiveRegisterApprovalSubItemSectionStyle}">
                     <StackPanel>
-                        <viewShared:ItemDetailsPanelHeader DataContext="{Binding ItemDetailsPanel}" Margin="0,0,0,4"/>
+                        <viewShared:ItemDetailsPanelHeader DataContext="{Binding ItemDetailsPanel}" Margin="{StaticResource YaRegFormRowMargin}"/>
                         <ItemsControl ItemsSource="{Binding ItemDetailsPanel.PageItems}"
                                       ItemTemplate="{StaticResource MediaItemReadOnlyTemplate_Simulated}"
                                       Style="{StaticResource ItemDetailsPanelItemsControlStyle}"/>
@@ -1426,7 +1417,7 @@
         <Border Style="{StaticResource ArchiveRegisterApprovalMediaEntryCardStyle}">
             <StackPanel>
                 <TextBlock Text="证明材料介质（模拟）" Style="{StaticResource ArchiveRegisterApprovalMediaEntryTitleStyle}"/>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <WrapPanel Margin="{StaticResource YaRegFormRowMargin}" Orientation="Horizontal">
                     <StackPanel Style="{StaticResource ArchiveRegisterApprovalFieldPanelStyle}">
                         <TextBlock Text="介质：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding MediaKind, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
@@ -1435,14 +1426,14 @@
                         <TextBlock Text="类型：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding MediaType, TargetNullValue=—}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource YaRegFormRowMargin}">
                         <TextBlock Text="数量：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                         <TextBlock Text="{Binding MediaCount}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                     </StackPanel>
-                </StackPanel>
+                </WrapPanel>
                 <Border Style="{StaticResource ArchiveRegisterApprovalSubItemSectionStyle}">
                     <StackPanel>
-                        <viewShared:ItemDetailsPanelHeader DataContext="{Binding ItemDetailsPanel}" Margin="0,0,0,4"/>
+                        <viewShared:ItemDetailsPanelHeader DataContext="{Binding ItemDetailsPanel}" Margin="{StaticResource YaRegFormRowMargin}"/>
                         <ItemsControl ItemsSource="{Binding ItemDetailsPanel.PageItems}"
                                       ItemTemplate="{StaticResource MediaItemReadOnlyTemplate_Simulated}"
                                       Style="{StaticResource ItemDetailsPanelItemsControlStyle}"/>

@@ -3,6 +3,7 @@ using DocMgr.Services.Shared;
 using Microsoft.Win32;
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -26,7 +27,7 @@ namespace DocMgr.ViewModels.Shared
             _sourceDocument = document;
             _exportOptions = exportOptions;
             ShowExportWord = true;
-            ExportWordCommand = new RelayCommand(_ => ExportWord());
+            ExportWordCommand = new RelayCommand(async _ => await ExportWordAsync());
 
             LoadDocument(document);
         }
@@ -42,13 +43,13 @@ namespace DocMgr.ViewModels.Shared
 
         public ICommand ExportWordCommand { get; }
 
-        private void ExportWord()
+        private async Task ExportWordAsync()
         {
             try
             {
                 if (_exportOptions?.ExportAsync != null)
                 {
-                    _exportOptions.ExportAsync().GetAwaiter().GetResult();
+                    await _exportOptions.ExportAsync();
                     return;
                 }
 

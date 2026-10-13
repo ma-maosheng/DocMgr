@@ -32,7 +32,7 @@ namespace DocMgr.Data
             var activeTransaction = currentContext.Database.CurrentTransaction;
             if (activeTransaction == null)
             {
-                await WriteAsync(logs, cancellationToken);
+                await WriteAsync(logs, cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -40,7 +40,7 @@ namespace DocMgr.Data
             bool shouldClose = connection.State != ConnectionState.Open;
             if (shouldClose)
             {
-                await connection.OpenAsync(cancellationToken);
+                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
             }
 
             try
@@ -93,14 +93,14 @@ namespace DocMgr.Data
                     AddParameter(command, "@changedColumns", log.ChangedColumns);
                     AddParameter(command, "@summary", log.Summary);
 
-                    await command.ExecuteNonQueryAsync(cancellationToken);
+                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                 }
             }
             finally
             {
                 if (shouldClose)
                 {
-                    await connection.CloseAsync();
+                    await connection.CloseAsync().ConfigureAwait(false);
                 }
             }
         }
@@ -119,7 +119,7 @@ namespace DocMgr.Data
 
             await using var context = new AppDbContext(options);
             context.DbOperationLogs.AddRange(logs);
-            await context.SaveChangesAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
         private static void AddParameter(System.Data.Common.DbCommand command, string name, object? value)

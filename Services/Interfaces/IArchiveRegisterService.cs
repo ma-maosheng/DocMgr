@@ -175,8 +175,8 @@ namespace DocMgr.Services.Interfaces
         // 计算登记页界面权限状态
         ArchiveRegisterUiPermissionState ResolveUiPermissionState(User? user, YearlyArchiveRegisterRecord? currentRecord);
 
-        // 组装打印 DTO（审批页/申请页通用数据）
-        ArchiveRegisterPrintData BuildPrintData(
+        // 组装打印 DTO（审批页/申请页通用数据）；须 await，禁止在 UI 线程 GetResult 以免死锁。
+        Task<ArchiveRegisterPrintData> BuildPrintDataAsync(
             YearlyArchiveRegisterRecord record,
             IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries);
 

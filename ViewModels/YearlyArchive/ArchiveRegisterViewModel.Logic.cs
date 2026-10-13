@@ -146,7 +146,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _dialogService.ShowMessage(result.Message);
                 if (!result.Success) return false;
                 MarkCommitted();
-                RequestClose?.Invoke(true);
+                // 与出网/入网一致：保存后留在本窗，便于继续「提交 → 打印申请」。
+                await ReloadCurrentRecordAfterCommitAsync();
                 return true;
             }
             catch (Exception ex) { _dialogService.ShowError("保存草稿失败: " + ex.Message); return false; }
@@ -334,12 +335,31 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (!result.Success) return;
 
                 MarkCommitted();
-                RequestClose?.Invoke(true);
+                // 提交后不关窗：按操作手册在同一窗继续「打印申请」；按钮态随 IsDraft=false 切换。
+                await ReloadCurrentRecordAfterCommitAsync();
             }
             catch (Exception ex)
             {
                 _dialogService.ShowError("提交保存失败: " + ex.Message);
             }
+        }
+
+        /// <summary>
+        /// 保存/提交成功后按 Id 重载当前单，刷新只读态与「打印申请」可用性。
+        /// </summary>
+        private async Task ReloadCurrentRecordAfterCommitAsync()
+        {
+            int? id = CurrentRecord?.Id;
+            if (id is not > 0)
+            {
+                UpdateUIState();
+                OnPropertyChanged(nameof(CurrentRecord));
+                OnPropertyChanged(nameof(WindowTitle));
+                CommandManager.InvalidateRequerySuggested();
+                return;
+            }
+
+            await LoadRecordDetailAsync(id.Value);
         }
 
         private bool ValidateProofMaterialInput()

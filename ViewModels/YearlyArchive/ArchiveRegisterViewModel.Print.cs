@@ -1,8 +1,10 @@
 using DocMgr.Views.Shared;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows;
 using DocMgr.Models.Shared;
+using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Shared;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
@@ -12,11 +14,11 @@ namespace DocMgr.ViewModels.YearlyArchive
     // 使用 partial 关键字
     public partial class ArchiveRegisterViewModel : ViewModelBase
     {
-        private void PrintApplication()
+        private async Task PrintApplicationAsync()
         {
             try
             {
-                var data = CollectPrintData();
+                var data = await CollectPrintDataAsync();
                 string blankDt = "______年___月___日";
 
                 // 2026-02-26 修改：申请人打印申请时，使用审批页的格式，但将审批签字内容置空。
@@ -33,12 +35,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 // 修改点1：传入 true，表示这是“打印申请”模式
                 var doc = ArchiveRegisterPrintDocumentFactory.Create(data, isApplicationPrint: true);
                 ShowArchiveRegisterPrintPreview(doc, data);
-
-                if (IsDialogMode && WorkspaceMode == ArchiveRegisterWorkspaceMode.Application)
-                {
-                    MarkCommitted();
-                    RequestClose?.Invoke(true);
-                }
+                // 申请打印后不关窗（与出网/入网一致）；关窗会触发工作台反复重开。
+                MarkCommitted();
             }
             catch (Exception ex)
             {
@@ -74,7 +72,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                var data = CollectPrintData();
+                var data = await CollectPrintDataAsync();
 
                 // 传入 false（默认）表示“审批/交接单打印”模式
                 var doc = ArchiveRegisterPrintDocumentFactory.Create(data, isApplicationPrint: false);
@@ -111,24 +109,23 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        private ArchiveRegisterPrintData CollectPrintData()
-        {
-            if (CurrentRecord == null) return new ArchiveRegisterPrintData();
-
-            return _archiveRegisterService.BuildPrintData(
-                CurrentRecord,
-                BuildMediaEntries());
-        }
-
         private async Task<ArchiveRegisterPrintData> CollectPrintDataAsync()
         {
-            var data = CollectPrintData();
             if (CurrentRecord == null)
             {
-                return data;
+                return new ArchiveRegisterPrintData();
             }
 
-            data.OpticalDiscLedgerSummary = await _archiveRegisterService.BuildOpticalDiscLedgerSummaryAsync(CurrentRecord);
+            // 已提交等只读态：用库中已加载的介质图，避免 BuildMediaEntries→Ensure* 再改写工具栏/触发借出列表刷新。
+            IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries =
+                !CanEditForm
+                && CurrentRecord.MediaEntries is { Count: > 0 } persisted
+                    ? persisted
+                    : BuildMediaEntries();
+
+            var data = await _archiveRegisterService.BuildPrintDataAsync(CurrentRecord, mediaEntries);
+            data.OpticalDiscLedgerSummary =
+                await _archiveRegisterService.BuildOpticalDiscLedgerSummaryAsync(CurrentRecord);
             return data;
         }
 

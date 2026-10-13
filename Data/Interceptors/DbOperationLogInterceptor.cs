@@ -63,7 +63,8 @@ namespace DocMgr.Data.Interceptors
 
         public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
         {
-            FlushPendingLogsAsync(eventData.Context, result).GetAwaiter().GetResult();
+            // ConfigureAwait(false)：同步 SaveChanges 常在 UI 线程调用，避免 await 回 UI 与 GetResult 死锁。
+            FlushPendingLogsAsync(eventData.Context, result).ConfigureAwait(false).GetAwaiter().GetResult();
             return base.SavedChanges(eventData, result);
         }
 
@@ -72,8 +73,8 @@ namespace DocMgr.Data.Interceptors
             int result,
             CancellationToken cancellationToken = default)
         {
-            await FlushPendingLogsAsync(eventData.Context, result, cancellationToken);
-            return await base.SavedChangesAsync(eventData, result, cancellationToken);
+            await FlushPendingLogsAsync(eventData.Context, result, cancellationToken).ConfigureAwait(false);
+            return await base.SavedChangesAsync(eventData, result, cancellationToken).ConfigureAwait(false);
         }
 
         public override void SaveChangesFailed(DbContextErrorEventData eventData)
@@ -206,11 +207,11 @@ namespace DocMgr.Data.Interceptors
                 var stopwatch = Stopwatch.StartNew();
                 if (context != null)
                 {
-                    await _logWriter.WriteAsync(batch, context, cancellationToken);
+                    await _logWriter.WriteAsync(batch, context, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
-                    await _logWriter.WriteAsync(batch, cancellationToken);
+                    await _logWriter.WriteAsync(batch, cancellationToken).ConfigureAwait(false);
                 }
 
                 stopwatch.Stop();

@@ -34,7 +34,7 @@ namespace DocMgr.Services.YearlyArchive
             var depletedFilingFactIds = await ResolveDepletedFilingFactIdsForPrintAsync(record);
             var classificationByFilingFactId = await LoadClassificationByFilingFactIdsAsync(
                 record.Items.Select(item => item.FilingFactId));
-            var chain = await ResolveOutboundApprovalChainAsync(record);
+            var chain = await ResolveOutboundApprovalChainAsync(record).ConfigureAwait(false);
             return BuildPrintData(record, blankApprovalSignatures, depletedFilingFactIds, classificationByFilingFactId, chain);
         }
 

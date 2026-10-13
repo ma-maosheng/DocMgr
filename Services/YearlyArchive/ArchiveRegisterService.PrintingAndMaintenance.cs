@@ -57,7 +57,7 @@ namespace DocMgr.Services.YearlyArchive
             return ArchiveRegisterBusinessRules.CanSubmitApplication(user);
         }
 
-        public ArchiveRegisterPrintData BuildPrintData(
+        public async Task<ArchiveRegisterPrintData> BuildPrintDataAsync(
             YearlyArchiveRegisterRecord record,
             IReadOnlyCollection<YearlyArchiveRegisterMedia> mediaEntries)
         {
@@ -91,15 +91,15 @@ namespace DocMgr.Services.YearlyArchive
                 .Any();
             string retainedHardDiskRegistration = BuildRetainedHardDiskRegistrationText(entries);
             var pageDomainOptions = CreatePageDomainOptions(GetPageDomainDefinitions());
-            var users = _archiveRegisterRepository.GetUsersAsync().GetAwaiter().GetResult();
-            var chain = _approvalWorkflowService.ResolveAsync(
+            var users = await _archiveRegisterRepository.GetUsersAsync().ConfigureAwait(false);
+            var chain = await _approvalWorkflowService.ResolveAsync(
                 new ApprovalChainResolveRequest
                 {
                     BusinessType = ApprovalWorkflowBusinessTypes.YearlyArchiveRegister,
                     ApplicantDept = record.ApplicantDept,
                     FieldValues = ApprovalChainApplySupport.BuildRegisterFieldValues(record)
                 },
-                users).GetAwaiter().GetResult();
+                users).ConfigureAwait(false);
 
             return new ArchiveRegisterPrintData
             {
