@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using OpenCvSharp;
 
 namespace DocMgr.Services.Shared
 {
@@ -10,6 +11,9 @@ namespace DocMgr.Services.Shared
     /// </summary>
     public static class DocumentCameraImageSupport
     {
+        /// <summary>实况预览最长边像素；全分辨率解码会卡住 UI（如 4160×3102）。</summary>
+        public const int LivePreviewMaxEdge = 1600;
+
         /// <summary>
         /// 将摄像头原始帧（JPEG / BMP / DIB）转为可冻结的预览位图；无法解码时返回 <see langword="null"/>。
         /// 须在 STA 线程调用。
@@ -40,6 +44,71 @@ namespace DocMgr.Services.Shared
                 }
 
                 return LoadBitmapImage(imageBytes);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 后台线程将原始帧缩成轻量 JPEG，供实况预览。可在 MTA 调用；拍摄仍用全分辨率原帧。
+        /// </summary>
+        public static byte[]? TryCreateDownscaledJpeg(byte[]? imageBytes, int maxEdge = LivePreviewMaxEdge)
+        {
+            if (imageBytes == null || imageBytes.Length < 16 || maxEdge < 320)
+            {
+                return null;
+            }
+
+            try
+            {
+                byte[] payload = IsDibHeader(imageBytes) ? WrapDibAsBmpFile(imageBytes) : imageBytes;
+                using Mat source = Cv2.ImDecode(payload, ImreadModes.Color);
+                if (source.Empty() || source.Width < 8 || source.Height < 8)
+                {
+                    return null;
+                }
+
+                int maxSide = Math.Max(source.Width, source.Height);
+                Mat working = source;
+                Mat? resized = null;
+                try
+                {
+                    if (maxSide > maxEdge)
+                    {
+                        double scale = maxEdge / (double)maxSide;
+                        resized = new Mat();
+                        Cv2.Resize(
+                            source,
+                            resized,
+                            new Size(
+                                Math.Max(1, (int)Math.Round(source.Width * scale)),
+                                Math.Max(1, (int)Math.Round(source.Height * scale))),
+                            0,
+                            0,
+                            InterpolationFlags.Area);
+                        working = resized;
+                    }
+
+                    int[] encodeParams =
+                    [
+                        (int)ImwriteFlags.JpegQuality,
+                        78
+                    ];
+                    if (!Cv2.ImEncode(".jpg", working, out byte[] buffer, encodeParams)
+                        || buffer == null
+                        || buffer.Length == 0)
+                    {
+                        return null;
+                    }
+
+                    return buffer;
+                }
+                finally
+                {
+                    resized?.Dispose();
+                }
             }
             catch (Exception)
             {

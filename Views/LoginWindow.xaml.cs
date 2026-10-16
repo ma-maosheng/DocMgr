@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿using System.Globalization;
+using System.Linq;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using DocMgr.Services.Interfaces;
@@ -38,10 +40,36 @@ namespace DocMgr.Views
         private void LoginWindow_Loaded(object sender, RoutedEventArgs e)
         {
             Loaded -= LoginWindow_Loaded;
+            ApplyEnglishInput(this);
+            ApplyEnglishInput(TxtUsername);
+            ApplyEnglishInput(TxtPassword);
+            TxtUsername.GotKeyboardFocus += (_, _) => ApplyEnglishInput(TxtUsername);
+            TxtPassword.GotKeyboardFocus += (_, _) => ApplyEnglishInput(TxtPassword);
             TxtUsername.Focus();
 
             var logContext = _viewScope.ServiceProvider.GetService<IDbOperationLogContextService>();
             logContext?.SetCurrentPage("用户登录");
+        }
+
+        /// <summary>
+        /// 登录框默认英文：关闭中文输入法，并尽量切到已安装的英语键盘。
+        /// </summary>
+        private static void ApplyEnglishInput(DependencyObject target)
+        {
+            InputMethod.SetIsInputMethodEnabled(target, true);
+            InputMethod.SetPreferredImeState(target, InputMethodState.Off);
+            InputMethod.SetPreferredImeConversionMode(target, ImeConversionModeValues.Alphanumeric);
+
+            CultureInfo? english = InputLanguageManager.Current.AvailableInputLanguages
+                .OfType<CultureInfo>()
+                .FirstOrDefault(item => item.Name.StartsWith("en", StringComparison.OrdinalIgnoreCase));
+            if (english == null)
+            {
+                return;
+            }
+
+            InputLanguageManager.SetInputLanguage(target, english);
+            InputLanguageManager.Current.CurrentInputLanguage = english;
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

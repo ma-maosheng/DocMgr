@@ -161,8 +161,20 @@
                         </Grid.RowDefinitions>
                         <DockPanel Grid.Row="0" Margin="0,0,0,8">
                             <TextBlock Text="归还登记单" FontSize="14" FontWeight="Bold" Foreground="#37474F" VerticalAlignment="Center"/>
-                            <Button Content="打开" Command="{Binding OpenReturnCommand}" DockPanel.Dock="Right"
-                                    HorizontalAlignment="Right" Width="96" Style="{StaticResource FormInlineButtonStyle}"/>
+                            <StackPanel DockPanel.Dock="Right"
+                                        Orientation="Horizontal"
+                                        HorizontalAlignment="Right">
+                                <Button Content="强制作废"
+                                        Command="{Binding ForceWithdrawCommand}"
+                                        Width="96"
+                                        Margin="0,0,8,0"
+                                        Style="{StaticResource FormInlineButtonStyle}"
+                                        ToolTip="资料管理员强制作废（须满足逾期时限），状态变为「已作废（强制）」"/>
+                                <Button Content="打开"
+                                        Command="{Binding OpenReturnCommand}"
+                                        Width="96"
+                                        Style="{StaticResource FormInlineButtonStyle}"/>
+                            </StackPanel>
                         </DockPanel>
                         <DataGrid x:Name="DgApplications"
                                   Grid.Row="1"
@@ -219,12 +231,12 @@
 
                                 <TextBlock Text="{Binding EditHeader}" TextWrapping="Wrap" Foreground="#546E7A" Margin="0,0,0,8"/>
 
-                                <Border Background="#F9FAFB" BorderBrush="#E0E0E0" BorderThickness="1" Padding="12" Margin="0,0,0,8">
-                                    <StackPanel>
-                                        <TextBlock Text="归还登记单号：" Foreground="#78909C" FontSize="12"/>
-                                        <TextBlock Text="{Binding ApplicationNo}" FontWeight="SemiBold" Foreground="#263238" Margin="0,4,0,0"/>
-                                        <TextBlock Text="来源借出单号：" Foreground="#78909C" FontSize="12" Margin="0,8,0,0"/>
-                                        <TextBlock Text="{Binding SourceApplicationNo}" Foreground="#37474F" Margin="0,4,0,0"/>
+                                <Border Background="#F9FAFB" BorderBrush="#E0E0E0" BorderThickness="1" Padding="12,8" Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="归还登记单号：" Foreground="#78909C" FontSize="12" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding ApplicationNo}" FontWeight="SemiBold" Foreground="#263238" VerticalAlignment="Center"/>
+                                        <TextBlock Text="来源借出单号：" Foreground="#78909C" FontSize="12" VerticalAlignment="Center" Margin="24,0,0,0"/>
+                                        <TextBlock Text="{Binding SourceApplicationNo}" Foreground="#37474F" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
 
@@ -422,19 +434,14 @@
                             </StackPanel>
                         </ScrollViewer>
 
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                            <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                <Button Content="{Binding SaveButtonText}" Command="{Binding SaveDraftCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
-                                <Button Content="{Binding SubmitButtonText}" Command="{Binding SubmitCommand}" Width="112" Height="32" Margin="0,0,10,0"/>
-                                <Button Content="打印签批交接单" Command="{Binding PrintSignedHandoverCommand}" Width="128" Height="32" Margin="0,0,10,0"/>
-                                <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Width="96" Height="32" Margin="0,0,10,0"
-                                        ToolTip="申请人撤回，状态变为「已作废（撤回）」"/>
-                                <Button Content="关闭" Command="{Binding CancelEditCommand}" Width="80" Height="32"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Visibility="{Binding ShowApprovalActions, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                <Button Content="强制作废" Command="{Binding ForceWithdrawCommand}" Width="96" Height="32"
-                                        ToolTip="资料管理员强制作废（须满足逾期时限），状态变为「已作废（强制）」"/>
-                            </StackPanel>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0"
+                                    Visibility="{Binding ShowApplicationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Button Content="{Binding SaveButtonText}" Command="{Binding SaveDraftCommand}" Width="96" Height="32" Margin="0,0,10,0"/>
+                            <Button Content="{Binding SubmitButtonText}" Command="{Binding SubmitCommand}" Width="112" Height="32" Margin="0,0,10,0"/>
+                            <Button Content="打印签批交接单" Command="{Binding PrintSignedHandoverCommand}" Width="128" Height="32" Margin="0,0,10,0"/>
+                            <Button Content="撤回作废" Command="{Binding WithdrawCommand}" Width="96" Height="32" Margin="0,0,10,0"
+                                    ToolTip="申请人撤回，状态变为「已作废（撤回）」"/>
+                            <Button Content="关闭" Command="{Binding CancelEditCommand}" Width="80" Height="32"/>
                         </StackPanel>
                     </Grid>
                 </Grid>

@@ -33,8 +33,8 @@ namespace DocMgr.Models.Shared
         /// <summary>轻度锐化文字边缘。</summary>
         public bool Sharpen { get; set; }
 
-        /// <summary>顺时针旋转角度：0 / 90 / 180 / 270。</summary>
-        public int RotationDegrees { get; set; }
+        /// <summary>顺时针旋转角度：0 / 90 / 180 / 270。现场高影仪台面朝向默认 90°。</summary>
+        public int RotationDegrees { get; set; } = 90;
 
         /// <summary>亮度偏移，范围 -50～50。</summary>
         public int Brightness { get; set; }
@@ -45,19 +45,21 @@ namespace DocMgr.Models.Shared
         /// <summary>JPEG 质量，范围 60～95。</summary>
         public int JpegQuality { get; set; } = 88;
 
-        /// <summary><see cref="ColorModeColor"/> / <see cref="ColorModeGray"/> / <see cref="ColorModeBinary"/>。</summary>
-        public string ColorMode { get; set; } = ColorModeColor;
+        /// <summary><see cref="ColorModeColor"/> / <see cref="ColorModeGray"/> / <see cref="ColorModeBinary"/>。默认黑白，适合签批单扫描。</summary>
+        public string ColorMode { get; set; } = ColorModeBinary;
 
         /// <summary>上次选用的拍摄设备标识。</summary>
         public string? LastDeviceIdentity { get; set; }
 
-        /// <summary>上次选用的采集像素宽；0 表示按设备默认（优先 4160×3120）。</summary>
-        public int CaptureWidth { get; set; }
+        /// <summary>上次选用的采集像素宽；0 表示按设备默认。默认 3840（本机 Q1300 实测可用预览档）。</summary>
+        public int CaptureWidth { get; set; } = 3840;
 
-        /// <summary>上次选用的采集像素高；0 表示按设备默认。</summary>
-        public int CaptureHeight { get; set; }
+        /// <summary>上次选用的采集像素高；0 表示按设备默认。默认 2880。</summary>
+        public int CaptureHeight { get; set; } = 2880;
 
-        /// <summary>生成面向签批单/资料照片的默认值。</summary>
+        /// <summary>
+        /// 生成面向签批单/资料照片的默认值（对齐本机高影仪当前实操参数：黑白、旋转 90°、3840×2880）。
+        /// </summary>
         public static DocumentCameraCaptureSettings CreateDefault() => new();
 
         /// <summary>色彩模式选项（值 + 显示名）。</summary>
@@ -76,10 +78,11 @@ namespace DocMgr.Models.Shared
             Contrast = Math.Clamp(Contrast, -50, 50);
             JpegQuality = Math.Clamp(JpegQuality, 60, 95);
             string mode = ColorMode?.Trim() ?? string.Empty;
-            ColorMode = string.Equals(mode, ColorModeGray, StringComparison.Ordinal)
+            ColorMode = string.Equals(mode, ColorModeColor, StringComparison.Ordinal)
+                || string.Equals(mode, ColorModeGray, StringComparison.Ordinal)
                 || string.Equals(mode, ColorModeBinary, StringComparison.Ordinal)
                 ? mode
-                : ColorModeColor;
+                : ColorModeBinary;
             LastDeviceIdentity = string.IsNullOrWhiteSpace(LastDeviceIdentity)
                 ? null
                 : LastDeviceIdentity.Trim();

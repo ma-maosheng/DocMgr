@@ -22,23 +22,26 @@
             <StackPanel Orientation="Horizontal">
                 <Button Content="➕ 新增柜子"
                         Command="{Binding AddCommand}"
-                        Width="100"
+                        Width="120"
                         Margin="0,0,10,0"
                         Style="{StaticResource ButtonNormalStyle}"
                         Visibility="{Binding CanMaintainLayout, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                 <Button Content="✏️ 编辑选中"
                         Command="{Binding EditCommand}"
-                        Width="100"
+                        Width="120"
                         Margin="0,0,10,0"
                         Style="{StaticResource ButtonNormalStyle}"
                         Visibility="{Binding CanMaintainLayout, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                 <Button Content="🗑️ 删除选中"
                         Command="{Binding DeleteCommand}"
-                        Width="100"
+                        Width="120"
                         Margin="0,0,10,0"
                         Style="{StaticResource ButtonCautionStyle}"
                         Visibility="{Binding CanMaintainLayout, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                <Button Content="🔄 刷新" Command="{Binding RefreshCommand}" Width="80" Style="{StaticResource ButtonNormalStyle}"/>
+                <Button Content="🔄 刷新"
+                        Command="{Binding RefreshCommand}"
+                        Width="120"
+                        Style="{StaticResource ButtonNormalStyle}"/>
                 <TextBlock Text="提示：选中柜子可按住鼠标拖拽移动位置，右键可进行编号、旋转等操作"
                            VerticalAlignment="Center"
                            Margin="20,0,0,0"

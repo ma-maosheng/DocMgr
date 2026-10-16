@@ -162,7 +162,7 @@ namespace DocMgr.Services.Shared
                     return false;
                 }
 
-                Replace(ref current, CropWithPadding(current, bounds.Value, 8));
+                Replace(ref current, CropWithPadding(current, bounds.Value, ResolvePadding(current, 0.03)));
                 return false;
             }
 
@@ -171,6 +171,9 @@ namespace DocMgr.Services.Shared
             {
                 return false;
             }
+
+            // 轮廓常误贴表格线：外扩并并入墨迹外接框，避免表外标题/签字被裁掉。
+            ordered = PrepareDocumentQuad(ordered, current);
 
             if (perspective)
             {
@@ -186,10 +189,33 @@ namespace DocMgr.Services.Shared
             {
                 var points = ordered.Select(item => (Point)item).ToArray();
                 Rect bounds = Cv2.BoundingRect(points);
-                Replace(ref current, CropWithPadding(current, bounds, 6));
+                Replace(ref current, CropWithPadding(current, bounds, ResolvePadding(current, 0.025)));
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// 外扩四边形，并确保覆盖页面墨迹（表格外文本）。
+        /// </summary>
+        private static Point2f[] PrepareDocumentQuad(Point2f[] ordered, Mat source)
+        {
+            bool nearBorder = IsNearImageBorder(ordered, source.Width, source.Height);
+            float expandRatio = nearBorder ? 0.04f : 0.18f;
+            Point2f[] expanded = ExpandQuad(ordered, expandRatio, source.Width, source.Height);
+            Rect? ink = TryFindInkBounds(source);
+            if (ink == null)
+            {
+                return expanded;
+            }
+
+            int pad = ResolvePadding(source, 0.02);
+            var paddedInk = new Rect(
+                Math.Max(0, ink.Value.X - pad),
+                Math.Max(0, ink.Value.Y - pad),
+                Math.Min(source.Width, ink.Value.X + ink.Value.Width + pad) - Math.Max(0, ink.Value.X - pad),
+                Math.Min(source.Height, ink.Value.Y + ink.Value.Height + pad) - Math.Max(0, ink.Value.Y - pad));
+            return ExpandQuadToContain(expanded, paddedInk, source.Width, source.Height);
         }
 
         private static Point2f[]? TryFindDocumentQuad(Mat source)
@@ -244,8 +270,10 @@ namespace DocMgr.Services.Shared
 
             Cv2.FindContours(binary, out Point[][] contours, out _, RetrievalModes.External, ContourApproximationModes.ApproxSimple);
             double imageArea = graySmall.Width * (double)graySmall.Height;
-            Point[]? best = null;
-            double bestArea = 0;
+            Point[]? bestBorder = null;
+            double bestBorderArea = 0;
+            Point[]? bestAny = null;
+            double bestAnyArea = 0;
             foreach (Point[] contour in contours)
             {
                 double peri = Cv2.ArcLength(contour, true);
@@ -256,15 +284,26 @@ namespace DocMgr.Services.Shared
                 }
 
                 double area = Math.Abs(Cv2.ContourArea(approx));
-                if (area < imageArea * 0.18 || area <= bestArea)
+                if (area < imageArea * 0.18)
                 {
                     continue;
                 }
 
-                bestArea = area;
-                best = approx;
+                if (area > bestAnyArea)
+                {
+                    bestAnyArea = area;
+                    bestAny = approx;
+                }
+
+                // 优先贴画面边缘的纸张轮廓，避免误选居中表格框。
+                if (IsNearImageBorder(approx, graySmall.Width, graySmall.Height) && area > bestBorderArea)
+                {
+                    bestBorderArea = area;
+                    bestBorder = approx;
+                }
             }
 
+            Point[]? best = bestBorder ?? bestAny;
             if (best == null)
             {
                 return null;
@@ -274,6 +313,157 @@ namespace DocMgr.Services.Shared
                 .Select(point => new Point2f((float)(point.X / scale), (float)(point.Y / scale)))
                 .ToArray();
         }
+
+        private static bool IsNearImageBorder(Point[] approx, int width, int height)
+        {
+            Rect bounds = Cv2.BoundingRect(approx);
+            return IsNearImageBorder(
+                [
+                    new Point2f(bounds.X, bounds.Y),
+                    new Point2f(bounds.X + bounds.Width, bounds.Y),
+                    new Point2f(bounds.X + bounds.Width, bounds.Y + bounds.Height),
+                    new Point2f(bounds.X, bounds.Y + bounds.Height)
+                ],
+                width,
+                height);
+        }
+
+        private static bool IsNearImageBorder(Point2f[] quad, int width, int height)
+        {
+            if (width <= 0 || height <= 0 || quad.Length < 4)
+            {
+                return false;
+            }
+
+            float minX = quad.Min(item => item.X);
+            float maxX = quad.Max(item => item.X);
+            float minY = quad.Min(item => item.Y);
+            float maxY = quad.Max(item => item.Y);
+            double marginX = width * 0.15;
+            double marginY = height * 0.15;
+            int near = 0;
+            if (minX <= marginX)
+            {
+                near++;
+            }
+
+            if (minY <= marginY)
+            {
+                near++;
+            }
+
+            if (maxX >= width - marginX)
+            {
+                near++;
+            }
+
+            if (maxY >= height - marginY)
+            {
+                near++;
+            }
+
+            double cover = ((maxX - minX) * (maxY - minY)) / (width * (double)height);
+            return near >= 3 || cover >= 0.55;
+        }
+
+        private static Point2f[] ExpandQuad(Point2f[] ordered, float expandRatio, int width, int height)
+        {
+            if (expandRatio <= 0)
+            {
+                return ordered;
+            }
+
+            float centerX = (ordered[0].X + ordered[1].X + ordered[2].X + ordered[3].X) / 4f;
+            float centerY = (ordered[0].Y + ordered[1].Y + ordered[2].Y + ordered[3].Y) / 4f;
+            var expanded = new Point2f[4];
+            for (int i = 0; i < 4; i++)
+            {
+                float dx = ordered[i].X - centerX;
+                float dy = ordered[i].Y - centerY;
+                expanded[i] = new Point2f(
+                    Clamp(centerX + (dx * (1f + expandRatio)), 0, width - 1),
+                    Clamp(centerY + (dy * (1f + expandRatio)), 0, height - 1));
+            }
+
+            return expanded;
+        }
+
+        private static Point2f[] ExpandQuadToContain(Point2f[] ordered, Rect bounds, int width, int height)
+        {
+            float minX = ordered.Min(item => item.X);
+            float maxX = ordered.Max(item => item.X);
+            float minY = ordered.Min(item => item.Y);
+            float maxY = ordered.Max(item => item.Y);
+            float needMinX = Math.Min(minX, bounds.X);
+            float needMinY = Math.Min(minY, bounds.Y);
+            float needMaxX = Math.Max(maxX, bounds.X + bounds.Width);
+            float needMaxY = Math.Max(maxY, bounds.Y + bounds.Height);
+            if (needMinX >= minX - 0.5f
+                && needMinY >= minY - 0.5f
+                && needMaxX <= maxX + 0.5f
+                && needMaxY <= maxY + 0.5f)
+            {
+                return ordered;
+            }
+
+            float centerX = (minX + maxX) / 2f;
+            float centerY = (minY + maxY) / 2f;
+            float scaleX = Math.Max(
+                (centerX - needMinX) / Math.Max(1f, centerX - minX),
+                (needMaxX - centerX) / Math.Max(1f, maxX - centerX));
+            float scaleY = Math.Max(
+                (centerY - needMinY) / Math.Max(1f, centerY - minY),
+                (needMaxY - centerY) / Math.Max(1f, maxY - centerY));
+            float scale = Math.Max(1f, Math.Max(scaleX, scaleY));
+            var expanded = new Point2f[4];
+            for (int i = 0; i < 4; i++)
+            {
+                expanded[i] = new Point2f(
+                    Clamp(centerX + ((ordered[i].X - centerX) * scale), 0, width - 1),
+                    Clamp(centerY + ((ordered[i].Y - centerY) * scale), 0, height - 1));
+            }
+
+            return expanded;
+        }
+
+        private static Rect? TryFindInkBounds(Mat source)
+        {
+            using Mat gray = ToGray(source);
+            using Mat binary = new();
+            Cv2.AdaptiveThreshold(
+                gray,
+                binary,
+                255,
+                AdaptiveThresholdTypes.GaussianC,
+                ThresholdTypes.BinaryInv,
+                31,
+                12);
+            using Mat kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new Size(5, 5));
+            Cv2.MorphologyEx(binary, binary, MorphTypes.Close, kernel);
+            using Mat nonZero = new();
+            Cv2.FindNonZero(binary, nonZero);
+            if (nonZero.Empty())
+            {
+                return null;
+            }
+
+            Rect bounds = Cv2.BoundingRect(nonZero);
+            if (bounds.Width < source.Width * 0.2 || bounds.Height < source.Height * 0.2)
+            {
+                return null;
+            }
+
+            return bounds;
+        }
+
+        private static int ResolvePadding(Mat source, double ratio)
+        {
+            int fromRatio = (int)Math.Round(Math.Max(source.Width, source.Height) * ratio);
+            return Math.Clamp(fromRatio, 12, 80);
+        }
+
+        private static float Clamp(float value, float min, float max) =>
+            value < min ? min : value > max ? max : value;
 
         private static Mat? TryWarpPerspective(Mat source, Point2f[] ordered)
         {
@@ -433,7 +623,7 @@ namespace DocMgr.Services.Shared
                 return source.Clone();
             }
 
-            return CropWithPadding(source, bounds, 2);
+            return CropWithPadding(source, bounds, ResolvePadding(source, 0.01));
         }
 
         private static Mat CorrectIllumination(Mat source, bool removeShadow, bool whiteDocument)

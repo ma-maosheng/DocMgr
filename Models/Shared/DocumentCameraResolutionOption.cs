@@ -46,8 +46,16 @@ namespace DocMgr.Models.Shared
                 }
             }
 
+            // 本机默认采集档：3840×2880（预览稳定）；其次常见 13MP。
+            DocumentCameraResolutionOption? preferred11M = options.FirstOrDefault(item =>
+                item.Width == 3840 && item.Height == 2880);
+            if (preferred11M != null)
+            {
+                return preferred11M;
+            }
+
             DocumentCameraResolutionOption? native13M = options.FirstOrDefault(item =>
-                item.Width == 4160 && item.Height == 3120);
+                item.Width == 4160 && item.Height is 3120 or 3102);
             if (native13M != null)
             {
                 return native13M;

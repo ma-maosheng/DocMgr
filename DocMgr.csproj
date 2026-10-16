@@ -29,6 +29,7 @@
   <ItemGroup>
     <Resource Include="Assets\DocMgrAppIcon.ico" />
     <Resource Include="Assets\docmgr-app-icon.png" />
+    <Resource Include="Assets\institute-emblem.jpg" />
   </ItemGroup>
 
   <ItemGroup>

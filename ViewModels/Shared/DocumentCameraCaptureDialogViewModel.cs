@@ -275,7 +275,7 @@ namespace DocMgr.ViewModels.Shared
             set
             {
                 string mode = string.IsNullOrWhiteSpace(value)
-                    ? DocumentCameraCaptureSettings.ColorModeColor
+                    ? DocumentCameraCaptureSettings.ColorModeBinary
                     : value.Trim();
                 if (string.Equals(_settings.ColorMode, mode, StringComparison.Ordinal))
                 {
@@ -550,13 +550,60 @@ namespace DocMgr.ViewModels.Shared
 
         private async Task WaitForFirstFrameAsync()
         {
-            await Task.Delay(2500);
-            if (_shutdown == 1 || _isFrozen || PreviewImage != null || _hasFrame)
+            // 最高像素（如 4160×3102）首帧解码较慢，给足等待；仍无画面则自动降像素重开。
+            int waitMs = SelectedResolution?.PixelCount >= 8_000_000 ? 8000 : 3000;
+            await Task.Delay(waitMs);
+            if (_shutdown == 1 || _isFrozen || PreviewImage != null || _hasFrame || _session?.HasFrame == true)
             {
+                if (_session?.HasFrame == true && PreviewImage == null && !_isFrozen && _shutdown == 0)
+                {
+                    StatusText = "已收到拍摄数据，正在生成预览…";
+                }
+
+                return;
+            }
+
+            if (TrySelectLowerResolutionForPreview())
+            {
+                StatusText = "最高像素预览超时，已自动改用较低像素以保证画面。可在像素下拉中改回。";
+                await RestartPreviewAsync();
                 return;
             }
 
             StatusText = "设备已打开，但尚未收到画面。请关闭方正自带预览软件后点「刷新」；也可改选较低像素后再试。";
+        }
+
+        /// <summary>
+        /// 最高像素长期无预览时，改选略低一档分辨率（仍尽量高），避免一直卡在等待。
+        /// </summary>
+        private bool TrySelectLowerResolutionForPreview()
+        {
+            if (SelectedResolution == null || Resolutions.Count < 2)
+            {
+                return false;
+            }
+
+            DocumentCameraResolutionOption current = SelectedResolution;
+            DocumentCameraResolutionOption? fallback = Resolutions
+                .Where(item => item.PixelCount < current.PixelCount)
+                .OrderByDescending(item => item.PixelCount)
+                .FirstOrDefault();
+            if (fallback == null)
+            {
+                return false;
+            }
+
+            _suppressResolutionChange = true;
+            try
+            {
+                SelectedResolution = fallback;
+            }
+            finally
+            {
+                _suppressResolutionChange = false;
+            }
+
+            return true;
         }
 
         private void OnPreviewFrameArrived(object? sender, byte[] image)
@@ -571,7 +618,8 @@ namespace DocMgr.ViewModels.Shared
                 return;
             }
 
-            _ = _dispatcher.BeginInvoke(() =>
+            byte[] frame = image;
+            _ = Task.Run(() =>
             {
                 try
                 {
@@ -580,25 +628,45 @@ namespace DocMgr.ViewModels.Shared
                         return;
                     }
 
-                    _hasFrame = true;
-                    BitmapSource? bitmap = DocumentCameraImageSupport.TryCreateBitmapSource(image);
-                    if (bitmap != null)
+                    // 后台缩略，避免 4160×3102 全分辨率 DIB 在 UI 线程解码导致一直白屏等待。
+                    byte[]? previewJpeg = DocumentCameraImageSupport.TryCreateDownscaledJpeg(frame);
+                    _dispatcher.BeginInvoke(() =>
                     {
-                        PreviewImage = bitmap;
-                    }
-                    else if (!_decodeFailed)
-                    {
-                        _decodeFailed = true;
-                        StatusText = "已收到拍摄画面，但预览解码失败。请直接点击「拍摄」尝试保存；或切换设备后刷新。";
-                    }
+                        try
+                        {
+                            if (_isFrozen || _shutdown == 1)
+                            {
+                                return;
+                            }
 
-                    NotifyCaptureState();
+                            _hasFrame = true;
+                            // 仅加载缩略 JPEG；勿在 UI 线程解全分辨率 DIB（4160×3102 会长时间卡死预览）。
+                            BitmapSource? bitmap = previewJpeg == null
+                                ? null
+                                : DocumentCameraImageSupport.TryCreateBitmapSource(previewJpeg);
+                            if (bitmap != null)
+                            {
+                                PreviewImage = bitmap;
+                            }
+                            else if (!_decodeFailed)
+                            {
+                                _decodeFailed = true;
+                                StatusText = "已收到拍摄画面，但预览解码失败。请直接点击「拍摄」尝试保存；或切换设备后刷新。";
+                            }
+
+                            NotifyCaptureState();
+                        }
+                        finally
+                        {
+                            Interlocked.Exchange(ref _previewQueued, 0);
+                        }
+                    }, DispatcherPriority.Render);
                 }
-                finally
+                catch (Exception)
                 {
                     Interlocked.Exchange(ref _previewQueued, 0);
                 }
-            }, DispatcherPriority.Render);
+            });
         }
 
         private async Task CaptureStillAsync()
