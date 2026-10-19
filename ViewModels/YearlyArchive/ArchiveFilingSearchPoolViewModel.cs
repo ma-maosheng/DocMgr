@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.NetworkTransfer;
@@ -24,6 +25,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private SearchPoolItemRow? _selectedPoolItem;
         private bool _isArchiveAdmin;
         private bool _isInitialized;
+        private int _filterReloadSuppressDepth;
+        private int _poolLoadGeneration;
+        private readonly SemaphoreSlim _dbGate = new(1, 1);
         private string _filterKeyword = string.Empty;
         private string _filterStatus = string.Empty;
         private string _selectedYear = "全部年度";
@@ -122,6 +126,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             set
             {
                 if (!SetProperty(ref _selectedYear, value))
+                {
+                    return;
+                }
+
+                if (_filterReloadSuppressDepth > 0)
                 {
                     return;
                 }
@@ -277,31 +286,47 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task LoadYearsAsync()
         {
+            await _dbGate.WaitAsync();
             try
             {
                 var yearsList = await _archiveRegisterService.GetExistingYearsAsync();
-                Years.Clear();
-                Years.Add("全部年度");
-                foreach (int year in yearsList)
+                string yearToKeep = _selectedYear;
+                _filterReloadSuppressDepth++;
+                try
                 {
-                    Years.Add(year.ToString());
-                }
+                    Years.Clear();
+                    Years.Add("全部年度");
+                    foreach (int year in yearsList)
+                    {
+                        Years.Add(year.ToString());
+                    }
 
-                if (!Years.Contains(_selectedYear))
+                    string restoredYear = Years.Contains(yearToKeep) ? yearToKeep : "全部年度";
+                    if (!string.Equals(_selectedYear, restoredYear, StringComparison.Ordinal))
+                    {
+                        SelectedYear = restoredYear;
+                    }
+                }
+                finally
                 {
-                    SelectedYear = "全部年度";
+                    _filterReloadSuppressDepth--;
                 }
             }
             catch (Exception ex)
             {
                 _dialogService.ShowError($"加载年度失败：{ex.Message}");
             }
+            finally
+            {
+                _dbGate.Release();
+            }
         }
 
         private async Task SearchPoolsAsync()
         {
             var user = RequireCurrentUser();
-
+            string? error = null;
+            await _dbGate.WaitAsync();
             try
             {
                 var pools = await _searchService.ListSearchPoolsAsync(
@@ -333,7 +358,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"加载检索池失败：{ex.Message}");
+                error = ex.Message;
+            }
+            finally
+            {
+                _dbGate.Release();
+            }
+
+            if (error != null)
+            {
+                _dialogService.ShowError($"加载检索池失败：{error}");
             }
         }
 
@@ -348,6 +382,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task LoadSelectedPoolAsync()
         {
+            int generation = Interlocked.Increment(ref _poolLoadGeneration);
             if (SelectedPool == null)
             {
                 ClearDetail();
@@ -355,10 +390,22 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             var user = RequireCurrentUser();
-
+            int poolId = SelectedPool.Id;
+            string? error = null;
+            await _dbGate.WaitAsync();
             try
             {
-                var resultSet = await _searchService.GetSearchPoolAsync(SelectedPool.Id, user, CanBrowseAllPools);
+                if (generation != Volatile.Read(ref _poolLoadGeneration) || SelectedPool?.Id != poolId)
+                {
+                    return;
+                }
+
+                var resultSet = await _searchService.GetSearchPoolAsync(poolId, user, CanBrowseAllPools);
+                if (generation != Volatile.Read(ref _poolLoadGeneration) || SelectedPool?.Id != poolId)
+                {
+                    return;
+                }
+
                 if (resultSet == null)
                 {
                     ClearDetail();
@@ -393,8 +440,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"加载检索池明细失败：{ex.Message}");
+                error = ex.Message;
                 ClearDetail();
+            }
+            finally
+            {
+                _dbGate.Release();
+            }
+
+            if (error != null)
+            {
+                _dialogService.ShowError($"加载检索池明细失败：{error}");
             }
         }
 

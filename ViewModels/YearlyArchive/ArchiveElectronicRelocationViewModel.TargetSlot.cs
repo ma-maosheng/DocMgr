@@ -201,23 +201,37 @@ namespace DocMgr.ViewModels.YearlyArchive
             string? previousLocation = SelectedTargetSlotLocationOption?.Location ?? TargetFullLocation;
             ReplaceTargetSlotLocationOptions(ordered);
 
+            bool skipSourceSlot = IsPhysicalMode && !string.IsNullOrWhiteSpace(sourceLocation);
+            bool IsAcceptableTargetSlot(string? location)
+            {
+                if (string.IsNullOrWhiteSpace(location))
+                {
+                    return false;
+                }
+
+                return !skipSourceSlot
+                    || !ArchiveSlotLocationSupport.IsSameSlot(location, sourceLocation);
+            }
+
             HardDiskMediaReturnTargetLocationOption? selected = null;
             if (preferSourceLocation && ShouldPreferSourceTargetSlot && !string.IsNullOrWhiteSpace(sourceLocation))
             {
                 selected = FindTargetSlotLocationOption(TargetSlotLocationOptions, sourceLocation);
             }
-            else if (!string.IsNullOrWhiteSpace(previousLocation))
+            else if (IsAcceptableTargetSlot(previousLocation))
             {
                 selected = FindTargetSlotLocationOption(TargetSlotLocationOptions, previousLocation);
             }
 
-            selected ??= TargetSlotLocationOptions.FirstOrDefault();
+            selected ??= TargetSlotLocationOptions.FirstOrDefault(item => IsAcceptableTargetSlot(item.Location));
             if (selected == null)
             {
                 SyncSelectedTargetSlotLocationOption(null);
                 TargetFullLocation = string.Empty;
                 string display = ArchiveElectronicStorageSlotCategorySupport.ResolveCategoryDisplayName(categoryName);
-                TargetCellOccupancyText = $"未找到“{display}档口”，请先在磁盘柜开柜界面完成设置。";
+                TargetCellOccupancyText = TargetSlotLocationOptions.Count == 0
+                    ? $"未找到“{display}档口”，请先在磁盘柜开柜界面完成设置。"
+                    : $"未找到不同于源档口的“{display}档口”。同一档口内的物理迁移没有必要。";
                 return;
             }
 

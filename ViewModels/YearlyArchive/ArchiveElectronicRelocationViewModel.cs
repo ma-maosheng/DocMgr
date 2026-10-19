@@ -44,6 +44,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private int _blankHardDiskCapacityVersion;
         private int _sourceHardDiskCapacityVersion;
         private int _targetHardDiskCapacityVersion;
+        private Task _blankHardDiskCapacityTask = Task.CompletedTask;
+        private Task _sourceHardDiskCapacityTask = Task.CompletedTask;
+        private Task _targetHardDiskCapacityTask = Task.CompletedTask;
         private bool _confirmHardDiskFormatted;
         private bool _confirmOpticalDiscDestroyed;
         private bool _executeBackupMechanism;
@@ -403,6 +406,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             int generation = Interlocked.Increment(ref _relocationModeChangeGeneration);
             try
             {
+                await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
+                if (generation != Volatile.Read(ref _relocationModeChangeGeneration))
+                {
+                    return;
+                }
+
                 await RefreshTargetsAsync().ConfigureAwait(true);
                 if (generation != Volatile.Read(ref _relocationModeChangeGeneration))
                 {
@@ -883,6 +892,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 SelectedBlankHardDiskCode = string.Empty;
                 SelectedBlankHardDiskMediumId = null;
                 PreviewText = string.Empty;
+                await WaitForHardDiskCapacityQueriesAsync();
                 await RefreshTargetsAsync();
                 if (IsPhysicalMode || IsMoveToBlankCarrierMode)
                 {
@@ -994,7 +1004,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void RequestBlankHardDiskCapacityRefresh()
         {
             int version = ++_blankHardDiskCapacityVersion;
-            _ = ApplyHardDiskCapacityAsync(
+            _blankHardDiskCapacityTask = ApplyHardDiskCapacityAsync(
                 version,
                 () => _blankHardDiskCapacityVersion,
                 IsMoveToBlankHardDiskMode ? SelectedBlankHardDiskCode : string.Empty,
@@ -1004,7 +1014,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void RequestSourceHardDiskCapacityRefresh()
         {
             int version = ++_sourceHardDiskCapacityVersion;
-            _ = ApplyHardDiskCapacityAsync(
+            _sourceHardDiskCapacityTask = ApplyHardDiskCapacityAsync(
                 version,
                 () => _sourceHardDiskCapacityVersion,
                 SourceSummary?.ActiveLinkedMediumCode,
@@ -1014,11 +1024,21 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void RequestTargetHardDiskCapacityRefresh()
         {
             int version = ++_targetHardDiskCapacityVersion;
-            _ = ApplyHardDiskCapacityAsync(
+            _targetHardDiskCapacityTask = ApplyHardDiskCapacityAsync(
                 version,
                 () => _targetHardDiskCapacityVersion,
                 IsMergeMode ? TargetSummary?.ActiveLinkedMediumCode : string.Empty,
                 value => TargetHardDiskCapacityDescription = value);
+        }
+
+        /// <summary>
+        /// 容量说明与后续档口查询共用页面级数据库上下文，必须先等容量查询结束。
+        /// </summary>
+        private async Task WaitForHardDiskCapacityQueriesAsync()
+        {
+            await _blankHardDiskCapacityTask.ConfigureAwait(true);
+            await _sourceHardDiskCapacityTask.ConfigureAwait(true);
+            await _targetHardDiskCapacityTask.ConfigureAwait(true);
         }
 
         private async Task ApplyHardDiskCapacityAsync(

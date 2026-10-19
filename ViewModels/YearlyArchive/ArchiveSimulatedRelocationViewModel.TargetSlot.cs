@@ -160,19 +160,21 @@ namespace DocMgr.ViewModels.YearlyArchive
             ArchiveBoxTargetLocationOption? selected = null;
             if (preferSuggestedSelection)
             {
-                selected = ordered.FirstOrDefault();
+                selected = ordered.FirstOrDefault(item => IsDifferentFromSourceSlot(item.Location));
             }
-            else if (!string.IsNullOrWhiteSpace(previousLocation))
+            else if (IsDifferentFromSourceSlot(previousLocation))
             {
                 selected = FindTargetSlotLocationOption(TargetSlotLocationOptions, previousLocation);
             }
 
-            selected ??= TargetSlotLocationOptions.FirstOrDefault();
+            selected ??= TargetSlotLocationOptions.FirstOrDefault(item => IsDifferentFromSourceSlot(item.Location));
             if (selected == null)
             {
                 SyncSelectedTargetSlotLocationOption(null);
                 TargetFullLocation = string.Empty;
-                TargetCellOccupancyText = $"未找到符合规格「{specification}」的可用档口，请先在开柜界面完成档口用途设置。";
+                TargetCellOccupancyText = TargetSlotLocationOptions.Count == 0
+                    ? $"未找到符合规格「{specification}」的可用档口，请先在开柜界面完成档口用途设置。"
+                    : $"未找到符合规格「{specification}」且不同于源档口的可用档口。";
                 return;
             }
 
@@ -317,6 +319,18 @@ namespace DocMgr.ViewModels.YearlyArchive
                 option.Row,
                 option.Column);
             TargetCellOccupancyText = $"目标格内现有 {cellCount} 盒，迁入后将使用序号 {_resolvedTargetBoxIndex:D2}";
+        }
+
+        /// <summary>物理迁档默认不得落在源档口，避免刚选中源盒就提示同档口迁移无效。</summary>
+        private bool IsDifferentFromSourceSlot(string? location)
+        {
+            if (string.IsNullOrWhiteSpace(location))
+            {
+                return false;
+            }
+
+            return string.IsNullOrWhiteSpace(SourceCurrentLocation)
+                || !ArchiveSlotLocationSupport.IsSameSlot(SourceCurrentLocation, location);
         }
 
         private async Task<string?> ResolveFullLocationInSlotAsync(ArchiveBoxTargetLocationOption option)
