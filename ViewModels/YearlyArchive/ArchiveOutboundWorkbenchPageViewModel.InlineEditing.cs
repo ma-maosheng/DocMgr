@@ -1,6 +1,7 @@
 using DocMgr.Models.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using Microsoft.Extensions.DependencyInjection;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
@@ -98,7 +99,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             CloseEditingPanel();
             if (committed)
             {
-                _ = LoadRecordsAsync();
+                _pageDb.RunInBackground(LoadRecordsAsync);
             }
         }
 

@@ -9,6 +9,7 @@ using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
 using NPOI.XSSF.UserModel;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.HistoryArchive;
 
@@ -24,6 +25,7 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
     private readonly List<HistoryArchiveBoxLedgerRow> _allRows = new();
     private readonly List<HistoryArchiveBoxLedgerRow> _filteredRows = new();
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
+    private readonly PageDbOperationQueue _pageDb = new();
     private int _refreshGeneration;
     private bool _isInitialized;
     private bool _isGlobalBrowse;
@@ -43,7 +45,7 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
         _service = service;
         _dialogService = dialogService;
 
-        RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
+        RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshAsync));
         SearchCommand = new RelayCommand(_ => ApplyFilters(resetPage: true));
         ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.HistoryArchiveBox));
         ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => _filteredRows.Count > 0);
@@ -82,7 +84,7 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
         {
             if (SetProperty(ref _materialKindDisplay, value) && _isInitialized)
             {
-                _ = RefreshAsync();
+                _pageDb.RunInBackground(RefreshAsync);
             }
         }
     }
@@ -94,7 +96,7 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
         {
             if (SetProperty(ref _lifecycleStatus, value) && _isInitialized)
             {
-                _ = RefreshAsync();
+                _pageDb.RunInBackground(RefreshAsync);
             }
         }
     }

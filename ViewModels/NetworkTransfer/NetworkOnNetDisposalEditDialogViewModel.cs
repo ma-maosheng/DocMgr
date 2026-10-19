@@ -12,6 +12,7 @@ using DocMgr.Services.NetworkTransfer;
 using DocMgr.Services.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 using DocMgr.Views.Shared;
 
 namespace DocMgr.ViewModels.NetworkTransfer
@@ -27,6 +28,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private readonly IUserService _userService;
         private readonly IApprovalWorkflowService _approvalWorkflowService;
         private readonly SemaphoreSlim _persistReviewSignersGate = new(1, 1);
+        private readonly PageDbOperationQueue _pageDb = new();
         private NetworkOnNetDisposalRecord _record;
         private bool _hasCommittedChanges;
         private bool _suppressReviewSignerPersist;
@@ -70,49 +72,52 @@ namespace DocMgr.ViewModels.NetworkTransfer
             _approvalWorkflowService = approvalWorkflowService;
             _record = record;
 
-            RefreshCandidatesCommand = new RelayCommand(async _ => await LoadCandidatesAsync(), _ => CanEditHeader);
-            ViewAssetDetailCommand = new RelayCommand(async item => await ViewAssetDetailAsync(item), item =>
+            RefreshCandidatesCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => LoadCandidatesAsync()), _ => CanEditHeader);
+            ViewAssetDetailCommand = new RelayCommand(async item => await _pageDb.RunAsync(() => ViewAssetDetailAsync(item)), item =>
                 NetworkOnNetAssetDetailTextSupport.Resolve(item, ResolveCurrentAsset()) != null);
             AddSelectedCommand = new RelayCommand(_ => AddSelected(), _ => CanAddSelected);
             RemoveItemCommand = new RelayCommand(item => RemoveItem(item as NetworkOnNetDisposalItemRow),
                 item => CanEditHeader && item is NetworkOnNetDisposalItemRow);
             ApplyBatchToItemsCommand = new RelayCommand(_ => ApplyBatchToItems(), _ => CanEditHeader);
-            SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader && Items.Count > 0);
-            SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit);
-            PrintCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrint);
-            ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
-            ConfirmUploadCommand = new RelayCommand(async _ => await ConfirmUploadAsync(), _ => CanConfirmUpload);
-            UploadAttachmentCommand = new RelayCommand(async _ => await UploadAttachmentAsync(), _ => CanUploadAttachment);
+            SaveDraftCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SaveDraftAsync()), _ => CanEditHeader && Items.Count > 0);
+            SubmitCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SubmitAsync()), _ => CanSubmit);
+            PrintCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => PrintAsync()), _ => CanPrint);
+            ApproveCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => ApproveAsync()), _ => CanApprove);
+            ConfirmUploadCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => ConfirmUploadAsync()), _ => CanConfirmUpload);
+            UploadAttachmentCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => UploadAttachmentAsync()), _ => CanUploadAttachment);
             CaptureFromDocumentCameraCommand = new RelayCommand(
-                async _ => await CaptureFromDocumentCameraAsync(),
+                async _ => await _pageDb.RunAsync(() => CaptureFromDocumentCameraAsync()),
                 _ => CanUploadAttachment);
             UploadSignedFormAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategorySignedForm),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategorySignedForm)),
                 _ => CanUploadMandatoryAttachment);
             CaptureSignedFormAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategorySignedForm),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategorySignedForm)),
                 _ => CanUploadMandatoryAttachment);
             UploadOtherAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategoryOther),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategoryOther)),
                 _ => CanUploadOtherAttachment);
             CaptureOtherAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategoryOther),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategoryOther)),
                 _ => CanUploadOtherAttachment);
             DeleteAttachmentCommand = new RelayCommand(async item =>
             {
-                if (item is not SystemAttachment att) return;
-                var (ok, msg) = await _service.DeleteAttachmentAsync(att.Id, RequireUser());
-                if (!ok) { _dialogService.ShowError(msg); return; }
-                _hasCommittedChanges = true;
-                await ReloadAttachmentsAsync();
+                await _pageDb.RunAsync(async () =>
+                {
+                    if (item is not SystemAttachment att) return;
+                    var (ok, msg) = await _service.DeleteAttachmentAsync(att.Id, RequireUser());
+                    if (!ok) { _dialogService.ShowError(msg); return; }
+                    _hasCommittedChanges = true;
+                    await ReloadAttachmentsAsync();
+                });
             }, item => item is SystemAttachment && CanUploadMandatoryAttachment);
             ViewAttachmentCommand = new RelayCommand(item =>
             {
                 if (item is SystemAttachment att) _dialogService.ShowSystemAttachmentView(att);
             }, item => item is SystemAttachment);
-            CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
+            CompleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => CompleteAsync()), _ => CanComplete);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
-            _ = InitializeAsync();
+            _pageDb.RunInBackground(InitializeAsync);
         }
 
         public event Action<bool?>? RequestClose;
@@ -232,7 +237,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 if (!SetProperty(ref _deptHead, value ?? string.Empty))
                     return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -244,7 +249,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
                 if (!SetProperty(ref _deptHeadDate, clamped))
                     return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -256,7 +261,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 if (!SetProperty(ref _archiveRoomHead, value ?? string.Empty))
                     return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -268,7 +273,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
                 if (!SetProperty(ref _archiveRoomHeadDate, clamped))
                     return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -279,7 +284,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 if (!SetProperty(ref _productionHead, value ?? string.Empty))
                     return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -291,7 +296,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
                 if (!SetProperty(ref _productionHeadDate, clamped))
                     return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -303,7 +308,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 if (!SetProperty(ref _archiveDeputyPresident, value ?? string.Empty))
                     return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -315,7 +320,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
                 if (!SetProperty(ref _archiveDeputyPresidentDate, clamped))
                     return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -326,7 +331,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             {
                 if (!SetProperty(ref _productionVicePresident, value ?? string.Empty))
                     return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -338,7 +343,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
                 if (!SetProperty(ref _productionVicePresidentDate, clamped))
                     return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -383,7 +388,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
                 await BindFromRecordAsync();
                 await ReloadSignerEnableFlagsAsync();
-                if (CanEditHeader) await LoadCandidatesAsync();
+                if (CanEditHeader) await _pageDb.RunAsync(() => LoadCandidatesAsync());
                 await ReloadAttachmentsAsync();
             }
             catch (Exception ex) { _dialogService.ShowError(ex.Message); }
@@ -657,7 +662,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 : await _service.CreateDisposalDraftAsync(draft, BuildItems(), RequireUser());
             _hasCommittedChanges = true;
             await BindFromRecordAsync();
-            await LoadCandidatesAsync();
+            await _pageDb.RunAsync(() => LoadCandidatesAsync());
         }
 
         private async Task SubmitAsync()
@@ -942,13 +947,13 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private async Task UploadAttachmentByCategoryAsync(string category)
         {
             UploadCategory = category;
-            await UploadAttachmentAsync();
+            await _pageDb.RunAsync(() => UploadAttachmentAsync());
         }
 
         private async Task CaptureAttachmentByCategoryAsync(string category)
         {
             UploadCategory = category;
-            await CaptureFromDocumentCameraAsync();
+            await _pageDb.RunAsync(() => CaptureFromDocumentCameraAsync());
         }
 
         private async Task ReloadAsync()
@@ -959,7 +964,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             await BindFromRecordAsync();
             await ReloadSignerEnableFlagsAsync();
             if (CanEditHeader)
-                await LoadCandidatesAsync();
+                await _pageDb.RunAsync(() => LoadCandidatesAsync());
             await ReloadAttachmentsAsync();
         }
 

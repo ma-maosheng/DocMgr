@@ -13,6 +13,7 @@ using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.YearlyArchive;
 using DocMgr.Views.Shared;
+using DocMgr.ViewModels.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DocMgr.ViewModels.NetworkTransfer;
@@ -37,6 +38,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
     private bool _suppressDestinationDependentUi;
     private bool _isInitializing;
     private readonly SemaphoreSlim _dialogDbGate = new(1, 1);
+    private readonly PageDbOperationQueue _pageDb = new();
     private readonly SemaphoreSlim _archiveFilingAppendTargetsGate = new(1, 1);
     private int _archiveFilingAppendTargetsGeneration;
     private NetworkOutboundRecord _record;
@@ -92,9 +94,9 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         _record = record;
         _mode = mode;
 
-        SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader);
+        SaveDraftCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SaveDraftAsync), _ => CanEditHeader);
         DeleteAttachmentCommand = new RelayCommand(
-            async item => await DeleteAttachmentAsync(item as SystemAttachment),
+            async item => await _pageDb.RunAsync(() => DeleteAttachmentAsync(item as SystemAttachment)),
             item => item is SystemAttachment && CanUploadSignedAttachment);
         ViewAttachmentCommand = new RelayCommand(item =>
         {
@@ -103,10 +105,10 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
                 _dialogService.ShowSystemAttachmentView(attachment);
             }
         }, item => item is SystemAttachment);
-        CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanCompleteApproval);
+        CompleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(CompleteAsync), _ => CanCompleteApproval);
         CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
         InitializeApprovalCommands();
-        _ = InitializeAsync();
+        _pageDb.RunInBackground(InitializeAsync);
     }
 
     public event Action<bool?>? RequestClose;
@@ -998,7 +1000,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
         {
             await PersistOutboundMediaIfNeededAsync();
 
-            IReadOnlyList<string> validationErrors = CollectHandoverValidationErrors();
+            IReadOnlyList<string> validationErrors = await CollectHandoverValidationErrorsAsync();
             if (validationErrors.Count > 0)
             {
                 _dialogService.ShowError(
@@ -1029,7 +1031,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
     {
         try
         {
-            IReadOnlyList<string> validationErrors = CollectCompleteValidationErrors();
+            IReadOnlyList<string> validationErrors = await CollectCompleteValidationErrorsAsync();
             if (validationErrors.Count > 0)
             {
                 _dialogService.ShowError(

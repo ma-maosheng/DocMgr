@@ -11,6 +11,7 @@ using DocMgr.Services.Interfaces;
 using DocMgr.Services.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 using DocMgr.Views.Shared;
 
 namespace DocMgr.ViewModels.HardDiskMedia
@@ -29,6 +30,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly IApprovalWorkflowService _approvalWorkflowService;
         private readonly List<HardDiskDisposalCandidateViewModel> _mediaPool = new();
         private readonly SemaphoreSlim _persistReviewSignersGate = new(1, 1);
+        private readonly PageDbOperationQueue _pageDb = new();
         private HardDiskDisposalRecord _record;
         private bool _hasCommittedChanges;
         private bool _isApplyingFilters;
@@ -93,42 +95,42 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     && Items.Any(item => item.IsSelected)
                     && HardDiskDisposalDomainValues.IsValidDispositionMethod(BatchDispositionMethod));
             ClearFiltersCommand = new RelayCommand(_ => ClearFilters(), _ => CanEditHeader);
-            SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader);
-            SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit);
-            ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
-            ConfirmUploadCommand = new RelayCommand(async _ => await ConfirmUploadAsync(), _ => CanConfirmUpload);
-            UploadAttachmentCommand = new RelayCommand(async _ => await UploadAttachmentAsync(), _ => CanUploadAttachment);
+            SaveDraftCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SaveDraftAsync()), _ => CanEditHeader);
+            SubmitCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SubmitAsync()), _ => CanSubmit);
+            ApproveCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => ApproveAsync()), _ => CanApprove);
+            ConfirmUploadCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => ConfirmUploadAsync()), _ => CanConfirmUpload);
+            UploadAttachmentCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => UploadAttachmentAsync()), _ => CanUploadAttachment);
             CaptureFromDocumentCameraCommand = new RelayCommand(
-                async _ => await CaptureFromDocumentCameraAsync(),
+                async _ => await _pageDb.RunAsync(() => CaptureFromDocumentCameraAsync()),
                 _ => CanUploadAttachment);
             UploadSignedFormAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategorySignedForm),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategorySignedForm)),
                 _ => CanUploadMandatoryAttachment);
             CaptureSignedFormAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategorySignedForm),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategorySignedForm)),
                 _ => CanUploadMandatoryAttachment);
             UploadDiskPhotoAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategoryDiskPhoto),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategoryDiskPhoto)),
                 _ => CanUploadMandatoryAttachment);
             CaptureDiskPhotoAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategoryDiskPhoto),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategoryDiskPhoto)),
                 _ => CanUploadMandatoryAttachment);
             UploadOtherAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategoryOther),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategoryOther)),
                 _ => CanUploadOtherAttachment);
             CaptureOtherAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategoryOther),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(HardDiskDisposalDomainValues.AttachmentCategoryOther)),
                 _ => CanUploadOtherAttachment);
             DeleteAttachmentCommand = new RelayCommand(
-                async item => await DeleteAttachmentAsync(item as SystemAttachment),
+                async item => await _pageDb.RunAsync(() => DeleteAttachmentAsync(item as SystemAttachment)),
                 item => item is SystemAttachment && CanUploadMandatoryAttachment);
-            ViewAttachmentCommand = new RelayCommand(async item => await ViewAttachmentAsync(item as SystemAttachment), item => item is SystemAttachment);
-            CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
-            PrintCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrint);
-            WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => CanWithdraw);
+            ViewAttachmentCommand = new RelayCommand(async item => await _pageDb.RunAsync(() => ViewAttachmentAsync(item as SystemAttachment)), item => item is SystemAttachment);
+            CompleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => CompleteAsync()), _ => CanComplete);
+            PrintCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => PrintAsync()), _ => CanPrint);
+            WithdrawCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => WithdrawAsync()), _ => CanWithdraw);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
-            _ = InitializeAsync();
+            _pageDb.RunInBackground(InitializeAsync);
         }
 
         public event Action<bool?>? RequestClose;
@@ -345,7 +347,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -360,7 +362,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -374,7 +376,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -389,7 +391,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -403,7 +405,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -418,7 +420,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -432,7 +434,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -447,7 +449,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -461,7 +463,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -476,7 +478,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -1094,7 +1096,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
             {
                 if (_record.Id <= 0 || HasUnsavedHeaderChanges())
                 {
-                    await SaveDraftAsync();
+                    await _pageDb.RunAsync(() => SaveDraftAsync());
                     if (_record.Id <= 0)
                     {
                         return;
@@ -1418,13 +1420,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private async Task UploadAttachmentByCategoryAsync(string category)
         {
             UploadCategory = category;
-            await UploadAttachmentAsync();
+            await _pageDb.RunAsync(() => UploadAttachmentAsync());
         }
 
         private async Task CaptureAttachmentByCategoryAsync(string category)
         {
             UploadCategory = category;
-            await CaptureFromDocumentCameraAsync();
+            await _pageDb.RunAsync(() => CaptureFromDocumentCameraAsync());
         }
 
         private HardDiskDisposalRecord BuildDraftPayload()

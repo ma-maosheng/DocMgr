@@ -213,14 +213,14 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             if (IsSimulatedTrack && IsNewBoxMode && SimulatedTargetLocationOptions.Count == 0)
             {
-                _ = LoadSimulatedTargetLocationOptionsAsync();
+                _pageDb.RunInBackground(() => LoadSimulatedTargetLocationOptionsAsync());
             }
 
             if (IsElectronicTrack
                 && ElectronicStepSevenLocationSelectorVisibility == Visibility.Visible
                 && ElectronicTargetLocationOptions.Count == 0)
             {
-                _ = LoadElectronicTargetLocationOptionsAsync();
+                _pageDb.RunInBackground(() => LoadElectronicTargetLocationOptionsAsync());
             }
         }
 

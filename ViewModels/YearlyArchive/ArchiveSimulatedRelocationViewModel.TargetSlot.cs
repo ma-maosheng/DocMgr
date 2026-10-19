@@ -36,7 +36,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = ResolveTargetFullLocationFromSelectedOptionAsync();
+                _pageDb.RunInBackground(ResolveTargetFullLocationFromSelectedOptionAsync);
             }
         }
 

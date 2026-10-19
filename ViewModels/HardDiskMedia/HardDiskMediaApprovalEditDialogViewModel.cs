@@ -14,6 +14,7 @@ using DocMgr.Services.Shared;
 using DocMgr.Services.SystemSettings;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.HardDiskMedia
 {
@@ -25,6 +26,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly HardDiskMediaApplication _application;
         private readonly IHardDiskMediaService _hardDiskMediaService;
         private readonly IDialogService _dialogService;
+        private readonly PageDbOperationQueue _pageDb = new();
         private readonly IUserService _userService;
         private readonly IApprovalWorkflowService _approvalWorkflowService;
         private readonly User? _currentUser;
@@ -82,39 +84,39 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
             ApprovalOpinion = string.IsNullOrWhiteSpace(application.ApprovalOpinion) ? "同意" : application.ApprovalOpinion.Trim();
 
-            ConfirmCommand = new RelayCommand(async _ => await ConfirmAsync(), _ => CanApprovePass);
-            ConfirmPhysicalHandoverCommand = new RelayCommand(async _ => await ConfirmPhysicalHandoverAsync(), _ => CanConfirmPhysicalHandover);
+            ConfirmCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ConfirmAsync), _ => CanApprovePass);
+            ConfirmPhysicalHandoverCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ConfirmPhysicalHandoverAsync), _ => CanConfirmPhysicalHandover);
             UploadSignedAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategorySignedHandover),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategorySignedHandover)),
                 _ => CanUploadSignedAttachment);
             CaptureSignedAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategorySignedHandover),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategorySignedHandover)),
                 _ => CanUploadSignedAttachment);
             UploadPhysicalPhotoCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategoryPhysicalPhoto),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategoryPhysicalPhoto)),
                 _ => CanUploadPhysicalPhotoAttachment);
             CapturePhysicalPhotoCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategoryPhysicalPhoto),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategoryPhysicalPhoto)),
                 _ => CanUploadPhysicalPhotoAttachment);
             UploadProofMaterialCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategoryProofMaterial),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategoryProofMaterial)),
                 _ => CanUploadProofMaterialAttachment);
             CaptureProofMaterialCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategoryProofMaterial),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategoryProofMaterial)),
                 _ => CanUploadProofMaterialAttachment);
             UploadOtherAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategoryOther),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategoryOther)),
                 _ => CanUploadSignedAttachment);
             CaptureOtherAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategoryOther),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(HardDiskOutboundDomainValues.AttachmentCategoryOther)),
                 _ => CanUploadSignedAttachment);
-            CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
-            PrintHandoverSheetCommand = new RelayCommand(async _ => await PrintHandoverSheetAsync(), _ => CanPrintHandoverSheet);
-            ViewAttachmentCommand = new RelayCommand(async attachment => await ViewAttachmentAsync(attachment as SystemAttachment), attachment => attachment is SystemAttachment);
-            DeleteAttachmentCommand = new RelayCommand(async attachment => await DeleteAttachmentAsync(attachment as SystemAttachment), attachment => attachment is SystemAttachment && CanDeleteAttachment);
+            CompleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(CompleteAsync), _ => CanComplete);
+            PrintHandoverSheetCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PrintHandoverSheetAsync), _ => CanPrintHandoverSheet);
+            ViewAttachmentCommand = new RelayCommand(async attachment => await _pageDb.RunAsync(() => ViewAttachmentAsync(attachment as SystemAttachment)), attachment => attachment is SystemAttachment);
+            DeleteAttachmentCommand = new RelayCommand(async attachment => await _pageDb.RunAsync(() => DeleteAttachmentAsync(attachment as SystemAttachment)), attachment => attachment is SystemAttachment && CanDeleteAttachment);
             CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
-            _ = InitializeAsync();
+            _pageDb.RunInBackground(InitializeAsync);
         }
 
         public string WindowTitle => $"出库办理 · {ApplicationNo} · {ApplicationStatusDisplay}";

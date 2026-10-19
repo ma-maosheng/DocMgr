@@ -7,6 +7,7 @@ using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.NetworkTransfer;
 
@@ -16,6 +17,7 @@ namespace DocMgr.ViewModels.NetworkTransfer;
 public sealed class NetworkOnNetAssetLedgerPageViewModel : ViewModelBase
 {
     private readonly INetworkTransferService _service;
+    private readonly PageDbOperationQueue _pageDb = new();
     private readonly IDialogService _dialogService;
     private readonly IServerPathSettingService _serverPathSettingService;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
@@ -37,8 +39,8 @@ public sealed class NetworkOnNetAssetLedgerPageViewModel : ViewModelBase
         _dialogService = dialogService;
         _serverPathSettingService = serverPathSettingService;
 
-        RefreshCommand = new RelayCommand(async _ => await RefreshAssetsAsync());
-        SearchCommand = new RelayCommand(async _ => await RefreshAssetsAsync());
+        RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshAssetsAsync));
+        SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshAssetsAsync));
         ViewAssetDetailCommand = new RelayCommand(async item => await ViewAssetDetailAsync(item), item =>
             NetworkOnNetAssetDetailTextSupport.Resolve(item, SelectedAsset) != null);
         ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.OnNetAsset));
@@ -80,7 +82,7 @@ public sealed class NetworkOnNetAssetLedgerPageViewModel : ViewModelBase
         {
             if (SetProperty(ref _assetOriginKind, value) && _isInitialized)
             {
-                _ = RefreshAssetsAsync();
+                _pageDb.RunInBackground(RefreshAssetsAsync);
             }
         }
     }
@@ -92,7 +94,7 @@ public sealed class NetworkOnNetAssetLedgerPageViewModel : ViewModelBase
         {
             if (SetProperty(ref _assetLifecycle, value) && _isInitialized)
             {
-                _ = RefreshAssetsAsync();
+                _pageDb.RunInBackground(RefreshAssetsAsync);
             }
         }
     }
@@ -104,7 +106,7 @@ public sealed class NetworkOnNetAssetLedgerPageViewModel : ViewModelBase
         {
             if (SetProperty(ref _assetServerPath, value) && _isInitialized)
             {
-                _ = RefreshAssetsAsync();
+                _pageDb.RunInBackground(RefreshAssetsAsync);
             }
         }
     }
@@ -116,7 +118,7 @@ public sealed class NetworkOnNetAssetLedgerPageViewModel : ViewModelBase
         {
             if (SetProperty(ref _assetDepartment, value) && _isInitialized)
             {
-                _ = RefreshAssetsAsync();
+                _pageDb.RunInBackground(RefreshAssetsAsync);
             }
         }
     }

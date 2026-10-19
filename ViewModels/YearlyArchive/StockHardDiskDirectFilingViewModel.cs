@@ -12,6 +12,7 @@ using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
@@ -27,6 +28,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
         private readonly IUserService _userService;
+        private readonly PageDbOperationQueue _pageDb = new();
         private ArchiveRegisterPageDomainOptions? _pageDomainOptions;
 
         private string _diskCode = string.Empty;
@@ -75,14 +77,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             _userContextService = userContextService;
             _userService = userService;
 
-            PickDiskCommand = new RelayCommand(async _ => await PickDiskAsync(), _ => !IsBusy);
-            GenerateDiskCodeCommand = new RelayCommand(async _ => await GenerateDiskCodeAsync(), _ => !IsBusy);
+            PickDiskCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PickDiskAsync), _ => !IsBusy);
+            GenerateDiskCodeCommand = new RelayCommand(async _ => await _pageDb.RunAsync(GenerateDiskCodeAsync), _ => !IsBusy);
             PickRootCommand = new RelayCommand(_ => PickRoot(), _ => !IsBusy);
-            ScanCommand = new RelayCommand(async _ => await ScanAsync(), _ => !IsBusy && !string.IsNullOrWhiteSpace(RootPath));
+            ScanCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ScanAsync), _ => !IsBusy && !string.IsNullOrWhiteSpace(RootPath));
             ViewYearProjectsCommand = new RelayCommand(_ => ViewYearProjects(), _ => !IsBusy);
-            RecommendSlotCommand = new RelayCommand(async _ => await RecommendSlotAsync(), _ => !IsBusy);
-            ShowSlotSnapshotCommand = new RelayCommand(async _ => await ShowSlotSnapshotAsync(), _ => !IsBusy && CanShowSlotSnapshot);
-            ConfirmCommand = new RelayCommand(async _ => await ConfirmAsync(), _ => !IsBusy);
+            RecommendSlotCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RecommendSlotAsync), _ => !IsBusy);
+            ShowSlotSnapshotCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ShowSlotSnapshotAsync), _ => !IsBusy && CanShowSlotSnapshot);
+            ConfirmCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ConfirmAsync), _ => !IsBusy);
         }
 
         public ObservableCollection<string> DiskTypeOptions { get; } = new();
@@ -194,7 +196,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     RefreshProjectNameOptions();
                     RefreshProjectHint();
                     RefreshYearProjectHint();
-                    _ = RefreshPreviewElectronicArchiveNoAsync();
+                    _pageDb.RunInBackground(RefreshPreviewElectronicArchiveNoAsync);
                 }
             }
         }
@@ -324,7 +326,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedSlotOption, value) && value != null && !_suppressSlotResolve)
                 {
-                    _ = ResolveSelectedSlotAsync(value.Location);
+                    _pageDb.RunInBackground(() => ResolveSelectedSlotAsync(value.Location));
                 }
             }
         }
@@ -655,7 +657,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ProjectCode = selected.ProjectCode?.Trim() ?? string.Empty;
             EnsureOption(ProjectNameOptions, ProjectName);
             RefreshProjectHint();
-            _ = RefreshExistingBagHintAsync();
+            _pageDb.RunInBackground(RefreshExistingBagHintAsync);
         }
 
         private void RefreshProjectHint()

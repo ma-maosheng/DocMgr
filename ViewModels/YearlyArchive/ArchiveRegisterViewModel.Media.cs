@@ -877,7 +877,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 OnPropertyChanged(nameof(IsBorrowedHardDiskRegistrationVisible));
                 OnPropertyChanged(nameof(IsBorrowedHardDiskCodeRequired));
-                _ = RefreshUserBorrowedHardDiskCodesAsync();
+                _pageDb.RunInBackground(RefreshUserBorrowedHardDiskCodesAsync);
                 return;
             }
 

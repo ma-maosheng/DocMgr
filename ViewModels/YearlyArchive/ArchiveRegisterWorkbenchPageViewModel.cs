@@ -11,6 +11,7 @@ using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using Microsoft.Extensions.DependencyInjection;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
@@ -27,6 +28,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IBusinessLogicSettingsService _businessLogicSettingsService;
         private readonly ArchiveRegisterWorkspaceMode _workspaceMode;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly PageDbOperationQueue _pageDb = new();
         private readonly List<YearlyArchiveRegisterRecord> _allRecords = new();
 
         private int? _pendingSelectionRecordId;
@@ -58,12 +60,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             StatusFilterOptions = CreateStatusFilterOptions(workspaceMode);
             _selectedStatusFilter = StatusFilterOptions.FirstOrDefault();
 
-            AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanAdd());
-            OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null);
+            AddCommand = new RelayCommand(async _ => await _pageDb.RunAsync(AddAsync), _ => CanAdd());
+            OpenCommand = new RelayCommand(async _ => await _pageDb.RunAsync(OpenAsync), _ => SelectedRecord != null);
             ViewCommand = new RelayCommand(_ => ViewSelectedRecord(), _ => SelectedRecord != null);
-            ApproveCommand = new RelayCommand(async _ => await OpenAsync(), _ => CanApprove());
-            DestructiveCommand = new RelayCommand(async _ => await ExecuteDestructiveAsync(), _ => CanExecuteDestructive());
-            RefreshCommand = new RelayCommand(async _ => await LoadRecordsAsync());
+            ApproveCommand = new RelayCommand(async _ => await _pageDb.RunAsync(OpenAsync), _ => CanApprove());
+            DestructiveCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExecuteDestructiveAsync), _ => CanExecuteDestructive());
+            RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(LoadRecordsAsync));
         }
 
         public ObservableCollection<int> YearOptions { get; } = new();
@@ -93,7 +95,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedYear, value) && _isInitialized)
                 {
-                    _ = LoadRecordsAsync();
+                    _pageDb.RunInBackground(LoadRecordsAsync);
                 }
             }
         }

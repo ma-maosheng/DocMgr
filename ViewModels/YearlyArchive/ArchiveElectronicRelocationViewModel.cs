@@ -44,9 +44,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private int _blankHardDiskCapacityVersion;
         private int _sourceHardDiskCapacityVersion;
         private int _targetHardDiskCapacityVersion;
-        private Task _blankHardDiskCapacityTask = Task.CompletedTask;
-        private Task _sourceHardDiskCapacityTask = Task.CompletedTask;
-        private Task _targetHardDiskCapacityTask = Task.CompletedTask;
+        private readonly PageDbOperationQueue _pageDb = new();
         private bool _confirmHardDiskFormatted;
         private bool _confirmOpticalDiscDestroyed;
         private bool _executeBackupMechanism;
@@ -96,11 +94,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             SourceHardDiskReturnLocationOptions = new ObservableCollection<HardDiskMediaReturnTargetLocationOption>();
 
             RefreshTargetsCommand = new RelayCommand(
-                async _ => await RefreshTargetsAsync(),
+                async _ => await _pageDb.RunAsync(RefreshTargetsAsync),
                 _ => !IsBusy && SourceSummary != null && IsMergeMode);
             SelectBlankHardDiskCommand = new RelayCommand(_ => SelectBlankHardDisk(), _ => !IsBusy && IsMoveToBlankHardDiskMode);
             RecommendTargetSlotCommand = new RelayCommand(
-                async _ => await RecommendTargetSlotAsync(),
+                async _ => await _pageDb.RunAsync(RecommendTargetSlotAsync),
                 _ => CanRecommendTargetSlot);
             ShowTargetSlotSnapshotCommand = new RelayCommand(
                 _ => ShowTargetSlotSnapshot(),
@@ -108,9 +106,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             ShowSourceHardDiskReturnSlotSnapshotCommand = new RelayCommand(
                 _ => ShowSourceHardDiskReturnSlotSnapshot(),
                 _ => CanShowSourceHardDiskReturnSlotSnapshot);
-            PreviewCommand = new RelayCommand(async _ => await PreviewAsync(), _ => !IsBusy && IsArchiveAdmin && SourceSummary != null);
+            PreviewCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PreviewAsync), _ => !IsBusy && IsArchiveAdmin && SourceSummary != null);
             ExecuteCommand = new RelayCommand(
-                async _ => await ExecuteAsync(),
+                async _ => await _pageDb.RunAsync(ExecuteAsync),
                 _ => !IsBusy && IsArchiveAdmin && SourceSummary != null && HasExecutablePreview);
         }
 
@@ -324,13 +322,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                // 刷新项目会改 SelectedProjectId：抑制其级联，避免与下方 Reload 并行打同一 DbContext。
-                using (BeginCascadeReloadSuppress())
+                if (IsCascadeReloadSuppressed || !_isInitialized)
                 {
                     LoadProjectOptions();
+                    return;
                 }
 
-                RequestReloadSourceOptions();
+                _pageDb.RunInBackground(ReloadYearAndSourcesAsync);
             }
         }
 
@@ -358,7 +356,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = ApplySelectedSourceAsync();
+                _pageDb.RunInBackground(ApplySelectedSourceAsync);
             }
         }
 
@@ -393,7 +391,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     SelectedBlankHardDiskMediumId = null;
                     RequestTargetHardDiskCapacityRefresh();
                     RefreshDisplayItems();
-                    _ = ApplyRelocationModeChangedAsync();
+                    _pageDb.RunInBackground(ApplyRelocationModeChangedAsync);
                 }
             }
         }
@@ -406,7 +404,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             int generation = Interlocked.Increment(ref _relocationModeChangeGeneration);
             try
             {
-                await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
                 if (generation != Volatile.Read(ref _relocationModeChangeGeneration))
                 {
                     return;
@@ -504,7 +501,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = ApplySelectedTargetAsync();
+                _pageDb.RunInBackground(ApplySelectedTargetAsync);
             }
         }
 
@@ -692,7 +689,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             private set => SetProperty(ref _hasExecutablePreview, value);
         }
 
-        public async Task InitializeAsync()
+        public Task InitializeAsync() => _pageDb.RunAsync(InitializeWorkbenchAsync);
+
+        private async Task InitializeWorkbenchAsync()
         {
             if (_isInitialized)
             {
@@ -731,7 +730,20 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            _ = ReloadSourceOptionsAsync();
+            _pageDb.RunInBackground(ReloadSourceOptionsAsync);
+        }
+
+        /// <summary>
+        /// 切换年度后先刷新项目，再重载源介质袋。项目赋值被抑制，避免再排一次并行查询。
+        /// </summary>
+        private async Task ReloadYearAndSourcesAsync()
+        {
+            using (BeginCascadeReloadSuppress())
+            {
+                LoadProjectOptions();
+            }
+
+            await ReloadSourceOptionsAsync().ConfigureAwait(true);
         }
 
         private sealed class CascadeReloadSuppressScope : IDisposable
@@ -892,7 +904,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                 SelectedBlankHardDiskCode = string.Empty;
                 SelectedBlankHardDiskMediumId = null;
                 PreviewText = string.Empty;
-                await WaitForHardDiskCapacityQueriesAsync();
                 await RefreshTargetsAsync();
                 if (IsPhysicalMode || IsMoveToBlankCarrierMode)
                 {
@@ -1004,41 +1015,31 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void RequestBlankHardDiskCapacityRefresh()
         {
             int version = ++_blankHardDiskCapacityVersion;
-            _blankHardDiskCapacityTask = ApplyHardDiskCapacityAsync(
+            _pageDb.RunInBackground(() => ApplyHardDiskCapacityAsync(
                 version,
                 () => _blankHardDiskCapacityVersion,
                 IsMoveToBlankHardDiskMode ? SelectedBlankHardDiskCode : string.Empty,
-                value => BlankHardDiskCapacityDescription = value);
+                value => BlankHardDiskCapacityDescription = value));
         }
 
         private void RequestSourceHardDiskCapacityRefresh()
         {
             int version = ++_sourceHardDiskCapacityVersion;
-            _sourceHardDiskCapacityTask = ApplyHardDiskCapacityAsync(
+            _pageDb.RunInBackground(() => ApplyHardDiskCapacityAsync(
                 version,
                 () => _sourceHardDiskCapacityVersion,
                 SourceSummary?.ActiveLinkedMediumCode,
-                value => SourceHardDiskCapacityDescription = value);
+                value => SourceHardDiskCapacityDescription = value));
         }
 
         private void RequestTargetHardDiskCapacityRefresh()
         {
             int version = ++_targetHardDiskCapacityVersion;
-            _targetHardDiskCapacityTask = ApplyHardDiskCapacityAsync(
+            _pageDb.RunInBackground(() => ApplyHardDiskCapacityAsync(
                 version,
                 () => _targetHardDiskCapacityVersion,
                 IsMergeMode ? TargetSummary?.ActiveLinkedMediumCode : string.Empty,
-                value => TargetHardDiskCapacityDescription = value);
-        }
-
-        /// <summary>
-        /// 容量说明与后续档口查询共用页面级数据库上下文，必须先等容量查询结束。
-        /// </summary>
-        private async Task WaitForHardDiskCapacityQueriesAsync()
-        {
-            await _blankHardDiskCapacityTask.ConfigureAwait(true);
-            await _sourceHardDiskCapacityTask.ConfigureAwait(true);
-            await _targetHardDiskCapacityTask.ConfigureAwait(true);
+                value => TargetHardDiskCapacityDescription = value));
         }
 
         private async Task ApplyHardDiskCapacityAsync(
@@ -1047,15 +1048,28 @@ namespace DocMgr.ViewModels.YearlyArchive
             string? diskCode,
             Action<string> assign)
         {
-            string description = await HardDiskCapacityDescriptionLoader.LoadAsync(
-                _filingService,
-                diskCode?.Trim() ?? string.Empty);
-            if (version != currentVersion())
+            try
             {
-                return;
-            }
+                string description = await HardDiskCapacityDescriptionLoader.LoadAsync(
+                    _filingService,
+                    diskCode?.Trim() ?? string.Empty);
+                if (version != currentVersion())
+                {
+                    return;
+                }
 
-            assign(description);
+                assign(description);
+            }
+            catch (Exception ex)
+            {
+                if (version != currentVersion())
+                {
+                    return;
+                }
+
+                assign(string.Empty);
+                _dialogService.ShowError(ex.GetBaseException().Message, "加载硬盘容量失败");
+            }
         }
 
         private void ShowSourceHardDiskReturnSlotSnapshot()

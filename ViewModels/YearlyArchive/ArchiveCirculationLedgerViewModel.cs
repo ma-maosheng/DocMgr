@@ -8,6 +8,7 @@ using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
@@ -19,6 +20,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveCirculationLedgerService _ledgerService;
         private readonly IDialogService _dialogService;
         private readonly SemaphoreSlim _searchGate = new(1, 1);
+        private readonly PageDbOperationQueue _pageDb = new();
         private int _searchGeneration;
 
         private int _selectedSubTabIndex;
@@ -49,7 +51,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _ledgerService = ledgerService;
             _dialogService = dialogService;
 
-            SearchCommand = new RelayCommand(async _ => await SearchAsync());
+            SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SearchAsync));
             ResetCommand = new RelayCommand(_ => ResetCriteria());
             NavigateToFilingLedgerCommand = new RelayCommand(
                 _ => NavigateToFilingLedger(),
@@ -157,7 +159,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     OnPropertyChanged(nameof(ListingModeLimitedHint));
                     if (_isInitialized)
                     {
-                        _ = SearchAsync();
+                        _pageDb.RunInBackground(SearchAsync);
                     }
                 }
             }

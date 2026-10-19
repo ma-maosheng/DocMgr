@@ -233,7 +233,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 && IsSimulatedTrack
                 && IsNewBoxMode)
             {
-                _ = LoadSimulatedTargetLocationOptionsAsync();
+                _pageDb.RunInBackground(() => LoadSimulatedTargetLocationOptionsAsync());
                 return;
             }
 

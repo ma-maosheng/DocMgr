@@ -185,11 +185,11 @@ public sealed partial class NetworkOutboundEditDialogViewModel
 
     private void InitializeApprovalCommands()
     {
-        SaveApprovalCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprovePass);
-        ConfirmPhysicalHandoverCommand = new RelayCommand(async _ => await ConfirmHandoverAsync(), _ => CanConfirmPhysicalHandover);
-        PrintApprovalCommand = new RelayCommand(async _ => await PrintApprovalAsync(), _ => CanPrintHandoverSheet);
-        SubmitApplicationsCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit);
-        PrintApplicationsCommand = new RelayCommand(async _ => await PrintApplicationAsync(), _ => CanPrintApplication);
+        SaveApprovalCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ApproveAsync), _ => CanApprovePass);
+        ConfirmPhysicalHandoverCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ConfirmHandoverAsync), _ => CanConfirmPhysicalHandover);
+        PrintApprovalCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PrintApprovalAsync), _ => CanPrintHandoverSheet);
+        SubmitApplicationsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SubmitAsync), _ => CanSubmit);
+        PrintApplicationsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PrintApplicationAsync), _ => CanPrintApplication);
         UploadSignedHandoverAttachmentCommand = new RelayCommand(
             async _ => await UploadAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategorySignedForm),
             _ => CanUploadSignedAttachment);
@@ -211,7 +211,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
             async _ => await CaptureAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategoryOther),
             _ => CanUploadOtherAttachment);
         FillDefaultApprovalInfoCommand = new RelayCommand(
-            async _ => await FillDefaultApprovalInfoAsync(),
+            async _ => await _pageDb.RunAsync(FillDefaultApprovalInfoAsync),
             _ => CanApproveProd && _record.Id > 0);
     }
 
@@ -363,35 +363,36 @@ public sealed partial class NetworkOutboundEditDialogViewModel
             OtherAttachments);
     }
 
-    private Task RefreshAttachmentRequirementsAsync()
+    private async Task RefreshAttachmentRequirementsAsync()
     {
         if (!ShowApprovalWorkflowPanel || _record.Status < NetworkOutboundRecord.StatusSignedUploaded)
         {
             AttachmentsMeetMandatoryRequirements = true;
             AttachmentRequirementHint = string.Empty;
             UpdateApprovalUiState();
-            return Task.CompletedTask;
+            return;
         }
 
-        IReadOnlyList<string> errors = CollectCompleteValidationErrors();
+        IReadOnlyList<string> errors = await CollectCompleteValidationErrorsAsync();
         AttachmentsMeetMandatoryRequirements = errors.Count == 0;
         AttachmentRequirementHint = errors.Count == 0
             ? "办结信息已齐全：审批交接、电子介质数据量与目录/文件个数、必备附件均已满足要求。"
             : "办结前信息完整性校验未通过：" + Environment.NewLine + string.Join(Environment.NewLine, errors);
         UpdateApprovalUiState();
-        return Task.CompletedTask;
     }
 
     /// <summary>
     /// 汇总确认实物交接前的校验（含当前界面中的电子介质补录结果）。
     /// </summary>
-    private IReadOnlyList<string> CollectHandoverValidationErrors()
+    private async Task<IReadOnlyList<string>> CollectHandoverValidationErrorsAsync()
     {
         NetworkOutboundRecord validationRecord = BuildCompleteValidationRecord();
+        ApprovalChainResolution? chain = await TryResolveOutboundApprovalChainAsync();
         var errors = NetworkOutboundApplicationValidationSupport.ValidateForHandoverConfirm(
             validationRecord,
             validationRecord,
-            Attachments.ToList()).ToList();
+            Attachments.ToList(),
+            chain).ToList();
         errors.AddRange(_electronicMediaEditor.CollectArchiveFilingScannedPathComplianceErrors());
         return errors;
     }
@@ -399,12 +400,27 @@ public sealed partial class NetworkOutboundEditDialogViewModel
     /// <summary>
     /// 汇总确认办结前的完整性校验（含当前界面中的电子介质补录结果）。
     /// </summary>
-    private IReadOnlyList<string> CollectCompleteValidationErrors()
+    private async Task<IReadOnlyList<string>> CollectCompleteValidationErrorsAsync()
     {
         NetworkOutboundRecord validationRecord = BuildCompleteValidationRecord();
+        ApprovalChainResolution? chain = await TryResolveOutboundApprovalChainAsync();
         return NetworkOutboundApplicationValidationSupport.ValidateForComplete(
             validationRecord,
-            Attachments.ToList());
+            Attachments.ToList(),
+            chain);
+    }
+
+    private async Task<ApprovalChainResolution?> TryResolveOutboundApprovalChainAsync()
+    {
+        try
+        {
+            return await _archiveRegisterService.ResolveNetworkOutboundApprovalChainAsync(_record);
+        }
+        catch
+        {
+            // 解析失败时退回无链兜底（按目的地读分管生产/资料院长字段）。
+            return null;
+        }
     }
 
     private NetworkOutboundRecord BuildCompleteValidationRecord()

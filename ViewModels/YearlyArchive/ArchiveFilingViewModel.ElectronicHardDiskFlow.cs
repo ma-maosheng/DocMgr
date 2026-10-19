@@ -886,7 +886,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 && IsElectronicTrack
                 && ElectronicStepSevenLocationSelectorVisibility == Visibility.Visible)
             {
-                _ = LoadElectronicTargetLocationOptionsAsync();
+                _pageDb.RunInBackground(() => LoadElectronicTargetLocationOptionsAsync());
                 return;
             }
 

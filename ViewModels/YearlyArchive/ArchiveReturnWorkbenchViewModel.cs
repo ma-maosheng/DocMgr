@@ -52,6 +52,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _isActive = true;
         private int _editingLoadGeneration;
         private readonly SemaphoreSlim _editingDbGate = new(1, 1);
+        private Task _editingSideEffectsTask = Task.CompletedTask;
 
         /// <summary>页面卸载时调用，阻止卸载后继续访问已释放的页面作用域服务。</summary>
         public void Deactivate() => _isActive = false;
@@ -571,19 +572,33 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            int? selectedOutboundId = SelectedOutbound?.Id;
-            int? selectedReturnId = SelectedReturn?.Id;
+            await WaitForEditingSideEffectsAsync().ConfigureAwait(true);
+            if (!_isActive)
+            {
+                return;
+            }
 
-            _allReturnableOutbounds.Clear();
-            // 申请/审批入库页均加载待归还出库单，便于资料室对照借出情况。
-            var returnable = await _returnService.GetReturnableOutboundsAsync(SelectedYear);
-            _allReturnableOutbounds.AddRange(returnable);
+            await UsePageDbAsync(async () =>
+            {
+                if (!_isActive)
+                {
+                    return;
+                }
 
-            _allReturns.Clear();
-            var returns = await _returnService.ListReturnsAsync(SelectedYear, user);
-            _allReturns.AddRange(returns);
+                int? selectedOutboundId = SelectedOutbound?.Id;
+                int? selectedReturnId = SelectedReturn?.Id;
 
-            ApplyFilters(selectedOutboundId, selectedReturnId);
+                _allReturnableOutbounds.Clear();
+                // 申请/审批入库页均加载待归还出库单，便于资料室对照借出情况。
+                var returnable = await _returnService.GetReturnableOutboundsAsync(SelectedYear);
+                _allReturnableOutbounds.AddRange(returnable);
+
+                _allReturns.Clear();
+                var returns = await _returnService.ListReturnsAsync(SelectedYear, user);
+                _allReturns.AddRange(returns);
+
+                ApplyFilters(selectedOutboundId, selectedReturnId);
+            }).ConfigureAwait(true);
         }
 
         private void ApplyFilters(int? preferredOutboundId = null, int? preferredReturnId = null)
@@ -690,7 +705,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsBusy = true;
             try
             {
-                var draft = await _returnService.CreateDraftFromOutboundAsync(outbound.Id, user);
+                var draft = await UsePageDbAsync(() => _returnService.CreateDraftFromOutboundAsync(outbound.Id, user));
                 LoadEditing(draft);
             }
             catch (InvalidOperationException ex)
@@ -714,7 +729,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsBusy = true;
             try
             {
-                var record = await _outboundService.GetRecordAsync(outbound.Id);
+                var record = await UsePageDbAsync(() => _outboundService.GetRecordAsync(outbound.Id));
                 if (record == null)
                 {
                     _dialogService.ShowError("未找到该出库单，可能已被删除。");
@@ -750,7 +765,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsBusy = true;
             try
             {
-                var record = await _returnService.GetReturnAsync(selected.Id);
+                var record = await UsePageDbAsync(() => _returnService.GetReturnAsync(selected.Id));
                 if (record == null)
                 {
                     _dialogService.ShowError("未找到该归还单，可能已被删除。");
@@ -818,7 +833,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsBusy = true;
             try
             {
-                var result = await _returnService.SaveReturnFlowAsync(request, user);
+                var result = await UsePageDbAsync(() => _returnService.SaveReturnFlowAsync(request, user));
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -854,14 +869,14 @@ namespace DocMgr.ViewModels.YearlyArchive
                 // 未落库草稿先保存，以便写入 RehomeTargetBoxId
                 if (EditingRecord.Id <= 0 || row.Source.Id <= 0)
                 {
-                    var saveResult = await _returnService.SaveReturnFlowAsync(
+                    var saveResult = await UsePageDbAsync(() => _returnService.SaveReturnFlowAsync(
                         new SaveReturnRequest
                         {
                             Record = EditingRecord,
                             Items = EditItems.Select(item => item.Source).ToList(),
                             SubmitForRegistration = false
                         },
-                        user);
+                        user));
                     if (!saveResult.Success)
                     {
                         _dialogService.ShowError(saveResult.Message);
@@ -877,7 +892,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     }
                 }
 
-                var options = await _returnService.GetRehomeTargetOptionsAsync(row.Source.FilingFactId);
+                var options = await UsePageDbAsync(() => _returnService.GetRehomeTargetOptionsAsync(row.Source.FilingFactId));
                 if (options.Count == 0)
                 {
                     _dialogService.ShowError("当前没有可用的在用档案盒，请先在迁档中新建空盒或并档后再归还。");
@@ -895,11 +910,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                var result = await _returnService.AssignRehomeTargetBoxAsync(
+                var result = await UsePageDbAsync(() => _returnService.AssignRehomeTargetBoxAsync(
                     EditingRecord.Id,
                     row.Source.Id,
                     pickVm.SelectedOption.BoxId,
-                    user);
+                    user));
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -971,7 +986,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsBusy = true;
             try
             {
-                var result = await _returnService.ApproveReturnFlowAsync(record.Id, user, BuildApprovalInput());
+                var result = await UsePageDbAsync(() => _returnService.ApproveReturnFlowAsync(record.Id, user, BuildApprovalInput()));
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -1021,7 +1036,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsBusy = true;
             try
             {
-                var result = await _returnService.ConfirmHandoverFlowAsync(record.Id, user, BuildHandoverInput());
+                var result = await UsePageDbAsync(() => _returnService.ConfirmHandoverFlowAsync(record.Id, user, BuildHandoverInput()));
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -1076,7 +1091,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsBusy = true;
             try
             {
-                var result = await _returnService.CompleteReturnFlowAsync(record.Id, user);
+                var result = await UsePageDbAsync(() => _returnService.CompleteReturnFlowAsync(record.Id, user));
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -1114,7 +1129,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsBusy = true;
             try
             {
-                var result = await _returnService.VoidReturnFlowAsync(record.Id, null, user);
+                var result = await UsePageDbAsync(() => _returnService.VoidReturnFlowAsync(record.Id, null, user));
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -1144,10 +1159,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            var reloaded = await _returnService.GetReturnAsync(targetId);
+            var reloaded = await UsePageDbAsync(() => _returnService.GetReturnAsync(targetId));
             if (reloaded != null)
             {
                 LoadEditing(reloaded);
+                await WaitForEditingSideEffectsAsync().ConfigureAwait(true);
             }
         }
 
@@ -1181,8 +1197,61 @@ namespace DocMgr.ViewModels.YearlyArchive
             EditHeader = $"归还单 {record.ReturnNo}　源出库单 {record.SourceOutboundNo}　借出人 {record.BorrowerName}　状态 {record.StatusStr}";
             OnPropertyChanged(nameof(LossDescription));
             int generation = Interlocked.Increment(ref _editingLoadGeneration);
-            _ = LoadEditingSideEffectsAsync(record, generation);
+            _editingSideEffectsTask = LoadEditingSideEffectsAsync(record, generation);
             NotifyEditCommandStates();
+        }
+
+        /// <summary>
+        /// 编辑区后台加载与列表刷新共用页面级数据库上下文，列表刷新前必须等它结束。
+        /// </summary>
+        private async Task WaitForEditingSideEffectsAsync()
+        {
+            Task task;
+            do
+            {
+                task = _editingSideEffectsTask;
+                try
+                {
+                    await task.ConfigureAwait(true);
+                }
+                catch (Exception)
+                {
+                    // 编辑区加载失败已在内部提示，不阻断后续列表刷新。
+                }
+            }
+            while (!ReferenceEquals(task, _editingSideEffectsTask));
+        }
+
+        /// <summary>
+        /// 归还页编辑区后台加载与列表刷新、提交保存共用页面级数据库上下文，必须排队执行。
+        /// </summary>
+        private async Task UsePageDbAsync(Func<Task> action)
+        {
+            await _editingDbGate.WaitAsync().ConfigureAwait(true);
+            try
+            {
+                await action().ConfigureAwait(true);
+            }
+            finally
+            {
+                _editingDbGate.Release();
+            }
+        }
+
+        /// <summary>
+        /// 归还页编辑区后台加载与列表刷新、提交保存共用页面级数据库上下文，必须排队执行。
+        /// </summary>
+        private async Task<T> UsePageDbAsync<T>(Func<Task<T>> action)
+        {
+            await _editingDbGate.WaitAsync().ConfigureAwait(true);
+            try
+            {
+                return await action().ConfigureAwait(true);
+            }
+            finally
+            {
+                _editingDbGate.Release();
+            }
         }
 
         /// <summary>

@@ -101,7 +101,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ApplyHardDiskCopyTargetSelection();
                 ApplyOutboundArchiveFilingPreset();
                 RaiseElectronicStepFourPresentationChanged();
-                _ = RebuildElectronicFilingDetailRowsAsync();
+                _pageDb.RunInBackground(RebuildElectronicFilingDetailRowsAsync);
             }
             finally
             {

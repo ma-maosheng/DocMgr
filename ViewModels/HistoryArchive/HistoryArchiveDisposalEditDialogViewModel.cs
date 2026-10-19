@@ -11,6 +11,7 @@ using DocMgr.Services.Interfaces;
 using DocMgr.Services.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 using DocMgr.Views.Shared;
 
 namespace DocMgr.ViewModels.HistoryArchive;
@@ -26,6 +27,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
     private readonly IUserService _userService;
     private readonly IApprovalWorkflowService _approvalWorkflowService;
     private readonly SemaphoreSlim _persistReviewSignersGate = new(1, 1);
+    private readonly PageDbOperationQueue _pageDb = new();
     private HistoryArchiveDisposalRecord _record;
     private bool _hasCommittedChanges;
     private bool _suppressReviewSignerPersist;
@@ -71,56 +73,59 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
         _approvalWorkflowService = approvalWorkflowService;
         _record = record;
 
-        RefreshCandidatesCommand = new RelayCommand(async _ => await LoadCandidatesAsync(), _ => CanEditHeader);
+        RefreshCandidatesCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => LoadCandidatesAsync()), _ => CanEditHeader);
         AddSelectedCommand = new RelayCommand(_ => AddSelected(), _ => CanAddSelected);
         AddAllCommand = new RelayCommand(_ => AddAll(), _ => CanAddAll);
         ClearItemsCommand = new RelayCommand(_ => ClearItems(), _ => CanClearItems);
         RemoveItemCommand = new RelayCommand(
             item => RemoveItem(item as HistoryArchiveDisposalItemRow),
             item => CanEditHeader && item is HistoryArchiveDisposalItemRow);
-        SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader && Items.Count > 0);
-        SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit);
-        PrintCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrint);
-        ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
-        ConfirmUploadCommand = new RelayCommand(async _ => await ConfirmUploadAsync(), _ => CanConfirmUpload);
-        UploadAttachmentCommand = new RelayCommand(async _ => await UploadAttachmentAsync(), _ => CanUploadAttachment);
+        SaveDraftCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SaveDraftAsync()), _ => CanEditHeader && Items.Count > 0);
+        SubmitCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SubmitAsync()), _ => CanSubmit);
+        PrintCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => PrintAsync()), _ => CanPrint);
+        ApproveCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => ApproveAsync()), _ => CanApprove);
+        ConfirmUploadCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => ConfirmUploadAsync()), _ => CanConfirmUpload);
+        UploadAttachmentCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => UploadAttachmentAsync()), _ => CanUploadAttachment);
         CaptureFromDocumentCameraCommand = new RelayCommand(
-            async _ => await CaptureFromDocumentCameraAsync(),
+            async _ => await _pageDb.RunAsync(() => CaptureFromDocumentCameraAsync()),
             _ => CanUploadAttachment);
         UploadSignedFormAttachmentCommand = new RelayCommand(
-            async _ => await UploadAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategorySignedForm),
+            async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategorySignedForm)),
             _ => CanUploadMandatoryAttachment);
         CaptureSignedFormAttachmentCommand = new RelayCommand(
-            async _ => await CaptureAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategorySignedForm),
+            async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategorySignedForm)),
             _ => CanUploadMandatoryAttachment);
         UploadScenePhotoAttachmentCommand = new RelayCommand(
-            async _ => await UploadAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategoryScenePhoto),
+            async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategoryScenePhoto)),
             _ => CanUploadMandatoryAttachment && RequiresScenePhoto);
         CaptureScenePhotoAttachmentCommand = new RelayCommand(
-            async _ => await CaptureAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategoryScenePhoto),
+            async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategoryScenePhoto)),
             _ => CanUploadMandatoryAttachment && RequiresScenePhoto);
         UploadOtherAttachmentCommand = new RelayCommand(
-            async _ => await UploadAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategoryOther),
+            async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategoryOther)),
             _ => CanUploadOtherAttachment);
         CaptureOtherAttachmentCommand = new RelayCommand(
-            async _ => await CaptureAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategoryOther),
+            async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(HistoryArchiveDisposalDomainValues.AttachmentCategoryOther)),
             _ => CanUploadOtherAttachment);
         DeleteAttachmentCommand = new RelayCommand(async item =>
         {
-            if (item is not SystemAttachment att)
+            await _pageDb.RunAsync(async () =>
             {
-                return;
-            }
+                if (item is not SystemAttachment att)
+                {
+                    return;
+                }
 
-            var (ok, msg) = await _service.DeleteAttachmentAsync(att.Id, RequireUser());
-            if (!ok)
-            {
-                _dialogService.ShowError(msg);
-                return;
-            }
+                var (ok, msg) = await _service.DeleteAttachmentAsync(att.Id, RequireUser());
+                if (!ok)
+                {
+                    _dialogService.ShowError(msg);
+                    return;
+                }
 
-            _hasCommittedChanges = true;
-            await ReloadAttachmentsAsync();
+                _hasCommittedChanges = true;
+                await ReloadAttachmentsAsync();
+            });
         }, item => item is SystemAttachment && CanUploadMandatoryAttachment);
         ViewAttachmentCommand = new RelayCommand(item =>
         {
@@ -129,9 +134,9 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
                 _dialogService.ShowSystemAttachmentView(att);
             }
         }, item => item is SystemAttachment);
-        CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
+        CompleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => CompleteAsync()), _ => CanComplete);
         CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
-        _ = InitializeAsync();
+        _pageDb.RunInBackground(InitializeAsync);
     }
 
     public event Action<bool?>? RequestClose;
@@ -293,7 +298,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
 
             if (CanEditHeader)
             {
-                _ = LoadCandidatesAsync();
+                _pageDb.RunInBackground(LoadCandidatesAsync);
             }
         }
     }
@@ -337,7 +342,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
                 return;
             }
 
-            _ = PersistReviewSignersAsync();
+            _pageDb.RunInBackground(PersistReviewSignersAsync);
         }
     }
 
@@ -352,7 +357,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
                 return;
             }
 
-            _ = PersistReviewSignersAsync();
+            _pageDb.RunInBackground(PersistReviewSignersAsync);
         }
     }
 
@@ -366,7 +371,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
                 return;
             }
 
-            _ = PersistReviewSignersAsync();
+            _pageDb.RunInBackground(PersistReviewSignersAsync);
         }
     }
 
@@ -381,7 +386,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
                 return;
             }
 
-            _ = PersistReviewSignersAsync();
+            _pageDb.RunInBackground(PersistReviewSignersAsync);
         }
     }
 
@@ -395,7 +400,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
                 return;
             }
 
-            _ = PersistReviewSignersAsync();
+            _pageDb.RunInBackground(PersistReviewSignersAsync);
         }
     }
 
@@ -410,7 +415,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
                 return;
             }
 
-            _ = PersistReviewSignersAsync();
+            _pageDb.RunInBackground(PersistReviewSignersAsync);
         }
     }
 
@@ -424,7 +429,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
                 return;
             }
 
-            _ = PersistReviewSignersAsync();
+            _pageDb.RunInBackground(PersistReviewSignersAsync);
         }
     }
 
@@ -439,7 +444,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
                 return;
             }
 
-            _ = PersistReviewSignersAsync();
+            _pageDb.RunInBackground(PersistReviewSignersAsync);
         }
     }
 
@@ -453,7 +458,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
                 return;
             }
 
-            _ = PersistReviewSignersAsync();
+            _pageDb.RunInBackground(PersistReviewSignersAsync);
         }
     }
 
@@ -468,7 +473,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
                 return;
             }
 
-            _ = PersistReviewSignersAsync();
+            _pageDb.RunInBackground(PersistReviewSignersAsync);
         }
     }
 
@@ -518,7 +523,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
             await ReloadSignerEnableFlagsAsync();
             if (CanEditHeader)
             {
-                await LoadCandidatesAsync();
+                await _pageDb.RunAsync(() => LoadCandidatesAsync());
             }
 
             await ReloadAttachmentsAsync();
@@ -714,7 +719,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
 
         Items.Clear();
         SelectedItem = null;
-        _ = LoadCandidatesAsync();
+        _pageDb.RunInBackground(LoadCandidatesAsync);
     }
 
     private void RemoveItem(HistoryArchiveDisposalItemRow? row)
@@ -740,7 +745,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
             SelectedItem = null;
         }
 
-        _ = LoadCandidatesAsync();
+        _pageDb.RunInBackground(LoadCandidatesAsync);
     }
 
     private void NotifyItemListsChanged()
@@ -820,7 +825,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
             : await _service.CreateDraftAsync(draft, BuildItems(), RequireUser());
         _hasCommittedChanges = true;
         BindFromRecord();
-        await LoadCandidatesAsync();
+        await _pageDb.RunAsync(() => LoadCandidatesAsync());
     }
 
     private async Task SubmitAsync()
@@ -1165,13 +1170,13 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
     private async Task UploadAttachmentByCategoryAsync(string category)
     {
         UploadCategory = category;
-        await UploadAttachmentAsync();
+        await _pageDb.RunAsync(() => UploadAttachmentAsync());
     }
 
     private async Task CaptureAttachmentByCategoryAsync(string category)
     {
         UploadCategory = category;
-        await CaptureFromDocumentCameraAsync();
+        await _pageDb.RunAsync(() => CaptureFromDocumentCameraAsync());
     }
 
     private async Task ReloadAsync()
@@ -1187,7 +1192,7 @@ public sealed partial class HistoryArchiveDisposalEditDialogViewModel : ViewMode
         await ReloadSignerEnableFlagsAsync();
         if (CanEditHeader)
         {
-            await LoadCandidatesAsync();
+            await _pageDb.RunAsync(() => LoadCandidatesAsync());
         }
 
         await ReloadAttachmentsAsync();

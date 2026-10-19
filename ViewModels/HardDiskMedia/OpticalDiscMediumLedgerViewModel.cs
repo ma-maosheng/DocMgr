@@ -7,6 +7,7 @@ using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.Shared;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.HardDiskMedia
 {
@@ -16,6 +17,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
     public class OpticalDiscMediumLedgerViewModel : ViewModelBase
     {
         private readonly IHardDiskMediaService _hardDiskMediaService;
+        private readonly PageDbOperationQueue _pageDb = new();
         private readonly IDialogService _dialogService;
         private bool _isInitialized;
         private bool _suppressSelectionReload;
@@ -37,11 +39,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _hardDiskMediaService = hardDiskMediaService;
             _dialogService = dialogService;
 
-            SearchCommand = new RelayCommand(async _ => await SearchAsync());
-            RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
-            ExportCommand = new RelayCommand(async _ => await ExportAsync());
-            SearchTransactionsCommand = new RelayCommand(async _ => await SearchTransactionsAsync());
-            ShowAllTransactionsCommand = new RelayCommand(async _ => await ShowAllTransactionsAsync());
+            SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SearchAsync));
+            RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshAsync));
+            ExportCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportAsync));
+            SearchTransactionsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SearchTransactionsAsync));
+            ShowAllTransactionsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ShowAllTransactionsAsync));
             ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.OpticalDisc));
         }
 
@@ -91,7 +93,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 }
 
                 _recentTransactionsOnly = false;
-                _ = LoadTransactionsAsync();
+                _pageDb.RunInBackground(LoadTransactionsAsync);
             }
         }
 
@@ -116,7 +118,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     TransactionDiscCodeKeyword = SelectedMedium.DiscCode;
                 }
 
-                _ = LoadTransactionsAsync();
+                _pageDb.RunInBackground(LoadTransactionsAsync);
             }
         }
 
@@ -142,7 +144,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
                     TransactionDiscCodeKeyword = value.DiscCode;
                 }
 
-                _ = LoadTransactionsAsync();
+                _pageDb.RunInBackground(LoadTransactionsAsync);
             }
         }
 

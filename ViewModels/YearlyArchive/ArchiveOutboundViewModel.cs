@@ -523,6 +523,8 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task LoadAttachmentsAsync()
         {
+            await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
+
             ProofMaterialAttachments.Clear();
             SignedApprovalAttachments.Clear();
             HandoverFormAttachments.Clear();
@@ -582,6 +584,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
             var result = await _outboundService.AttachSearchResultSetAsync(Record.Id, id, RequireUser());
             if (!result.Success)
             {
@@ -621,6 +624,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
             var result = await _outboundService.RemoveApplicationItemAsync(Record.Id, row.Source.Id, RequireUser());
             if (!result.Success)
             {
@@ -670,6 +674,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
             var result = await _outboundService.RemoveApplicationItemsAsync(Record.Id, persistedIds, RequireUser());
             if (!result.Success)
             {
@@ -691,6 +696,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
+                await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
                 var hit = await _searchService.GetSearchHitByFilingFactIdAsync(item.FilingFactId);
                 if (hit == null || hit.RegisterRecordId <= 0)
                 {
@@ -1129,6 +1135,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 IsBusy = true;
+                await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
                 var result = await _outboundService.SaveDraftFlowAsync(BuildSaveRequest(), RequireUser());
                 if (!result.Success)
                 {
@@ -1157,6 +1164,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 IsBusy = true;
+                await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
                 var saveResult = await _outboundService.SaveDraftFlowAsync(BuildSaveRequest(), RequireUser());
                 if (!saveResult.Success)
                 {
@@ -1167,6 +1175,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 await ReloadRecordAsync();
                 SyncContainerUnitsToItems();
 
+                await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
                 var preview = await _outboundService.PreviewSubmitApplicationAsync(Record.Id, RequireUser());
                 if (!preview.IsValid)
                 {
@@ -1187,6 +1196,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
+                await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
                 var result = await _outboundService.SubmitApplicationFlowAsync(Record.Id, RequireUser());
                 if (!result.Success)
                 {
@@ -1210,6 +1220,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task WithdrawAsync()
         {
+            await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
             var result = await _outboundService.WithdrawApplicationFlowAsync(Record.Id, "申请人撤回", RequireUser());
             if (!result.Success)
             {
@@ -1228,6 +1239,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 // 已审批及之后（含已办结）预填审核审批；申请阶段留白供线下签批。
                 bool blankApproval = !_record.IsApproved && !_record.IsSignedUploaded && !_record.IsCompleted;
+                await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
                 var data = await _outboundService.BuildPrintDataAsync(Record.Id, blankApproval);
                 var document = ArchiveOutboundPrintDocumentFactory.Create(data);
                 var exportOptions = new PrintPreviewExportOptions
@@ -1700,6 +1712,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 IsBusy = true;
+                await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
                 var result = await _outboundService.SaveDraftFlowAsync(BuildSaveRequest(), RequireUser());
                 if (!result.Success)
                 {
@@ -1736,8 +1749,20 @@ namespace DocMgr.ViewModels.YearlyArchive
             };
         }
 
+        /// <summary>
+        /// 库内空盘容量说明在后台查询，与申请单读写共用页面级数据库上下文，必须先等它结束。
+        /// </summary>
+        private async Task WaitForHardDiskCapacityQueriesAsync()
+        {
+            foreach (ArchiveOutboundContainerUnitViewModel unit in ContainerUnits.ToArray())
+            {
+                await unit.WaitForHardDiskCapacityQueryAsync().ConfigureAwait(true);
+            }
+        }
+
         private async Task ReloadRecordAsync()
         {
+            await WaitForHardDiskCapacityQueriesAsync().ConfigureAwait(true);
             var record = await _outboundService.GetRecordAsync(Record.Id);
             if (record != null)
             {

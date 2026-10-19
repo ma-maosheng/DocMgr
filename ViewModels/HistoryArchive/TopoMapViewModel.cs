@@ -20,6 +20,7 @@ namespace DocMgr.ViewModels.HistoryArchive
     {
         private readonly ITopoMapService _topoMapService;
         private readonly IDialogService _dialogService;
+        private readonly PageDbOperationQueue _pageDb = new();
 
         // 1. 引入 UserContextService
         private readonly IUserContextService _userContextService;
@@ -79,7 +80,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             {
                 if (SetProperty(ref _includeDisposed, value))
                 {
-                    _ = ApplySearchFilterAsync();
+                    _pageDb.RunInBackground(ApplySearchFilterAsync);
                 }
             }
         }
@@ -125,7 +126,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             {
                 if (value)
                 {
-                    _ = SwitchBrowseModeAsync(false);
+                    _pageDb.RunInBackground(() => SwitchBrowseModeAsync(false));
                 }
             }
         }
@@ -138,7 +139,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             {
                 if (value)
                 {
-                    _ = SwitchBrowseModeAsync(true);
+                    _pageDb.RunInBackground(() => SwitchBrowseModeAsync(true));
                 }
             }
         }
@@ -231,19 +232,19 @@ namespace DocMgr.ViewModels.HistoryArchive
             _dialogService = dialogService;
             _userContextService = userContextService; // 保存引用
 
-            ImportCommand = new RelayCommand(async _ => await ImportAsync(), _ => CanMaintainLedger);
+            ImportCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ImportAsync), _ => CanMaintainLedger);
             ExportImportTemplateCommand = new RelayCommand(_ => ExportImportTemplate(), _ => CanMaintainLedger);
-            BrowseCommand = new RelayCommand(async _ => await BrowseAsync());
-            DeleteCurrentRowCommand = new RelayCommand(async _ => await DeleteCurrentRowAsync(),
+            BrowseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(BrowseAsync));
+            DeleteCurrentRowCommand = new RelayCommand(async _ => await _pageDb.RunAsync(DeleteCurrentRowAsync),
                 _ => CanMaintainLedger
                      && SelectedTopoMap != null
                      && !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(SelectedTopoMap.LifecycleStatus));
-            DeleteTableCommand = new RelayCommand(async _ => await DeleteTableAsync(), _ => CanMaintainLedger);
+            DeleteTableCommand = new RelayCommand(async _ => await _pageDb.RunAsync(DeleteTableAsync), _ => CanMaintainLedger);
 
-            EditCommand = new RelayCommand(async _ => await EditAsync(), _ => CanMaintainLedger && SelectedTopoMap != null);
-            SearchCommand = new RelayCommand(async _ => await ApplySearchFilterAsync());
-            ResetSearchCommand = new RelayCommand(async _ => await ResetSearchAsync());
-            ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => _filteredTopoMaps.Count > 0);
+            EditCommand = new RelayCommand(async _ => await _pageDb.RunAsync(EditAsync), _ => CanMaintainLedger && SelectedTopoMap != null);
+            SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ApplySearchFilterAsync));
+            ResetSearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ResetSearchAsync));
+            ExportCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportAsync), _ => _filteredTopoMaps.Count > 0);
             ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.TopoMap));
             FirstPageCommand = new RelayCommand(_ => GoToPage(1), _ => CanGoPrevious);
             PreviousPageCommand = new RelayCommand(_ => GoToPage(CurrentPage - 1), _ => CanGoPrevious);

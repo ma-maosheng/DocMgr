@@ -34,6 +34,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IUserService _userService;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly SemaphoreSlim _yearSideEffectsGate = new(1, 1);
+        private readonly PageDbOperationQueue _pageDb = new();
 
         private string _year = string.Empty;
         private string _projectName = string.Empty;
@@ -93,11 +94,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             RemoveMediaItemCommand = new RelayCommand(
                 param => RemoveMediaItem(param as StockTextArchiveMediaItemViewModel),
                 param => !IsBusy && param is StockTextArchiveMediaItemViewModel);
-            RecommendSlotCommand = new RelayCommand(async _ => await RecommendSlotAsync(), _ => !IsBusy);
-            ShowSlotSnapshotCommand = new RelayCommand(async _ => await ShowSlotSnapshotAsync(), _ => !IsBusy && CanShowSlotSnapshot);
-            ConfirmCommand = new RelayCommand(async _ => await ConfirmAsync(), _ => !IsBusy);
-            RefreshSlotOptionsCommand = new RelayCommand(async _ => await LoadSlotOptionsAsync(), _ => !IsBusy);
-            ImportExcelCommand = new RelayCommand(async _ => await ImportExcelAsync(), _ => !IsBusy);
+            RecommendSlotCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RecommendSlotAsync), _ => !IsBusy);
+            ShowSlotSnapshotCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ShowSlotSnapshotAsync), _ => !IsBusy && CanShowSlotSnapshot);
+            ConfirmCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ConfirmAsync), _ => !IsBusy);
+            RefreshSlotOptionsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(LoadSlotOptionsAsync), _ => !IsBusy);
+            ImportExcelCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ImportExcelAsync), _ => !IsBusy);
             ExportExcelTemplateCommand = new RelayCommand(_ => ExportExcelTemplate(), _ => !IsBusy);
         }
 
@@ -155,7 +156,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     RefreshProjectNameOptions();
                     RefreshProjectHint();
                     RefreshYearProjectHint();
-                    _ = OnYearChangedAsync();
+                    _pageDb.RunInBackground(OnYearChangedAsync);
                 }
             }
         }
@@ -189,7 +190,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     ApplyMaterialNameDefaultFromProject(previous, value);
                     TryFillProjectCodeFromRegistered(value);
                     RefreshProjectHint();
-                    _ = LoadSlotOptionsAsync();
+                    _pageDb.RunInBackground(LoadSlotOptionsAsync);
                 }
             }
         }
@@ -315,7 +316,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedSpec, value))
                 {
-                    _ = LoadSlotOptionsAsync();
+                    _pageDb.RunInBackground(LoadSlotOptionsAsync);
                 }
             }
         }
@@ -327,7 +328,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedSlotOption, value) && !_suppressSlotApply)
                 {
-                    _ = ApplySelectedSlotAsync(value);
+                    _pageDb.RunInBackground(() => ApplySelectedSlotAsync(value));
                 }
             }
         }

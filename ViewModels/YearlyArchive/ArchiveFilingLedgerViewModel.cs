@@ -24,6 +24,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveMaterialTransactionService _materialTransactionService;
         private readonly IDialogService _dialogService;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly PageDbOperationQueue _pageDb = new();
 
         private bool _isInitialized;
         private bool _suppressYearSideEffects;
@@ -65,10 +66,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             _dialogService = dialogService;
             _scopeFactory = scopeFactory;
 
-            SearchCommand = new RelayCommand(async _ => await SearchAsync(), _ => !IsBusy);
+            SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SearchAsync()), _ => !IsBusy);
             ResetCommand = new RelayCommand(_ => ResetCriteria(), _ => !IsBusy);
-            RefreshCommand = new RelayCommand(async _ => await SearchAsync(), _ => !IsBusy);
-            ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => !IsBusy && _sourceRows.Count > 0);
+            RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SearchAsync()), _ => !IsBusy);
+            ExportCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportAsync), _ => !IsBusy && _sourceRows.Count > 0);
             ViewRegisterDetailCommand = new RelayCommand(
                 _ => ViewRegisterDetail(),
                 _ => SelectedRow != null && SelectedRow.RegisterRecordId > 0);
@@ -134,7 +135,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 SelectedProjectId = null;
-                _ = LoadProjectOptionsAsync();
+                _pageDb.RunInBackground(LoadProjectOptionsAsync);
             }
         }
 
@@ -282,7 +283,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 OnPropertyChanged(nameof(HasSelectedRow));
                 if (!_suppressSelectionLoad)
                 {
-                    _ = LoadSelectedDetailAsync();
+                    _pageDb.RunInBackground(LoadSelectedDetailAsync);
                 }
             }
         }
@@ -684,7 +685,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _suppressSelectionLoad = false;
             }
 
-            _ = LoadSelectedDetailAsync();
+            _pageDb.RunInBackground(LoadSelectedDetailAsync);
         }
 
         private void ToggleFoldGroup(FilingLedgerRow? row)

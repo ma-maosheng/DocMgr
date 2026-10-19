@@ -18,6 +18,7 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
@@ -32,6 +33,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IUserContextService _userContextService;
         private readonly IUserService _userService;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly PageDbOperationQueue _pageDb = new();
 
         private readonly List<string> _allElectronicDispositionOptions = new();
         private readonly List<string> _electronicDocumentSubCategoryOptions = new();
@@ -1152,7 +1154,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void RequestHardDiskCapacityRefresh(MediaEntryViewModel media)
         {
-            _ = RefreshHardDiskCapacityDescriptionAsync(media);
+            _pageDb.RunInBackground(() => RefreshHardDiskCapacityDescriptionAsync(media));
         }
 
         private async Task RefreshHardDiskCapacityDescriptionAsync(MediaEntryViewModel media)
@@ -1273,7 +1275,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 OnPropertyChanged(nameof(IsBorrowedHardDiskRegistrationVisible));
                 OnPropertyChanged(nameof(IsBorrowedHardDiskCodeRequired));
-                _ = RefreshUserBorrowedHardDiskCodesAsync();
+                _pageDb.RunInBackground(RefreshUserBorrowedHardDiskCodesAsync);
                 return;
             }
 

@@ -226,11 +226,11 @@ public sealed partial class NetworkInboundEditDialogViewModel
 
     private void InitializeApprovalCommands()
     {
-        SaveApprovalCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprovePass);
-        ConfirmPhysicalHandoverCommand = new RelayCommand(async _ => await ConfirmHandoverAsync(), _ => CanConfirmPhysicalHandover);
-        PrintApprovalCommand = new RelayCommand(async _ => await PrintApprovalAsync(), _ => CanPrintHandoverSheet);
-        SubmitApplicationsCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit);
-        PrintApplicationsCommand = new RelayCommand(async _ => await PrintApplicationAsync(), _ => CanPrintApplication);
+        SaveApprovalCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ApproveAsync), _ => CanApprovePass);
+        ConfirmPhysicalHandoverCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ConfirmHandoverAsync), _ => CanConfirmPhysicalHandover);
+        PrintApprovalCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PrintApprovalAsync), _ => CanPrintHandoverSheet);
+        SubmitApplicationsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SubmitAsync), _ => CanSubmit);
+        PrintApplicationsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PrintApplicationAsync), _ => CanPrintApplication);
 
         UploadSignedHandoverAttachmentCommand = new RelayCommand(
             async _ => await UploadAttachmentByCategoryAsync(NetworkTransferDomainValues.AttachmentCategorySignedForm),

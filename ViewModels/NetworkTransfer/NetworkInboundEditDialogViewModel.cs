@@ -16,6 +16,7 @@ using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.YearlyArchive;
 using DocMgr.Views.Shared;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.NetworkTransfer
 {
@@ -44,6 +45,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private bool _suppressServerPathSelection;
         private bool _isInitializing;
         private readonly SemaphoreSlim _dialogDbGate = new(1, 1);
+        private readonly PageDbOperationQueue _pageDb = new();
         private NetworkInboundRecord _record;
         private bool _hasCommittedChanges;
 
@@ -128,15 +130,15 @@ namespace DocMgr.ViewModels.NetworkTransfer
             _mode = mode;
 
             RefreshApplicantSearchResultSetsCommand = new RelayCommand(
-                async _ => await LoadApplicantSearchResultSetsAsync(),
+                async _ => await _pageDb.RunAsync(LoadApplicantSearchResultSetsAsync),
                 _ => IsArchivedSource);
             AddExternalItemCommand = new RelayCommand(_ => AddExternalItem(), _ => CanEditHeader && !IsArchivedSource);
             RemoveItemCommand = new RelayCommand(
                 item => RemoveItemRow(item as NetworkInboundItemRowViewModel),
                 item => CanEditHeader && item is NetworkInboundItemRowViewModel);
-            SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader);
+            SaveDraftCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SaveDraftAsync), _ => CanEditHeader);
             DeleteAttachmentCommand = new RelayCommand(
-                async item => await DeleteAttachmentAsync(item as SystemAttachment),
+                async item => await _pageDb.RunAsync(() => DeleteAttachmentAsync(item as SystemAttachment)),
                 item => item is SystemAttachment && CanUploadSignedAttachment);
             ViewAttachmentCommand = new RelayCommand(item =>
             {
@@ -145,7 +147,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     _dialogService.ShowSystemAttachmentView(attachment);
                 }
             }, item => item is SystemAttachment);
-            CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanCompleteApproval);
+            CompleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(CompleteAsync), _ => CanCompleteApproval);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
             FillDefaultMaterialPathCommand = new RelayCommand(
                 _ => FillDefaultMaterialPath(),
@@ -153,7 +155,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             InitializeApprovalCommands();
 
             RefreshUploadCategoryOptions();
-            _ = InitializeAsync();
+            _pageDb.RunInBackground(InitializeAsync);
         }
 
         public event Action<bool?>? RequestClose;
@@ -278,7 +280,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                         if (IsArchivedSource)
                         {
                             Items.Clear();
-                            _ = LoadApplicantSearchResultSetsAsync();
+                            _pageDb.RunInBackground(LoadApplicantSearchResultSetsAsync);
                         }
                         else
                         {
@@ -431,7 +433,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     OnPropertyChanged(nameof(SelectedSearchResultSetSummary));
                     if (!_suppressSearchResultSetSelection)
                     {
-                        _ = ApplySelectedSearchResultSetAsync();
+                        _pageDb.RunInBackground(ApplySelectedSearchResultSetAsync);
                     }
                 }
             }
@@ -1380,7 +1382,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 CreatedAt = DateTime.Now
             });
             ApplySharedServerPathToItems();
-            _ = RebuildItemRowsAsync();
+            _pageDb.RunInBackground(RebuildItemRowsAsync);
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -1398,7 +1400,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 item.SortOrder = sort++;
             }
 
-            _ = RebuildItemRowsAsync();
+            _pageDb.RunInBackground(RebuildItemRowsAsync);
             CommandManager.InvalidateRequerySuggested();
         }
 

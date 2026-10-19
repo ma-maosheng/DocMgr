@@ -9,6 +9,7 @@ using DocMgr.Services.HardDiskMedia;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.HardDiskMedia
 {
@@ -18,6 +19,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
     public class HardDiskMediaOutboundApplicationEditDialogViewModel : ViewModelBase
     {
         private readonly IHardDiskMediaService _hardDiskMediaService;
+        private readonly PageDbOperationQueue _pageDb = new();
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
         private readonly IUserService _userService;
@@ -54,9 +56,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _userService = userService;
             _sourceApplication = applicationToEdit;
 
-            SaveDraftCommand = new RelayCommand(async _ => await SaveAsync(HardDiskMediaApplication.StatusDraft), _ => CanSaveApplicationDraft);
-            SubmitCommand = new RelayCommand(async _ => await SaveAsync(HardDiskMediaApplication.StatusSubmitted), _ => CanSubmitApplication);
-            PrintCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrintApplication);
+            SaveDraftCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SaveAsync(HardDiskMediaApplication.StatusDraft)), _ => CanSaveApplicationDraft);
+            SubmitCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SaveAsync(HardDiskMediaApplication.StatusSubmitted)), _ => CanSubmitApplication);
+            PrintCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PrintAsync), _ => CanPrintApplication);
             CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
         }
 

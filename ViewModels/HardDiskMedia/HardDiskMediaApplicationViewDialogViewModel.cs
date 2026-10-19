@@ -13,6 +13,7 @@ using DocMgr.Services.Shared;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
 using Microsoft.Win32;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.HardDiskMedia
 {
@@ -23,6 +24,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
     public sealed class HardDiskMediaApplicationViewDialogViewModel : ViewModelBase
     {
         private readonly HardDiskMediaApplication _application;
+        private readonly PageDbOperationQueue _pageDb = new();
         private readonly IHardDiskMediaService _hardDiskMediaService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
@@ -47,12 +49,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 async attachment => await ViewAttachmentAsync(attachment as SystemAttachment),
                 attachment => attachment is SystemAttachment);
             SupplementOtherAttachmentCommand = new RelayCommand(
-                async _ => await SupplementOtherAttachmentAsync(),
+                async _ => await _pageDb.RunAsync(SupplementOtherAttachmentAsync),
                 _ => CanSupplementOtherAttachments);
-            PrintCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrint);
+            PrintCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PrintAsync), _ => CanPrint);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
-            _ = InitializeAsync();
+            _pageDb.RunInBackground(InitializeAsync);
         }
 
         public string WindowTitle => $"查看申请 · {_application.ApplicationNo} · {_application.StatusStr}";

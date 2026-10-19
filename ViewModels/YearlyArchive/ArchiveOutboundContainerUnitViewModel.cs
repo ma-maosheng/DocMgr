@@ -35,6 +35,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _sharedDiskSettingsHint = string.Empty;
         private string _hardDiskCapacityDescription = string.Empty;
         private int _hardDiskCapacityVersion;
+        private Task _hardDiskCapacityTask = Task.CompletedTask;
 
         public ArchiveOutboundContainerUnitViewModel(
             string unitKey,
@@ -824,7 +825,43 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             int version = ++_hardDiskCapacityVersion;
             string diskCode = ShowBlankDiskFields ? RequisitionedDiskCode?.Trim() ?? string.Empty : string.Empty;
-            _ = ApplyHardDiskCapacityAsync(version, diskCode);
+            Task previous = _hardDiskCapacityTask;
+            _hardDiskCapacityTask = RefreshHardDiskCapacityAfterAsync(previous, version, diskCode);
+        }
+
+        /// <summary>
+        /// 容量说明与借出申请保存共用页面级数据库上下文。调用方在访问数据库前须先等待本任务结束。
+        /// </summary>
+        internal async Task WaitForHardDiskCapacityQueryAsync()
+        {
+            Task task;
+            do
+            {
+                task = _hardDiskCapacityTask;
+                try
+                {
+                    await task.ConfigureAwait(true);
+                }
+                catch (Exception)
+                {
+                    // 容量说明失败不阻断申请保存与提交。
+                }
+            }
+            while (!ReferenceEquals(task, _hardDiskCapacityTask));
+        }
+
+        private async Task RefreshHardDiskCapacityAfterAsync(Task previous, int version, string diskCode)
+        {
+            try
+            {
+                await previous.ConfigureAwait(true);
+            }
+            catch (Exception)
+            {
+                // 上一次查询失败不阻塞本次刷新。
+            }
+
+            await ApplyHardDiskCapacityAsync(version, diskCode).ConfigureAwait(true);
         }
 
         private async Task ApplyHardDiskCapacityAsync(int version, string diskCode)

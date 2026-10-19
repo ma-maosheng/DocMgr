@@ -315,17 +315,55 @@
                               IsHitTestVisible="False"/>
 
                         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="28,0">
-                            <Ellipse Width="92" Height="92" Margin="0,0,0,18" HorizontalAlignment="Center">
-                                <Ellipse.Effect>
-                                    <DropShadowEffect BlurRadius="16" ShadowDepth="4" Direction="270" Opacity="0.45" Color="#0D2A28"/>
-                                </Ellipse.Effect>
-                                <Ellipse.Fill>
-                                    <ImageBrush ImageSource="pack://application:,,,/Assets/institute-emblem.jpg"
-                                                Stretch="UniformToFill"
-                                                AlignmentX="Center"
-                                                AlignmentY="Center"/>
-                                </Ellipse.Fill>
-                            </Ellipse>
+                            <!-- 院徽：底图 + 卫星绕轨（持续动画）；阴影单独一层，避免 Effect 烘焙卡住动画 -->
+                            <Grid Width="120" Height="120" Margin="0,0,0,18" HorizontalAlignment="Center">
+                                <Ellipse Fill="#010D2A28" IsHitTestVisible="False">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect BlurRadius="18" ShadowDepth="4" Direction="270" Opacity="0.45" Color="#0D2A28"/>
+                                    </Ellipse.Effect>
+                                </Ellipse>
+                                <Grid>
+                                    <Grid.Clip>
+                                        <EllipseGeometry Center="60,60" RadiusX="60" RadiusY="60"/>
+                                    </Grid.Clip>
+                                    <Image Source="pack://application:,,,/Assets/institute-emblem-base.png"
+                                           Stretch="UniformToFill"
+                                           IsHitTestVisible="False"/>
+                                    <Grid x:Name="EmblemOrbitHost"
+                                          RenderTransformOrigin="0.5,0.5"
+                                          IsHitTestVisible="False">
+                                        <Grid.RenderTransform>
+                                            <RotateTransform Angle="-135"/>
+                                        </Grid.RenderTransform>
+                                        <Image Width="17" Height="15"
+                                               Source="pack://application:,,,/Assets/institute-emblem-satellite.png"
+                                               Stretch="Uniform"
+                                               RenderTransformOrigin="0.5,0.5"
+                                               Opacity="0.96">
+                                            <Image.RenderTransform>
+                                                <TransformGroup>
+                                                    <!-- 机头大致沿轨道切向；再平移到轨道半径 -->
+                                                    <RotateTransform Angle="-20"/>
+                                                    <TranslateTransform Y="-47.5"/>
+                                                </TransformGroup>
+                                            </Image.RenderTransform>
+                                        </Image>
+                                    </Grid>
+                                    <Grid.Triggers>
+                                        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                            <BeginStoryboard>
+                                                <Storyboard RepeatBehavior="Forever">
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetName="EmblemOrbitHost"
+                                                        Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                        From="-135" To="225"
+                                                        Duration="0:0:14"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </Grid.Triggers>
+                                </Grid>
+                            </Grid>
                             <TextBlock Text="河北省第三测绘院"
                                        Foreground="White"
                                        FontSize="26"

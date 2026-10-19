@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.HardDiskMedia
 {
@@ -14,6 +15,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly IHardDiskMediaService _hardDiskMediaService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
+        private readonly PageDbOperationQueue _pageDb = new();
         private bool _isInitialized;
         private string _searchKeyword = string.Empty;
         private string _selectedStatus = "全部";
@@ -26,14 +28,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _dialogService = dialogService;
             _userContextService = userContextService;
 
-            SearchCommand = new RelayCommand(async _ => await SearchAsync());
-            RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
-            ImportCommand = new RelayCommand(async _ => await ImportAsync(), _ => CanOperate);
-            ExportTemplateCommand = new RelayCommand(async _ => await ExportTemplateAsync());
+            SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SearchAsync));
+            RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshAsync));
+            ImportCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ImportAsync), _ => CanOperate);
+            ExportTemplateCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportTemplateAsync));
             ShowImportTemplateHelpCommand = new RelayCommand(_ => ShowImportTemplateHelp());
-            AddCommand = new RelayCommand(async _ => await AddMediumAsync(), _ => CanOperate);
-            EditCommand = new RelayCommand(async _ => await EditMediumAsync(), _ => CanOperate && SelectedMedium != null);
-            DeleteCommand = new RelayCommand(async _ => await DeleteMediumAsync(), _ => CanOperate && SelectedMedium != null);
+            AddCommand = new RelayCommand(async _ => await _pageDb.RunAsync(AddMediumAsync), _ => CanOperate);
+            EditCommand = new RelayCommand(async _ => await _pageDb.RunAsync(EditMediumAsync), _ => CanOperate && SelectedMedium != null);
+            DeleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(DeleteMediumAsync), _ => CanOperate && SelectedMedium != null);
         }
 
         /// <summary>资料管理员可登记/导入/编辑/删除；其余角色仅浏览台账。</summary>

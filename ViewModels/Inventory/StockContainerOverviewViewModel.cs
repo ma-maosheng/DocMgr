@@ -5,6 +5,7 @@ using DocMgr.Models.Inventory;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.Inventory
 {
@@ -15,6 +16,8 @@ namespace DocMgr.ViewModels.Inventory
     {
         private const string AllYearsOption = "全部年度";
 
+
+        private readonly PageDbOperationQueue _pageDb = new();
         private readonly IStockContainerOverviewService _overviewService;
         private readonly IDialogService _dialogService;
 
@@ -49,11 +52,11 @@ namespace DocMgr.ViewModels.Inventory
             _overviewService = overviewService;
             _dialogService = dialogService;
 
-            SearchCommand = new RelayCommand(async _ => await SearchAsync(), _ => !IsBusy);
+            SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SearchAsync), _ => !IsBusy);
             ResetCommand = new RelayCommand(_ => ResetCriteria(), _ => !IsBusy);
-            RefreshCommand = new RelayCommand(async _ => await SearchAsync(), _ => !IsBusy);
+            RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SearchAsync), _ => !IsBusy);
             ExportCommand = new RelayCommand(
-                async _ => await ExportAsync(),
+                async _ => await _pageDb.RunAsync(ExportAsync),
                 _ => !IsBusy && _sourceRows.Count > 0);
             OpenFilingLedgerCommand = new RelayCommand(
                 _ => OpenFilingLedger(),
@@ -291,7 +294,7 @@ namespace DocMgr.ViewModels.Inventory
                     return;
                 }
 
-                _ = LoadContentsAsync(value);
+                _pageDb.RunInBackground(() => LoadContentsAsync(value));
             }
         }
 

@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.Cabinets
 {
@@ -68,6 +69,7 @@ namespace DocMgr.ViewModels.Cabinets
         private readonly List<ArchiveBoxItemViewModel> _selectedArchiveBoxes = [];
         private readonly List<CabinetHardDiskMediumItemViewModel> _selectedHardDiskMedia = [];
         private CabinetSlotViewModel? _slotContextMenuTarget;
+        private readonly PageDbOperationQueue _pageDb = new();
 
         public CabinetOpenViewModel(CabinetOpenRequest request, IDialogService dialogService, ICabinetService cabinetService, ICabinetOpenLayoutService cabinetOpenLayoutService, ICabinetArchiveBoxPlacementService cabinetArchiveBoxPlacementService, IUserContextService userContextService, IArchiveRelocationService archiveRelocationService, IBatchSlotRelocationSession batchSlotRelocationSession, IInteractiveItemRelocationSession interactiveItemRelocationSession, ICabinetOpenLayoutRefreshNotifier cabinetOpenLayoutRefreshNotifier, IArchiveRegisterService archiveRegisterService)
         {
@@ -212,15 +214,15 @@ namespace DocMgr.ViewModels.Cabinets
             SelectAllSlotsCommand = new RelayCommand(_ => SelectAllSlots(), _ => CanSelectAllSlots);
             InvertSlotSelectionCommand = new RelayCommand(_ => InvertSlotSelection(), _ => Slots.Count > 0);
             SetBatchRelocationSourceCommand = new RelayCommand<CabinetSlotViewModel>(SetBatchRelocationSource, CanSetBatchRelocationSource);
-            RelocateBatchToSlotCommand = new RelayCommand<CabinetSlotViewModel>(slot => _ = RelocateBatchToSlotAsync(slot), CanRelocateBatchToSlot);
+            RelocateBatchToSlotCommand = new RelayCommand<CabinetSlotViewModel>(async slot => await _pageDb.RunAsync(() => RelocateBatchToSlotAsync(slot)), CanRelocateBatchToSlot);
             ClearBatchRelocationSourceCommand = new RelayCommand(_ => ClearBatchRelocationSource(), _ => HasBatchRelocationSource);
             ClearContentSelectionCommand = new RelayCommand(_ => ClearContentSelection(), _ => HasContentSelection);
             SetInteractiveItemRelocationFromArchiveBoxCommand = new RelayCommand<ArchiveBoxItemViewModel>(SetInteractiveItemRelocationFromArchiveBox, CanSetInteractiveItemRelocationFromArchiveBox);
             SetInteractiveItemRelocationFromMediumCommand = new RelayCommand<CabinetHardDiskMediumItemViewModel>(SetInteractiveItemRelocationFromMedium, CanSetInteractiveItemRelocationFromMedium);
             SetInteractiveItemRelocationFromSelectionCommand = new RelayCommand(_ => SetInteractiveItemRelocationFromSelection(), _ => CanSetInteractiveItemRelocationFromSelection);
-            RelocateInteractiveItemToSlotCommand = new RelayCommand<CabinetSlotViewModel>(slot => _ = RelocateInteractiveItemToSlotAsync(slot), CanRelocateInteractiveItemToSlotFromSession);
+            RelocateInteractiveItemToSlotCommand = new RelayCommand<CabinetSlotViewModel>(async slot => await _pageDb.RunAsync(() => RelocateInteractiveItemToSlotAsync(slot)), CanRelocateInteractiveItemToSlotFromSession);
             ClearInteractiveItemRelocationSourceCommand = new RelayCommand(_ => ClearInteractiveItemRelocationSource(), _ => HasInteractiveItemRelocationSource);
-            CloseCommand = new RelayCommand(_ => _ = TryCloseWithSessionGateAsync());
+            CloseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(TryCloseWithSessionGateAsync));
             UpdateMagneticDiskSlotDimensions(DefaultCompactViewportWidth, DefaultCompactViewportHeight);
             OnBatchSlotRelocationSourceChanged();
             OnInteractiveItemRelocationSourceChanged();

@@ -317,8 +317,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void OnCurrentElectronicMediaFormChanged()
         {
             UpdateSummaryText();
-            _ = PrefillElectronicFieldsFromSelectedRecordsAsync();
-            _ = RebuildElectronicFilingDetailRowsAsync();
+            _pageDb.RunInBackground(PrefillElectronicFieldsFromSelectedRecordsAsync);
+            _pageDb.RunInBackground(RebuildElectronicFilingDetailRowsAsync);
         }
 
         private string BuildModeText()
@@ -728,7 +728,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             var formOptions = BuildElectronicMediaFormOptionsList();
             ReplaceItems(ElectronicMediaFormOptions, formOptions);
             FinalizeElectronicMediaFormSelectionAfterRebuild(formOptions);
-            _ = RebuildElectronicFilingDetailRowsAsync();
+            _pageDb.RunInBackground(RebuildElectronicFilingDetailRowsAsync);
         }
     }
 }

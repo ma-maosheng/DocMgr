@@ -237,11 +237,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 diskCode = string.Empty;
             }
 
-            _ = ApplySelectionHardDiskCapacityAsync(
+            _pageDb.RunInBackground(() => ApplySelectionHardDiskCapacityAsync(
                 version,
                 () => _copyTargetHardDiskCapacityVersion,
                 FirstHardDiskCode(diskCode),
-                value => CopyTargetHardDiskCapacityDescription = value);
+                value => CopyTargetHardDiskCapacityDescription = value));
         }
 
         private void RequestSelectedExistingHardDiskCapacityRefresh()
@@ -250,11 +250,11 @@ namespace DocMgr.ViewModels.YearlyArchive
             string diskCode = SelectedExistingElectronicUnitItem is { IsOpticalDiscBag: false }
                 ? SelectedExistingElectronicUnitItem.LinkedMediumCodesDisplay
                 : string.Empty;
-            _ = ApplySelectionHardDiskCapacityAsync(
+            _pageDb.RunInBackground(() => ApplySelectionHardDiskCapacityAsync(
                 version,
                 () => _selectedExistingHardDiskCapacityVersion,
                 FirstHardDiskCode(diskCode),
-                value => SelectedExistingHardDiskCapacityDescription = value);
+                value => SelectedExistingHardDiskCapacityDescription = value));
         }
 
         private async Task ApplySelectionHardDiskCapacityAsync(

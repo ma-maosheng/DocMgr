@@ -10,6 +10,7 @@ using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Models;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.SystemSettings
 {
@@ -20,6 +21,7 @@ namespace DocMgr.ViewModels.SystemSettings
         private readonly IDatabaseBackupService _databaseBackupService;
         private readonly IUserContextService _userContext;
         private readonly IDialogService _dialogService;
+        private readonly PageDbOperationQueue _pageDb = new();
 
         /// <summary>是否系统管理员（全量功能：字典维护、删行、清空、还原）。</summary>
         public bool IsSystemAdministrator { get; }
@@ -73,21 +75,21 @@ namespace DocMgr.ViewModels.SystemSettings
             _dialogService = dialogService;
             IsSystemAdministrator = ArchiveRegisterBusinessRules.IsSystemAdministrator(_userContext.CurrentUser);
 
-            RefreshCommand = new RelayCommand(async _ => await RefreshGridAsync(), _ => !IsBusy);
-            DeleteSelectedCommand = new RelayCommand(async _ => await DeleteSelectedAsync(), _ => !IsBusy && IsSystemAdministrator && CanDeleteSelected());
-            ClearTableCommand = new RelayCommand(async _ => await ClearTableAsync(), _ => !IsBusy && IsSystemAdministrator && CanClearTable());
-            SaveFieldDisplayNameCommand = new RelayCommand(async _ => await SaveFieldDisplayNameAsync(), _ => !IsBusy && IsSystemAdministrator && CanSaveFieldDisplayName());
-            SyncModelToDictionaryCommand = new RelayCommand(async _ => await SyncModelToDictionaryAsync(), _ => !IsBusy && IsSystemAdministrator);
-            ExportDisplayNamesToDictionaryCommand = new RelayCommand(async _ => await ExportDisplayNamesToDictionaryAsync(), _ => !IsBusy && IsSystemAdministrator);
-            ApplyDictionaryToDatabaseCommand = new RelayCommand(async _ => await ApplyDictionaryToDatabaseAsync(), _ => !IsBusy && IsSystemAdministrator);
-            ExportToExcelCommand = new RelayCommand(async _ => await ExportToExcelAsync(), _ => !IsBusy && HasSelectedTable);
-            BackupDatabaseCommand = new RelayCommand(async _ => await BackupDatabaseAsync(), _ => !IsBusy);
-            RestoreDatabaseCommand = new RelayCommand(async _ => await RestoreDatabaseAsync(), _ => !IsBusy && IsSystemAdministrator);
-            FirstPageCommand = new RelayCommand(async _ => await GoToPageAsync(1), _ => !IsBusy && CanGoPrevious);
-            PreviousPageCommand = new RelayCommand(async _ => await GoToPageAsync(CurrentPage - 1), _ => !IsBusy && CanGoPrevious);
-            NextPageCommand = new RelayCommand(async _ => await GoToPageAsync(CurrentPage + 1), _ => !IsBusy && CanGoNext);
-            LastPageCommand = new RelayCommand(async _ => await GoToPageAsync(TotalPages), _ => !IsBusy && CanGoNext);
-            GoToPageCommand = new RelayCommand(async _ => await GoToPageFromInputAsync(), _ => !IsBusy && HasSelectedTable);
+            RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshGridAsync), _ => !IsBusy);
+            DeleteSelectedCommand = new RelayCommand(async _ => await _pageDb.RunAsync(DeleteSelectedAsync), _ => !IsBusy && IsSystemAdministrator && CanDeleteSelected());
+            ClearTableCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ClearTableAsync), _ => !IsBusy && IsSystemAdministrator && CanClearTable());
+            SaveFieldDisplayNameCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SaveFieldDisplayNameAsync), _ => !IsBusy && IsSystemAdministrator && CanSaveFieldDisplayName());
+            SyncModelToDictionaryCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SyncModelToDictionaryAsync), _ => !IsBusy && IsSystemAdministrator);
+            ExportDisplayNamesToDictionaryCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportDisplayNamesToDictionaryAsync), _ => !IsBusy && IsSystemAdministrator);
+            ApplyDictionaryToDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ApplyDictionaryToDatabaseAsync), _ => !IsBusy && IsSystemAdministrator);
+            ExportToExcelCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportToExcelAsync), _ => !IsBusy && HasSelectedTable);
+            BackupDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(BackupDatabaseAsync), _ => !IsBusy);
+            RestoreDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RestoreDatabaseAsync), _ => !IsBusy && IsSystemAdministrator);
+            FirstPageCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => GoToPageAsync(1)), _ => !IsBusy && CanGoPrevious);
+            PreviousPageCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => GoToPageAsync(CurrentPage - 1)), _ => !IsBusy && CanGoPrevious);
+            NextPageCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => GoToPageAsync(CurrentPage + 1)), _ => !IsBusy && CanGoNext);
+            LastPageCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => GoToPageAsync(TotalPages)), _ => !IsBusy && CanGoNext);
+            GoToPageCommand = new RelayCommand(async _ => await _pageDb.RunAsync(GoToPageFromInputAsync), _ => !IsBusy && HasSelectedTable);
 
             PageSizeOptions = new List<int> { 50, 100, 200, 500 };
 
@@ -126,7 +128,7 @@ namespace DocMgr.ViewModels.SystemSettings
                     OnPropertyChanged(nameof(HasSelectedTable));
                     NotifyPaginationChanged();
                     RaiseCommandStateChanged();
-                    _ = OnSelectedTableChangedAsync();
+                    _pageDb.RunInBackground(OnSelectedTableChangedAsync);
                 }
             }
         }
@@ -150,7 +152,7 @@ namespace DocMgr.ViewModels.SystemSettings
             {
                 if (SetProperty(ref _selectedField, value))
                 {
-                    _ = OnSelectedFieldChangedAsync();
+                    _pageDb.RunInBackground(OnSelectedFieldChangedAsync);
                     RaiseCommandStateChanged();
                 }
             }
@@ -272,7 +274,7 @@ namespace DocMgr.ViewModels.SystemSettings
                 _pageSize = value;
                 OnPropertyChanged();
                 CurrentPage = 1;
-                _ = ExecutePagedActionAsync(LoadCurrentPageAsync);
+                _pageDb.RunInBackground(() => ExecutePagedActionAsync(LoadCurrentPageAsync));
             }
         }
 

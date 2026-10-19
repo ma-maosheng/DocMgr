@@ -65,11 +65,12 @@ public static class NetworkOutboundApplicationValidationSupport
 
     public static IReadOnlyList<string> ValidateForComplete(
         NetworkOutboundRecord record,
-        IReadOnlyList<SystemAttachment> attachments)
+        IReadOnlyList<SystemAttachment> attachments,
+        ApprovalChainResolution? approvalChain = null)
     {
         ArgumentNullException.ThrowIfNull(record);
         var errors = new List<string>();
-        CollectCompleteSignerErrors(record, errors);
+        CollectCompleteSignerErrors(record, errors, approvalChain);
         CollectCompletePathErrors(record, errors);
         CollectMandatoryAttachmentErrors(record, attachments ?? Array.Empty<SystemAttachment>(), errors);
         NetworkOutboundExternalMediaValidationSupport.ValidateForComplete(
@@ -81,9 +82,10 @@ public static class NetworkOutboundApplicationValidationSupport
 
     public static void EnsureValidForComplete(
         NetworkOutboundRecord record,
-        IReadOnlyList<SystemAttachment> attachments)
+        IReadOnlyList<SystemAttachment> attachments,
+        ApprovalChainResolution? approvalChain = null)
     {
-        IReadOnlyList<string> errors = ValidateForComplete(record, attachments);
+        IReadOnlyList<string> errors = ValidateForComplete(record, attachments, approvalChain);
         if (errors.Count > 0)
         {
             throw new InvalidOperationException(
@@ -105,18 +107,59 @@ public static class NetworkOutboundApplicationValidationSupport
         }
     }
 
-    private static void CollectCompleteSignerErrors(NetworkOutboundRecord record, List<string> errors)
+    private static void CollectCompleteSignerErrors(
+        NetworkOutboundRecord record,
+        List<string> errors,
+        ApprovalChainResolution? approvalChain)
     {
-        CollectSignerAndDateErrors(record.DeptHead, record.DeptHeadDate, ApprovalWorkflowDomainValues.DisplayDeptHead, errors);
-        CollectSignerAndDateErrors(record.ProductionHead, record.ProductionHeadDate, ApprovalWorkflowDomainValues.DisplayProductionHead, errors);
-        CollectSignerAndDateErrors(record.ArchiveRoomHead, record.ArchiveRoomHeadDate, ApprovalWorkflowDomainValues.DisplayArchiveRoomHead, errors);
-        CollectSignerAndDateErrors(
-            record.ArchiveDeputyPresident,
-            record.ArchiveDeputyPresidentDate,
-            NetworkTransferDomainValues.ResolveOutboundArchiveDeputyPresidentRole(record.DestinationKind),
-            errors);
+        if (approvalChain != null)
+        {
+            errors.AddRange(ApprovalChainApplySupport.CollectMissingSignerErrors(
+                approvalChain,
+                nodeKey => ApprovalChainApplySupport.ReadNetworkOutboundSigner(record, nodeKey)));
+            CollectEnabledSignerDateErrors(record, approvalChain, errors);
+        }
+        else
+        {
+            CollectSignerAndDateErrors(record.DeptHead, record.DeptHeadDate, ApprovalWorkflowDomainValues.DisplayDeptHead, errors);
+            CollectSignerAndDateErrors(record.ProductionHead, record.ProductionHeadDate, ApprovalWorkflowDomainValues.DisplayProductionHead, errors);
+            CollectSignerAndDateErrors(record.ArchiveRoomHead, record.ArchiveRoomHeadDate, ApprovalWorkflowDomainValues.DisplayArchiveRoomHead, errors);
+            CollectFallbackVicePresidentSignerAndDateErrors(record, errors);
+        }
+
         CollectSignerAndDateErrors(record.Deliverer, record.DeliverDate, "移交人", errors);
         CollectSignerAndDateErrors(record.Administrator, record.AdminDate, "资料员", errors);
+    }
+
+    private static void CollectEnabledSignerDateErrors(
+        NetworkOutboundRecord record,
+        ApprovalChainResolution chain,
+        List<string> errors)
+    {
+        if (chain.DeptHead.IsEnabled)
+        {
+            CollectDateOnlyError(record.DeptHeadDate, ApprovalWorkflowDomainValues.DisplayDeptHead, errors);
+        }
+
+        if (chain.ProductionHead.IsEnabled)
+        {
+            CollectDateOnlyError(record.ProductionHeadDate, ApprovalWorkflowDomainValues.DisplayProductionHead, errors);
+        }
+
+        if (chain.ArchiveRoomHead.IsEnabled)
+        {
+            CollectDateOnlyError(record.ArchiveRoomHeadDate, ApprovalWorkflowDomainValues.DisplayArchiveRoomHead, errors);
+        }
+
+        if (chain.ArchiveDeputyPresident.IsEnabled)
+        {
+            CollectDateOnlyError(record.ArchiveDeputyPresidentDate, ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident, errors);
+        }
+
+        if (chain.ProductionVicePresident.IsEnabled)
+        {
+            CollectDateOnlyError(record.ProductionVicePresidentDate, ApprovalWorkflowDomainValues.DisplayProductionVicePresident, errors);
+        }
     }
 
     private static void CollectSignerAndDateErrors(
@@ -125,16 +168,33 @@ public static class NetworkOutboundApplicationValidationSupport
         string roleLabel,
         List<string> errors)
     {
+        string signerLabel = NormalizeSignerLabel(roleLabel);
         if (string.IsNullOrWhiteSpace(signer))
         {
-            errors.Add($"• {roleLabel}签字缺失");
+            errors.Add($"• {signerLabel}缺失");
             return;
         }
 
+        CollectDateOnlyError(signedDate, roleLabel, errors);
+    }
+
+    private static void CollectDateOnlyError(DateTime? signedDate, string roleLabel, List<string> errors)
+    {
         if (!signedDate.HasValue)
         {
-            errors.Add($"• {roleLabel}签字日期缺失");
+            errors.Add($"• {NormalizeSignerLabel(roleLabel)}日期缺失");
         }
+    }
+
+    /// <summary>
+    /// Display* 常量中生产科/资料室/副院长已含「签字」，部门审核等不含；统一成可拼接「缺失/日期缺失」的标签。
+    /// </summary>
+    private static string NormalizeSignerLabel(string roleLabel)
+    {
+        string trimmed = roleLabel?.Trim() ?? string.Empty;
+        return trimmed.EndsWith("签字", StringComparison.Ordinal)
+            ? trimmed
+            : trimmed + "签字";
     }
 
     private static void CollectApprovalSignerErrors(
@@ -153,23 +213,20 @@ public static class NetworkOutboundApplicationValidationSupport
         {
             if (string.IsNullOrWhiteSpace(record.DeptHead))
             {
-                errors.Add($"• {ApprovalWorkflowDomainValues.DisplayDeptHead}签字缺失");
+                errors.Add($"• {NormalizeSignerLabel(ApprovalWorkflowDomainValues.DisplayDeptHead)}缺失");
             }
 
             if (string.IsNullOrWhiteSpace(record.ProductionHead))
             {
-                errors.Add($"• {ApprovalWorkflowDomainValues.DisplayProductionHead}签字缺失");
+                errors.Add($"• {NormalizeSignerLabel(ApprovalWorkflowDomainValues.DisplayProductionHead)}缺失");
             }
 
             if (string.IsNullOrWhiteSpace(record.ArchiveRoomHead))
             {
-                errors.Add($"• {ApprovalWorkflowDomainValues.DisplayArchiveRoomHead}签字缺失");
+                errors.Add($"• {NormalizeSignerLabel(ApprovalWorkflowDomainValues.DisplayArchiveRoomHead)}缺失");
             }
 
-            if (string.IsNullOrWhiteSpace(record.ArchiveDeputyPresident))
-            {
-                errors.Add($"• {NetworkTransferDomainValues.ResolveOutboundArchiveDeputyPresidentRole(record.DestinationKind)}签字缺失");
-            }
+            CollectFallbackVicePresidentNameMissingErrors(record, errors);
         }
 
         if (string.IsNullOrWhiteSpace(handoverInput.Deliverer))
@@ -181,6 +238,47 @@ public static class NetworkOutboundApplicationValidationSupport
         {
             errors.Add("• 资料员签字缺失");
         }
+    }
+
+    /// <summary>
+    /// 无审批链时按目的地默认：院内/院外读 <see cref="NetworkOutboundRecord.ProductionVicePresident"/>，
+    /// 其余读 <see cref="NetworkOutboundRecord.ArchiveDeputyPresident"/>。
+    /// </summary>
+    private static void CollectFallbackVicePresidentNameMissingErrors(NetworkOutboundRecord record, List<string> errors)
+    {
+        if (NetworkTransferDomainValues.IsExternalOfflineDestination(record.DestinationKind))
+        {
+            if (string.IsNullOrWhiteSpace(record.ProductionVicePresident))
+            {
+                errors.Add($"• {NormalizeSignerLabel(ApprovalWorkflowDomainValues.DisplayProductionVicePresident)}缺失");
+            }
+
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(record.ArchiveDeputyPresident))
+        {
+            errors.Add($"• {NormalizeSignerLabel(ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident)}缺失");
+        }
+    }
+
+    private static void CollectFallbackVicePresidentSignerAndDateErrors(NetworkOutboundRecord record, List<string> errors)
+    {
+        if (NetworkTransferDomainValues.IsExternalOfflineDestination(record.DestinationKind))
+        {
+            CollectSignerAndDateErrors(
+                record.ProductionVicePresident,
+                record.ProductionVicePresidentDate,
+                ApprovalWorkflowDomainValues.DisplayProductionVicePresident,
+                errors);
+            return;
+        }
+
+        CollectSignerAndDateErrors(
+            record.ArchiveDeputyPresident,
+            record.ArchiveDeputyPresidentDate,
+            ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident,
+            errors);
     }
 
     private static void CollectMandatoryAttachmentErrors(

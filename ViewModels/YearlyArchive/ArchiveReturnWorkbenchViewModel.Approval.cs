@@ -328,7 +328,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     FileSize = fileInfo.Length,
                     FileContent = fileContent
                 };
-                var result = await _returnService.UploadSignedHandoverAttachmentFlowAsync(record.Id, attachment, user);
+                var result = await UsePageDbAsync(() => _returnService.UploadSignedHandoverAttachmentFlowAsync(record.Id, attachment, user));
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -383,7 +383,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     FileSize = captured.JpegContent.LongLength,
                     FileContent = captured.JpegContent
                 };
-                var result = await _returnService.UploadSignedHandoverAttachmentFlowAsync(record.Id, attachment, user);
+                var result = await UsePageDbAsync(() => _returnService.UploadSignedHandoverAttachmentFlowAsync(record.Id, attachment, user));
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -440,7 +440,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     FileSize = fileInfo.Length,
                     FileContent = fileContent
                 };
-                var result = await _returnService.UploadOtherAttachmentFlowAsync(record.Id, attachment, user);
+                var result = await UsePageDbAsync(() => _returnService.UploadOtherAttachmentFlowAsync(record.Id, attachment, user));
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -495,7 +495,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     FileSize = captured.JpegContent.LongLength,
                     FileContent = captured.JpegContent
                 };
-                var result = await _returnService.UploadOtherAttachmentFlowAsync(record.Id, attachment, user);
+                var result = await UsePageDbAsync(() => _returnService.UploadOtherAttachmentFlowAsync(record.Id, attachment, user));
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -525,7 +525,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                var result = await _returnService.PrepareAttachmentViewFlowAsync(SelectedSignedAttachment);
+                var result = await UsePageDbAsync(() => _returnService.PrepareAttachmentViewFlowAsync(SelectedSignedAttachment));
                 if (!result.Success || result.Attachment?.FileContent == null)
                 {
                     _dialogService.ShowError(result.Message);
@@ -561,10 +561,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsBusy = true;
             try
             {
-                var result = await _returnService.DeleteSignedHandoverAttachmentFlowAsync(
+                var result = await UsePageDbAsync(() => _returnService.DeleteSignedHandoverAttachmentFlowAsync(
                     record.Id,
                     SelectedSignedAttachment,
-                    user);
+                    user));
                 if (!result.Success)
                 {
                     _dialogService.ShowError(result.Message);
@@ -592,17 +592,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 bool blankHandoverSignatures = !record.IsCompleted;
-                var data = await _returnService.BuildReceiptPrintDataAsync(record.Id, blankHandoverSignatures);
+                var data = await UsePageDbAsync(() => _returnService.BuildReceiptPrintDataAsync(record.Id, blankHandoverSignatures));
                 var document = ArchiveReturnPrintDocumentFactory.Create(data);
                 var previewWindow = new PrintPreviewWindow(document)
                 {
                     Owner = Application.Current.MainWindow
                 };
 
-                await _returnService.RecordPrintAsync(record.Id);
+                await UsePageDbAsync(() => _returnService.RecordPrintAsync(record.Id));
                 previewWindow.ShowDialog();
 
-                var reloaded = await _returnService.GetReturnAsync(record.Id);
+                var reloaded = await UsePageDbAsync(() => _returnService.GetReturnAsync(record.Id));
                 if (reloaded != null)
                 {
                     LoadEditing(reloaded);

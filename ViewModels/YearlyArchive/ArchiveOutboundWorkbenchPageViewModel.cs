@@ -13,6 +13,7 @@ using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 
 using Microsoft.Extensions.DependencyInjection;
+using DocMgr.ViewModels.Shared;
 
 
 
@@ -39,6 +40,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly ArchiveOutboundWorkspaceMode _workspaceMode;
 
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly PageDbOperationQueue _pageDb = new();
 
         private readonly List<YearlyArchiveOutboundRecord> _allRecords = new();
 
@@ -104,17 +106,17 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 
 
-            AddCommand = new RelayCommand(async _ => await AddAsync(), _ => CanAdd());
+            AddCommand = new RelayCommand(async _ => await _pageDb.RunAsync(AddAsync), _ => CanAdd());
 
-            OpenCommand = new RelayCommand(async _ => await OpenAsync(), _ => SelectedRecord != null);
+            OpenCommand = new RelayCommand(async _ => await _pageDb.RunAsync(OpenAsync), _ => SelectedRecord != null);
 
             ViewCommand = new RelayCommand(_ => ViewSelectedRecord(), _ => SelectedRecord != null);
 
-            ApproveCommand = new RelayCommand(async _ => await OpenAsync(), _ => CanApprove());
+            ApproveCommand = new RelayCommand(async _ => await _pageDb.RunAsync(OpenAsync), _ => CanApprove());
 
-            DestructiveCommand = new RelayCommand(async _ => await ExecuteDestructiveAsync(), _ => CanExecuteDestructive());
+            DestructiveCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExecuteDestructiveAsync), _ => CanExecuteDestructive());
 
-            RefreshCommand = new RelayCommand(async _ => await LoadRecordsAsync());
+            RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(LoadRecordsAsync));
 
             InitializeInlineEditingCommands();
 
@@ -180,7 +182,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 {
 
-                    _ = LoadRecordsAsync();
+                    _pageDb.RunInBackground(LoadRecordsAsync);
 
                 }
 
@@ -204,7 +206,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 {
 
-                    _ = LoadRecordsAsync();
+                    _pageDb.RunInBackground(LoadRecordsAsync);
 
                 }
 
@@ -281,7 +283,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                     {
 
-                        _ = SyncEditingPanelToSelectionAsync();
+                        _pageDb.RunInBackground(SyncEditingPanelToSelectionAsync);
 
                     }
 

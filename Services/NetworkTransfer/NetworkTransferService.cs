@@ -916,7 +916,8 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         var attachments = await _repository.GetAttachmentsAsync(
             NetworkTransferDomainValues.OutboundAttachmentBusinessType,
             existing.OutboundNo);
-        NetworkOutboundApplicationValidationSupport.EnsureValidForComplete(existing, attachments);
+        var completeChain = await ResolveOutboundApprovalChainAsync(existing);
+        NetworkOutboundApplicationValidationSupport.EnsureValidForComplete(existing, attachments, completeChain);
 
         DateTime now = DateTime.Now;
         string operatorName = ResolveUserDisplayName(currentUser);

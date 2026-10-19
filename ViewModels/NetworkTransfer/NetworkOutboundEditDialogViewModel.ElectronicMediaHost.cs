@@ -55,7 +55,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
             return;
         }
 
-        _ = RefreshArchiveFilingAppendTargetsAsync();
+        _pageDb.RunInBackground(RefreshArchiveFilingAppendTargetsAsync);
     }
 
     private async Task RefreshArchiveFilingAppendTargetsAsync()

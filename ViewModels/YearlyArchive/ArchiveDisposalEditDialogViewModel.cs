@@ -14,6 +14,7 @@ using DocMgr.Services.Interfaces;
 using DocMgr.Services.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 using DocMgr.Views.Shared;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -34,6 +35,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IApprovalWorkflowService _approvalWorkflowService;
         private readonly List<ArchiveDisposalCandidateRow> _candidatePool = new();
         private readonly SemaphoreSlim _persistReviewSignersGate = new(1, 1);
+        private readonly PageDbOperationQueue _pageDb = new();
         private YearlyArchiveDisposalRecord _record;
         private bool _hasCommittedChanges;
         private bool _isApplyingFilters;
@@ -103,51 +105,51 @@ namespace DocMgr.ViewModels.YearlyArchive
                     && !string.IsNullOrWhiteSpace(BatchDispositionMethod));
             ClearFiltersCommand = new RelayCommand(_ => ClearFilters(), _ => CanEditHeader);
             RecommendBlankSlotCommand = new RelayCommand<ArchiveDisposalItemRow>(
-                async item => await RecommendBlankSlotAsync(item),
+                async item => await _pageDb.RunAsync(() => RecommendBlankSlotAsync(item)),
                 item => CanEditBlankSlots
                         && item is { IsFormatRetain: true });
             ShowBlankSlotSnapshotCommand = new RelayCommand<ArchiveDisposalItemRow>(
-                async item => await ShowBlankSlotSnapshotAsync(item),
+                async item => await _pageDb.RunAsync(() => ShowBlankSlotSnapshotAsync(item)),
                 item => item is { IsFormatRetain: true }
                         && !string.IsNullOrWhiteSpace(item.TargetBlankSlotLocation));
-            SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader);
-            SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit);
-            ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
-            ConfirmUploadCommand = new RelayCommand(async _ => await ConfirmUploadAsync(), _ => CanConfirmUpload);
-            UploadAttachmentCommand = new RelayCommand(async _ => await UploadAttachmentAsync(), _ => CanUploadAttachment);
+            SaveDraftCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SaveDraftAsync()), _ => CanEditHeader);
+            SubmitCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SubmitAsync()), _ => CanSubmit);
+            ApproveCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => ApproveAsync()), _ => CanApprove);
+            ConfirmUploadCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => ConfirmUploadAsync()), _ => CanConfirmUpload);
+            UploadAttachmentCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => UploadAttachmentAsync()), _ => CanUploadAttachment);
             CaptureFromDocumentCameraCommand = new RelayCommand(
-                async _ => await CaptureFromDocumentCameraAsync(),
+                async _ => await _pageDb.RunAsync(() => CaptureFromDocumentCameraAsync()),
                 _ => CanUploadAttachment);
             UploadSignedFormAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategorySignedForm),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategorySignedForm)),
                 _ => CanUploadMandatoryAttachment);
             CaptureSignedFormAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategorySignedForm),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategorySignedForm)),
                 _ => CanUploadMandatoryAttachment);
             UploadScenePhotoAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategoryScenePhoto),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategoryScenePhoto)),
                 _ => CanUploadMandatoryAttachment && RequiresScenePhoto);
             CaptureScenePhotoAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategoryScenePhoto),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategoryScenePhoto)),
                 _ => CanUploadMandatoryAttachment && RequiresScenePhoto);
             UploadOtherAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategoryOther),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategoryOther)),
                 _ => CanUploadOtherAttachment);
             CaptureOtherAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategoryOther),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(ArchiveDisposalDomainValues.AttachmentCategoryOther)),
                 _ => CanUploadOtherAttachment);
             DeleteAttachmentCommand = new RelayCommand(
-                async item => await DeleteAttachmentAsync(item as SystemAttachment),
+                async item => await _pageDb.RunAsync(() => DeleteAttachmentAsync(item as SystemAttachment)),
                 item => item is SystemAttachment && CanUploadMandatoryAttachment);
             ViewAttachmentCommand = new RelayCommand(
-                async item => await ViewAttachmentAsync(item as SystemAttachment),
+                async item => await _pageDb.RunAsync(() => ViewAttachmentAsync(item as SystemAttachment)),
                 item => item is SystemAttachment);
-            CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
-            PrintCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrint);
-            WithdrawCommand = new RelayCommand(async _ => await WithdrawAsync(), _ => CanWithdraw);
+            CompleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => CompleteAsync()), _ => CanComplete);
+            PrintCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => PrintAsync()), _ => CanPrint);
+            WithdrawCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => WithdrawAsync()), _ => CanWithdraw);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
-            _ = InitializeAsync();
+            _pageDb.RunInBackground(InitializeAsync);
         }
 
         public event Action<bool?>? RequestClose;
@@ -306,7 +308,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -321,7 +323,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -335,7 +337,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -350,7 +352,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -364,7 +366,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -379,7 +381,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -393,7 +395,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -408,7 +410,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -422,7 +424,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -437,7 +439,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -1311,7 +1313,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (_record.Id <= 0 || HasUnsavedHeaderChanges())
                 {
-                    await SaveDraftAsync();
+                    await _pageDb.RunAsync(() => SaveDraftAsync());
                     if (_record.Id <= 0)
                     {
                         return;
@@ -1671,13 +1673,13 @@ namespace DocMgr.ViewModels.YearlyArchive
         private async Task UploadAttachmentByCategoryAsync(string category)
         {
             UploadCategory = category;
-            await UploadAttachmentAsync();
+            await _pageDb.RunAsync(() => UploadAttachmentAsync());
         }
 
         private async Task CaptureAttachmentByCategoryAsync(string category)
         {
             UploadCategory = category;
-            await CaptureFromDocumentCameraAsync();
+            await _pageDb.RunAsync(() => CaptureFromDocumentCameraAsync());
         }
 
         private async Task RefreshCompleteHintsAsync()

@@ -32,6 +32,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _suppressElectronicLocationOptionSync;
         private int _electronicTargetLocationOptionsGeneration;
         private readonly SemaphoreSlim _selectedRecordsChangedGate = new(1, 1);
+        private readonly PageDbOperationQueue _pageDb = new();
         private bool _isInitialized;
         private int _currentCellBoxCount;
         private int _resolvedBoxSequenceIndex = 1;
@@ -121,17 +122,17 @@ namespace DocMgr.ViewModels.YearlyArchive
                     "暂无待立档明细"));
             ElectronicFilingPendingDetailRowsPanel.RefreshItems(ElectronicFilingPendingDetailRows);
 
-            RefreshPendingCommand = new RelayCommand(async _ => await RefreshPendingList());
-            GenSeqCommand = new RelayCommand(async _ => await GenerateSequence(), _ => CanOperate);
-            SubmitCommand = new RelayCommand(async _ => await Submit(), _ => CanOperate);
-            PreviewElectronicSubmissionCommand = new RelayCommand(async _ => await PreviewElectronicSubmissionAsync());
-            SuggestSimulatedLocationCommand = new RelayCommand(async _ => await SuggestSimulatedLocationAsync(), _ => CanOperate);
+            RefreshPendingCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshPendingList));
+            GenSeqCommand = new RelayCommand(async _ => await _pageDb.RunAsync(GenerateSequence), _ => CanOperate);
+            SubmitCommand = new RelayCommand(async _ => await _pageDb.RunAsync(Submit), _ => CanOperate);
+            PreviewElectronicSubmissionCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PreviewElectronicSubmissionAsync));
+            SuggestSimulatedLocationCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SuggestSimulatedLocationAsync), _ => CanOperate);
             ShowSimulatedSlotSnapshotCommand = new RelayCommand(_ => ShowSimulatedSlotSnapshot());
-            SuggestElectronicLocationCommand = new RelayCommand(async _ => await SuggestElectronicLocationAsync(), _ => CanOperate);
+            SuggestElectronicLocationCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SuggestElectronicLocationAsync), _ => CanOperate);
             ShowElectronicSlotSnapshotCommand = new RelayCommand(_ => ShowElectronicSlotSnapshot());
             SelectElectronicMediaCommand = new RelayCommand(_ => SelectElectronicMedia(), _ => CanOperate);
-            RegisterExternalHardDiskCommand = new RelayCommand(async _ => await RegisterExternalHardDiskAsync(), _ => CanOperate);
-            RecommendExternalHardDiskBlankTargetLocationCommand = new RelayCommand(async _ => await RecommendExternalHardDiskBlankTargetLocationAsync(), _ => CanOperate);
+            RegisterExternalHardDiskCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RegisterExternalHardDiskAsync), _ => CanOperate);
+            RecommendExternalHardDiskBlankTargetLocationCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RecommendExternalHardDiskBlankTargetLocationAsync), _ => CanOperate);
             ShowExternalHardDiskBlankTargetSlotSnapshotCommand = new RelayCommand(_ => ShowExternalHardDiskBlankTargetSlotSnapshot());
 
             InitializePendingYears();
@@ -193,7 +194,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedPendingYear, value) && _isInitialized)
                 {
-                    _ = RefreshPendingList();
+                    _pageDb.RunInBackground(RefreshPendingList);
                 }
             }
         }
@@ -303,7 +304,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _selectedRecords = value ?? new List<YearlyArchiveRegisterRecord>();
                 OnPropertyChanged(nameof(SelectedRecords));
                 OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
-                _ = HandleSelectedRecordsChangedAsync();
+                _pageDb.RunInBackground(HandleSelectedRecordsChangedAsync);
             }
         }
 
@@ -662,7 +663,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     && IsSimulatedTrack
                     && IsNewBoxMode)
                 {
-                    _ = LoadSimulatedTargetLocationOptionsAsync();
+                    _pageDb.RunInBackground(() => LoadSimulatedTargetLocationOptionsAsync());
                 }
             }
         }
@@ -739,7 +740,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (SetProperty(ref _electronicLinkedMediumCodes, value))
                 {
                     RequestCopyTargetHardDiskCapacityRefresh();
-                    _ = RebuildElectronicFilingDetailRowsAsync();
+                    _pageDb.RunInBackground(RebuildElectronicFilingDetailRowsAsync);
                 }
             }
         }
@@ -767,7 +768,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     && IsElectronicTrack
                     && ElectronicStepSevenLocationSelectorVisibility == Visibility.Visible)
                 {
-                    _ = LoadElectronicTargetLocationOptionsAsync();
+                    _pageDb.RunInBackground(() => LoadElectronicTargetLocationOptionsAsync());
                 }
             }
         }
@@ -1291,7 +1292,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 if (RequiresRetainedHardDiskAppendProcessing)
                 {
-                    _ = LoadElectronicTargetLocationOptionsAsync(SelectedExistingElectronicUnit.StorageLocation);
+                    _pageDb.RunInBackground(() => LoadElectronicTargetLocationOptionsAsync(SelectedExistingElectronicUnit.StorageLocation));
                 }
 
                 RaiseSlotSnapshotAvailabilityChanged();
@@ -1303,7 +1304,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ClearElectronicAppendTargetFields();
                 if (ElectronicStepSevenLocationSelectorVisibility == Visibility.Visible)
                 {
-                    _ = LoadElectronicTargetLocationOptionsAsync();
+                    _pageDb.RunInBackground(() => LoadElectronicTargetLocationOptionsAsync());
                 }
             }
 

@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows.Data;
 using System.Windows.Input;
+using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
@@ -35,6 +36,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IElectronicMediaContentScanService _electronicMediaContentScanService;
         private readonly IArchiveRegisterWordExportService _archiveRegisterWordExportService;
         private readonly SemaphoreSlim _currentRecordSideEffectsGate = new(1, 1);
+        private readonly PageDbOperationQueue _pageDb = new();
         private int _currentRecordSideEffectsGeneration;
 
         #region Properties
@@ -460,16 +462,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             _electronicMediaContentScanService = electronicMediaContentScanService ?? throw new ArgumentNullException(nameof(electronicMediaContentScanService));
             _archiveRegisterWordExportService = archiveRegisterWordExportService ?? throw new ArgumentNullException(nameof(archiveRegisterWordExportService));
 
-            SaveApprovalCommand = new RelayCommand(async _ => await SaveApprovalAsync(), _ => CanApprovePass);
-            ConfirmPhysicalHandoverCommand = new RelayCommand(async _ => await ConfirmPhysicalHandoverAsync(), _ => CanConfirmPhysicalHandover);
-            SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanExecuteApplicationSaveDraft());
-            SubmitApplicationsCommand = new RelayCommand(async _ => await SubmitApplication(), _ => CanExecuteApplicationSubmit());
+            SaveApprovalCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SaveApprovalAsync), _ => CanApprovePass);
+            ConfirmPhysicalHandoverCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ConfirmPhysicalHandoverAsync), _ => CanConfirmPhysicalHandover);
+            SaveDraftCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SaveDraftAsync), _ => CanExecuteApplicationSaveDraft());
+            SubmitApplicationsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SubmitApplication), _ => CanExecuteApplicationSubmit());
 
 
 
-            PrintApplicationsCommand = new RelayCommand(async _ => await PrintApplicationAsync(), _ => CanExecuteApplicationPrint());
+            PrintApplicationsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PrintApplicationAsync), _ => CanExecuteApplicationPrint());
             PrintApprovalCommand = new RelayCommand(_ => PrintApprovalPage(), _ => CanPrintHandoverSheet);
-            CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanCompleteApproval);
+            CompleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(CompleteAsync), _ => CanCompleteApproval);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
             AddDataElectronicMediaEntryCommand = new RelayCommand(_ => AddDataElectronicMediaEntry(), _ => CanEditForm);
@@ -478,10 +480,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             RemoveMediaEntryCommand = new RelayCommand<MediaEntryViewModel>(m => RemoveMediaEntry(m), _ => CanEditForm);
             RemoveMediaItemCommand = new RelayCommand<MediaItemViewModel>(m => RemoveMediaItem(m), _ => CanEditForm);
             PickFolderAndScanElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
-                async item => await PickFolderAndScanElectronicContentAsync(item),
+                async item => await _pageDb.RunAsync(() => PickFolderAndScanElectronicContentAsync(item)),
                 item => CanEditForm && item != null && item.IsDirectoryOrganizationForm);
             RescanElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
-                async item => await RescanElectronicContentAsync(item),
+                async item => await _pageDb.RunAsync(() => RescanElectronicContentAsync(item)),
                 item => CanEditForm && item != null && CanRescanElectronicContent(item));
             ClearElectronicContentCommand = new RelayCommand<MediaItemViewModel>(
                 item => ClearElectronicContent(item),
@@ -491,32 +493,32 @@ namespace DocMgr.ViewModels.YearlyArchive
                 item => item != null && item.HasScannedEntries && CanViewElectronicContentEntries());
 
             UploadSignedHandoverAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindSignedHandoverForm),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindSignedHandoverForm)),
                 _ => CanUploadSignedAttachment);
             UploadMaterialPhotoAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindMaterialPhoto),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindMaterialPhoto)),
                 _ => CanUploadSignedAttachment);
             UploadProofMaterialAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindProofMaterialScan),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindProofMaterialScan)),
                 _ => CanUploadProofMaterialAttachment);
             UploadOtherAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindOther),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindOther)),
                 _ => CanUploadSignedAttachment);
             CaptureSignedHandoverAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindSignedHandoverForm),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindSignedHandoverForm)),
                 _ => CanUploadSignedAttachment);
             CaptureMaterialPhotoAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindMaterialPhoto),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindMaterialPhoto)),
                 _ => CanUploadSignedAttachment);
             CaptureProofMaterialAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindProofMaterialScan),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindProofMaterialScan)),
                 _ => CanUploadProofMaterialAttachment);
             CaptureOtherAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindOther),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByKindAsync(ArchiveRegisterDomainValues.AttachmentKindOther)),
                 _ => CanUploadSignedAttachment);
-            DeleteAttachmentCommand = new RelayCommand<SystemAttachment>(async a => await DeleteAttachment(a), _ => CanUpload);
+            DeleteAttachmentCommand = new RelayCommand<SystemAttachment>(async a => await _pageDb.RunAsync(() => DeleteAttachment(a)), _ => CanUpload);
             ViewAttachmentCommand = new RelayCommand<SystemAttachment>(a => ViewAttachment(a));
-            FillDefaultApprovalInfoCommand = new RelayCommand(async _ => await FillDefaultApprovalInfoAsync(), _ => CanApproveProd && CurrentRecord != null);
+            FillDefaultApprovalInfoCommand = new RelayCommand(async _ => await _pageDb.RunAsync(FillDefaultApprovalInfoAsync), _ => CanApproveProd && CurrentRecord != null);
             InitializeMediaViews();
             LoadDepartments();
             LoadProjectYears();

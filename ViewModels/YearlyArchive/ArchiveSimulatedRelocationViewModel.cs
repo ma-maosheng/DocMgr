@@ -39,6 +39,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _relocationNo = "待编单";
         private string _statusDisplay = "待办理";
         private int _relocationModeChangeGeneration;
+        private readonly PageDbOperationQueue _pageDb = new();
 
         public ArchiveSimulatedRelocationViewModel(
             IArchiveRelocationService relocationService,
@@ -74,16 +75,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             SourceOptions = new ObservableCollection<ArchiveRelocationSourceOption>();
             BoxSpecifications = new ObservableCollection<string> { "标准(10cm)", "标准(5cm)", "标准(3cm)", "标准(2cm)", "非标(10cm)" };
 
-            RefreshTargetsCommand = new RelayCommand(async _ => await RefreshTargetsAsync(), _ => !IsBusy && SourceSummary != null && IsContainerMode);
+            RefreshTargetsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshTargetsAsync), _ => !IsBusy && SourceSummary != null && IsContainerMode);
             RecommendTargetSlotCommand = new RelayCommand(
-                async _ => await RecommendTargetSlotAsync(),
+                async _ => await _pageDb.RunAsync(RecommendTargetSlotAsync),
                 _ => CanRecommendTargetSlot);
             ShowTargetSlotSnapshotCommand = new RelayCommand(
                 _ => ShowTargetSlotSnapshot(),
                 _ => CanShowTargetSlotSnapshot);
-            PreviewCommand = new RelayCommand(async _ => await PreviewAsync(), _ => !IsBusy && IsArchiveAdmin && SourceSummary != null);
+            PreviewCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PreviewAsync), _ => !IsBusy && IsArchiveAdmin && SourceSummary != null);
             ExecuteCommand = new RelayCommand(
-                async _ => await ExecuteAsync(),
+                async _ => await _pageDb.RunAsync(ExecuteAsync),
                 _ => !IsBusy && IsArchiveAdmin && SourceSummary != null && HasExecutablePreview);
         }
 
@@ -169,7 +170,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     PreviewText = string.Empty;
                     if (IsPhysicalMode && SourceSummary != null)
                     {
-                        _ = ResetTargetSlotSelectionAsync();
+                        _pageDb.RunInBackground(ResetTargetSlotSelectionAsync);
                     }
 
                     RefreshDisplayItems();
@@ -189,7 +190,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     PreviewText = string.Empty;
                     if (MoveContentsToNewEmptyBox && IsPhysicalMode && SourceSummary != null)
                     {
-                        _ = ResetTargetSlotSelectionAsync();
+                        _pageDb.RunInBackground(ResetTargetSlotSelectionAsync);
                     }
                 }
             }
@@ -243,13 +244,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                // 刷新项目会改 SelectedProjectId：抑制其级联，避免与下方 Reload 并行打同一 DbContext。
-                using (BeginCascadeReloadSuppress())
+                if (IsCascadeReloadSuppressed || !_isInitialized)
                 {
                     LoadProjectOptions();
+                    return;
                 }
 
-                RequestReloadSourceOptions();
+                _pageDb.RunInBackground(ReloadYearAndSourcesAsync);
             }
         }
 
@@ -277,7 +278,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = ApplySelectedSourceAsync();
+                _pageDb.RunInBackground(ApplySelectedSourceAsync);
             }
         }
 
@@ -302,7 +303,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     NotifyRelocationModeRadioProperties();
                     PreviewText = string.Empty;
                     RefreshDisplayItems();
-                    _ = ApplyRelocationModeChangedAsync();
+                    _pageDb.RunInBackground(ApplyRelocationModeChangedAsync);
                 }
             }
         }
@@ -384,7 +385,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                _ = ApplySelectedTargetAsync();
+                _pageDb.RunInBackground(ApplySelectedTargetAsync);
             }
         }
 
@@ -455,7 +456,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             private set => SetProperty(ref _hasExecutablePreview, value);
         }
 
-        public async Task InitializeAsync()
+        public Task InitializeAsync() => _pageDb.RunAsync(InitializeWorkbenchAsync);
+
+        private async Task InitializeWorkbenchAsync()
         {
             if (_isInitialized)
             {
@@ -494,7 +497,20 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            _ = ReloadSourceOptionsAsync();
+            _pageDb.RunInBackground(ReloadSourceOptionsAsync);
+        }
+
+        /// <summary>
+        /// 切换年度后先刷新项目，再重载源档案盒。项目赋值被抑制，避免再排一次并行查询。
+        /// </summary>
+        private async Task ReloadYearAndSourcesAsync()
+        {
+            using (BeginCascadeReloadSuppress())
+            {
+                LoadProjectOptions();
+            }
+
+            await ReloadSourceOptionsAsync().ConfigureAwait(true);
         }
 
         private sealed class CascadeReloadSuppressScope : IDisposable

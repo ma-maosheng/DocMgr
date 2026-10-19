@@ -19,6 +19,7 @@ namespace DocMgr.ViewModels.HistoryArchive
     {
         private readonly IOtherMapService _otherMapService;
         private readonly IDialogService _dialogService;
+        private readonly PageDbOperationQueue _pageDb = new();
         private readonly IUserContextService _userContextService;
 
         private const int DefaultPageSize = 100;
@@ -121,7 +122,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             {
                 if (value)
                 {
-                    _ = SwitchBrowseModeAsync(false);
+                    _pageDb.RunInBackground(() => SwitchBrowseModeAsync(false));
                 }
             }
         }
@@ -134,7 +135,7 @@ namespace DocMgr.ViewModels.HistoryArchive
             {
                 if (value)
                 {
-                    _ = SwitchBrowseModeAsync(true);
+                    _pageDb.RunInBackground(() => SwitchBrowseModeAsync(true));
                 }
             }
         }
@@ -225,18 +226,18 @@ namespace DocMgr.ViewModels.HistoryArchive
             _dialogService = dialogService;
             _userContextService = userContextService;
 
-            ImportCommand = new RelayCommand(async _ => await ImportAsync(), _ => CanMaintainLedger);
+            ImportCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ImportAsync), _ => CanMaintainLedger);
             ExportImportTemplateCommand = new RelayCommand(_ => ExportImportTemplate(), _ => CanMaintainLedger);
-            BrowseCommand = new RelayCommand(async _ => await BrowseAsync());
-            DeleteCurrentRowCommand = new RelayCommand(async _ => await DeleteCurrentRowAsync(),
+            BrowseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(BrowseAsync));
+            DeleteCurrentRowCommand = new RelayCommand(async _ => await _pageDb.RunAsync(DeleteCurrentRowAsync),
                 _ => CanMaintainLedger
                      && SelectedOtherMap != null
                      && !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(SelectedOtherMap.LifecycleStatus));
-            DeleteTableCommand = new RelayCommand(async _ => await DeleteTableAsync(), _ => CanMaintainLedger);
-            EditCommand = new RelayCommand(async _ => await EditAsync(), _ => CanMaintainLedger && SelectedOtherMap != null);
+            DeleteTableCommand = new RelayCommand(async _ => await _pageDb.RunAsync(DeleteTableAsync), _ => CanMaintainLedger);
+            EditCommand = new RelayCommand(async _ => await _pageDb.RunAsync(EditAsync), _ => CanMaintainLedger && SelectedOtherMap != null);
             SearchCommand = new RelayCommand(_ => ApplySearchFilter());
             ResetSearchCommand = new RelayCommand(_ => ResetSearch());
-            ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => _filteredOtherMaps.Count > 0);
+            ExportCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportAsync), _ => _filteredOtherMaps.Count > 0);
             ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.OtherMap));
             FirstPageCommand = new RelayCommand(_ => GoToPage(1), _ => CanGoPrevious);
             PreviousPageCommand = new RelayCommand(_ => GoToPage(CurrentPage - 1), _ => CanGoPrevious);

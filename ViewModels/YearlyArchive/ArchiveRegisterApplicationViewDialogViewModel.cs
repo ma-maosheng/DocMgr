@@ -24,6 +24,7 @@ namespace DocMgr.ViewModels.YearlyArchive
     public sealed class ArchiveRegisterApplicationViewDialogViewModel : ViewModelBase
     {
         private readonly IArchiveRegisterService _archiveRegisterService;
+        private readonly PageDbOperationQueue _pageDb = new();
         private readonly IArchiveRegisterWordExportService _archiveRegisterWordExportService;
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
@@ -54,13 +55,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 async attachment => await ViewAttachmentAsync(attachment as SystemAttachment),
                 attachment => attachment is SystemAttachment);
             SupplementOtherAttachmentCommand = new RelayCommand(
-                async _ => await SupplementOtherAttachmentAsync(),
+                async _ => await _pageDb.RunAsync(SupplementOtherAttachmentAsync),
                 _ => CanSupplementOtherAttachments);
             ViewArchiveDetailCommand = new RelayCommand(_ => ViewArchiveDetail(), _ => CanViewArchiveDetail);
-            PrintCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrint);
+            PrintCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PrintAsync), _ => CanPrint);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
-            _ = InitializeAsync();
+            _pageDb.RunInBackground(InitializeAsync);
         }
 
         public string WindowTitle => $"查看申请 · {FormNo} · {StatusDisplay}";

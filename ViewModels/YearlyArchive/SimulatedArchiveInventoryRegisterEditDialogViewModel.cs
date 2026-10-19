@@ -12,6 +12,7 @@ using DocMgr.Services.Interfaces;
 using DocMgr.Services.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.Shared;
 using DocMgr.Views.Shared;
 
 namespace DocMgr.ViewModels.YearlyArchive
@@ -28,6 +29,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IApprovalWorkflowService _approvalWorkflowService;
         private readonly List<SimulatedInventoryCandidateRow> _candidatePool = new();
         private readonly SemaphoreSlim _persistReviewSignersGate = new(1, 1);
+        private readonly PageDbOperationQueue _pageDb = new();
         private const string SlotFilterAll = "全部";
 
         private YearlyArchiveInventoryRegisterRecord _record;
@@ -79,39 +81,42 @@ namespace DocMgr.ViewModels.YearlyArchive
             MoveToAvailableCommand = new RelayCommand(
                 _ => MoveToAvailable(),
                 _ => CanEditHeader && Items.Any(item => item.IsSelected));
-            SaveDraftCommand = new RelayCommand(async _ => await SaveDraftAsync(), _ => CanEditHeader);
-            SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit);
-            PrintCommand = new RelayCommand(async _ => await PrintAsync(), _ => CanPrint);
-            ApproveCommand = new RelayCommand(async _ => await ApproveAsync(), _ => CanApprove);
-            ConfirmUploadCommand = new RelayCommand(async _ => await ConfirmUploadAsync(), _ => CanConfirmUpload);
+            SaveDraftCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SaveDraftAsync()), _ => CanEditHeader);
+            SubmitCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SubmitAsync()), _ => CanSubmit);
+            PrintCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => PrintAsync()), _ => CanPrint);
+            ApproveCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => ApproveAsync()), _ => CanApprove);
+            ConfirmUploadCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => ConfirmUploadAsync()), _ => CanConfirmUpload);
             UploadSignedFormAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(ArchiveInventoryRegisterDomainValues.AttachmentCategorySignedForm),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(ArchiveInventoryRegisterDomainValues.AttachmentCategorySignedForm)),
                 _ => CanUploadMandatoryAttachment);
             CaptureSignedFormAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(ArchiveInventoryRegisterDomainValues.AttachmentCategorySignedForm),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(ArchiveInventoryRegisterDomainValues.AttachmentCategorySignedForm)),
                 _ => CanUploadMandatoryAttachment);
             UploadOtherAttachmentCommand = new RelayCommand(
-                async _ => await UploadAttachmentByCategoryAsync(ArchiveInventoryRegisterDomainValues.AttachmentCategoryOther),
+                async _ => await _pageDb.RunAsync(() => UploadAttachmentByCategoryAsync(ArchiveInventoryRegisterDomainValues.AttachmentCategoryOther)),
                 _ => CanUploadOtherAttachment);
             CaptureOtherAttachmentCommand = new RelayCommand(
-                async _ => await CaptureAttachmentByCategoryAsync(ArchiveInventoryRegisterDomainValues.AttachmentCategoryOther),
+                async _ => await _pageDb.RunAsync(() => CaptureAttachmentByCategoryAsync(ArchiveInventoryRegisterDomainValues.AttachmentCategoryOther)),
                 _ => CanUploadOtherAttachment);
             DeleteAttachmentCommand = new RelayCommand(async item =>
             {
-                if (item is not SystemAttachment att) return;
-                var (ok, msg) = await _registerService.DeleteAttachmentAsync(att.Id, RequireUser());
-                if (!ok) { _dialogService.ShowError(msg); return; }
-                _hasCommittedChanges = true;
-                await ReloadAttachmentsAsync();
+                await _pageDb.RunAsync(async () =>
+                {
+                    if (item is not SystemAttachment att) return;
+                    var (ok, msg) = await _registerService.DeleteAttachmentAsync(att.Id, RequireUser());
+                    if (!ok) { _dialogService.ShowError(msg); return; }
+                    _hasCommittedChanges = true;
+                    await ReloadAttachmentsAsync();
+                });
             }, item => item is SystemAttachment && CanUploadMandatoryAttachment);
             ViewAttachmentCommand = new RelayCommand(item =>
             {
                 if (item is SystemAttachment att) _dialogService.ShowSystemAttachmentView(att);
             }, item => item is SystemAttachment);
-            CompleteCommand = new RelayCommand(async _ => await CompleteAsync(), _ => CanComplete);
+            CompleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => CompleteAsync()), _ => CanComplete);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
-            _ = InitializeAsync();
+            _pageDb.RunInBackground(InitializeAsync);
         }
 
         public event Action<bool?>? RequestClose;
@@ -289,7 +294,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             set
             {
                 if (!SetProperty(ref _deptHead, value ?? string.Empty)) return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -300,7 +305,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
                 if (!SetProperty(ref _deptHeadDate, clamped)) return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -310,7 +315,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             set
             {
                 if (!SetProperty(ref _archiveRoomHead, value ?? string.Empty)) return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -321,7 +326,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
                 if (!SetProperty(ref _archiveRoomHeadDate, clamped)) return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -331,7 +336,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             set
             {
                 if (!SetProperty(ref _productionHead, value ?? string.Empty)) return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -342,7 +347,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
                 if (!SetProperty(ref _productionHeadDate, clamped)) return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -352,7 +357,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             set
             {
                 if (!SetProperty(ref _archiveDeputyPresident, value ?? string.Empty)) return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -363,7 +368,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
                 if (!SetProperty(ref _archiveDeputyPresidentDate, clamped)) return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -373,7 +378,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             set
             {
                 if (!SetProperty(ref _productionVicePresident, value ?? string.Empty)) return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -384,7 +389,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
                 if (!SetProperty(ref _productionVicePresidentDate, clamped)) return;
-                _ = PersistReviewSignersAsync();
+                _pageDb.RunInBackground(PersistReviewSignersAsync);
             }
         }
 
@@ -904,13 +909,13 @@ namespace DocMgr.ViewModels.YearlyArchive
         private async Task UploadAttachmentByCategoryAsync(string category)
         {
             UploadCategory = category;
-            await UploadAttachmentAsync();
+            await _pageDb.RunAsync(() => UploadAttachmentAsync());
         }
 
         private async Task CaptureAttachmentByCategoryAsync(string category)
         {
             UploadCategory = category;
-            await CaptureFromDocumentCameraAsync();
+            await _pageDb.RunAsync(() => CaptureFromDocumentCameraAsync());
         }
 
         private async Task UploadAttachmentAsync()
