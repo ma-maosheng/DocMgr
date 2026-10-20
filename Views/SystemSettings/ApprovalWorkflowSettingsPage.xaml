@@ -159,13 +159,13 @@
                                   Margin="0,0,0,8"/>
 
                         <TextBlock Text="二级 · 职能部门审核" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                        <CheckBox Content="启用资料室签字" IsChecked="{Binding EditEnableArchiveRoomHead}" Margin="0,0,0,4"/>
+                        <CheckBox Content="启用资料室负责人" IsChecked="{Binding EditEnableArchiveRoomHead}" Margin="0,0,0,4"/>
                         <ComboBox ItemsSource="{Binding UserOptions}"
                                   SelectedItem="{Binding EditArchiveRoomHeadUser}"
                                   DisplayMemberPath="DisplayName"
                                   Height="28"
                                   Margin="0,0,0,6"/>
-                        <CheckBox Content="启用生产科签字" IsChecked="{Binding EditEnableProductionHead}" Margin="0,0,0,4"/>
+                        <CheckBox Content="启用生产科负责人" IsChecked="{Binding EditEnableProductionHead}" Margin="0,0,0,4"/>
                         <ComboBox ItemsSource="{Binding UserOptions}"
                                   SelectedItem="{Binding EditProductionHeadUser}"
                                   DisplayMemberPath="DisplayName"

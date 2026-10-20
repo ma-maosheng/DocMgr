@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using DocMgr.Infrastructure.Seeding;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 
@@ -10,15 +11,15 @@ namespace DocMgr.ViewModels.SystemSettings
         private readonly IDialogService _dialogService;
         private readonly IUserContextService _userContextService;
 
-        private ObservableCollection<Department> _departments = new();
-        public ObservableCollection<Department> Departments
+        private ObservableCollection<DepartmentListRow> _departments = new();
+        public ObservableCollection<DepartmentListRow> Departments
         {
             get => _departments;
             set => SetProperty(ref _departments, value);
         }
 
-        private Department? _selectedDepartment;
-        public Department? SelectedDepartment
+        private DepartmentListRow? _selectedDepartment;
+        public DepartmentListRow? SelectedDepartment
         {
             get => _selectedDepartment;
             set
@@ -58,8 +59,9 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private void LoadData()
         {
-            var list = _userService.GetAllDepartments();
-            Departments = new ObservableCollection<Department>(list);
+            var list = _userService.GetAllDepartments()
+                .Select(d => new DepartmentListRow(d));
+            Departments = new ObservableCollection<DepartmentListRow>(list);
         }
 
         private void Add()
@@ -82,7 +84,7 @@ namespace DocMgr.ViewModels.SystemSettings
                 return;
             }
 
-            if (_dialogService.ShowDeptEditDialog(SelectedDepartment))
+            if (_dialogService.ShowDeptEditDialog(SelectedDepartment.Entity))
             {
                 LoadData();
             }
@@ -92,6 +94,12 @@ namespace DocMgr.ViewModels.SystemSettings
         {
             if (!EnsureCanMaintain() || SelectedDepartment == null)
             {
+                return;
+            }
+
+            if (SystemIdentitySeedCatalog.IsRequiredDepartment(SelectedDepartment.Name))
+            {
+                _dialogService.ShowError("系统必有部门不能删除！");
                 return;
             }
 

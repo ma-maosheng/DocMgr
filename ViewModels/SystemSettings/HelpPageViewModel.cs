@@ -1,4 +1,5 @@
 using DocMgr.Infrastructure;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 using System;
@@ -12,11 +13,12 @@ namespace DocMgr.ViewModels.SystemSettings;
 /// </summary>
 public sealed class HelpManualSection
 {
-    public HelpManualSection(int index, string title, string body)
+    public HelpManualSection(int index, string title, string body, bool requiresSystemAdministrator = false)
     {
         Index = index;
         Title = title;
         Body = body;
+        RequiresSystemAdministrator = requiresSystemAdministrator;
     }
 
     /// <summary>目录序号（从 1 起）。</summary>
@@ -30,6 +32,9 @@ public sealed class HelpManualSection
 
     /// <summary>该节 Markdown 正文。</summary>
     public string Body { get; }
+
+    /// <summary>仅系统管理员（Administrator / 管理员）可见。</summary>
+    public bool RequiresSystemAdministrator { get; }
 }
 
 /// <summary>
@@ -37,18 +42,26 @@ public sealed class HelpManualSection
 /// </summary>
 public sealed class HelpPageViewModel : ViewModelBase
 {
+    private const string AdminOnlyMarker = "<!-- admin-only -->";
+
     private HelpManualSection? _selectedSection;
 
-    public HelpPageViewModel(IDatabaseBackupService databaseBackupService)
+    public HelpPageViewModel(
+        IDatabaseBackupService databaseBackupService,
+        IUserContextService userContextService)
     {
         ArgumentNullException.ThrowIfNull(databaseBackupService);
+        ArgumentNullException.ThrowIfNull(userContextService);
 
         VersionDisplay = $"版本 {AppVersionInfo.DisplayVersion}";
         DatabasePathText = databaseBackupService.DatabasePath;
         DatabaseKindText = databaseBackupService.IsNetworkPath
             ? "当前为远程 SQL Server 数据库。"
             : "当前为本机 SQL Server 数据库。";
-        Sections = LoadSections();
+
+        bool isSystemAdministrator = UserRoleDomainValues.IsSystemAdministratorRole(
+            userContextService.CurrentUser?.Role);
+        Sections = LoadSections(includeAdminOnly: isSystemAdministrator);
         if (Sections.Count > 0)
         {
             SelectedSection = Sections[0];
@@ -87,7 +100,7 @@ public sealed class HelpPageViewModel : ViewModelBase
     /// <summary>右侧章节正文。</summary>
     public string BodyText => SelectedSection?.Body ?? string.Empty;
 
-    private static IReadOnlyList<HelpManualSection> LoadSections()
+    private static IReadOnlyList<HelpManualSection> LoadSections(bool includeAdminOnly)
     {
         var sections = new List<HelpManualSection>();
         TryAddMarkdownChapters(sections, "操作手册.md");
@@ -102,10 +115,20 @@ public sealed class HelpPageViewModel : ViewModelBase
             return sections;
         }
 
-        var numbered = new List<HelpManualSection>(sections.Count);
+        var numbered = new List<HelpManualSection>();
         for (int i = 0; i < sections.Count; i++)
         {
-            numbered.Add(new HelpManualSection(i + 1, sections[i].Title, sections[i].Body));
+            HelpManualSection source = sections[i];
+            if (source.RequiresSystemAdministrator && !includeAdminOnly)
+            {
+                continue;
+            }
+
+            numbered.Add(new HelpManualSection(
+                numbered.Count + 1,
+                source.Title,
+                source.Body,
+                source.RequiresSystemAdministrator));
         }
 
         return numbered;
@@ -150,13 +173,26 @@ public sealed class HelpPageViewModel : ViewModelBase
             return;
         }
 
-        string body = string.Join(Environment.NewLine, bodyLines).Trim();
+        bool requiresAdmin = false;
+        var cleaned = new List<string>(bodyLines.Count);
+        foreach (string line in bodyLines)
+        {
+            if (line.Trim().Equals(AdminOnlyMarker, StringComparison.Ordinal))
+            {
+                requiresAdmin = true;
+                continue;
+            }
+
+            cleaned.Add(line);
+        }
+
+        string body = string.Join(Environment.NewLine, cleaned).Trim();
         if (string.IsNullOrWhiteSpace(body))
         {
             return;
         }
 
-        sections.Add(new HelpManualSection(0, title.Trim(), body));
+        sections.Add(new HelpManualSection(0, title.Trim(), body, requiresAdmin));
     }
 
     private static void TryAddWholeFile(List<HelpManualSection> sections, string fileName, string title)

@@ -1,0 +1,21 @@
+【数据库配置说明】
+
+本程序使用 SQL Server（不再使用程序目录下的 DocMgr.db）。
+
+1）appsettings.json（正式配置，程序实际读取）
+   · 首次安装会写入一份默认配置：连接本机 localhost 上的 DocMgr 库。
+   · 若目标目录已有该文件（升级覆盖安装），安装程序不会覆盖，避免冲掉现网连接串。
+   · 请按实际环境修改其中的 Database:ConnectionString，例如：
+     Server=服务器名或IP;Database=DocMgr;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true
+
+2）appsettings.lan.example.json（局域网示例，仅供对照）
+   · 正确做法：复制该文件 → 重命名为 appsettings.json → 改 Server= 为实际库服务器。
+   · 只改 example、或删掉 appsettings.json，程序都不会连上局域网库（example 不会被读取）。
+   · 示例中的 DOCMGR-SRV 只是占位名，须换成实际主机名/实例名。
+
+3）安装 .NET 8 桌面运行时
+   · 本程序为依赖框架发布，需要本机已安装「.NET 8 桌面运行时（Windows Desktop）」。
+   · 若安装向导已提示并完成安装，可忽略本条。
+   · 若启动失败，可手动运行安装目录下 redist\windowsdesktop-runtime-win-x64.exe。
+
+更多说明见安装目录中的「配置说明.txt」，以及仓库文档「覆盖安装说明」。

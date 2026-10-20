@@ -1,12 +1,15 @@
 using System;
 using System.Linq;
 using System.Windows;
+using System.Windows.Threading;
 using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.Views.Shared
 {
     public partial class ToDoNotificationWindow : Window
     {
+        private bool _closingForBlockingPopup;
+
         public ToDoNotificationWindow()
         {
             InitializeComponent();
@@ -20,7 +23,12 @@ namespace DocMgr.Views.Shared
         /// <summary>
         /// 是否存在会拦截输入的其他业务弹窗（不含主窗口与本待办窗）。
         /// </summary>
-        internal bool HasBlockingPopup()
+        internal bool HasBlockingPopup() => HasBlockingPopupStatic(Owner);
+
+        /// <summary>
+        /// 静态判定：是否已有业务弹窗（供 Presenter 在打开待办前复用）。
+        /// </summary>
+        internal static bool HasBlockingPopupStatic(Window? owner)
         {
             var app = Application.Current;
             if (app == null)
@@ -31,30 +39,41 @@ namespace DocMgr.Views.Shared
             return app.Windows
                 .OfType<Window>()
                 .Any(window => window.IsVisible
-                               && window != this
                                && window is not ToDoNotificationWindow
-                               && window != Owner);
+                               && window != owner
+                               && window != app.MainWindow);
         }
 
         /// <summary>
-        /// 根据当前弹窗栈刷新置顶与激活状态，避免“窗体在上、按钮不可点”。
+        /// 有业务弹窗时自动关闭待办；否则保持置顶悬浮。
         /// </summary>
         internal void RefreshFloatingState()
         {
-            var canFloat = !HasBlockingPopup();
-            Topmost = canFloat;
-
-            if (!canFloat && IsActive)
+            if (HasBlockingPopup())
             {
-                var blocker = Application.Current?.Windows
-                    .OfType<Window>()
-                    .LastOrDefault(window => window.IsVisible
-                                             && window != this
-                                             && window is not ToDoNotificationWindow
-                                             && window != Owner);
-
-                blocker?.Activate();
+                Topmost = false;
+                RequestCloseForBlockingPopup();
+                return;
             }
+
+            Topmost = true;
+        }
+
+        private void RequestCloseForBlockingPopup()
+        {
+            if (_closingForBlockingPopup || !IsVisible)
+            {
+                return;
+            }
+
+            _closingForBlockingPopup = true;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (IsVisible)
+                {
+                    Close();
+                }
+            }), DispatcherPriority.Input);
         }
 
         private void ToDoNotificationWindow_Loaded(object sender, RoutedEventArgs e)

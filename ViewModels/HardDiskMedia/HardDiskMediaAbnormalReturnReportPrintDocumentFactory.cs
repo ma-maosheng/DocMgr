@@ -190,7 +190,7 @@ namespace DocMgr.ViewModels.HardDiskMedia
         /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
         private static IReadOnlyList<string> BuildFooterLines() =>
         [
-            "1、硬盘介质非正常归还须由归还人、部门审核、资料室签字与资料室经办人手签确认。",
+            "1、硬盘介质非正常归还须由归还人、部门审核、资料室负责人与资料室经办人手签确认。",
             "2、签字后的情况表应上传系统留存，方可登记归还信息并办结入库。"
         ];
 

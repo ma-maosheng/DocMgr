@@ -11,6 +11,7 @@ namespace DocMgr.Config;
 public static class DocMgrDatabaseConfiguration
 {
     private const string AppSettingsFileName = "appsettings.json";
+    private const string LanExampleFileName = "appsettings.lan.example.json";
 
     /// <summary>
     /// 本机默认实例（MSSQLSERVER）+ Windows 身份 + 信任证书。
@@ -21,6 +22,7 @@ public static class DocMgrDatabaseConfiguration
 
     /// <summary>
     /// 加载当前应用应使用的数据库配置。
+    /// 仅读取程序目录下的 <c>appsettings.json</c>；<c>appsettings.lan.example.json</c> 只是样例，不会被读取。
     /// </summary>
     public static DocMgrDatabaseOptions Load(string? baseDirectory = null)
     {
@@ -28,7 +30,21 @@ public static class DocMgrDatabaseConfiguration
             ? AppDomain.CurrentDomain.BaseDirectory
             : baseDirectory;
 
-        var settings = TryReadSettings(Path.Combine(appBaseDirectory, AppSettingsFileName));
+        string settingsPath = Path.Combine(appBaseDirectory, AppSettingsFileName);
+        if (!File.Exists(settingsPath))
+        {
+            string lanExamplePath = Path.Combine(appBaseDirectory, LanExampleFileName);
+            string hint = File.Exists(lanExamplePath)
+                ? $"请将同目录下的 {LanExampleFileName} 复制为 {AppSettingsFileName}，把其中的 Server=… 改成实际 SQL Server 后保存，再启动。"
+                : $"请在程序目录创建 {AppSettingsFileName}，写入 Database:ConnectionString（可参考安装包内的局域网示例）。";
+
+            throw new InvalidOperationException(
+                $"未找到正式配置文件：{settingsPath}{Environment.NewLine}" +
+                $"程序不会读取 {LanExampleFileName}。{Environment.NewLine}" +
+                hint);
+        }
+
+        var settings = TryReadSettings(settingsPath);
         string connectionString = ResolveConnectionString(settings?.Database?.ConnectionString);
         ValidateConnectionString(connectionString);
         return new DocMgrDatabaseOptions(connectionString);
@@ -38,7 +54,9 @@ public static class DocMgrDatabaseConfiguration
     {
         if (string.IsNullOrWhiteSpace(configured))
         {
-            return DefaultConnectionString;
+            throw new InvalidOperationException(
+                $"{AppSettingsFileName} 中缺少 Database:ConnectionString。" +
+                $"局域网部署可参考同目录 {LanExampleFileName}，将改好的连接串写入 {AppSettingsFileName}。");
         }
 
         return configured.Trim();

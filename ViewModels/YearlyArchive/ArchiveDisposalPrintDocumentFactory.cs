@@ -302,7 +302,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static IReadOnlyList<string> BuildFooterLines(YearlyArchiveDisposalPrintData data) =>
         [
             "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下审核审批、系统审批、上传签批单、办结”流程办理。",
-            "2、请线下完成审核（资料室签字、生产科签字）与审批（分管资料院长签字、分管生产院长签字）签字后回传系统；含离库销毁时须同步上传处置资料照片。",
+            "2、请线下完成审核（资料室负责人、生产科负责人）与审批（分管资料院长签字、分管生产院长签字）签字后回传系统；含离库销毁时须同步上传处置资料照片。",
             $"3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"
         ];
 

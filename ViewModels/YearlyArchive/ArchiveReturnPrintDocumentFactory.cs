@@ -315,7 +315,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static IReadOnlyList<string> BuildFooterLines(ArchiveReturnReceiptPrintData data) =>
         [
             "1、无论资料是否完好，均须打印本单并完成线下签字；扫描件由资料管理员上传系统。",
-            "2、正常完好归还仅需部门审核签字；存在灭失时，需借出时全部审核审批人（部门审核、资料室签字、生产科签字、分管生产院长签字）签字。",
+            "2、正常完好归还仅需部门审核签字；存在灭失时，需借出时全部审核审批人（部门审核、资料室负责人、生产科负责人、分管生产院长签字）签字。",
             "3、归还人与资料管理员须在交接栏签字确认实物交接。",
             $"4、本单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"
         ];

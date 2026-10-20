@@ -65,10 +65,13 @@
             </StackPanel>
         </Border>
 
+        <!-- 底栏：导入相关为一组，确认立档单独一组，同行并拉开间距 -->
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
-            <Button Content="下载导入模板" Command="{Binding ExportExcelTemplateCommand}" Padding="16,6" MinHeight="28" Margin="0,0,8,0"
-                    ToolTip="导出与交互式录入字段一致的 Excel 模板"/>
-            <Button Content="从 Excel 导入" Command="{Binding ImportExcelCommand}" Padding="16,6" MinHeight="28" Margin="0,0,8,0"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,40,0">
+                <Button Content="下载导入模板" Command="{Binding ExportExcelTemplateCommand}" Padding="16,6" MinHeight="28" Margin="0,0,8,0"
+                        ToolTip="导出与交互式录入字段一致的 Excel 模板"/>
+                <Button Content="从 Excel 导入" Command="{Binding ImportExcelCommand}" Padding="16,6" MinHeight="28"/>
+            </StackPanel>
             <Button Content="确认立档" Command="{Binding ConfirmCommand}" Padding="16,6" MinHeight="28" FontWeight="SemiBold"/>
         </StackPanel>
 

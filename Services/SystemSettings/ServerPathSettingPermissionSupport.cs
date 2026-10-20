@@ -9,7 +9,7 @@ namespace DocMgr.Services.SystemSettings;
 public static class ServerPathSettingPermissionSupport
 {
     /// <summary>用户角色名称，须与角色表完全一致。</summary>
-    public const string RoleName = "网管负责人";
+    public const string RoleName = UserRoleDomainValues.NetworkAdmin;
 
     public const string DeniedMessage = "仅网管负责人可维护服务器路径设置。";
 

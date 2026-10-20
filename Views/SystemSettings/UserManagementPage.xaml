@@ -10,6 +10,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- 工具栏 -->
@@ -35,12 +36,20 @@
                   RowHeight="35" ColumnHeaderHeight="40">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="60"/>
-                <DataGridTextColumn Header="登录账号" Binding="{Binding LoginName}" Width="150"/>
-                <DataGridTextColumn Header="真实姓名" Binding="{Binding RealName}" Width="150"/>
-                <DataGridTextColumn Header="所属部门" Binding="{Binding Department}" Width="150"/>
-                <DataGridTextColumn Header="用户角色" Binding="{Binding Role}" Width="150"/>
+                <DataGridTextColumn Header="登录账号" Binding="{Binding LoginName}" Width="120"/>
+                <DataGridTextColumn Header="真实姓名" Binding="{Binding RealName}" Width="120"/>
+                <DataGridTextColumn Header="所属部门" Binding="{Binding Department}" Width="120"/>
+                <DataGridTextColumn Header="用户角色" Binding="{Binding Role}" Width="120"/>
                 <DataGridTextColumn Header="开通日期" Binding="{Binding CreatedDate, StringFormat={}{0:yyyy-MM-dd}}" Width="*"/>
             </DataGrid.Columns>
         </DataGrid>
+
+        <TextBlock Grid.Row="2"
+                   Margin="0,12,0,0"
+                   Text="{Binding RequiredRolesHint, Mode=OneWay}"
+                   TextWrapping="Wrap"
+                   Foreground="#6B7280"
+                   FontSize="12"
+                   LineHeight="18"/>
     </Grid>
 </Page>

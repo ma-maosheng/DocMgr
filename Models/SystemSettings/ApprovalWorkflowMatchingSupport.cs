@@ -52,10 +52,22 @@ namespace DocMgr.Models.SystemSettings
             return nodeKey switch
             {
                 ApprovalWorkflowDomainValues.NodeDeptHead => FindDeptHead(users, applicantDept),
-                ApprovalWorkflowDomainValues.NodeArchiveRoomHead => FindArchiveRoomHead(users),
-                ApprovalWorkflowDomainValues.NodeProductionHead => FindByRoleOrDept(users, "生产管理科"),
-                ApprovalWorkflowDomainValues.NodeArchiveDeputyPresident => FindByRoleOrDept(users, "分管资料副院长"),
-                ApprovalWorkflowDomainValues.NodeProductionVicePresident => FindByRoleOrDept(users, "分管生产副院长"),
+                ApprovalWorkflowDomainValues.NodeArchiveRoomHead => FindByExactRole(
+                    users,
+                    UserRoleDomainValues.ArchiveRoomHead,
+                    UserRoleDomainValues.ArchiveRoomDepartment),
+                ApprovalWorkflowDomainValues.NodeProductionHead => FindByExactRole(
+                    users,
+                    UserRoleDomainValues.ProductionHead,
+                    UserRoleDomainValues.ProductionManagementDepartment),
+                ApprovalWorkflowDomainValues.NodeArchiveDeputyPresident => FindByExactRole(
+                    users,
+                    UserRoleDomainValues.ArchiveDeputyPresident,
+                    UserRoleDomainValues.LeadershipDepartment),
+                ApprovalWorkflowDomainValues.NodeProductionVicePresident => FindByExactRole(
+                    users,
+                    UserRoleDomainValues.ProductionVicePresident,
+                    UserRoleDomainValues.LeadershipDepartment),
                 _ => string.Empty
             };
         }
@@ -76,45 +88,50 @@ namespace DocMgr.Models.SystemSettings
         private static string FindDeptHead(IReadOnlyList<User> users, string? applicantDept)
         {
             string dept = applicantDept?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(dept))
+            if (!string.IsNullOrWhiteSpace(dept))
             {
-                return FindByRoleOrDept(users, "部门负责人");
+                string head = users
+                    .FirstOrDefault(user =>
+                        string.Equals(user.Department?.Trim(), dept, StringComparison.Ordinal)
+                        && string.Equals(user.Role?.Trim(), UserRoleDomainValues.DepartmentHead, StringComparison.Ordinal)
+                        && !string.IsNullOrWhiteSpace(user.RealName))
+                    ?.RealName
+                    ?.Trim() ?? string.Empty;
+
+                if (!string.IsNullOrWhiteSpace(head))
+                {
+                    return head;
+                }
             }
 
-            string head = users
-                .FirstOrDefault(user =>
-                    string.Equals(user.Department?.Trim(), dept, StringComparison.OrdinalIgnoreCase)
-                    && !string.IsNullOrWhiteSpace(user.RealName)
-                    && (user.Role?.Contains("部门负责人", StringComparison.OrdinalIgnoreCase) ?? false))
-                ?.RealName
-                ?.Trim() ?? string.Empty;
-
-            return string.IsNullOrWhiteSpace(head)
-                ? FindByRoleOrDept(users, "部门负责人")
-                : head;
+            return FindByExactRole(users, UserRoleDomainValues.DepartmentHead, preferredDepartment: null);
         }
 
-        private static string FindArchiveRoomHead(IReadOnlyList<User> users)
+        private static string FindByExactRole(
+            IReadOnlyList<User> users,
+            string roleName,
+            string? preferredDepartment)
         {
-            string head = users
-                .FirstOrDefault(user =>
-                    string.Equals(user.Department?.Trim(), "资料室", StringComparison.OrdinalIgnoreCase)
-                    && !string.IsNullOrWhiteSpace(user.RealName)
-                    && (user.Role?.Contains("负责人", StringComparison.OrdinalIgnoreCase) ?? false))
-                ?.RealName
-                ?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(preferredDepartment))
+            {
+                string preferred = users
+                    .FirstOrDefault(user =>
+                        string.Equals(user.Role?.Trim(), roleName, StringComparison.Ordinal)
+                        && string.Equals(user.Department?.Trim(), preferredDepartment, StringComparison.Ordinal)
+                        && !string.IsNullOrWhiteSpace(user.RealName))
+                    ?.RealName
+                    ?.Trim() ?? string.Empty;
 
-            return string.IsNullOrWhiteSpace(head)
-                ? FindByRoleOrDept(users, "资料室")
-                : head;
-        }
+                if (!string.IsNullOrWhiteSpace(preferred))
+                {
+                    return preferred;
+                }
+            }
 
-        private static string FindByRoleOrDept(IReadOnlyList<User> users, string keyword)
-        {
             return users
                 .FirstOrDefault(user =>
-                    (user.Role?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
-                    || (user.Department?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false))
+                    string.Equals(user.Role?.Trim(), roleName, StringComparison.Ordinal)
+                    && !string.IsNullOrWhiteSpace(user.RealName))
                 ?.RealName
                 ?.Trim() ?? string.Empty;
         }

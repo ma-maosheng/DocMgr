@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Input;
+using DocMgr.Infrastructure.Seeding;
 using DocMgr.ViewModels.Base;
 
 namespace DocMgr.ViewModels.SystemSettings
@@ -78,6 +79,13 @@ namespace DocMgr.ViewModels.SystemSettings
                     if (_currentDept == null)
                     {
                         _dialogService.ShowError("当前编辑对象无效。");
+                        return;
+                    }
+
+                    if (SystemIdentitySeedCatalog.IsRequiredDepartment(_currentDept.Name)
+                        && !string.Equals(name, _currentDept.Name?.Trim(), StringComparison.Ordinal))
+                    {
+                        _dialogService.ShowError("系统必有部门名称不可修改！");
                         return;
                     }
 

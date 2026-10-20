@@ -15,5 +15,8 @@ namespace DocMgr.Services.Interfaces
             IEnumerable<ToDoItem> items,
             Func<ToDoItem, Task>? openAction = null,
             Func<IEnumerable<ToDoItem>, Task>? ackAction = null);
+
+        /// <summary>若待办提醒窗已打开则关闭（不标记已读）。业务弹窗出现前应调用。</summary>
+        void Close();
     }
 }

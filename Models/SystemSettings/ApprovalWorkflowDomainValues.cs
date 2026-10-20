@@ -17,11 +17,11 @@ namespace DocMgr.Models.SystemSettings
         /// <summary>申请审批单统一提示词：部门审核。</summary>
         public const string DisplayDeptHead = "部门审核";
 
-        /// <summary>申请审批单统一提示词：生产科签字。</summary>
-        public const string DisplayProductionHead = "生产科签字";
+        /// <summary>申请审批单统一提示词：生产科负责人。</summary>
+        public const string DisplayProductionHead = "生产科负责人";
 
-        /// <summary>申请审批单统一提示词：资料室签字。</summary>
-        public const string DisplayArchiveRoomHead = "资料室签字";
+        /// <summary>申请审批单统一提示词：资料室负责人。</summary>
+        public const string DisplayArchiveRoomHead = "资料室负责人";
 
         /// <summary>申请审批单统一提示词：分管资料院长签字。</summary>
         public const string DisplayArchiveDeputyPresident = "分管资料院长签字";

@@ -1,10 +1,11 @@
+using DocMgr.Models.SystemSettings;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.SystemSettings;
 
 namespace DocMgr.Infrastructure.Seeding;
 
 /// <summary>
-/// Release/空库启动时补建默认系统管理员。仅在用户表为空时写入，不覆盖已有账号。
+/// 空库兜底：若身份种子未写入任何用户，则补建默认系统管理员。不覆盖已有账号。
 /// </summary>
 public static class DefaultAdministratorBootstrap
 {
@@ -32,7 +33,7 @@ public static class DefaultAdministratorBootstrap
             LoginName = LoginName,
             RealName = "系统管理员",
             Department = string.Empty,
-            Role = "Administrator",
+            Role = UserRoleDomainValues.SystemAdministrator,
             Password = PasswordHashingSupport.Hash(InitialPassword),
             CreatedDate = DateTime.Now,
 #if DEBUG

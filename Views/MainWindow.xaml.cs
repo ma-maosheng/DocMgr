@@ -279,7 +279,7 @@ namespace DocMgr.Views
             _toDoCenter?.StopAutoRefresh();
             _userContextService.Clear();
 
-            MessageBox.Show(
+            ShowMessageBox(
                 heartbeatResult.Message,
                 "登录状态失效",
                 MessageBoxButton.OK,
@@ -379,8 +379,7 @@ namespace DocMgr.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    this,
+                ShowMessageBox(
                     "返回首页时发生错误：\n\n" + ex.Message,
                     "导航错误",
                     MessageBoxButton.OK,
@@ -413,7 +412,7 @@ namespace DocMgr.Views
         {
             if (recordId <= 0)
             {
-                MessageBox.Show("无效的记录编号。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowMessageBox("无效的记录编号。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -651,8 +650,7 @@ namespace DocMgr.Views
         {
             e.Handled = true;
             Exception? ex = e.Exception;
-            MessageBox.Show(
-                this,
+            ShowMessageBox(
                 "打开页面失败，已取消导航。\n\n" + (ex?.Message ?? "未知错误"),
                 "导航错误",
                 MessageBoxButton.OK,
@@ -934,8 +932,19 @@ namespace DocMgr.Views
                 return Task.CompletedTask;
             }
 
-            MessageBox.Show($"暂不支持该待办类型跳转：{item.BizType}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            ShowMessageBox($"暂不支持该待办类型跳转：{item.BizType}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return Task.CompletedTask;
+        }
+
+        /// <summary>弹出系统提示前先关闭待办提醒窗，避免挡操作。</summary>
+        private MessageBoxResult ShowMessageBox(
+            string message,
+            string caption,
+            MessageBoxButton button,
+            MessageBoxImage icon)
+        {
+            _toDoNotificationPresenter.Close();
+            return MessageBox.Show(this, message, caption, button, icon);
         }
 
         private static bool IsApplicantDraftToDo(ToDoItem item)
@@ -1093,7 +1102,7 @@ namespace DocMgr.Views
 
         private void BtnLogout_Click(object sender, RoutedEventArgs e)
         {
-            if (MessageBox.Show("确定要注销当前用户并切换账号吗？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            if (ShowMessageBox("确定要注销当前用户并切换账号吗？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
                 StopSessionHeartbeat();
                 _toDoCenter?.StopAutoRefresh();
@@ -1108,7 +1117,7 @@ namespace DocMgr.Views
 
         private void BtnExit_Click(object sender, RoutedEventArgs e)
         {
-            if (MessageBox.Show("确定要退出系统吗？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            if (ShowMessageBox("确定要退出系统吗？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
                 StopSessionHeartbeat();
                 _toDoCenter?.StopAutoRefresh();
@@ -1177,7 +1186,7 @@ namespace DocMgr.Views
 
         private void BtnAdvancedData_Click(object sender, RoutedEventArgs e)
         {
-            // 所有用户均可进入：普通用户仅数据浏览，资料管理员可另备份当前库，高危维护仅系统管理员（页面内按角色隐藏）。
+            // 所有用户进入同一页：全部操作可见；浏览/导出全员可执行；备份/还原/删/清空/字典仅系统管理员可执行。
             TxtPageTitle.Text = "高级数据管理";
             MainContentFrame.Navigate(new AdvancedDataPage());
         }
@@ -1261,8 +1270,7 @@ namespace DocMgr.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    this,
+                ShowMessageBox(
                     "无法打开资料立档页面：\n\n" + ex.Message,
                     "错误",
                     MessageBoxButton.OK,
@@ -1280,8 +1288,7 @@ namespace DocMgr.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    this,
+                ShowMessageBox(
                     "无法打开存量硬盘资料直办立档页面：\n\n" + ex.Message,
                     "错误",
                     MessageBoxButton.OK,
@@ -1299,8 +1306,7 @@ namespace DocMgr.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    this,
+                ShowMessageBox(
                     "无法打开存档文本资料直办立档页面：\n\n" + ex.Message,
                     "错误",
                     MessageBoxButton.OK,

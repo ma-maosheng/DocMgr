@@ -132,9 +132,7 @@ namespace DocMgr.Services.YearlyArchive
                 return false;
             }
 
-            string role = user.Role?.Trim() ?? string.Empty;
-            return string.Equals(role, "Administrator", StringComparison.Ordinal)
-                   || string.Equals(role, "管理员", StringComparison.Ordinal);
+            return UserRoleDomainValues.IsSystemAdministratorRole(user.Role);
         }
 
         public static ArchiveRegisterUiPermissionState ResolveUiPermissionState(User? user, YearlyArchiveRegisterRecord? currentRecord)

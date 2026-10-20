@@ -625,14 +625,14 @@
                         <TextBlock Grid.Row="0" Grid.Column="2" Text="部门审核日期：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding Record.DeptHeadDate, StringFormat=yyyy-MM-dd, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="生产科签字：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="生产科负责人：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Record.ProdDeptOpinion, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="生产科签字人：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="生产科负责人：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Record.ProductionHead, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="资料室签字：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="资料室负责人：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Record.RndDeptOpinion, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="资料室签字人：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="资料室负责人：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding Record.ArchiveRoomHead, TargetNullValue=-}" Style="{StaticResource FieldValueStyle}"/>
 
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="交接与接收：" Style="{StaticResource FieldLabelStyle}"/>

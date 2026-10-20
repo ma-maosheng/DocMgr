@@ -39,15 +39,20 @@ namespace DocMgr.Services.Shared
     public class DialogService : IDialogService
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly IToDoNotificationPresenter _toDoNotificationPresenter;
         public bool HasHardDiskMediaOutboundApplicationCommittedChanges { get; private set; }
         public bool HasHardDiskMediaApprovalCommittedChanges { get; private set; }
         public bool HasHardDiskMediumCommittedChanges { get; private set; }
         private readonly ICabinetArchiveBoxContentService _cabinetArchiveBoxContentService;
 
-        public DialogService(IServiceScopeFactory serviceScopeFactory, ICabinetArchiveBoxContentService cabinetArchiveBoxContentService)
+        public DialogService(
+            IServiceScopeFactory serviceScopeFactory,
+            ICabinetArchiveBoxContentService cabinetArchiveBoxContentService,
+            IToDoNotificationPresenter toDoNotificationPresenter)
         {
             _serviceScopeFactory = serviceScopeFactory;
             _cabinetArchiveBoxContentService = cabinetArchiveBoxContentService;
+            _toDoNotificationPresenter = toDoNotificationPresenter;
         }
 
         public string? OpenFileDialog(string filter, string title)
@@ -361,7 +366,7 @@ namespace DocMgr.Services.Shared
             return OperationProgressSession.Attach(host, viewModel);
         }
 
-        private static Window ResolveProgressHostWindow()
+        private Window ResolveProgressHostWindow()
         {
             Window? owner = GetOwnerWindow();
             if (owner is SheetSelectionDialog)
@@ -1767,8 +1772,11 @@ namespace DocMgr.Services.Shared
         }
 
 
-        private static Window? GetOwnerWindow()
+        private Window? GetOwnerWindow()
         {
+            // MessageBox / 文件框 / 业务模态窗出现前先收起待办，避免挡操作。
+            _toDoNotificationPresenter.Close();
+
             var app = Application.Current;
             if (app == null)
             {

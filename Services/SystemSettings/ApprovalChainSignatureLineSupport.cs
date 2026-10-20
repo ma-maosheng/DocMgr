@@ -93,13 +93,14 @@ namespace DocMgr.Services.SystemSettings
         {
             ApprovalWorkflowDomainValues.DisplayDeptHead => ApprovalWorkflowDomainValues.NodeDeptHead,
             ApprovalWorkflowDomainValues.DisplayArchiveRoomHead => ApprovalWorkflowDomainValues.NodeArchiveRoomHead,
-            "开发室签字" => ApprovalWorkflowDomainValues.NodeArchiveRoomHead,
             ApprovalWorkflowDomainValues.DisplayProductionHead => ApprovalWorkflowDomainValues.NodeProductionHead,
             ApprovalWorkflowDomainValues.DisplayArchiveDeputyPresident => ApprovalWorkflowDomainValues.NodeArchiveDeputyPresident,
             ApprovalWorkflowDomainValues.DisplayProductionVicePresident => ApprovalWorkflowDomainValues.NodeProductionVicePresident,
-            // 兼容旧标签
+            // 兼容旧标签 / 历史打印文案
             "部门负责人" => ApprovalWorkflowDomainValues.NodeDeptHead,
-            "资料室负责人" => ApprovalWorkflowDomainValues.NodeArchiveRoomHead,
+            "资料室签字" => ApprovalWorkflowDomainValues.NodeArchiveRoomHead,
+            "开发室签字" => ApprovalWorkflowDomainValues.NodeArchiveRoomHead,
+            "生产科签字" => ApprovalWorkflowDomainValues.NodeProductionHead,
             "生产管理科负责人" => ApprovalWorkflowDomainValues.NodeProductionHead,
             "分管资料副院长" => ApprovalWorkflowDomainValues.NodeArchiveDeputyPresident,
             "分管生产副院长" => ApprovalWorkflowDomainValues.NodeProductionVicePresident,

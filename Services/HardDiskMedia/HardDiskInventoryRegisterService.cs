@@ -281,8 +281,8 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
 
         var minDate = ApprovalSignatureDateSupport.ResolveMinDate(existing.FirstPrintedAt, existing.LastPrintedAt, existing.PrintCount);
         ThrowIfSignatureDateInvalid(deptHeadDate, minDate, "部门审核日期");
-        ThrowIfSignatureDateInvalid(archiveRoomHeadDate, minDate, "资料室签字日期");
-        ThrowIfSignatureDateInvalid(productionHeadDate, minDate, "生产科签字日期");
+        ThrowIfSignatureDateInvalid(archiveRoomHeadDate, minDate, "资料室负责人日期");
+        ThrowIfSignatureDateInvalid(productionHeadDate, minDate, "生产科负责人日期");
         ThrowIfSignatureDateInvalid(archiveDeputyPresidentDate, minDate, "分管资料院长签字日期");
         ThrowIfSignatureDateInvalid(productionVicePresidentDate, minDate, "分管生产院长签字日期");
 

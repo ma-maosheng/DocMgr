@@ -23,21 +23,16 @@ namespace DocMgr.ViewModels.SystemSettings
         private readonly IDialogService _dialogService;
         private readonly PageDbOperationQueue _pageDb = new();
 
-        /// <summary>是否系统管理员（全量功能：字典维护、删行、清空、还原）。</summary>
+        /// <summary>是否系统管理员（唯一可执行改库/备份/还原/字典维护的角色）。</summary>
         public bool IsSystemAdministrator { get; }
 
-        /// <summary>是否资料管理员（受限开放：仅数据表浏览与备份当前库）。</summary>
-        public bool IsArchiveAdministrator => !IsSystemAdministrator
-            && ArchiveRegisterBusinessRules.IsArchiveAdminUser(_userContext.CurrentUser);
+        /// <summary>备份 / 还原 / 删行 / 清空 / 字典：仅系统管理员可执行（界面仍对全员显示）。</summary>
+        public bool CanExecuteMaintenance => IsSystemAdministrator;
 
-        /// <summary>普通登录用户（非系统管理员、非资料管理员）：仅数据浏览。</summary>
-        public bool IsBrowsableOnlyUser => !IsSystemAdministrator && !IsArchiveAdministrator;
-
-        /// <summary>非系统管理员时隐藏高危功能区，仅保留浏览/备份/导出。</summary>
-        public bool ShowAdvancedMaintenance => IsSystemAdministrator;
-
-        /// <summary>非系统管理员（资料管理员与普通用户）共用只读状态栏。</summary>
-        public bool ShowReadOnlyStatusBar => !IsSystemAdministrator;
+        /// <summary>顶栏权限说明（随角色变化）。</summary>
+        public string RolePermissionHintText => IsSystemAdministrator
+            ? "当前角色：系统管理员。可浏览全部数据表，并可执行备份、还原、字典维护、删除与清空。"
+            : "当前角色：非系统管理员。可浏览全部数据表并导出；备份、还原、字典维护、删除与清空按钮可见但不可执行（仅系统管理员）。";
 
         private List<TableBrowseEntryDto> _tables = new();
         private TableBrowseEntryDto? _selectedTable;
@@ -76,15 +71,15 @@ namespace DocMgr.ViewModels.SystemSettings
             IsSystemAdministrator = ArchiveRegisterBusinessRules.IsSystemAdministrator(_userContext.CurrentUser);
 
             RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshGridAsync), _ => !IsBusy);
-            DeleteSelectedCommand = new RelayCommand(async _ => await _pageDb.RunAsync(DeleteSelectedAsync), _ => !IsBusy && IsSystemAdministrator && CanDeleteSelected());
-            ClearTableCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ClearTableAsync), _ => !IsBusy && IsSystemAdministrator && CanClearTable());
-            SaveFieldDisplayNameCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SaveFieldDisplayNameAsync), _ => !IsBusy && IsSystemAdministrator && CanSaveFieldDisplayName());
-            SyncModelToDictionaryCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SyncModelToDictionaryAsync), _ => !IsBusy && IsSystemAdministrator);
-            ExportDisplayNamesToDictionaryCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportDisplayNamesToDictionaryAsync), _ => !IsBusy && IsSystemAdministrator);
-            ApplyDictionaryToDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ApplyDictionaryToDatabaseAsync), _ => !IsBusy && IsSystemAdministrator);
+            DeleteSelectedCommand = new RelayCommand(async _ => await _pageDb.RunAsync(DeleteSelectedAsync), _ => !IsBusy && CanExecuteMaintenance && CanDeleteSelected());
+            ClearTableCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ClearTableAsync), _ => !IsBusy && CanExecuteMaintenance && CanClearTable());
+            SaveFieldDisplayNameCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SaveFieldDisplayNameAsync), _ => !IsBusy && CanExecuteMaintenance && CanSaveFieldDisplayName());
+            SyncModelToDictionaryCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SyncModelToDictionaryAsync), _ => !IsBusy && CanExecuteMaintenance);
+            ExportDisplayNamesToDictionaryCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportDisplayNamesToDictionaryAsync), _ => !IsBusy && CanExecuteMaintenance);
+            ApplyDictionaryToDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ApplyDictionaryToDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
             ExportToExcelCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportToExcelAsync), _ => !IsBusy && HasSelectedTable);
-            BackupDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(BackupDatabaseAsync), _ => !IsBusy);
-            RestoreDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RestoreDatabaseAsync), _ => !IsBusy && IsSystemAdministrator);
+            BackupDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(BackupDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
+            RestoreDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RestoreDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
             FirstPageCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => GoToPageAsync(1)), _ => !IsBusy && CanGoPrevious);
             PreviousPageCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => GoToPageAsync(CurrentPage - 1)), _ => !IsBusy && CanGoPrevious);
             NextPageCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => GoToPageAsync(CurrentPage + 1)), _ => !IsBusy && CanGoNext);
@@ -308,7 +303,7 @@ namespace DocMgr.ViewModels.SystemSettings
             set => SetProperty(ref _goToPageText, value);
         }
 
-        public bool CanEditFieldDisplayName => IsSystemAdministrator;
+        public bool CanEditFieldDisplayName => CanExecuteMaintenance;
 
         private void LoadTables()
         {
@@ -762,6 +757,12 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private async Task BackupDatabaseAsync()
         {
+            if (!CanExecuteMaintenance)
+            {
+                _dialogService.ShowError("仅系统管理员可备份当前库。", "禁止操作");
+                return;
+            }
+
             string defaultName = $"DocMgr-backup-{DateTime.Now:yyyyMMdd-HHmmss}.bak";
             string? savePath = _dialogService.SaveFileDialog(
                 "SQL Server 备份|*.bak|所有文件|*.*",

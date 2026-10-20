@@ -134,7 +134,7 @@
 
                             <Border Style="{StaticResource ArchiveRegisterApprovalStepCardStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="生产科签字" Style="{StaticResource ArchiveRegisterApprovalStepTitleStyle}"/>
+                                    <TextBlock Text="生产科负责人" Style="{StaticResource ArchiveRegisterApprovalStepTitleStyle}"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -154,7 +154,7 @@
 
                             <Border Style="{StaticResource ArchiveRegisterApprovalStepCardStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="资料室签字" Style="{StaticResource ArchiveRegisterApprovalStepTitleStyle}"/>
+                                    <TextBlock Text="资料室负责人" Style="{StaticResource ArchiveRegisterApprovalStepTitleStyle}"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>

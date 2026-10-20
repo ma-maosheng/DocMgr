@@ -228,7 +228,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private static IReadOnlyList<string> BuildFooterLines(NetworkOnNetDisposalPrintData data) =>
         [
             "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批通过、上传签批单、办结”流程办理。",
-            "2、审核为资料室签字、审批为分管资料院长签字，仅需签字与日期；请线下完成后回传签批单。",
+            "2、审核为资料室负责人、审批为分管资料院长签字，仅需签字与日期；请线下完成后回传签批单。",
             $"3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"
         ];
 

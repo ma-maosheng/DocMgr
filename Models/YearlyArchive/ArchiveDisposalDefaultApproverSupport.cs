@@ -61,49 +61,28 @@ namespace DocMgr.Models.YearlyArchive
             };
         }
 
-        /// <summary>按用户表角色/部门关键字解析默认签字人（无配置时的回退）。</summary>
+        /// <summary>按用户表角色解析默认签字人（无配置时的回退）。</summary>
         public static ArchiveDisposalDefaultApprovers Resolve(IReadOnlyList<User> users)
         {
             ArgumentNullException.ThrowIfNull(users);
-            var list = users as List<User> ?? users.ToList();
             return new ArchiveDisposalDefaultApprovers
             {
-                DeptHead = FindByRoleOrDept(list, "部门负责人"),
-                ArchiveRoomHead = FindArchiveRoomHead(list),
-                ProductionHead = FindByRoleOrDept(list, "生产管理科"),
-                ArchiveDeputyPresident = FindByRoleOrDept(list, "分管资料副院长"),
-                ProductionVicePresident = FindByRoleOrDept(list, "分管生产副院长"),
+                DeptHead = ApprovalWorkflowMatchingSupport.ResolveRealName(
+                    users, null, null, ApprovalWorkflowDomainValues.NodeDeptHead),
+                ArchiveRoomHead = ApprovalWorkflowMatchingSupport.ResolveRealName(
+                    users, null, null, ApprovalWorkflowDomainValues.NodeArchiveRoomHead),
+                ProductionHead = ApprovalWorkflowMatchingSupport.ResolveRealName(
+                    users, null, null, ApprovalWorkflowDomainValues.NodeProductionHead),
+                ArchiveDeputyPresident = ApprovalWorkflowMatchingSupport.ResolveRealName(
+                    users, null, null, ApprovalWorkflowDomainValues.NodeArchiveDeputyPresident),
+                ProductionVicePresident = ApprovalWorkflowMatchingSupport.ResolveRealName(
+                    users, null, null, ApprovalWorkflowDomainValues.NodeProductionVicePresident),
                 EnableDeptHead = false,
                 EnableArchiveRoomHead = true,
                 EnableProductionHead = true,
                 EnableArchiveDeputyPresident = true,
                 EnableProductionVicePresident = true
             };
-        }
-
-        private static string FindArchiveRoomHead(IReadOnlyList<User> users)
-        {
-            string head = users
-                .FirstOrDefault(user =>
-                    string.Equals(user.Department?.Trim(), "资料室", StringComparison.OrdinalIgnoreCase)
-                    && !string.IsNullOrWhiteSpace(user.RealName)
-                    && (user.Role?.Contains("负责人", StringComparison.OrdinalIgnoreCase) ?? false))
-                ?.RealName
-                ?.Trim() ?? string.Empty;
-
-            return string.IsNullOrWhiteSpace(head)
-                ? FindByRoleOrDept(users, "资料室")
-                : head;
-        }
-
-        private static string FindByRoleOrDept(IReadOnlyList<User> users, string keyword)
-        {
-            return users
-                .FirstOrDefault(user =>
-                    (user.Role?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
-                    || (user.Department?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false))
-                ?.RealName
-                ?.Trim() ?? string.Empty;
         }
     }
 }

@@ -37,7 +37,7 @@
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="80"/>
                 <DataGridTextColumn Header="部门名称" Binding="{Binding Name}" Width="200"/>
-                <DataGridTextColumn Header="部门说明" Binding="{Binding Description}" Width="*"/>
+                <DataGridTextColumn Header="部门说明" Binding="{Binding DescriptionDisplay, Mode=OneWay}" Width="*"/>
             </DataGrid.Columns>
         </DataGrid>
     </Grid>

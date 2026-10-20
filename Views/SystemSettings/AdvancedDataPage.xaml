@@ -21,143 +21,105 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#FFEBEE" BorderBrush="#FFCDD2" BorderThickness="1" CornerRadius="4" Padding="15" Margin="0,0,0,20"
-                Visibility="{Binding ShowAdvancedMaintenance, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <!-- 统一顶栏：同一页面，按角色显示权限说明 -->
+        <Border Grid.Row="0"
+                Background="#E3F2FD"
+                BorderBrush="#90CAF9"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="15"
+                Margin="0,0,0,16">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="⚠️" FontSize="20" Margin="0,0,10,0"/>
-                    <TextBlock Text="高级数据管理 (危险区域)" FontSize="18" FontWeight="Bold" Foreground="#D32F2F" VerticalAlignment="Center"/>
+                    <TextBlock Text="🗄" FontSize="20" Margin="0,0,10,0"/>
+                    <TextBlock Text="高级数据管理"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="#1565C0"
+                               VerticalAlignment="Center"/>
                 </StackPanel>
-                <TextBlock Text="此功能允许管理员直接删除数据库记录。操作不可逆，请谨慎使用！" Foreground="#B71C1C" Margin="34,5,0,0"/>
-            </StackPanel>
-        </Border>
-
-        <Border Grid.Row="0" Background="#FFF8E1" BorderBrush="#FFE0B2" BorderThickness="1" CornerRadius="4" Padding="15" Margin="0,0,0,20"
-                Visibility="{Binding IsArchiveAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <StackPanel>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="🔒" FontSize="20" Margin="0,0,10,0"/>
-                    <TextBlock Text="高级数据管理（受限模式）" FontSize="18" FontWeight="Bold" Foreground="#E65100" VerticalAlignment="Center"/>
-                </StackPanel>
-                <TextBlock Text="当前角色：资料管理员。可浏览全部数据表并备份当前库；删除、清空、还原及字典维护仅系统管理员可用。" Foreground="#BF360C" Margin="34,5,0,0"/>
-            </StackPanel>
-        </Border>
-
-        <Border Grid.Row="0" Background="#E8F5E9" BorderBrush="#C8E6C9" BorderThickness="1" CornerRadius="4" Padding="15" Margin="0,0,0,20"
-                Visibility="{Binding IsBrowsableOnlyUser, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <StackPanel>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="👁" FontSize="20" Margin="0,0,10,0"/>
-                    <TextBlock Text="高级数据管理（浏览模式）" FontSize="18" FontWeight="Bold" Foreground="#2E7D32" VerticalAlignment="Center"/>
-                </StackPanel>
-                <TextBlock Text="当前角色：普通用户。仅可浏览全部数据表；删除、清空、还原、备份及字典维护仅相应管理员可用。" Foreground="#1B5E20" Margin="34,5,0,0"/>
+                <TextBlock Text="{Binding RolePermissionHintText, Mode=OneWay}"
+                           Foreground="#37474F"
+                           Margin="34,6,0,0"
+                           TextWrapping="Wrap"/>
+                <TextBlock Text="浏览与导出：所有登录用户。备份、还原、字典维护、删除、清空：界面全员可见，仅系统管理员可执行（其余角色按钮灰显）。"
+                           Foreground="#546E7A"
+                           FontSize="12"
+                           Margin="34,4,0,0"
+                           TextWrapping="Wrap"/>
             </StackPanel>
         </Border>
 
         <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}">
-        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="选择数据表：" VerticalAlignment="Center" FontSize="14" FontWeight="Bold"/>
-                <ComboBox Width="400" Margin="10,0,0,0"
-                          ItemsSource="{Binding Tables}"
-                          DisplayMemberPath="DisplayName"
-                          SelectedItem="{Binding SelectedTable, Mode=TwoWay}"/>
-                <Button Content="📤 导出到 Excel" Command="{Binding ExportToExcelCommand}" Margin="10,0,0,0" Padding="10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
-                <Button Content="🔄 刷新数据" Command="{Binding RefreshCommand}" Margin="10,0,0,0" Padding="10,0" Style="{StaticResource ToolbarActionButtonStyle}"/>
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="选择数据表：" VerticalAlignment="Center" FontSize="14" FontWeight="Bold"/>
+                    <ComboBox Width="400" Margin="10,0,0,0"
+                              ItemsSource="{Binding Tables}"
+                              DisplayMemberPath="DisplayName"
+                              SelectedItem="{Binding SelectedTable, Mode=TwoWay}"/>
+                    <Button Content="📤 导出到 Excel"
+                            Command="{Binding ExportToExcelCommand}"
+                            Margin="10,0,0,0"
+                            Padding="10,0"
+                            Style="{StaticResource ToolbarActionButtonStyle}"/>
+                    <Button Content="🔄 刷新数据"
+                            Command="{Binding RefreshCommand}"
+                            Margin="10,0,0,0"
+                            Padding="10,0"
+                            Style="{StaticResource ToolbarActionButtonStyle}"/>
 
-                <Border Margin="15,0,0,0"
-                        MinWidth="360"
-                        Width="Auto"
-                        Background="#F7F9FC"
-                        BorderBrush="#D0D7DE"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="12,8"
-                        VerticalAlignment="Center"
-                        Visibility="{Binding HasTableBrowseInfo, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <StackPanel DataContext="{Binding TableBrowseInfo}">
-                        <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
-                            <Run Text="表名：" FontWeight="Bold" Foreground="#37474F"/>
-                            <Run Text="{Binding TableName, Mode=OneWay}" Foreground="#263238"/>
-                            <Run Text="　中文：" FontWeight="Bold" Foreground="#37474F"/>
-                            <Run Text="{Binding ChineseName, Mode=OneWay}" Foreground="#263238"/>
-                        </TextBlock>
-                        <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
-                            <Run Text="说明：" FontWeight="Bold" Foreground="#37474F"/>
-                            <Run Text="{Binding Description, Mode=OneWay}" Foreground="#455A64"/>
-                        </TextBlock>
-                        <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
-                            <Run Text="关联：" FontWeight="Bold" Foreground="#37474F"/>
-                            <Run Text="{Binding Relationships, Mode=OneWay}" Foreground="#455A64"/>
-                        </TextBlock>
-                        <TextBlock TextWrapping="Wrap" FontSize="12">
-                            <Run Text="维护：" FontWeight="Bold" Foreground="#37474F"/>
-                            <Run Text="{Binding MaintenanceNotes, Mode=OneWay}" Foreground="#6A1B9A"/>
-                        </TextBlock>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
-        </ScrollViewer>
+                    <Border Margin="15,0,0,0"
+                            MinWidth="360"
+                            Width="Auto"
+                            Background="#F7F9FC"
+                            BorderBrush="#D0D7DE"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="12,8"
+                            VerticalAlignment="Center"
+                            Visibility="{Binding HasTableBrowseInfo, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel DataContext="{Binding TableBrowseInfo}">
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
+                                <Run Text="表名：" FontWeight="Bold" Foreground="#37474F"/>
+                                <Run Text="{Binding TableName, Mode=OneWay}" Foreground="#263238"/>
+                                <Run Text="　中文：" FontWeight="Bold" Foreground="#37474F"/>
+                                <Run Text="{Binding ChineseName, Mode=OneWay}" Foreground="#263238"/>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
+                                <Run Text="说明：" FontWeight="Bold" Foreground="#37474F"/>
+                                <Run Text="{Binding Description, Mode=OneWay}" Foreground="#455A64"/>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
+                                <Run Text="关联：" FontWeight="Bold" Foreground="#37474F"/>
+                                <Run Text="{Binding Relationships, Mode=OneWay}" Foreground="#455A64"/>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" FontSize="12">
+                                <Run Text="维护：" FontWeight="Bold" Foreground="#37474F"/>
+                                <Run Text="{Binding MaintenanceNotes, Mode=OneWay}" Foreground="#6A1B9A"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
         </Border>
 
+        <!-- 备份/还原：同一区块；按钮按角色启用（无权限时灰显） -->
         <Border Grid.Row="2"
                 Background="#F3F8FF"
                 BorderBrush="#BBDEFB"
                 BorderThickness="1"
                 CornerRadius="4"
                 Padding="12"
-                Margin="0,0,0,10"
-                Visibility="{Binding ShowAdvancedMaintenance, Converter={StaticResource BooleanToVisibilityConverter}}">
+                Margin="0,0,0,10">
             <StackPanel>
-                <TextBlock Text="数据字典维护（SchemaDictionary.yaml）"
-                           FontSize="14"
-                           FontWeight="Bold"
-                           Foreground="#1565C0"
-                           Margin="0,0,0,6"/>
-                <TextBlock Text="{Binding DictionaryPathText}"
-                           FontSize="11"
-                           Foreground="#546E7A"
-                           TextWrapping="Wrap"
-                           Margin="0,0,0,4"/>
-                <TextBlock Text="{Binding DictionaryStatusText}"
-                           FontSize="11"
-                           Foreground="#455A64"
-                           TextWrapping="Wrap"
-                           Margin="0,0,0,8"/>
-                <WrapPanel>
-                    <Button Content="🔄 同步 EF 模型到字典"
-                            Command="{Binding SyncModelToDictionaryCommand}"
-                            Margin="0,0,8,0"
-                            Padding="10,4"
-                            Style="{StaticResource ToolbarActionButtonStyle}"/>
-                    <Button Content="⬆ 导出 DB 显示名到字典"
-                            Command="{Binding ExportDisplayNamesToDictionaryCommand}"
-                            Margin="0,0,8,0"
-                            Padding="10,4"
-                            Style="{StaticResource ToolbarActionButtonStyle}"/>
-                    <Button Content="⬇ 从字典重置 DB 显示名"
-                            Command="{Binding ApplyDictionaryToDatabaseCommand}"
-                            Padding="10,4"
-                            Style="{StaticResource ToolbarActionButtonStyle}"/>
-                </WrapPanel>
-            </StackPanel>
-        </Border>
-
-        <Border Grid.Row="2"
-                Background="#F3F8FF"
-                BorderBrush="#BBDEFB"
-                BorderThickness="1"
-                CornerRadius="4"
-                Padding="12"
-                Margin="0,0,0,10"
-                Visibility="{Binding IsArchiveAdministrator, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <StackPanel>
-                <TextBlock Text="数据库备份"
+                <TextBlock Text="数据库备份与还原"
                            FontSize="14"
                            FontWeight="Bold"
                            Foreground="#1565C0"
@@ -175,20 +137,71 @@
                 <WrapPanel>
                     <Button Content="💾 备份当前库"
                             Command="{Binding BackupDatabaseCommand}"
+                            Margin="0,0,8,0"
                             Padding="10,4"
-                            Style="{StaticResource ToolbarActionButtonStyle}"/>
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            ToolTip="仅系统管理员可执行"/>
+                    <Button Content="♻ 从备份还原"
+                            Command="{Binding RestoreDatabaseCommand}"
+                            Padding="10,4"
+                            Style="{StaticResource ToolbarDangerButtonStyle}"
+                            ToolTip="仅系统管理员可执行"/>
                 </WrapPanel>
             </StackPanel>
         </Border>
 
         <Border Grid.Row="3"
+                Background="#F3F8FF"
+                BorderBrush="#BBDEFB"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="12"
+                Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="数据字典维护（SchemaDictionary.yaml）"
+                           FontSize="14"
+                           FontWeight="Bold"
+                           Foreground="#1565C0"
+                           Margin="0,0,0,6"/>
+                <TextBlock Text="{Binding DictionaryPathText, Mode=OneWay}"
+                           FontSize="11"
+                           Foreground="#546E7A"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding DictionaryStatusText, Mode=OneWay}"
+                           FontSize="11"
+                           Foreground="#455A64"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,8"/>
+                <WrapPanel>
+                    <Button Content="🔄 同步 EF 模型到字典"
+                            Command="{Binding SyncModelToDictionaryCommand}"
+                            Margin="0,0,8,0"
+                            Padding="10,4"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            ToolTip="仅系统管理员可执行"/>
+                    <Button Content="⬆ 导出 DB 显示名到字典"
+                            Command="{Binding ExportDisplayNamesToDictionaryCommand}"
+                            Margin="0,0,8,0"
+                            Padding="10,4"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            ToolTip="仅系统管理员可执行"/>
+                    <Button Content="⬇ 从字典重置 DB 显示名"
+                            Command="{Binding ApplyDictionaryToDatabaseCommand}"
+                            Padding="10,4"
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            ToolTip="仅系统管理员可执行"/>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="4"
                 Background="#FAFAFA"
                 BorderBrush="#E0E0E0"
                 BorderThickness="1"
                 CornerRadius="4"
                 Padding="12"
-                Margin="0,0,0,10"
-                Visibility="{Binding ShowAdvancedMaintenance, Converter={StaticResource BooleanToVisibilityConverter}}">
+                Margin="0,0,0,10">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="字段显示名：" VerticalAlignment="Center" FontWeight="Bold"/>
@@ -201,12 +214,14 @@
                     <TextBox Width="180"
                              Margin="8,0,0,0"
                              VerticalContentAlignment="Center"
+                             IsEnabled="{Binding CanEditFieldDisplayName}"
                              Text="{Binding FieldDisplayName, UpdateSourceTrigger=PropertyChanged}"/>
                     <Button Content="💾 保存显示名并写回字典"
                             Command="{Binding SaveFieldDisplayNameCommand}"
                             Margin="10,0,0,0"
                             Padding="10,4"
-                            Style="{StaticResource ToolbarActionButtonStyle}"/>
+                            Style="{StaticResource ToolbarActionButtonStyle}"
+                            ToolTip="仅系统管理员可执行"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -214,7 +229,7 @@
         <!-- 多列表浏览：关闭列虚拟化，避免 ScrollViewer.ExtentWidth 低估导致水平滚动不到末列；
              显式 Auto 水平滚动；表头按内容量度（见 code-behind），防止列被压进视口后滚动条消失。 -->
         <DataGrid x:Name="RecordsDataGrid"
-                  Grid.Row="4"
+                  Grid.Row="5"
                   ItemsSource="{Binding RecordsView}"
                   SelectedItem="{Binding SelectedRecord, Mode=TwoWay}"
                   AutoGenerateColumns="True"
@@ -239,7 +254,7 @@
             </DataGrid.ContextMenu>
         </DataGrid>
 
-        <Border Grid.Row="5"
+        <Border Grid.Row="6"
                 Background="#FAFAFA"
                 BorderBrush="#E0E0E0"
                 BorderThickness="1"
@@ -258,7 +273,7 @@
                     <TextBlock VerticalAlignment="Center"
                                Foreground="#546E7A"
                                Margin="0,0,24,0"
-                               Text="{Binding PageInfo}"/>
+                               Text="{Binding PageInfo, Mode=OneWay}"/>
                     <Button Content="首页"
                             Width="64"
                             Margin="0,0,6,0"
@@ -283,7 +298,7 @@
                             Padding="8,2"
                             Style="{StaticResource ToolbarActionButtonStyle}"
                             Command="{Binding LastPageCommand}"/>
-                    <TextBlock Text="跳至：" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                    <TextBlock Text="跳至：" VerticalAlignment="Center"/>
                     <TextBox Width="48"
                              Height="28"
                              VerticalContentAlignment="Center"
@@ -299,28 +314,28 @@
             </ScrollViewer>
         </Border>
 
-        <ScrollViewer Grid.Row="6" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,15,0,0"
-                      Visibility="{Binding ShowAdvancedMaintenance, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <ScrollViewer Grid.Row="7"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled"
+                      Margin="0,15,0,0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Margin="0,0,20,0" Foreground="Gray"/>
+                <TextBlock Text="{Binding StatusText, Mode=OneWay}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,20,0"
+                           Foreground="Gray"/>
 
                 <Button Content="🗑 删除选中记录"
                         Command="{Binding DeleteSelectedCommand}"
                         Width="140"
                         Style="{StaticResource ToolbarDangerButtonStyle}"
-                        Margin="0,0,10,0"/>
+                        Margin="0,0,10,0"
+                        ToolTip="仅系统管理员可执行"/>
 
                 <Button Content="☢️ 清空当前表"
                         Command="{Binding ClearTableCommand}"
                         Width="140"
-                        Style="{StaticResource ToolbarDangerButtonStyle}"/>
-            </StackPanel>
-        </ScrollViewer>
-
-        <ScrollViewer Grid.Row="6" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,15,0,0"
-                      Visibility="{Binding ShowReadOnlyStatusBar, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Foreground="Gray"/>
+                        Style="{StaticResource ToolbarDangerButtonStyle}"
+                        ToolTip="仅系统管理员可执行"/>
             </StackPanel>
         </ScrollViewer>
     </Grid>

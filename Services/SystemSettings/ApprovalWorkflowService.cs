@@ -334,9 +334,7 @@ namespace DocMgr.Services.SystemSettings
 
         private static void EnsureSystemAdministrator(User user)
         {
-            string role = user.Role?.Trim() ?? string.Empty;
-            if (!string.Equals(role, "Administrator", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(role, "管理员", StringComparison.Ordinal))
+            if (!UserRoleDomainValues.IsSystemAdministratorRole(user.Role))
             {
                 throw new InvalidOperationException("仅系统管理员可维护审核审批配置。");
             }

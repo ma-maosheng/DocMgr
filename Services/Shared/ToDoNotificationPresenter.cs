@@ -27,6 +27,13 @@ namespace DocMgr.Services.Shared
             Func<ToDoItem, Task>? openAction = null,
             Func<IEnumerable<ToDoItem>, Task>? ackAction = null)
         {
+            // 已有业务弹窗时不弹出待办，避免挡操作。
+            if (ToDoNotificationWindow.HasBlockingPopupStatic(owner))
+            {
+                Close();
+                return;
+            }
+
             if (_window != null)
             {
                 _viewModel?.RefreshItems(_toDoCenterService.Items);
@@ -59,6 +66,27 @@ namespace DocMgr.Services.Shared
             _toDoCenterService.PropertyChanged += ToDoCenter_PropertyChanged;
             win.Show();
             win.RefreshFloatingState();
+        }
+
+        /// <inheritdoc />
+        public void Close()
+        {
+            var window = _window;
+            if (window == null)
+            {
+                return;
+            }
+
+            if (!window.Dispatcher.CheckAccess())
+            {
+                window.Dispatcher.Invoke(Close);
+                return;
+            }
+
+            if (window.IsVisible)
+            {
+                window.Close();
+            }
         }
 
         private void ToDoCenter_PropertyChanged(object? sender, PropertyChangedEventArgs e)

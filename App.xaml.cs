@@ -166,8 +166,7 @@ namespace DocMgr
 
                 initializationState.ReportProgress("正在检查系统基础数据…");
                 var devSeedRepository = scope.ServiceProvider.GetRequiredService<IDevSystemSettingsSeedRepository>();
-                var seedPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings", "system-settings.seed.json");
-                DevSystemSettingsSeeder.SeedFromExternalFileIfEmpty(devSeedRepository, seedPath);
+                DevSystemSettingsSeeder.SeedIfEmpty(devSeedRepository);
 
                 initializationState.ReportProgress("正在检查默认管理员账号…");
                 var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
@@ -184,7 +183,8 @@ namespace DocMgr
                     "App.InitializeDatabaseAsync",
                     "database migrate failed",
                     ex);
-                initializationState.MarkFailed(ex);
+                initializationState.MarkFailed(
+                    WrapDatabaseInitializationFailure(ex));
             }
         }
 
@@ -231,8 +231,7 @@ namespace DocMgr
             var fieldDomainSeedRepository = scope.ServiceProvider.GetRequiredService<IFieldDomainSeedRepository>();
 
             initializationState.ReportProgress("正在同步基础数据…");
-            var seedPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings", "system-settings.seed.json");
-            DevSystemSettingsSeeder.SeedFromExternalFile(devSeedRepository, seedPath);
+            DevSystemSettingsSeeder.SeedSyncForDebug(devSeedRepository);
             CabinetSpecificationSeedService.SeedDefaults(cabinetSpecificationSeedRepository);
 
             initializationState.ReportProgress("正在补全防磁磁盘柜未配置档口用途…");
@@ -294,6 +293,39 @@ namespace DocMgr
         private static void ConfigureServices(IServiceCollection services, DocMgrDatabaseOptions databaseOptions)
         {
             services.AddDocMgrCore(databaseOptions);
+        }
+
+        /// <summary>
+        /// 把「系统找不到指定的文件」等含混错误包装成可操作的部署提示。
+        /// </summary>
+        private static Exception WrapDatabaseInitializationFailure(Exception exception)
+        {
+            string detail = exception.GetBaseException().Message;
+            if (string.IsNullOrWhiteSpace(detail))
+            {
+                detail = exception.Message;
+            }
+
+            bool looksLikeMissingFile =
+                detail.Contains("找不到指定的文件", StringComparison.Ordinal)
+                || detail.Contains("cannot find the file", StringComparison.OrdinalIgnoreCase)
+                || exception is FileNotFoundException
+                || exception.GetBaseException() is FileNotFoundException;
+
+            if (!looksLikeMissingFile)
+            {
+                return exception;
+            }
+
+            string hint =
+                "常见原因：" + Environment.NewLine
+                + "1）程序目录缺少正式配置 appsettings.json（仅改 appsettings.lan.example.json 无效，程序不会读取 example）；" + Environment.NewLine
+                + "2）ConnectionString 中的 Server 指向了错误的主机/实例，或本机访问不到该 SQL Server；" + Environment.NewLine
+                + "3）请尽量安装到本机磁盘再运行，避免直接从网络共享路径（\\\\服务器\\共享\\…）启动。" + Environment.NewLine
+                + Environment.NewLine
+                + "原始错误：" + detail;
+
+            return new InvalidOperationException(hint, exception);
         }
     }
 }

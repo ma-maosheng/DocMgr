@@ -1,0 +1,28 @@
+测绘资料管理系统 — 配置说明
+================================
+
+一、appsettings.json（正式配置）
+--------------------------------
+程序启动时读取本文件中的 Database:ConnectionString 连接 SQL Server。
+
+默认（本机库）示例：
+  Server=localhost;Database=DocMgr;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true
+
+修改后请重启程序。升级安装时，若本文件已存在则不会被覆盖。
+
+二、appsettings.lan.example.json（局域网示例）
+--------------------------------
+当多台终端共用同一台 SQL Server 时，正确做法是：
+
+  1. 复制 appsettings.lan.example.json
+  2. 将副本重命名为 appsettings.json（必须叫这个名字）
+  3. 把 Server=DOCMGR-SRV 改成实际服务器名或 IP（可含实例名，如 SRV\SQLEXPRESS）
+  4. 保存后启动 DocMgr.exe
+
+注意：只改 example 文件、或删掉 appsettings.json，程序都无法连上局域网库。
+example 文件本身永远不会被程序读取。
+
+三、.NET 8 桌面运行时
+--------------------------------
+若程序无法启动并提示缺少框架，请运行同目录 redist\windowsdesktop-runtime-win-x64.exe
+安装「.NET 8 桌面运行时（Windows Desktop x64）」。开发用的 SDK 不是运行本程序所必需。

@@ -242,7 +242,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// <summary>与 <see cref="CreateFooterParagraph"/> 渲染文案一致，供表后说明估高。</summary>
         private static IReadOnlyList<string> BuildFooterLines() =>
         [
-            "1、资料灭失须由借出人与借出时全部审核审批人（部门审核、资料室签字、生产科签字、分管生产院长签字）手签确认。",
+            "1、资料灭失须由借出人与借出时全部审核审批人（部门审核、资料室负责人、生产科负责人、分管生产院长签字）手签确认。",
             "2、签字后的灭失情况表应上传系统留存，方可继续打印归还回执并办结入库。"
         ];
 

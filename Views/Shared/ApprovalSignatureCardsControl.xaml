@@ -52,7 +52,7 @@
                     IsEnabled="{Binding CanEditSigners}">
                 <DockPanel LastChildFill="True">
                     <TextBlock DockPanel.Dock="Left"
-                               Text="资料室签字"
+                               Text="资料室负责人"
                                Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="签字：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>
@@ -76,7 +76,7 @@
                     IsEnabled="{Binding CanEditSigners}">
                 <DockPanel LastChildFill="True">
                     <TextBlock DockPanel.Dock="Left"
-                               Text="生产科签字"
+                               Text="生产科负责人"
                                Style="{StaticResource ArchiveRegisterApprovalCompactStepTitleStyle}"/>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="签字：" Style="{StaticResource ArchiveRegisterApprovalInlineLabelStyle}"/>

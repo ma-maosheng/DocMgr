@@ -1,4 +1,6 @@
 ﻿using System.Collections.ObjectModel;
+using DocMgr.Infrastructure.Seeding;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 
@@ -33,6 +35,9 @@ namespace DocMgr.ViewModels.SystemSettings
         /// <summary>系统管理员可维护；其余角色仅浏览列表。</summary>
         public bool CanMaintain { get; }
 
+        /// <summary>页底必有角色说明。</summary>
+        public string RequiredRolesHint => UserRoleDomainValues.RequiredRolesPageHint;
+
         public RelayCommand RefreshCommand { get; }
         public RelayCommand AddCommand { get; }
         public RelayCommand EditCommand { get; }
@@ -58,8 +63,7 @@ namespace DocMgr.ViewModels.SystemSettings
 
         private void LoadData()
         {
-            var list = _userService.GetAllUsers();
-            Users = new ObservableCollection<User>(list);
+            Users = new ObservableCollection<User>(_userService.GetAllUsers());
         }
 
         private void AddUser()
@@ -97,9 +101,10 @@ namespace DocMgr.ViewModels.SystemSettings
                 return;
             }
 
-            if (SelectedUser.LoginName == "admin")
+            if (SystemIdentitySeedCatalog.IsSeededUser(SelectedUser.LoginName)
+                || string.Equals(SelectedUser.LoginName, DefaultAdministratorBootstrap.LoginName, StringComparison.Ordinal))
             {
-                _dialogService.ShowError("系统默认管理员不能删除！");
+                _dialogService.ShowError("系统必有账号不能删除！");
                 return;
             }
 

@@ -452,8 +452,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (CanApprove)
                 {
                     return HasAbnormalReturnItems
-                        ? "本单存在灭失：签批交接单需借出时全部审核审批人（部门审核、资料室签字、生产科签字、分管生产院长签字）签字；请核对后点击“审批通过”。"
-                        : "本单资料完好归还：签批交接单仅需部门审核签字，无需资料室签字及其他审批人；请核对后点击“审批通过”。";
+                        ? "本单存在灭失：签批交接单需借出时全部审核审批人（部门审核、资料室负责人、生产科负责人、分管生产院长签字）签字；请核对后点击“审批通过”。"
+                        : "本单资料完好归还：签批交接单仅需部门审核签字，无需资料室负责人及其他审批人；请核对后点击“审批通过”。";
                 }
 
                 return EditingRecord?.Status == YearlyArchiveReturnRecord.Approved
@@ -484,7 +484,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             : "部门审核 *：";
 
         /// <summary>资料室签字字段标签（多节点签批时展示）。</summary>
-        public string ApproverFieldLabel => "资料室签字（借出时） *：";
+        public string ApproverFieldLabel => "资料室负责人（借出时） *：";
 
         public string ConfirmHandoverHintText
         {
@@ -974,7 +974,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             else if (HasAbnormalReturnItems && string.IsNullOrWhiteSpace(ArchiveRoomHead))
             {
-                _dialogService.ShowMessage("存在灭失时请填写资料室签字。");
+                _dialogService.ShowMessage("存在灭失时请填写资料室负责人。");
                 return;
             }
 

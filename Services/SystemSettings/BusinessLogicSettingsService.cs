@@ -77,10 +77,6 @@ namespace DocMgr.Services.SystemSettings
         }
 
         private static bool IsSystemAdministrator(User user)
-        {
-            string role = user.Role?.Trim() ?? string.Empty;
-            return string.Equals(role, "Administrator", StringComparison.Ordinal)
-                   || string.Equals(role, "管理员", StringComparison.Ordinal);
-        }
+            => UserRoleDomainValues.IsSystemAdministratorRole(user.Role);
     }
 }
