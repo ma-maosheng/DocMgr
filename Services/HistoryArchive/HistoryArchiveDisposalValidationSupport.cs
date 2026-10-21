@@ -23,7 +23,7 @@ public static class HistoryArchiveDisposalValidationSupport
 
         if (!HistoryArchiveDisposalDomainValues.IsValidMaterialKind(materialKind))
         {
-            errors.Add("请选择资料类别（地形图图件 / 航摄胶片、像片 / 其他资料）。");
+            errors.Add("请选择资料类别（" + string.Join(" / ", HistoryArchiveDisposalDomainValues.MaterialKindDisplayOptions) + "）。");
         }
 
         if (!HistoryArchiveDisposalDomainValues.IsValidDispositionMethod(dispositionMethod))
@@ -50,7 +50,9 @@ public static class HistoryArchiveDisposalValidationSupport
 
         if (rows.Count == 0)
         {
-            errors.Add("请至少选择一个档案盒。");
+            errors.Add(HistoryArchiveDisposalDomainValues.IsMiscMaterial(materialKind)
+                ? "请至少选择一个存放容器。"
+                : "请至少选择一个档案盒。");
             return errors;
         }
 

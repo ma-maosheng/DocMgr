@@ -1,5 +1,5 @@
 ---
-description: 历史存档资料离库处置：在柜档案盒为最小单元；一单一类一种方式；混放整组纳入；办结撤柜并跳过启动同步
+description: 历史存档资料离库处置：档案盒或杂项容器为最小单元；一单一类一种方式；档案盒混放整组纳入；办结撤柜并跳过启动同步
 globs: Services/HistoryArchive/HistoryArchiveDisposal*.cs,Repositories/HistoryArchive/HistoryArchiveDisposal*.cs,ViewModels/HistoryArchive/HistoryArchiveDisposal*.cs,ViewModels/HistoryArchive/HistoryArchiveBoxLedger*.cs,Views/HistoryArchive/HistoryArchiveDisposal*.cs,Views/HistoryArchive/HistoryArchiveBoxLedger*.cs,Models/HistoryArchive/HistoryArchiveDisposal*.cs,Models/HistoryArchive/HistoryArchiveBoxCodeSupport.cs
 alwaysApply: false
 ---
@@ -10,16 +10,16 @@ alwaysApply: false
 
 「历史存档」→「资料台账与资料处置」下分两个入口：
 
-- **台账**（`HA-BOX`）：在柜档案盒当前态查询；
+- **台账**（`HA-BOX`）：在柜档案盒与杂项容器当前态查询。列表列随资料类别切换：全部为合并列；地形图 / 航摄 / 其他资料为盒列（盒号、规格、柜体、盒内摘要、台账条数、混放、关联盒数）；杂项为容器列，标题对齐杂项录入页（资料大类、资料子类、存放容器、容器编号、存放位置、资料详情、照片）。不把图号、测区、序号等录入页字段拆成列。杂项当前行可「浏览照片」。
 - **处置**（`HA-DSP` / `HA-DSP-ED`）：离库处置办理列表与编辑窗。
 
 权限仅资料管理员可新建/办理处置；台账页只读查询。
 
 ## 口径
 
-1. **一单一类**：资料类别三选一（地形图图件 / 航摄胶片、像片 / 其他资料），选定后不可改。
+1. **一单一类**：资料类别四选一（地形图图件 / 航摄胶片、像片 / 其他资料 / 杂项资料），选定后不可改。地形图、航摄、其他资料以在柜档案盒为最小单元；杂项资料以单个存放容器为最小单元，不走混放整组。
 2. **一单一种方式**：离库销毁 / 离库转交 / 其他。混用方式请拆单。
-3. **最小单元**：在柜档案盒（`HistoryArchiveBox.BoxCode` 四段盒号，`LifecycleStatus=在库`）。未解析盒号不进候选。
+3. **最小单元**：地形图 / 航摄 / 其他资料为在柜档案盒（`HistoryArchiveBox.BoxCode` 四段盒号，`LifecycleStatus=在库`）。杂项资料为在库存放容器（`HistoryMiscMaterial`，一条一个容器，位置为立式或卧式文件柜四段编号）。未解析位置不进候选。
 4. **编号前缀**：`史离-处`（`BusinessNoCategory.HistoryArchiveDisposalApply`）。
 5. **流程**：对齐 NT-DSP 七态（草稿→提交→审批→确认可上传→上传签批→办结 / 撤回 / 逾期强制作废）。办结前可撤回作废；草稿起待办催办；逾期达时限后可强制作废（仅草稿/已提交）。办理壳与办结后增补「其他附件」见 `approval-handover-workspace.mdc`。
 6. **审核栏**：资料室负责人 + 分管资料副院长（姓名可改，日期只读）。
@@ -30,11 +30,20 @@ alwaysApply: false
 
 ## 办结效应
 
+地形图 / 航摄 / 其他资料：
+
 - 台账 `LifecycleStatus=已离库`，`LastStorageLocation` 保留原盒号；不删台账行。
 - 盒实体 `HistoryArchiveBox.LifecycleStatus=已离库`；原盒号写入 `LastStorageLocation` 后**清空 `BoxCode`**，释放档位供迁档/立档复用（对齐年度盒销号；`BoxCode` 唯一索引仅约束非空）。
 - 办结顺序：改台账/盒状态 → 删盒台账链接 → 清空盒号。孤儿清理只删「在库且无链接」盒，不删已离库盒。
 - **追溯**：处置单明细快照 `BoxCode`；台账行 `LastStorageLocation`；盒实体 `LastStorageLocation`。HA-BOX「已离库」与 YA-STK-OVW（库管资料总览）均按最后存放位置关联展示/下钻，不以已清空的 `BoxCode` 作键；总览存放位置回退 `LastStorageLocation`，内容摘要由已离库台账按位置回查。
 - 开柜内容跳过已离库；录入页默认排除已离库，已离库禁止改盒号。
+
+杂项资料：
+
+- 只改 `HistoryMiscMaterial`：`LifecycleStatus=已离库`，原四段位置写入 `LastStorageLocation` 后清空 `StorageLocation`，容器编号保留。不改 `HistoryArchiveBox`，不删盒链接，不清空盒号。
+- 处置明细 `BoxCode` 快照原存放位置，`BoxSpecification` 快照容器类型，`SourceRecordKeys` 为 `MiscMaterial:{Id}`。
+- 离库锁定期间位置和编号仍占用；撤回或强制作废恢复「在库」且不清位置。已离库后不可改位置、编号和实物照片。
+- 实物照片只读浏览：`HA-BOX` 与 `HA-MISC` 对当前选中的杂项记录按上传时间翻看（`SystemAttachments`，业务类型 `HistoryMiscMaterial`，分类「实物照片」）。已离库记录仍可浏览。
 
 ## 附件
 

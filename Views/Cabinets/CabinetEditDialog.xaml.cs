@@ -40,10 +40,10 @@ namespace DocMgr.Views.Cabinets
         {
             if (e.PropertyName is nameof(CabinetEditDialogViewModel.SelectedCabinetType)
                 or nameof(CabinetEditDialogViewModel.DefaultSpecificationVisibility)
-                or nameof(CabinetEditDialogViewModel.MagneticSpecificationVisibility)
-                or nameof(CabinetEditDialogViewModel.SelectedMagneticDoorCount)
-                or nameof(CabinetEditDialogViewModel.SelectedMagneticDrawerCount)
-                or nameof(CabinetEditDialogViewModel.SelectedMagneticColumnCount))
+                or nameof(CabinetEditDialogViewModel.StructureSpecificationVisibility)
+                or nameof(CabinetEditDialogViewModel.MagneticCapacityVisibility)
+                or nameof(CabinetEditDialogViewModel.SelectedStructureLayerCount)
+                or nameof(CabinetEditDialogViewModel.SelectedStructureColumnCount))
             {
                 ScheduleRefreshWindowHeight();
             }

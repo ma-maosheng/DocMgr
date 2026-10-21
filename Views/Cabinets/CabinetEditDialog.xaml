@@ -21,6 +21,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <Button Grid.Row="0"
@@ -29,7 +30,24 @@
                     Style="{StaticResource DialogCloseButtonStyle}"
                     HorizontalAlignment="Right"/>
 
-            <StackPanel Grid.Row="1" Margin="0,0,120,0">
+            <Border Grid.Row="1"
+                    Margin="0,8,0,0"
+                    Padding="10,8"
+                    Background="#FFF7ED"
+                    BorderBrush="#FDBA74"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Visibility="{Binding StoredContentNoticeVisibility}">
+                <ScrollViewer MaxHeight="168" VerticalScrollBarVisibility="Auto">
+                    <TextBlock Text="{Binding StoredContentNotice}"
+                               TextWrapping="Wrap"
+                               FontSize="12"
+                               Foreground="#9A3412"
+                               LineHeight="18"/>
+                </ScrollViewer>
+            </Border>
+
+            <StackPanel Grid.Row="2" Margin="0,12,120,0">
                 <TextBlock Text="档案柜编号" FontSize="14" FontWeight="Bold" Foreground="#333"/>
                 <ComboBox Margin="0,8,0,0"
                           Height="32"
@@ -43,7 +61,7 @@
                            Margin="0,4,0,0"/>
             </StackPanel>
 
-            <StackPanel Grid.Row="2" Margin="0,20,0,0">
+            <StackPanel Grid.Row="3" Margin="0,16,0,0">
                 <TextBlock Text="档案柜种类" FontSize="14" FontWeight="Bold" Foreground="#333"/>
                 <ComboBox Margin="0,8,0,0"
                           Height="32"
@@ -54,7 +72,7 @@
                           SelectedValue="{Binding SelectedCabinetType, Mode=TwoWay}"/>
             </StackPanel>
 
-            <Border Grid.Row="3"
+            <Border Grid.Row="4"
                     Margin="0,20,0,0"
                     Background="White"
                     BorderBrush="#DDD"
@@ -102,31 +120,34 @@
                         </StackPanel>
                     </Grid>
 
-                    <StackPanel Visibility="{Binding MagneticSpecificationVisibility}">
+                    <StackPanel Visibility="{Binding StructureSpecificationVisibility}">
                         <TextBlock Text="门数：" FontSize="12" Foreground="#666"/>
-                        <ComboBox Margin="0,6,0,12"
-                                  Height="32"
-                                  VerticalContentAlignment="Center"
-                                  ItemsSource="{Binding MagneticDoorOptions}"
-                                  DisplayMemberPath="Value"
-                                  SelectedValuePath="Key"
-                                  SelectedValue="{Binding SelectedMagneticDoorCount, Mode=TwoWay}"/>
+                        <TextBlock Text="{Binding DoorCountDisplay}"
+                                   FontSize="16"
+                                   FontWeight="Bold"
+                                   Foreground="#333"
+                                   Margin="0,6,0,0"/>
+                        <TextBlock Text="{Binding DoorCountHint}"
+                                   FontSize="11"
+                                   Foreground="#94A3B8"
+                                   Margin="0,4,0,12"
+                                   TextWrapping="Wrap"/>
 
-                        <TextBlock Text="抽屉层数：" FontSize="12" Foreground="#666"/>
+                        <TextBlock Text="{Binding StructureLayerEditorLabel}" FontSize="12" Foreground="#666"/>
                         <ComboBox Margin="0,6,0,12"
                                   Height="32"
                                   VerticalContentAlignment="Center"
-                                  ItemsSource="{Binding DrawerCountOptions}"
-                                  SelectedItem="{Binding SelectedMagneticDrawerCount, Mode=TwoWay}"/>
+                                  ItemsSource="{Binding LayerCountOptions}"
+                                  SelectedItem="{Binding SelectedStructureLayerCount, Mode=TwoWay}"/>
 
                         <TextBlock Text="每层格数：" FontSize="12" Foreground="#666"/>
                         <ComboBox Margin="0,6,0,12"
                                   Height="32"
                                   VerticalContentAlignment="Center"
-                                  ItemsSource="{Binding MagneticColumnOptions}"
-                                  SelectedItem="{Binding SelectedMagneticColumnCount, Mode=TwoWay}"/>
+                                  ItemsSource="{Binding ColumnCountOptions}"
+                                  SelectedItem="{Binding SelectedStructureColumnCount, Mode=TwoWay}"/>
 
-                        <Grid Margin="0,0,0,12">
+                        <Grid Margin="0,0,0,12" Visibility="{Binding MagneticCapacityVisibility}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="8"/>
@@ -156,7 +177,8 @@
                                    FontSize="11"
                                    Foreground="#94A3B8"
                                    Margin="0,0,0,12"
-                                   TextWrapping="Wrap"/>
+                                   TextWrapping="Wrap"
+                                   Visibility="{Binding MagneticCapacityVisibility}"/>
 
                         <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
@@ -242,7 +264,7 @@
                 </StackPanel>
             </Border>
 
-            <StackPanel Grid.Row="4"
+            <StackPanel Grid.Row="5"
                         Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         Margin="0,20,0,0">

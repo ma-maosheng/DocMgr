@@ -284,6 +284,13 @@ namespace DocMgr.ViewModels.Cabinets
 
             var originalType = SelectedCabinet.Type;
             var editableCabinet = CloneCabinet(SelectedCabinet);
+            IReadOnlyList<CabinetStoredContentSlot> storedSlots = _cabinetService.GetStoredContentSlots(SelectedCabinet.Id);
+            if (storedSlots.Count > 0)
+            {
+                _dialogService.ShowTextDetailDialog(
+                    CabinetStoredContentEditNotice.Build(SelectedCabinet.Name, storedSlots),
+                    "柜内存有内容");
+            }
 
             if (_dialogService.ShowCabinetEditDialog(editableCabinet))
             {
@@ -368,10 +375,25 @@ namespace DocMgr.ViewModels.Cabinets
                 return;
             }
 
+            if (_cabinetService.HasStoredContent(SelectedCabinet.Id))
+            {
+                _dialogService.ShowMessage(
+                    $"资料柜 [{SelectedCabinet.Name}] 内存有资料或其他内容，不能删除。",
+                    "无法删除");
+                return;
+            }
+
             if (_dialogService.ShowConfirm($"确定要删除资料柜 [{SelectedCabinet.Name}] 吗？", "警告"))
             {
-                _cabinetService.DeleteCabinet(SelectedCabinet.Id);
-                LoadData();
+                try
+                {
+                    _cabinetService.DeleteCabinet(SelectedCabinet.Id);
+                    LoadData();
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _dialogService.ShowMessage(ex.Message, "无法删除");
+                }
             }
         }
 

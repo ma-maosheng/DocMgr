@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace DocMgr.Repositories.Inventory;
 
 /// <summary>
-/// 库管资料总览仓储：按档案盒 / 电子介质袋 / 历史存档盒组装只读投影。
+/// 库管资料总览仓储：按档案盒 / 电子介质袋 / 历史存档盒 / 历史杂项组装只读投影。
 /// </summary>
 public sealed class StockContainerOverviewRepository : IStockContainerOverviewRepository
 {
@@ -67,6 +67,7 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
         HashSet<int> yearlyBoxContentHits = new();
         HashSet<int> electronicBagContentHits = new();
         HashSet<int> historyBoxContentHits = new();
+        HashSet<int> historyMiscContentHits = new();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
@@ -75,9 +76,11 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
                 keywordCaseSensitive,
                 criteria.IncludeElectronicEntryNames,
                 kinds,
+                criteria.HistoryMaterialKind,
                 yearlyBoxContentHits,
                 electronicBagContentHits,
-                historyBoxContentHits);
+                historyBoxContentHits,
+                historyMiscContentHits);
         }
 
         var rows = new List<StockContainerOverviewRow>();
@@ -108,7 +111,7 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
                 electronicBagContentHits));
         }
 
-        // 历史盒无容器级年度字段；选定档案年度时仅查年度盒/袋。
+        // 历史盒与杂项无容器级年度字段；选定档案年度时仅查年度盒/袋。
         if (kinds.Contains(StockContainerKind.HistoryBox) && year == null)
         {
             rows.AddRange(await SearchHistoryBoxesAsync(
@@ -118,7 +121,20 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
                 includeInactive,
                 archivedFrom,
                 archivedToExclusive,
-                historyBoxContentHits));
+                historyBoxContentHits,
+                criteria.HistoryMaterialKind));
+        }
+
+        if (kinds.Contains(StockContainerKind.HistoryMisc) && year == null)
+        {
+            rows.AddRange(await SearchHistoryMiscAsync(
+                keyword,
+                keywordCaseSensitive,
+                locationKeyword,
+                includeInactive,
+                archivedFrom,
+                archivedToExclusive,
+                historyMiscContentHits));
         }
 
         IEnumerable<StockContainerOverviewRow> filtered = rows;
@@ -149,7 +165,8 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
 
     public async Task<IReadOnlyList<StockContainerContentItem>> GetContentsAsync(
         string containerKind,
-        int containerId)
+        int containerId,
+        string? historyMaterialKind = null)
     {
         if (containerId <= 0 || string.IsNullOrWhiteSpace(containerKind))
         {
@@ -169,7 +186,12 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
 
         if (string.Equals(kind, StockContainerKind.HistoryBox, StringComparison.Ordinal))
         {
-            return await GetHistoryBoxContentsAsync(containerId);
+            return await GetHistoryBoxContentsAsync(containerId, historyMaterialKind);
+        }
+
+        if (string.Equals(kind, StockContainerKind.HistoryMisc, StringComparison.Ordinal))
+        {
+            return await GetHistoryMiscContentsAsync(containerId);
         }
 
         return Array.Empty<StockContainerContentItem>();
@@ -196,9 +218,11 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
         bool caseSensitive,
         bool includeElectronicEntryNames,
         HashSet<string> kinds,
+        string? historyMaterialKind,
         HashSet<int> yearlyBoxHits,
         HashSet<int> electronicBagHits,
-        HashSet<int> historyBoxHits)
+        HashSet<int> historyBoxHits,
+        HashSet<int> historyMiscHits)
     {
         if (kinds.Contains(StockContainerKind.YearlyBox) || kinds.Contains(StockContainerKind.ElectronicBag))
         {
@@ -249,45 +273,83 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             }
         }
 
-        if (!kinds.Contains(StockContainerKind.HistoryBox))
+        if (kinds.Contains(StockContainerKind.HistoryBox))
         {
-            return;
+            await CollectHistoryBoxContentHitsAsync(
+                keyword,
+                caseSensitive,
+                historyMaterialKind,
+                historyBoxHits);
         }
 
-        var topoCandidates = await _dbContext.TopoMaps
-            .AsNoTracking()
-            .Select(row => new { row.Id, row.MapName, row.MapNumber, row.CurrentMapNumber, row.Category })
-            .ToListAsync();
-        var topoIds = topoCandidates
-            .Where(row => ContainsText(row.MapName, keyword, caseSensitive)
-                || ContainsText(row.MapNumber, keyword, caseSensitive)
-                || ContainsText(row.CurrentMapNumber, keyword, caseSensitive)
-                || ContainsText(row.Category, keyword, caseSensitive))
-            .Select(row => row.Id)
-            .ToList();
+        if (kinds.Contains(StockContainerKind.HistoryMisc))
+        {
+            await CollectHistoryMiscContentHitsAsync(keyword, caseSensitive, historyMiscHits);
+        }
+    }
 
-        var aerialCandidates = await _dbContext.AerialPhotos
-            .AsNoTracking()
-            .Select(row => new { row.Id, row.BoxContents, row.SurveyArea, row.Category })
-            .ToListAsync();
-        var aerialIds = aerialCandidates
-            .Where(row => ContainsText(row.BoxContents, keyword, caseSensitive)
-                || ContainsText(row.SurveyArea, keyword, caseSensitive)
-                || ContainsText(row.Category, keyword, caseSensitive))
-            .Select(row => row.Id)
-            .ToList();
+    private async Task CollectHistoryBoxContentHitsAsync(
+        string keyword,
+        bool caseSensitive,
+        string? historyMaterialKind,
+        HashSet<int> historyBoxHits)
+    {
+        bool includeTopo = IncludesHistoryMaterial(
+            historyMaterialKind,
+            HistoryArchiveDisposalDomainValues.MaterialKindTopoMap);
+        bool includeAerial = IncludesHistoryMaterial(
+            historyMaterialKind,
+            HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto);
+        bool includeOther = IncludesHistoryMaterial(
+            historyMaterialKind,
+            HistoryArchiveDisposalDomainValues.MaterialKindOtherMap);
 
-        var otherCandidates = await _dbContext.OtherMaps
-            .AsNoTracking()
-            .Select(row => new { row.Id, row.MapName, row.MaterialCategory, row.SequenceNumber, row.Category })
-            .ToListAsync();
-        var otherIds = otherCandidates
-            .Where(row => ContainsText(row.MapName, keyword, caseSensitive)
-                || ContainsText(row.MaterialCategory, keyword, caseSensitive)
-                || ContainsText(row.SequenceNumber, keyword, caseSensitive)
-                || ContainsText(row.Category, keyword, caseSensitive))
-            .Select(row => row.Id)
-            .ToList();
+        var topoIds = new List<int>();
+        if (includeTopo)
+        {
+            var topoCandidates = await _dbContext.TopoMaps
+                .AsNoTracking()
+                .Select(row => new { row.Id, row.MapName, row.MapNumber, row.CurrentMapNumber, row.Category })
+                .ToListAsync();
+            topoIds = topoCandidates
+                .Where(row => ContainsText(row.MapName, keyword, caseSensitive)
+                    || ContainsText(row.MapNumber, keyword, caseSensitive)
+                    || ContainsText(row.CurrentMapNumber, keyword, caseSensitive)
+                    || ContainsText(row.Category, keyword, caseSensitive))
+                .Select(row => row.Id)
+                .ToList();
+        }
+
+        var aerialIds = new List<int>();
+        if (includeAerial)
+        {
+            var aerialCandidates = await _dbContext.AerialPhotos
+                .AsNoTracking()
+                .Select(row => new { row.Id, row.BoxContents, row.SurveyArea, row.Category })
+                .ToListAsync();
+            aerialIds = aerialCandidates
+                .Where(row => ContainsText(row.BoxContents, keyword, caseSensitive)
+                    || ContainsText(row.SurveyArea, keyword, caseSensitive)
+                    || ContainsText(row.Category, keyword, caseSensitive))
+                .Select(row => row.Id)
+                .ToList();
+        }
+
+        var otherIds = new List<int>();
+        if (includeOther)
+        {
+            var otherCandidates = await _dbContext.OtherMaps
+                .AsNoTracking()
+                .Select(row => new { row.Id, row.MapName, row.MaterialCategory, row.SequenceNumber, row.Category })
+                .ToListAsync();
+            otherIds = otherCandidates
+                .Where(row => ContainsText(row.MapName, keyword, caseSensitive)
+                    || ContainsText(row.MaterialCategory, keyword, caseSensitive)
+                    || ContainsText(row.SequenceNumber, keyword, caseSensitive)
+                    || ContainsText(row.Category, keyword, caseSensitive))
+                .Select(row => row.Id)
+                .ToList();
+        }
 
         if (topoIds.Count == 0 && aerialIds.Count == 0 && otherIds.Count == 0)
         {
@@ -318,6 +380,25 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             aerialIds,
             otherIds,
             historyBoxHits);
+    }
+
+    private async Task CollectHistoryMiscContentHitsAsync(
+        string keyword,
+        bool caseSensitive,
+        HashSet<int> historyMiscHits)
+    {
+        var lineCandidates = await _dbContext.HistoryMiscMaterialLines
+            .AsNoTracking()
+            .Select(line => new { line.MaterialId, line.LineText })
+            .ToListAsync();
+
+        foreach (var line in lineCandidates)
+        {
+            if (ContainsText(line.LineText, keyword, caseSensitive))
+            {
+                historyMiscHits.Add(line.MaterialId);
+            }
+        }
     }
 
     /// <summary>
@@ -611,7 +692,8 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
         bool includeInactive,
         DateTime? archivedFrom,
         DateTime? archivedToExclusive,
-        HashSet<int> contentHits)
+        HashSet<int> contentHits,
+        string? historyMaterialKind)
     {
         IQueryable<HistoryArchiveBox> query = _dbContext.HistoryArchiveBoxes.AsNoTracking();
 
@@ -661,6 +743,7 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             .AsNoTracking()
             .Where(link => boxIds.Contains(link.HistoryArchiveBoxId))
             .ToListAsync();
+        links = FilterHistoryLinks(links, historyMaterialKind);
 
         var (titlesByBoxId, categoriesByBoxId) = await BuildHistoryTitlesAndCategoriesByBoxIdAsync(links);
 
@@ -675,7 +758,26 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             await EnrichDisposedHistoryTitlesAndCategoriesAsync(
                 disposedNeedingContent,
                 titlesByBoxId,
-                categoriesByBoxId);
+                categoriesByBoxId,
+                historyMaterialKind);
+        }
+
+        if (!string.IsNullOrWhiteSpace(historyMaterialKind))
+        {
+            var allowedBoxIds = links
+                .Select(link => link.HistoryArchiveBoxId)
+                .ToHashSet();
+            foreach (int boxId in titlesByBoxId.Keys)
+            {
+                allowedBoxIds.Add(boxId);
+            }
+
+            foreach (int boxId in categoriesByBoxId.Keys)
+            {
+                allowedBoxIds.Add(boxId);
+            }
+
+            boxes = boxes.Where(box => allowedBoxIds.Contains(box.Id)).ToList();
         }
 
         var rows = new List<StockContainerOverviewRow>(boxes.Count);
@@ -692,7 +794,9 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
                 ContainerId = box.Id,
                 // 历史盒无独立容器编号（盒号即位置），总览「容器编号/年度」占位为「-」。
                 ContainerCode = "-",
-                ProjectOrCategory = BuildHistoryCategoryLabel(categories),
+                ProjectOrCategory = BuildHistoryCategoryLabel(
+                    categories,
+                    HistoryMaterialFallback(historyMaterialKind)),
                 Year = "-",
                 StorageLocation = ResolveHistoryBoxLocation(box),
                 LifecycleStatusDisplay = NormalizeHistoryLifecycleDisplay(box.LifecycleStatus),
@@ -703,6 +807,98 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
                 ArchivedBy = box.ArchivedBy?.Trim() ?? string.Empty,
                 ArchivedDate = box.ArchivedDate,
                 Remarks = box.Remarks?.Trim() ?? string.Empty,
+                HasBorrowedContent = false,
+                IsInactive = isInactive
+            });
+        }
+
+        return rows;
+    }
+
+    private async Task<List<StockContainerOverviewRow>> SearchHistoryMiscAsync(
+        string keyword,
+        bool keywordCaseSensitive,
+        string locationKeyword,
+        bool includeInactive,
+        DateTime? archivedFrom,
+        DateTime? archivedToExclusive,
+        HashSet<int> contentHits)
+    {
+        IQueryable<HistoryMiscMaterial> query = _dbContext.HistoryMiscMaterials
+            .AsNoTracking()
+            .Include(material => material.Lines);
+
+        if (!string.IsNullOrWhiteSpace(locationKeyword))
+        {
+            query = query.Where(material =>
+                material.StorageLocation.Contains(locationKeyword)
+                || material.LastStorageLocation.Contains(locationKeyword));
+        }
+
+        if (archivedFrom.HasValue)
+        {
+            query = query.Where(material => material.RegisteredAt >= archivedFrom.Value);
+        }
+
+        if (archivedToExclusive.HasValue)
+        {
+            query = query.Where(material => material.RegisteredAt < archivedToExclusive.Value);
+        }
+
+        if (!includeInactive)
+        {
+            query = query.Where(material =>
+                material.LifecycleStatus != HistoryArchiveDisposalDomainValues.LifecycleDisposed);
+        }
+
+        var materials = await query.ToListAsync();
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            materials = materials
+                .Where(material =>
+                    contentHits.Contains(material.Id)
+                    || ContainsText(material.ContainerCode, keyword, keywordCaseSensitive)
+                    || ContainsText(material.ContainerKind, keyword, keywordCaseSensitive)
+                    || ContainsText(material.MajorCategory, keyword, keywordCaseSensitive)
+                    || ContainsText(material.SubCategory, keyword, keywordCaseSensitive)
+                    || ContainsText(material.StorageLocation, keyword, keywordCaseSensitive)
+                    || ContainsText(material.LastStorageLocation, keyword, keywordCaseSensitive)
+                    || ContainsText(material.Remark, keyword, keywordCaseSensitive)
+                    || ContainsText(material.Registrant, keyword, keywordCaseSensitive))
+                .ToList();
+        }
+
+        var rows = new List<StockContainerOverviewRow>(materials.Count);
+        foreach (var material in materials)
+        {
+            List<string> lineTexts = material.Lines
+                .OrderBy(line => line.SortOrder)
+                .ThenBy(line => line.Id)
+                .Select(line => line.LineText?.Trim() ?? string.Empty)
+                .Where(text => !string.IsNullOrWhiteSpace(text))
+                .ToList();
+            bool isInactive = HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(material.LifecycleStatus);
+
+            rows.Add(new StockContainerOverviewRow
+            {
+                ContainerKind = StockContainerKind.HistoryMisc,
+                ContainerId = material.Id,
+                ContainerCode = string.IsNullOrWhiteSpace(material.ContainerCode)
+                    ? "-"
+                    : material.ContainerCode.Trim(),
+                ProjectOrCategory = BuildMiscCategoryLabel(material.MajorCategory, material.SubCategory),
+                MajorCategory = material.MajorCategory?.Trim() ?? string.Empty,
+                SubCategory = material.SubCategory?.Trim() ?? string.Empty,
+                Year = "-",
+                StorageLocation = ResolveMiscLocation(material),
+                LifecycleStatusDisplay = NormalizeHistoryLifecycleDisplay(material.LifecycleStatus),
+                ItemCount = lineTexts.Count,
+                ContentSummary = BuildContentSummary(lineTexts),
+                Specs = material.ContainerKind?.Trim() ?? string.Empty,
+                PlacementMode = string.Empty,
+                ArchivedBy = material.Registrant?.Trim() ?? string.Empty,
+                ArchivedDate = material.RegisteredAt,
+                Remarks = material.Remark?.Trim() ?? string.Empty,
                 HasBorrowedContent = false,
                 IsInactive = isInactive
             });
@@ -740,6 +936,11 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
                 MediumCode = fact.MediumCode?.Trim() ?? string.Empty,
                 FormNo = fact.FormNo?.Trim() ?? string.Empty,
                 ExtraInfo = fact.FilingFactNo?.Trim() ?? string.Empty,
+                DataSizeDisplay = fact.DataSizeMb == 0m
+                    ? string.Empty
+                    : fact.DataSizeMb.ToString("0.##"),
+                CarrierText = fact.StorageCarrierType?.Trim() ?? string.Empty,
+                PathText = fact.FilingStoragePath?.Trim() ?? string.Empty,
                 MediaItemId = string.Equals(
                     fact.MediaKind?.Trim(),
                     ArchiveRegisterDomainValues.MediaKindElectronic,
@@ -750,7 +951,9 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             .ToList();
     }
 
-    private async Task<IReadOnlyList<StockContainerContentItem>> GetHistoryBoxContentsAsync(int containerId)
+    private async Task<IReadOnlyList<StockContainerContentItem>> GetHistoryBoxContentsAsync(
+        int containerId,
+        string? historyMaterialKind)
     {
         var links = await _dbContext.HistoryArchiveBoxLedgerLinks
             .AsNoTracking()
@@ -758,25 +961,86 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             .OrderBy(link => link.Id)
             .ToListAsync();
 
-        if (links.Count == 0)
+        var matchedLinks = FilterHistoryLinks(links, historyMaterialKind);
+        if (matchedLinks.Count > 0)
         {
-            // 已离库办结后链接已删：按盒最后存放位置回查台账明细。
-            var box = await _dbContext.HistoryArchiveBoxes
-                .AsNoTracking()
-                .FirstOrDefaultAsync(item => item.Id == containerId);
-            if (box == null
-                || !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(box.LifecycleStatus)
-                || string.IsNullOrWhiteSpace(box.LastStorageLocation))
-            {
-                return Array.Empty<StockContainerContentItem>();
-            }
-
-            return await GetDisposedHistoryBoxContentsByLastLocationAsync(
-                containerId,
-                box.LastStorageLocation.Trim());
+            return await BuildHistoryContentItemsFromLinksAsync(containerId, matchedLinks);
         }
 
-        return await BuildHistoryContentItemsFromLinksAsync(containerId, links);
+        // 已离库办结后链接已删，或盒上只剩其他类别的链接：按最后存放位置回查当前类别。
+        var box = await _dbContext.HistoryArchiveBoxes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == containerId);
+        if (box == null
+            || !HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(box.LifecycleStatus)
+            || string.IsNullOrWhiteSpace(box.LastStorageLocation))
+        {
+            return Array.Empty<StockContainerContentItem>();
+        }
+
+        return await GetDisposedHistoryBoxContentsByLastLocationAsync(
+            containerId,
+            box.LastStorageLocation.Trim(),
+            historyMaterialKind);
+    }
+
+    private async Task<IReadOnlyList<StockContainerContentItem>> GetHistoryMiscContentsAsync(int containerId)
+    {
+        HistoryMiscMaterial? material = await _dbContext.HistoryMiscMaterials
+            .AsNoTracking()
+            .Include(item => item.Lines)
+            .FirstOrDefaultAsync(item => item.Id == containerId);
+        if (material == null)
+        {
+            return Array.Empty<StockContainerContentItem>();
+        }
+
+        string category = BuildMiscCategoryLabel(material.MajorCategory, material.SubCategory);
+        string lifecycle = material.LifecycleStatus?.Trim() ?? string.Empty;
+        string lifecycleDisplay = NormalizeHistoryLifecycleDisplay(material.LifecycleStatus);
+        var lines = material.Lines
+            .OrderBy(line => line.SortOrder)
+            .ThenBy(line => line.Id)
+            .ToList();
+        if (lines.Count == 0)
+        {
+            return new[]
+            {
+                new StockContainerContentItem
+                {
+                    ContainerKind = StockContainerKind.HistoryMisc,
+                    ContainerId = containerId,
+                    SourceEntity = StockContainerContentSourceEntity.HistoryMiscMaterial,
+                    SourceId = material.Id,
+                    MaterialKindDisplay = HistoryArchiveDisposalDomainValues.MaterialKindDisplayMisc,
+                    Title = category,
+                    ItemName = string.Empty,
+                    ConfidentialLevel = string.Empty,
+                    ContentCount = 0,
+                    LifecycleStatus = lifecycle,
+                    LifecycleStatusDisplay = lifecycleDisplay,
+                    ExtraInfo = material.ContainerKind?.Trim() ?? string.Empty
+                }
+            };
+        }
+
+        return lines
+            .Select(line => new StockContainerContentItem
+            {
+                ContainerKind = StockContainerKind.HistoryMisc,
+                ContainerId = containerId,
+                SourceEntity = StockContainerContentSourceEntity.HistoryMiscMaterialLine,
+                SourceId = line.Id,
+                MaterialKindDisplay = HistoryArchiveDisposalDomainValues.MaterialKindDisplayMisc,
+                Title = category,
+                ItemName = line.LineText?.Trim() ?? string.Empty,
+                ConfidentialLevel = string.Empty,
+                ContentCount = 1,
+                LifecycleStatus = lifecycle,
+                LifecycleStatusDisplay = lifecycleDisplay,
+                ExtraInfo = material.ContainerKind?.Trim() ?? string.Empty
+            })
+            .ToList();
     }
 
     private async Task CollectDisposedHistoryBoxHitsByLastLocationAsync(
@@ -849,7 +1113,8 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
     private async Task EnrichDisposedHistoryTitlesAndCategoriesAsync(
         IReadOnlyList<HistoryArchiveBox> disposedBoxes,
         Dictionary<int, List<string>> titlesByBoxId,
-        Dictionary<int, List<string>> categoriesByBoxId)
+        Dictionary<int, List<string>> categoriesByBoxId,
+        string? historyMaterialKind)
     {
         var locationToBoxIds = BuildDisposedLocationToBoxIds(disposedBoxes);
         if (locationToBoxIds.Count == 0)
@@ -857,146 +1122,129 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             return;
         }
 
-        var disposedTopos = await _dbContext.TopoMaps.AsNoTracking()
-            .Where(row => row.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
-                && row.LastStorageLocation != string.Empty)
-            .Select(row => new
-            {
-                row.MapName,
-                row.MapNumber,
-                row.Category,
-                row.LastStorageLocation
-            })
-            .ToListAsync();
-        foreach (var row in disposedTopos)
+        if (IncludesHistoryMaterial(
+                historyMaterialKind,
+                HistoryArchiveDisposalDomainValues.MaterialKindTopoMap))
         {
-            AppendDisposedHistoryTitleCategory(
-                locationToBoxIds,
-                row.LastStorageLocation,
-                PreferTitle(row.MapName, row.MapNumber),
-                row.Category,
-                titlesByBoxId,
-                categoriesByBoxId);
+            var disposedTopos = await _dbContext.TopoMaps.AsNoTracking()
+                .Where(row => row.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
+                    && row.LastStorageLocation != string.Empty)
+                .Select(row => new
+                {
+                    row.MapName,
+                    row.MapNumber,
+                    row.Category,
+                    row.LastStorageLocation
+                })
+                .ToListAsync();
+            foreach (var row in disposedTopos)
+            {
+                AppendDisposedHistoryTitleCategory(
+                    locationToBoxIds,
+                    row.LastStorageLocation,
+                    PreferTitle(row.MapName, row.MapNumber),
+                    row.Category,
+                    titlesByBoxId,
+                    categoriesByBoxId);
+            }
         }
 
-        var disposedAerials = await _dbContext.AerialPhotos.AsNoTracking()
-            .Where(row => row.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
-                && row.LastStorageLocation != string.Empty)
-            .Select(row => new
-            {
-                row.BoxContents,
-                row.SurveyArea,
-                row.Category,
-                row.LastStorageLocation
-            })
-            .ToListAsync();
-        foreach (var row in disposedAerials)
+        if (IncludesHistoryMaterial(
+                historyMaterialKind,
+                HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto))
         {
-            AppendDisposedHistoryTitleCategory(
-                locationToBoxIds,
-                row.LastStorageLocation,
-                PreferTitle(row.BoxContents, row.SurveyArea),
-                row.Category,
-                titlesByBoxId,
-                categoriesByBoxId);
+            var disposedAerials = await _dbContext.AerialPhotos.AsNoTracking()
+                .Where(row => row.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
+                    && row.LastStorageLocation != string.Empty)
+                .Select(row => new
+                {
+                    row.BoxContents,
+                    row.SurveyArea,
+                    row.Category,
+                    row.LastStorageLocation
+                })
+                .ToListAsync();
+            foreach (var row in disposedAerials)
+            {
+                AppendDisposedHistoryTitleCategory(
+                    locationToBoxIds,
+                    row.LastStorageLocation,
+                    PreferTitle(row.BoxContents, row.SurveyArea),
+                    row.Category,
+                    titlesByBoxId,
+                    categoriesByBoxId);
+            }
         }
 
-        var disposedOthers = await _dbContext.OtherMaps.AsNoTracking()
-            .Where(row => row.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
-                && row.LastStorageLocation != string.Empty)
-            .Select(row => new
-            {
-                row.MapName,
-                row.MaterialCategory,
-                row.Category,
-                row.LastStorageLocation
-            })
-            .ToListAsync();
-        foreach (var row in disposedOthers)
+        if (IncludesHistoryMaterial(
+                historyMaterialKind,
+                HistoryArchiveDisposalDomainValues.MaterialKindOtherMap))
         {
-            AppendDisposedHistoryTitleCategory(
-                locationToBoxIds,
-                row.LastStorageLocation,
-                PreferTitle(row.MapName, row.MaterialCategory),
-                row.Category,
-                titlesByBoxId,
-                categoriesByBoxId);
+            var disposedOthers = await _dbContext.OtherMaps.AsNoTracking()
+                .Where(row => row.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
+                    && row.LastStorageLocation != string.Empty)
+                .Select(row => new
+                {
+                    row.MapName,
+                    row.MaterialCategory,
+                    row.Category,
+                    row.LastStorageLocation
+                })
+                .ToListAsync();
+            foreach (var row in disposedOthers)
+            {
+                AppendDisposedHistoryTitleCategory(
+                    locationToBoxIds,
+                    row.LastStorageLocation,
+                    PreferTitle(row.MapName, row.MaterialCategory),
+                    row.Category,
+                    titlesByBoxId,
+                    categoriesByBoxId);
+            }
         }
     }
 
     private async Task<IReadOnlyList<StockContainerContentItem>> GetDisposedHistoryBoxContentsByLastLocationAsync(
         int containerId,
-        string lastStorageLocation)
+        string lastStorageLocation,
+        string? historyMaterialKind)
     {
         var items = new List<StockContainerContentItem>();
 
-        var topos = await _dbContext.TopoMaps.AsNoTracking()
-            .Where(row => row.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
-                && row.LastStorageLocation != string.Empty)
-            .ToListAsync();
-        foreach (var topo in topos.Where(row => MatchesDisposedHistoryLocation(row.LastStorageLocation, lastStorageLocation)))
+        if (IncludesHistoryMaterial(historyMaterialKind, HistoryArchiveDisposalDomainValues.MaterialKindTopoMap))
         {
-            items.Add(new StockContainerContentItem
+            var topos = await _dbContext.TopoMaps.AsNoTracking()
+                .Where(row => row.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
+                    && row.LastStorageLocation != string.Empty)
+                .ToListAsync();
+            foreach (var topo in topos.Where(row => MatchesDisposedHistoryLocation(row.LastStorageLocation, lastStorageLocation)))
             {
-                ContainerKind = StockContainerKind.HistoryBox,
-                ContainerId = containerId,
-                SourceEntity = StockContainerContentSourceEntity.TopoMap,
-                SourceId = topo.Id,
-                MaterialKindDisplay = "地形图",
-                Title = PreferTitle(topo.MapName, topo.MapNumber),
-                ItemName = topo.CurrentMapNumber?.Trim() ?? string.Empty,
-                ConfidentialLevel = string.Empty,
-                ContentCount = topo.SheetCount,
-                LifecycleStatus = topo.LifecycleStatus?.Trim() ?? string.Empty,
-                LifecycleStatusDisplay = NormalizeHistoryLifecycleDisplay(topo.LifecycleStatus),
-                ExtraInfo = topo.Scale?.Trim() ?? string.Empty
-            });
+                items.Add(MapTopoContent(containerId, topo));
+            }
         }
 
-        var aerials = await _dbContext.AerialPhotos.AsNoTracking()
-            .Where(row => row.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
-                && row.LastStorageLocation != string.Empty)
-            .ToListAsync();
-        foreach (var aerial in aerials.Where(row => MatchesDisposedHistoryLocation(row.LastStorageLocation, lastStorageLocation)))
+        if (IncludesHistoryMaterial(historyMaterialKind, HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto))
         {
-            items.Add(new StockContainerContentItem
+            var aerials = await _dbContext.AerialPhotos.AsNoTracking()
+                .Where(row => row.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
+                    && row.LastStorageLocation != string.Empty)
+                .ToListAsync();
+            foreach (var aerial in aerials.Where(row => MatchesDisposedHistoryLocation(row.LastStorageLocation, lastStorageLocation)))
             {
-                ContainerKind = StockContainerKind.HistoryBox,
-                ContainerId = containerId,
-                SourceEntity = StockContainerContentSourceEntity.AerialPhoto,
-                SourceId = aerial.Id,
-                MaterialKindDisplay = "航摄",
-                Title = PreferTitle(aerial.BoxContents, aerial.SurveyArea),
-                ItemName = aerial.SurveyArea?.Trim() ?? string.Empty,
-                ConfidentialLevel = string.Empty,
-                ContentCount = aerial.PhotoCount,
-                LifecycleStatus = aerial.LifecycleStatus?.Trim() ?? string.Empty,
-                LifecycleStatusDisplay = NormalizeHistoryLifecycleDisplay(aerial.LifecycleStatus),
-                ExtraInfo = aerial.Scale?.Trim() ?? string.Empty
-            });
+                items.Add(MapAerialContent(containerId, aerial));
+            }
         }
 
-        var others = await _dbContext.OtherMaps.AsNoTracking()
-            .Where(row => row.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
-                && row.LastStorageLocation != string.Empty)
-            .ToListAsync();
-        foreach (var other in others.Where(row => MatchesDisposedHistoryLocation(row.LastStorageLocation, lastStorageLocation)))
+        if (IncludesHistoryMaterial(historyMaterialKind, HistoryArchiveDisposalDomainValues.MaterialKindOtherMap))
         {
-            items.Add(new StockContainerContentItem
+            var others = await _dbContext.OtherMaps.AsNoTracking()
+                .Where(row => row.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
+                    && row.LastStorageLocation != string.Empty)
+                .ToListAsync();
+            foreach (var other in others.Where(row => MatchesDisposedHistoryLocation(row.LastStorageLocation, lastStorageLocation)))
             {
-                ContainerKind = StockContainerKind.HistoryBox,
-                ContainerId = containerId,
-                SourceEntity = StockContainerContentSourceEntity.OtherMap,
-                SourceId = other.Id,
-                MaterialKindDisplay = "其他资料",
-                Title = PreferTitle(other.MapName, other.MaterialCategory),
-                ItemName = other.SequenceNumber?.Trim() ?? string.Empty,
-                ConfidentialLevel = string.Empty,
-                ContentCount = 1,
-                LifecycleStatus = other.LifecycleStatus?.Trim() ?? string.Empty,
-                LifecycleStatusDisplay = NormalizeHistoryLifecycleDisplay(other.LifecycleStatus),
-                ExtraInfo = BuildOtherYearRange(other.StartYear, other.EndYear)
-            });
+                items.Add(MapOtherContent(containerId, other));
+            }
         }
 
         return items;
@@ -1044,59 +1292,17 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             if (link.MaterialKind == HistoryArchiveDisposalDomainValues.MaterialKindTopoMap
                 && topoById.TryGetValue(link.RecordId, out var topo))
             {
-                items.Add(new StockContainerContentItem
-                {
-                    ContainerKind = StockContainerKind.HistoryBox,
-                    ContainerId = containerId,
-                    SourceEntity = StockContainerContentSourceEntity.TopoMap,
-                    SourceId = topo.Id,
-                    MaterialKindDisplay = "地形图",
-                    Title = PreferTitle(topo.MapName, topo.MapNumber),
-                    ItemName = topo.CurrentMapNumber?.Trim() ?? string.Empty,
-                    ConfidentialLevel = string.Empty,
-                    ContentCount = topo.SheetCount,
-                    LifecycleStatus = topo.LifecycleStatus?.Trim() ?? string.Empty,
-                    LifecycleStatusDisplay = NormalizeHistoryLifecycleDisplay(topo.LifecycleStatus),
-                    ExtraInfo = topo.Scale?.Trim() ?? string.Empty
-                });
+                items.Add(MapTopoContent(containerId, topo));
             }
             else if (link.MaterialKind == HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto
                 && aerialById.TryGetValue(link.RecordId, out var aerial))
             {
-                items.Add(new StockContainerContentItem
-                {
-                    ContainerKind = StockContainerKind.HistoryBox,
-                    ContainerId = containerId,
-                    SourceEntity = StockContainerContentSourceEntity.AerialPhoto,
-                    SourceId = aerial.Id,
-                    MaterialKindDisplay = "航摄",
-                    Title = PreferTitle(aerial.BoxContents, aerial.SurveyArea),
-                    ItemName = aerial.SurveyArea?.Trim() ?? string.Empty,
-                    ConfidentialLevel = string.Empty,
-                    ContentCount = aerial.PhotoCount,
-                    LifecycleStatus = aerial.LifecycleStatus?.Trim() ?? string.Empty,
-                    LifecycleStatusDisplay = NormalizeHistoryLifecycleDisplay(aerial.LifecycleStatus),
-                    ExtraInfo = aerial.Scale?.Trim() ?? string.Empty
-                });
+                items.Add(MapAerialContent(containerId, aerial));
             }
             else if (link.MaterialKind == HistoryArchiveDisposalDomainValues.MaterialKindOtherMap
                 && otherById.TryGetValue(link.RecordId, out var other))
             {
-                items.Add(new StockContainerContentItem
-                {
-                    ContainerKind = StockContainerKind.HistoryBox,
-                    ContainerId = containerId,
-                    SourceEntity = StockContainerContentSourceEntity.OtherMap,
-                    SourceId = other.Id,
-                    MaterialKindDisplay = "其他资料",
-                    Title = PreferTitle(other.MapName, other.MaterialCategory),
-                    ItemName = other.SequenceNumber?.Trim() ?? string.Empty,
-                    ConfidentialLevel = string.Empty,
-                    ContentCount = 1,
-                    LifecycleStatus = other.LifecycleStatus?.Trim() ?? string.Empty,
-                    LifecycleStatusDisplay = NormalizeHistoryLifecycleDisplay(other.LifecycleStatus),
-                    ExtraInfo = BuildOtherYearRange(other.StartYear, other.EndYear)
-                });
+                items.Add(MapOtherContent(containerId, other));
             }
         }
 
@@ -1309,15 +1515,97 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
     /// <summary>
     /// 历史盒「项目/类别」：展示台账分类（如「地形图：****」「航片：****」「其他：****」）。
     /// </summary>
-    private static string BuildHistoryCategoryLabel(IReadOnlyList<string>? categories)
+    private static string BuildHistoryCategoryLabel(IReadOnlyList<string>? categories, string fallback = "历史存档")
     {
         if (categories == null || categories.Count == 0)
         {
-            return "历史存档";
+            return fallback;
         }
 
         return string.Join("、", categories);
     }
+
+    private static bool IncludesHistoryMaterial(string? filter, string materialKind) =>
+        string.IsNullOrWhiteSpace(filter)
+        || string.Equals(filter.Trim(), materialKind, StringComparison.Ordinal);
+
+    private static string HistoryMaterialFallback(string? materialKind) => materialKind switch
+    {
+        HistoryArchiveDisposalDomainValues.MaterialKindTopoMap => "地形图",
+        HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto => "航片",
+        HistoryArchiveDisposalDomainValues.MaterialKindOtherMap => "其他资料",
+        _ => "历史存档"
+    };
+
+    private static List<HistoryArchiveBoxLedgerLink> FilterHistoryLinks(
+        IReadOnlyList<HistoryArchiveBoxLedgerLink> links,
+        string? materialKind)
+    {
+        if (string.IsNullOrWhiteSpace(materialKind))
+        {
+            return links.ToList();
+        }
+
+        string kind = materialKind.Trim();
+        return links
+            .Where(link => string.Equals(link.MaterialKind, kind, StringComparison.Ordinal))
+            .ToList();
+    }
+
+    private static StockContainerContentItem MapTopoContent(int containerId, TopoMap topo) =>
+        new()
+        {
+            ContainerKind = StockContainerKind.HistoryBox,
+            ContainerId = containerId,
+            SourceEntity = StockContainerContentSourceEntity.TopoMap,
+            SourceId = topo.Id,
+            MaterialKindDisplay = "地形图",
+            Title = topo.MapName?.Trim() ?? string.Empty,
+            CodeText = topo.MapNumber?.Trim() ?? string.Empty,
+            ItemName = topo.CurrentMapNumber?.Trim() ?? string.Empty,
+            Scale = topo.Scale?.Trim() ?? string.Empty,
+            ContentCount = topo.SheetCount,
+            DateText = topo.CreationDate?.Trim() ?? string.Empty,
+            AreaText = topo.Region?.Trim() ?? string.Empty,
+            Remark = topo.Remark?.Trim() ?? string.Empty,
+            LifecycleStatus = topo.LifecycleStatus?.Trim() ?? string.Empty,
+            LifecycleStatusDisplay = NormalizeHistoryLifecycleDisplay(topo.LifecycleStatus)
+        };
+
+    private static StockContainerContentItem MapAerialContent(int containerId, AerialPhoto aerial) =>
+        new()
+        {
+            ContainerKind = StockContainerKind.HistoryBox,
+            ContainerId = containerId,
+            SourceEntity = StockContainerContentSourceEntity.AerialPhoto,
+            SourceId = aerial.Id,
+            MaterialKindDisplay = "航片",
+            Title = aerial.BoxContents?.Trim() ?? string.Empty,
+            AreaText = aerial.SurveyArea?.Trim() ?? string.Empty,
+            Scale = aerial.Scale?.Trim() ?? string.Empty,
+            DateText = aerial.PhotographyDate?.Trim() ?? string.Empty,
+            ContentCount = aerial.PhotoCount,
+            Remark = aerial.Remark?.Trim() ?? string.Empty,
+            LifecycleStatus = aerial.LifecycleStatus?.Trim() ?? string.Empty,
+            LifecycleStatusDisplay = NormalizeHistoryLifecycleDisplay(aerial.LifecycleStatus)
+        };
+
+    private static StockContainerContentItem MapOtherContent(int containerId, OtherMap other) =>
+        new()
+        {
+            ContainerKind = StockContainerKind.HistoryBox,
+            ContainerId = containerId,
+            SourceEntity = StockContainerContentSourceEntity.OtherMap,
+            SourceId = other.Id,
+            MaterialKindDisplay = "其他资料",
+            Title = other.MapName?.Trim() ?? string.Empty,
+            CodeText = other.SequenceNumber?.Trim() ?? string.Empty,
+            AreaText = other.MaterialCategory?.Trim() ?? string.Empty,
+            DateText = BuildOtherYearRange(other.StartYear, other.EndYear),
+            Remark = other.Remark?.Trim() ?? string.Empty,
+            LifecycleStatus = other.LifecycleStatus?.Trim() ?? string.Empty,
+            LifecycleStatusDisplay = NormalizeHistoryLifecycleDisplay(other.LifecycleStatus)
+        };
 
     private static HashSet<string> ResolveKinds(IReadOnlyList<string>? kinds)
     {
@@ -1327,7 +1615,8 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             {
                 StockContainerKind.YearlyBox,
                 StockContainerKind.ElectronicBag,
-                StockContainerKind.HistoryBox
+                StockContainerKind.HistoryBox,
+                StockContainerKind.HistoryMisc
             };
         }
 
@@ -1356,6 +1645,35 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
         }
 
         return box.LastStorageLocation?.Trim() ?? string.Empty;
+    }
+
+    /// <summary>杂项「项目/类别」：资料大类/资料子类。</summary>
+    private static string BuildMiscCategoryLabel(string? majorCategory, string? subCategory)
+    {
+        string major = majorCategory?.Trim() ?? string.Empty;
+        string sub = subCategory?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(major) && !string.IsNullOrWhiteSpace(sub))
+        {
+            return $"{major}/{sub}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(major))
+        {
+            return major;
+        }
+
+        return string.IsNullOrWhiteSpace(sub) ? "杂项资料" : sub;
+    }
+
+    /// <summary>杂项存放位置：在库用四段位置；已离库用最后存放位置。</summary>
+    private static string ResolveMiscLocation(HistoryMiscMaterial material)
+    {
+        if (!string.IsNullOrWhiteSpace(material.StorageLocation))
+        {
+            return material.StorageLocation.Trim();
+        }
+
+        return material.LastStorageLocation?.Trim() ?? string.Empty;
     }
 
     /// <summary>历史盒存放位置：在库用盒号；已离库用最后存放位置（对齐年度盒销号展示）。</summary>

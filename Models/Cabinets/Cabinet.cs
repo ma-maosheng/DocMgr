@@ -9,9 +9,9 @@ namespace DocMgr.Models.Cabinets
     public enum CabinetType
     {
         Standard = 0,   // 标准滑道式 (A/B面, 6层, 3格)
-        Vertical = 1,   // 立式文件柜 (A面, 4层, 1格)
-        Horizontal = 2,  // 卧式文件柜 (A面, 1层, 1格)
-        MagneticDisk = 3 // 防磁磁盘柜 (单/双门, 抽屉分层, 单面打开)
+        Vertical = 1,   // 立式文件柜 (双门组成 A 面, 层数与每层格数可设)
+        Horizontal = 2,  // 卧式文件柜 (双门组成 A 面, 层数与每层格数可设)
+        MagneticDisk = 3 // 防磁磁盘柜 (双门组成 A 面, 抽屉分层, 不设 B 面)
     }
 
     /// <summary>

@@ -76,6 +76,7 @@ namespace DocMgr.Services.Cabinets
                 "地形图" => ArchiveBoxCategory.HistoryTopoMap,
                 "航摄影像" => ArchiveBoxCategory.HistoryAerialPhoto,
                 "其他图件" => ArchiveBoxCategory.HistoryOtherMap,
+                "杂项资料" => ArchiveBoxCategory.HistoryMiscMaterial,
                 "年度资料" => ArchiveBoxCategory.Yearly,
                 _ => ArchiveBoxCategory.Unknown
             };

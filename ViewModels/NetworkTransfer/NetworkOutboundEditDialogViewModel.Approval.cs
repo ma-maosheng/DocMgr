@@ -122,7 +122,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
 
     public string ConfirmHandoverHintText => CanConfirmPhysicalHandover
         ? (IsArchiveFilingDestination
-            ? "请先从离线介质按「年度\\项目\\资料名称\\子项名称」选择父目录补录明细与数据量，核实签字后确认实物交接。"
+            ? "请先从离线介质按「年度\\项目\\资料名称\\子项名称」选择子项资料所属目录补录明细与数据量，核实签字后确认实物交接。"
             : "请先从离线介质补录数据量与目录/文件明细，核实移交人、资料员签字后确认实物交接。")
         : "请先执行「审批通过」。";
 

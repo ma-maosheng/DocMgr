@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-10-12T08:42:43Z
+> 生成时间（UTC）：2026-10-21T03:08:40Z
 
 ## 表索引
 
@@ -46,6 +46,8 @@ alwaysApply: true
 | 历史档案盒-台账关联 | `HistoryArchiveBoxLedgerLink` | `HistoryArchiveBoxLedgerLinks` | 表 |
 | 历史存档离库处置明细 | `HistoryArchiveDisposalItem` | `HistoryArchiveDisposalItems` | 表 |
 | 历史存档离库处置单 | `HistoryArchiveDisposalRecord` | `HistoryArchiveDisposalRecords` | 表 |
+| 杂项资料 | `HistoryMiscMaterial` | `HistoryMiscMaterials` | 表 |
+| 杂项资料详情 | `HistoryMiscMaterialLine` | `HistoryMiscMaterialLines` | 表 |
 | 跨域业务链 | `NetworkArchiveBusinessChain` | `NetworkArchiveBusinessChains` | 表 |
 | 跨域业务执行任务 | `NetworkArchiveBusinessTask` | `NetworkArchiveBusinessTasks` | 表 |
 | 入网申请明细 | `NetworkInboundItem` | `NetworkInboundItems` | 表 |
@@ -639,6 +641,33 @@ alwaysApply: true
 | 首次打印时间 | `FirstPrintedAt` | `DateTime?` | 否 |
 | 创建时间 | `CreatedAt` | `DateTime` | 否 |
 | 更新时间 | `UpdatedAt` | `DateTime` | 否 |
+
+### HistoryMiscMaterial（杂项资料）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 资料大类 | `MajorCategory` | `String` | 否 |
+| 资料子类 | `SubCategory` | `String` | 否 |
+| 存放容器 | `ContainerKind` | `String` | 否 |
+| 容器编号 | `ContainerCode` | `String` | 否 |
+| 存放位置 | `StorageLocation` | `String` | 否 |
+| 备注 | `Remark` | `String` | 否 |
+| 登记人 | `Registrant` | `String` | 否 |
+| 登记时间 | `RegisteredAt` | `DateTime` | 否 |
+| 修改人 | `Modifier` | `String` | 否 |
+| 修改时间 | `ModifiedAt` | `DateTime?` | 否 |
+| 生命周期状态 | `LifecycleStatus` | `String` | 否 |
+| 最后存放位置 | `LastStorageLocation` | `String` | 否 |
+
+### HistoryMiscMaterialLine（杂项资料详情）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 杂项资料ID | `MaterialId` | `Int32` | 否 |
+| 排序序号 | `SortOrder` | `Int32` | 否 |
+| 行文本 | `LineText` | `String` | 否 |
 
 ### NetworkArchiveBusinessChain（跨域业务链）
 

@@ -19,10 +19,18 @@ namespace DocMgr.Models.HistoryArchive
         public const string MaterialKindTopoMap = "TopoMap";
         public const string MaterialKindAerialPhoto = "AerialPhoto";
         public const string MaterialKindOtherMap = "OtherMap";
+        public const string MaterialKindMisc = "MiscMaterial";
 
         public const string MaterialKindDisplayTopoMap = "地形图图件";
         public const string MaterialKindDisplayAerialPhoto = "航摄胶片、像片";
         public const string MaterialKindDisplayOtherMap = "其他资料";
+        public const string MaterialKindDisplayMisc = "杂项资料";
+
+        /// <summary>杂项资料实物照片附件业务类型。</summary>
+        public const string MiscAttachmentBusinessType = "HistoryMiscMaterial";
+
+        /// <summary>杂项资料实物照片分类。</summary>
+        public const string MiscAttachmentCategoryPhoto = "实物照片";
 
         public const string MethodDestroy = "离库销毁";
         public const string MethodTransfer = "离库转交";
@@ -42,7 +50,8 @@ namespace DocMgr.Models.HistoryArchive
         [
             MaterialKindTopoMap,
             MaterialKindAerialPhoto,
-            MaterialKindOtherMap
+            MaterialKindOtherMap,
+            MaterialKindMisc
         ];
 
         /// <summary>资料类别显示名（与菜单一致）。</summary>
@@ -50,7 +59,8 @@ namespace DocMgr.Models.HistoryArchive
         [
             MaterialKindDisplayTopoMap,
             MaterialKindDisplayAerialPhoto,
-            MaterialKindDisplayOtherMap
+            MaterialKindDisplayOtherMap,
+            MaterialKindDisplayMisc
         ];
 
         /// <summary>处置方式选项。</summary>
@@ -88,6 +98,11 @@ namespace DocMgr.Models.HistoryArchive
                 return MaterialKindDisplayOtherMap;
             }
 
+            if (string.Equals(normalized, MaterialKindMisc, StringComparison.Ordinal))
+            {
+                return MaterialKindDisplayMisc;
+            }
+
             return normalized;
         }
 
@@ -119,8 +134,18 @@ namespace DocMgr.Models.HistoryArchive
                 return MaterialKindOtherMap;
             }
 
+            if (string.Equals(normalized, MaterialKindDisplayMisc, StringComparison.Ordinal)
+                || string.Equals(normalized, MaterialKindMisc, StringComparison.Ordinal))
+            {
+                return MaterialKindMisc;
+            }
+
             return normalized;
         }
+
+        /// <summary>是否为杂项资料。</summary>
+        public static bool IsMiscMaterial(string? materialKind) =>
+            string.Equals(NormalizeMaterialKind(materialKind), MaterialKindMisc, StringComparison.Ordinal);
 
         /// <summary>是否为有效资料类别。</summary>
         public static bool IsValidMaterialKind(string? materialKind)

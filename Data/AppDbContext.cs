@@ -42,6 +42,8 @@ namespace DocMgr.Data
         // 历史存档资料档案盒（实体化容器）及其台账关联
         public DbSet<HistoryArchiveBox> HistoryArchiveBoxes { get; set; }
         public DbSet<HistoryArchiveBoxLedgerLink> HistoryArchiveBoxLedgerLinks { get; set; }
+        public DbSet<HistoryMiscMaterial> HistoryMiscMaterials { get; set; }
+        public DbSet<HistoryMiscMaterialLine> HistoryMiscMaterialLines { get; set; }
         public DbSet<ProjectInfo> ProjectInfos { get; set; }
         public DbSet<HardDiskMedium> HardDiskMedia { get; set; }
         public DbSet<HardDiskLedger> HardDiskLedgers { get; set; }

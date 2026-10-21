@@ -76,7 +76,7 @@
                 BorderBrush="#E2C98F"
                 BorderThickness="1"
                 CornerRadius="4">
-          <TextBlock Text="用于历史存档在柜档案盒的离库销毁/转交/其他处置，流程与签批要求对齐在网数据处置。新建时在办理窗按资料类别选取档案盒；查询在柜盒当前态请使用「资料台账与资料处置 → 台账」。"
+          <TextBlock Text="用于历史存档在柜档案盒和杂项存放容器的离库销毁/转交/其他处置，流程与签批要求对齐在网数据处置。新建时按资料类别选取；杂项按单个容器纳入。查询当前态请使用「资料台账与资料处置 → 台账」。"
                      Foreground="#6F4A00"
                      TextWrapping="Wrap"
                      HorizontalAlignment="Center"/>

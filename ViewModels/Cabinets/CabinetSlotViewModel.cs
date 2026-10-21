@@ -287,9 +287,6 @@ namespace DocMgr.ViewModels.Cabinets
 
         public Visibility PendingReturnVisibility => PendingReturnMediaItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        public Visibility ArchiveBoxActionsVisibility =>
-            IsMagneticDiskSlot || !CanMaintainCabinet ? Visibility.Collapsed : Visibility.Visible;
-
         public Visibility SpecialRuleVisibility => IsSpecialRule ? Visibility.Visible : Visibility.Collapsed;
 
         public Visibility DamagedDiskSlotVisibility => IsDamagedDiskDedicatedSlot ? Visibility.Visible : Visibility.Collapsed;

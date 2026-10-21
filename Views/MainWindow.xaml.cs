@@ -590,6 +590,7 @@ namespace DocMgr.Views
                 TopoMapPage => BtnHistMap,
                 AerialPhotoPage => BtnHistAerial,
                 OtherMapPage => BtnOtherData,
+                HistoryMiscMaterialPage => BtnHistMisc,
                 HistoryArchiveBoxLedgerPage => BtnHistBoxLedger,
                 HistoryArchiveDisposalPage => BtnHistDisposal,
                 CabinetLayoutPage => BtnCabRegister,
@@ -742,6 +743,7 @@ namespace DocMgr.Views
                 CabinetSearchPage => "库房与介质（档案柜·开柜查看）",
                 TopoMapPage => "历史存档（地形图图件）",
                 OtherMapPage => "历史存档（其他资料）",
+                HistoryMiscMaterialPage => "历史存档（杂项资料）",
                 AerialPhotoPage => "历史存档（航摄胶片、像片）",
                 HistoryArchiveBoxLedgerPage => "历史存档（资料台账与资料处置·台账）",
                 HistoryArchiveDisposalPage => "历史存档（资料台账与资料处置·处置）",
@@ -1043,6 +1045,7 @@ namespace DocMgr.Views
             SetNavButton(BtnHistMap, true);
             SetNavButton(BtnHistAerial, true);
             SetNavButton(BtnOtherData, true);
+            SetNavButton(BtnHistMisc, true);
             SetNavButton(BtnHistBoxLedger, true);
             SetNavButton(BtnHistDisposal, true);
 
@@ -1160,6 +1163,12 @@ namespace DocMgr.Views
         {
             TxtPageTitle.Text = "历史存档（其他资料）";
             MainContentFrame.Navigate(new OtherMapPage());
+        }
+
+        private void BtnHistMisc_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "历史存档（杂项资料）";
+            MainContentFrame.Navigate(new HistoryMiscMaterialPage());
         }
 
         private void BtnAerialPhoto_Click(object sender, RoutedEventArgs e)

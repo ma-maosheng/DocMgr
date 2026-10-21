@@ -28,8 +28,8 @@ namespace DocMgr.ViewModels.Cabinets
             _dialogService = dialogService;
             CanShowSlotZoom = canShowSlotZoom;
 
-            string sideLabel = request.CabinetType == CabinetType.MagneticDisk ? "门别" : "面别";
-            string sideDisplayName = ResolveSideDisplayName(request.CabinetType, request.Face);
+            const string sideLabel = "面别";
+            string sideDisplayName = ResolveSideDisplayName(request.Face);
             IsMagneticDiskCabinet = slot.IsMagneticDiskSlot;
             WindowTitle = $"档口详情 - {request.CabinetName} {sideDisplayName} {slot.SlotCode}";
             HeaderText = $"档口 {slot.SlotCode}";
@@ -232,18 +232,8 @@ namespace DocMgr.ViewModels.Cabinets
             return string.Join(" · ", lines);
         }
 
-        private static string ResolveSideDisplayName(CabinetType cabinetType, CabinetFace face)
+        private static string ResolveSideDisplayName(CabinetFace face)
         {
-            if (cabinetType == CabinetType.MagneticDisk)
-            {
-                return face switch
-                {
-                    CabinetFace.A => "左门",
-                    CabinetFace.B => "右门",
-                    _ => "左门"
-                };
-            }
-
             return face switch
             {
                 CabinetFace.A => "A面",

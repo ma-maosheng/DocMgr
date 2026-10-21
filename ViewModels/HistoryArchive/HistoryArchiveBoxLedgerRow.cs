@@ -25,6 +25,20 @@ public sealed class HistoryArchiveBoxLedgerRow
 
     public string ContentSummary => Entry.ContentSummary;
 
+    public string ContainerKind => Entry.ContainerKind;
+
+    public string ContainerCode => Entry.ContainerCode;
+
+    public string MajorCategory => Entry.MajorCategory;
+
+    public string SubCategory => Entry.SubCategory;
+
+    /// <summary>杂项资料主键。档案盒行为 0。</summary>
+    public int MiscMaterialId => Entry.MiscMaterialId;
+
+    /// <summary>杂项实物照片张数。</summary>
+    public int PhotoCount => Entry.PhotoCount;
+
     public int LedgerRecordCount => Entry.LedgerRecordCount;
 
     public string MixedPlacementText => Entry.IsMixedPlacement ? "混放" : string.Empty;

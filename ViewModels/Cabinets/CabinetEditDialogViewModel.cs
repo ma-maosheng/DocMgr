@@ -18,13 +18,20 @@ namespace DocMgr.ViewModels.Cabinets
         private const double HorizontalWidth = 80d;
         private const double HorizontalHeight = 40d;
         private const double HorizontalDepth = 38d;
-        private const double MagneticDiskDoubleDoorWidth = 140d;
-        private const double MagneticDiskSingleDoorWidth = 70d;
+        private const double MagneticDiskWidth = 140d;
         private const double MagneticDiskHeight = 150d;
         private const double MagneticDiskDepth = 52d;
+        private const int DefaultMagneticLayerCount = 9;
+        private const int DefaultMagneticColumnCount = 6;
+        private const int DefaultVerticalLayerCount = 4;
+        private const int DefaultVerticalColumnCount = 1;
+        private const int DefaultHorizontalLayerCount = 1;
+        private const int DefaultHorizontalColumnCount = 1;
 
         private readonly IDialogService _dialogService;
+        private readonly ICabinetService _cabinetService;
         private readonly Cabinet _cabinet;
+        private readonly IReadOnlyList<CabinetStoredContentSlot> _storedContentSlots;
 
         private string _selectedName;
         private CabinetType _selectedCabinetType;
@@ -32,21 +39,25 @@ namespace DocMgr.ViewModels.Cabinets
         private int _layerCount;
         private int _columnCount;
         private string _description = string.Empty;
-        private int _selectedMagneticDoorCount;
-        private int _selectedMagneticDrawerCount;
-        private int _selectedMagneticColumnCount;
+        private int _selectedStructureLayerCount;
+        private int _selectedStructureColumnCount;
         private double _editableWidth;
         private double _editableHeight;
         private double _editableDepth;
         private int _hardDiskSlotCapacity;
         private int _opticalDiscSlotCapacity;
 
-        public CabinetEditDialogViewModel(Cabinet cabinetToEdit, IDialogService dialogService)
+        public CabinetEditDialogViewModel(Cabinet cabinetToEdit, IDialogService dialogService, ICabinetService cabinetService)
         {
             ArgumentNullException.ThrowIfNull(dialogService);
+            ArgumentNullException.ThrowIfNull(cabinetService);
 
             _dialogService = dialogService;
+            _cabinetService = cabinetService;
             _cabinet = cabinetToEdit ?? new Cabinet();
+            _storedContentSlots = _cabinet.Id > 0
+                ? _cabinetService.GetStoredContentSlots(_cabinet.Id)
+                : Array.Empty<CabinetStoredContentSlot>();
 
             NameOptions = new List<string>
             {
@@ -62,21 +73,14 @@ namespace DocMgr.ViewModels.Cabinets
                 new KeyValuePair<CabinetType, string>(CabinetType.MagneticDisk, "防磁磁盘柜")
             };
 
-            MagneticDoorOptions =
-            [
-                new KeyValuePair<int, string>(2, "双门（左门、右门）"),
-                new KeyValuePair<int, string>(1, "单门")
-            ];
-
-            DrawerCountOptions = Enumerable.Range(1, 18).ToList();
-            MagneticColumnOptions = Enumerable.Range(1, 12).ToList();
+            LayerCountOptions = Enumerable.Range(1, 18).ToList();
+            ColumnCountOptions = Enumerable.Range(1, 12).ToList();
 
             _selectedName = NameOptions.Contains(_cabinet.Name) ? _cabinet.Name : NameOptions[0];
             _selectedCabinetType = _cabinet.Type;
-            _selectedMagneticDoorCount = _cabinet.Type == CabinetType.MagneticDisk && _cabinet.FaceCount > 0 ? _cabinet.FaceCount : 2;
-            _selectedMagneticDrawerCount = _cabinet.Type == CabinetType.MagneticDisk && _cabinet.LayerCount > 0 ? _cabinet.LayerCount : 9;
-            _selectedMagneticColumnCount = _cabinet.Type == CabinetType.MagneticDisk && _cabinet.ColumnCount > 0 ? _cabinet.ColumnCount : 6;
-            (_editableWidth, _editableHeight, _editableDepth) = ResolveInitialDimensions(_cabinet, _selectedCabinetType, _selectedMagneticDoorCount);
+            _selectedStructureLayerCount = ResolveInitialLayerCount(_cabinet);
+            _selectedStructureColumnCount = ResolveInitialColumnCount(_cabinet);
+            (_editableWidth, _editableHeight, _editableDepth) = ResolveInitialDimensions(_cabinet, _selectedCabinetType);
             _hardDiskSlotCapacity = ResolveInitialHardDiskSlotCapacity(_cabinet);
             _opticalDiscSlotCapacity = ResolveInitialOpticalDiscSlotCapacity(_cabinet);
 
@@ -90,11 +94,15 @@ namespace DocMgr.ViewModels.Cabinets
 
         public List<KeyValuePair<CabinetType, string>> CabinetTypeOptions { get; }
 
-        public List<KeyValuePair<int, string>> MagneticDoorOptions { get; }
+        public List<int> LayerCountOptions { get; }
 
-        public List<int> DrawerCountOptions { get; }
+        public List<int> ColumnCountOptions { get; }
 
-        public List<int> MagneticColumnOptions { get; }
+        /// <summary>防磁磁盘柜、立式文件柜、卧式文件柜的门数固定为双门。</summary>
+        public string DoorCountDisplay => "双门";
+
+        /// <summary>双门共同组成一个 A 面。</summary>
+        public string DoorCountHint => "双门共同组成 A 面，不设 B 面。";
 
         public string SelectedName
         {
@@ -110,54 +118,35 @@ namespace DocMgr.ViewModels.Cabinets
                 if (!SetProperty(ref _selectedCabinetType, value)) return;
 
                 SyncDisplayFromType(value);
-                OnPropertyChanged(nameof(IsMagneticDiskCabinetSelected));
-                OnPropertyChanged(nameof(DefaultSpecificationVisibility));
-                OnPropertyChanged(nameof(MagneticSpecificationVisibility));
-                OnPropertyChanged(nameof(SpecificationSectionTitle));
-                OnPropertyChanged(nameof(DimensionSummary));
+                NotifyStructurePresentationChanged();
             }
         }
 
-        public int SelectedMagneticDoorCount
+        public int SelectedStructureLayerCount
         {
-            get => _selectedMagneticDoorCount;
+            get => _selectedStructureLayerCount;
             set
             {
-                if (!SetProperty(ref _selectedMagneticDoorCount, value))
+                if (!SetProperty(ref _selectedStructureLayerCount, value))
                 {
                     return;
                 }
 
-                RefreshMagneticDisplayCounts();
-                ApplyMagneticDoorDimensions();
+                RefreshStructureDisplayCounts();
             }
         }
 
-        public int SelectedMagneticDrawerCount
+        public int SelectedStructureColumnCount
         {
-            get => _selectedMagneticDrawerCount;
+            get => _selectedStructureColumnCount;
             set
             {
-                if (!SetProperty(ref _selectedMagneticDrawerCount, value))
+                if (!SetProperty(ref _selectedStructureColumnCount, value))
                 {
                     return;
                 }
 
-                RefreshMagneticDisplayCounts();
-            }
-        }
-
-        public int SelectedMagneticColumnCount
-        {
-            get => _selectedMagneticColumnCount;
-            set
-            {
-                if (!SetProperty(ref _selectedMagneticColumnCount, value))
-                {
-                    return;
-                }
-
-                RefreshMagneticDisplayCounts();
+                RefreshStructureDisplayCounts();
             }
         }
 
@@ -237,16 +226,36 @@ namespace DocMgr.ViewModels.Cabinets
 
         public bool IsMagneticDiskCabinetSelected => SelectedCabinetType == CabinetType.MagneticDisk;
 
-        public Visibility DefaultSpecificationVisibility => IsMagneticDiskCabinetSelected ? Visibility.Collapsed : Visibility.Visible;
+        public bool IsStructureCabinetSelected => IsStructureCabinet(SelectedCabinetType);
 
-        public Visibility MagneticSpecificationVisibility => IsMagneticDiskCabinetSelected ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility DefaultSpecificationVisibility => IsStructureCabinetSelected ? Visibility.Collapsed : Visibility.Visible;
 
-        public string SpecificationSectionTitle => IsMagneticDiskCabinetSelected ? "规格参数（可按防磁磁盘柜设置）" : "规格参数（系统自动设定）";
+        public Visibility StructureSpecificationVisibility => IsStructureCabinetSelected ? Visibility.Visible : Visibility.Collapsed;
+
+        public Visibility MagneticCapacityVisibility => IsMagneticDiskCabinetSelected ? Visibility.Visible : Visibility.Collapsed;
+
+        public string StructureLayerEditorLabel => IsMagneticDiskCabinetSelected ? "抽屉层数：" : "层数：";
+
+        public string SpecificationSectionTitle => SelectedCabinetType switch
+        {
+            CabinetType.MagneticDisk => "规格参数（可按防磁磁盘柜设置）",
+            CabinetType.Vertical or CabinetType.Horizontal => "规格参数（可按文件柜设置）",
+            _ => "规格参数（系统自动设定）"
+        };
 
         public string DimensionSummary
         {
             get => $"柜体尺寸：高 {EditableHeight:0}cm × 宽 {EditableWidth:0}cm × 深 {EditableDepth:0}cm";
         }
+
+        public bool HasStoredContent => _storedContentSlots.Count > 0;
+
+        public Visibility StoredContentNoticeVisibility => HasStoredContent ? Visibility.Visible : Visibility.Collapsed;
+
+        /// <summary>柜内已有内容时，在编辑窗中列出档口并说明不得改写已有存放记录。</summary>
+        public string StoredContentNotice => HasStoredContent
+            ? CabinetStoredContentEditNotice.Build(_cabinet.Name, _storedContentSlots)
+            : string.Empty;
 
         public ICommand ConfirmCommand { get; }
         public ICommand CancelCommand { get; }
@@ -282,30 +291,69 @@ namespace DocMgr.ViewModels.Cabinets
                 }
             }
 
-            _cabinet.Name = SelectedName;
-            ApplyTypeRules(_cabinet, SelectedCabinetType, SelectedMagneticDoorCount, SelectedMagneticDrawerCount, SelectedMagneticColumnCount);
-            _cabinet.Width = EditableWidth;
-            _cabinet.Height = EditableHeight;
-            _cabinet.Depth = EditableDepth;
-            if (IsMagneticDiskCabinetSelected)
+            Cabinet proposed = CreateProposedCabinet();
+            try
             {
-                _cabinet.HardDiskSlotCapacity = HardDiskSlotCapacity;
-                _cabinet.OpticalDiscSlotCapacity = OpticalDiscSlotCapacity;
+                _cabinetService.EnsureCabinetEditKeepsStoredContent(proposed);
             }
-            else
+            catch (InvalidOperationException ex)
             {
-                _cabinet.HardDiskSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
-                _cabinet.OpticalDiscSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedOpticalDiscSlotCapacity;
+                _dialogService.ShowMessage(ex.Message, "无法保存");
+                return;
             }
 
+            CopyProposedCabinet(_cabinet, proposed);
             RequestClose?.Invoke(true);
         }
 
-        private static void ApplyTypeRules(Cabinet cab, CabinetType type, int magneticDoorCount, int magneticDrawerCount, int magneticColumnCount)
+        private Cabinet CreateProposedCabinet()
+        {
+            var proposed = new Cabinet
+            {
+                Id = _cabinet.Id,
+                Name = SelectedName?.Trim() ?? string.Empty,
+                CanvasLeft = _cabinet.CanvasLeft,
+                CanvasTop = _cabinet.CanvasTop,
+                RotationAngle = _cabinet.RotationAngle
+            };
+            ApplyTypeRules(proposed, SelectedCabinetType, SelectedStructureLayerCount, SelectedStructureColumnCount);
+            proposed.Width = EditableWidth;
+            proposed.Height = EditableHeight;
+            proposed.Depth = EditableDepth;
+            if (IsMagneticDiskCabinetSelected)
+            {
+                proposed.HardDiskSlotCapacity = HardDiskSlotCapacity;
+                proposed.OpticalDiscSlotCapacity = OpticalDiscSlotCapacity;
+            }
+            else
+            {
+                proposed.HardDiskSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedHardDiskSlotCapacity;
+                proposed.OpticalDiscSlotCapacity = CabinetHardDiskSlotCategoryAssignment.DedicatedOpticalDiscSlotCapacity;
+            }
+
+            return proposed;
+        }
+
+        private static void CopyProposedCabinet(Cabinet target, Cabinet proposed)
+        {
+            target.Name = proposed.Name;
+            target.Type = proposed.Type;
+            target.FaceCount = proposed.FaceCount;
+            target.LayerCount = proposed.LayerCount;
+            target.ColumnCount = proposed.ColumnCount;
+            target.Width = proposed.Width;
+            target.Height = proposed.Height;
+            target.Depth = proposed.Depth;
+            target.HardDiskSlotCapacity = proposed.HardDiskSlotCapacity;
+            target.OpticalDiscSlotCapacity = proposed.OpticalDiscSlotCapacity;
+        }
+
+        private static void ApplyTypeRules(Cabinet cab, CabinetType type, int layerCount, int columnCount)
         {
             ArgumentNullException.ThrowIfNull(cab);
 
             cab.Type = type;
+            var (width, height, depth) = ResolveDimensions(type);
 
             switch (type)
             {
@@ -313,72 +361,38 @@ namespace DocMgr.ViewModels.Cabinets
                     cab.FaceCount = 2;
                     cab.LayerCount = 6;
                     cab.ColumnCount = 3;
-                    cab.Width = StandardWidth;
-                    cab.Height = StandardHeight;
-                    cab.Depth = StandardDepth;
                     break;
                 case CabinetType.Vertical:
-                    cab.FaceCount = 1;
-                    cab.LayerCount = 4;
-                    cab.ColumnCount = 1;
-                    cab.Width = VerticalWidth;
-                    cab.Height = VerticalHeight;
-                    cab.Depth = VerticalDepth;
-                    break;
                 case CabinetType.Horizontal:
-                    cab.FaceCount = 1;
-                    cab.LayerCount = 1;
-                    cab.ColumnCount = 1;
-                    cab.Width = HorizontalWidth;
-                    cab.Height = HorizontalHeight;
-                    cab.Depth = HorizontalDepth;
-                    break;
                 case CabinetType.MagneticDisk:
-                    cab.FaceCount = magneticDoorCount <= 1 ? 1 : 2;
-                    cab.LayerCount = Math.Max(1, magneticDrawerCount);
-                    cab.ColumnCount = Math.Max(1, magneticColumnCount);
-                    cab.Width = ResolveMagneticDiskWidth(magneticDoorCount);
-                    cab.Height = MagneticDiskHeight;
-                    cab.Depth = MagneticDiskDepth;
+                    cab.FaceCount = 1;
+                    cab.LayerCount = Math.Max(1, layerCount);
+                    cab.ColumnCount = Math.Max(1, columnCount);
                     break;
             }
+
+            cab.Width = width;
+            cab.Height = height;
+            cab.Depth = depth;
         }
 
         private void SyncDisplayFromType(CabinetType type, bool preserveDimensions = false)
         {
-            switch (type)
+            if (!preserveDimensions && IsStructureCabinet(type))
             {
-                case CabinetType.Standard:
-                    FaceCount = 2;
-                    LayerCount = 6;
-                    ColumnCount = 3;
-                    break;
-                case CabinetType.Vertical:
-                    FaceCount = 1;
-                    LayerCount = 4;
-                    ColumnCount = 1;
-                    break;
-                case CabinetType.Horizontal:
-                    FaceCount = 1;
-                    LayerCount = 1;
-                    ColumnCount = 1;
-                    break;
-                case CabinetType.MagneticDisk:
-                    RefreshMagneticDisplayCounts();
-                    break;
-                default:
-                    FaceCount = 0;
-                    LayerCount = 0;
-                    ColumnCount = 0;
-                    break;
+                SetStructureCounts(DefaultLayerCount(type), DefaultColumnCount(type));
+            }
+            else
+            {
+                RefreshDisplayedCounts(type);
             }
 
             Description = type switch
             {
                 CabinetType.Standard => "双面密集架，容量大，底座带导轨标识。",
-                CabinetType.Vertical => "单面立式柜，常规办公文件存储。",
-                CabinetType.Horizontal => "单面卧式柜，适用于图纸或特殊资料平铺。",
-                CabinetType.MagneticDisk => "防磁磁盘柜按门数对应左门/右门，按抽屉层数与每抽屉格数生成开柜格口；可设置硬盘/光盘档口最大容量，并在下方微调柜体尺寸。",
+                CabinetType.Vertical => "双门共同组成 A 面。可设置层数与每层格数，并在下方微调柜体尺寸。",
+                CabinetType.Horizontal => "双门共同组成 A 面，适用于图纸或特殊资料平铺。可设置层数与每层格数，并在下方微调柜体尺寸。",
+                CabinetType.MagneticDisk => "双门共同组成 A 面。按抽屉层数与每层格数生成开柜格口；可设置硬盘/光盘档口最大容量，并在下方微调柜体尺寸。",
                 _ => string.Empty
             };
 
@@ -393,66 +407,153 @@ namespace DocMgr.ViewModels.Cabinets
             }
 
             OnPropertyChanged(nameof(DimensionSummary));
+            OnPropertyChanged(nameof(StructureLayerEditorLabel));
         }
 
-        private void RefreshMagneticDisplayCounts()
+        private void RefreshDisplayedCounts(CabinetType type)
         {
-            if (!IsMagneticDiskCabinetSelected)
+            if (IsStructureCabinet(type))
+            {
+                RefreshStructureDisplayCounts();
+                return;
+            }
+
+            if (type == CabinetType.Standard)
+            {
+                FaceCount = 2;
+                LayerCount = 6;
+                ColumnCount = 3;
+                return;
+            }
+
+            FaceCount = 0;
+            LayerCount = 0;
+            ColumnCount = 0;
+        }
+
+        private void RefreshStructureDisplayCounts()
+        {
+            if (!IsStructureCabinetSelected)
             {
                 return;
             }
 
-            FaceCount = SelectedMagneticDoorCount;
-            LayerCount = SelectedMagneticDrawerCount;
-            ColumnCount = SelectedMagneticColumnCount;
+            FaceCount = 1;
+            LayerCount = SelectedStructureLayerCount;
+            ColumnCount = SelectedStructureColumnCount;
+        }
+
+        private void SetStructureCounts(int layerCount, int columnCount)
+        {
+            bool layerChanged = _selectedStructureLayerCount != layerCount;
+            bool columnChanged = _selectedStructureColumnCount != columnCount;
+            _selectedStructureLayerCount = layerCount;
+            _selectedStructureColumnCount = columnCount;
+            if (layerChanged)
+            {
+                OnPropertyChanged(nameof(SelectedStructureLayerCount));
+            }
+
+            if (columnChanged)
+            {
+                OnPropertyChanged(nameof(SelectedStructureColumnCount));
+            }
+
+            RefreshStructureDisplayCounts();
         }
 
         private void ApplyDefaultDimensions(CabinetType type)
         {
-            var (width, height, depth) = ResolveDimensions(type, SelectedMagneticDoorCount);
+            var (width, height, depth) = ResolveDimensions(type);
             EditableWidth = width;
             EditableHeight = height;
             EditableDepth = depth;
         }
 
-        private void ApplyMagneticDoorDimensions()
+        private void NotifyStructurePresentationChanged()
         {
-            if (!IsMagneticDiskCabinetSelected)
-            {
-                return;
-            }
-
-            EditableWidth = ResolveMagneticDiskWidth(SelectedMagneticDoorCount);
-            EditableHeight = MagneticDiskHeight;
-            EditableDepth = MagneticDiskDepth;
+            OnPropertyChanged(nameof(IsMagneticDiskCabinetSelected));
+            OnPropertyChanged(nameof(IsStructureCabinetSelected));
+            OnPropertyChanged(nameof(DefaultSpecificationVisibility));
+            OnPropertyChanged(nameof(StructureSpecificationVisibility));
+            OnPropertyChanged(nameof(MagneticCapacityVisibility));
+            OnPropertyChanged(nameof(SpecificationSectionTitle));
+            OnPropertyChanged(nameof(StructureLayerEditorLabel));
+            OnPropertyChanged(nameof(DimensionSummary));
         }
 
-        private static (double Width, double Height, double Depth) ResolveInitialDimensions(Cabinet cabinet, CabinetType type, int magneticDoorCount)
+        private static bool IsStructureCabinet(CabinetType type)
+        {
+            return type is CabinetType.Vertical or CabinetType.Horizontal or CabinetType.MagneticDisk;
+        }
+
+        private static int DefaultLayerCount(CabinetType type)
+        {
+            return type switch
+            {
+                CabinetType.Vertical => DefaultVerticalLayerCount,
+                CabinetType.Horizontal => DefaultHorizontalLayerCount,
+                CabinetType.MagneticDisk => DefaultMagneticLayerCount,
+                CabinetType.Standard => 6,
+                _ => 1
+            };
+        }
+
+        private static int DefaultColumnCount(CabinetType type)
+        {
+            return type switch
+            {
+                CabinetType.Vertical => DefaultVerticalColumnCount,
+                CabinetType.Horizontal => DefaultHorizontalColumnCount,
+                CabinetType.MagneticDisk => DefaultMagneticColumnCount,
+                CabinetType.Standard => 3,
+                _ => 1
+            };
+        }
+
+        private static int ResolveInitialLayerCount(Cabinet cabinet)
+        {
+            ArgumentNullException.ThrowIfNull(cabinet);
+            if (IsStructureCabinet(cabinet.Type) && cabinet.LayerCount > 0)
+            {
+                return cabinet.LayerCount;
+            }
+
+            return DefaultLayerCount(cabinet.Type);
+        }
+
+        private static int ResolveInitialColumnCount(Cabinet cabinet)
+        {
+            ArgumentNullException.ThrowIfNull(cabinet);
+            if (IsStructureCabinet(cabinet.Type) && cabinet.ColumnCount > 0)
+            {
+                return cabinet.ColumnCount;
+            }
+
+            return DefaultColumnCount(cabinet.Type);
+        }
+
+        private static (double Width, double Height, double Depth) ResolveInitialDimensions(Cabinet cabinet, CabinetType type)
         {
             ArgumentNullException.ThrowIfNull(cabinet);
 
-            var defaults = ResolveDimensions(type, magneticDoorCount);
+            var defaults = ResolveDimensions(type);
             return (
                 cabinet.Width > 0d ? cabinet.Width : defaults.Width,
                 cabinet.Height > 0d ? cabinet.Height : defaults.Height,
                 cabinet.Depth > 0d ? cabinet.Depth : defaults.Depth);
         }
 
-        private static (double Width, double Height, double Depth) ResolveDimensions(CabinetType type, int magneticDoorCount)
+        private static (double Width, double Height, double Depth) ResolveDimensions(CabinetType type)
         {
             return type switch
             {
                 CabinetType.Standard => (StandardWidth, StandardHeight, StandardDepth),
                 CabinetType.Vertical => (VerticalWidth, VerticalHeight, VerticalDepth),
                 CabinetType.Horizontal => (HorizontalWidth, HorizontalHeight, HorizontalDepth),
-                CabinetType.MagneticDisk => (ResolveMagneticDiskWidth(magneticDoorCount), MagneticDiskHeight, MagneticDiskDepth),
+                CabinetType.MagneticDisk => (MagneticDiskWidth, MagneticDiskHeight, MagneticDiskDepth),
                 _ => (0d, 0d, 0d)
             };
-        }
-
-        private static double ResolveMagneticDiskWidth(int magneticDoorCount)
-        {
-            return magneticDoorCount <= 1 ? MagneticDiskSingleDoorWidth : MagneticDiskDoubleDoorWidth;
         }
 
         private static int ResolveInitialHardDiskSlotCapacity(Cabinet cabinet)

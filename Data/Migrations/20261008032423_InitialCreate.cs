@@ -579,6 +579,51 @@ namespace DocMgr.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "HistoryMiscMaterials",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    MajorCategory = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    SubCategory = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    ContainerKind = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
+                    ContainerCode = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    StorageLocation = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    Remark = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Registrant = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    RegisteredAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Modifier = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    ModifiedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    LifecycleStatus = table.Column<string>(type: "nvarchar(16)", maxLength: 16, nullable: false),
+                    LastStorageLocation = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_HistoryMiscMaterials", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "HistoryMiscMaterialLines",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    MaterialId = table.Column<int>(type: "int", nullable: false),
+                    SortOrder = table.Column<int>(type: "int", nullable: false),
+                    LineText = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_HistoryMiscMaterialLines", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_HistoryMiscMaterialLines_HistoryMiscMaterials_MaterialId",
+                        column: x => x.MaterialId,
+                        principalTable: "HistoryMiscMaterials",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ProjectInfos",
                 columns: table => new
                 {
@@ -2675,6 +2720,25 @@ namespace DocMgr.Data.Migrations
                 filter: "[BoxCode] <> N''");
 
             migrationBuilder.CreateIndex(
+                name: "IX_HistoryMiscMaterials_ContainerKind_ContainerCode",
+                table: "HistoryMiscMaterials",
+                columns: new[] { "ContainerKind", "ContainerCode" },
+                unique: true,
+                filter: "[LifecycleStatus] <> N'已离库'");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_HistoryMiscMaterials_StorageLocation",
+                table: "HistoryMiscMaterials",
+                column: "StorageLocation",
+                unique: true,
+                filter: "[StorageLocation] <> N''");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_HistoryMiscMaterialLines_MaterialId_SortOrder",
+                table: "HistoryMiscMaterialLines",
+                columns: new[] { "MaterialId", "SortOrder" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_HistoryArchiveBoxLedgerLinks_HistoryArchiveBoxId_MaterialKind_RecordId",
                 table: "HistoryArchiveBoxLedgerLinks",
                 columns: new[] { "HistoryArchiveBoxId", "MaterialKind", "RecordId" },
@@ -3454,6 +3518,9 @@ namespace DocMgr.Data.Migrations
                 name: "HistoryArchiveBoxLedgerLinks");
 
             migrationBuilder.DropTable(
+                name: "HistoryMiscMaterialLines");
+
+            migrationBuilder.DropTable(
                 name: "HistoryArchiveDisposalItems");
 
             migrationBuilder.DropTable(
@@ -3476,6 +3543,9 @@ namespace DocMgr.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "OpticalDiscMediaTransactions");
+
+            migrationBuilder.DropTable(
+                name: "HistoryMiscMaterials");
 
             migrationBuilder.DropTable(
                 name: "OtherMaps");

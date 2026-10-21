@@ -10,7 +10,7 @@ using DocMgr.ViewModels.Shared;
 namespace DocMgr.ViewModels.Inventory
 {
     /// <summary>
-    /// 库管资料总览：按档案盒 / 电子介质袋 / 历史存档盒查询、下钻与导出；容器列表支持分页/全局浏览。
+    /// 库管资料总览：一次只打开一类资料（年度盒 / 电子袋 / 历史地形图 / 历史航片 / 历史其他 / 历史杂项）。
     /// </summary>
     public sealed class StockContainerOverviewViewModel : ViewModelBase
     {
@@ -30,9 +30,9 @@ namespace DocMgr.ViewModels.Inventory
         private bool _includeElectronicEntryNames;
         private string _storageLocationKeyword = string.Empty;
         private string _selectedLifecycleFilter = StockContainerLifecycleDisplay.FilterActive;
-        private bool _includeYearlyBox = true;
-        private bool _includeElectronicBag = true;
-        private bool _includeHistoryBox = true;
+        private string _selectedBrowseKind = StockContainerBrowseKind.YearlyBox;
+        private bool _isSwitchingBrowseKind;
+        private bool _suppressBrowseKindSearch;
         private bool _exportIncludeContents = true;
         private DateTime? _archivedFrom;
         private DateTime? _archivedTo;
@@ -171,23 +171,92 @@ namespace DocMgr.ViewModels.Inventory
                     : value.Trim());
         }
 
-        public bool IncludeYearlyBox
+        public bool IsYearlyBoxSelected
         {
-            get => _includeYearlyBox;
-            set => SetProperty(ref _includeYearlyBox, value);
+            get => IsBrowseKind(StockContainerBrowseKind.YearlyBox);
+            set
+            {
+                if (value)
+                {
+                    SelectBrowseKind(StockContainerBrowseKind.YearlyBox);
+                }
+            }
         }
 
-        public bool IncludeElectronicBag
+        public bool IsElectronicBagSelected
         {
-            get => _includeElectronicBag;
-            set => SetProperty(ref _includeElectronicBag, value);
+            get => IsBrowseKind(StockContainerBrowseKind.ElectronicBag);
+            set
+            {
+                if (value)
+                {
+                    SelectBrowseKind(StockContainerBrowseKind.ElectronicBag);
+                }
+            }
         }
 
-        public bool IncludeHistoryBox
+        public bool IsHistoryTopoSelected
         {
-            get => _includeHistoryBox;
-            set => SetProperty(ref _includeHistoryBox, value);
+            get => IsBrowseKind(StockContainerBrowseKind.HistoryTopo);
+            set
+            {
+                if (value)
+                {
+                    SelectBrowseKind(StockContainerBrowseKind.HistoryTopo);
+                }
+            }
         }
+
+        public bool IsHistoryAerialSelected
+        {
+            get => IsBrowseKind(StockContainerBrowseKind.HistoryAerial);
+            set
+            {
+                if (value)
+                {
+                    SelectBrowseKind(StockContainerBrowseKind.HistoryAerial);
+                }
+            }
+        }
+
+        public bool IsHistoryOtherSelected
+        {
+            get => IsBrowseKind(StockContainerBrowseKind.HistoryOther);
+            set
+            {
+                if (value)
+                {
+                    SelectBrowseKind(StockContainerBrowseKind.HistoryOther);
+                }
+            }
+        }
+
+        public bool IsHistoryMiscSelected
+        {
+            get => IsBrowseKind(StockContainerBrowseKind.HistoryMisc);
+            set
+            {
+                if (value)
+                {
+                    SelectBrowseKind(StockContainerBrowseKind.HistoryMisc);
+                }
+            }
+        }
+
+        public string SelectedBrowseKind => _selectedBrowseKind;
+
+        /// <summary>年度盒、电子袋可按档案年度筛选。</summary>
+        public bool IsArchiveYearFilterEnabled => StockContainerBrowseKind.UsesArchiveYear(_selectedBrowseKind);
+
+        /// <summary>立档台账只对应年度盒与电子袋中的立档事实。</summary>
+        public bool ShowFilingLedgerAction =>
+            IsBrowseKind(StockContainerBrowseKind.YearlyBox)
+            || IsBrowseKind(StockContainerBrowseKind.ElectronicBag);
+
+        /// <summary>目录/文件明细只对应电子介质。</summary>
+        public bool ShowElectronicEntriesAction => IsBrowseKind(StockContainerBrowseKind.ElectronicBag);
+
+        public string ContainerPaneTitle => StockContainerBrowseKind.MapDisplay(_selectedBrowseKind);
 
         public bool ExportIncludeContents
         {
@@ -381,12 +450,6 @@ namespace DocMgr.ViewModels.Inventory
 
         private async Task SearchAsync()
         {
-            if (!IncludeYearlyBox && !IncludeElectronicBag && !IncludeHistoryBox)
-            {
-                _dialogService.ShowMessage("请至少勾选一种容器类型。", "提示");
-                return;
-            }
-
             IsBusy = true;
             BusyStatus = "正在查询库管容器…";
             try
@@ -399,7 +462,11 @@ namespace DocMgr.ViewModels.Inventory
                 _currentPage = 1;
                 OnPropertyChanged(nameof(CurrentPage));
 
-                SummaryText = BuildSummaryText(rows);
+                SummaryText = BuildSummaryText(
+                    rows,
+                    _selectedBrowseKind,
+                    ignoredArchiveYear: !StockContainerBrowseKind.UsesArchiveYear(_selectedBrowseKind)
+                        && !string.Equals(SelectedYear, AllYearsOption, StringComparison.Ordinal));
                 RefreshDisplayedRows(clearSelection: true);
                 ContentSummaryText = rows.Count == 0
                     ? "无匹配容器"
@@ -510,7 +577,10 @@ namespace DocMgr.ViewModels.Inventory
             BusyStatus = "正在加载容器内容…";
             try
             {
-                var items = await _overviewService.GetContentsAsync(row.ContainerKind, row.ContainerId);
+                var items = await _overviewService.GetContentsAsync(
+                    row.ContainerKind,
+                    row.ContainerId,
+                    StockContainerBrowseKind.ToHistoryMaterialKind(SelectedBrowseKind));
                 foreach (var item in items)
                 {
                     ContentItems.Add(item);
@@ -540,10 +610,11 @@ namespace DocMgr.ViewModels.Inventory
                 return;
             }
 
+            string kindLabel = StockContainerBrowseKind.MapDisplay(SelectedBrowseKind);
             string yearLabel = string.Equals(SelectedYear, AllYearsOption, StringComparison.Ordinal)
                 ? AllYearsOption
                 : SelectedYear;
-            string defaultFileName = $"库管资料总览_{yearLabel}_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
+            string defaultFileName = $"库管资料总览_{kindLabel}_{yearLabel}_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
             string? filePath = _dialogService.SaveFileDialog(
                 "Excel Files|*.xlsx",
                 "导出库管资料总览",
@@ -558,7 +629,11 @@ namespace DocMgr.ViewModels.Inventory
             BusyStatus = ExportIncludeContents ? "正在导出容器与明细…" : "正在导出容器列表…";
             try
             {
-                await _overviewService.ExportAsync(filePath, _sourceRows.ToList(), ExportIncludeContents);
+                await _overviewService.ExportAsync(
+                    filePath,
+                    _sourceRows.ToList(),
+                    ExportIncludeContents,
+                    SelectedBrowseKind);
                 _dialogService.ShowMessage($"库管资料总览导出完成：\n{filePath}", "完成");
             }
             catch (ArgumentException ex)
@@ -673,31 +748,23 @@ namespace DocMgr.ViewModels.Inventory
             IncludeElectronicEntryNames = false;
             StorageLocationKeyword = string.Empty;
             SelectedLifecycleFilter = StockContainerLifecycleDisplay.FilterActive;
-            IncludeYearlyBox = true;
-            IncludeElectronicBag = true;
-            IncludeHistoryBox = true;
+            _suppressBrowseKindSearch = true;
+            try
+            {
+                SelectBrowseKind(StockContainerBrowseKind.YearlyBox);
+            }
+            finally
+            {
+                _suppressBrowseKindSearch = false;
+            }
             ArchivedFrom = null;
             ArchivedTo = null;
         }
 
         private StockContainerSearchCriteria BuildCriteria()
         {
-            var kinds = new List<string>();
-            if (IncludeYearlyBox)
-            {
-                kinds.Add(StockContainerKind.YearlyBox);
-            }
-
-            if (IncludeElectronicBag)
-            {
-                kinds.Add(StockContainerKind.ElectronicBag);
-            }
-
-            if (IncludeHistoryBox)
-            {
-                kinds.Add(StockContainerKind.HistoryBox);
-            }
-
+            string browseKind = _selectedBrowseKind;
+            bool usesArchiveYear = StockContainerBrowseKind.UsesArchiveYear(browseKind);
             string lifecycleFilter = string.IsNullOrWhiteSpace(SelectedLifecycleFilter)
                 ? StockContainerLifecycleDisplay.FilterActive
                 : SelectedLifecycleFilter.Trim();
@@ -707,13 +774,16 @@ namespace DocMgr.ViewModels.Inventory
 
             return new StockContainerSearchCriteria
             {
-                ContainerKinds = kinds,
-                Year = string.Equals(SelectedYear, AllYearsOption, StringComparison.Ordinal)
+                ContainerKinds = new[] { StockContainerBrowseKind.ToContainerKind(browseKind) },
+                HistoryMaterialKind = StockContainerBrowseKind.ToHistoryMaterialKind(browseKind),
+                Year = !usesArchiveYear || string.Equals(SelectedYear, AllYearsOption, StringComparison.Ordinal)
                     ? null
                     : SelectedYear,
                 Keyword = Keyword,
                 KeywordCaseSensitive = KeywordCaseSensitive,
-                IncludeElectronicEntryNames = IncludeElectronicEntryNames,
+                IncludeElectronicEntryNames = usesArchiveYear
+                    && IsBrowseKind(StockContainerBrowseKind.ElectronicBag)
+                    && IncludeElectronicEntryNames,
                 StorageLocationKeyword = StorageLocationKeyword,
                 LifecycleFilter = lifecycleFilter,
                 IncludeInactive = includeInactive,
@@ -722,13 +792,81 @@ namespace DocMgr.ViewModels.Inventory
             };
         }
 
-        private static string BuildSummaryText(IReadOnlyList<StockContainerOverviewRow> rows)
+        private static string BuildSummaryText(
+            IReadOnlyList<StockContainerOverviewRow> rows,
+            string browseKind,
+            bool ignoredArchiveYear)
         {
-            int yearly = rows.Count(row => row.ContainerKind == StockContainerKind.YearlyBox);
-            int bag = rows.Count(row => row.ContainerKind == StockContainerKind.ElectronicBag);
-            int history = rows.Count(row => row.ContainerKind == StockContainerKind.HistoryBox);
+            string label = StockContainerBrowseKind.MapDisplay(browseKind);
             int borrowed = rows.Count(row => row.HasBorrowedContent);
-            return $"共 {rows.Count} 个容器（年度盒 {yearly} · 电子袋 {bag} · 历史盒 {history} · 含借出 {borrowed}）";
+            string text = StockContainerBrowseKind.UsesArchiveYear(browseKind)
+                ? $"共 {rows.Count} 个{label}（含借出 {borrowed}）"
+                : $"共 {rows.Count} 个{label}";
+            if (ignoredArchiveYear)
+            {
+                text += "（未按档案年度筛选）";
+            }
+
+            return text;
+        }
+
+        private bool IsBrowseKind(string kind) =>
+            string.Equals(_selectedBrowseKind, kind, StringComparison.Ordinal);
+
+        private void SelectBrowseKind(string kind)
+        {
+            if (_isSwitchingBrowseKind
+                || string.IsNullOrWhiteSpace(kind)
+                || string.Equals(_selectedBrowseKind, kind, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _isSwitchingBrowseKind = true;
+            try
+            {
+                _selectedBrowseKind = kind.Trim();
+                ClearResultsForKindSwitch();
+                NotifyBrowseKindChanged();
+            }
+            finally
+            {
+                _isSwitchingBrowseKind = false;
+            }
+
+            if (_isInitialized && !_suppressBrowseKindSearch)
+            {
+                _ = _pageDb.RunAsync(SearchAsync);
+            }
+        }
+
+        private void ClearResultsForKindSwitch()
+        {
+            _sourceRows.Clear();
+            ContainerRows.Clear();
+            ContentItems.Clear();
+            SelectedContentItem = null;
+            SelectedRow = null;
+            _currentPage = 1;
+            SummaryText = "共 0 个容器";
+            ContentSummaryText = "选择容器后显示内容明细";
+            NotifyPaginationChanged();
+            OnPropertyChanged(nameof(CurrentPage));
+        }
+
+        private void NotifyBrowseKindChanged()
+        {
+            OnPropertyChanged(nameof(SelectedBrowseKind));
+            OnPropertyChanged(nameof(IsYearlyBoxSelected));
+            OnPropertyChanged(nameof(IsElectronicBagSelected));
+            OnPropertyChanged(nameof(IsHistoryTopoSelected));
+            OnPropertyChanged(nameof(IsHistoryAerialSelected));
+            OnPropertyChanged(nameof(IsHistoryOtherSelected));
+            OnPropertyChanged(nameof(IsHistoryMiscSelected));
+            OnPropertyChanged(nameof(IsArchiveYearFilterEnabled));
+            OnPropertyChanged(nameof(ShowFilingLedgerAction));
+            OnPropertyChanged(nameof(ShowElectronicEntriesAction));
+            OnPropertyChanged(nameof(ContainerPaneTitle));
         }
 
         /// <summary>历史盒容器编号为「-」，下钻摘要改用存放位置（盒号）。</summary>

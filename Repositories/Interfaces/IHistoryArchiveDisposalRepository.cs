@@ -35,6 +35,13 @@ public interface IHistoryArchiveDisposalRepository
 
     Task<List<OtherMap>> GetOtherMapsByIdsAsync(IReadOnlyCollection<int> ids, bool tracking);
 
+    Task<List<HistoryMiscMaterial>> GetMiscMaterialsAsync(bool tracking);
+
+    Task<List<HistoryMiscMaterial>> GetMiscMaterialsByIdsAsync(IReadOnlyCollection<int> ids, bool tracking);
+
+    /// <summary>杂项实物照片张数，键为杂项资料 Id。</summary>
+    Task<Dictionary<int, int>> GetMiscPhotoCountsAsync();
+
     Task<HashSet<string>> GetLockedBoxCodesAsync(int? excludeRecordId);
 
     /// <summary>按盒号取在册历史档案盒（带跟踪），供生命周期同步与迁档改写。</summary>

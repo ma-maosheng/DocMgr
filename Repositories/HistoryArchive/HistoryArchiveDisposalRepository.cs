@@ -169,6 +169,34 @@ public sealed class HistoryArchiveDisposalRepository : IHistoryArchiveDisposalRe
         return list;
     }
 
+    public Task<List<HistoryMiscMaterial>> GetMiscMaterialsAsync(bool tracking)
+    {
+        IQueryable<HistoryMiscMaterial> query = tracking
+            ? _dbContext.HistoryMiscMaterials
+            : _dbContext.HistoryMiscMaterials.AsNoTracking();
+        return query.Include(item => item.Lines).ToListAsync();
+    }
+
+    public Task<List<HistoryMiscMaterial>> GetMiscMaterialsByIdsAsync(IReadOnlyCollection<int> ids, bool tracking)
+    {
+        IQueryable<HistoryMiscMaterial> query = tracking
+            ? _dbContext.HistoryMiscMaterials
+            : _dbContext.HistoryMiscMaterials.AsNoTracking();
+        return query.Where(item => ids.Contains(item.Id)).ToListAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<Dictionary<int, int>> GetMiscPhotoCountsAsync()
+    {
+        return await _dbContext.SystemAttachments
+            .AsNoTracking()
+            .Where(item => item.BusinessType == HistoryArchiveDisposalDomainValues.MiscAttachmentBusinessType
+                && item.FileCategory == HistoryArchiveDisposalDomainValues.MiscAttachmentCategoryPhoto)
+            .GroupBy(item => item.BusinessId)
+            .Select(group => new { group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.Key, item => item.Count);
+    }
+
     public async Task<List<OtherMap>> GetOtherMapsByIdsAsync(IReadOnlyCollection<int> ids, bool tracking)
     {
         IQueryable<OtherMap> query = tracking ? _dbContext.OtherMaps : _dbContext.OtherMaps.AsNoTracking();

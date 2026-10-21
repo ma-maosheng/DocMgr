@@ -1,23 +1,73 @@
 using System;
 using System.Collections.Generic;
+using DocMgr.Models.HistoryArchive;
 using DocMgr.Models.YearlyArchive;
 
 namespace DocMgr.Models.Inventory
 {
     /// <summary>
-    /// 库管资料总览的容器类型（年度盒 / 电子袋 / 历史盒）。
+    /// 库管资料总览一次只打开的资料类型。历史盒按台账拆成地形图、航片、其他。
+    /// </summary>
+    public static class StockContainerBrowseKind
+    {
+        public const string YearlyBox = StockContainerKind.YearlyBox;
+        public const string ElectronicBag = StockContainerKind.ElectronicBag;
+        public const string HistoryTopo = "HistoryTopo";
+        public const string HistoryAerial = "HistoryAerial";
+        public const string HistoryOther = "HistoryOther";
+        public const string HistoryMisc = StockContainerKind.HistoryMisc;
+
+        public static string MapDisplay(string? kind) => kind switch
+        {
+            YearlyBox => "年度盒",
+            ElectronicBag => "电子袋",
+            HistoryTopo => "历史地形图",
+            HistoryAerial => "历史航片",
+            HistoryOther => "历史其他",
+            HistoryMisc => "历史杂项",
+            _ => StockContainerKind.MapDisplay(kind)
+        };
+
+        /// <summary>浏览类型对应的容器查询种类。</summary>
+        public static string ToContainerKind(string? browseKind) => browseKind switch
+        {
+            ElectronicBag => StockContainerKind.ElectronicBag,
+            HistoryTopo or HistoryAerial or HistoryOther => StockContainerKind.HistoryBox,
+            HistoryMisc => StockContainerKind.HistoryMisc,
+            _ => StockContainerKind.YearlyBox
+        };
+
+        /// <summary>历史盒浏览类型对应的台账类别；非历史盒返回 null。</summary>
+        public static string? ToHistoryMaterialKind(string? browseKind) => browseKind switch
+        {
+            HistoryTopo => HistoryArchiveDisposalDomainValues.MaterialKindTopoMap,
+            HistoryAerial => HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto,
+            HistoryOther => HistoryArchiveDisposalDomainValues.MaterialKindOtherMap,
+            _ => null
+        };
+
+        /// <summary>年度盒与电子袋才有档案年度。</summary>
+        public static bool UsesArchiveYear(string? browseKind) =>
+            string.Equals(browseKind, YearlyBox, StringComparison.Ordinal)
+            || string.Equals(browseKind, ElectronicBag, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// 库管资料总览的容器类型（年度盒 / 电子袋 / 历史盒 / 历史杂项）。
     /// </summary>
     public static class StockContainerKind
     {
         public const string YearlyBox = "YearlyBox";
         public const string ElectronicBag = "ElectronicBag";
         public const string HistoryBox = "HistoryBox";
+        public const string HistoryMisc = "HistoryMisc";
 
         public static string MapDisplay(string? kind) => kind switch
         {
             YearlyBox => "年度档案盒",
             ElectronicBag => "电子介质袋",
             HistoryBox => "历史存档盒",
+            HistoryMisc => "历史杂项",
             _ => string.IsNullOrWhiteSpace(kind) ? "—" : kind
         };
     }
@@ -56,8 +106,14 @@ namespace DocMgr.Models.Inventory
     /// </summary>
     public sealed class StockContainerSearchCriteria
     {
-        /// <summary>空或空集合表示三类全选。</summary>
+        /// <summary>空或空集合表示四类全选。</summary>
         public IReadOnlyList<string> ContainerKinds { get; set; } = Array.Empty<string>();
+
+        /// <summary>
+        /// 历史盒台账类别（<see cref="HistoryArchiveDisposalDomainValues.MaterialKindTopoMap"/> 等）。
+        /// 空表示不按类别裁剪。
+        /// </summary>
+        public string? HistoryMaterialKind { get; set; }
 
         public string? Year { get; set; }
 
@@ -106,6 +162,12 @@ namespace DocMgr.Models.Inventory
         public string ContainerCode { get; init; } = string.Empty;
 
         public string ProjectOrCategory { get; init; } = string.Empty;
+
+        /// <summary>杂项资料大类。</summary>
+        public string MajorCategory { get; init; } = string.Empty;
+
+        /// <summary>杂项资料子类。</summary>
+        public string SubCategory { get; init; } = string.Empty;
 
         public string Year { get; init; } = string.Empty;
 
@@ -177,6 +239,30 @@ namespace DocMgr.Models.Inventory
 
         public string ExtraInfo { get; init; } = string.Empty;
 
+        /// <summary>比例尺（地形图 / 航片）。</summary>
+        public string Scale { get; init; } = string.Empty;
+
+        /// <summary>图号或序号。</summary>
+        public string CodeText { get; init; } = string.Empty;
+
+        /// <summary>成图日期、航摄日期或年度区间。</summary>
+        public string DateText { get; init; } = string.Empty;
+
+        /// <summary>区域、测区或资料分类。</summary>
+        public string AreaText { get; init; } = string.Empty;
+
+        /// <summary>台账或明细备注。</summary>
+        public string Remark { get; init; } = string.Empty;
+
+        /// <summary>电子资料数据量（MB），无数据时为空。</summary>
+        public string DataSizeDisplay { get; init; } = string.Empty;
+
+        /// <summary>存储载体类型。</summary>
+        public string CarrierText { get; init; } = string.Empty;
+
+        /// <summary>电子立档存储路径。</summary>
+        public string PathText { get; init; } = string.Empty;
+
         /// <summary>
         /// 立档事实关联的登记介质明细 ID；非电子立档事实为 0。
         /// </summary>
@@ -200,5 +286,7 @@ namespace DocMgr.Models.Inventory
         public const string TopoMap = "TopoMap";
         public const string AerialPhoto = "AerialPhoto";
         public const string OtherMap = "OtherMap";
+        public const string HistoryMiscMaterial = "HistoryMiscMaterial";
+        public const string HistoryMiscMaterialLine = "HistoryMiscMaterialLine";
     }
 }

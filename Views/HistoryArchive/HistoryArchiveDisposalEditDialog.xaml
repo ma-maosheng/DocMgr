@@ -139,7 +139,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
               <Button Content="刷新候选" Command="{Binding RefreshCandidatesCommand}" Padding="12,6" Margin="0,0,8,0"/>
               <Button Content="加入明细" Command="{Binding AddSelectedCommand}" Padding="12,6" Margin="0,0,8,0"
-                      ToolTip="将勾选的候选档案盒加入已选明细；混放盒会整组纳入"/>
+                      ToolTip="将勾选的候选加入已选明细；档案盒混放会整组纳入，杂项按单个容器纳入"/>
               <Button Content="全部加入明细" Command="{Binding AddAllCommand}" Padding="12,6" Margin="0,0,8,0"
                       ToolTip="将当前候选在柜档案盒全部加入已选明细；混放盒会整组纳入"/>
               <Button Content="清空明细" Command="{Binding ClearItemsCommand}" Padding="12,6"

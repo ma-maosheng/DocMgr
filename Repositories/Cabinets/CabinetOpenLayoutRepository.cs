@@ -228,6 +228,16 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
         return list;
     }
 
+    public List<HistoryMiscMaterial> GetInStockMiscMaterials()
+    {
+        return _dbContext.HistoryMiscMaterials
+            .AsNoTracking()
+            .Include(item => item.Lines)
+            .Where(item => item.StorageLocation != ""
+                && item.LifecycleStatus != HistoryArchiveDisposalDomainValues.LifecycleDisposed)
+            .ToList();
+    }
+
     public List<YearlyArchiveBox> GetYearlyArchiveBoxesWithContents()
     {
         return _dbContext.YearlyArchiveBoxes

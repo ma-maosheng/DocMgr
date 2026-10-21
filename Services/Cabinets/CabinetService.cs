@@ -52,7 +52,15 @@ namespace DocMgr.Services.Cabinets
         {
             ArgumentNullException.ThrowIfNull(cabinet);
             CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
-            EnsureMagneticSlotCapacitiesAllowCurrentOccupancy(cabinet);
+            if (CabinetStructureChanged(cabinet))
+            {
+                EnsureCabinetEditKeepsStoredContent(cabinet);
+            }
+            else
+            {
+                EnsureMagneticSlotCapacitiesAllowCurrentOccupancy(cabinet);
+            }
+
             _cabinetRepository.Update(cabinet);
             _cabinetRepository.SaveChanges();
         }
@@ -61,6 +69,7 @@ namespace DocMgr.Services.Cabinets
         {
             ArgumentNullException.ThrowIfNull(cabinet);
             CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
+            EnsureCabinetEditKeepsStoredContent(cabinet);
             NormalizeMagneticSlotCapacities(cabinet);
             _cabinetRepository.Add(cabinet);
             _cabinetRepository.SaveChanges();
@@ -567,15 +576,189 @@ namespace DocMgr.Services.Cabinets
             }
         }
 
+        /// <inheritdoc />
+        public bool HasStoredContent(int cabinetId)
+        {
+            Cabinet? cabinet = _cabinetRepository.GetById(cabinetId);
+            if (cabinet == null || string.IsNullOrWhiteSpace(cabinet.Name))
+            {
+                return false;
+            }
+
+            return _cabinetRepository.HasStoredContent(cabinet.Name);
+        }
+
+        /// <inheritdoc />
+        public IReadOnlyList<CabinetStoredContentSlot> GetStoredContentSlots(int cabinetId)
+        {
+            Cabinet? cabinet = _cabinetRepository.GetById(cabinetId);
+            if (cabinet == null || string.IsNullOrWhiteSpace(cabinet.Name))
+            {
+                return Array.Empty<CabinetStoredContentSlot>();
+            }
+
+            return _cabinetRepository.GetStoredContentSlots(cabinet.Name);
+        }
+
+        /// <inheritdoc />
+        public void EnsureCabinetEditKeepsStoredContent(Cabinet proposed)
+        {
+            ArgumentNullException.ThrowIfNull(proposed);
+            string proposedName = proposed.Name?.Trim() ?? string.Empty;
+            if (proposed.Id <= 0)
+            {
+                EnsureCabinetNameIsUnique(proposedName, 0);
+                return;
+            }
+
+            CabinetStructureSnapshot? baseline = _cabinetRepository.GetStructureSnapshot(proposed.Id);
+            if (baseline == null)
+            {
+                throw new InvalidOperationException("未找到要保存的资料柜。");
+            }
+
+            var issues = new List<string>();
+            IReadOnlyList<CabinetStoredContentSlot> slots = _cabinetRepository.GetStoredContentSlots(baseline.Name);
+            bool hasContent = slots.Count > 0;
+            bool nameChanged = !CabinetNameNormalizer.AreSame(baseline.Name, proposedName);
+
+            if (hasContent && nameChanged)
+            {
+                issues.Add($"不能将柜体编号从「{baseline.Name}」改为「{proposedName}」。已有存放位置按原编号书写，改号后这些记录将与柜体脱节。本次保存不会改写已有存放记录。");
+            }
+
+            if (hasContent && baseline.Type != proposed.Type)
+            {
+                issues.Add($"不能将柜体种类从「{FormatCabinetType(baseline.Type)}」改为「{FormatCabinetType(proposed.Type)}」。种类不同，已有存放无法按新柜种对应，会造成数据矛盾。");
+            }
+
+            if (hasContent)
+            {
+                List<CabinetStoredContentSlot> dropped = slots
+                    .Where(slot => !SlotStaysInsideCabinet(slot, proposed))
+                    .ToList();
+                if (dropped.Count > 0)
+                {
+                    issues.Add(
+                        "下列档口已有内容，但编辑后的柜体不再包含这些档口，会造成存放记录丢失或不完整："
+                        + Environment.NewLine
+                        + string.Join(Environment.NewLine, dropped.Select(slot => slot.DisplayText)));
+                }
+            }
+
+            if (nameChanged && IsCabinetNameTaken(proposedName, proposed.Id))
+            {
+                issues.Add($"编号「{proposedName}」已被其他柜体使用。两个柜体共用编号后，存放位置将无法区分属于哪一柜。");
+            }
+
+            if (proposed.Type == CabinetType.MagneticDisk)
+            {
+                try
+                {
+                    EnsureMagneticSlotCapacitiesAllowCurrentOccupancy(proposed);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    issues.Add(ex.Message);
+                }
+            }
+            else
+            {
+                NormalizeMagneticSlotCapacities(proposed);
+            }
+
+            if (issues.Count > 0)
+            {
+                throw new InvalidOperationException(string.Join(Environment.NewLine + Environment.NewLine, issues));
+            }
+        }
+
+        private bool CabinetStructureChanged(Cabinet proposed)
+        {
+            if (proposed.Id <= 0)
+            {
+                return true;
+            }
+
+            CabinetStructureSnapshot? baseline = _cabinetRepository.GetStructureSnapshot(proposed.Id);
+            if (baseline == null)
+            {
+                return true;
+            }
+
+            return !CabinetNameNormalizer.AreSame(baseline.Name, proposed.Name)
+                || baseline.Type != proposed.Type
+                || baseline.FaceCount != proposed.FaceCount
+                || baseline.LayerCount != proposed.LayerCount
+                || baseline.ColumnCount != proposed.ColumnCount
+                || baseline.HardDiskSlotCapacity != proposed.HardDiskSlotCapacity
+                || baseline.OpticalDiscSlotCapacity != proposed.OpticalDiscSlotCapacity;
+        }
+
+        private void EnsureCabinetNameIsUnique(string cabinetName, int cabinetId)
+        {
+            if (IsCabinetNameTaken(cabinetName, cabinetId))
+            {
+                throw new InvalidOperationException($"编号「{cabinetName}」已被其他柜体使用。两个柜体共用编号后，存放位置将无法区分属于哪一柜。");
+            }
+        }
+
+        private bool IsCabinetNameTaken(string cabinetName, int cabinetId)
+        {
+            if (string.IsNullOrWhiteSpace(cabinetName))
+            {
+                return false;
+            }
+
+            return _cabinetRepository.GetCabinetNamesExcept(cabinetId)
+                .Any(name => CabinetNameNormalizer.AreSame(name, cabinetName));
+        }
+
+        private static bool SlotStaysInsideCabinet(CabinetStoredContentSlot slot, Cabinet proposed)
+        {
+            int faceIndex = slot.FaceCode.Trim().ToUpperInvariant() switch
+            {
+                "A" => 0,
+                "B" => 1,
+                _ => -1
+            };
+            int faceCount = proposed.FaceCount <= 0 ? 1 : proposed.FaceCount;
+            return faceIndex >= 0
+                && faceIndex < faceCount
+                && slot.LayerIndex >= 1
+                && slot.LayerIndex <= proposed.LayerCount
+                && slot.ColumnIndex >= 1
+                && slot.ColumnIndex <= proposed.ColumnCount;
+        }
+
+        private static string FormatCabinetType(CabinetType type)
+        {
+            return type switch
+            {
+                CabinetType.Standard => "标准滑道式档案柜",
+                CabinetType.Vertical => "立式文件柜",
+                CabinetType.Horizontal => "卧式文件柜",
+                CabinetType.MagneticDisk => "防磁磁盘柜",
+                _ => type.ToString()
+            };
+        }
+
         public void DeleteCabinet(int cabinetId)
         {
             CabinetManagementPermissionSupport.EnsureCanMaintain(_userContextService.CurrentUser);
             var cab = _cabinetRepository.GetById(cabinetId);
-            if (cab != null)
+            if (cab == null)
             {
-                _cabinetRepository.Remove(cab);
-                _cabinetRepository.SaveChanges();
+                return;
             }
+
+            if (_cabinetRepository.HasStoredContent(cab.Name))
+            {
+                throw new InvalidOperationException($"资料柜 [{cab.Name}] 内存有资料或其他内容，不能删除。");
+            }
+
+            _cabinetRepository.Remove(cab);
+            _cabinetRepository.SaveChanges();
         }
         public async Task<List<Cabinet>> GetAllCabinetsAsync()
         {

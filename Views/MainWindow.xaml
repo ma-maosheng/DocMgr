@@ -507,6 +507,7 @@
                                 <Button x:Name="BtnHistMap" Content="地形图图件" Style="{StaticResource SubNavButton}" Click="BtnTopoMap_Click"/>
                                 <Button x:Name="BtnHistAerial" Content="航摄胶片、像片" Style="{StaticResource SubNavButton}" Click="BtnAerialPhoto_Click"/>
                                 <Button x:Name="BtnOtherData" Content="其他资料" Style="{StaticResource SubNavButton}" Click="BtnOtherMap_Click"/>
+                                <Button x:Name="BtnHistMisc" Content="杂项资料" Style="{StaticResource SubNavButton}" Click="BtnHistMisc_Click"/>
                                 <Expander Header="资料台账与资料处置" Style="{StaticResource SubNavExpander}">
                                     <StackPanel>
                                         <Button x:Name="BtnHistBoxLedger" Content="台账" Style="{StaticResource SubSubNavButton}" Click="BtnHistBoxLedger_Click"/>

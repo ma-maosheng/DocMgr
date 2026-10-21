@@ -422,6 +422,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand AddDataSimulatedMediaEntryCommand { get; }
 
         public RelayCommand<MediaEntryViewModel> AddMediaItemCommand { get; }
+        public RelayCommand<MediaEntryViewModel> BatchAddElectronicMediaItemsCommand { get; }
         public RelayCommand<MediaEntryViewModel> RemoveMediaEntryCommand { get; }
         public RelayCommand<MediaItemViewModel> RemoveMediaItemCommand { get; }
         public RelayCommand<MediaItemViewModel> PickFolderAndScanElectronicContentCommand { get; }
@@ -477,6 +478,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             AddDataElectronicMediaEntryCommand = new RelayCommand(_ => AddDataElectronicMediaEntry(), _ => CanEditForm);
             AddDataSimulatedMediaEntryCommand = new RelayCommand(_ => AddDataSimulatedMediaEntry(), _ => CanEditForm);
             AddMediaItemCommand = new RelayCommand<MediaEntryViewModel>(m => AddMediaItem(m), _ => CanEditForm);
+            BatchAddElectronicMediaItemsCommand = new RelayCommand<MediaEntryViewModel>(
+                async media => await _pageDb.RunAsync(() => BatchAddElectronicMediaItemsAsync(media)),
+                _ => CanEditForm);
             RemoveMediaEntryCommand = new RelayCommand<MediaEntryViewModel>(m => RemoveMediaEntry(m), _ => CanEditForm);
             RemoveMediaItemCommand = new RelayCommand<MediaItemViewModel>(m => RemoveMediaItem(m), _ => CanEditForm);
             PickFolderAndScanElectronicContentCommand = new RelayCommand<MediaItemViewModel>(

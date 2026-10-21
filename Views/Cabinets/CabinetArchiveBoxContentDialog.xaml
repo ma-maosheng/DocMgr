@@ -82,6 +82,8 @@
                         <RowDefinition Height="{Binding HistoryAerialRowHeight}"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="{Binding HistoryOtherRowHeight}"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="{Binding HistoryMiscRowHeight}"/>
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0"
@@ -182,6 +184,37 @@
                             <DataGridTextColumn Header="登记人" Binding="{Binding HistoryFields.Registrant}" Width="90"/>
                             <DataGridTextColumn Header="登记日期" Binding="{Binding HistoryFields.RegistrationDate}" Width="120"/>
                             <DataGridTextColumn Header="备注" Binding="{Binding HistoryFields.Remark}" Width="160"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <TextBlock Grid.Row="6"
+                               Text="杂项资料"
+                               Margin="0,8,0,6"
+                               FontSize="13"
+                               FontWeight="Bold"
+                               Foreground="#334155"
+                               Visibility="{Binding HistoryMiscSectionHeaderVisibility}"/>
+                    <DataGrid Grid.Row="7"
+                              ItemsSource="{Binding MiscItems}"
+                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              RowHeaderWidth="0"
+                              Visibility="{Binding HistoryMiscGridVisibility}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="存放容器" Binding="{Binding HistoryFields.ContainerKind}" Width="80"/>
+                            <DataGridTextColumn Header="容器编号" Binding="{Binding HistoryFields.ContainerCode}" Width="90"/>
+                            <DataGridTextColumn Header="资料大类" Binding="{Binding HistoryFields.MajorCategory}" Width="110"/>
+                            <DataGridTextColumn Header="资料子类" Binding="{Binding HistoryFields.SubCategory}" Width="110"/>
+                            <DataGridTextColumn Header="资料详情" Binding="{Binding HistoryFields.DetailText}" Width="*"/>
+                            <DataGridTextColumn Header="登记人" Binding="{Binding HistoryFields.Registrant}" Width="80"/>
+                            <DataGridTextColumn Header="登记日期" Binding="{Binding HistoryFields.RegistrationDate}" Width="110"/>
+                            <DataGridTextColumn Header="备注" Binding="{Binding HistoryFields.Remark}" Width="140"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>

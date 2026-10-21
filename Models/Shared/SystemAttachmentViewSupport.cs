@@ -119,7 +119,8 @@ namespace DocMgr.Models.Shared
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.CreateOptions = BitmapCreateOptions.IgnoreColorProfile | BitmapCreateOptions.IgnoreImageCache;
+                // 流式图片没有 Uri。IgnoreImageCache 会用空键访问图像缓存并抛 ArgumentNullException，预览因此失败。
+                bitmap.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
                 bitmap.StreamSource = stream;
                 if (decodePixelWidth is int width && width > 0)
                 {

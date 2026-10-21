@@ -19,7 +19,7 @@ public interface IHistoryArchiveDisposalService
     /// <summary>
     /// 历史存档盒台账查询。
     /// </summary>
-    /// <param name="materialKind">资料类别编码或显示名；空/全部则三类合并。</param>
+    /// <param name="materialKind">资料类别编码或显示名；空/全部则地形图、航摄、其他资料与杂项资料合并。</param>
     /// <param name="lifecycleStatus">在库（含离库锁定）/ 已离库；空/全部则不过滤。</param>
     Task<IReadOnlyList<HistoryArchiveBoxLedgerEntry>> SearchBoxLedgerAsync(
         string? materialKind,

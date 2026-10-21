@@ -1,4 +1,5 @@
 using System;
+using DocMgr.Models.Cabinets;
 
 namespace DocMgr.Services.YearlyArchive
 {
@@ -55,6 +56,20 @@ namespace DocMgr.Services.YearlyArchive
 
         public static string BuildSlotKey(string cabinetName, string side, int row, int column)
             => $"{cabinetName.Trim()}{side.Trim().ToUpperInvariant()}-{row}-{column}";
+
+        /// <summary>
+        /// 存放位置是否落在指定柜体。只比较柜名，忽略柜面、层、列与档内序号。
+        /// </summary>
+        public static bool BelongsToCabinet(string? location, string? cabinetName)
+        {
+            if (string.IsNullOrWhiteSpace(cabinetName))
+            {
+                return false;
+            }
+
+            return TryParseSlotLocation(location, out string parsedCabinetName, out _, out _, out _)
+                && CabinetNameNormalizer.AreSame(parsedCabinetName, cabinetName);
+        }
 
         public static bool IsSameSlot(string? sourceLocation, string? targetLocation)
         {

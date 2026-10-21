@@ -6,6 +6,14 @@
   <Page.Resources>
     <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
+    <!-- 资料详情：单行省略，悬停查看全部详情行 -->
+    <Style x:Key="HistoryDetailSummaryTextStyle" TargetType="TextBlock">
+      <Setter Property="TextWrapping" Value="NoWrap"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="ToolTip" Value="{Binding ContentSummary}"/>
+    </Style>
+
     <!-- 已离库：盒号（位置编码）用褐色，与在库默认色区分，便于追溯识别 -->
     <Style x:Key="DisposedTraceLocationTextStyle" TargetType="TextBlock">
       <Style.Triggers>
@@ -27,6 +35,12 @@
     <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Margin="0" CornerRadius="0" Padding="16,12">
       <DockPanel LastChildFill="True">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Content="浏览照片"
+                  Command="{Binding BrowsePhotosCommand}"
+                  Style="{StaticResource ToolbarActionButtonStyle}"
+                  Width="96"
+                  Margin="0,0,8,0"
+                  ToolTip="浏览当前杂项资料的实物照片"/>
           <Button Content="📤 导出"
                   Command="{Binding ExportCommand}"
                   Style="{StaticResource ToolbarActionButtonStyle}"
@@ -124,7 +138,7 @@
                 BorderBrush="#E2C98F"
                 BorderThickness="1"
                 CornerRadius="4">
-          <TextBlock Text="展示历史档案盒台账（可按在库/已离库筛选：资料类别、盒号、柜位、盒内摘要、混放与可处置状态）。支持分页/全局浏览与导出 Excel。离库销毁/转交请使用「资料台账与资料处置 → 处置」。"
+          <TextBlock Text="展示历史档案盒与杂项容器台账（可按在库/已离库筛选）。选定资料类别后，下列标题随类别切换。杂项资料按存放容器列出；离库销毁/转交请使用「资料台账与资料处置 → 处置」。"
                      Foreground="#6F4A00"
                      TextWrapping="Wrap"
                      HorizontalAlignment="Center"/>
@@ -154,7 +168,8 @@
     </Border>
 
     <Border Grid.Row="3" Background="White" Padding="10">
-      <DataGrid ItemsSource="{Binding Rows}"
+      <DataGrid x:Name="LedgerGrid"
+                ItemsSource="{Binding Rows}"
                 SelectedItem="{Binding SelectedRow}"
                 AutoGenerateColumns="False"
                 IsReadOnly="True"
@@ -168,23 +183,7 @@
                 EnableRowVirtualization="True"
                 VirtualizingPanel.IsVirtualizing="True"
                 VirtualizingPanel.VirtualizationMode="Recycling"
-                ScrollViewer.CanContentScroll="True">
-        <DataGrid.Columns>
-          <DataGridTextColumn Header="资料类别" Binding="{Binding MaterialKindDisplay, Mode=OneWay}" Width="130"/>
-          <DataGridTextColumn Header="状态" Binding="{Binding LifecycleStatus, Mode=OneWay}" Width="80"/>
-          <DataGridTextColumn Header="盒号"
-                              Binding="{Binding BoxCode, Mode=OneWay}"
-                              Width="150"
-                              ElementStyle="{StaticResource DisposedTraceLocationTextStyle}"/>
-          <DataGridTextColumn Header="规格" Binding="{Binding BoxSpecification, Mode=OneWay}" Width="90"/>
-          <DataGridTextColumn Header="柜体" Binding="{Binding CabinetName, Mode=OneWay}" Width="100"/>
-          <DataGridTextColumn Header="盒内摘要" Binding="{Binding ContentSummary, Mode=OneWay}" Width="*"/>
-          <DataGridTextColumn Header="台账条数" Binding="{Binding LedgerRecordCount, Mode=OneWay}" Width="80"/>
-          <DataGridTextColumn Header="混放" Binding="{Binding MixedPlacementText, Mode=OneWay}" Width="50"/>
-          <DataGridTextColumn Header="关联盒数" Binding="{Binding RelatedBoxCount, Mode=OneWay}" Width="80"/>
-          <DataGridTextColumn Header="可处置" Binding="{Binding AvailabilityText, Mode=OneWay}" Width="100"/>
-        </DataGrid.Columns>
-      </DataGrid>
+                ScrollViewer.CanContentScroll="True"/>
     </Border>
 
     <Border Grid.Row="4"

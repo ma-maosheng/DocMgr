@@ -1,0 +1,40 @@
+<Window x:Class="DocMgr.Views.HistoryArchive.HistoryMiscSlotPickerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="推荐档口"
+        Width="640"
+        Height="460"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        ShowInTaskbar="False"
+        Background="#F5F5F5">
+  <Grid Margin="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <TextBlock Text="只列出立式文件柜和卧式文件柜。已有资料的格口仍可选择，序号取该格口下一个未占用号。"
+               TextWrapping="Wrap" Foreground="#546E7A" Margin="0,0,0,8"/>
+    <DataGrid Grid.Row="1"
+              ItemsSource="{Binding Options}"
+              SelectedItem="{Binding SelectedOption}"
+              AutoGenerateColumns="False"
+              IsReadOnly="True"
+              CanUserAddRows="False"
+              SelectionMode="Single"
+              GridLinesVisibility="Horizontal">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="柜体" Binding="{Binding CabinetName, Mode=OneWay}" Width="80"/>
+        <DataGridTextColumn Header="柜型" Binding="{Binding CabinetTypeDisplay, Mode=OneWay}" Width="100"/>
+        <DataGridTextColumn Header="档口" Binding="{Binding SlotKey, Mode=OneWay}" Width="120"/>
+        <DataGridTextColumn Header="建议位置" Binding="{Binding SuggestedLocation, Mode=OneWay}" Width="140"/>
+        <DataGridTextColumn Header="占用提示" Binding="{Binding OccupiedHint, Mode=OneWay}" Width="*"/>
+      </DataGrid.Columns>
+    </DataGrid>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+      <Button Content="取消" Width="80" Margin="0,0,8,0" Style="{StaticResource DialogSecondaryActionButtonStyle}" Command="{Binding CancelCommand}"/>
+      <Button Content="使用此档口" Width="110" Style="{StaticResource DialogPrimaryActionButtonStyle}" Command="{Binding ConfirmCommand}"/>
+    </StackPanel>
+  </Grid>
+</Window>

@@ -44,6 +44,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<HistoryArchiveImportSlotGuard>();
         services.AddScoped<IAerialPhotoService, AerialPhotoService>();
         services.AddScoped<IOtherMapService, OtherMapService>();
+        services.AddScoped<IHistoryMiscMaterialService, HistoryMiscMaterialService>();
         services.AddScoped<ITopoMapService, TopoMapService>();
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<IArchiveRegisterService, ArchiveRegisterService>();

@@ -128,9 +128,8 @@ namespace DocMgr.ViewModels.Cabinets
             ShowSlotInfoCommand = new RelayCommand<CabinetSlotViewModel>(ShowSlotInfo);
             ShowSlotDetailCommand = new RelayCommand<CabinetSlotViewModel>(ShowSlotDetail);
             ShowSlotZoomCommand = new RelayCommand<CabinetSlotViewModel>(ShowSlotZoom, CanShowSlotZoomFromSlot);
-            AddArchiveBoxCommand = new RelayCommand<CabinetSlotViewModel>(AddArchiveBox, CanMaintainCabinetSlot);
             RefreshSlotCommand = new RelayCommand<CabinetSlotViewModel>(RefreshSlot);
-            EditSlotPlacementModeCommand = new RelayCommand<CabinetSlotViewModel>(EditSlotPlacementMode, CanMaintainCabinetSlot);
+            EditSlotPlacementModeCommand = new RelayCommand<CabinetSlotViewModel>(EditSlotPlacementMode, CanEditSlotPlacementMode);
             SetHardDiskSlotGeneralCategoryCommand = new RelayCommand<CabinetSlotViewModel>(
                 slot => SetHardDiskSlotCategory(slot, categoryName: null, showReturnHint: false),
                 CanChangeSlotDedicatedCategory);
@@ -249,6 +248,12 @@ namespace DocMgr.ViewModels.Cabinets
         public Visibility CabinetMaintainActionVisibility =>
             CanMaintainCabinet ? Visibility.Visible : Visibility.Collapsed;
 
+        /// <summary>格口右键「设置格口内放置方式」。仅标准滑道式档案柜提供，立式、卧式不提供。</summary>
+        public Visibility SlotPlacementModeMenuVisibility =>
+            CanMaintainCabinet && Request.CabinetType == CabinetType.Standard
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
         /// <summary>防磁磁盘柜开柜标识图例（非单格快照时可见）。</summary>
         public Visibility MagneticDiskLegendVisibility => IsMagneticDiskCabinet && !IsSingleSlotSnapshot
             ? Visibility.Visible
@@ -267,9 +272,7 @@ namespace DocMgr.ViewModels.Cabinets
             ? Visibility.Collapsed
             : Visibility.Visible;
 
-        public string CurrentSideLabel => Request.CabinetType == CabinetType.MagneticDisk
-            ? "当前门别："
-            : "当前面别：";
+        public string CurrentSideLabel => "当前面别：";
 
         public int DisplayRowCount { get; private set; }
 
@@ -572,8 +575,6 @@ namespace DocMgr.ViewModels.Cabinets
         public RelayCommand<CabinetSlotViewModel> ShowSlotDetailCommand { get; }
 
         public RelayCommand<CabinetSlotViewModel> ShowSlotZoomCommand { get; }
-
-        public RelayCommand<CabinetSlotViewModel> AddArchiveBoxCommand { get; }
 
         public RelayCommand<CabinetSlotViewModel> RefreshSlotCommand { get; }
 
@@ -2322,16 +2323,6 @@ namespace DocMgr.ViewModels.Cabinets
             return slot != null && !IsSingleSlotSnapshot;
         }
 
-        private void AddArchiveBox(CabinetSlotViewModel? slot)
-        {
-            if (slot == null || !CanMaintainCabinet)
-            {
-                return;
-            }
-
-            _dialogService.ShowMessage($"格口 {slot.SlotCode} 的新增档案盒功能将在后续步骤实现。", "提示");
-        }
-
         private void RefreshSlot(CabinetSlotViewModel? slot)
         {
             if (slot == null)
@@ -2547,7 +2538,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         private void EditSlotPlacementMode(CabinetSlotViewModel? slot)
         {
-            if (slot == null || slot.ArchiveBoxes.Count == 0 || !CanMaintainCabinet)
+            if (slot == null || slot.ArchiveBoxes.Count == 0 || !CanEditSlotPlacementMode(slot))
             {
                 return;
             }
@@ -2712,6 +2703,9 @@ namespace DocMgr.ViewModels.Cabinets
         {
             return _archiveRegisterService.IsArchiveAdminUser(_userContextService.CurrentUser);
         }
+
+        private bool CanEditSlotPlacementMode(CabinetSlotViewModel? slot) =>
+            CanMaintainCabinetSlot(slot) && Request.CabinetType == CabinetType.Standard;
 
         private bool CanMaintainCabinetSlot(CabinetSlotViewModel? slot) =>
             CanMaintainCabinet && slot != null;
@@ -4035,16 +4029,7 @@ namespace DocMgr.ViewModels.Cabinets
 
         private static string GetSideDisplayName(CabinetType cabinetType, CabinetFace face)
         {
-            if (cabinetType == CabinetType.MagneticDisk)
-            {
-                return face switch
-                {
-                    CabinetFace.A => "左门",
-                    CabinetFace.B => "右门",
-                    _ => "左门"
-                };
-            }
-
+            _ = cabinetType;
             return face switch
             {
                 CabinetFace.A => "A面",

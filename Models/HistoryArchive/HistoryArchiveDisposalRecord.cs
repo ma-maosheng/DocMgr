@@ -26,7 +26,7 @@ namespace DocMgr.Models.HistoryArchive
 
         public int Status { get; set; } = StatusDraft;
 
-        /// <summary>资料类别编码：TopoMap / AerialPhoto / OtherMap。</summary>
+        /// <summary>资料类别编码：TopoMap / AerialPhoto / OtherMap / MiscMaterial。</summary>
         public string MaterialKind { get; set; } = string.Empty;
 
         public string DispositionMethod { get; set; } = string.Empty;

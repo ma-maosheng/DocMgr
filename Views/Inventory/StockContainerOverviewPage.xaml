@@ -81,7 +81,7 @@
         <StackPanel Grid.Row="0" Margin="0,0,0,10">
             <TextBlock Text="库管资料总览" Style="{StaticResource PageTitleStyle}"/>
             <TextBlock Style="{StaticResource PageSubtitleStyle}"
-                       Text="以年度档案盒、电子介质袋、历史存档盒为主行盘点查询；支持按资料名反查容器，并可导出 Excel。借还请走资料检索→检索池。"/>
+                       Text="一次只查看一类资料：年度档案盒、电子介质袋、历史地形图、历史航片、历史其他或历史杂项。支持按名称反查容器，并可导出 Excel。借还请走资料检索→检索池。"/>
         </StackPanel>
 
         <Border Grid.Row="1" Style="{StaticResource ToolbarCardBorderStyle}" Margin="0,0,0,10" Padding="12,10">
@@ -109,7 +109,9 @@
                                   Height="{StaticResource FormControlHeight}"
                                   Margin="0,0,12,0"
                                   ItemsSource="{Binding Years}"
-                                  SelectedItem="{Binding SelectedYear}"/>
+                                  SelectedItem="{Binding SelectedYear}"
+                                  IsEnabled="{Binding IsArchiveYearFilterEnabled}"
+                                  ToolTip="历史地形图、历史航片、历史其他和历史杂项没有档案年度；选中这些类型时忽略年度。"/>
 
                         <TextBlock Text="状态：" Style="{StaticResource FilterRowLabelStyle}" Width="48"/>
                         <ComboBox Width="176"
@@ -142,11 +144,43 @@
                                  Height="{StaticResource FormControlHeight}"
                                  Margin="0,0,12,0"
                                  Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="匹配容器编号、项目、位置，或盒/袋内资料名称；勾选「含目录/文件名」后还可匹配电子介质目录与文件名称"/>
+                                 ToolTip="匹配当前类型的编号、项目或位置，以及盒内资料、电子明细或杂项详情。电子袋还可勾选「含目录/文件名」。"/>
 
-                        <CheckBox Content="年度盒" IsChecked="{Binding IncludeYearlyBox}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <CheckBox Content="电子袋" IsChecked="{Binding IncludeElectronicBag}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <CheckBox Content="历史盒" IsChecked="{Binding IncludeHistoryBox}" VerticalAlignment="Center"/>
+                        <TextBlock Text="资料类型：" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,4,0"/>
+                        <RadioButton Content="年度盒"
+                                     GroupName="StockContainerMaterialKind"
+                                     IsChecked="{Binding IsYearlyBoxSelected, Mode=TwoWay}"
+                                     Style="{StaticResource FormRadioButtonStyle}"
+                                     Margin="0,0,8,0"/>
+                        <RadioButton Content="电子袋"
+                                     GroupName="StockContainerMaterialKind"
+                                     IsChecked="{Binding IsElectronicBagSelected, Mode=TwoWay}"
+                                     Style="{StaticResource FormRadioButtonStyle}"
+                                     Margin="0,0,8,0"/>
+                        <RadioButton Content="历史地形图"
+                                     GroupName="StockContainerMaterialKind"
+                                     IsChecked="{Binding IsHistoryTopoSelected, Mode=TwoWay}"
+                                     Style="{StaticResource FormRadioButtonStyle}"
+                                     Margin="0,0,8,0"
+                                     ToolTip="只列出挂有地形图台账的历史档案盒。"/>
+                        <RadioButton Content="历史航片"
+                                     GroupName="StockContainerMaterialKind"
+                                     IsChecked="{Binding IsHistoryAerialSelected, Mode=TwoWay}"
+                                     Style="{StaticResource FormRadioButtonStyle}"
+                                     Margin="0,0,8,0"
+                                     ToolTip="只列出挂有航摄资料的历史档案盒。"/>
+                        <RadioButton Content="历史其他"
+                                     GroupName="StockContainerMaterialKind"
+                                     IsChecked="{Binding IsHistoryOtherSelected, Mode=TwoWay}"
+                                     Style="{StaticResource FormRadioButtonStyle}"
+                                     Margin="0,0,8,0"
+                                     ToolTip="只列出挂有其他资料的历史档案盒。"/>
+                        <RadioButton Content="历史杂项"
+                                     GroupName="StockContainerMaterialKind"
+                                     IsChecked="{Binding IsHistoryMiscSelected, Mode=TwoWay}"
+                                     Style="{StaticResource FormRadioButtonStyle}"
+                                     Margin="0"
+                                     ToolTip="一条杂项存放容器为一行，不按档案年度筛选。"/>
                     </StackPanel>
                 </ScrollViewer>
 
@@ -154,6 +188,7 @@
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                         <CheckBox Content="含目录/文件名"
                                   IsChecked="{Binding IncludeElectronicEntryNames}"
+                                  IsEnabled="{Binding IsElectronicBagSelected}"
                                   VerticalAlignment="Center"
                                   Margin="0,0,8,0"
                                   ToolTip="勾选后关键词额外匹配电子介质目录/文件明细的名称字段；默认不匹配"/>
@@ -203,9 +238,10 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <Border Grid.Row="0" Style="{StaticResource SectionHeaderBarStyle}">
-                        <TextBlock Text="容器列表" FontWeight="SemiBold" Foreground="#37474F"/>
+                        <TextBlock Text="{Binding ContainerPaneTitle, Mode=OneWay}" FontWeight="SemiBold" Foreground="#37474F"/>
                     </Border>
-                    <DataGrid Grid.Row="1"
+                    <DataGrid x:Name="ContainerGrid"
+                              Grid.Row="1"
                               ItemsSource="{Binding ContainerRows}"
                               SelectedItem="{Binding SelectedRow}"
                               AutoGenerateColumns="False"
@@ -221,26 +257,7 @@
                               EnableRowVirtualization="True"
                               VirtualizingPanel.IsVirtualizing="True"
                               VirtualizingPanel.VirtualizationMode="Recycling"
-                              ScrollViewer.CanContentScroll="True">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="类型" Binding="{Binding ContainerKindDisplay, Mode=OneWay}" Width="100"/>
-                            <DataGridTextColumn Header="容器编号"
-                                                Binding="{Binding ContainerCode, Mode=OneWay}"
-                                                Width="140"
-                                                ElementStyle="{StaticResource DisposedTraceLocationTextStyle}"/>
-                            <DataGridTextColumn Header="项目/类别" Binding="{Binding ProjectOrCategory, Mode=OneWay}" Width="160"/>
-                            <DataGridTextColumn Header="年度" Binding="{Binding Year, Mode=OneWay}" Width="70"/>
-                            <DataGridTextColumn Header="存放位置"
-                                                Binding="{Binding StorageLocation, Mode=OneWay}"
-                                                Width="140"
-                                                ElementStyle="{StaticResource DisposedTraceLocationTextStyle}"/>
-                            <DataGridTextColumn Header="状态" Binding="{Binding LifecycleStatusDisplay, Mode=OneWay}" Width="90"/>
-                            <DataGridTextColumn Header="件数" Binding="{Binding ItemCount, Mode=OneWay}" Width="60"/>
-                            <DataGridTextColumn Header="内容摘要" Binding="{Binding ContentSummary, Mode=OneWay}" Width="*"/>
-                            <DataGridTextColumn Header="规格/载体" Binding="{Binding Specs, Mode=OneWay}" Width="140"/>
-                            <DataGridTextColumn Header="归档日期" Binding="{Binding ArchivedDateDisplay, Mode=OneWay}" Width="100"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                              ScrollViewer.CanContentScroll="True"/>
                     <Border Grid.Row="2"
                             Background="#FAFAFA"
                             BorderBrush="#E0E0E0"
@@ -300,11 +317,13 @@
                                         Command="{Binding ViewElectronicEntriesCommand}"
                                         Style="{StaticResource CompactToolbarButtonStyle}"
                                         Margin="8,0,0,0"
+                                        Visibility="{Binding ShowElectronicEntriesAction, Converter={StaticResource BooleanToVisibilityConverter}}"
                                         ToolTip="选中电子资料行后，查看其目录/文件明细"/>
                                 <Button Content="打开立档台账"
                                         Command="{Binding OpenFilingLedgerCommand}"
                                         Style="{StaticResource CompactToolbarButtonStyle}"
-                                        Margin="8,0,0,0"/>
+                                        Margin="8,0,0,0"
+                                        Visibility="{Binding ShowFilingLedgerAction, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                             </StackPanel>
                             <TextBlock Text="{Binding ContentSummaryText, Mode=OneWay}"
                                        FontWeight="SemiBold"
@@ -312,7 +331,8 @@
                                        VerticalAlignment="Center"/>
                         </DockPanel>
                     </Border>
-                    <DataGrid Grid.Row="1"
+                    <DataGrid x:Name="ContentGrid"
+                              Grid.Row="1"
                               ItemsSource="{Binding ContentItems}"
                               SelectedItem="{Binding SelectedContentItem}"
                               AutoGenerateColumns="False"
@@ -324,20 +344,7 @@
                               GridLinesVisibility="Horizontal"
                               RowHeaderWidth="0"
                               AlternatingRowBackground="#FAFAFA"
-                              BorderThickness="0">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="资料类别" Binding="{Binding MaterialKindDisplay, Mode=OneWay}" Width="90"/>
-                            <DataGridTextColumn Header="资料名称" Binding="{Binding Title, Mode=OneWay}" Width="180"/>
-                            <DataGridTextColumn Header="明细" Binding="{Binding ItemName, Mode=OneWay}" Width="140"/>
-                            <DataGridTextColumn Header="密级" Binding="{Binding ConfidentialLevel, Mode=OneWay}" Width="70"/>
-                            <DataGridTextColumn Header="份数" Binding="{Binding ContentCount, Mode=OneWay}" Width="60"/>
-                            <DataGridTextColumn Header="生命周期" Binding="{Binding LifecycleStatusDisplay, Mode=OneWay}" Width="80"/>
-                            <DataGridTextColumn Header="原件/备份" Binding="{Binding ArchiveCopyRoleDisplay, Mode=OneWay}" Width="80"/>
-                            <DataGridTextColumn Header="介质编号" Binding="{Binding MediumCode, Mode=OneWay}" Width="100"/>
-                            <DataGridTextColumn Header="表单号" Binding="{Binding FormNo, Mode=OneWay}" Width="120"/>
-                            <DataGridTextColumn Header="补充" Binding="{Binding ExtraInfo, Mode=OneWay}" Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                              BorderThickness="0"/>
                 </Grid>
             </Border>
 

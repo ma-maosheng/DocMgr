@@ -142,7 +142,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
 
         if (record.Items.Count == 0)
         {
-            throw new InvalidOperationException("请至少选择一个档案盒。");
+            throw new InvalidOperationException(EmptySelectionMessage(kind));
         }
 
         _repository.AddRecord(record);
@@ -193,7 +193,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
 
         if (existing.Items.Count == 0)
         {
-            throw new InvalidOperationException("请至少选择一个档案盒。");
+            throw new InvalidOperationException(EmptySelectionMessage(kind));
         }
 
         await _repository.SaveChangesAsync();
@@ -459,9 +459,12 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             writeLastLocation: true,
             disposedBoxCodes);
 
-        // 盒已离库：先按盒号删链接，再清空盒号释放档位（对齐年度盒销号）。
-        await _repository.RemoveHistoryArchiveBoxLinksByBoxCodesAsync(disposedBoxCodes);
-        await ReleaseDisposedHistoryBoxLocationCodesAsync(disposedBoxCodes);
+        if (!HistoryArchiveDisposalDomainValues.IsMiscMaterial(existing.MaterialKind))
+        {
+            // 盒已离库：先按盒号删链接，再清空盒号释放档位（对齐年度盒销号）。
+            await _repository.RemoveHistoryArchiveBoxLinksByBoxCodesAsync(disposedBoxCodes);
+            await ReleaseDisposedHistoryBoxLocationCodesAsync(disposedBoxCodes);
+        }
 
         existing.PhysicalRemovalConfirmed = true;
         existing.PhysicalRemovalConfirmedAt = now;
@@ -874,6 +877,11 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         HashSet<string> crossTypeBoxes)
     {
         string kind = HistoryArchiveDisposalDomainValues.NormalizeMaterialKind(materialKind);
+        if (HistoryArchiveDisposalDomainValues.IsMiscMaterial(kind))
+        {
+            return await BuildMiscLedgerEntriesAsync(disposedOnly: false);
+        }
+
         string kindDisplay = HistoryArchiveDisposalDomainValues.ToMaterialKindDisplay(kind);
         var boxByCode = allBoxes
             .Where(box => IsInCabinetBoxLifecycle(box.LifecycleStatus))
@@ -928,6 +936,11 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         IReadOnlyList<HistoryArchiveBox> allBoxes)
     {
         string kind = HistoryArchiveDisposalDomainValues.NormalizeMaterialKind(materialKind);
+        if (HistoryArchiveDisposalDomainValues.IsMiscMaterial(kind))
+        {
+            return await BuildMiscLedgerEntriesAsync(disposedOnly: true);
+        }
+
         string kindDisplay = HistoryArchiveDisposalDomainValues.ToMaterialKindDisplay(kind);
         // 办结后 BoxCode 已清空释放档位；已离库追溯键为 LastStorageLocation（对齐年度盒销号口径）。
         var boxByLastLocation = new Dictionary<string, HistoryArchiveBox>(StringComparer.OrdinalIgnoreCase);
@@ -1096,6 +1109,11 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         int? currentRecordId)
     {
         string kind = HistoryArchiveDisposalDomainValues.NormalizeMaterialKind(materialKind);
+        if (HistoryArchiveDisposalDomainValues.IsMiscMaterial(kind))
+        {
+            return await BuildMiscCandidatesAsync(currentRecordId);
+        }
+
         var inStockBoxes = await _repository.GetInStockHistoryArchiveBoxesAsync();
         HashSet<string> lockedByOther = await _repository.GetLockedBoxCodesAsync(currentRecordId);
 
@@ -1265,6 +1283,12 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         HashSet<string>? disposedBoxCodes = null)
     {
         string kind = HistoryArchiveDisposalDomainValues.NormalizeMaterialKind(record.MaterialKind);
+        if (HistoryArchiveDisposalDomainValues.IsMiscMaterial(kind))
+        {
+            await ApplyMiscLifecycleAsync(record, targetStatus, writeLastLocation);
+            return;
+        }
+
         List<(string Kind, int Id)> keys = ParseSourceKeys(record.Items.Select(item => item.SourceRecordKeys));
         IReadOnlyList<int> ids = keys.Select(item => item.Id).Distinct().ToList();
         HashSet<string> boxCodes = disposedBoxCodes
@@ -1433,6 +1457,153 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
             .FirstOrDefault(item => !string.IsNullOrWhiteSpace(item))
             ?? string.Empty;
     }
+
+    private static string EmptySelectionMessage(string materialKind) =>
+        HistoryArchiveDisposalDomainValues.IsMiscMaterial(materialKind)
+            ? "请至少选择一个存放容器。"
+            : "请至少选择一个档案盒。";
+
+    private async Task<IReadOnlyList<HistoryArchiveBoxLedgerEntry>> BuildMiscLedgerEntriesAsync(bool disposedOnly)
+    {
+        string kind = HistoryArchiveDisposalDomainValues.MaterialKindMisc;
+        string kindDisplay = HistoryArchiveDisposalDomainValues.MaterialKindDisplayMisc;
+        Dictionary<int, int> photoCounts = await _repository.GetMiscPhotoCountsAsync();
+        var result = new List<HistoryArchiveBoxLedgerEntry>();
+        foreach (HistoryMiscMaterial material in await _repository.GetMiscMaterialsAsync(tracking: false))
+        {
+            bool disposed = HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(material.LifecycleStatus);
+            if (disposedOnly != disposed)
+            {
+                continue;
+            }
+
+            string location = disposed ? material.LastStorageLocation : material.StorageLocation;
+            HistoryArchiveBoxCodeSupport.TryParseBoxCode(location, out string cabinetName, out _, out _, out _);
+            photoCounts.TryGetValue(material.Id, out int photoCount);
+            result.Add(CreateMiscLedgerEntry(material, kind, kindDisplay, location, cabinetName, disposed, photoCount));
+        }
+
+        return result;
+    }
+
+    private async Task<IReadOnlyList<HistoryArchiveDisposalBoxCandidate>> BuildMiscCandidatesAsync(int? currentRecordId)
+    {
+        HashSet<string> lockedByOther = await _repository.GetLockedBoxCodesAsync(currentRecordId);
+        var result = new List<HistoryArchiveDisposalBoxCandidate>();
+        foreach (HistoryMiscMaterial material in await _repository.GetMiscMaterialsAsync(tracking: false))
+        {
+            if (HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(material.LifecycleStatus)
+                || string.IsNullOrWhiteSpace(material.StorageLocation))
+            {
+                continue;
+            }
+
+            if (!HistoryArchiveBoxCodeSupport.TryParseBoxCode(
+                material.StorageLocation,
+                out string cabinetName,
+                out string faceCode,
+                out string slotCode,
+                out string normalized)
+                || string.IsNullOrWhiteSpace(normalized))
+            {
+                continue;
+            }
+            result.Add(new HistoryArchiveDisposalBoxCandidate
+            {
+                BoxCode = normalized,
+                BoxSpecification = material.ContainerKind,
+                CabinetName = cabinetName,
+                FaceCode = faceCode,
+                SlotCode = slotCode,
+                ContentSummary = BuildMiscSummary(material),
+                LedgerRecordCount = 1,
+                SourceRecordKeys = HistoryArchiveDisposalDomainValues.BuildSourceRecordKey(
+                    HistoryArchiveDisposalDomainValues.MaterialKindMisc,
+                    material.Id),
+                IsMixedPlacement = false,
+                RelatedBoxCodes = Array.Empty<string>(),
+                IsCrossTypeMixed = false,
+                IsLockedByOther = lockedByOther.Contains(normalized)
+            });
+        }
+
+        return result
+            .OrderBy(item => item.CabinetName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.BoxCode, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private async Task ApplyMiscLifecycleAsync(
+        HistoryArchiveDisposalRecord record,
+        string targetStatus,
+        bool writeLastLocation)
+    {
+        List<int> ids = ParseSourceKeys(record.Items.Select(item => item.SourceRecordKeys))
+            .Where(item => string.Equals(item.Kind, HistoryArchiveDisposalDomainValues.MaterialKindMisc, StringComparison.Ordinal))
+            .Select(item => item.Id)
+            .Distinct()
+            .ToList();
+        foreach (HistoryMiscMaterial material in await _repository.GetMiscMaterialsByIdsAsync(ids, tracking: true))
+        {
+            if (writeLastLocation)
+            {
+                string location = material.StorageLocation?.Trim() ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(location))
+                {
+                    material.LastStorageLocation = location;
+                }
+
+                material.StorageLocation = string.Empty;
+            }
+
+            material.LifecycleStatus = targetStatus;
+            material.ModifiedAt = DateTime.Now;
+        }
+    }
+
+    private static HistoryArchiveBoxLedgerEntry CreateMiscLedgerEntry(
+        HistoryMiscMaterial material,
+        string kind,
+        string kindDisplay,
+        string location,
+        string cabinetName,
+        bool disposed,
+        int photoCount)
+    {
+        return new HistoryArchiveBoxLedgerEntry
+        {
+            MaterialKind = kind,
+            MaterialKindDisplay = kindDisplay,
+            BoxCode = location?.Trim() ?? string.Empty,
+            BoxSpecification = string.Empty,
+            CabinetName = cabinetName,
+            ContentSummary = HistoryMiscMaterialTextSupport.FormatStoredDetailLines(
+                material.Lines
+                    .OrderBy(item => item.SortOrder)
+                    .ThenBy(item => item.Id)
+                    .Select(item => item.LineText)),
+            LedgerRecordCount = 1,
+            IsMixedPlacement = false,
+            RelatedBoxCodes = Array.Empty<string>(),
+            LifecycleStatus = disposed
+                ? HistoryArchiveDisposalDomainValues.LifecycleDisposed
+                : HistoryArchiveDisposalDomainValues.NormalizeLifecycleStatus(material.LifecycleStatus),
+            ContainerKind = material.ContainerKind,
+            ContainerCode = material.ContainerCode,
+            MajorCategory = material.MajorCategory,
+            SubCategory = material.SubCategory,
+            MiscMaterialId = material.Id,
+            PhotoCount = photoCount
+        };
+    }
+
+    private static string BuildMiscSummary(HistoryMiscMaterial material) =>
+        HistoryMiscMaterialTextSupport.BuildContentSummary(
+            material.ContainerKind,
+            material.ContainerCode,
+            material.MajorCategory,
+            material.SubCategory,
+            material.Lines.OrderBy(item => item.SortOrder).Select(item => item.LineText));
 
     private static string FormatDate(DateTime? value) =>
         value.HasValue ? value.Value.ToString("yyyy-MM-dd") : string.Empty;

@@ -347,12 +347,13 @@ namespace DocMgr.ViewModels.Cabinets
                 ? "#FCA5A5"
                 : ResolveCategoryBorderBrush();
 
-        /// <summary>盒边框按资料类别配色：地形图=蓝绿、航摄=紫、其他资料=玫红、年度=天蓝；未分类维持琥珀。</summary>
+        /// <summary>盒边框按资料类别配色：地形图=蓝绿、航摄=紫、其他资料=玫红、杂项=赭石、年度=天蓝；未分类维持琥珀。</summary>
         private string ResolveCategoryBorderBrush() => Category switch
         {
             ArchiveBoxCategory.HistoryTopoMap => "#0D9488",
             ArchiveBoxCategory.HistoryAerialPhoto => "#7C3AED",
             ArchiveBoxCategory.HistoryOtherMap => "#DB2777",
+            ArchiveBoxCategory.HistoryMiscMaterial => "#B45309",
             ArchiveBoxCategory.Yearly => "#0284C7",
             _ => "#D97706"
         };

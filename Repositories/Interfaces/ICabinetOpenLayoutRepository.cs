@@ -46,6 +46,8 @@ public interface ICabinetOpenLayoutRepository
 
     List<OtherMap> GetOtherMaps();
 
+    List<HistoryMiscMaterial> GetInStockMiscMaterials();
+
     List<YearlyArchiveBox> GetYearlyArchiveBoxesWithContents();
 
     /// <summary>按物理位置编号查找在用的年度档案盒。</summary>

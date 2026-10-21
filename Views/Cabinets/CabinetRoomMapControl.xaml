@@ -180,8 +180,8 @@
                                                 <Setter Property="Background">
                                                     <Setter.Value>
                                                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                            <GradientStop Color="#CFD8DC" Offset="0"/>
-                                                            <GradientStop Color="#90A4AE" Offset="1"/>
+                                                            <GradientStop Color="#D7E6EE" Offset="0"/>
+                                                            <GradientStop Color="#8FB4C6" Offset="1"/>
                                                         </LinearGradientBrush>
                                                     </Setter.Value>
                                                 </Setter>
@@ -191,8 +191,8 @@
                                                 <Setter Property="Background">
                                                     <Setter.Value>
                                                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                            <GradientStop Color="#B0BEC5" Offset="0"/>
-                                                            <GradientStop Color="#607D8B" Offset="1"/>
+                                                            <GradientStop Color="#7D96A6" Offset="0"/>
+                                                            <GradientStop Color="#3E5563" Offset="1"/>
                                                         </LinearGradientBrush>
                                                     </Setter.Value>
                                                 </Setter>

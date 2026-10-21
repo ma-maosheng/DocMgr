@@ -87,6 +87,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             ConfirmCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ConfirmAsync), _ => !IsBusy);
         }
 
+        /// <summary>根目录可编辑下拉的初始盘符：D:\ 至 K:\。</summary>
+        public ObservableCollection<string> RootPathOptions { get; } = new(
+            Enumerable.Range('D', 'K' - 'D' + 1).Select(letter => $"{(char)letter}:\\"));
+
         public ObservableCollection<string> DiskTypeOptions { get; } = new();
         public ObservableCollection<string> BrandOptions { get; } = new();
         public ObservableCollection<string> InterfaceTypeOptions { get; } = new();
@@ -925,6 +929,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(DiskType));
             OnPropertyChanged(nameof(Brand));
             OnPropertyChanged(nameof(InterfaceType));
+            OnPropertyChanged(nameof(RootPath));
             OnPropertyChanged(nameof(Year));
             OnPropertyChanged(nameof(ProjectName));
         }

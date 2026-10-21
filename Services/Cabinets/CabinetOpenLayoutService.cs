@@ -1428,26 +1428,7 @@ namespace DocMgr.Services.Cabinets
         }
 
         private static bool IsSameCabinetName(string left, string right)
-        {
-            string normalizedLeft = CabinetNameNormalizer.Normalize(left);
-            string normalizedRight = CabinetNameNormalizer.Normalize(right);
-            if (string.Equals(normalizedLeft, normalizedRight, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            return string.Equals(TrimCabinetSuffix(normalizedLeft), TrimCabinetSuffix(normalizedRight), StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static string TrimCabinetSuffix(string cabinetName)
-        {
-            if (cabinetName.EndsWith("柜", StringComparison.Ordinal))
-            {
-                return cabinetName[..^1];
-            }
-
-            return cabinetName;
-        }
+            => CabinetNameNormalizer.AreSame(left, right);
 
         private IEnumerable<ExpandedArchiveBoxAssignment> EnumerateArchiveAssignments()
         {
@@ -1460,6 +1441,9 @@ namespace DocMgr.Services.Cabinets
                 .Concat(_cabinetOpenLayoutRepository.GetOtherMaps()
                     .AsEnumerable()
                     .SelectMany(ExpandOtherMapAssignments))
+                .Concat(_cabinetOpenLayoutRepository.GetInStockMiscMaterials()
+                    .AsEnumerable()
+                    .SelectMany(ExpandMiscMaterialAssignments))
                 .Concat(_cabinetOpenLayoutRepository.GetYearlyArchiveBoxesWithContents()
                     .AsEnumerable()
                     .SelectMany(ExpandYearlyArchiveAssignments));
@@ -1637,6 +1621,45 @@ namespace DocMgr.Services.Cabinets
                     map.MapName,
                     HistoryFields: HistoryArchiveBoxContentFields.FromOtherMap(map));
             }
+        }
+
+        private static IEnumerable<ExpandedArchiveBoxAssignment> ExpandMiscMaterialAssignments(HistoryMiscMaterial material)
+        {
+            if (material == null
+                || string.IsNullOrWhiteSpace(material.StorageLocation)
+                || HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(material.LifecycleStatus))
+            {
+                yield break;
+            }
+
+            var parsed = ParseArchiveBox(material.StorageLocation);
+            if (parsed == null)
+            {
+                yield break;
+            }
+
+            string detail = HistoryMiscMaterialTextSupport.JoinDetailLines(material.Lines);
+            yield return new ExpandedArchiveBoxAssignment(
+                parsed,
+                false,
+                material.StorageLocation.Trim(),
+                new[] { material.StorageLocation.Trim() },
+                HistoryArchiveBoxContentFields.SourceMiscMaterial,
+                4,
+                material.ContainerKind,
+                material.MajorCategory,
+                material.ContainerCode,
+                string.Empty,
+                material.SubCategory,
+                $"{material.MajorCategory}/{material.SubCategory}".Trim('/'),
+                detail,
+                string.Empty,
+                detail,
+                material.RegisteredAt == default ? string.Empty : material.RegisteredAt.ToString("yyyy-MM-dd"),
+                material.MajorCategory,
+                material.ContainerCode,
+                material.SubCategory,
+                HistoryFields: HistoryArchiveBoxContentFields.FromMisc(material));
         }
 
         private static string BuildOtherMapYearRangeText(string? startYear, string? endYear)

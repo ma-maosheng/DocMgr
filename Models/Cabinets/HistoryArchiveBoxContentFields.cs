@@ -11,6 +11,8 @@ namespace DocMgr.Models.Cabinets
         public const string SourceAerialPhoto = "航摄影像";
         public const string SourceOtherMap = "其他图件";
 
+        public const string SourceMiscMaterial = "杂项资料";
+
         public string Scale { get; init; } = string.Empty;
 
         public string MapNumber { get; init; } = string.Empty;
@@ -56,6 +58,16 @@ namespace DocMgr.Models.Cabinets
         public string RegistrationDate { get; init; } = string.Empty;
 
         public string Remark { get; init; } = string.Empty;
+
+        public string ContainerKind { get; init; } = string.Empty;
+
+        public string ContainerCode { get; init; } = string.Empty;
+
+        public string MajorCategory { get; init; } = string.Empty;
+
+        public string SubCategory { get; init; } = string.Empty;
+
+        public string DetailText { get; init; } = string.Empty;
 
         public static HistoryArchiveBoxContentFields FromTopoMap(TopoMap map, string currentMapNumber)
         {
@@ -114,6 +126,24 @@ namespace DocMgr.Models.Cabinets
             };
         }
 
+        public static HistoryArchiveBoxContentFields FromMisc(HistoryMiscMaterial material)
+        {
+            ArgumentNullException.ThrowIfNull(material);
+            return new HistoryArchiveBoxContentFields
+            {
+                ContainerKind = Trim(material.ContainerKind),
+                ContainerCode = Trim(material.ContainerCode),
+                MajorCategory = Trim(material.MajorCategory),
+                SubCategory = Trim(material.SubCategory),
+                DetailText = HistoryMiscMaterialTextSupport.JoinDetailLines(material.Lines),
+                Remark = Trim(material.Remark),
+                Registrant = Trim(material.Registrant),
+                RegistrationDate = material.RegisteredAt == default
+                    ? string.Empty
+                    : material.RegisteredAt.ToString("yyyy-MM-dd"),
+            };
+        }
+
         public static bool IsTopoMap(string? sourceType) =>
             string.Equals(sourceType?.Trim(), SourceTopoMap, StringComparison.OrdinalIgnoreCase);
 
@@ -122,6 +152,9 @@ namespace DocMgr.Models.Cabinets
 
         public static bool IsOtherMap(string? sourceType) =>
             string.Equals(sourceType?.Trim(), SourceOtherMap, StringComparison.OrdinalIgnoreCase);
+
+        public static bool IsMiscMaterial(string? sourceType) =>
+            string.Equals(sourceType?.Trim(), SourceMiscMaterial, StringComparison.OrdinalIgnoreCase);
 
         private static string Trim(string? value) =>
             string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();

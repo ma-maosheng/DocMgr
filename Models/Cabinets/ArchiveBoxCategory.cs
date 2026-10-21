@@ -17,6 +17,9 @@ namespace DocMgr.Models.Cabinets
         /// <summary>历史存档其他资料。</summary>
         HistoryOtherMap = 3,
 
+        /// <summary>历史存档杂项资料。</summary>
+        HistoryMiscMaterial = 5,
+
         /// <summary>年度存档资料。</summary>
         Yearly = 4
     }

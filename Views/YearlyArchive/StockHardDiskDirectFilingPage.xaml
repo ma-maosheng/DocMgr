@@ -50,10 +50,109 @@
             <Button Content="确认立档" Command="{Binding ConfirmCommand}" Padding="16,6" MinHeight="28" FontWeight="SemiBold"/>
         </StackPanel>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <!-- 4. 立档默认值与档口：固定在确认按钮上方，不随上方卡片增高而被挤出视口 -->
+        <GroupBox DockPanel.Dock="Bottom" Header="4. 立档默认值与档口" Padding="8,5" Margin="0,4,0,0">
             <StackPanel>
+                <Grid Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="来源：" Style="{StaticResource LabelStyle}"/>
+                    <ComboBox Grid.Column="1"
+                              ItemsSource="{Binding SourceTypeOptions}"
+                              SelectedItem="{Binding SourceType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
+                              ToolTip="立档默认值：扫描子项时自动带入；子项可单独修改"/>
+                    <TextBlock Grid.Column="2" Text="提供单位：" Style="{StaticResource LabelStyle}"/>
+                    <Grid Grid.Column="3" Margin="0,0,12,0">
+                        <ComboBox ItemsSource="{Binding Departments}"
+                                  DisplayMemberPath="Name" SelectedValuePath="Name" IsEditable="True"
+                                  SelectedValue="{Binding ProvideUnit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  Height="{StaticResource FormControlHeight}"
+                                  ToolTip="内部：可选当前部门或手输历史机构名；外来请改用来源为「外来」后填写">
+                            <ComboBox.Style>
+                                <Style TargetType="ComboBox" BasedOn="{StaticResource FormComboBoxStyle}">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ComboBox.Style>
+                        </ComboBox>
+                        <TextBox Text="{Binding ProvideUnit, UpdateSourceTrigger=PropertyChanged}"
+                                 Height="{StaticResource FormControlHeight}"
+                                 ToolTip="外来资料的提供单位名称">
+                            <TextBox.Style>
+                                <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBoxStyle}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
+                    </Grid>
+                    <TextBlock Grid.Column="4" Text="库管模式：" Style="{StaticResource LabelStyle}"/>
+                    <ComboBox Grid.Column="5" ItemsSource="{Binding ArchivePurposeOptions}" SelectedItem="{Binding ArchivePurpose}"
+                              Height="{StaticResource FormControlHeight}"/>
+                </Grid>
+                <Grid Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="180"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="介质袋编号：" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Column="1" Text="{Binding PreviewElectronicArchiveNo, Mode=OneWay}" IsReadOnly="True"
+                             Height="{StaticResource FormControlHeight}" Background="#F9F9F9"
+                             ToolTip="确认写入前预览，不占用号段；年度取自目录扫描「年度」（项目实施年度）"/>
+                    <TextBlock Grid.Column="3" Text="物理位置编号：" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Column="4" Text="{Binding StorageLocation, Mode=OneWay}" IsReadOnly="True"
+                             Height="{StaticResource FormControlHeight}" Background="#F9F9F9"
+                             ToolTip="确认写入前预览，不占用号段"/>
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="数据档口：" Style="{StaticResource LabelStyle}"/>
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding SlotOptions}" SelectedItem="{Binding SelectedSlotOption}"
+                              DisplayMemberPath="DisplayText" Height="{StaticResource FormControlHeight}" VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Content="推荐空位" Command="{Binding RecommendSlotCommand}"
+                            Style="{StaticResource InlineActionButtonStyle}"
+                            ToolTip="推荐年度数据硬盘专用档口空位（含档内序号，不预占用）"/>
+                    <Button Grid.Column="3" Content="档口快照" Command="{Binding ShowSlotSnapshotCommand}"
+                            Style="{StaticResource InlineActionButtonStyle}"
+                            ToolTip="查看目标档口占用快照"/>
+                </Grid>
+                <TextBlock Text="{Binding BusinessNumberHint, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#546E7A"/>
+            </StackPanel>
+        </GroupBox>
+
+        <Grid ClipToBounds="True">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*" MinHeight="96"/>
+            </Grid.RowDefinitions>
+
                 <!-- 1. 硬盘参数 -->
-                <GroupBox Header="1. 硬盘参数" Padding="8,5" Margin="0,0,0,4">
+                <GroupBox Grid.Row="0" Header="1. 硬盘参数" Padding="8,5" Margin="0,0,0,4">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -119,9 +218,9 @@
                 </GroupBox>
 
                 <!-- 2. 目录扫描 -->
-                <GroupBox Header="2. 目录扫描" Padding="8,5" Margin="0,0,0,4">
-                    <StackPanel>
-                        <Grid Margin="0,0,0,4">
+                <GroupBox Grid.Row="1" Header="2. 目录扫描" Padding="8,5" Margin="0,0,0,4">
+                    <DockPanel>
+                        <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
@@ -129,14 +228,19 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="根目录：" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="1" Text="{Binding RootPath, UpdateSourceTrigger=PropertyChanged}"
-                                     Height="{StaticResource FormControlHeight}" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding RootPathOptions}"
+                                      IsEditable="True"
+                                      Text="{Binding RootPath, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="{StaticResource FormControlHeight}"
+                                      VerticalAlignment="Center"
+                                      ToolTip="可选 D:\ 至 K:\，也可手输或通过「选择目录」指定其它路径"/>
                             <Button Grid.Column="2" Content="选择目录" Command="{Binding PickRootCommand}"
                                     Style="{StaticResource InlineActionButtonStyle}"/>
                             <Button Grid.Column="3" Content="扫描" Command="{Binding ScanCommand}"
                                     Style="{StaticResource InlineActionButtonStyle}"/>
                         </Grid>
-                        <Grid Margin="0,0,0,2">
+                        <Grid DockPanel.Dock="Top" Margin="0,0,0,2">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="100"/>
@@ -167,116 +271,35 @@
                                     Style="{StaticResource InlineActionButtonStyle}"
                                     ToolTip="{Binding YearProjectHint, Mode=OneWay}"/>
                         </Grid>
-                        <TextBlock Text="{Binding YearProjectHint, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#546E7A"/>
-                        <TextBlock Text="{Binding ProjectHint, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#00695C"/>
-                        <TextBlock Text="{Binding ExistingBagHint, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#546E7A"/>
-                        <TextBlock Text="{Binding ScanWarningText, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#C2410C"/>
-                    </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      MaxHeight="84"
+                                      VerticalAlignment="Top">
+                            <StackPanel>
+                                <TextBlock Text="{Binding YearProjectHint, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#546E7A"/>
+                                <TextBlock Text="{Binding ProjectHint, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#00695C"/>
+                                <TextBlock Text="{Binding ExistingBagHint, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#546E7A"/>
+                                <TextBlock Text="{Binding ScanWarningText, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#C2410C"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
                 </GroupBox>
 
-                <!-- 3. 立档默认值与档口 -->
-                <GroupBox Header="3. 立档默认值与档口" Padding="8,5" Margin="0,0,0,4">
-                    <StackPanel>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="来源：" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Column="1"
-                                      ItemsSource="{Binding SourceTypeOptions}"
-                                      SelectedItem="{Binding SourceType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
-                                      ToolTip="立档默认值：扫描子项时自动带入；子项可单独修改"/>
-                            <TextBlock Grid.Column="2" Text="提供单位：" Style="{StaticResource LabelStyle}"/>
-                            <Grid Grid.Column="3" Margin="0,0,12,0">
-                                <ComboBox ItemsSource="{Binding Departments}"
-                                          DisplayMemberPath="Name" SelectedValuePath="Name" IsEditable="True"
-                                          SelectedValue="{Binding ProvideUnit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                          Height="{StaticResource FormControlHeight}"
-                                          ToolTip="内部：可选当前部门或手输历史机构名；外来请改用来源为「外来」后填写">
-                                    <ComboBox.Style>
-                                        <Style TargetType="ComboBox" BasedOn="{StaticResource FormComboBoxStyle}">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </ComboBox.Style>
-                                </ComboBox>
-                                <TextBox Text="{Binding ProvideUnit, UpdateSourceTrigger=PropertyChanged}"
-                                         Height="{StaticResource FormControlHeight}"
-                                         ToolTip="外来资料的提供单位名称">
-                                    <TextBox.Style>
-                                        <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBoxStyle}">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsExternalSource}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBox.Style>
-                                </TextBox>
-                            </Grid>
-                            <TextBlock Grid.Column="4" Text="库管模式：" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Column="5" ItemsSource="{Binding ArchivePurposeOptions}" SelectedItem="{Binding ArchivePurpose}"
-                                      Height="{StaticResource FormControlHeight}"/>
-                        </Grid>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="220"/>
-                                <ColumnDefinition Width="12"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="介质袋编号：" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="1" Text="{Binding PreviewElectronicArchiveNo, Mode=OneWay}" IsReadOnly="True"
-                                     Height="{StaticResource FormControlHeight}" Background="#F9F9F9"
-                                     ToolTip="确认写入前预览，不占用号段；年度取自目录扫描「年度」（项目实施年度）"/>
-                            <TextBlock Grid.Column="3" Text="物理位置编号：" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Column="4" Text="{Binding StorageLocation, Mode=OneWay}" IsReadOnly="True"
-                                     Height="{StaticResource FormControlHeight}" Background="#F9F9F9"
-                                     ToolTip="确认写入前预览，不占用号段"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="数据档口：" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Column="1" ItemsSource="{Binding SlotOptions}" SelectedItem="{Binding SelectedSlotOption}"
-                                      DisplayMemberPath="DisplayText" Height="{StaticResource FormControlHeight}" VerticalAlignment="Center"/>
-                            <Button Grid.Column="2" Content="推荐空位" Command="{Binding RecommendSlotCommand}"
-                                    Style="{StaticResource InlineActionButtonStyle}"
-                                    ToolTip="推荐年度数据硬盘专用档口空位（含档内序号，不预占用）"/>
-                            <Button Grid.Column="3" Content="档口快照" Command="{Binding ShowSlotSnapshotCommand}"
-                                    Style="{StaticResource InlineActionButtonStyle}"
-                                    ToolTip="查看目标档口占用快照"/>
-                        </Grid>
-                        <TextBlock Text="{Binding BusinessNumberHint, Mode=OneWay}" Style="{StaticResource HintStyle}" Foreground="#546E7A"/>
-                    </StackPanel>
-                </GroupBox>
-
-                <!-- 4. 扫描预览 -->
-                <GroupBox Header="4. 扫描预览" Padding="8,5">
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Text="{Binding PreviewSummary, Mode=OneWay}"
+                <!-- 3. 扫描预览 -->
+                <GroupBox Grid.Row="2" Header="3. 扫描预览" Padding="8,5" Margin="0,0,0,4">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="{Binding PreviewSummary, Mode=OneWay}"
                                    FontSize="12" Foreground="#546E7A" Margin="0,0,0,4"
                                    ToolTip="来源、提供单位、资料类型、子类、密级可按子项分别修改；其余列为扫描结果只读。"/>
-                        <DataGrid ItemsSource="{Binding PreviewRows}" AutoGenerateColumns="False" IsReadOnly="False"
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding PreviewRows}" AutoGenerateColumns="False" IsReadOnly="False"
                                   CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
-                                  SelectionUnit="Cell" MaxHeight="320">
+                                  SelectionUnit="Cell"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="*" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="子项" Binding="{Binding ItemName, Mode=OneWay}" Width="*" IsReadOnly="True"/>
@@ -360,9 +383,8 @@
                                 <DataGridTextColumn Header="立档路径" Binding="{Binding FilingStoragePath, Mode=OneWay}" Width="2*" IsReadOnly="True"/>
                             </DataGrid.Columns>
                         </DataGrid>
-                    </DockPanel>
+                    </Grid>
                 </GroupBox>
-            </StackPanel>
-        </ScrollViewer>
-    </DockPanel>
+            </Grid>
+        </DockPanel>
 </Page>

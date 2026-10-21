@@ -68,7 +68,7 @@ public partial class ElectronicMediaEditingViewModel
                 if (string.IsNullOrWhiteSpace(item.StorageRootFullPath))
                 {
                     errors.Add(
-                        $"• {label}：请选择父目录并扫描，以核验资料是否按「{NetworkOutboundItemStoragePathSupport.ArchiveFilingMediaPathRuleDescription}」存放。");
+                        $"• {label}：请选择子项资料所属目录并扫描，以核验资料是否按「{NetworkOutboundItemStoragePathSupport.ArchiveFilingMediaPathRuleDescription}」存放。");
                     continue;
                 }
 
@@ -200,7 +200,7 @@ public partial class ElectronicMediaEditingViewModel
             return;
         }
 
-        // 院内/院外离线：选择父目录后立即回写介质目录文本框（含已自定义或再次选择）。
+        // 院内/院外离线：选择子项资料所属目录后立即回写介质目录文本框（含已自定义或再次选择）。
         item.StoragePath = ElectronicMediaItemSupport.FormatStoragePathForRegistration(scannedRootPath);
         item.HasCustomizedOutboundStoragePath = true;
         item.OutboundStoragePathCustomizationResolved = true;

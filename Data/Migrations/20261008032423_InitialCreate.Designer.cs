@@ -1567,6 +1567,107 @@ namespace DocMgr.Data.Migrations
                     b.ToTable("HistoryArchiveDisposalRecords");
                 });
 
+            modelBuilder.Entity("DocMgr.Models.HistoryArchive.HistoryMiscMaterial", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContainerCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ContainerKind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("LastStorageLocation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("LifecycleStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("MajorCategory")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Modifier")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("RegisteredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Registrant")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("Remark")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StorageLocation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("SubCategory")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContainerKind", "ContainerCode")
+                        .IsUnique()
+                        .HasFilter("[LifecycleStatus] <> N'已离库'");
+
+                    b.HasIndex("StorageLocation")
+                        .IsUnique()
+                        .HasFilter("[StorageLocation] <> N''");
+
+                    b.ToTable("HistoryMiscMaterials");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.HistoryArchive.HistoryMiscMaterialLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("LineText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("MaterialId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MaterialId", "SortOrder");
+
+                    b.ToTable("HistoryMiscMaterialLines");
+                });
+
             modelBuilder.Entity("DocMgr.Models.HistoryArchive.OtherMap", b =>
                 {
                     b.Property<int>("Id")
@@ -6212,6 +6313,17 @@ namespace DocMgr.Data.Migrations
                     b.Navigation("DisposalRecord");
                 });
 
+            modelBuilder.Entity("DocMgr.Models.HistoryArchive.HistoryMiscMaterialLine", b =>
+                {
+                    b.HasOne("DocMgr.Models.HistoryArchive.HistoryMiscMaterial", "Material")
+                        .WithMany("Lines")
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Material");
+                });
+
             modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkArchiveBusinessTask", b =>
                 {
                     b.HasOne("DocMgr.Models.NetworkTransfer.NetworkArchiveBusinessChain", "BusinessChain")
@@ -6608,6 +6720,11 @@ namespace DocMgr.Data.Migrations
             modelBuilder.Entity("DocMgr.Models.HistoryArchive.HistoryArchiveDisposalRecord", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("DocMgr.Models.HistoryArchive.HistoryMiscMaterial", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("DocMgr.Models.NetworkTransfer.NetworkArchiveBusinessChain", b =>

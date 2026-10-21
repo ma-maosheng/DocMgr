@@ -86,6 +86,16 @@ namespace DocMgr.Services.SystemSettings
                 "独立主数据表。",
                 "只读浏览。"),
 
+            [nameof(HistoryMiscMaterial)] = new(
+                "历史存档杂项资料。一条记录对应一个存放容器，落在立式或卧式文件柜。",
+                "← 被 HistoryMiscMaterialLines 引用；实物照片在 SystemAttachments（HistoryMiscMaterial）。",
+                "可维护。离库处置办结后清空存放位置并标已离库。"),
+
+            [nameof(HistoryMiscMaterialLine)] = new(
+                "杂项资料详情行，按排序号显示为顺序编号。",
+                "→ 引用 HistoryMiscMaterials（MaterialId，级联删除）。",
+                "随杂项资料保存，不单独维护。"),
+
             [nameof(HistoryArchiveDisposalRecord)] = new(
                 "历史存档资料离库处置主单，按资料类别办理草稿至办结全过程。",
                 "← 被 HistoryArchiveDisposalItems 引用（一对多）。",

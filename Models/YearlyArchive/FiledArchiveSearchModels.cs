@@ -394,6 +394,9 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ProjectName { get; init; } = string.Empty;
 
+        /// <summary>所属项目实施年度（<see cref="DocMgr.Models.Projects.ProjectInfo.ImplementYear"/>）。</summary>
+        public string ProjectYear { get; init; } = string.Empty;
+
         public string ProvideUnit { get; init; } = string.Empty;
 
         public string ApplicantName { get; init; } = string.Empty;

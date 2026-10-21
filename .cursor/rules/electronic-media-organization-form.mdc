@@ -1,6 +1,6 @@
 ---
 description: 电子资料数据组织形式：固定目录型（单一父目录模型），不再支持文件型与多选扫描
-globs: "**/{ElectronicMediaItemSupport.cs,ElectronicMediaContentScanService.cs,IElectronicMediaContentScanService.cs,ArchiveRegisterService.PrintingAndMaintenance.cs,NetworkInboundExternalMediaValidationSupport.cs,NetworkOutboundExternalMediaValidationSupport.cs,ElectronicMediaEditingViewModel.cs,ElectronicMediaEditingViewModel.OutboundStoragePath.cs,ArchiveRegisterViewModel.Media.cs,ArchiveRegisterViewModel.cs,ArchiveRegisterSupportTypes.cs,RegisterMediaTreeSupport.cs,StockHardDiskDirectFilingModels.cs,ArchiveRegisterDomainValues.cs,FieldDomainSeedService.SeedCatalog.cs,ArchiveRegisterResources.xaml}"
+globs: "**/{ElectronicMediaItemSupport.cs,ElectronicMediaContentScanService.cs,IElectronicMediaContentScanService.cs,ArchiveRegisterService.PrintingAndMaintenance.cs,NetworkInboundExternalMediaValidationSupport.cs,NetworkOutboundExternalMediaValidationSupport.cs,ElectronicMediaEditingViewModel.cs,ElectronicMediaEditingViewModel.OutboundStoragePath.cs,ElectronicMediaEditingViewModel.BatchSubItems.cs,ElectronicMediaBatchSubItemAddSupport.cs,ArchiveRegisterViewModel.Media.cs,ArchiveRegisterViewModel.BatchSubItems.cs,ArchiveRegisterViewModel.cs,ArchiveRegisterSupportTypes.cs,RegisterMediaTreeSupport.cs,StockHardDiskDirectFilingModels.cs,ArchiveRegisterDomainValues.cs,FieldDomainSeedService.SeedCatalog.cs,ArchiveRegisterResources.xaml}"
 alwaysApply: false
 ---
 
@@ -18,6 +18,14 @@ alwaysApply: false
 - 数据量与文件个数按父目录**整棵树**递归统计。
 - 选择盘符根目录时需弹确认（整盘扫描可能耗时较长），实现在两个编辑 VM 的 `PickFolderAndScanElectronicContentAsync`。
 
+## 批量添加资料子项
+
+- 电子资料明细模板在「+ 添加资料子项」左侧提供「+ 批量添加资料子项」。
+- 用户选择代表资料名称的文件夹；其一级业务子文件夹各生成一条资料子项。子项名称取文件夹名，填入后仍可编辑。存储目录、数据量与目录/文件明细沿用「选择子项资料所属目录」的单一父目录扫描。
+- 资料名称文件夹里直接散落的文件不生成子项，并在结果中说明已跳过。没有一级子文件夹时不新增。不允许把盘符根目录当作资料名称文件夹。
+- 本组只有一条未改动的空子项时，用本次结果替换它；已有填写内容时追加。
+- 资料室存档仍逐个子文件夹核验路径末尾为「年度\项目\资料名称\子项名称」，不符合的不建子项。出网申请阶段未开放扫描时，该按钮不可用。
+
 ## 相对路径字段已删除
 
 - 单一父目录模型下相对路径恒等于名称，`YearlyArchiveRegisterElectronicMediaItemEntry.RelativePath` 字段及其在各快照表（检索集明细 `ContentEntryRelativePath`、出库明细 `ContentEntryRelativePath`）中的冗余副本已全部删除，禁止恢复。
@@ -26,7 +34,7 @@ alwaysApply: false
 
 ## 出网/出网转建档的存储目录
 
-- 出网对话框与出网转建档场景：子项存储目录默认由表头（年度/项目/资料名称/子项名）自动生成；院内/院外离线在「选择父目录」扫描后须立即回写介质目录文本框（含再次选择）；资料室存档仍强制表头生成路径（扫描只补明细与数据量），且所选父目录必须等于或末尾为「年度\项目\资料名称\子项名称」，否则拒绝扫描并禁止确认实物交接。「填写合规目录」按钮已删除（在 YA-REG-ED 上原本就是死绑定）。
+- 出网对话框与出网转建档场景：子项存储目录默认由表头（年度/项目/资料名称/子项名）自动生成；院内/院外离线在「选择子项资料所属目录」扫描后须立即回写介质目录文本框（含再次选择）；资料室存档仍强制表头生成路径（扫描只补明细与数据量），且所选父目录必须等于或末尾为「年度\项目\资料名称\子项名称」，否则拒绝扫描并禁止确认实物交接。「填写合规目录」按钮已删除（在 YA-REG-ED 上原本就是死绑定）。
 
 ## 共用校验
 

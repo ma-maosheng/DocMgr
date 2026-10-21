@@ -94,6 +94,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             AddDataElectronicMediaEntryCommand = new RelayCommand(_ => AddDataElectronicMediaEntry(), _ => CanEditForm);
             AddMediaItemCommand = new RelayCommand<MediaEntryViewModel>(AddMediaItem, _ => CanEditForm);
+            BatchAddElectronicMediaItemsCommand = new RelayCommand<MediaEntryViewModel>(
+                async media => await BatchAddElectronicMediaItemsAsync(media),
+                _ => CanEditForm && AllowElectronicContentScan);
             RemoveMediaEntryCommand = new RelayCommand<MediaEntryViewModel>(RemoveMediaEntry, _ => CanEditForm);
             RemoveMediaItemCommand = new RelayCommand<MediaItemViewModel>(RemoveMediaItem, _ => CanEditForm);
             FillDefaultOutboundStoragePathCommand = new RelayCommand<MediaItemViewModel>(
@@ -445,6 +448,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand AddDataElectronicMediaEntryCommand { get; }
 
         public RelayCommand<MediaEntryViewModel> AddMediaItemCommand { get; }
+
+        public RelayCommand<MediaEntryViewModel> BatchAddElectronicMediaItemsCommand { get; }
 
         public RelayCommand<MediaEntryViewModel> RemoveMediaEntryCommand { get; }
 

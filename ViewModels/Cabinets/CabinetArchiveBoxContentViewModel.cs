@@ -131,7 +131,9 @@ namespace DocMgr.ViewModels.Cabinets
                 && contents.Any(item => HistoryArchiveBoxContentFields.IsAerialPhoto(item.SourceType));
             bool hasOtherItems = isHistoryArchive
                 && contents.Any(item => HistoryArchiveBoxContentFields.IsOtherMap(item.SourceType));
-            int historyGridCount = (hasTopoItems ? 1 : 0) + (hasAerialItems ? 1 : 0) + (hasOtherItems ? 1 : 0);
+            bool hasMiscItems = isHistoryArchive
+                && contents.Any(item => HistoryArchiveBoxContentFields.IsMiscMaterial(item.SourceType));
+            int historyGridCount = (hasTopoItems ? 1 : 0) + (hasAerialItems ? 1 : 0) + (hasOtherItems ? 1 : 0) + (hasMiscItems ? 1 : 0);
             bool showHistorySectionHeaders = historyGridCount > 1;
 
             HistoryGridVisibility = isHistoryArchive
@@ -141,6 +143,7 @@ namespace DocMgr.ViewModels.Cabinets
             HistoryTopoGridVisibility = hasTopoItems ? Visibility.Visible : Visibility.Collapsed;
             HistoryAerialGridVisibility = hasAerialItems ? Visibility.Visible : Visibility.Collapsed;
             HistoryOtherGridVisibility = hasOtherItems ? Visibility.Visible : Visibility.Collapsed;
+            HistoryMiscGridVisibility = hasMiscItems ? Visibility.Visible : Visibility.Collapsed;
             HistoryTopoSectionHeaderVisibility = showHistorySectionHeaders && hasTopoItems
                 ? Visibility.Visible
                 : Visibility.Collapsed;
@@ -150,10 +153,14 @@ namespace DocMgr.ViewModels.Cabinets
             HistoryOtherSectionHeaderVisibility = showHistorySectionHeaders && hasOtherItems
                 ? Visibility.Visible
                 : Visibility.Collapsed;
+            HistoryMiscSectionHeaderVisibility = showHistorySectionHeaders && hasMiscItems
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
             HistoryTopoRowHeight = ToStarOrZero(hasTopoItems);
             HistoryAerialRowHeight = ToStarOrZero(hasAerialItems);
             HistoryOtherRowHeight = ToStarOrZero(hasOtherItems);
+            HistoryMiscRowHeight = ToStarOrZero(hasMiscItems);
 
             YearlyStyleGridVisibility = isHistoryArchive
                 ? Visibility.Collapsed
@@ -175,6 +182,8 @@ namespace DocMgr.ViewModels.Cabinets
                 Items.Where(item => HistoryArchiveBoxContentFields.IsAerialPhoto(item.SourceType)));
             OtherItems = new ObservableCollection<CabinetArchiveBoxContentItemViewModel>(
                 Items.Where(item => HistoryArchiveBoxContentFields.IsOtherMap(item.SourceType)));
+            MiscItems = new ObservableCollection<CabinetArchiveBoxContentItemViewModel>(
+                Items.Where(item => HistoryArchiveBoxContentFields.IsMiscMaterial(item.SourceType)));
 
             ItemDetailsPanel = new ItemDetailsListPresenter<CabinetArchiveBoxContentItemViewModel>(
                 "柜内资料明细",
@@ -377,6 +386,12 @@ namespace DocMgr.ViewModels.Cabinets
 
         public GridLength HistoryOtherRowHeight { get; }
 
+        public Visibility HistoryMiscGridVisibility { get; }
+
+        public Visibility HistoryMiscSectionHeaderVisibility { get; }
+
+        public GridLength HistoryMiscRowHeight { get; }
+
 
 
         /// <summary>年度模拟盒 / 电子袋共用列集网格（非历史存档时显示）。</summary>
@@ -450,6 +465,8 @@ namespace DocMgr.ViewModels.Cabinets
 
 
         public ObservableCollection<CabinetArchiveBoxContentItemViewModel> OtherItems { get; }
+
+        public ObservableCollection<CabinetArchiveBoxContentItemViewModel> MiscItems { get; }
 
 
 

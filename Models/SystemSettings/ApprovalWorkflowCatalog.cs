@@ -202,7 +202,9 @@ namespace DocMgr.Models.SystemSettings
                 (HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto,
                     HistoryArchiveDisposalDomainValues.MaterialKindDisplayAerialPhoto),
                 (HistoryArchiveDisposalDomainValues.MaterialKindOtherMap,
-                    HistoryArchiveDisposalDomainValues.MaterialKindDisplayOtherMap)
+                    HistoryArchiveDisposalDomainValues.MaterialKindDisplayOtherMap),
+                (HistoryArchiveDisposalDomainValues.MaterialKindMisc,
+                    HistoryArchiveDisposalDomainValues.MaterialKindDisplayMisc)
             ]
         };
 

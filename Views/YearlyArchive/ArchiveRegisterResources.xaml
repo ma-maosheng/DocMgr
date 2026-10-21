@@ -309,6 +309,7 @@
         <Setter Property="Margin" Value="0,2"/>
     </Style>
 
+    <!-- 电子资料明细模板：一组电子介质的资料明细卡片（介质级字段 + 电子资料子项卡片）。 -->
     <DataTemplate x:Key="MediaEntryTemplate_DataElectronic">
         <GroupBox Style="{StaticResource ArchiveRegisterMediaEntryGroupBoxStyle}">
             <GroupBox.Header>
@@ -330,11 +331,26 @@
             </GroupBox.Header>
             <StackPanel>
                 <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
-                    <Button DockPanel.Dock="Right"
-                            Style="{StaticResource ArchiveRegisterAddSubItemButtonStyle}"
-                            Content="+ 添加资料子项"
-                            Command="{Binding DataContext.AddMediaItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            CommandParameter="{Binding}"/>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="+ 批量添加资料子项"
+                                Margin="0,0,8,0"
+                                Padding="8,2"
+                                MinWidth="168"
+                                ToolTip="选择代表资料名称的文件夹，将其一级子文件夹添加为资料子项"
+                                Command="{Binding DataContext.BatchAddElectronicMediaItemsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ArchiveRegisterAddSubItemButtonStyle}">
+                                    <Setter Property="Width" Value="168"/>
+                                    <Setter Property="Content" Value="+ 批量添加资料子项"/>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Style="{StaticResource ArchiveRegisterAddSubItemButtonStyle}"
+                                Content="+ 添加资料子项"
+                                Command="{Binding DataContext.AddMediaItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}"/>
+                    </StackPanel>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">
@@ -874,7 +890,7 @@
                                             <TextBlock VerticalAlignment="Center" Margin="4,0,8,0" Foreground="#666" Text="MB"/>
                                             <TextBlock VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#666" Text="{Binding ScannedEntryCountDisplay}"/>
                                         </StackPanel>
-                                        <Button Content="选择父目录…" Width="96" Margin="0,0,4,0" Padding="4,2"
+                                        <Button Content="选择子项资料所属目录" MinWidth="168" Margin="0,0,4,0" Padding="8,2"
                                                 VerticalAlignment="Center"
                                                 ToolTip="选择子项所在文件夹（支持盘符），扫描其下文件与一级子目录"
                                                 Command="{Binding DataContext.PickFolderAndScanElectronicContentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"

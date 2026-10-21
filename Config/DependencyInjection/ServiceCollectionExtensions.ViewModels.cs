@@ -39,6 +39,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<NetworkOnNetAssetLedgerPageViewModel>();
         services.AddTransient<NetworkOnNetDisposalPageViewModel>();
         services.AddTransient<HistoryArchiveBoxLedgerPageViewModel>();
+        services.AddTransient<HistoryMiscMaterialPageViewModel>();
         services.AddTransient<HistoryArchiveDisposalPageViewModel>();
         services.AddTransient<Func<HardDiskReturnWorkspaceMode, HardDiskMediaReturnRegistrationPageViewModel>>(sp =>
             mode => ActivatorUtilities.CreateInstance<HardDiskMediaReturnRegistrationPageViewModel>(sp, mode));

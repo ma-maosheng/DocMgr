@@ -64,6 +64,22 @@ namespace DocMgr.Services.Interfaces
         /// </summary>
         void PromoteArchiveSlotToMixedUse(int cabinetId, string faceCode, string slotCode);
 
+        /// <summary>
+        /// 柜体内是否仍有资料、档案盒、历史存档或在库介质。档口用途配置不算存放内容。
+        /// </summary>
+        bool HasStoredContent(int cabinetId);
+
+        /// <summary>
+        /// 列出柜体内仍有存放内容的档口。无内容时返回空列表。
+        /// </summary>
+        IReadOnlyList<CabinetStoredContentSlot> GetStoredContentSlots(int cabinetId);
+
+        /// <summary>
+        /// 核验拟保存的柜体是否仍能完整对应已有存放记录。不改写任何存放数据。
+        /// 会造成矛盾、丢失或不完整时抛出 <see cref="InvalidOperationException"/>。
+        /// </summary>
+        void EnsureCabinetEditKeepsStoredContent(Cabinet proposed);
+
         void DeleteCabinet(int cabinetId);
         Task<List<Cabinet>> GetAllCabinetsAsync();
     }

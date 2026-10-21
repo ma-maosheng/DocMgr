@@ -571,12 +571,8 @@
                                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                             </MenuItem>
                                             <MenuItem Header="设置格口内放置方式"
-                                                       Visibility="{Binding PlacementTarget.DataContext.ArchiveBoxActionsVisibility, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      Visibility="{Binding PlacementTarget.Tag.SlotPlacementModeMenuVisibility, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       Command="{Binding PlacementTarget.Tag.EditSlotPlacementModeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
-                                            <MenuItem Header="新增档案盒"
-                                                       Visibility="{Binding PlacementTarget.DataContext.ArchiveBoxActionsVisibility, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                      Command="{Binding PlacementTarget.Tag.AddArchiveBoxCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                             <MenuItem Header="刷新格口"
                                                       Command="{Binding PlacementTarget.Tag.RefreshSlotCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
@@ -2045,11 +2041,14 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Border Grid.Row="0" Grid.Column="0" Width="14" Height="9" Margin="0,0,6,4" Background="#FFF8E1" BorderBrush="#DB2777" BorderThickness="1.4" CornerRadius="1"/>
                             <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,0,14,4" FontSize="10" Foreground="#475569" Text="历史存档其他资料"/>
-                            <Border Grid.Row="1" Grid.Column="0" Width="14" Height="9" Margin="0,0,6,0" Background="#FFF8E1" BorderBrush="#0284C7" BorderThickness="1.4" CornerRadius="1"/>
-                            <TextBlock Grid.Row="1" Grid.Column="1" FontSize="10" Foreground="#475569" Text="年度存档资料"/>
+                            <Border Grid.Row="1" Grid.Column="0" Width="14" Height="9" Margin="0,0,6,4" Background="#FFF8E1" BorderBrush="#B45309" BorderThickness="1.4" CornerRadius="1"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,0,14,4" FontSize="10" Foreground="#475569" Text="历史存档杂项资料"/>
+                            <Border Grid.Row="2" Grid.Column="0" Width="14" Height="9" Margin="0,0,6,0" Background="#FFF8E1" BorderBrush="#0284C7" BorderThickness="1.4" CornerRadius="1"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" FontSize="10" Foreground="#475569" Text="年度存档资料"/>
                         </Grid>
 
                         <TextBlock Text="角位示意（与档案盒卡片一致）"

@@ -21,6 +21,7 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
     public const string AllOption = "全部";
 
     private readonly IHistoryArchiveDisposalService _service;
+    private readonly IHistoryMiscMaterialService _miscMaterialService;
     private readonly IDialogService _dialogService;
     private readonly List<HistoryArchiveBoxLedgerRow> _allRows = new();
     private readonly List<HistoryArchiveBoxLedgerRow> _filteredRows = new();
@@ -40,11 +41,14 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
 
     public HistoryArchiveBoxLedgerPageViewModel(
         IHistoryArchiveDisposalService service,
+        IHistoryMiscMaterialService miscMaterialService,
         IDialogService dialogService)
     {
         _service = service;
+        _miscMaterialService = miscMaterialService;
         _dialogService = dialogService;
 
+        BrowsePhotosCommand = new RelayCommand(async _ => await _pageDb.RunAsync(BrowsePhotosAsync), _ => CanBrowsePhotos);
         RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshAsync));
         SearchCommand = new RelayCommand(_ => ApplyFilters(resetPage: true));
         ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.HistoryArchiveBox));
@@ -82,7 +86,13 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
         get => _materialKindDisplay;
         set
         {
-            if (SetProperty(ref _materialKindDisplay, value) && _isInitialized)
+            if (!SetProperty(ref _materialKindDisplay, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(ActiveColumns));
+            if (_isInitialized)
             {
                 _pageDb.RunInBackground(RefreshAsync);
             }
@@ -195,11 +205,27 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
         }
     }
 
+    /// <summary>当前资料类别对应的表格列。</summary>
+    public IReadOnlyList<HistoryArchiveBoxLedgerColumn> ActiveColumns =>
+        HistoryArchiveBoxLedgerColumns.ForGrid(MaterialKindDisplay);
+
     public HistoryArchiveBoxLedgerRow? SelectedRow
     {
         get => _selectedRow;
-        set => SetProperty(ref _selectedRow, value);
+        set
+        {
+            if (SetProperty(ref _selectedRow, value))
+            {
+                OnPropertyChanged(nameof(CanBrowsePhotos));
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
     }
+
+    /// <summary>当前行是带实物照片的杂项资料时才可浏览。</summary>
+    public bool CanBrowsePhotos => SelectedRow is { MiscMaterialId: > 0, PhotoCount: > 0 };
+
+    public RelayCommand BrowsePhotosCommand { get; }
 
     public RelayCommand RefreshCommand { get; }
 
@@ -330,6 +356,10 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
             query = query.Where(item =>
                 Contains(item.BoxCode, keyword)
                 || Contains(item.ContentSummary, keyword)
+                || Contains(item.ContainerKind, keyword)
+                || Contains(item.ContainerCode, keyword)
+                || Contains(item.MajorCategory, keyword)
+                || Contains(item.SubCategory, keyword)
                 || Contains(item.RelatedBoxCodesText, keyword)
                 || Contains(item.MaterialKindDisplay, keyword)
                 || Contains(item.CabinetName, keyword)
@@ -410,6 +440,24 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
         OnPropertyChanged(nameof(CurrentBrowseCaption));
     }
 
+    private Task BrowsePhotosAsync()
+    {
+        if (SelectedRow is not { MiscMaterialId: > 0, PhotoCount: > 0 } row)
+        {
+            return Task.CompletedTask;
+        }
+
+        return HistoryMiscPhotoBrowseDialogViewModel.ShowAsync(
+            _miscMaterialService,
+            _dialogService,
+            row.MiscMaterialId,
+            row.ContainerKind,
+            row.ContainerCode,
+            row.MajorCategory,
+            row.SubCategory,
+            row.BoxCode);
+    }
+
     private async Task ExportAsync()
     {
         if (_filteredRows.Count == 0)
@@ -428,7 +476,8 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
         try
         {
             var exportRows = _filteredRows.ToList();
-            await Task.Run(() => ExportToExcel(filePath, exportRows));
+            string kindDisplay = MaterialKindDisplay;
+            await Task.Run(() => ExportToExcel(filePath, exportRows, kindDisplay));
             _dialogService.ShowMessage($"导出完成：{filePath}", "完成");
         }
         catch (Exception ex)
@@ -454,49 +503,41 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
         return $"{baseName}_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
     }
 
-    private static void ExportToExcel(string filePath, List<HistoryArchiveBoxLedgerRow> list)
+    private static void ExportToExcel(
+        string filePath,
+        List<HistoryArchiveBoxLedgerRow> list,
+        string materialKindDisplay)
     {
         using var workbook = new XSSFWorkbook();
         var sheet = workbook.CreateSheet(ExcelSheetNameSupport.Sanitize("历史存档盒台账", "盒台账"));
 
-        string[] headers =
-        [
-            "资料类别",
-            "状态",
-            "盒号",
-            "规格",
-            "柜体",
-            "盒内摘要",
-            "台账条数",
-            "混放",
-            "关联盒数",
-            "关联混放盒号",
-            "可处置"
-        ];
+        IReadOnlyList<HistoryArchiveBoxLedgerColumn> columns =
+            HistoryArchiveBoxLedgerColumns.ForExport(materialKindDisplay);
         var headerRow = sheet.CreateRow(0);
-        for (int i = 0; i < headers.Length; i++)
+        for (int i = 0; i < columns.Count; i++)
         {
-            headerRow.CreateCell(i).SetCellValue(headers[i]);
+            headerRow.CreateCell(i).SetCellValue(columns[i].Header);
         }
 
         for (int i = 0; i < list.Count; i++)
         {
-            var item = list[i];
+            HistoryArchiveBoxLedgerRow item = list[i];
             var row = sheet.CreateRow(i + 1);
-            row.CreateCell(0).SetCellValue(item.MaterialKindDisplay ?? string.Empty);
-            row.CreateCell(1).SetCellValue(item.LifecycleStatus ?? string.Empty);
-            row.CreateCell(2).SetCellValue(item.BoxCode ?? string.Empty);
-            row.CreateCell(3).SetCellValue(item.BoxSpecification ?? string.Empty);
-            row.CreateCell(4).SetCellValue(item.CabinetName ?? string.Empty);
-            row.CreateCell(5).SetCellValue(item.ContentSummary ?? string.Empty);
-            row.CreateCell(6).SetCellValue(item.LedgerRecordCount);
-            row.CreateCell(7).SetCellValue(item.MixedPlacementText ?? string.Empty);
-            row.CreateCell(8).SetCellValue(item.RelatedBoxCount);
-            row.CreateCell(9).SetCellValue(item.RelatedBoxCodesText ?? string.Empty);
-            row.CreateCell(10).SetCellValue(item.AvailabilityText ?? string.Empty);
+            for (int columnIndex = 0; columnIndex < columns.Count; columnIndex++)
+            {
+                HistoryArchiveBoxLedgerColumn column = columns[columnIndex];
+                if (column.Numeric)
+                {
+                    row.CreateCell(columnIndex).SetCellValue(column.ReadNumber(item));
+                }
+                else
+                {
+                    row.CreateCell(columnIndex).SetCellValue(column.ReadText(item) ?? string.Empty);
+                }
+            }
         }
 
-        for (int i = 0; i < headers.Length; i++)
+        for (int i = 0; i < columns.Count; i++)
         {
             sheet.AutoSizeColumn(i);
         }

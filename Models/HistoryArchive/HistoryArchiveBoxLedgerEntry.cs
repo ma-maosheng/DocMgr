@@ -37,6 +37,20 @@ public sealed class HistoryArchiveBoxLedgerEntry
 
     public bool IsLockedByOther { get; init; }
 
+    public string ContainerKind { get; init; } = string.Empty;
+
+    public string ContainerCode { get; init; } = string.Empty;
+
+    public string MajorCategory { get; init; } = string.Empty;
+
+    public string SubCategory { get; init; } = string.Empty;
+
+    /// <summary>杂项资料主键。档案盒行为 0。</summary>
+    public int MiscMaterialId { get; init; }
+
+    /// <summary>杂项实物照片张数。档案盒行为 0。</summary>
+    public int PhotoCount { get; init; }
+
     public bool IsDisposed =>
         HistoryArchiveDisposalDomainValues.IsDisposedLifecycle(LifecycleStatus);
 

@@ -83,6 +83,13 @@ namespace DocMgr.Services.YearlyArchive
                 ? new Dictionary<int, SimulatedFilingFactCopyCountSnapshot>()
                 : await _outboundRepository.GetSimulatedFilingFactCopyCountSnapshotsByFilingFactIdsAsync(simulatedFactIds);
 
+            var projectIds = facts
+                .Where(fact => fact.ProjectId is > 0)
+                .Select(fact => fact.ProjectId!.Value)
+                .Distinct()
+                .ToList();
+            var projectYearByProjectId = await _filingFactRepository.GetProjectImplementYearsByIdsAsync(projectIds);
+
             return facts
                 .Select(fact => MapRow(
                     fact,
@@ -90,7 +97,8 @@ namespace DocMgr.Services.YearlyArchive
                     mediaTypeByRegisterMediaId,
                     archivePurposeByRegisterRecordId,
                     hasSourceNetworkOutboundByRegisterRecordId,
-                    copySnapshots))
+                    copySnapshots,
+                    projectYearByProjectId))
                 .ToList();
         }
 
@@ -144,6 +152,7 @@ namespace DocMgr.Services.YearlyArchive
                     "灭失份数",
                     "待还份数",
                     "不还份数",
+                    "年度",
                     "项目名称",
                     "提供单位",
                     "申请人",
@@ -193,6 +202,7 @@ namespace DocMgr.Services.YearlyArchive
                     row.CreateCell(col++).SetCellValue(item.IsSimulatedMedia ? item.LostCopyCount : 0);
                     row.CreateCell(col++).SetCellValue(item.IsSimulatedMedia ? item.PendingReturnCopyCount : 0);
                     row.CreateCell(col++).SetCellValue(item.IsSimulatedMedia ? item.NoReturnCopyCount : 0);
+                    row.CreateCell(col++).SetCellValue(item.ProjectYear);
                     row.CreateCell(col++).SetCellValue(item.ProjectName);
                     row.CreateCell(col++).SetCellValue(item.ProvideUnit);
                     row.CreateCell(col++).SetCellValue(item.ApplicantName);
@@ -230,7 +240,8 @@ namespace DocMgr.Services.YearlyArchive
             IReadOnlyDictionary<int, string> mediaTypeByRegisterMediaId,
             IReadOnlyDictionary<int, string> archivePurposeByRegisterRecordId,
             IReadOnlyDictionary<int, bool> hasSourceNetworkOutboundByRegisterRecordId,
-            IReadOnlyDictionary<int, SimulatedFilingFactCopyCountSnapshot> copySnapshots)
+            IReadOnlyDictionary<int, SimulatedFilingFactCopyCountSnapshot> copySnapshots,
+            IReadOnlyDictionary<int, string> projectYearByProjectId)
         {
             var supplement = fact.MediaItemId > 0 && supplementByMediaItemId.TryGetValue(fact.MediaItemId, out var resolvedSupplement)
                 ? resolvedSupplement
@@ -258,6 +269,10 @@ namespace DocMgr.Services.YearlyArchive
                     copySnapshots.GetValueOrDefault(fact.Id) ?? new SimulatedFilingFactCopyCountSnapshot())
                 : Math.Max(1, fact.ContentCount);
             var snapshot = copySnapshots.GetValueOrDefault(fact.Id) ?? new SimulatedFilingFactCopyCountSnapshot();
+            string projectYear = fact.ProjectId is > 0
+                && projectYearByProjectId.TryGetValue(fact.ProjectId.Value, out string? year)
+                ? year
+                : string.Empty;
 
             return new FilingLedgerRow
             {
@@ -276,6 +291,7 @@ namespace DocMgr.Services.YearlyArchive
                 FormNo = fact.FormNo,
                 MaterialName = fact.MaterialName,
                 ProjectName = fact.ProjectName,
+                ProjectYear = projectYear,
                 ProvideUnit = fact.ProvideUnit,
                 ApplicantName = fact.ApplicantName,
                 ItemName = fact.ItemName,

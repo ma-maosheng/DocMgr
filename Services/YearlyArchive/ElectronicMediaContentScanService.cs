@@ -9,7 +9,10 @@ namespace DocMgr.Services.YearlyArchive
         /// <summary>
         /// 将所选目录视为子项根目录，扫描其直接子项（一级子目录与根下文件可同时存在）。
         /// </summary>
-        public ElectronicMediaContentScanResult ScanDirectories(IReadOnlyList<string> directoryPaths, string? storageRootDirectory = null)
+        public ElectronicMediaContentScanResult ScanDirectories(
+            IReadOnlyList<string> directoryPaths,
+            string? storageRootDirectory = null,
+            bool allowEmpty = false)
         {
             ArgumentNullException.ThrowIfNull(directoryPaths);
 
@@ -79,7 +82,7 @@ namespace DocMgr.Services.YearlyArchive
                 }
             }
 
-            if (entries.Count == 0)
+            if (entries.Count == 0 && !allowEmpty)
             {
                 throw new InvalidOperationException("所选子项根目录下没有可登记的文件或一级子目录。");
             }
@@ -93,6 +96,50 @@ namespace DocMgr.Services.YearlyArchive
                     .ToList(),
                 FileCount = totalFileCount,
                 TotalSizeMb = BytesToMb(totalBytes)
+            };
+        }
+
+        /// <inheritdoc />
+        public ElectronicMediaMaterialFolderListing ListMaterialFolderSubItemDirectories(string materialFolder)
+        {
+            if (string.IsNullOrWhiteSpace(materialFolder))
+            {
+                throw new InvalidOperationException("未选择资料名称文件夹。");
+            }
+
+            string fullPath = Path.GetFullPath(materialFolder.Trim());
+            if (!Directory.Exists(fullPath))
+            {
+                throw new DirectoryNotFoundException($"目录不存在：{fullPath}");
+            }
+
+            DirectoryInfo directoryInfo = new(fullPath);
+            DirectoryInfo[] directories;
+            FileInfo[] files;
+            try
+            {
+                directories = directoryInfo.GetDirectories();
+                files = directoryInfo.GetFiles();
+            }
+            catch (IOException ex)
+            {
+                throw new InvalidOperationException($"无法读取文件夹：{fullPath}。{ex.Message}", ex);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                throw new InvalidOperationException($"无法读取文件夹：{fullPath}。{ex.Message}", ex);
+            }
+
+            List<string> subItemDirectories = directories
+                .Where(IsBusinessDirectory)
+                .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(item => item.FullName)
+                .ToList();
+
+            return new ElectronicMediaMaterialFolderListing
+            {
+                SubItemDirectories = subItemDirectories,
+                LooseFileCount = files.Length
             };
         }
 
