@@ -38,6 +38,14 @@ namespace DocMgr.Repositories.Interfaces
         Task<IReadOnlyDictionary<int, bool>> GetHasSourceNetworkOutboundByRegisterRecordIdsAsync(
             IReadOnlyCollection<int> registerRecordIds);
 
+        /// <summary>
+        /// 批量识别存量直办建档申请。
+        /// 存量硬盘、光盘、文本直办写入时直接办结，审批链签字位保持空白；
+        /// 申请审批在办结前必填生产科、资料室、分管资料院长、部门负责人与移交人。
+        /// </summary>
+        Task<IReadOnlySet<int>> GetStockDirectRegisterRecordIdsAsync(
+            IReadOnlyCollection<int> registerRecordIds);
+
         /// <summary>按项目 ID 批量取实施年度（ImplementYear）。</summary>
         Task<IReadOnlyDictionary<int, string>> GetProjectImplementYearsByIdsAsync(
             IReadOnlyCollection<int> projectIds);

@@ -92,6 +92,11 @@ namespace DocMgr.Services.YearlyArchive
 
             if (UsesOpticalDiscCarrier(request.SubmissionMode))
             {
+                if (!string.IsNullOrWhiteSpace(request.PreferredOpticalDiscCode))
+                {
+                    return request.PreferredOpticalDiscCode.Trim();
+                }
+
                 return request.ArchiveUnit.ElectronicArchiveNo?.Trim() ?? string.Empty;
             }
 

@@ -118,6 +118,25 @@ namespace DocMgr.Views.Shared
     }
 
     /// <summary>
+    /// 单选按钮与字符串模式互绑。仅在选中时回写参数，取消选中时不回写。
+    /// </summary>
+    public sealed class StringMatchRadioConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            => string.Equals(value?.ToString(), parameter?.ToString(), StringComparison.Ordinal);
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is bool isChecked && isChecked)
+            {
+                return parameter?.ToString() ?? string.Empty;
+            }
+
+            return Binding.DoNothing;
+        }
+    }
+
+    /// <summary>
     /// 业务状态展示文案 → 前景色画刷（DataGrid「业务状态」列共用）。
     /// </summary>
     public sealed class WorkflowStatusForegroundConverter : IValueConverter

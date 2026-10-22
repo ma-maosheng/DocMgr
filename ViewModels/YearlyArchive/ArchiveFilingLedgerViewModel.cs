@@ -43,6 +43,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _selectedArchiveCopyRole = string.Empty;
         private string _keyword = string.Empty;
         private string _contentEntryKeyword = string.Empty;
+        private string _appliedContentEntryKeyword = string.Empty;
         private DateTime? _filedFrom;
         private DateTime? _filedTo;
         private FilingLedgerRow? _selectedRow;
@@ -356,10 +357,25 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ? $"关联出库单 / 流程节点（{SelectedOutboundProcessNodes.Count}）"
                 : "关联出库单 / 流程节点";
 
-        public string ContentEntriesExpanderHeader =>
-            SelectedContentEntries.Count > 0
-                ? $"电子介质目录 / 文件明细（{SelectedContentEntries.Count}）"
-                : "电子介质目录 / 文件明细";
+        public string ContentEntriesExpanderHeader
+        {
+            get
+            {
+                if (SelectedContentEntries.Count == 0)
+                {
+                    return "电子介质目录 / 文件明细";
+                }
+
+                int hitCount = SelectedContentEntries.Count(entry => entry.IsSearchHighlighted);
+                return hitCount > 0
+                    ? $"电子介质目录 / 文件明细（{SelectedContentEntries.Count}，命中 {hitCount}）"
+                    : $"电子介质目录 / 文件明细（{SelectedContentEntries.Count}）";
+            }
+        }
+
+        /// <summary>最近一次查询使用了「目录/文件」条件，明细表需要标出命中行。</summary>
+        public bool HasContentEntryKeywordHighlight =>
+            !string.IsNullOrWhiteSpace(_appliedContentEntryKeyword);
 
         public RelayCommand SearchCommand { get; }
         public RelayCommand ResetCommand { get; }
@@ -556,6 +572,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 _sourceRows.Clear();
                 _sourceRows.AddRange(orderedRows);
+                SetAppliedContentEntryKeyword(criteria.ContentEntryKeyword);
                 EnsureFoldGroupVisible(selectedId);
                 ApplyFoldDisplay(selectedId);
                 UpdateSummary();
@@ -883,9 +900,23 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
-                foreach (var entry in entries)
+                string appliedKeyword = _appliedContentEntryKeyword;
+                foreach (var entry in entries
+                    .Select(entry =>
+                    {
+                        entry.IsSearchHighlighted = ContentEntrySearchSupport.MatchesEntryNameKeyword(
+                            entry.EntryName,
+                            appliedKeyword);
+                        return entry;
+                    })
+                    .OrderByDescending(entry => entry.IsSearchHighlighted))
                 {
                     SelectedContentEntries.Add(entry);
+                }
+
+                if (SelectedContentEntries.Any(entry => entry.IsSearchHighlighted))
+                {
+                    IsContentEntriesExpanded = true;
                 }
 
                 ContentEntriesPanel.RefreshItems(SelectedContentEntries, preserveExpanded: ContentEntriesPanel.IsExpanded);
@@ -952,6 +983,18 @@ namespace DocMgr.ViewModels.YearlyArchive
             });
         }
 
+        private void SetAppliedContentEntryKeyword(string? keyword)
+        {
+            string normalized = keyword?.Trim() ?? string.Empty;
+            if (string.Equals(_appliedContentEntryKeyword, normalized, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _appliedContentEntryKeyword = normalized;
+            OnPropertyChanged(nameof(HasContentEntryKeywordHighlight));
+        }
+
         private void ResetCriteria()
         {
             SelectedYear = DateTime.Now.Year.ToString();
@@ -962,6 +1005,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             SelectedArchiveCopyRole = string.Empty;
             Keyword = string.Empty;
             ContentEntryKeyword = string.Empty;
+            SetAppliedContentEntryKeyword(string.Empty);
             FiledFrom = null;
             FiledTo = null;
             _expandedFoldGroupKeys.Clear();

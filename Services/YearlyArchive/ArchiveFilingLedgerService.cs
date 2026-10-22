@@ -64,6 +64,13 @@ namespace DocMgr.Services.YearlyArchive
                 registerRecordIds);
             var hasSourceNetworkOutboundByRegisterRecordId =
                 await _filingFactRepository.GetHasSourceNetworkOutboundByRegisterRecordIdsAsync(registerRecordIds);
+            IReadOnlyDictionary<int, int> registerRecordIdByFactId = await ResolveRegisterRecordIdsForHandlingFormAsync(facts);
+            var handlingFormRegisterRecordIds = registerRecordIdByFactId.Values
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+            var stockDirectRegisterRecordIds = await _filingFactRepository.GetStockDirectRegisterRecordIdsAsync(
+                handlingFormRegisterRecordIds);
 
             var supplementByMediaItemId = mediaItems.ToDictionary(
                 item => item.Id,
@@ -97,6 +104,8 @@ namespace DocMgr.Services.YearlyArchive
                     mediaTypeByRegisterMediaId,
                     archivePurposeByRegisterRecordId,
                     hasSourceNetworkOutboundByRegisterRecordId,
+                    registerRecordIdByFactId,
+                    stockDirectRegisterRecordIds,
                     copySnapshots,
                     projectYearByProjectId))
                 .ToList();
@@ -143,6 +152,7 @@ namespace DocMgr.Services.YearlyArchive
                     "立档事实编号",
                     "介质类型",
                     "立档方式",
+                    "办理形式",
                     "表单号",
                     "资料名称",
                     "子项名称",
@@ -193,6 +203,7 @@ namespace DocMgr.Services.YearlyArchive
                     row.CreateCell(col++).SetCellValue(item.FilingFactNo);
                     row.CreateCell(col++).SetCellValue(item.MediaKind);
                     row.CreateCell(col++).SetCellValue(item.FilingMethod);
+                    row.CreateCell(col++).SetCellValue(item.HandlingForm);
                     row.CreateCell(col++).SetCellValue(item.FormNo);
                     row.CreateCell(col++).SetCellValue(item.MaterialName);
                     row.CreateCell(col++).SetCellValue(item.ItemName);
@@ -240,6 +251,8 @@ namespace DocMgr.Services.YearlyArchive
             IReadOnlyDictionary<int, string> mediaTypeByRegisterMediaId,
             IReadOnlyDictionary<int, string> archivePurposeByRegisterRecordId,
             IReadOnlyDictionary<int, bool> hasSourceNetworkOutboundByRegisterRecordId,
+            IReadOnlyDictionary<int, int> registerRecordIdByFactId,
+            IReadOnlySet<int> stockDirectRegisterRecordIds,
             IReadOnlyDictionary<int, SimulatedFilingFactCopyCountSnapshot> copySnapshots,
             IReadOnlyDictionary<int, string> projectYearByProjectId)
         {
@@ -258,6 +271,11 @@ namespace DocMgr.Services.YearlyArchive
             bool hasSourceNetworkOutbound = fact.RegisterRecordId > 0
                 && hasSourceNetworkOutboundByRegisterRecordId.TryGetValue(fact.RegisterRecordId, out bool linked)
                 && linked;
+            int handlingFormRegisterRecordId = registerRecordIdByFactId.TryGetValue(fact.Id, out int resolvedRegisterRecordId)
+                ? resolvedRegisterRecordId
+                : fact.RegisterRecordId;
+            bool isStockDirectFiling = handlingFormRegisterRecordId > 0
+                && stockDirectRegisterRecordIds.Contains(handlingFormRegisterRecordId);
 
             bool isSimulated = string.Equals(
                 fact.MediaKind,
@@ -280,6 +298,7 @@ namespace DocMgr.Services.YearlyArchive
                 FilingFactNo = fact.FilingFactNo,
                 MediaKind = fact.MediaKind,
                 FilingMethod = FilingLedgerFilingMethod.ResolveDisplay(hasSourceNetworkOutbound),
+                HandlingForm = FilingLedgerHandlingForm.ResolveDisplay(isStockDirectFiling),
                 RegisterMediaType = registerMediaType,
                 MaterialCategory = supplement.MaterialCategory,
                 SubCategory = supplement.SubCategory,
@@ -330,6 +349,44 @@ namespace DocMgr.Services.YearlyArchive
                     ? FilingFactArchiveCopyRole.Original
                     : fact.ArchiveCopyRole
             };
+        }
+
+        /// <summary>
+        /// 办理形式按形成该立档结果的建档申请判断。备份副本若未带回申请 Id，则沿用原件申请。
+        /// </summary>
+        private async Task<IReadOnlyDictionary<int, int>> ResolveRegisterRecordIdsForHandlingFormAsync(
+            IReadOnlyList<YearlyArchiveFilingFact> facts)
+        {
+            var registerRecordIdByFactId = facts.ToDictionary(fact => fact.Id, fact => fact.RegisterRecordId);
+            var unresolvedPrimaryIds = facts
+                .Where(fact => fact.RegisterRecordId <= 0 && fact.PrimaryFilingFactId is > 0)
+                .Select(fact => fact.PrimaryFilingFactId!.Value)
+                .Where(id => !registerRecordIdByFactId.TryGetValue(id, out int registerRecordId) || registerRecordId <= 0)
+                .Distinct()
+                .ToList();
+            if (unresolvedPrimaryIds.Count > 0)
+            {
+                var primaryFacts = await _filingFactRepository.GetFactsByIdsAsync(unresolvedPrimaryIds);
+                foreach (var primary in primaryFacts)
+                {
+                    registerRecordIdByFactId[primary.Id] = primary.RegisterRecordId;
+                }
+            }
+
+            foreach (var fact in facts)
+            {
+                if (fact.RegisterRecordId > 0
+                    || fact.PrimaryFilingFactId is not int primaryId
+                    || !registerRecordIdByFactId.TryGetValue(primaryId, out int primaryRegisterRecordId)
+                    || primaryRegisterRecordId <= 0)
+                {
+                    continue;
+                }
+
+                registerRecordIdByFactId[fact.Id] = primaryRegisterRecordId;
+            }
+
+            return registerRecordIdByFactId;
         }
 
         private static FilingLedgerRegisterSupplement BuildRegisterSupplementFromMediaItem(

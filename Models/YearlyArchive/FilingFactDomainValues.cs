@@ -73,6 +73,21 @@ namespace DocMgr.Models.YearlyArchive
             => hasSourceNetworkOutbound ? OnNetworkLabel : OffNetworkLabel;
     }
 
+    /// <summary>
+    /// 立档台账「办理形式」：区分存量直办立档与申请审批后再立档。
+    /// </summary>
+    public static class FilingLedgerHandlingForm
+    {
+        /// <summary>存量硬盘、光盘或存档文本直办形成的立档结果。</summary>
+        public const string StockDirect = "存量直办";
+
+        /// <summary>建档申请审批办结后再立档形成的立档结果。</summary>
+        public const string ApplicationApproval = "申请审批";
+
+        public static string ResolveDisplay(bool isStockDirectFiling)
+            => isStockDirectFiling ? StockDirect : ApplicationApproval;
+    }
+
     public static class ArchiveSearchResultSetStatus
     {
         public const string Draft = "Draft";

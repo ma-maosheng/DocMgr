@@ -317,9 +317,10 @@ namespace DocMgr.Services.Interfaces
         Task<string> ResolveBlankInStockSlotLocationAsync(string? requestedLocation);
 
         /// <summary>
-        /// 将数据等在库硬盘位置规范为含档内序号的完整位置（如 壬A-1-2-01）。
+        /// 将数据等在库介质位置规范为含档内序号的完整位置（如 壬A-1-2-01）。
+        /// <paramref name="dedicatedCategoryName"/> 为空时按年度数据硬盘专用档口解析。
         /// </summary>
-        Task<string> ResolveDataInStockFullLocationAsync(string? requestedLocation);
+        Task<string> ResolveDataInStockFullLocationAsync(string? requestedLocation, string? dedicatedCategoryName = null);
 
         /// <summary>
         /// 获取指定位置当前在库硬盘数量。

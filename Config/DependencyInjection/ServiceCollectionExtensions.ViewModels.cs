@@ -53,6 +53,7 @@ public static partial class ServiceCollectionExtensions
         services.AddTransient<RoleSettingViewModel>();
         services.AddTransient<ServerPathSettingViewModel>();
         services.AddTransient<ArchiveFilingViewModel>();
+        services.AddTransient<StockOpticalDiscDirectFilingViewModel>();
         services.AddTransient<StockHardDiskDirectFilingViewModel>();
         services.AddTransient<StockTextArchiveDirectFilingViewModel>();
         services.AddTransient<ArchiveFilingLedgerViewModel>();

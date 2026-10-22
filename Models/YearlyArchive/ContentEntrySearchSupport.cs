@@ -152,6 +152,23 @@ namespace DocMgr.Models.YearlyArchive
             };
         }
 
+        /// <summary>
+        /// 判断目录/文件名称是否命中检索词。规则与立档台账 SQL LIKE 一致：大小写不敏感，支持 <c>*</c>、<c>?</c>。
+        /// </summary>
+        public static bool MatchesEntryNameKeyword(string? entryName, string? contentEntryKeyword)
+        {
+            if (string.IsNullOrWhiteSpace(contentEntryKeyword))
+            {
+                return false;
+            }
+
+            string likePattern = SearchWildcardPatternSupport.ToSqlLikePattern(contentEntryKeyword);
+            return MatchesSqlLike(
+                (entryName ?? string.Empty).ToLowerInvariant(),
+                likePattern.ToLowerInvariant(),
+                SearchWildcardPatternSupport.EscapeCharacter);
+        }
+
         public static string FormatEntryLabel(MatchedContentEntryInfo entry)
         {
             ArgumentNullException.ThrowIfNull(entry);

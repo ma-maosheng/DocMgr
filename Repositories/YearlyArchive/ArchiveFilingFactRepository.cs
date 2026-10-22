@@ -423,6 +423,39 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             record => record.HasSourceNetworkOutbound);
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlySet<int>> GetStockDirectRegisterRecordIdsAsync(
+        IReadOnlyCollection<int> registerRecordIds)
+    {
+        if (registerRecordIds == null || registerRecordIds.Count == 0)
+        {
+            return new HashSet<int>();
+        }
+
+        List<int> ids = registerRecordIds.Where(id => id > 0).Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return new HashSet<int>();
+        }
+
+        // 申请审批办结前必有下列签字；出网转入建档同样带审批签字。
+        // 存量硬盘/光盘/文本直办跳过审批，这些字段保持空白，且不关联出网申请。
+        List<int> stockDirectIds = await _dbContext.YearlyArchiveRegisterRecords
+            .AsNoTracking()
+            .Where(record => ids.Contains(record.Id))
+            .Where(record =>
+                (record.SourceNetworkOutboundRecordId == null || record.SourceNetworkOutboundRecordId <= 0)
+                && (record.ProductionHead == null || record.ProductionHead.Trim() == string.Empty)
+                && (record.ArchiveRoomHead == null || record.ArchiveRoomHead.Trim() == string.Empty)
+                && (record.ArchiveDeputyPresident == null || record.ArchiveDeputyPresident.Trim() == string.Empty)
+                && (record.DeptHead == null || record.DeptHead.Trim() == string.Empty)
+                && (record.Deliverer == null || record.Deliverer.Trim() == string.Empty))
+            .Select(record => record.Id)
+            .ToListAsync();
+
+        return stockDirectIds.ToHashSet();
+    }
+
     /// <summary>按项目 ID 批量取实施年度（ImplementYear）。</summary>
     public async Task<IReadOnlyDictionary<int, string>> GetProjectImplementYearsByIdsAsync(
         IReadOnlyCollection<int> projectIds)

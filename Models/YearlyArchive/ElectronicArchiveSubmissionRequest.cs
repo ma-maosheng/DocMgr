@@ -57,6 +57,16 @@ namespace DocMgr.Models.YearlyArchive
         public bool IsOpticalDiscArchiveScenario { get; init; }
 
         /// <summary>
+        /// 存量光盘直办：一张光盘上可有多份资料（多条登记介质），袋内仍只登记一张光盘。
+        /// </summary>
+        public bool IsStockOpticalDiscDirectFiling { get; init; }
+
+        /// <summary>
+        /// 指定光盘编号。留空时单张光盘编号等于电子袋号。
+        /// </summary>
+        public string PreferredOpticalDiscCode { get; init; } = string.Empty;
+
+        /// <summary>
         /// 当前电子介质立档所选处理方式。
         /// </summary>
         public string FilingMode { get; init; } = string.Empty;

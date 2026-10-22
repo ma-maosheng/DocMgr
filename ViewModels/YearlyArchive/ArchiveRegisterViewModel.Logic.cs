@@ -6,6 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.Shared;
+using DocMgr.Services.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
@@ -582,7 +584,16 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 try
                 {
-                    var codes = await _hardDiskMediaService.GetCurrentUserBorrowedHardDiskCodesAsync(user);
+                    // 打开申请时，介质同步会后台刷新借出硬盘，同时本窗还在用页面级 DbContext 加载详情和附件。
+                    // 借出列表必须走独立作用域，否则同一 DbContext 上会叠两次查询。
+                    IReadOnlyList<string> codes;
+                    using (IServiceScope scope = _scopeFactory.CreateScope())
+                    {
+                        var hardDiskMedia = scope.ServiceProvider.GetRequiredService<IHardDiskMediaService>();
+                        codes = await hardDiskMedia.GetCurrentUserBorrowedHardDiskCodesAsync(user)
+                            .ConfigureAwait(true);
+                    }
+
                     foreach (var code in codes)
                     {
                         if (!string.IsNullOrWhiteSpace(code))

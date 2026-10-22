@@ -52,6 +52,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IArchiveOutboundWordExportService, ArchiveOutboundWordExportService>();
         services.AddScoped<IElectronicMediaContentScanService, ElectronicMediaContentScanService>();
         services.AddScoped<IArchiveFilingService, ArchiveFilingService>();
+        services.AddScoped<IStockOpticalDiscDirectFilingService, StockOpticalDiscDirectFilingService>();
         services.AddScoped<IStockHardDiskDirectFilingService, StockHardDiskDirectFilingService>();
         services.AddScoped<IStockTextArchiveDirectFilingService, StockTextArchiveDirectFilingService>();
         services.AddScoped<IStockDirectFilingYearProjectCatalog, StockDirectFilingYearProjectCatalog>();

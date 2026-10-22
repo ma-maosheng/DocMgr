@@ -4,6 +4,7 @@ using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Models.Shared;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -32,7 +33,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IUserService _userService;
         private readonly IUserContextService _userContextService;
         private readonly IDialogService _dialogService;
-        private readonly IHardDiskMediaService _hardDiskMediaService;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly IElectronicMediaContentScanService _electronicMediaContentScanService;
         private readonly IArchiveRegisterWordExportService _archiveRegisterWordExportService;
         private readonly SemaphoreSlim _currentRecordSideEffectsGate = new(1, 1);
@@ -450,7 +451,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IUserService userService,
             IUserContextService userContextService,
             IDialogService dialogService,
-            IHardDiskMediaService hardDiskMediaService,
+            IServiceScopeFactory scopeFactory,
             IElectronicMediaContentScanService electronicMediaContentScanService,
             IArchiveRegisterWordExportService archiveRegisterWordExportService)
         {
@@ -459,7 +460,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _userService = userService ?? throw new ArgumentNullException(nameof(userService));
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
             _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
-            _hardDiskMediaService = hardDiskMediaService ?? throw new ArgumentNullException(nameof(hardDiskMediaService));
+            _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
             _electronicMediaContentScanService = electronicMediaContentScanService ?? throw new ArgumentNullException(nameof(electronicMediaContentScanService));
             _archiveRegisterWordExportService = archiveRegisterWordExportService ?? throw new ArgumentNullException(nameof(archiveRegisterWordExportService));
 

@@ -564,6 +564,7 @@ namespace DocMgr.Views
                 ArchiveRegisterApplicationPage => BtnArchiveRegisterApply,
                 ArchiveRegisterApprovalPage => BtnArchiveRegisterApprove,
                 ArchiveFilingPage => BtnArchiveFiling,
+                StockOpticalDiscDirectFilingPage => BtnStockOpticalDiscDirectFiling,
                 StockHardDiskDirectFilingPage => BtnStockHardDiskDirectFiling,
                 StockTextArchiveDirectFilingPage => BtnStockTextArchiveDirectFiling,
                 ArchiveFilingLedgerPage => BtnArchiveFilingLedger,
@@ -705,6 +706,7 @@ namespace DocMgr.Views
                 ArchiveRegisterApprovalPage => "年度资料（建档与立档·建档审批）",
                 ArchiveDetailPage => "年度资料（资料查看）",
                 ArchiveFilingPage => "年度资料（建档与立档·资料立档）",
+                StockOpticalDiscDirectFilingPage => "年度资料（建档与立档·存量光盘直办）",
                 StockHardDiskDirectFilingPage => "年度资料（建档与立档·存量硬盘直办）",
                 StockTextArchiveDirectFilingPage => "年度资料（建档与立档·存档文本直办）",
                 ArchiveFilingLedgerPage => "年度资料（建档与立档·立档台账）",
@@ -1013,6 +1015,7 @@ namespace DocMgr.Views
             SetNavButton(BtnArchiveRegisterApply, true);
             SetNavButton(BtnArchiveRegisterApprove, true);
             SetNavButton(BtnArchiveFiling, true);
+            SetNavButton(BtnStockOpticalDiscDirectFiling, true);
             SetNavButton(BtnStockHardDiskDirectFiling, true);
             SetNavButton(BtnStockTextArchiveDirectFiling, true);
             SetNavButton(BtnArchiveFilingLedger, true);
@@ -1281,6 +1284,24 @@ namespace DocMgr.Views
             {
                 ShowMessageBox(
                     "无法打开资料立档页面：\n\n" + ex.Message,
+                    "错误",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnStockOpticalDiscDirectFiling_Click(object sender, RoutedEventArgs e)
+        {
+            TxtPageTitle.Text = "年度资料（建档与立档·存量光盘直办）";
+
+            try
+            {
+                MainContentFrame.Navigate(new StockOpticalDiscDirectFilingPage());
+            }
+            catch (Exception ex)
+            {
+                ShowMessageBox(
+                    "无法打开存量光盘资料直办立档页面：\n\n" + ex.Message,
                     "错误",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);

@@ -16,6 +16,31 @@
         <!-- DataGridColumn 不在可视树，需经 BindingProxy 才能读到页面 DataContext -->
         <viewShared:BindingProxy x:Key="FilingLedgerVmProxy" Data="{Binding}"/>
 
+        <Style x:Key="ContentEntrySearchHitRowStyle" TargetType="DataGridRow" BasedOn="{StaticResource StandardDataGridRowStyle}">
+            <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsSearchHighlighted}" Value="True"/>
+                        <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="False"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="#E0F2F1"/>
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ContentEntrySearchHitCellStyle" TargetType="DataGridCell" BasedOn="{StaticResource StandardDataGridCellStyle}">
+            <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsSearchHighlighted}" Value="True"/>
+                        <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="False"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="#E0F2F1"/>
+                    <Setter Property="BorderBrush" Value="Transparent"/>
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="PageTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="18"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -525,6 +550,7 @@
                         <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo, Mode=OneWay}" Width="140"/>
                         <DataGridTextColumn Header="立档时间" Binding="{Binding FiledAtDisplay, Mode=OneWay}" Width="128"/>
                         <DataGridTextColumn Header="立档方式" Binding="{Binding FilingMethod, Mode=OneWay}" Width="100"/>
+                        <DataGridTextColumn Header="办理形式" Binding="{Binding HandlingForm, Mode=OneWay}" Width="88"/>
                         <DataGridTextColumn Header="库管模式" Binding="{Binding ArchivePurpose, Mode=OneWay}" Width="80"/>
                         <DataGridTextColumn Header="介质" Binding="{Binding MediaKind, Mode=OneWay}" Width="56"/>
                         <DataGridTextColumn Header="介质类型" Binding="{Binding RegisterMediaType, Mode=OneWay}" Width="72">
@@ -655,6 +681,10 @@
                                 <StackPanel Grid.Row="2" Grid.Column="1">
                                     <TextBlock Style="{StaticResource FieldLabelStyle}" Text="提供单位："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding ProvideUnit, Mode=OneWay}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="2" Grid.Column="2">
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="办理形式："/>
+                                    <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding HandlingForm, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="3" Grid.Column="0">
                                     <TextBlock Style="{StaticResource FieldLabelStyle}" Text="申请人 / 内容数量："/>
@@ -861,7 +891,7 @@
                                           ColumnHeaderHeight="34"
                                           GridLinesVisibility="Horizontal"
                                           BorderThickness="0"
-                                          MaxHeight="220"
+                                          MaxHeight="354"
                                           Visibility="{Binding DataContext.HasSelectedMaterialTransactions, RelativeSource={RelativeSource AncestorType=Page}, Converter={StaticResource BooleanToVisibilityConverter}}"
                                           ItemsSource="{Binding DataContext.SelectedMaterialTransactions, RelativeSource={RelativeSource AncestorType=Page}}">
                                     <DataGrid.Columns>
@@ -918,6 +948,11 @@
                                   Visibility="{Binding DataContext.HasSelectedContentEntries, RelativeSource={RelativeSource AncestorType=Page}, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <StackPanel>
                                 <viewShared:ItemDetailsPanelHeader DataContext="{Binding DataContext.ContentEntriesPanel, RelativeSource={RelativeSource AncestorType=Page}}" Margin="0,0,0,6"/>
+                                <TextBlock Text="浅青色行为本次「目录/文件」检索命中的名称。"
+                                           Foreground="#00695C"
+                                           FontSize="12"
+                                           Margin="0,0,0,6"
+                                           Visibility="{Binding DataContext.HasContentEntryKeywordHighlight, RelativeSource={RelativeSource AncestorType=Page}, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                 <DataGrid AutoGenerateColumns="False"
                                       CanUserAddRows="False"
                                       IsReadOnly="True"
@@ -926,7 +961,9 @@
                                       ColumnHeaderHeight="34"
                                       GridLinesVisibility="Horizontal"
                                       BorderThickness="0"
-                                      MaxHeight="200"
+                                      MaxHeight="354"
+                                      RowStyle="{StaticResource ContentEntrySearchHitRowStyle}"
+                                      CellStyle="{StaticResource ContentEntrySearchHitCellStyle}"
                                       ItemsSource="{Binding DataContext.ContentEntriesPanel.PageItems, RelativeSource={RelativeSource AncestorType=Page}}">
                                     <DataGrid.Style>
                                         <Style TargetType="DataGrid">

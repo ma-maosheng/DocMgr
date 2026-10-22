@@ -53,8 +53,16 @@ namespace DocMgr.Services.HardDiskMedia
         }
 
         /// <inheritdoc/>
-        public async Task<string> ResolveDataInStockFullLocationAsync(string? requestedLocation)
+        public async Task<string> ResolveDataInStockFullLocationAsync(
+            string? requestedLocation,
+            string? dedicatedCategoryName = null)
         {
+            string categoryName = string.IsNullOrWhiteSpace(dedicatedCategoryName)
+                ? CabinetHardDiskSlotCategoryAssignment.CategoryData
+                : dedicatedCategoryName.Trim();
+            string slotLabel = string.Equals(categoryName, CabinetHardDiskSlotCategoryAssignment.CategoryData, StringComparison.Ordinal)
+                ? "年度数据硬盘专用档口"
+                : categoryName;
             string trimmed = requestedLocation?.Trim() ?? string.Empty;
             if (ArchiveSlotLocationSupport.TryParseSequenceIndex(trimmed, out _))
             {
@@ -64,8 +72,8 @@ namespace DocMgr.Services.HardDiskMedia
             string slotCode = HardDiskBlankSlotLocationSupport.NormalizeToSlotCode(trimmed);
             if (string.IsNullOrWhiteSpace(slotCode))
             {
-                return await AllocateNextDedicatedFullLocationAsync(CabinetHardDiskSlotCategoryAssignment.CategoryData)
-                    ?? throw new InvalidOperationException("未找到年度数据硬盘专用档口，请先在磁盘柜开柜界面完成设置。");
+                return await AllocateNextDedicatedFullLocationAsync(categoryName)
+                    ?? throw new InvalidOperationException($"未找到{slotLabel}，请先在磁盘柜开柜界面完成设置。");
             }
 
             if (!ArchiveSlotLocationSupport.TryParseSlotLocation(slotCode, out string cabinetName, out string side, out int row, out int column))
@@ -74,14 +82,12 @@ namespace DocMgr.Services.HardDiskMedia
             }
 
             var cabinet = await _archiveFilingRepository.GetMagneticDiskCabinetByNameAsync(cabinetName);
-            int resolvedCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(
-                CabinetHardDiskSlotCategoryAssignment.CategoryData,
-                cabinet);
+            int resolvedCapacity = CabinetHardDiskSlotCategoryAssignment.ResolveDedicatedSlotCapacity(categoryName, cabinet);
             var occupiedIndexes = await GetOccupiedDedicatedSlotSequenceIndexesAsync(slotCode);
             if (MagneticDedicatedSlotOccupancySupport.IsSlotFull(occupiedIndexes, resolvedCapacity))
             {
-                return await AllocateNextDedicatedFullLocationAsync(CabinetHardDiskSlotCategoryAssignment.CategoryData)
-                    ?? throw new InvalidOperationException("年度数据硬盘专用档口均已满，请新增或启用新的专用档口。");
+                return await AllocateNextDedicatedFullLocationAsync(categoryName)
+                    ?? throw new InvalidOperationException($"{slotLabel}均已满，请新增或启用新的专用档口。");
             }
 
             int sequenceIndex = MagneticDedicatedSlotOccupancySupport.ResolveNextSequenceIndex(occupiedIndexes, resolvedCapacity);

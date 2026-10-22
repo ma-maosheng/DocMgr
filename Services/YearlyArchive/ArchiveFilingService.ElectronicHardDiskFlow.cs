@@ -365,7 +365,8 @@ namespace DocMgr.Services.YearlyArchive
             HardDiskMediaReturnCandidate? borrowedHardDiskCandidate = null,
             User? currentUser = null,
             PendingExternalHardDiskRegistration? pendingExternalHardDisk = null,
-            int? autoNumberYear = null)
+            int? autoNumberYear = null,
+            string? preferredOpticalDiscCode = null)
         {
             ArgumentNullException.ThrowIfNull(newUnit);
             ArgumentNullException.ThrowIfNull(mediaItems);
@@ -385,7 +386,7 @@ namespace DocMgr.Services.YearlyArchive
             AssignElectronicArchiveMediumLinks(newUnit, linkedMedia);
             var createdItemLinks = AddElectronicMediaItemLinks(newUnit, mediaItems, filingStoragePathByMediaItemId, mediumCode, archivedAt);
             _archiveFilingRepository.AddElectronicArchiveUnit(newUnit);
-            await UpsertElectronicArchiveDiscLinksAsync(newUnit, archivedAt);
+            await UpsertElectronicArchiveDiscLinksAsync(newUnit, archivedAt, preferredOpticalDiscCode);
 
             _submissionChangeTracker?.BeginSection("电子介质袋（YearlyElectronicArchiveUnit）");
             _submissionChangeTracker?.AddLine(
@@ -436,7 +437,10 @@ namespace DocMgr.Services.YearlyArchive
             await _archiveFilingRepository.SaveChangesAsync();
         }
 
-        private async Task UpsertElectronicArchiveDiscLinksAsync(YearlyElectronicArchiveUnit unit, DateTime archivedAt)
+        private async Task UpsertElectronicArchiveDiscLinksAsync(
+            YearlyElectronicArchiveUnit unit,
+            DateTime archivedAt,
+            string? preferredOpticalDiscCode = null)
         {
             ArgumentNullException.ThrowIfNull(unit);
 
@@ -452,7 +456,10 @@ namespace DocMgr.Services.YearlyArchive
             string sourceType = string.IsNullOrWhiteSpace(unit.SourceType) ? "YearlyElectronicArchiveUnit" : unit.SourceType.Trim();
             string sourceRecordKey = string.IsNullOrWhiteSpace(unit.SourceRecordKey) ? unit.ElectronicArchiveNo.Trim() : unit.SourceRecordKey.Trim();
             string remarks = unit.Remarks?.Trim() ?? string.Empty;
-            string baseDiscCode = unit.ElectronicArchiveNo.Trim();
+            string preferredDiscCode = preferredOpticalDiscCode?.Trim() ?? string.Empty;
+            string baseDiscCode = !string.IsNullOrWhiteSpace(preferredDiscCode) && discCount == 1
+                ? preferredDiscCode
+                : unit.ElectronicArchiveNo.Trim();
 
             for (int index = 1; index <= discCount; index++)
             {
@@ -461,6 +468,10 @@ namespace DocMgr.Services.YearlyArchive
                     : $"{baseDiscCode}-DISC-{index:D2}";
 
                 var discMedium = await _archiveFilingRepository.GetOpticalDiscMediumByCodeAsync(discCode);
+                if (!string.IsNullOrWhiteSpace(preferredDiscCode) && discMedium != null)
+                {
+                    throw new InvalidOperationException($"光盘编号 [{discCode}] 已登记，请更换盘面编号。");
+                }
 
                 bool isNewDisc = discMedium == null;
                 if (discMedium == null)
@@ -471,6 +482,7 @@ namespace DocMgr.Services.YearlyArchive
                         DiscType = "数据光盘",
                         Capacity = string.Empty,
                         RegistrationMethod = OpticalDiscMedium.RegistrationMethodArchive,
+                        RegisterPerson = unit.ArchivedBy?.Trim() ?? string.Empty,
                         RegisterDate = archivedAt,
                         CreatedTime = archivedAt
                     };
@@ -830,7 +842,10 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             int totalMediaCount = mediaEntries.Sum(item => Math.Max(item.MediaCount, 0));
-            if (totalMediaCount != 1)
+            bool singleDiscManyMaterials = request.IsStockOpticalDiscDirectFiling
+                && mediaEntries.Count > 0
+                && mediaEntries.All(item => item.MediaCount == 1);
+            if (totalMediaCount != 1 && !singleDiscManyMaterials)
             {
                 throw new InvalidOperationException("光盘立档场景必须每次仅处理1张光盘。请分张完成立档。");
             }

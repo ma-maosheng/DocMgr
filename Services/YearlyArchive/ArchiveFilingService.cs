@@ -244,7 +244,8 @@ namespace DocMgr.Services.YearlyArchive
                     borrowedHardDiskCandidate,
                     currentUser,
                     request.PendingExternalHardDisk,
-                    request.AutoNumberYear);
+                    request.AutoNumberYear,
+                    request.PreferredOpticalDiscCode);
                 var filingMediaEntryIds = mediaEntries.Select(entry => entry.Id).ToList();
                 await FinalizeRetainedHardDiskAfterSubmissionAsync(
                     request with { BorrowedHardDiskCandidate = borrowedHardDiskCandidate },

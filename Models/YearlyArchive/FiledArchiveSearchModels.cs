@@ -342,6 +342,9 @@ namespace DocMgr.Models.YearlyArchive
         public string ModifiedDateText { get; init; } = string.Empty;
 
         public string SizeText { get; init; } = string.Empty;
+
+        /// <summary>名称命中当前已执行的「目录/文件」检索条件。</summary>
+        public bool IsSearchHighlighted { get; set; }
     }
 
     /// <summary>
@@ -369,6 +372,9 @@ namespace DocMgr.Models.YearlyArchive
 
         /// <summary>立档方式显示名：网外资料立档 / 网内资料立档。</summary>
         public string FilingMethod { get; init; } = string.Empty;
+
+        /// <summary>办理形式：存量直办 / 申请审批。</summary>
+        public string HandlingForm { get; init; } = string.Empty;
 
         /// <summary>登记介质条目上的介质类型（如纸质、U盘等）。</summary>
         public string RegisterMediaType { get; init; } = string.Empty;

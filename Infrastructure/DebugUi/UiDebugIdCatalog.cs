@@ -62,6 +62,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<ArchiveRegisterApplicationPage>("YA-REG-APP", "建档申请");
             Add<ArchiveRegisterApprovalPage>("YA-REG-APV", "申请审批");
             Add<ArchiveFilingPage>("YA-FIL", "资料立档");
+            Add<StockOpticalDiscDirectFilingPage>("YA-FIL-SOD", "存量光盘资料直办立档");
             Add<StockHardDiskDirectFilingPage>("YA-FIL-STK", "存量硬盘资料直办立档");
             Add<StockTextArchiveDirectFilingPage>("YA-FIL-STT", "存档文本资料直办立档");
             Add<StockTextArchiveExcelImportDialog>("YA-FIL-STT-IMP", "存档文本资料直办 Excel 导入");
