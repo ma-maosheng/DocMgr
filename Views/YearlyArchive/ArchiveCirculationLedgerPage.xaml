@@ -188,6 +188,8 @@
                             <Button Content="重置" Margin="4,0,0,0" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
                             <Button Content="定位立档" Margin="6,0,0,0" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"
                                     ToolTip="用选中行跳转立档台账并带入筛选"/>
+                            <Button Content="查看资料" Margin="6,0,0,0" Command="{Binding ViewStoredMaterialCommand}" Style="{StaticResource CompactToolbarButtonStyle}"
+                                    ToolTip="查看所选档案盒或电子介质袋内的资料。已销号或不在柜时不可查看"/>
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>

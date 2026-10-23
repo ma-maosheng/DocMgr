@@ -1,4 +1,5 @@
 using System.Windows.Controls;
+using System.Windows.Input;
 using DocMgr.ViewModels.HistoryArchive;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,5 +21,13 @@ public partial class HistoryMiscMaterialPage : Page
     {
         Unloaded -= HistoryMiscMaterialPage_Unloaded;
         _pageScope.Dispose();
+    }
+
+    private void DgItems_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is HistoryMiscMaterialPageViewModel vm && vm.OpenCommand.CanExecute(null))
+        {
+            vm.OpenCommand.Execute(null);
+        }
     }
 }

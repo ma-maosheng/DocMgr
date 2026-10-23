@@ -64,6 +64,9 @@ namespace DocMgr.Repositories.Interfaces
 
         Task<List<YearlyArchiveFilingFact>> GetFactsByIdsAsync(IReadOnlyCollection<int> filingFactIds);
 
+        /// <summary>读取立档事实对应的建档申请 Id。记录不存在或未关联时返回 null。</summary>
+        Task<int?> GetRegisterRecordIdAsync(int filingFactId);
+
         /// <summary>批量读取登记介质当前份数（<see cref="YearlyArchiveRegisterMedia.MediaCount"/>）。</summary>
         Task<IReadOnlyDictionary<int, int>> GetRegisterMediaStockCountsByIdsAsync(IReadOnlyCollection<int> registerMediaIds);
 

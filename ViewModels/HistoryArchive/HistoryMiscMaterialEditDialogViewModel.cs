@@ -49,6 +49,7 @@ public sealed class HistoryMiscMaterialEditDialogViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly User? _currentUser;
     private readonly int? _materialId;
+    private readonly bool _viewOnly;
     private readonly List<int> _removedAttachmentIds = new();
     private HistoryMiscVocabulary _vocabulary = new();
     private string _majorCategory = string.Empty;
@@ -65,12 +66,14 @@ public sealed class HistoryMiscMaterialEditDialogViewModel : ViewModelBase
         IHistoryMiscMaterialService service,
         IDialogService dialogService,
         User? currentUser,
-        int? materialId)
+        int? materialId,
+        bool viewOnly = false)
     {
         _service = service;
         _dialogService = dialogService;
         _currentUser = currentUser;
         _materialId = materialId;
+        _viewOnly = viewOnly;
         AddLineCommand = new RelayCommand(_ => AddLine(string.Empty), _ => CanEdit);
         RemoveLineCommand = new RelayCommand(parameter => RemoveLine(parameter as HistoryMiscDetailLineRow), _ => CanEdit);
         MoveLineUpCommand = new RelayCommand(parameter => MoveLine(parameter as HistoryMiscDetailLineRow, -1), _ => CanEdit);
@@ -98,13 +101,35 @@ public sealed class HistoryMiscMaterialEditDialogViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(Title));
                 OnPropertyChanged(nameof(ReadOnlyHint));
+                OnPropertyChanged(nameof(CloseButtonText));
             }
         }
     }
 
-    public string ReadOnlyHint => CanEdit
-        ? "子类随大类提示已有值。档口推荐只含立式、卧式文件柜，不限制容量。保存前须有至少一张实物照片。"
-        : "离库锁定或已离库后不能修改位置、编号和照片。";
+    public string CloseButtonText => CanEdit ? "取消" : "关闭";
+
+    public string ReadOnlyHint
+    {
+        get
+        {
+            if (CanEdit)
+            {
+                return "子类随大类提示已有值。档口推荐只含立式、卧式文件柜，不限制容量。保存前须有至少一张实物照片。";
+            }
+
+            if (_viewOnly)
+            {
+                return "当前为查看，不能修改。";
+            }
+
+            if (!HistoryArchiveLedgerPermissionSupport.CanMaintain(_currentUser))
+            {
+                return HistoryArchiveLedgerPermissionSupport.MaintainDeniedMessage;
+            }
+
+            return "离库锁定或已离库后不能修改位置、编号和照片。";
+        }
+    }
 
     public ObservableCollection<string> MajorCategoryOptions { get; } = new();
 
@@ -221,7 +246,8 @@ public sealed class HistoryMiscMaterialEditDialogViewModel : ViewModelBase
                 return;
             }
 
-            CanEdit = HistoryArchiveLedgerPermissionSupport.CanMaintain(_currentUser)
+            CanEdit = !_viewOnly
+                && HistoryArchiveLedgerPermissionSupport.CanMaintain(_currentUser)
                 && HistoryArchiveDisposalDomainValues.IsInStockLifecycle(material.LifecycleStatus);
             MajorCategory = material.MajorCategory;
             SubCategory = material.SubCategory;
@@ -248,7 +274,7 @@ public sealed class HistoryMiscMaterialEditDialogViewModel : ViewModelBase
         }
         else
         {
-            CanEdit = HistoryArchiveLedgerPermissionSupport.CanMaintain(_currentUser);
+            CanEdit = !_viewOnly && HistoryArchiveLedgerPermissionSupport.CanMaintain(_currentUser);
             MajorCategory = HistoryMiscMaterialDefaults.ImageMajorCategory;
             SubCategory = HistoryMiscMaterialDefaults.FilmSubCategory;
             ContainerKind = HistoryMiscMaterialDefaults.BarrelContainerKind;

@@ -3,10 +3,12 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.NetworkTransfer;
 using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Services.Cabinets;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 
@@ -25,7 +27,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly IArchiveInventoryRegisterService _archiveInventoryRegisterService;
         private readonly INetworkTransferService _networkTransferService;
         private readonly IDialogService _dialogService;
+        private readonly LedgerStoredMaterialOpener _materialOpener;
         private readonly List<HardDiskMediaTransaction> _transactionCache = new();
+        private int _linkedBagUnitId;
 
         private bool _isInitialized;
         private string _searchKeyword = string.Empty;
@@ -45,7 +49,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             IArchiveDisposalService archiveDisposalService,
             IArchiveInventoryRegisterService archiveInventoryRegisterService,
             INetworkTransferService networkTransferService,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            LedgerStoredMaterialOpener materialOpener)
         {
             _hardDiskMediaService = hardDiskMediaService;
             _hardDiskDisposalService = hardDiskDisposalService;
@@ -55,10 +60,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _archiveInventoryRegisterService = archiveInventoryRegisterService;
             _networkTransferService = networkTransferService;
             _dialogService = dialogService;
+            _materialOpener = materialOpener;
 
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
             RefreshCommand = new RelayCommand(async _ => await RefreshAsync());
             ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.HardDisk));
+            ViewStoredMaterialCommand = new RelayCommand(
+                _ => ViewStoredMaterial(),
+                _ => _linkedBagUnitId > 0);
             // 无真实业务单号时仍可点击，以便提示不可查看的原因。
             ViewBusinessDetailCommand = new RelayCommand(
                 async param => await ViewBusinessDetailAsync(param as HardDiskMediaTransaction),
@@ -146,9 +155,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
 
                     // 左侧切换选中项时，同步刷新右下历史流转记录
                     ApplySelectedMediumTransactions();
+                    RefreshLinkedBag();
                 }
             }
         }
+
+        public RelayCommand ViewStoredMaterialCommand { get; }
 
         // 初始登记信息（HardDiskMedium）
         public string SelectedDiskCodeText => EmptyAsPlaceholder(SelectedMedium?.DiskCode);
@@ -350,6 +362,26 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _transactionCache.AddRange(transactions);
 
             ApplySelectedMediumTransactions();
+        }
+
+        private void RefreshLinkedBag()
+        {
+            int mediumId = _selectedMedium?.Id ?? 0;
+            _linkedBagUnitId = mediumId > 0
+                ? _materialOpener.FindInUseElectronicUnitIdByHardDisk(mediumId) ?? 0
+                : 0;
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void ViewStoredMaterial()
+        {
+            int mediumId = SelectedMedium?.Id ?? 0;
+            if (mediumId <= 0)
+            {
+                return;
+            }
+
+            _materialOpener.OpenElectronicBagByHardDisk(mediumId);
         }
 
         private void ApplySelectedMediumTransactions()

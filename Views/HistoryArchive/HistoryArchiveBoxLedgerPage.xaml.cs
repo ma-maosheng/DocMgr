@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using DocMgr.ViewModels.HistoryArchive;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -61,6 +62,20 @@ public partial class HistoryArchiveBoxLedgerPage : Page
             }
 
             LedgerGrid.Columns.Add(gridColumn);
+        }
+    }
+
+    private void LedgerGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source
+            || ItemsControl.ContainerFromElement(LedgerGrid, source) is not DataGridRow)
+        {
+            return;
+        }
+
+        if (_viewModel.ViewStoredMaterialCommand.CanExecute(null))
+        {
+            _viewModel.ViewStoredMaterialCommand.Execute(null);
         }
     }
 }

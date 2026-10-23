@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using DocMgr.Models.HistoryArchive;
 using DocMgr.Models.Shared;
+using DocMgr.Services.Cabinets;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 using DocMgr.Views.Shared;
@@ -23,6 +24,7 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
     private readonly IHistoryArchiveDisposalService _service;
     private readonly IHistoryMiscMaterialService _miscMaterialService;
     private readonly IDialogService _dialogService;
+    private readonly LedgerStoredMaterialOpener _materialOpener;
     private readonly List<HistoryArchiveBoxLedgerRow> _allRows = new();
     private readonly List<HistoryArchiveBoxLedgerRow> _filteredRows = new();
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
@@ -42,13 +44,18 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
     public HistoryArchiveBoxLedgerPageViewModel(
         IHistoryArchiveDisposalService service,
         IHistoryMiscMaterialService miscMaterialService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        LedgerStoredMaterialOpener materialOpener)
     {
         _service = service;
         _miscMaterialService = miscMaterialService;
         _dialogService = dialogService;
+        _materialOpener = materialOpener;
 
         BrowsePhotosCommand = new RelayCommand(async _ => await _pageDb.RunAsync(BrowsePhotosAsync), _ => CanBrowsePhotos);
+        ViewStoredMaterialCommand = new RelayCommand(
+            async _ => await _pageDb.RunAsync(ViewStoredMaterialAsync),
+            _ => CanViewStoredMaterial);
         RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshAsync));
         SearchCommand = new RelayCommand(_ => ApplyFilters(resetPage: true));
         ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.HistoryArchiveBox));
@@ -217,6 +224,7 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
             if (SetProperty(ref _selectedRow, value))
             {
                 OnPropertyChanged(nameof(CanBrowsePhotos));
+                OnPropertyChanged(nameof(CanViewStoredMaterial));
                 CommandManager.InvalidateRequerySuggested();
             }
         }
@@ -225,7 +233,16 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
     /// <summary>当前行是带实物照片的杂项资料时才可浏览。</summary>
     public bool CanBrowsePhotos => SelectedRow is { MiscMaterialId: > 0, PhotoCount: > 0 };
 
+    /// <summary>在库档案盒或任意杂项容器可查看资料。已离库的图件盒不可查看。</summary>
+    public bool CanViewStoredMaterial =>
+        SelectedRow is { MiscMaterialId: > 0 }
+        || (SelectedRow != null
+            && !SelectedRow.IsDisposed
+            && !string.IsNullOrWhiteSpace(SelectedRow.BoxCode));
+
     public RelayCommand BrowsePhotosCommand { get; }
+
+    public RelayCommand ViewStoredMaterialCommand { get; }
 
     public RelayCommand RefreshCommand { get; }
 
@@ -438,6 +455,23 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanGoNext));
         OnPropertyChanged(nameof(ShowPaginationBar));
         OnPropertyChanged(nameof(CurrentBrowseCaption));
+    }
+
+    private async Task ViewStoredMaterialAsync()
+    {
+        HistoryArchiveBoxLedgerRow? row = SelectedRow;
+        if (row == null)
+        {
+            return;
+        }
+
+        if (row.MiscMaterialId > 0)
+        {
+            await _materialOpener.OpenMiscMaterialAsync(row.MiscMaterialId);
+            return;
+        }
+
+        _materialOpener.OpenHistoryArchiveBox(row.BoxCode, row.IsDisposed);
     }
 
     private Task BrowsePhotosAsync()

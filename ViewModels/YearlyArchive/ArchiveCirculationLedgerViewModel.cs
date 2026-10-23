@@ -5,6 +5,7 @@ using System.Windows.Input;
 using DocMgr.Models.ArchiveContainers;
 using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Services.Cabinets;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
@@ -19,6 +20,8 @@ namespace DocMgr.ViewModels.YearlyArchive
     {
         private readonly IArchiveCirculationLedgerService _ledgerService;
         private readonly IDialogService _dialogService;
+        private readonly LedgerStoredMaterialOpener _materialOpener;
+        private bool _canViewStoredMaterial;
         private readonly SemaphoreSlim _searchGate = new(1, 1);
         private readonly PageDbOperationQueue _pageDb = new();
         private int _searchGeneration;
@@ -46,16 +49,21 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public ArchiveCirculationLedgerViewModel(
             IArchiveCirculationLedgerService ledgerService,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            LedgerStoredMaterialOpener materialOpener)
         {
             _ledgerService = ledgerService;
             _dialogService = dialogService;
+            _materialOpener = materialOpener;
 
             SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SearchAsync));
             ResetCommand = new RelayCommand(_ => ResetCriteria());
             NavigateToFilingLedgerCommand = new RelayCommand(
                 _ => NavigateToFilingLedger(),
                 _ => CurrentFilingFactId > 0);
+            ViewStoredMaterialCommand = new RelayCommand(
+                _ => ViewStoredMaterial(),
+                _ => _canViewStoredMaterial);
             ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.Circulation));
         }
 
@@ -225,6 +233,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (SetProperty(ref _selectedContainer, value))
                 {
+                    RefreshStoredMaterialAvailability();
                     SelectedBusiness = null;
                     RefreshBusinessRows();
                     SelectedBusiness = BusinessRows.FirstOrDefault();
@@ -274,6 +283,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand ResetCommand { get; }
 
         public RelayCommand NavigateToFilingLedgerCommand { get; }
+
+        public RelayCommand ViewStoredMaterialCommand { get; }
 
         public RelayCommand ShowIntroCommand { get; }
 
@@ -525,6 +536,30 @@ namespace DocMgr.ViewModels.YearlyArchive
             SubItemDetailHeader = "明细时间线";
             SummaryText = "共 0 条";
             CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void RefreshStoredMaterialAvailability()
+        {
+            CirculationContainerMasterRow? row = _selectedContainer;
+            _canViewStoredMaterial = row != null
+                && _materialOpener.CanOpenContainer(row.ContainerKind, row.LocationDisplay);
+        }
+
+        private void ViewStoredMaterial()
+        {
+            CirculationContainerMasterRow? row = SelectedContainer;
+            if (row == null)
+            {
+                return;
+            }
+
+            if (row.ContainerKind == ArchiveContainerKind.ElectronicBag)
+            {
+                _materialOpener.OpenElectronicBagByLocation(row.LocationDisplay);
+                return;
+            }
+
+            _materialOpener.OpenYearlyArchiveBoxByLocation(row.LocationDisplay);
         }
 
         private void NavigateToFilingLedger()

@@ -10,6 +10,9 @@
         ResizeMode="CanResize"
         ShowInTaskbar="False"
         Background="#F5F5F5">
+  <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+  </Window.Resources>
   <Grid Margin="16,12">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
@@ -277,11 +280,12 @@
                  VerticalAlignment="Center"
                  Margin="0,0,12,0"/>
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-        <Button Content="取消"
-                Margin="0,0,8,0"
+        <Button Content="{Binding CloseButtonText, Mode=OneWay}"
                 Style="{StaticResource DialogSecondaryActionButtonStyle}"
                 Command="{Binding CancelCommand}"/>
         <Button Content="保存"
+                Margin="8,0,0,0"
+                Visibility="{Binding CanEdit, Converter={StaticResource BooleanToVisibilityConverter}}"
                 Style="{StaticResource DialogPrimaryActionButtonStyle}"
                 Command="{Binding SaveCommand}"/>
       </StackPanel>

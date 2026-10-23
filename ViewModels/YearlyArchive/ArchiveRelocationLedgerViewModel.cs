@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Services.Cabinets;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 
@@ -14,6 +15,7 @@ namespace DocMgr.ViewModels.YearlyArchive
     {
         private readonly IArchiveRelocationLedgerService _ledgerService;
         private readonly IDialogService _dialogService;
+        private readonly LedgerStoredMaterialOpener _materialOpener;
 
         private DateTime? _operatedFrom;
         private DateTime? _operatedTo;
@@ -29,15 +31,20 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public ArchiveRelocationLedgerViewModel(
             IArchiveRelocationLedgerService ledgerService,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            LedgerStoredMaterialOpener materialOpener)
         {
             _ledgerService = ledgerService;
             _dialogService = dialogService;
+            _materialOpener = materialOpener;
 
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
             ResetCommand = new RelayCommand(_ => ResetCriteria());
             NavigateToFilingLedgerCommand = new RelayCommand(
                 _ => NavigateToFilingLedger(),
+                _ => SelectedRow != null && SelectedRow.FilingFactId > 0);
+            ViewStoredMaterialCommand = new RelayCommand(
+                async _ => await ViewStoredMaterialAsync(),
                 _ => SelectedRow != null && SelectedRow.FilingFactId > 0);
             ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.Relocation));
         }
@@ -159,6 +166,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand SearchCommand { get; }
         public RelayCommand ResetCommand { get; }
         public RelayCommand NavigateToFilingLedgerCommand { get; }
+        public RelayCommand ViewStoredMaterialCommand { get; }
         public RelayCommand ShowIntroCommand { get; }
 
         public async Task InitializeAsync()
@@ -224,6 +232,16 @@ namespace DocMgr.ViewModels.YearlyArchive
             SelectedRow = null;
             SummaryText = "共 0 条";
             CommandManager.InvalidateRequerySuggested();
+        }
+
+        private async Task ViewStoredMaterialAsync()
+        {
+            if (SelectedRow == null || SelectedRow.FilingFactId <= 0)
+            {
+                return;
+            }
+
+            await _materialOpener.OpenFilingFactAsync(SelectedRow.FilingFactId);
         }
 
         private void NavigateToFilingLedger()

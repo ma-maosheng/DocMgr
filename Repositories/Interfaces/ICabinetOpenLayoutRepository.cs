@@ -38,6 +38,12 @@ public interface ICabinetOpenLayoutRepository
 
     List<YearlyElectronicArchiveUnitDiscLink> GetElectronicArchiveUnitDiscLinksByMediumIds(IReadOnlyCollection<int> mediumIds);
 
+    /// <summary>按硬盘介质 Id 查找仍在用的电子介质袋 Id。未入袋或袋子已不在柜时返回 null。</summary>
+    int? FindInUseElectronicUnitIdByHardDiskMediumId(int mediumId);
+
+    /// <summary>按光盘介质 Id 查找仍在用的电子介质袋 Id。未关联或袋子已不在柜时返回 null。</summary>
+    int? FindInUseElectronicUnitIdByOpticalDiscMediumId(int mediumId);
+
     Dictionary<string, decimal> GetUsedDataSizeMbByMediumCodes(IReadOnlyCollection<string> mediumCodes);
 
     List<TopoMap> GetTopoMaps();

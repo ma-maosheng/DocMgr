@@ -39,7 +39,8 @@ public sealed class HistoryMiscMaterialPageViewModel : ViewModelBase
         RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ReloadAsync));
         BrowsePhotosCommand = new RelayCommand(async _ => await _pageDb.RunAsync(BrowsePhotosAsync), _ => CanBrowsePhotos);
         NewCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => EditAsync(null)), _ => CanMaintain);
-        EditCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => EditAsync(SelectedItem?.Id)), _ => SelectedItem != null);
+        OpenCommand = new RelayCommand(async _ => await _pageDb.RunAsync(OpenAsync), _ => SelectedItem != null);
+        EditCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => EditAsync(SelectedItem?.Id)), _ => CanMaintain && SelectedItem != null);
         DeleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(DeleteAsync), _ => CanDeleteSelected);
         _ = _pageDb.RunAsync(InitializeAsync);
     }
@@ -123,6 +124,8 @@ public sealed class HistoryMiscMaterialPageViewModel : ViewModelBase
 
     public RelayCommand NewCommand { get; }
 
+    public RelayCommand OpenCommand { get; }
+
     public RelayCommand EditCommand { get; }
 
     public RelayCommand DeleteCommand { get; }
@@ -181,13 +184,24 @@ public sealed class HistoryMiscMaterialPageViewModel : ViewModelBase
             item.LocationDisplay);
     }
 
-    private async Task EditAsync(int? id)
+    private Task OpenAsync()
+    {
+        if (SelectedItem == null)
+        {
+            return Task.CompletedTask;
+        }
+
+        return EditAsync(SelectedItem.Id, viewOnly: true);
+    }
+
+    private async Task EditAsync(int? id, bool viewOnly = false)
     {
         var editViewModel = new HistoryMiscMaterialEditDialogViewModel(
             _service,
             _dialogService,
             _userContextService.CurrentUser,
-            id);
+            id,
+            viewOnly);
         await editViewModel.LoadAsync();
         var dialog = new HistoryMiscMaterialEditDialog
         {

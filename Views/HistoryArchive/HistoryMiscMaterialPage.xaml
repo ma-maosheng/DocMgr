@@ -20,6 +20,12 @@
                   Margin="0,0,8,0"
                   ToolTip="浏览当前杂项资料的实物照片"/>
           <Button Content="新建" Command="{Binding NewCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72" Margin="0,0,8,0"/>
+          <Button Content="打开"
+                  Command="{Binding OpenCommand}"
+                  Style="{StaticResource ToolbarActionButtonStyle}"
+                  Width="72"
+                  Margin="0,0,8,0"
+                  ToolTip="查看当前杂项资料，不能修改"/>
           <Button Content="编辑" Command="{Binding EditCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72" Margin="0,0,8,0"/>
           <Button Content="删除" Command="{Binding DeleteCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Width="72"/>
         </StackPanel>
@@ -60,6 +66,7 @@
     <Border Grid.Row="2" Background="White" Padding="8">
       <DataGrid ItemsSource="{Binding Items}"
                 SelectedItem="{Binding SelectedItem}"
+                MouseDoubleClick="DgItems_MouseDoubleClick"
                 AutoGenerateColumns="False"
                 IsReadOnly="True"
                 CanUserAddRows="False"

@@ -192,6 +192,8 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             }
         }
 
+        query = ApplyHandlingFormFilter(query, criteria.HandlingForm);
+
         if (!string.IsNullOrWhiteSpace(criteria.Year))
         {
             string year = criteria.Year.Trim();
@@ -423,6 +425,77 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             record => record.HasSourceNetworkOutbound);
     }
 
+    /// <summary>
+    /// 按办理形式筛选。口径与台账展示一致：建档申请无审批/移交签字且未关联出网为存量直办；其余为申请审批。
+    /// 备份副本未带回申请 Id 时，沿用原件申请。
+    /// </summary>
+    private IQueryable<YearlyArchiveFilingFact> ApplyHandlingFormFilter(
+        IQueryable<YearlyArchiveFilingFact> query,
+        string? handlingForm)
+    {
+        if (string.IsNullOrWhiteSpace(handlingForm))
+        {
+            return query;
+        }
+
+        string normalized = handlingForm.Trim();
+        bool stockDirect = string.Equals(
+            normalized,
+            FilingLedgerHandlingForm.StockDirect,
+            StringComparison.Ordinal);
+        bool applicationApproval = string.Equals(
+            normalized,
+            FilingLedgerHandlingForm.ApplicationApproval,
+            StringComparison.Ordinal);
+        if (!stockDirect && !applicationApproval)
+        {
+            return query;
+        }
+
+        IQueryable<YearlyArchiveRegisterRecord> stockDirectRecords = WhereStockDirectRegister(
+            _dbContext.YearlyArchiveRegisterRecords.AsNoTracking());
+
+        if (stockDirect)
+        {
+            return query.Where(fact =>
+                (fact.RegisterRecordId > 0
+                    && stockDirectRecords.Any(record => record.Id == fact.RegisterRecordId))
+                || (fact.RegisterRecordId <= 0
+                    && fact.PrimaryFilingFactId != null
+                    && fact.PrimaryFilingFactId > 0
+                    && _dbContext.YearlyArchiveFilingFacts.Any(primary =>
+                        primary.Id == fact.PrimaryFilingFactId
+                        && primary.RegisterRecordId > 0
+                        && stockDirectRecords.Any(record => record.Id == primary.RegisterRecordId))));
+        }
+
+        return query.Where(fact =>
+            !((fact.RegisterRecordId > 0
+                && stockDirectRecords.Any(record => record.Id == fact.RegisterRecordId))
+            || (fact.RegisterRecordId <= 0
+                && fact.PrimaryFilingFactId != null
+                && fact.PrimaryFilingFactId > 0
+                && _dbContext.YearlyArchiveFilingFacts.Any(primary =>
+                    primary.Id == fact.PrimaryFilingFactId
+                    && primary.RegisterRecordId > 0
+                    && stockDirectRecords.Any(record => record.Id == primary.RegisterRecordId)))));
+    }
+
+    /// <summary>
+    /// 存量直办建档申请：未关联出网，且审批、移交签字均为空。
+    /// </summary>
+    private static IQueryable<YearlyArchiveRegisterRecord> WhereStockDirectRegister(
+        IQueryable<YearlyArchiveRegisterRecord> records)
+    {
+        return records.Where(record =>
+            (record.SourceNetworkOutboundRecordId == null || record.SourceNetworkOutboundRecordId <= 0)
+            && (record.ProductionHead == null || record.ProductionHead.Trim() == string.Empty)
+            && (record.ArchiveRoomHead == null || record.ArchiveRoomHead.Trim() == string.Empty)
+            && (record.ArchiveDeputyPresident == null || record.ArchiveDeputyPresident.Trim() == string.Empty)
+            && (record.DeptHead == null || record.DeptHead.Trim() == string.Empty)
+            && (record.Deliverer == null || record.Deliverer.Trim() == string.Empty));
+    }
+
     /// <inheritdoc />
     public async Task<IReadOnlySet<int>> GetStockDirectRegisterRecordIdsAsync(
         IReadOnlyCollection<int> registerRecordIds)
@@ -440,16 +513,9 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
 
         // 申请审批办结前必有下列签字；出网转入建档同样带审批签字。
         // 存量硬盘/光盘/文本直办跳过审批，这些字段保持空白，且不关联出网申请。
-        List<int> stockDirectIds = await _dbContext.YearlyArchiveRegisterRecords
-            .AsNoTracking()
+        List<int> stockDirectIds = await WhereStockDirectRegister(
+                _dbContext.YearlyArchiveRegisterRecords.AsNoTracking())
             .Where(record => ids.Contains(record.Id))
-            .Where(record =>
-                (record.SourceNetworkOutboundRecordId == null || record.SourceNetworkOutboundRecordId <= 0)
-                && (record.ProductionHead == null || record.ProductionHead.Trim() == string.Empty)
-                && (record.ArchiveRoomHead == null || record.ArchiveRoomHead.Trim() == string.Empty)
-                && (record.ArchiveDeputyPresident == null || record.ArchiveDeputyPresident.Trim() == string.Empty)
-                && (record.DeptHead == null || record.DeptHead.Trim() == string.Empty)
-                && (record.Deliverer == null || record.Deliverer.Trim() == string.Empty))
             .Select(record => record.Id)
             .ToListAsync();
 
@@ -604,6 +670,22 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             .AsNoTracking()
             .Where(fact => filingFactIds.Contains(fact.Id))
             .ToListAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<int?> GetRegisterRecordIdAsync(int filingFactId)
+    {
+        if (filingFactId <= 0)
+        {
+            return null;
+        }
+
+        int registerRecordId = await _dbContext.YearlyArchiveFilingFacts
+            .AsNoTracking()
+            .Where(fact => fact.Id == filingFactId)
+            .Select(fact => fact.RegisterRecordId)
+            .FirstOrDefaultAsync();
+        return registerRecordId > 0 ? registerRecordId : null;
     }
 
     public async Task<IReadOnlyDictionary<int, int>> GetRegisterMediaStockCountsByIdsAsync(

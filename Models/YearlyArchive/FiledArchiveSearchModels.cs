@@ -304,6 +304,9 @@ namespace DocMgr.Models.YearlyArchive
         /// <summary>空表示全部；<see cref="FilingLedgerFilingMethod.OffNetwork"/> 或 <see cref="FilingLedgerFilingMethod.OnNetwork"/>。</summary>
         public string FilingMethod { get; set; } = string.Empty;
 
+        /// <summary>空表示全部；<see cref="FilingLedgerHandlingForm.StockDirect"/> 或 <see cref="FilingLedgerHandlingForm.ApplicationApproval"/>。</summary>
+        public string HandlingForm { get; set; } = string.Empty;
+
         public string Keyword { get; set; } = string.Empty;
 
         /// <summary>
@@ -356,14 +359,32 @@ namespace DocMgr.Models.YearlyArchive
 
         public string FilingFactNo { get; init; } = string.Empty;
 
-        /// <summary>列表折叠分组键（建档表单号；空表单号时为单条立档事实）。</summary>
+        /// <summary>列表折叠分组键。前缀区分折叠字段，避免申请单号与容器编号相同时共用展开状态。</summary>
         public string FoldGroupKey { get; set; } = string.Empty;
 
         /// <summary>同组第一条，可显示折叠/展开按钮。</summary>
         public bool IsFoldGroupLeader { get; set; }
 
-        /// <summary>同组条数大于 1 时在「表单号」列显示按钮。</summary>
+        /// <summary>同组条数大于 1 时，在当前折叠字段列显示按钮。</summary>
         public bool ShowFoldButton { get; set; }
+
+        /// <summary>按容器编号折叠时，在容器编号列显示按钮。</summary>
+        public bool ShowContainerFoldButton { get; set; }
+
+        /// <summary>按申请表单编号折叠时，在该列显示按钮。</summary>
+        public bool ShowFormFoldButton { get; set; }
+
+        /// <summary>按立档编号折叠时，在该列显示按钮。</summary>
+        public bool ShowFilingFactFoldButton { get; set; }
+
+        /// <summary>同组展开后的非首行，在容器编号列留出与按钮等宽的占位。</summary>
+        public bool ReserveContainerFoldIndent { get; set; }
+
+        /// <summary>同组展开后的非首行，在申请表单编号列留出与按钮等宽的占位。</summary>
+        public bool ReserveFormFoldIndent { get; set; }
+
+        /// <summary>同组展开后的非首行，在立档编号列留出与按钮等宽的占位。</summary>
+        public bool ReserveFilingFactFoldIndent { get; set; }
 
         /// <summary>组内首行按钮文案：折叠 或 展开(n)。</summary>
         public string FoldButtonText { get; set; } = string.Empty;

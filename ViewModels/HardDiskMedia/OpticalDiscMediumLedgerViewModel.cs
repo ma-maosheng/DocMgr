@@ -3,8 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.Shared;
+using DocMgr.Services.Cabinets;
 using DocMgr.Services.Interfaces;
 using DocMgr.ViewModels.Base;
 using DocMgr.ViewModels.Shared;
@@ -19,6 +21,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private readonly IHardDiskMediaService _hardDiskMediaService;
         private readonly PageDbOperationQueue _pageDb = new();
         private readonly IDialogService _dialogService;
+        private readonly LedgerStoredMaterialOpener _materialOpener;
+        private int _linkedBagUnitId;
         private bool _isInitialized;
         private bool _suppressSelectionReload;
         private readonly SemaphoreSlim _transactionLoadGate = new(1, 1);
@@ -34,10 +38,14 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private OpticalDiscMedium? _selectedMedium;
         private OpticalDiscMediumTransactionRecord? _selectedTransaction;
 
-        public OpticalDiscMediumLedgerViewModel(IHardDiskMediaService hardDiskMediaService, IDialogService dialogService)
+        public OpticalDiscMediumLedgerViewModel(
+            IHardDiskMediaService hardDiskMediaService,
+            IDialogService dialogService,
+            LedgerStoredMaterialOpener materialOpener)
         {
             _hardDiskMediaService = hardDiskMediaService;
             _dialogService = dialogService;
+            _materialOpener = materialOpener;
 
             SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SearchAsync));
             RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshAsync));
@@ -45,7 +53,12 @@ namespace DocMgr.ViewModels.HardDiskMedia
             SearchTransactionsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SearchTransactionsAsync));
             ShowAllTransactionsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ShowAllTransactionsAsync));
             ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.OpticalDisc));
+            ViewStoredMaterialCommand = new RelayCommand(
+                _ => ViewStoredMaterial(),
+                _ => _linkedBagUnitId > 0);
         }
+
+        public RelayCommand ViewStoredMaterialCommand { get; }
 
         public ObservableCollection<OpticalDiscMedium> MediaItems { get; } = new();
         public ObservableCollection<string> StatusOptions { get; } = new();
@@ -138,6 +151,9 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 {
                     return;
                 }
+
+                _linkedBagUnitId = 0;
+                CommandManager.InvalidateRequerySuggested();
 
                 if (_followSelectedMedium && value != null)
                 {
@@ -385,6 +401,26 @@ namespace DocMgr.ViewModels.HardDiskMedia
             await LoadTransactionsAsync();
         }
 
+        private void RefreshLinkedBag()
+        {
+            int mediumId = _selectedMedium?.Id ?? 0;
+            _linkedBagUnitId = mediumId > 0
+                ? _materialOpener.FindInUseElectronicUnitIdByOpticalDisc(mediumId) ?? 0
+                : 0;
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void ViewStoredMaterial()
+        {
+            int mediumId = SelectedMedium?.Id ?? 0;
+            if (mediumId <= 0)
+            {
+                return;
+            }
+
+            _materialOpener.OpenElectronicBagByOpticalDisc(mediumId);
+        }
+
         private async Task LoadTransactionsAsync()
         {
             int generation = Interlocked.Increment(ref _transactionLoadGeneration);
@@ -395,6 +431,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 {
                     return;
                 }
+
+                RefreshLinkedBag();
 
                 int? selectedTxnId = SelectedTransaction?.Id;
                 int? mediumId = FollowSelectedMedium ? SelectedMedium?.Id : null;

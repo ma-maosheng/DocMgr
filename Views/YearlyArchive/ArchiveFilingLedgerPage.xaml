@@ -13,6 +13,7 @@
     <Page.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <viewShared:InverseBoolToVisConverter x:Key="InverseBoolToVisConverter"/>
+        <viewShared:StringMatchRadioConverter x:Key="StringMatchRadioConverter"/>
         <!-- DataGridColumn 不在可视树，需经 BindingProxy 才能读到页面 DataContext -->
         <viewShared:BindingProxy x:Key="FilingLedgerVmProxy" Data="{Binding}"/>
 
@@ -360,6 +361,9 @@
                             <ColumnDefinition Width="88"/>
                             <ColumnDefinition Width="8"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="88"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="72"/>
                             <ColumnDefinition Width="8"/>
                             <ColumnDefinition Width="Auto"/>
@@ -400,29 +404,36 @@
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedFilingMethod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="14" Text="状态：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="14" Text="办理形式：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
+                                  ItemsSource="{Binding HandlingFormOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedValuePath="Value"
+                                  SelectedValue="{Binding SelectedHandlingForm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Grid.Column="17" Text="状态：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="18" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding LifecycleStatusOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedLifecycleStatus, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="17" Text="副本：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <ComboBox Grid.Column="18" Style="{StaticResource FilterInputStyle}"
+                        <TextBlock Grid.Column="20" Text="副本：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="21" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding ArchiveCopyRoleOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedArchiveCopyRole, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="20" Text="立档自：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <DatePicker Grid.Column="21" Style="{StaticResource FilterDatePickerStyle}"
+                        <TextBlock Grid.Column="23" Text="立档自：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <DatePicker Grid.Column="24" Style="{StaticResource FilterDatePickerStyle}"
                                     SelectedDate="{Binding FiledFrom, Mode=TwoWay}"/>
 
-                        <TextBlock Grid.Column="23" Text="立档至：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <DatePicker Grid.Column="24" Style="{StaticResource FilterDatePickerStyle}"
+                        <TextBlock Grid.Column="26" Text="立档至：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <DatePicker Grid.Column="27" Style="{StaticResource FilterDatePickerStyle}"
                                     SelectedDate="{Binding FiledTo, Mode=TwoWay}"/>
 
-                        <StackPanel Grid.Column="26" Orientation="Horizontal" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="29" Orientation="Horizontal" VerticalAlignment="Center">
                             <Button Content="查询" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding SearchCommand}"/>
                             <Button Content="重置" Margin="4,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding ResetCommand}"/>
                             <Button Content="导出" Margin="6,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding ExportCommand}" ToolTip="导出台账"/>
@@ -449,7 +460,7 @@
                         <TextBlock Grid.Column="0" Text="关键词：" Style="{StaticResource FilterRowLabelStyle}"/>
                         <TextBox Grid.Column="2" Style="{StaticResource SearchTextBoxStyle}"
                                  Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="模糊匹配立档事实：立档编号、表单号、资料/子项名称、密级、项目、提供单位、申请人、容器编号、存放位置、介质编号、立档路径、柜体名称、盒位编码等">
+                                 ToolTip="模糊匹配立档事实：立档编号、申请表单编号、资料/子项名称、密级、项目、提供单位、申请人、容器编号、存放位置、介质编号、立档路径、柜体名称、盒位编码等">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
                             </TextBox.InputBindings>
@@ -486,18 +497,38 @@
 
                 <Border Style="{StaticResource SectionHeaderBarStyle}">
                     <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="立档记录列表" Style="{StaticResource SectionTitleStyle}"/>
-                            <TextBlock Text="点击行可在下方查看完整立档信息；专属列随上方「介质」筛选显示（全部时仅共用列）。同建档表单号默认折叠，只显示第一行。"
+                            <TextBlock Text="{Binding ListSectionHint, Mode=OneWay}"
                                        Style="{StaticResource SectionHintStyle}"/>
                         </StackPanel>
                         <Button Grid.Column="1" Content="查看建档详情" Padding="12,5"
                                 Style="{StaticResource ButtonNormalStyle}"
                                 Command="{Binding ViewRegisterDetailCommand}"/>
+                        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBlock Text="折叠字段：" VerticalAlignment="Center" Foreground="#4B5563" FontSize="12"/>
+                            <RadioButton Content="容器编号"
+                                         GroupName="FilingLedgerFoldField"
+                                         Style="{StaticResource FormRadioButtonStyle}"
+                                         IsChecked="{Binding SelectedFoldField, Converter={StaticResource StringMatchRadioConverter}, ConverterParameter=Container, Mode=TwoWay}"/>
+                            <RadioButton Content="申请表单编号"
+                                         GroupName="FilingLedgerFoldField"
+                                         Style="{StaticResource FormRadioButtonStyle}"
+                                         IsChecked="{Binding SelectedFoldField, Converter={StaticResource StringMatchRadioConverter}, ConverterParameter=FormNo, Mode=TwoWay}"/>
+                            <RadioButton Content="立档编号"
+                                         GroupName="FilingLedgerFoldField"
+                                         Style="{StaticResource FormRadioButtonStyle}"
+                                         Margin="0"
+                                         IsChecked="{Binding SelectedFoldField, Converter={StaticResource StringMatchRadioConverter}, ConverterParameter=FilingFactNo, Mode=TwoWay}"/>
+                        </StackPanel>
                     </Grid>
                 </Border>
 
@@ -515,39 +546,96 @@
                           ItemsSource="{Binding LedgerRows}"
                           SelectedItem="{Binding SelectedRow, Mode=TwoWay}">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="容器编号" Binding="{Binding CurrentContainerCode, Mode=OneWay}" Width="125"/>
-                        <DataGridTextColumn Header="当前位置" Binding="{Binding CurrentStorageLocation, Mode=OneWay}" Width="110"/>
-                        <DataGridTemplateColumn Width="168" IsReadOnly="True">
+                        <DataGridTemplateColumn Width="176" IsReadOnly="True">
                             <DataGridTemplateColumn.Header>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="表单号" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                                    <TextBlock Text="容器编号" VerticalAlignment="Center"/>
                                     <Button Content="{Binding Data.FoldAllButtonText, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
                                             ToolTip="{Binding Data.FoldAllButtonToolTip, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
                                             Style="{StaticResource LedgerFoldButtonStyle}"
-                                            Margin="0"
+                                            Visibility="{Binding Data.IsFoldByContainer, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                                             Command="{Binding Data.ToggleFoldAllCommand, Source={StaticResource FilingLedgerVmProxy}}"/>
                                 </StackPanel>
                             </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <!-- 首行显示折叠按钮；同组展开子行用等宽占位，使表单号与首行文本左缘对齐 -->
                                         <Button Content="{Binding FoldButtonText, Mode=OneWay}"
                                                 Style="{StaticResource LedgerFoldButtonStyle}"
-                                                Visibility="{Binding ShowFoldButton, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                ToolTip="按建档表单号折叠/展开同单其余子项"
+                                                Visibility="{Binding ShowContainerFoldButton, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                ToolTip="{Binding Data.FoldRowToolTip, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
                                                 Command="{Binding Data.ToggleFoldGroupCommand, Source={StaticResource FilingLedgerVmProxy}}"
                                                 CommandParameter="{Binding}"
                                                 PreviewMouseLeftButtonDown="FoldButton_PreviewMouseLeftButtonDown"/>
                                         <Border Width="40"
                                                 Margin="0,0,6,0"
-                                                Visibility="{Binding IsFoldGroupLeader, Converter={StaticResource InverseBoolToVisConverter}}"/>
+                                                Visibility="{Binding ReserveContainerFoldIndent, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                        <TextBlock Text="{Binding CurrentContainerCode, Mode=OneWay}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="当前位置" Binding="{Binding CurrentStorageLocation, Mode=OneWay}" Width="110"/>
+                        <DataGridTemplateColumn Width="210" IsReadOnly="True">
+                            <DataGridTemplateColumn.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="申请表单编号" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                                    <Button Content="{Binding Data.FoldAllButtonText, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
+                                            ToolTip="{Binding Data.FoldAllButtonToolTip, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
+                                            Style="{StaticResource LedgerFoldButtonStyle}"
+                                            Margin="0"
+                                            Visibility="{Binding Data.IsFoldByFormNo, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                            Command="{Binding Data.ToggleFoldAllCommand, Source={StaticResource FilingLedgerVmProxy}}"/>
+                                </StackPanel>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <!-- 首行显示折叠按钮；同组展开子行用等宽占位，使编号与首行文本左缘对齐 -->
+                                        <Button Content="{Binding FoldButtonText, Mode=OneWay}"
+                                                Style="{StaticResource LedgerFoldButtonStyle}"
+                                                Visibility="{Binding ShowFormFoldButton, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                ToolTip="{Binding Data.FoldRowToolTip, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
+                                                Command="{Binding Data.ToggleFoldGroupCommand, Source={StaticResource FilingLedgerVmProxy}}"
+                                                CommandParameter="{Binding}"
+                                                PreviewMouseLeftButtonDown="FoldButton_PreviewMouseLeftButtonDown"/>
+                                        <Border Width="40"
+                                                Margin="0,0,6,0"
+                                                Visibility="{Binding ReserveFormFoldIndent, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                         <TextBlock Text="{Binding FormNo, Mode=OneWay}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="立档编号" Binding="{Binding FilingFactNo, Mode=OneWay}" Width="140"/>
+                        <DataGridTemplateColumn Width="190" IsReadOnly="True">
+                            <DataGridTemplateColumn.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="立档编号" VerticalAlignment="Center"/>
+                                    <Button Content="{Binding Data.FoldAllButtonText, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
+                                            ToolTip="{Binding Data.FoldAllButtonToolTip, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
+                                            Style="{StaticResource LedgerFoldButtonStyle}"
+                                            Visibility="{Binding Data.IsFoldByFilingFactNo, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                            Command="{Binding Data.ToggleFoldAllCommand, Source={StaticResource FilingLedgerVmProxy}}"/>
+                                </StackPanel>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="{Binding FoldButtonText, Mode=OneWay}"
+                                                Style="{StaticResource LedgerFoldButtonStyle}"
+                                                Visibility="{Binding ShowFilingFactFoldButton, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                ToolTip="{Binding Data.FoldRowToolTip, Source={StaticResource FilingLedgerVmProxy}, Mode=OneWay}"
+                                                Command="{Binding Data.ToggleFoldGroupCommand, Source={StaticResource FilingLedgerVmProxy}}"
+                                                CommandParameter="{Binding}"
+                                                PreviewMouseLeftButtonDown="FoldButton_PreviewMouseLeftButtonDown"/>
+                                        <Border Width="40"
+                                                Margin="0,0,6,0"
+                                                Visibility="{Binding ReserveFilingFactFoldIndent, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                        <TextBlock Text="{Binding FilingFactNo, Mode=OneWay}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="立档时间" Binding="{Binding FiledAtDisplay, Mode=OneWay}" Width="128"/>
                         <DataGridTextColumn Header="立档方式" Binding="{Binding FilingMethod, Mode=OneWay}" Width="100"/>
                         <DataGridTextColumn Header="办理形式" Binding="{Binding HandlingForm, Mode=OneWay}" Width="88"/>
@@ -560,7 +648,7 @@
                                          Converter="{StaticResource BooleanToVisibilityConverter}"/>
                             </DataGridTextColumn.Visibility>
                         </DataGridTextColumn>
-                        <DataGridTextColumn Header="年度" Binding="{Binding ProjectYear, Mode=OneWay}" Width="64"/>
+                        <DataGridTextColumn Header="项目年度" Binding="{Binding ProjectYear, Mode=OneWay}" Width="88"/>
                         <DataGridTextColumn Header="项目" Binding="{Binding ProjectName, Mode=OneWay}" Width="110"/>
                         <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="150"/>
                         <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName, Mode=OneWay}" Width="130"/>
@@ -653,7 +741,7 @@
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding FilingFactNo, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="1">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="表单号："/>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="申请表单编号："/>
                                     <TextBlock Style="{StaticResource FieldValueStyle}" Text="{Binding FormNo, Mode=OneWay}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="2">

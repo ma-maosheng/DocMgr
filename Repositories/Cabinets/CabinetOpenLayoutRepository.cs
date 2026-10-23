@@ -168,6 +168,40 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
             .ToList();
     }
 
+    /// <inheritdoc />
+    public int? FindInUseElectronicUnitIdByHardDiskMediumId(int mediumId)
+    {
+        if (mediumId <= 0)
+        {
+            return null;
+        }
+
+        int unitId = _dbContext.YearlyElectronicArchiveUnitMediumLinks
+            .AsNoTracking()
+            .Where(link => link.HardDiskMediumId == mediumId
+                && link.ElectronicArchiveUnit.UnitLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+            .Select(link => link.YearlyElectronicArchiveUnitId)
+            .FirstOrDefault();
+        return unitId > 0 ? unitId : null;
+    }
+
+    /// <inheritdoc />
+    public int? FindInUseElectronicUnitIdByOpticalDiscMediumId(int mediumId)
+    {
+        if (mediumId <= 0)
+        {
+            return null;
+        }
+
+        int unitId = _dbContext.YearlyElectronicArchiveUnitDiscLinks
+            .AsNoTracking()
+            .Where(link => link.OpticalDiscMediumId == mediumId
+                && link.ElectronicArchiveUnit.UnitLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+            .Select(link => link.YearlyElectronicArchiveUnitId)
+            .FirstOrDefault();
+        return unitId > 0 ? unitId : null;
+    }
+
     public Dictionary<string, decimal> GetUsedDataSizeMbByMediumCodes(IReadOnlyCollection<string> mediumCodes)
     {
         if (mediumCodes == null || mediumCodes.Count == 0)

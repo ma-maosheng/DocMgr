@@ -35,6 +35,12 @@
     <Border Grid.Row="0" Style="{StaticResource ToolbarCardBorderStyle}" Margin="0" CornerRadius="0" Padding="16,12">
       <DockPanel LastChildFill="True">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Content="查看资料"
+                  Command="{Binding ViewStoredMaterialCommand}"
+                  Style="{StaticResource ToolbarActionButtonStyle}"
+                  Width="96"
+                  Margin="0,0,8,0"
+                  ToolTip="查看当前档案盒内的资料，或打开杂项容器。已离库的图件盒不可查看"/>
           <Button Content="浏览照片"
                   Command="{Binding BrowsePhotosCommand}"
                   Style="{StaticResource ToolbarActionButtonStyle}"
@@ -183,7 +189,8 @@
                 EnableRowVirtualization="True"
                 VirtualizingPanel.IsVirtualizing="True"
                 VirtualizingPanel.VirtualizationMode="Recycling"
-                ScrollViewer.CanContentScroll="True"/>
+                ScrollViewer.CanContentScroll="True"
+                MouseDoubleClick="LedgerGrid_MouseDoubleClick"/>
     </Border>
 
     <Border Grid.Row="4"

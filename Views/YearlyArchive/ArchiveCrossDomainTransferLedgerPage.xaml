@@ -187,6 +187,8 @@
                             <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
                             <Button Content="重置" Margin="4,0,0,0" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
                             <Button Content="定位立档" Margin="6,0,0,0" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
+                            <Button Content="查看资料" Margin="6,0,0,0" Command="{Binding ViewStoredMaterialCommand}" Style="{StaticResource CompactToolbarButtonStyle}"
+                                    ToolTip="查看该立档事实的资料详情"/>
                             <Button Content="导出" Margin="4,0,0,0" Command="{Binding ExportCommand}" Style="{StaticResource CompactToolbarButtonStyle}"
                                     ToolTip="导出当前查询结果为 Excel"/>
                          
