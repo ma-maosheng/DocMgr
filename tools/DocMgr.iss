@@ -10,7 +10,7 @@
 ; 不打包、不覆盖 DocMgr.db / WAL；目标里已有 appsettings.json 时不会被替换。
 
 #define MyAppName "测绘资料管理系统"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "河北省第三测绘院"
 #define MyAppExeName "DocMgr.exe"
 #define MySourceDir "..\publish\overlay-win-x64"

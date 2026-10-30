@@ -1,0 +1,31 @@
+---
+description: 任何软件打包前必须先更新版本号，具体版本号须经用户确认
+alwaysApply: true
+---
+
+# 打包前更新软件版本号
+
+只要用户要求打包、发布安装包、覆盖发布，或执行下列脚本，**先改版本号，再开始打包**。未得到用户确认的版本号之前，不要运行 `dotnet publish`、`ISCC`，也不要执行打包脚本。
+
+- `tools/Build-InnoInstaller.ps1`（Inno 安装包）
+- `tools/PackTestInstaller.ps1`（测试 zip）
+- `tools/PublishOverlay.ps1`（覆盖发布）
+- 直接编译 `tools/DocMgr.iss`
+
+## 确认版本号
+
+1. 读出当前版本（以 `DocMgr.csproj` 的 `<Version>` 为准）。
+2. 向用户询问本次打包使用的版本号，并等用户明确回复。禁止自行递增、沿用旧号，或在用户未回复时开工。
+3. 用户给出的号原样写入下列位置，三处必须相同（例如 `1.0.1`）。
+
+| 位置 | 字段 |
+| --- | --- |
+| `DocMgr.csproj` | `<Version>` 与 `<InformationalVersion>` |
+| `tools/DocMgr.iss` | `#define MyAppVersion` |
+| `tools/PackTestInstaller.ps1` | zip 文件名中的版本段：`DocMgr-Setup-{版本}-win-x64.zip` |
+
+登录窗、主窗口、帮助页通过 `AppVersionInfo` 读取程序集版本，改完 `DocMgr.csproj` 即可，不必另改展示代码。
+
+## 然后才打包
+
+版本号写入并与用户确认值一致后，再执行用户要求的打包。回复中写明本次使用的版本号。

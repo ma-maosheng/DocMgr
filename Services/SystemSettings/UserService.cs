@@ -1,4 +1,5 @@
-﻿using DocMgr.Models.SystemSettings;
+﻿using DocMgr.Infrastructure.Seeding;
+using DocMgr.Models.SystemSettings;
 using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using Microsoft.EntityFrameworkCore;
@@ -69,6 +70,11 @@ namespace DocMgr.Services.SystemSettings
                 }
 
                 return CreateInvalidCredentialsResult();
+            }
+
+            if (IsPresetPasswordRequiringReset(user.LoginName, password))
+            {
+                user.MustChangePassword = true;
             }
 
             ResetLoginFailures(user);
@@ -566,6 +572,20 @@ namespace DocMgr.Services.SystemSettings
         {
             user.FailedLoginCount = 0;
             user.LockoutUntil = null;
+        }
+
+        /// <summary>
+        /// 仍在使用初始口令：密码与登录名相同（忽略大小写），或系统管理员口令仍为 <see cref="DefaultAdministratorBootstrap.InitialPassword"/>。
+        /// </summary>
+        private static bool IsPresetPasswordRequiringReset(string loginName, string password)
+        {
+            if (string.Equals(password, loginName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return string.Equals(loginName, DefaultAdministratorBootstrap.LoginName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(password, DefaultAdministratorBootstrap.InitialPassword, StringComparison.Ordinal);
         }
 
         private static void EnsureRoleDepartmentConsistent(string role, string department)

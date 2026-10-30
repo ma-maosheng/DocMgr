@@ -80,7 +80,7 @@ public static class SystemIdentitySeedCatalog
         new("mbc", "马丙超", "地理信息室", UserRoleDomainValues.DepartmentHead, "mbc"),
         new("zxh", "张新行", "院领导", UserRoleDomainValues.ProductionVicePresident, "zxh"),
         new("mms", "马茂生", "院领导", UserRoleDomainValues.ArchiveDeputyPresident, "mms"),
-        new("wjf", "吴建菲", UserRoleDomainValues.ProductionManagementDepartment, UserRoleDomainValues.ProductionHead, "wjy"),
+        new("wjf", "吴建菲", UserRoleDomainValues.ProductionManagementDepartment, UserRoleDomainValues.ProductionHead, "wjf"),
         new("gpf", "郭鹏飞", UserRoleDomainValues.ArchiveRoomDepartment, UserRoleDomainValues.ArchiveRoomHead, "gpf"),
         new("wxl", "吴秀丽", UserRoleDomainValues.ArchiveRoomDepartment, UserRoleDomainValues.ArchiveAdmin, "wxl"),
         new("jn", "及那", UserRoleDomainValues.ArchiveRoomDepartment, UserRoleDomainValues.ArchiveAdmin, "jn"),
