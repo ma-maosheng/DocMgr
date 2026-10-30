@@ -103,6 +103,15 @@ namespace DocMgr
                 return;
             }
 
+            if (!string.IsNullOrWhiteSpace(databaseOptions.PasswordProtectionWarning))
+            {
+                MessageBox.Show(
+                    databaseOptions.PasswordProtectionWarning,
+                    "数据库密码仍为明文",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
             IServiceCollection services = new ServiceCollection();
             ConfigureServices(services, databaseOptions);
 

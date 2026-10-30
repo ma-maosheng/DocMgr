@@ -5,7 +5,7 @@ namespace DocMgr.Config;
 /// </summary>
 public sealed class DocMgrDatabaseOptions
 {
-    public DocMgrDatabaseOptions(string connectionString)
+    public DocMgrDatabaseOptions(string connectionString, string? passwordProtectionWarning = null)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -13,8 +13,16 @@ public sealed class DocMgrDatabaseOptions
         }
 
         ConnectionString = connectionString.Trim();
+        PasswordProtectionWarning = string.IsNullOrWhiteSpace(passwordProtectionWarning)
+            ? null
+            : passwordProtectionWarning.Trim();
     }
 
-    /// <summary>SQL Server 连接字符串。</summary>
+    /// <summary>SQL Server 连接字符串（仅存在于内存；磁盘上的 SQL 密码以本机密文保存）。</summary>
     public string ConnectionString { get; }
+
+    /// <summary>
+    /// 磁盘上仍留有明文 SQL 密码时的提示。为空表示配置文件里没有明文密码。
+    /// </summary>
+    public string? PasswordProtectionWarning { get; }
 }

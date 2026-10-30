@@ -22,7 +22,15 @@
 注意：只改 example 文件、或删掉 appsettings.json，程序都无法连上局域网库。
 example 文件本身永远不会被程序读取。
 
-三、.NET 8 桌面运行时
+三、SQL 登录密码
+--------------------------------
+若 ConnectionString 中写了 Password=，请在本机启动一次 DocMgr.exe。
+程序会删掉这句明文，改为写入 Database:ProtectedPassword（只在这台电脑上能解密）。
+更换密码时：在 ConnectionString 中重新写上 Password=新密码，保存后再启动一次。
+不要把 appsettings.json 拷到别的电脑当作密码来源；每台终端都要在本机保护一次。
+安装目录仍应限制 NTFS 权限。不要把 sa 写进配置。
+
+四、.NET 8 桌面运行时
 --------------------------------
 若程序无法启动并提示缺少框架，请运行同目录 redist\windowsdesktop-runtime-win-x64.exe
 安装「.NET 8 桌面运行时（Windows Desktop x64）」。开发用的 SDK 不是运行本程序所必需。

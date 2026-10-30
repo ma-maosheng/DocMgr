@@ -7,6 +7,8 @@
    · 若目标目录已有该文件（升级覆盖安装），安装程序不会覆盖，避免冲掉现网连接串。
    · 请按实际环境修改其中的 Database:ConnectionString，例如：
      Server=服务器名或IP;Database=DocMgr;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true
+   · 若改用 SQL 登录，Password= 只在本机写一次。首次启动后程序会去掉明文，
+     改存为仅本机可解密的 ProtectedPassword。不要把该文件拷到其他电脑。
 
 2）appsettings.lan.example.json（局域网示例，仅供对照）
    · 正确做法：复制该文件 → 重命名为 appsettings.json → 改 Server= 为实际库服务器。
