@@ -13,7 +13,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $projectFile = Join-Path $projectRoot "DocMgr.csproj"
 $publishDir = Join-Path $projectRoot "publish\overlay-win-x64"
 $outDir = Join-Path $projectRoot "installer-out"
-$zipPath = Join-Path $outDir "DocMgr-Setup-1.1.0-win-x64.zip"
+$zipPath = Join-Path $outDir "DocMgr-Setup-1.1.1-win-x64.zip"
 
 if (-not $SkipPublish) {
     if (Test-Path -LiteralPath $publishDir) {
