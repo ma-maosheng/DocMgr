@@ -36,7 +36,7 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
     private int _pageSize = 50;
     private int _currentPage = 1;
     private string _boxKeyword = string.Empty;
-    private string _materialKindDisplay = AllOption;
+    private string _materialKindDisplay = HistoryArchiveDisposalDomainValues.MaterialKindDisplayTopoMap;
     private string _lifecycleStatus = HistoryArchiveDisposalDomainValues.LifecycleInStock;
     private string _cabinetName = AllOption;
     private HistoryArchiveBoxLedgerRow? _selectedRow;
@@ -51,6 +51,15 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
         _miscMaterialService = miscMaterialService;
         _dialogService = dialogService;
         _materialOpener = materialOpener;
+
+        foreach (string display in HistoryArchiveDisposalDomainValues.MaterialKindDisplayOptions)
+        {
+            MaterialKindOptions.Add(display);
+        }
+
+        LifecycleStatusOptions.Add(AllOption);
+        LifecycleStatusOptions.Add(HistoryArchiveDisposalDomainValues.LifecycleInStock);
+        LifecycleStatusOptions.Add(HistoryArchiveDisposalDomainValues.LifecycleDisposed);
 
         BrowsePhotosCommand = new RelayCommand(async _ => await _pageDb.RunAsync(BrowsePhotosAsync), _ => CanBrowsePhotos);
         ViewStoredMaterialCommand = new RelayCommand(
@@ -268,18 +277,6 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
             return;
         }
 
-        MaterialKindOptions.Clear();
-        MaterialKindOptions.Add(AllOption);
-        foreach (string display in HistoryArchiveDisposalDomainValues.MaterialKindDisplayOptions)
-        {
-            MaterialKindOptions.Add(display);
-        }
-
-        LifecycleStatusOptions.Clear();
-        LifecycleStatusOptions.Add(AllOption);
-        LifecycleStatusOptions.Add(HistoryArchiveDisposalDomainValues.LifecycleInStock);
-        LifecycleStatusOptions.Add(HistoryArchiveDisposalDomainValues.LifecycleDisposed);
-
         await RefreshAsync();
         _isInitialized = true;
     }
@@ -371,7 +368,8 @@ public sealed class HistoryArchiveBoxLedgerPageViewModel : ViewModelBase
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             query = query.Where(item =>
-                Contains(item.BoxCode, keyword)
+                Contains(item.SearchText, keyword)
+                || Contains(item.BoxCode, keyword)
                 || Contains(item.ContentSummary, keyword)
                 || Contains(item.ContainerKind, keyword)
                 || Contains(item.ContainerCode, keyword)

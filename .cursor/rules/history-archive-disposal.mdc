@@ -1,6 +1,6 @@
 ---
 description: 历史存档资料离库处置：档案盒或杂项容器为最小单元；一单一类一种方式；档案盒混放整组纳入；办结撤柜并跳过启动同步
-globs: Services/HistoryArchive/HistoryArchiveDisposal*.cs,Repositories/HistoryArchive/HistoryArchiveDisposal*.cs,ViewModels/HistoryArchive/HistoryArchiveDisposal*.cs,ViewModels/HistoryArchive/HistoryArchiveBoxLedger*.cs,Views/HistoryArchive/HistoryArchiveDisposal*.cs,Views/HistoryArchive/HistoryArchiveBoxLedger*.cs,Models/HistoryArchive/HistoryArchiveDisposal*.cs,Models/HistoryArchive/HistoryArchiveBoxCodeSupport.cs
+globs: Services/HistoryArchive/HistoryArchiveDisposal*.cs,Services/HistoryArchive/HistoryArchiveBoxLedger*.cs,Repositories/HistoryArchive/HistoryArchiveDisposal*.cs,ViewModels/HistoryArchive/HistoryArchiveDisposal*.cs,ViewModels/HistoryArchive/HistoryArchiveBoxLedger*.cs,Views/HistoryArchive/HistoryArchiveDisposal*.cs,Views/HistoryArchive/HistoryArchiveBoxLedger*.cs,Models/HistoryArchive/HistoryArchiveDisposal*.cs,Models/HistoryArchive/HistoryArchiveBoxCodeSupport.cs
 alwaysApply: false
 ---
 
@@ -10,7 +10,7 @@ alwaysApply: false
 
 「历史存档」→「资料台账与资料处置」下分两个入口：
 
-- **台账**（`HA-BOX`）：在柜档案盒与杂项容器当前态查询。列表列随资料类别切换：全部为合并列；地形图 / 航摄 / 其他资料为盒列（盒号、规格、柜体、盒内摘要、台账条数、混放、关联盒数）；杂项为容器列，标题对齐杂项录入页（资料大类、资料子类、存放容器、容器编号、存放位置、资料详情、照片）。不把图号、测区、序号等录入页字段拆成列。杂项当前行可「浏览照片」。
+- **台账**（`HA-BOX`）：在柜档案盒与杂项容器当前态查询。资料类别四选一，无「全部」。地形图 / 航摄 / 其他资料为盒列（盒号、规格、柜体、盒内摘要、台账条数、混放、关联盒数）；杂项为容器列，标题对齐杂项录入页（资料大类、资料子类、存放容器、容器编号、存放位置、资料详情、照片）。不把图号、测区、序号等录入页字段拆成列。关键词按当前类别匹配盒内每条资料的业务字段（地形图含图上图号与当前图号）；命中则列出所在盒或杂项容器。杂项当前行可「浏览照片」。
 - **处置**（`HA-DSP` / `HA-DSP-ED`）：离库处置办理列表与编辑窗。
 
 权限仅资料管理员可新建/办理处置；台账页只读查询。

@@ -25,6 +25,9 @@ public sealed class HistoryArchiveBoxLedgerRow
 
     public string ContentSummary => Entry.ContentSummary;
 
+    /// <summary>盒内资料字段拼接文本，不在列表中展示。</summary>
+    public string SearchText => Entry.SearchText;
+
     public string ContainerKind => Entry.ContainerKind;
 
     public string ContainerCode => Entry.ContainerCode;

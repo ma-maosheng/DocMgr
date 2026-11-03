@@ -146,8 +146,9 @@ namespace DocMgr.Models.Shared
 
         private static readonly Content HistoryArchiveBox = new(
             Title: "历史存档盒台账简介",
-            Scope: "展示历史档案盒与杂项容器台账：资料类别、盒号或存放位置、摘要、混放关联与可处置状态。"
+            Scope: "展示历史档案盒与杂项容器台账：先选定资料类别，再看盒号或存放位置、摘要、混放关联与可处置状态。"
                 + " 入口为「历史存档 → 资料台账与资料处置 → 台账」；不是地形图/航摄/其他图件/杂项的明细录入页，也不办理离库审批。"
+                + " 关键词按所选类别匹配盒内每条资料的业务字段（地形图含图上图号与当前图号），命中后列出所在盒或容器。"
                 + " 可按「在库 / 已离库」筛选；默认在库（含办理中的离库锁定）。杂项资料以单个存放容器为一行。",
             RelatedObjects: "主数据：历史档案盒（HistoryArchiveBoxes）及盒—台账链接（HistoryArchiveBoxLedgerLinks）；杂项资料（HistoryMiscMaterials）。"
                 + " 关联：地形图/航片/其他图件台账行；历史存档离库处置单。"

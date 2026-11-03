@@ -919,6 +919,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
                     pair.Value.Select(item => item.BoxSpecification)),
                 CabinetName = cabinetName,
                 ContentSummary = BuildGroupSummary(kind, pair.Value),
+                SearchText = HistoryArchiveBoxLedgerSearchSupport.Join(pair.Value.Select(item => item.SearchText)),
                 LedgerRecordCount = pair.Value.Select(item => item.Id).Distinct().Count(),
                 IsMixedPlacement = mixed,
                 RelatedBoxCodes = related,
@@ -986,6 +987,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
                     pair.Value.Select(item => item.BoxSpecification)),
                 CabinetName = cabinetName,
                 ContentSummary = BuildGroupSummary(kind, pair.Value),
+                SearchText = HistoryArchiveBoxLedgerSearchSupport.Join(pair.Value.Select(item => item.SearchText)),
                 LedgerRecordCount = pair.Value.Select(item => item.Id).Distinct().Count(),
                 IsMixedPlacement = related.Count > 1,
                 RelatedBoxCodes = related,
@@ -1029,7 +1031,8 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
                     map.BoxSpecification,
                     HistoryArchiveDisposalDomainValues.BuildSourceRecordKey(kind, map.Id),
                     HistoryArchiveDisposalContentSummarySupport.BuildTopoMapSummary([map]),
-                    map.LastStorageLocation));
+                    map.LastStorageLocation,
+                    HistoryArchiveBoxLedgerSearchSupport.BuildTopoMap(map)));
             }
         }
         else if (string.Equals(kind, HistoryArchiveDisposalDomainValues.MaterialKindAerialPhoto, StringComparison.Ordinal))
@@ -1048,7 +1051,8 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
                     photo.BoxSpecification,
                     HistoryArchiveDisposalDomainValues.BuildSourceRecordKey(kind, photo.Id),
                     HistoryArchiveDisposalContentSummarySupport.BuildAerialPhotoSummary([photo]),
-                    photo.LastStorageLocation));
+                    photo.LastStorageLocation,
+                    HistoryArchiveBoxLedgerSearchSupport.BuildAerialPhoto(photo)));
             }
         }
         else
@@ -1067,7 +1071,8 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
                     map.BoxSpecification,
                     HistoryArchiveDisposalDomainValues.BuildSourceRecordKey(kind, map.Id),
                     HistoryArchiveDisposalContentSummarySupport.BuildOtherMapSummary([map]),
-                    map.LastStorageLocation));
+                    map.LastStorageLocation,
+                    HistoryArchiveBoxLedgerSearchSupport.BuildOtherMap(map)));
             }
         }
 
@@ -1582,6 +1587,7 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
                     .OrderBy(item => item.SortOrder)
                     .ThenBy(item => item.Id)
                     .Select(item => item.LineText)),
+            SearchText = HistoryArchiveBoxLedgerSearchSupport.BuildMisc(material, photoCount),
             LedgerRecordCount = 1,
             IsMixedPlacement = false,
             RelatedBoxCodes = Array.Empty<string>(),
@@ -1632,5 +1638,6 @@ public sealed class HistoryArchiveDisposalService : IHistoryArchiveDisposalServi
         string BoxSpecification,
         string SourceKey,
         string SummaryHint,
-        string LastStorageLocation = "");
+        string LastStorageLocation = "",
+        string SearchText = "");
 }

@@ -59,7 +59,7 @@ public static class HistoryArchiveBoxLedgerColumns
         Text("可处置", nameof(HistoryArchiveBoxLedgerRow.AvailabilityText), 100)
     ];
 
-    /// <summary>按资料类别解析列集：全部 / 档案盒 / 杂项。</summary>
+    /// <summary>按资料类别解析列集：档案盒 / 杂项。未识别类别时回退合并列。</summary>
     public static string ResolveSet(string? materialKindDisplay)
     {
         if (HistoryArchiveDisposalDomainValues.IsMiscMaterial(materialKindDisplay))

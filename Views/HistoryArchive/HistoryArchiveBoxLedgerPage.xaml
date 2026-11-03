@@ -76,7 +76,7 @@
             <Separator Style="{StaticResource VerticalSeparatorStyle}"/>
 
             <TextBlock Text="资料类别：" VerticalAlignment="Center" Margin="10,0,0,0"/>
-            <ComboBox Width="140"
+            <ComboBox Width="168"
                       Style="{StaticResource ToolbarFilterComboBoxStyle}"
                       ItemsSource="{Binding MaterialKindOptions}"
                       SelectedItem="{Binding MaterialKindDisplay}"/>
@@ -97,7 +97,7 @@
                      Margin="0,0,10,0"
                      VerticalContentAlignment="Center"
                      Text="{Binding BoxKeyword, UpdateSourceTrigger=PropertyChanged}"
-                     ToolTip="盒号、盒内摘要、关联混放盒号、柜体、资料类别">
+                     ToolTip="按当前资料类别检索盒内每条资料的字段，以及盒号、摘要、柜体">
               <TextBox.InputBindings>
                 <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
               </TextBox.InputBindings>

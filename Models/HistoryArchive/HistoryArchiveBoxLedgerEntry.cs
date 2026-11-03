@@ -17,6 +17,9 @@ public sealed class HistoryArchiveBoxLedgerEntry
 
     public string ContentSummary { get; init; } = string.Empty;
 
+    /// <summary>当前类别下盒内每条资料的业务字段，供关键词检索。</summary>
+    public string SearchText { get; init; } = string.Empty;
+
     public int LedgerRecordCount { get; init; }
 
     public bool IsMixedPlacement { get; init; }
