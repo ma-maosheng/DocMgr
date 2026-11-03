@@ -181,6 +181,16 @@ namespace DocMgr.Services.Shared
             return MessageBox.Show(GetOwnerWindow(), message, title, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
         }
 
+        /// <inheritdoc />
+        public string? PromptConfirmedPassword(string title, string message)
+        {
+            var dialog = new SqlLoginPasswordDialog(title, message)
+            {
+                Owner = GetOwnerWindow()
+            };
+            return dialog.ShowDialog() == true ? dialog.Password : null;
+        }
+
         /// <inheritdoc/>
         public void ShowSystemAttachmentView(SystemAttachment attachment)
         {

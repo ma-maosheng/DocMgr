@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Input;
 using DocMgr.Infrastructure.Schema;
 using DocMgr.Services.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 using DocMgr.Models;
@@ -19,20 +20,24 @@ namespace DocMgr.ViewModels.SystemSettings
         private readonly IAdvancedDataService _dataService;
         private readonly ISchemaDictionaryMaintenanceService _schemaDictionaryMaintenance;
         private readonly IDatabaseBackupService _databaseBackupService;
+        private readonly ISqlServerLanSetupService _sqlServerLanSetupService;
         private readonly IUserContextService _userContext;
         private readonly IDialogService _dialogService;
         private readonly PageDbOperationQueue _pageDb = new();
 
-        /// <summary>是否系统管理员（唯一可执行改库/备份/还原/字典维护的角色）。</summary>
+        /// <summary>是否系统管理员（唯一可执行改库/备份/还原/删除当前库/SQL Server 设置/字典维护的角色）。</summary>
         public bool IsSystemAdministrator { get; }
 
-        /// <summary>备份 / 还原 / 删行 / 清空 / 字典：仅系统管理员可执行（界面仍对全员显示）。</summary>
+        /// <summary>备份 / 还原 / 删除当前库 / SQL Server 设置 / 删行 / 清空 / 字典：仅系统管理员可执行（界面仍对全员显示）。</summary>
         public bool CanExecuteMaintenance => IsSystemAdministrator;
+
+        /// <summary>启用 TCP/IP 与防火墙只能在库服务器本机执行。</summary>
+        public bool CanConfigureLocalSqlServer => IsSystemAdministrator && _sqlServerLanSetupService.IsLocalServer;
 
         /// <summary>顶栏权限说明（随角色变化）。</summary>
         public string RolePermissionHintText => IsSystemAdministrator
-            ? "当前角色：系统管理员。可浏览全部数据表，并可执行备份、还原、字典维护、删除与清空。"
-            : "当前角色：非系统管理员。可浏览全部数据表并导出；备份、还原、字典维护、删除与清空按钮可见但不可执行（仅系统管理员）。";
+            ? "当前角色：系统管理员。可浏览全部数据表，并可执行备份、还原、删除当前库、SQL Server 局域网设置、字典维护、删行与清空。"
+            : "当前角色：非系统管理员。可浏览全部数据表并导出；备份、还原、删除当前库、SQL Server 局域网设置、字典维护、删行与清空按钮可见但不可执行（仅系统管理员）。";
 
         private List<TableBrowseEntryDto> _tables = new();
         private TableBrowseEntryDto? _selectedTable;
@@ -48,6 +53,7 @@ namespace DocMgr.ViewModels.SystemSettings
         private bool _isDisposed;
         private string _dictionaryPathText = string.Empty;
         private string _dictionaryStatusText = "可在 UI 中维护字段显示名，并与 SchemaDictionary.yaml 双向同步";
+        private string _sqlServerSetupStatusText = "尚未执行。";
         private int _currentPage = 1;
         private int _pageSize = DefaultPageSize;
         private int _totalCount;
@@ -60,12 +66,14 @@ namespace DocMgr.ViewModels.SystemSettings
             IAdvancedDataService dataService,
             ISchemaDictionaryMaintenanceService schemaDictionaryMaintenance,
             IDatabaseBackupService databaseBackupService,
+            ISqlServerLanSetupService sqlServerLanSetupService,
             IUserContextService userContext,
             IDialogService dialogService)
         {
             _dataService = dataService;
             _schemaDictionaryMaintenance = schemaDictionaryMaintenance;
             _databaseBackupService = databaseBackupService;
+            _sqlServerLanSetupService = sqlServerLanSetupService;
             _userContext = userContext;
             _dialogService = dialogService;
             IsSystemAdministrator = ArchiveRegisterBusinessRules.IsSystemAdministrator(_userContext.CurrentUser);
@@ -80,6 +88,10 @@ namespace DocMgr.ViewModels.SystemSettings
             ExportToExcelCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportToExcelAsync), _ => !IsBusy && HasSelectedTable);
             BackupDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(BackupDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
             RestoreDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RestoreDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
+            DropDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(DropDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
+            EnableSqlTcpCommand = new RelayCommand(async _ => await _pageDb.RunAsync(EnableSqlTcpAsync), _ => !IsBusy && CanConfigureLocalSqlServer);
+            AllowSqlFirewallCommand = new RelayCommand(async _ => await _pageDb.RunAsync(AllowSqlFirewallAsync), _ => !IsBusy && CanConfigureLocalSqlServer);
+            CreateDocMgrAppLoginCommand = new RelayCommand(async _ => await _pageDb.RunAsync(CreateDocMgrAppLoginAsync), _ => !IsBusy && CanExecuteMaintenance);
             FirstPageCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => GoToPageAsync(1)), _ => !IsBusy && CanGoPrevious);
             PreviousPageCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => GoToPageAsync(CurrentPage - 1)), _ => !IsBusy && CanGoPrevious);
             NextPageCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => GoToPageAsync(CurrentPage + 1)), _ => !IsBusy && CanGoNext);
@@ -218,10 +230,22 @@ namespace DocMgr.ViewModels.SystemSettings
         /// <summary>当前 SQL Server 目标，便于确认备份/还原对象。</summary>
         public string DatabasePathText => _databaseBackupService.DatabasePath;
 
-        /// <summary>备份/还原提示。</summary>
+        /// <summary>SQL Server 局域网设置的最近结果。</summary>
+        public string SqlServerSetupStatusText
+        {
+            get => _sqlServerSetupStatusText;
+            private set => SetProperty(ref _sqlServerSetupStatusText, value);
+        }
+
+        /// <summary>局域网设置说明。</summary>
+        public string SqlServerSetupHintText => _sqlServerLanSetupService.IsLocalServer
+            ? "当前是" + _sqlServerLanSetupService.InstanceDescription + "。启用 TCP/IP 会把 IPAll 固定为 1433 并在有改动时重启服务；防火墙放行 TCP 1433。这两步会请求管理员授权。创建 docmgr_app 时在弹窗输入密码。"
+            : "当前是" + _sqlServerLanSetupService.InstanceDescription + "。启用 TCP/IP 和防火墙只能在库服务器本机执行。创建 docmgr_app 作用在当前连接的服务器上，密码在弹窗输入。";
+
+        /// <summary>备份/还原/删除提示。</summary>
         public string DatabaseBackupHintText => _databaseBackupService.IsNetworkPath
-            ? "当前为远程 SQL Server。备份/还原前请先让其他终端退出；覆盖安装只替换程序文件，不会改服务器上的库。"
-            : "备份生成 .bak 文件。覆盖安装只替换程序文件，数据库在 SQL Server 中按迁移升级，不会冲库。";
+            ? "当前为远程 SQL Server。备份、还原或删除当前库前请先让其他终端退出。删除会永久去掉该库；下次启动时，若账号有建库权限，会按迁移重建空库。"
+            : "备份生成 .bak 文件。删除当前库会永久去掉全部业务数据，程序随后退出；下次启动时，若账号有建库权限，会按迁移重建空库。";
 
         public RelayCommand RefreshCommand { get; }
         public RelayCommand DeleteSelectedCommand { get; }
@@ -233,6 +257,10 @@ namespace DocMgr.ViewModels.SystemSettings
         public RelayCommand ExportToExcelCommand { get; }
         public RelayCommand BackupDatabaseCommand { get; }
         public RelayCommand RestoreDatabaseCommand { get; }
+        public RelayCommand DropDatabaseCommand { get; }
+        public RelayCommand EnableSqlTcpCommand { get; }
+        public RelayCommand AllowSqlFirewallCommand { get; }
+        public RelayCommand CreateDocMgrAppLoginCommand { get; }
         public RelayCommand FirstPageCommand { get; }
         public RelayCommand PreviousPageCommand { get; }
         public RelayCommand NextPageCommand { get; }
@@ -843,6 +871,223 @@ namespace DocMgr.ViewModels.SystemSettings
 
             _dialogService.ShowMessage("数据库已还原。程序即将退出，请重新打开以加载还原后的数据。", "还原完成");
             Application.Current.Shutdown();
+        }
+
+        private async Task DropDatabaseAsync()
+        {
+            if (!IsSystemAdministrator)
+            {
+                _dialogService.ShowError("仅系统管理员可删除当前数据库。", "禁止操作");
+                return;
+            }
+
+            string target = _databaseBackupService.DatabasePath;
+            if (_databaseBackupService.IsNetworkPath
+                && !_dialogService.ShowConfirm(
+                    $"当前使用远程 SQL Server。删除会永久去掉该库：\n{target}\n\n请确认其他终端已退出。是否继续？",
+                    "远程库删除"))
+            {
+                return;
+            }
+
+            if (!_dialogService.ShowConfirm(
+                    $"严重警告：即将删除当前数据库：\n{target}\n\n库内全部业务数据会被永久删除，无法从程序内找回。建议先备份。\n确认后将立刻删除数据库并退出程序，不再另行提示。下次启动时，若当前账号有建库权限，会重建空库。\n\n确认要继续吗？",
+                    "高危操作确认"))
+            {
+                return;
+            }
+
+            if (!_dialogService.ShowConfirm(
+                    $"再次确认：真的要删除数据库「{target}」吗？此操作不可恢复。\n\n选择「是」后将立刻删除并退出程序。",
+                    "最终确认"))
+            {
+                return;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _dialogService.SetBusyState(true);
+                await _databaseBackupService.DropCurrentDatabaseAsync();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"删除数据库失败: {ex.Message}");
+                return;
+            }
+            finally
+            {
+                _dialogService.SetBusyState(false);
+                IsBusy = false;
+                RaiseCommandStateChanged();
+            }
+
+            // 库已不存在，先停掉还会访问数据库的会话与待办，然后直接退出。
+            _userContext.Clear();
+            DocMgr.App.CurrentProvider.GetService<IToDoCenterService>()?.StopAutoRefresh();
+            Application.Current.Shutdown();
+        }
+
+        private async Task EnableSqlTcpAsync()
+        {
+            if (!CanConfigureLocalSqlServer)
+            {
+                _dialogService.ShowError("仅系统管理员可在库服务器本机启用 TCP/IP。", "禁止操作");
+                return;
+            }
+
+            if (!_dialogService.ShowConfirm(
+                    "将为本机 SQL Server 启用 TCP/IP，把 IPAll 端口设为 1433、动态端口留空。\n若配置有变化，会重启 SQL Server 服务，已连接的客户端会断开。\n\n接下来会请求管理员授权。是否继续？",
+                    "启用 TCP/IP"))
+            {
+                return;
+            }
+
+            await RunSqlServerSetupAsync(
+                () => _sqlServerLanSetupService.EnableTcpAsync(),
+                "启用 TCP/IP 失败");
+        }
+
+        private async Task AllowSqlFirewallAsync()
+        {
+            if (!CanConfigureLocalSqlServer)
+            {
+                _dialogService.ShowError("仅系统管理员可在库服务器本机放行防火墙。", "禁止操作");
+                return;
+            }
+
+            if (!_dialogService.ShowConfirm(
+                    "将为本机添加入站规则「SQL Server 1433」，放行 TCP 1433。\n接下来会请求管理员授权。是否继续？",
+                    "防火墙放行 1433"))
+            {
+                return;
+            }
+
+            await RunSqlServerSetupAsync(
+                () => _sqlServerLanSetupService.AllowFirewallAsync(),
+                "防火墙设置失败");
+        }
+
+        private async Task CreateDocMgrAppLoginAsync()
+        {
+            if (!IsSystemAdministrator)
+            {
+                _dialogService.ShowError("仅系统管理员可创建 docmgr_app 登录。", "禁止操作");
+                return;
+            }
+
+            bool loginExists;
+            try
+            {
+                loginExists = await _sqlServerLanSetupService.DocMgrAppLoginExistsAsync();
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"无法检查登录 docmgr_app：{ex.GetBaseException().Message}");
+                return;
+            }
+
+            string? password = null;
+            if (!loginExists)
+            {
+                password = _dialogService.PromptConfirmedPassword(
+                    "设置 docmgr_app 密码",
+                    "将创建 SQL 登录 docmgr_app，并授予当前库 db_owner。密码须满足 Windows 密码策略，不会写入配置文件。");
+                if (string.IsNullOrEmpty(password))
+                {
+                    return;
+                }
+
+                int? mode;
+                try
+                {
+                    mode = await _sqlServerLanSetupService.ReadAuthenticationModeAsync();
+                }
+                catch (Exception ex)
+                {
+                    _dialogService.ShowError($"无法读取 SQL Server 验证模式：{ex.GetBaseException().Message}");
+                    return;
+                }
+
+                if (mode == 1)
+                {
+                    if (!_sqlServerLanSetupService.IsLocalServer)
+                    {
+                        _dialogService.ShowError(
+                            "当前 SQL Server 只允许 Windows 身份验证，不能使用 SQL 登录。\n请在库服务器上改为混合验证并重启 SQL 服务后，再创建 docmgr_app。",
+                            "需要混合验证");
+                        return;
+                    }
+
+                    if (!_dialogService.ShowConfirm(
+                            "当前 SQL Server 只允许 Windows 身份验证。\n创建 docmgr_app 之前需要改为混合验证，并重启 SQL Server 服务。已有连接会断开。\n\n接下来会请求管理员授权。是否继续？",
+                            "改为混合验证"))
+                    {
+                        return;
+                    }
+
+                    bool mixedReady = await RunSqlServerSetupAsync(
+                        async () =>
+                        {
+                            await _sqlServerLanSetupService.EnableMixedModeAsync();
+                            return "已改为混合验证并重启 SQL Server 服务。";
+                        },
+                        "改为混合验证失败");
+                    if (!mixedReady)
+                    {
+                        return;
+                    }
+                }
+                else if (mode is null
+                    && !_dialogService.ShowConfirm(
+                        "未能确认 SQL Server 是否已启用混合验证。若仍是仅 Windows 验证，创建后的 SQL 登录无法用于远程连接。\n\n是否继续创建 docmgr_app？",
+                        "验证模式未知"))
+                {
+                    return;
+                }
+            }
+            else if (_dialogService.ShowConfirm(
+                    "登录 docmgr_app 已存在。\n\n【是】修改密码，接下来输入新密码。\n【否】不改密码，只确认当前库用户属于 db_owner。",
+                    "修改 docmgr_app 密码"))
+            {
+                password = _dialogService.PromptConfirmedPassword(
+                    "修改 docmgr_app 密码",
+                    "将把 SQL 登录 docmgr_app 改为新密码。密码须满足 Windows 密码策略，不会写入配置文件。各客户端需重新写入一次 Password=。");
+                if (string.IsNullOrEmpty(password))
+                {
+                    return;
+                }
+            }
+
+            await RunSqlServerSetupAsync(
+                () => _sqlServerLanSetupService.EnsureDocMgrAppLoginAsync(password),
+                "设置 docmgr_app 失败");
+        }
+
+        private async Task<bool> RunSqlServerSetupAsync(Func<Task<string>> action, string failureTitle)
+        {
+            try
+            {
+                IsBusy = true;
+                _dialogService.SetBusyState(true);
+                string message = await action();
+                SqlServerSetupStatusText = message;
+                _dialogService.ShowMessage(message, "SQL Server 设置");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                string detail = ex.GetBaseException().Message;
+                SqlServerSetupStatusText = failureTitle + "：" + detail;
+                _dialogService.ShowError(failureTitle + "：" + detail);
+                return false;
+            }
+            finally
+            {
+                _dialogService.SetBusyState(false);
+                IsBusy = false;
+                RaiseCommandStateChanged();
+            }
         }
 
         private async Task ExportToExcelAsync()

@@ -32,6 +32,11 @@ namespace DocMgr.Services.Interfaces
         bool ShowConfirm(string message, string title = "确认");
 
         /// <summary>
+        /// 要求输入并再确认一次密码。取消返回 null。
+        /// </summary>
+        string? PromptConfirmedPassword(string title, string message);
+
+        /// <summary>
         /// 查看系统附件：图像用 Windows 照片查看器打开（跳过百度网盘「智能看图」）；其他类型提供打开/另存为选项。
         /// </summary>
         void ShowSystemAttachmentView(SystemAttachment attachment);

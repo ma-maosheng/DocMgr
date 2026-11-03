@@ -246,10 +246,17 @@ namespace DocMgr.Views
             }
 
             UserSessionHeartbeatResult heartbeatResult;
-            using (var scope = _scopeFactory.CreateScope())
+            try
             {
+                using var scope = _scopeFactory.CreateScope();
                 var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
                 heartbeatResult = userService.RefreshSession(sessionId);
+            }
+            catch (Exception ex)
+            {
+                // 删库后库已不存在，心跳再连 DocMgr 会变成未处理异常并拦住退出。
+                System.Diagnostics.Debug.WriteLine(ex);
+                return false;
             }
 
             if (heartbeatResult.IsValid)
@@ -297,9 +304,17 @@ namespace DocMgr.Views
             string? sessionId = _userContextService.CurrentSessionId;
             if (!string.IsNullOrWhiteSpace(sessionId))
             {
-                using var scope = _scopeFactory.CreateScope();
-                var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
-                userService.Logout(sessionId);
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+                    userService.Logout(sessionId);
+                }
+                catch (Exception ex)
+                {
+                    // 当前库已被删除时无法再写注销记录，退出仍应继续。
+                    System.Diagnostics.Debug.WriteLine(ex);
+                }
             }
 
             _userContextService.Clear();

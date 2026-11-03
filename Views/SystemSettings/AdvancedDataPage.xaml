@@ -22,6 +22,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -48,7 +49,7 @@
                            Foreground="#37474F"
                            Margin="34,6,0,0"
                            TextWrapping="Wrap"/>
-                <TextBlock Text="浏览与导出：所有登录用户。备份、还原、字典维护、删除、清空：界面全员可见，仅系统管理员可执行（其余角色按钮灰显）。"
+                <TextBlock Text="浏览与导出：所有登录用户。备份、还原、删除当前库、SQL Server 局域网设置、字典维护、删行、清空：界面全员可见，仅系统管理员可执行（其余角色按钮灰显）。"
                            Foreground="#546E7A"
                            FontSize="12"
                            Margin="34,4,0,0"
@@ -119,7 +120,7 @@
                 Padding="12"
                 Margin="0,0,0,10">
             <StackPanel>
-                <TextBlock Text="数据库备份与还原"
+                <TextBlock Text="数据库备份、还原与删除"
                            FontSize="14"
                            FontWeight="Bold"
                            Foreground="#1565C0"
@@ -143,14 +144,91 @@
                             ToolTip="仅系统管理员可执行"/>
                     <Button Content="♻ 从备份还原"
                             Command="{Binding RestoreDatabaseCommand}"
+                            Margin="0,0,8,0"
                             Padding="10,4"
                             Style="{StaticResource ToolbarDangerButtonStyle}"
                             ToolTip="仅系统管理员可执行"/>
+                    <Button Content="🗑 删除当前库"
+                            Command="{Binding DropDatabaseCommand}"
+                            Padding="10,4"
+                            Style="{StaticResource ToolbarDangerButtonStyle}"
+                            ToolTip="仅系统管理员可执行。永久删除当前 SQL Server 业务库。"/>
                 </WrapPanel>
             </StackPanel>
         </Border>
 
         <Border Grid.Row="3"
+                Background="#F3F8FF"
+                BorderBrush="#BBDEFB"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="12"
+                Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="SQL Server 局域网设置"
+                           FontSize="14"
+                           FontWeight="Bold"
+                           Foreground="#1565C0"
+                           Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding SqlServerSetupHintText, Mode=OneWay}"
+                           FontSize="11"
+                           Foreground="#455A64"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,8"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="1. 启用 TCP/IP" FontWeight="Bold" Foreground="#1565C0"/>
+                        <TextBlock Text="须管理员。IPAll 端口 1433，动态端口留空；有改动时重启 SQL 服务。"
+                                   FontSize="11" Foreground="#546E7A" TextWrapping="Wrap" Margin="0,2,0,6"/>
+                        <Button Content="启用 TCP/IP"
+                                Command="{Binding EnableSqlTcpCommand}"
+                                Padding="10,4"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource ToolbarActionButtonStyle}"
+                                ToolTip="仅系统管理员可在库服务器本机执行，会请求管理员授权。"
+                                ToolTipService.ShowOnDisabled="True"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="2. 防火墙放行 1433" FontWeight="Bold" Foreground="#1565C0"/>
+                        <TextBlock Text="须管理员。添加入站规则「SQL Server 1433」。"
+                                   FontSize="11" Foreground="#546E7A" TextWrapping="Wrap" Margin="0,2,0,6"/>
+                        <Button Content="放行 1433"
+                                Command="{Binding AllowSqlFirewallCommand}"
+                                Padding="10,4"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource ToolbarActionButtonStyle}"
+                                ToolTip="仅系统管理员可在库服务器本机执行，会请求管理员授权。"
+                                ToolTipService.ShowOnDisabled="True"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="3. 创建登录 docmgr_app" FontWeight="Bold" Foreground="#1565C0"/>
+                        <TextBlock Text="弹窗输入密码。登录已存在时可选修改密码，并确认当前库 db_owner。"
+                                   FontSize="11" Foreground="#546E7A" TextWrapping="Wrap" Margin="0,2,0,6"/>
+                        <Button Content="创建 docmgr_app"
+                                Command="{Binding CreateDocMgrAppLoginCommand}"
+                                Padding="10,4"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource ToolbarActionButtonStyle}"
+                                ToolTip="仅系统管理员可执行。密码在弹窗中输入。"
+                                ToolTipService.ShowOnDisabled="True"/>
+                    </StackPanel>
+                </Grid>
+                <TextBlock Text="{Binding SqlServerSetupStatusText, Mode=OneWay}"
+                           FontSize="11"
+                           Foreground="#37474F"
+                           TextWrapping="Wrap"
+                           Margin="0,8,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="4"
                 Background="#F3F8FF"
                 BorderBrush="#BBDEFB"
                 BorderThickness="1"
@@ -195,7 +273,7 @@
             </StackPanel>
         </Border>
 
-        <Border Grid.Row="4"
+        <Border Grid.Row="5"
                 Background="#FAFAFA"
                 BorderBrush="#E0E0E0"
                 BorderThickness="1"
@@ -229,7 +307,7 @@
         <!-- 多列表浏览：关闭列虚拟化，避免 ScrollViewer.ExtentWidth 低估导致水平滚动不到末列；
              显式 Auto 水平滚动；表头按内容量度（见 code-behind），防止列被压进视口后滚动条消失。 -->
         <DataGrid x:Name="RecordsDataGrid"
-                  Grid.Row="5"
+                  Grid.Row="6"
                   ItemsSource="{Binding RecordsView}"
                   SelectedItem="{Binding SelectedRecord, Mode=TwoWay}"
                   AutoGenerateColumns="True"
@@ -254,7 +332,7 @@
             </DataGrid.ContextMenu>
         </DataGrid>
 
-        <Border Grid.Row="6"
+        <Border Grid.Row="7"
                 Background="#FAFAFA"
                 BorderBrush="#E0E0E0"
                 BorderThickness="1"
@@ -314,7 +392,7 @@
             </ScrollViewer>
         </Border>
 
-        <ScrollViewer Grid.Row="7"
+        <ScrollViewer Grid.Row="8"
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Disabled"
                       Margin="0,15,0,0">

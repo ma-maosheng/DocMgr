@@ -9,7 +9,7 @@ using Microsoft.Data.SqlClient;
 namespace DocMgr.Services.SystemSettings;
 
 /// <summary>
-/// 使用 SQL Server BACKUP / RESTORE 备份与还原当前业务库。
+/// 使用 SQL Server BACKUP / RESTORE / DROP 备份、还原与删除当前业务库。
 /// </summary>
 public sealed class DatabaseBackupService : IDatabaseBackupService
 {
@@ -88,6 +88,87 @@ public sealed class DatabaseBackupService : IDatabaseBackupService
                     cancellationToken);
             }
         }, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task DropCurrentDatabaseAsync(CancellationToken cancellationToken = default)
+    {
+        string catalogName = _databaseSettings.InitialCatalog.Trim();
+        EnsureDroppableCatalog(catalogName);
+        string catalog = QuoteIdentifier(catalogName);
+
+        return Task.Run(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // 先清掉本程序连接池，避免自己的连接占着库导致无法删除。
+            SqlConnection.ClearAllPools();
+
+            await using var connection = new SqlConnection(_databaseSettings.BuildMasterConnectionString());
+            await connection.OpenAsync(cancellationToken);
+
+            if (!await DatabaseExistsAsync(connection, catalogName, cancellationToken))
+            {
+                throw new InvalidOperationException($"当前数据库不存在：{catalogName}");
+            }
+
+            await ExecuteNonQueryAsync(
+                connection,
+                $"ALTER DATABASE {catalog} SET SINGLE_USER WITH ROLLBACK IMMEDIATE;",
+                cancellationToken);
+
+            try
+            {
+                await ExecuteNonQueryAsync(
+                    connection,
+                    $"DROP DATABASE {catalog};",
+                    cancellationToken);
+            }
+            catch
+            {
+                try
+                {
+                    await ExecuteNonQueryAsync(
+                        connection,
+                        $"ALTER DATABASE {catalog} SET MULTI_USER;",
+                        CancellationToken.None);
+                }
+                catch (Exception recoverEx)
+                {
+                    System.Diagnostics.Debug.WriteLine(recoverEx);
+                }
+
+                throw;
+            }
+        }, cancellationToken);
+    }
+
+    private static async Task<bool> DatabaseExistsAsync(
+        SqlConnection connection,
+        string catalogName,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandTimeout = 0;
+        command.CommandText = "SELECT DB_ID(@name);";
+        command.Parameters.Add(new SqlParameter("@name", catalogName));
+        object? id = await command.ExecuteScalarAsync(cancellationToken);
+        return id is not null and not DBNull;
+    }
+
+    private static void EnsureDroppableCatalog(string catalogName)
+    {
+        if (string.IsNullOrWhiteSpace(catalogName))
+        {
+            throw new InvalidOperationException("数据库名无效。");
+        }
+
+        if (string.Equals(catalogName, "master", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(catalogName, "model", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(catalogName, "msdb", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(catalogName, "tempdb", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"不允许删除系统数据库：{catalogName}");
+        }
     }
 
     private static async Task ExecuteNonQueryAsync(

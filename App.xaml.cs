@@ -275,9 +275,18 @@ namespace DocMgr
                 string? sessionId = userContextService?.CurrentSessionId;
                 if (!string.IsNullOrWhiteSpace(sessionId))
                 {
-                    using var scope = CurrentProvider.CreateScope();
-                    var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
-                    userService.Logout(sessionId);
+                    try
+                    {
+                        using var scope = CurrentProvider.CreateScope();
+                        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+                        userService.Logout(sessionId);
+                    }
+                    catch (Exception ex)
+                    {
+                        // 当前库已被删除时无法再写注销记录，退出仍应继续。
+                        System.Diagnostics.Debug.WriteLine(ex);
+                    }
+
                     userContextService?.Clear();
                 }
             }

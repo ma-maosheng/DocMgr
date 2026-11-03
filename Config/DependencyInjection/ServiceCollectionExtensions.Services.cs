@@ -24,6 +24,7 @@ public static partial class ServiceCollectionExtensions
 
         services.AddScoped<IAdvancedDataService, AdvancedDataService>();
         services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
+        services.AddScoped<ISqlServerLanSetupService, SqlServerLanSetupService>();
         services.AddScoped<ISchemaDictionaryMaintenanceService, SchemaDictionaryMaintenanceService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IServerPathSettingService, ServerPathSettingService>();

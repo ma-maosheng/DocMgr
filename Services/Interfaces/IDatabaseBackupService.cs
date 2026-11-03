@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 namespace DocMgr.Services.Interfaces;
 
 /// <summary>
-/// 当前 SQL Server 业务库的备份与还原（BACKUP / RESTORE DATABASE）。
+/// 当前 SQL Server 业务库的备份、还原与删除（BACKUP / RESTORE / DROP DATABASE）。
 /// </summary>
 public interface IDatabaseBackupService
 {
@@ -19,4 +19,9 @@ public interface IDatabaseBackupService
 
     /// <summary>用指定备份文件覆盖当前库。还原后应立即重启程序。</summary>
     Task RestoreFromFileAsync(string sourcePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 删除当前连接串指向的业务库。不删除 master 等系统库。删除后应立即退出程序。
+    /// </summary>
+    Task DropCurrentDatabaseAsync(CancellationToken cancellationToken = default);
 }

@@ -93,6 +93,11 @@ namespace DocMgr.Services.Shared
                 var items = await toDoService.GetMyToDosAsync(user, topN);
                 UpdateItems(items ?? new List<ToDoItem>());
             }
+            catch (Exception ex)
+            {
+                // 删库后后台刷新不应再把“找不到 DocMgr”抛成未处理异常。
+                System.Diagnostics.Debug.WriteLine(ex);
+            }
             finally
             {
                 _refreshLock.Release();
