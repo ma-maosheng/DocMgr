@@ -44,7 +44,7 @@
                                 <TextBlock Text="仅数据光盘 · 资料存档登记" Foreground="#065F46" FontSize="12"/>
                             </Border>
                             <Border Background="#EEF2FF" CornerRadius="8" Padding="10,6" Margin="0,0,8,6">
-                                <TextBlock Text="落年度/历史数据光盘专用档口" Foreground="#3730A3" FontSize="12"/>
+                                <TextBlock Text="落年度数据光盘专用档口" Foreground="#3730A3" FontSize="12"/>
                             </Border>
                             <Border Background="#FEF3C7" CornerRadius="8" Padding="10,6" Margin="0,0,8,6">
                                 <TextBlock Text="盘失/拟销不可迁档" Foreground="#92400E" FontSize="12"/>

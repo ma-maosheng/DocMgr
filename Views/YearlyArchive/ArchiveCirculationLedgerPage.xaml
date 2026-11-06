@@ -66,9 +66,14 @@
             </Style.Triggers>
         </Style>
         <Style x:Key="LossMarkerTextStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#C62828"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#6B7280"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasLoss}" Value="True">
+                    <Setter Property="Foreground" Value="#C62828"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </Page.Resources>
 
@@ -252,7 +257,7 @@
                                       SelectedItem="{Binding SelectedContainer, Mode=TwoWay}"
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="56">
+                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="64">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource LossMarkerTextStyle}"/>
                                         </DataGridTextColumn.ElementStyle>
@@ -290,7 +295,7 @@
                                       SelectedItem="{Binding SelectedBusiness, Mode=TwoWay}"
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="56">
+                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="64">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource LossMarkerTextStyle}"/>
                                         </DataGridTextColumn.ElementStyle>
@@ -328,7 +333,7 @@
                                       ItemsSource="{Binding SubItemRows}"
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="48">
+                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="64">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource LossMarkerTextStyle}"/>
                                         </DataGridTextColumn.ElementStyle>
@@ -384,7 +389,7 @@
                                       SelectedItem="{Binding SelectedContainer, Mode=TwoWay}"
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="56">
+                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="64">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource LossMarkerTextStyle}"/>
                                         </DataGridTextColumn.ElementStyle>
@@ -422,7 +427,7 @@
                                       SelectedItem="{Binding SelectedBusiness, Mode=TwoWay}"
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="56">
+                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="64">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource LossMarkerTextStyle}"/>
                                         </DataGridTextColumn.ElementStyle>
@@ -460,7 +465,7 @@
                                       ItemsSource="{Binding SubItemRows}"
                                       MouseDoubleClick="LedgerGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="48">
+                                    <DataGridTextColumn Header="标记" Binding="{Binding LossMarkerDisplay}" Width="64">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource LossMarkerTextStyle}"/>
                                         </DataGridTextColumn.ElementStyle>

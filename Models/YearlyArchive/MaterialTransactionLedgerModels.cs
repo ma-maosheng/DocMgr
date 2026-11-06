@@ -196,7 +196,9 @@ namespace DocMgr.Models.YearlyArchive
         public bool HasLoss { get; init; }
 
         public string LossMarkerDisplay =>
-            HasLoss ? CirculationLedgerDisplayValues.LossMarkerDisplay : string.Empty;
+            HasLoss
+                ? CirculationLedgerDisplayValues.LossMarkerDisplay
+                : CirculationLedgerDisplayValues.NoLossDisplay;
     }
 
     /// <summary>
@@ -244,7 +246,9 @@ namespace DocMgr.Models.YearlyArchive
         public bool HasLoss { get; init; }
 
         public string LossMarkerDisplay =>
-            HasLoss ? CirculationLedgerDisplayValues.HasLossInScopeDisplay : string.Empty;
+            HasLoss
+                ? CirculationLedgerDisplayValues.HasLossInScopeDisplay
+                : CirculationLedgerDisplayValues.NoLossDisplay;
 
         public bool HasCirculationTransactions => HasCirculationActivity;
     }
@@ -283,7 +287,9 @@ namespace DocMgr.Models.YearlyArchive
         public bool HasLoss { get; init; }
 
         public string LossMarkerDisplay =>
-            HasLoss ? CirculationLedgerDisplayValues.HasLossInScopeDisplay : string.Empty;
+            HasLoss
+                ? CirculationLedgerDisplayValues.HasLossInScopeDisplay
+                : CirculationLedgerDisplayValues.NoLossDisplay;
     }
 
     /// <summary>
@@ -329,7 +335,9 @@ namespace DocMgr.Models.YearlyArchive
         public bool HasLoss { get; init; }
 
         public string LossMarkerDisplay =>
-            HasLoss ? CirculationLedgerDisplayValues.LossMarkerDisplay : string.Empty;
+            HasLoss
+                ? CirculationLedgerDisplayValues.LossMarkerDisplay
+                : CirculationLedgerDisplayValues.NoLossDisplay;
     }
 
     public enum CirculationLedgerSubItemKind
@@ -420,6 +428,9 @@ namespace DocMgr.Models.YearlyArchive
 
         /// <summary>容器/业务单范围含灭失时的标记。</summary>
         public const string HasLossInScopeDisplay = "含灭失";
+
+        /// <summary>没有灭失时的标记。</summary>
+        public const string NoLossDisplay = "无灭失";
 
         /// <summary>根据归还办结写入的摘要/备注判断是否含灭失。</summary>
         public static bool IsLossRelatedText(string? summary, string? remark) =>

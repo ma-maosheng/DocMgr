@@ -42,6 +42,9 @@ namespace DocMgr.ViewModels.Projects
 
         public string Title { get; }
 
+        /// <summary>编辑已有项目时实施年度不可改。</summary>
+        public bool IsImplementYearReadOnly => _project != null;
+
         public string ProjectName
         {
             get => _projectName;
@@ -110,11 +113,14 @@ namespace DocMgr.ViewModels.Projects
                 {
                     _project.ProjectName = ProjectName.Trim();
                     _project.ProjectCode = ProjectCode.Trim();
-                    _project.ImplementYear = ImplementYear.Trim();
                     _project.CapitalMgrDept = CapitalMgrDept.Trim();
                     _project.Remark = Remark.Trim();
 
-                    _projectService.UpdateProject(_project);
+                    string? warning = _projectService.UpdateProject(_project);
+                    if (!string.IsNullOrWhiteSpace(warning))
+                    {
+                        _dialogService.ShowMessage(warning);
+                    }
                 }
 
                 RequestClose?.Invoke(true);

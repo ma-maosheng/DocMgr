@@ -145,12 +145,6 @@ namespace DocMgr.ViewModels.Cabinets
             SetHardDiskSlotDataOpticalDiscCategoryCommand = new RelayCommand<CabinetSlotViewModel>(
                 slot => SetHardDiskSlotCategory(slot, CabinetHardDiskSlotCategoryAssignment.CategoryDataOpticalDisc, showReturnHint: false),
                 CanChangeSlotDedicatedCategory);
-            SetHardDiskSlotHistoricalDataCategoryCommand = new RelayCommand<CabinetSlotViewModel>(
-                slot => SetHardDiskSlotCategory(slot, CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataHardDisk, showReturnHint: false),
-                CanChangeSlotDedicatedCategory);
-            SetHardDiskSlotHistoricalDataOpticalDiscCategoryCommand = new RelayCommand<CabinetSlotViewModel>(
-                slot => SetHardDiskSlotCategory(slot, CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataOpticalDisc, showReturnHint: false),
-                CanChangeSlotDedicatedCategory);
             SetHardDiskSlotBlankCategoryCommand = new RelayCommand<CabinetSlotViewModel>(
                 slot => SetHardDiskSlotCategory(slot, CabinetHardDiskSlotCategoryAssignment.CategoryBlank, showReturnHint: false),
                 CanChangeSlotDedicatedCategory);
@@ -199,12 +193,6 @@ namespace DocMgr.ViewModels.Cabinets
                 _ => CanApplySelectedSlotsHardDiskPurpose);
             ApplySelectedSlotsHardDiskDataOpticalDiscCategoryCommand = new RelayCommand(
                 _ => ApplySelectedSlotsHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryDataOpticalDisc, showReturnHint: false),
-                _ => CanApplySelectedSlotsHardDiskPurpose);
-            ApplySelectedSlotsHardDiskHistoricalDataCategoryCommand = new RelayCommand(
-                _ => ApplySelectedSlotsHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataHardDisk, showReturnHint: false),
-                _ => CanApplySelectedSlotsHardDiskPurpose);
-            ApplySelectedSlotsHardDiskHistoricalDataOpticalDiscCategoryCommand = new RelayCommand(
-                _ => ApplySelectedSlotsHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataOpticalDisc, showReturnHint: false),
                 _ => CanApplySelectedSlotsHardDiskPurpose);
             ApplySelectedSlotsHardDiskBlankCategoryCommand = new RelayCommand(
                 _ => ApplySelectedSlotsHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryBlank, showReturnHint: false),
@@ -521,12 +509,6 @@ namespace DocMgr.ViewModels.Cabinets
         public bool IsSelectedSlotsHardDiskDataOpticalDiscCategory =>
             IsSharedSelectedHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryDataOpticalDisc);
 
-        public bool IsSelectedSlotsHardDiskHistoricalDataCategory =>
-            IsSharedSelectedHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataHardDisk);
-
-        public bool IsSelectedSlotsHardDiskHistoricalDataOpticalDiscCategory =>
-            IsSharedSelectedHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataOpticalDisc);
-
         public bool IsSelectedSlotsHardDiskBlankCategory =>
             IsSharedSelectedHardDiskCategory(CabinetHardDiskSlotCategoryAssignment.CategoryBlank);
 
@@ -590,10 +572,6 @@ namespace DocMgr.ViewModels.Cabinets
 
         public RelayCommand<CabinetSlotViewModel> SetHardDiskSlotDataOpticalDiscCategoryCommand { get; }
 
-        public RelayCommand<CabinetSlotViewModel> SetHardDiskSlotHistoricalDataCategoryCommand { get; }
-
-        public RelayCommand<CabinetSlotViewModel> SetHardDiskSlotHistoricalDataOpticalDiscCategoryCommand { get; }
-
         public RelayCommand<CabinetSlotViewModel> SetHardDiskSlotBlankCategoryCommand { get; }
 
         public RelayCommand<CabinetSlotViewModel> SetArchiveSlotUnsetCategoryCommand { get; }
@@ -637,10 +615,6 @@ namespace DocMgr.ViewModels.Cabinets
         public RelayCommand ApplySelectedSlotsHardDiskDataCategoryCommand { get; }
 
         public RelayCommand ApplySelectedSlotsHardDiskDataOpticalDiscCategoryCommand { get; }
-
-        public RelayCommand ApplySelectedSlotsHardDiskHistoricalDataCategoryCommand { get; }
-
-        public RelayCommand ApplySelectedSlotsHardDiskHistoricalDataOpticalDiscCategoryCommand { get; }
 
         public RelayCommand ApplySelectedSlotsHardDiskBlankCategoryCommand { get; }
 
@@ -3915,8 +3889,6 @@ namespace DocMgr.ViewModels.Cabinets
             OnPropertyChanged(nameof(IsSelectedSlotsHardDiskDamagedOpticalDiscCategory));
             OnPropertyChanged(nameof(IsSelectedSlotsHardDiskDataCategory));
             OnPropertyChanged(nameof(IsSelectedSlotsHardDiskDataOpticalDiscCategory));
-            OnPropertyChanged(nameof(IsSelectedSlotsHardDiskHistoricalDataCategory));
-            OnPropertyChanged(nameof(IsSelectedSlotsHardDiskHistoricalDataOpticalDiscCategory));
             OnPropertyChanged(nameof(IsSelectedSlotsHardDiskBlankCategory));
         }
 

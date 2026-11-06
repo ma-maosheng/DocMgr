@@ -36,7 +36,9 @@
                                 Visibility="{Binding CanMaintainProjects, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         <Button Content="删除选中" Command="{Binding DeleteCommand}" Width="100" Style="{StaticResource ToolbarDangerButtonStyle}" Margin="0,0,10,0"
                                 Visibility="{Binding CanMaintainProjects, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                        <Button Content="刷新列表" Command="{Binding RefreshCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                        <Button Content="刷新列表" Command="{Binding RefreshCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}" Margin="0,0,10,0"/>
+                        <Button Content="拷贝项目名称" Command="{Binding CopyProjectNameCommand}" Width="120" Style="{StaticResource ToolbarActionButtonStyle}"
+                                ToolTip="把当前选中项目的名称复制到剪贴板"/>
                     </StackPanel>
 
                     <!-- 右侧搜索 -->

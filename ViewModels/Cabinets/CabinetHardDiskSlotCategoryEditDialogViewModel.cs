@@ -52,8 +52,6 @@ namespace DocMgr.ViewModels.Cabinets
                 new CabinetHardDiskSlotCategoryOption(CabinetHardDiskSlotCategoryAssignment.CategoryDamagedOpticalDisc, "损坏光盘专用"),
                 new CabinetHardDiskSlotCategoryOption(CabinetHardDiskSlotCategoryAssignment.CategoryData, "年度数据硬盘专用"),
                 new CabinetHardDiskSlotCategoryOption(CabinetHardDiskSlotCategoryAssignment.CategoryDataOpticalDisc, "年度数据光盘专用"),
-                new CabinetHardDiskSlotCategoryOption(CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataHardDisk, "历史数据硬盘专用"),
-                new CabinetHardDiskSlotCategoryOption(CabinetHardDiskSlotCategoryAssignment.CategoryHistoricalDataOpticalDisc, "历史数据光盘专用"),
                 new CabinetHardDiskSlotCategoryOption(CabinetHardDiskSlotCategoryAssignment.CategoryBlank, "空白硬盘专用")
             ];
         }

@@ -142,14 +142,6 @@
                                       IsCheckable="True"
                                       IsChecked="{Binding PlacementTarget.Tag.IsSelectedSlotsHardDiskDataOpticalDiscCategory, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
                                       Command="{Binding PlacementTarget.Tag.ApplySelectedSlotsHardDiskDataOpticalDiscCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
-                            <MenuItem Header="历史数据硬盘专用档口"
-                                      IsCheckable="True"
-                                      IsChecked="{Binding PlacementTarget.Tag.IsSelectedSlotsHardDiskHistoricalDataCategory, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
-                                      Command="{Binding PlacementTarget.Tag.ApplySelectedSlotsHardDiskHistoricalDataCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
-                            <MenuItem Header="历史数据光盘专用档口"
-                                      IsCheckable="True"
-                                      IsChecked="{Binding PlacementTarget.Tag.IsSelectedSlotsHardDiskHistoricalDataOpticalDiscCategory, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
-                                      Command="{Binding PlacementTarget.Tag.ApplySelectedSlotsHardDiskHistoricalDataOpticalDiscCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                             <MenuItem Header="空白硬盘专用档口"
                                       IsCheckable="True"
                                       IsChecked="{Binding PlacementTarget.Tag.IsSelectedSlotsHardDiskBlankCategory, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
@@ -181,16 +173,6 @@
                                       IsCheckable="True"
                                       IsChecked="{Binding PlacementTarget.DataContext.IsDataOpticalDiscDedicatedSlot, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
                                       Command="{Binding PlacementTarget.Tag.SetHardDiskSlotDataOpticalDiscCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
-                            <MenuItem Header="历史数据硬盘专用档口"
-                                      IsCheckable="True"
-                                      IsChecked="{Binding PlacementTarget.DataContext.IsHistoricalDataDiskDedicatedSlot, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
-                                      Command="{Binding PlacementTarget.Tag.SetHardDiskSlotHistoricalDataCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
-                            <MenuItem Header="历史数据光盘专用档口"
-                                      IsCheckable="True"
-                                      IsChecked="{Binding PlacementTarget.DataContext.IsHistoricalDataOpticalDiscDedicatedSlot, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
-                                      Command="{Binding PlacementTarget.Tag.SetHardDiskSlotHistoricalDataOpticalDiscCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                             <MenuItem Header="空白硬盘专用档口"
                                       IsCheckable="True"
@@ -491,14 +473,6 @@
                                                           IsCheckable="True"
                                                           IsChecked="{Binding PlacementTarget.Tag.IsSelectedSlotsHardDiskDataOpticalDiscCategory, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
                                                           Command="{Binding PlacementTarget.Tag.ApplySelectedSlotsHardDiskDataOpticalDiscCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
-                                                <MenuItem Header="历史数据硬盘专用档口"
-                                                          IsCheckable="True"
-                                                          IsChecked="{Binding PlacementTarget.Tag.IsSelectedSlotsHardDiskHistoricalDataCategory, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
-                                                          Command="{Binding PlacementTarget.Tag.ApplySelectedSlotsHardDiskHistoricalDataCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
-                                                <MenuItem Header="历史数据光盘专用档口"
-                                                          IsCheckable="True"
-                                                          IsChecked="{Binding PlacementTarget.Tag.IsSelectedSlotsHardDiskHistoricalDataOpticalDiscCategory, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
-                                                          Command="{Binding PlacementTarget.Tag.ApplySelectedSlotsHardDiskHistoricalDataOpticalDiscCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                                 <MenuItem Header="空白硬盘专用档口"
                                                           IsCheckable="True"
                                                           IsChecked="{Binding PlacementTarget.Tag.IsSelectedSlotsHardDiskBlankCategory, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
@@ -553,16 +527,6 @@
                                                           IsCheckable="True"
                                                           IsChecked="{Binding PlacementTarget.DataContext.IsDataOpticalDiscDedicatedSlot, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
                                                           Command="{Binding PlacementTarget.Tag.SetHardDiskSlotDataOpticalDiscCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
-                                                <MenuItem Header="历史数据硬盘专用档口"
-                                                          IsCheckable="True"
-                                                          IsChecked="{Binding PlacementTarget.DataContext.IsHistoricalDataDiskDedicatedSlot, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
-                                                          Command="{Binding PlacementTarget.Tag.SetHardDiskSlotHistoricalDataCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
-                                                <MenuItem Header="历史数据光盘专用档口"
-                                                          IsCheckable="True"
-                                                          IsChecked="{Binding PlacementTarget.DataContext.IsHistoricalDataOpticalDiscDedicatedSlot, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
-                                                          Command="{Binding PlacementTarget.Tag.SetHardDiskSlotHistoricalDataOpticalDiscCategoryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                                 <MenuItem Header="空白硬盘专用档口"
                                                           IsCheckable="True"

@@ -46,7 +46,18 @@
         <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,10,15">
             <TextBlock Text="实施年度 *：" Foreground="#666" Margin="0,0,0,5"/>
             <TextBox Padding="5,0" FontSize="14" BorderBrush="#CCC"
-                     Text="{Binding ImplementYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                     IsReadOnly="{Binding IsImplementYearReadOnly}"
+                     Text="{Binding ImplementYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                <TextBox.Style>
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                        <Style.Triggers>
+                            <Trigger Property="IsReadOnly" Value="True">
+                                <Setter Property="Background" Value="#F3F4F6"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
         </StackPanel>
 
         <StackPanel Grid.Row="2" Grid.Column="1" Margin="10,0,0,15">

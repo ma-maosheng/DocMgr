@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using DocMgr.Services.Projects;
 using DocMgr.ViewModels.Base;
@@ -57,6 +58,7 @@ namespace DocMgr.ViewModels.Projects
         public RelayCommand AddCommand { get; }
         public RelayCommand EditCommand { get; }
         public RelayCommand DeleteCommand { get; }
+        public RelayCommand CopyProjectNameCommand { get; }
 
         public ProjectSettingViewModel(
             IProjectService projectService,
@@ -74,6 +76,7 @@ namespace DocMgr.ViewModels.Projects
             AddCommand = new RelayCommand(_ => AddProject(), _ => CanMaintainProjects);
             EditCommand = new RelayCommand(_ => EditProject(), _ => CanMaintainProjects && SelectedProject != null);
             DeleteCommand = new RelayCommand(_ => DeleteProject(), _ => CanMaintainProjects && SelectedProject != null);
+            CopyProjectNameCommand = new RelayCommand(_ => CopyProjectName(), _ => CanCopyProjectName());
 
             LoadData();
         }
@@ -146,6 +149,30 @@ namespace DocMgr.ViewModels.Projects
                 {
                     _dialogService.ShowError($"删除失败: {ex.Message}");
                 }
+            }
+        }
+
+        private bool CanCopyProjectName() =>
+            !string.IsNullOrWhiteSpace(SelectedProject?.ProjectName);
+
+        /// <summary>把当前选中项目的名称写入剪贴板。</summary>
+        private void CopyProjectName()
+        {
+            string projectName = SelectedProject?.ProjectName?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(projectName))
+            {
+                _dialogService.ShowMessage("请先选中要拷贝名称的项目。");
+                return;
+            }
+
+            try
+            {
+                Clipboard.SetText(projectName);
+                _dialogService.ShowMessage($"已拷贝项目名称：{projectName}");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"拷贝项目名称失败: {ex.Message}");
             }
         }
 
