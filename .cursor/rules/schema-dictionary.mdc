@@ -13,13 +13,14 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-10-21T03:08:40Z
+> 生成时间（UTC）：2026-11-09T02:56:16Z
 
 ## 表索引
 
 | 中文表名 | Entity | Table | 类型 |
 | --- | --- | --- | --- |
 | 航片 | `AerialPhoto` | `AerialPhotos` | 表 |
+| 软件升级包 | `AppReleasePackage` | `AppReleasePackages` | 表 |
 | 审核审批规则 | `ApprovalWorkflowRule` | `ApprovalWorkflowRules` | 表 |
 | 档案盒规格 | `ArchiveBoxSpecification` | `ArchiveBoxSpecifications` | 表 |
 | 档案容器汇总视图 | `ArchiveContainerProjection` | `ArchiveContainerProjection` | 视图 |
@@ -119,6 +120,18 @@ alwaysApply: true
 | 备注 | `Remark` | `String` | 否 |
 | 生命周期状态 | `LifecycleStatus` | `String` | 否 |
 | 最后存储位置 | `LastStorageLocation` | `String` | 否 |
+
+### AppReleasePackage（软件升级包）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 版本号 | `Version` | `String` | 否 |
+| 文件名 | `FileName` | `String` | 否 |
+| 文件大小 | `FileSize` | `Int64` | 否 |
+| 文件内容 | `FileContent` | `Byte[]` | 否 |
+| 上传时间 | `UploadedAt` | `DateTime` | 否 |
+| 上传人 | `UploaderName` | `String` | 否 |
 
 ### ApprovalWorkflowRule（审核审批规则）
 

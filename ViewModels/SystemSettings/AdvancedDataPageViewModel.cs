@@ -23,6 +23,7 @@ namespace DocMgr.ViewModels.SystemSettings
         private readonly ISqlServerLanSetupService _sqlServerLanSetupService;
         private readonly IUserContextService _userContext;
         private readonly IDialogService _dialogService;
+        private readonly IAppReleaseService _appReleaseService;
         private readonly PageDbOperationQueue _pageDb = new();
 
         /// <summary>是否系统管理员（唯一可执行改库/备份/还原/删除当前库/SQL Server 设置/字典维护的角色）。</summary>
@@ -36,8 +37,8 @@ namespace DocMgr.ViewModels.SystemSettings
 
         /// <summary>顶栏权限说明（随角色变化）。</summary>
         public string RolePermissionHintText => IsSystemAdministrator
-            ? "当前角色：系统管理员。可浏览全部数据表，并可执行备份、还原、删除当前库、SQL Server 局域网设置、字典维护、删行与清空。"
-            : "当前角色：非系统管理员。可浏览全部数据表并导出；备份、还原、删除当前库、SQL Server 局域网设置、字典维护、删行与清空按钮可见但不可执行（仅系统管理员）。";
+            ? "当前角色：系统管理员。可浏览全部数据表，并可执行备份、还原、删除当前库、上传安装包、SQL Server 局域网设置、字典维护、删行与清空。"
+            : "当前角色：非系统管理员。可浏览全部数据表并导出；备份、还原、删除当前库、上传安装包、SQL Server 局域网设置、字典维护、删行与清空按钮可见但不可执行（仅系统管理员）。";
 
         private List<TableBrowseEntryDto> _tables = new();
         private TableBrowseEntryDto? _selectedTable;
@@ -54,6 +55,7 @@ namespace DocMgr.ViewModels.SystemSettings
         private string _dictionaryPathText = string.Empty;
         private string _dictionaryStatusText = "可在 UI 中维护字段显示名，并与 SchemaDictionary.yaml 双向同步";
         private string _sqlServerSetupStatusText = "尚未执行。";
+        private string _publishedReleaseText = "正在读取已发布的安装包…";
         private int _currentPage = 1;
         private int _pageSize = DefaultPageSize;
         private int _totalCount;
@@ -68,7 +70,8 @@ namespace DocMgr.ViewModels.SystemSettings
             IDatabaseBackupService databaseBackupService,
             ISqlServerLanSetupService sqlServerLanSetupService,
             IUserContextService userContext,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            IAppReleaseService appReleaseService)
         {
             _dataService = dataService;
             _schemaDictionaryMaintenance = schemaDictionaryMaintenance;
@@ -76,6 +79,7 @@ namespace DocMgr.ViewModels.SystemSettings
             _sqlServerLanSetupService = sqlServerLanSetupService;
             _userContext = userContext;
             _dialogService = dialogService;
+            _appReleaseService = appReleaseService;
             IsSystemAdministrator = ArchiveRegisterBusinessRules.IsSystemAdministrator(_userContext.CurrentUser);
 
             RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshGridAsync), _ => !IsBusy);
@@ -89,6 +93,7 @@ namespace DocMgr.ViewModels.SystemSettings
             BackupDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(BackupDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
             RestoreDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RestoreDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
             DropDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(DropDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
+            UploadReleasePackageCommand = new RelayCommand(async _ => await _pageDb.RunAsync(UploadReleasePackageAsync), _ => !IsBusy && CanExecuteMaintenance);
             EnableSqlTcpCommand = new RelayCommand(async _ => await _pageDb.RunAsync(EnableSqlTcpAsync), _ => !IsBusy && CanConfigureLocalSqlServer);
             AllowSqlFirewallCommand = new RelayCommand(async _ => await _pageDb.RunAsync(AllowSqlFirewallAsync), _ => !IsBusy && CanConfigureLocalSqlServer);
             CreateDocMgrAppLoginCommand = new RelayCommand(async _ => await _pageDb.RunAsync(CreateDocMgrAppLoginAsync), _ => !IsBusy && CanExecuteMaintenance);
@@ -102,6 +107,7 @@ namespace DocMgr.ViewModels.SystemSettings
 
             DictionaryPathText = _schemaDictionaryMaintenance.GetActiveDictionaryPath();
             LoadTables();
+            _ = LoadPublishedReleaseAsync();
         }
 
         public bool IsBusy
@@ -242,6 +248,13 @@ namespace DocMgr.ViewModels.SystemSettings
             ? "当前是" + _sqlServerLanSetupService.InstanceDescription + "。启用 TCP/IP 会把 IPAll 固定为 1433 并在有改动时重启服务；防火墙放行 TCP 1433。这两步会请求管理员授权。创建 docmgr_app 时在弹窗输入密码。"
             : "当前是" + _sqlServerLanSetupService.InstanceDescription + "。启用 TCP/IP 和防火墙只能在库服务器本机执行。创建 docmgr_app 作用在当前连接的服务器上，密码在弹窗输入。";
 
+        /// <summary>库内已发布安装包的一行说明。</summary>
+        public string PublishedReleaseText
+        {
+            get => _publishedReleaseText;
+            private set => SetProperty(ref _publishedReleaseText, value);
+        }
+
         /// <summary>备份/还原/删除提示。</summary>
         public string DatabaseBackupHintText => _databaseBackupService.IsNetworkPath
             ? "当前为远程 SQL Server。备份、还原或删除当前库前请先让其他终端退出。删除会永久去掉该库；下次启动时，若账号有建库权限，会按迁移重建空库。"
@@ -258,6 +271,7 @@ namespace DocMgr.ViewModels.SystemSettings
         public RelayCommand BackupDatabaseCommand { get; }
         public RelayCommand RestoreDatabaseCommand { get; }
         public RelayCommand DropDatabaseCommand { get; }
+        public RelayCommand UploadReleasePackageCommand { get; }
         public RelayCommand EnableSqlTcpCommand { get; }
         public RelayCommand AllowSqlFirewallCommand { get; }
         public RelayCommand CreateDocMgrAppLoginCommand { get; }
@@ -774,6 +788,74 @@ namespace DocMgr.ViewModels.SystemSettings
             catch (Exception ex)
             {
                 _dialogService.ShowError($"从字典重置显示名失败: {ex.Message}");
+            }
+            finally
+            {
+                _dialogService.SetBusyState(false);
+                IsBusy = false;
+                RaiseCommandStateChanged();
+            }
+        }
+
+        private async Task LoadPublishedReleaseAsync()
+        {
+            try
+            {
+                AppReleasePackageSummary? published = await _appReleaseService.GetPublishedAsync();
+                if (_isDisposed)
+                {
+                    return;
+                }
+
+                PublishedReleaseText = published?.DisplayText ?? "尚未发布安装包。其他终端登录时不会升级。";
+            }
+            catch (Exception ex)
+            {
+                if (!_isDisposed)
+                {
+                    PublishedReleaseText = "读取已发布安装包失败：" + ex.Message;
+                }
+            }
+        }
+
+        private async Task UploadReleasePackageAsync()
+        {
+            if (!CanExecuteMaintenance || _userContext.CurrentUser == null)
+            {
+                _dialogService.ShowError("仅系统管理员可上传安装包。", "禁止操作");
+                return;
+            }
+
+            string? filePath = _dialogService.OpenFileDialog("安装包|*.exe", "选择 DocMgr 安装包");
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return;
+            }
+
+            if (!_dialogService.ShowConfirm(
+                    "将用该安装包替换库内已发布的安装包。其他用户下次登录时，若版本更高会自动安装并重新打开。是否继续？",
+                    "上传安装包"))
+            {
+                return;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _dialogService.SetBusyState(true);
+                AppReleaseUploadResult result = await _appReleaseService.UploadAsync(filePath, _userContext.CurrentUser);
+                if (!result.Succeeded)
+                {
+                    _dialogService.ShowError(result.Message, "上传安装包");
+                    return;
+                }
+
+                await LoadPublishedReleaseAsync();
+                _dialogService.ShowMessage(result.Message, "上传安装包");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError("上传安装包失败：" + ex.Message, "上传安装包");
             }
             finally
             {

@@ -104,6 +104,9 @@ namespace DocMgr.Data
         // === 通用附件表 ===
         public DbSet<SystemAttachment> SystemAttachments { get; set; }
 
+        /// <summary>软件升级包。库内只保留最新一包。</summary>
+        public DbSet<AppReleasePackage> AppReleasePackages { get; set; }
+
         // 待办事项相关表
         public DbSet<ToDoReadState> ToDoReadStates { get; set; }
 

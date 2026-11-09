@@ -482,7 +482,7 @@
                                             IsEnabled="{Binding CanSubmitLogin}"
                                             Style="{StaticResource LoginPrimaryButtonStyle}"/>
 
-                                    <TextBlock Text="{Binding InitializationStatus}"
+                                    <TextBlock Text="{Binding LoginStatusText, Mode=OneWay}"
                                                Foreground="#8A9A98"
                                                FontSize="12"
                                                TextWrapping="Wrap"

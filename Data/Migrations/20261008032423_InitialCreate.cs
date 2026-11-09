@@ -37,6 +37,24 @@ namespace DocMgr.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AppReleasePackages",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Version = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FileName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FileSize = table.Column<long>(type: "bigint", nullable: false),
+                    FileContent = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
+                    UploadedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UploaderName = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AppReleasePackages", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ApprovalWorkflowRules",
                 columns: table => new
                 {
@@ -3468,6 +3486,9 @@ namespace DocMgr.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "AerialPhotos");
+
+            migrationBuilder.DropTable(
+                name: "AppReleasePackages");
 
             migrationBuilder.DropTable(
                 name: "ApprovalWorkflowRules");

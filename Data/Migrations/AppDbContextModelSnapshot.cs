@@ -64,6 +64,7 @@ namespace DocMgr.Data.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("HeightCm")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Name")
@@ -74,9 +75,11 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("ThicknessCm")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("WidthCm")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
@@ -283,6 +286,7 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("DepthCm")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("DisplayName")
@@ -290,12 +294,14 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("HeightCm")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
 
                     b.Property<decimal>("WidthCm")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
@@ -1629,13 +1635,13 @@ namespace DocMgr.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ContainerKind", "ContainerCode")
-                        .IsUnique()
-                        .HasFilter("[LifecycleStatus] <> N'已离库'");
-
                     b.HasIndex("StorageLocation")
                         .IsUnique()
                         .HasFilter("[StorageLocation] <> N''");
+
+                    b.HasIndex("ContainerKind", "ContainerCode")
+                        .IsUnique()
+                        .HasFilter("[LifecycleStatus] <> N'已离库'");
 
                     b.ToTable("HistoryMiscMaterials");
                 });
@@ -3141,6 +3147,41 @@ namespace DocMgr.Data.Migrations
                     b.ToTable("UserPreferences");
                 });
 
+            modelBuilder.Entity("DocMgr.Models.SystemSettings.AppReleasePackage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<byte[]>("FileContent")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UploaderName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AppReleasePackages");
+                });
+
             modelBuilder.Entity("DocMgr.Models.SystemSettings.ApprovalWorkflowRule", b =>
                 {
                     b.Property<int>("Id")
@@ -4086,6 +4127,7 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("nvarchar(128)");
 
                     b.Property<decimal>("DataSizeMb")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Disposition")
@@ -4628,6 +4670,7 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("nvarchar(128)");
 
                     b.Property<decimal?>("DataSizeMb")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("ElectronicMediaSource")
@@ -6105,6 +6148,7 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("DataSizeMb")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("FilingStoragePath")

@@ -124,7 +124,8 @@ public static partial class FieldDomainSeedService
         ["HardDiskInventoryRegisterRecord"] = "硬盘盘库登记单",
         ["YearlyArchiveDisposalItem"] = "年度资料离库处置明细",
         ["YearlyArchiveDisposalRecord"] = "年度资料离库处置单",
-        ["NetworkInboundReturnHardDiskItem"] = "入网归还硬盘明细"
+        ["NetworkInboundReturnHardDiskItem"] = "入网归还硬盘明细",
+        ["AppReleasePackage"] = "软件升级包"
     };
 
     private static readonly Dictionary<string, string> ExactAliasMap = new(StringComparer.OrdinalIgnoreCase)
@@ -318,6 +319,14 @@ public static partial class FieldDomainSeedService
         ["Role.Id"] = "ID",
         ["Role.Name"] = "名称",
         ["Role.Description"] = "描述",
+
+        ["AppReleasePackage.Id"] = "ID",
+        ["AppReleasePackage.Version"] = "版本号",
+        ["AppReleasePackage.FileName"] = "文件名",
+        ["AppReleasePackage.FileSize"] = "文件大小",
+        ["AppReleasePackage.FileContent"] = "文件内容",
+        ["AppReleasePackage.UploadedAt"] = "上传时间",
+        ["AppReleasePackage.UploaderName"] = "上传人",
 
         ["SystemAttachment.Id"] = "ID",
         ["SystemAttachment.BusinessType"] = "业务类型",

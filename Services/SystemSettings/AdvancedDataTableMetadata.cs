@@ -206,6 +206,11 @@ namespace DocMgr.Services.SystemSettings
                 "→ 引用 YearlyElectronicArchiveUnits、OpticalDiscMedia。",
                 "只读浏览。"),
 
+            [nameof(AppReleasePackage)] = new(
+                "系统管理员上传的安装包。各终端登录时若库内版本更高，会退出并静默安装。只保留最新一包。",
+                "独立于业务附件。安装时不替换各终端已有的 appsettings.json。",
+                "仅系统管理员可上传。上传会替换上一包。"),
+
             [nameof(SystemAttachment)] = new(
                 "业务单据关联的附件文件元数据（路径、类型、所属业务键等）。",
                 "通过 BusinessType/BusinessRecordId 等字段逻辑关联各业务表。",

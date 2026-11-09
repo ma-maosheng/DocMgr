@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-10-21T03:08:40Z
+generatedAt: 2026-11-09T02:56:16Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -8803,6 +8803,56 @@ tables:
         aliases: []
       LastStorageLocation:
         chineseName: 最后存放位置
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+  AppReleasePackage:
+    tableName: AppReleasePackages
+    chineseName: 软件升级包
+    description: 系统管理员上传的安装包。各终端登录时若库内版本更高，会退出并静默安装。只保留最新一包。
+    isView: false
+    deprecated: false
+    aliases: []
+    fields:
+      Id:
+        chineseName: ID
+        description: ''
+        clrType: Int32
+        needsReview: false
+        aliases: []
+      Version:
+        chineseName: 版本号
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      FileName:
+        chineseName: 文件名
+        description: ''
+        clrType: String
+        needsReview: false
+        aliases: []
+      FileSize:
+        chineseName: 文件大小
+        description: ''
+        clrType: Int64
+        needsReview: false
+        aliases: []
+      FileContent:
+        chineseName: 文件内容
+        description: ''
+        clrType: Byte[]
+        needsReview: false
+        aliases: []
+      UploadedAt:
+        chineseName: 上传时间
+        description: ''
+        clrType: DateTime
+        needsReview: false
+        aliases: []
+      UploaderName:
+        chineseName: 上传人
         description: ''
         clrType: String
         needsReview: false

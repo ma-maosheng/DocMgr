@@ -23,6 +23,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -165,6 +166,38 @@
                 Padding="12"
                 Margin="0,0,0,10">
             <StackPanel>
+                <TextBlock Text="软件升级包"
+                           FontSize="14"
+                           FontWeight="Bold"
+                           Foreground="#1565C0"
+                           Margin="0,0,0,4"/>
+                <TextBlock Text="仅系统管理员可上传。版本号取自安装包文件版本。其他用户下次登录时，若库内版本更高，会退出并自动安装，本机 appsettings.json 保持不变。相同版本会替换安装包内容，已是该版本的终端不会重装。"
+                           FontSize="11"
+                           Foreground="#455A64"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,8"/>
+                <TextBlock Text="{Binding PublishedReleaseText, Mode=OneWay}"
+                           FontSize="11"
+                           Foreground="#546E7A"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,8"/>
+                <Button Content="上传安装包"
+                        Command="{Binding UploadReleasePackageCommand}"
+                        Padding="10,4"
+                        HorizontalAlignment="Left"
+                        Style="{StaticResource ToolbarActionButtonStyle}"
+                        ToolTip="仅系统管理员可执行"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="4"
+                Background="#F3F8FF"
+                BorderBrush="#BBDEFB"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="12"
+                Margin="0,0,0,10">
+            <StackPanel>
                 <TextBlock Text="SQL Server 局域网设置"
                            FontSize="14"
                            FontWeight="Bold"
@@ -228,7 +261,7 @@
             </StackPanel>
         </Border>
 
-        <Border Grid.Row="4"
+        <Border Grid.Row="5"
                 Background="#F3F8FF"
                 BorderBrush="#BBDEFB"
                 BorderThickness="1"
@@ -273,7 +306,7 @@
             </StackPanel>
         </Border>
 
-        <Border Grid.Row="5"
+        <Border Grid.Row="6"
                 Background="#FAFAFA"
                 BorderBrush="#E0E0E0"
                 BorderThickness="1"
@@ -307,7 +340,7 @@
         <!-- 多列表浏览：关闭列虚拟化，避免 ScrollViewer.ExtentWidth 低估导致水平滚动不到末列；
              显式 Auto 水平滚动；表头按内容量度（见 code-behind），防止列被压进视口后滚动条消失。 -->
         <DataGrid x:Name="RecordsDataGrid"
-                  Grid.Row="6"
+                  Grid.Row="7"
                   ItemsSource="{Binding RecordsView}"
                   SelectedItem="{Binding SelectedRecord, Mode=TwoWay}"
                   AutoGenerateColumns="True"
@@ -332,7 +365,7 @@
             </DataGrid.ContextMenu>
         </DataGrid>
 
-        <Border Grid.Row="7"
+        <Border Grid.Row="8"
                 Background="#FAFAFA"
                 BorderBrush="#E0E0E0"
                 BorderThickness="1"
@@ -392,7 +425,7 @@
             </ScrollViewer>
         </Border>
 
-        <ScrollViewer Grid.Row="8"
+        <ScrollViewer Grid.Row="9"
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Disabled"
                       Margin="0,15,0,0">
