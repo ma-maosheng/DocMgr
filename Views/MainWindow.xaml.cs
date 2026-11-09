@@ -285,6 +285,7 @@ namespace DocMgr.Views
             IsEnabled = false;
             _toDoCenter?.StopAutoRefresh();
             _userContextService.Clear();
+            ClearSearchFilterPool();
 
             ShowMessageBox(
                 heartbeatResult.Message,
@@ -318,6 +319,13 @@ namespace DocMgr.Views
             }
 
             _userContextService.Clear();
+            ClearSearchFilterPool();
+        }
+
+        /// <summary>注销或会话失效时丢掉筛选池，避免下一登录用户看到上一会话的挑选。</summary>
+        private void ClearSearchFilterPool()
+        {
+            _windowScope.ServiceProvider.GetRequiredService<IArchiveFilingSearchPoolSession>().ClearAll();
         }
 
         private void ToDoCenter_PropertyChanged(object? sender, PropertyChangedEventArgs e)

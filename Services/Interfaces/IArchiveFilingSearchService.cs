@@ -52,6 +52,18 @@ namespace DocMgr.Services.Interfaces
             string mediaKind,
             RegisterDirectionSearchCriteria criteria);
 
+        /// <summary>电子介质登记方向检索：先按资料子项分组，再按电子介质袋归组。</summary>
+        Task<List<FiledArchiveSearchElectronicBagGroupHit>> SearchByRegisterGroupedByElectronicBagAsync(
+            string mediaKind,
+            RegisterDirectionSearchCriteria criteria);
+
+        /// <summary>
+        /// 读取指定容器内仍可提档的立档事实（在库、借出中），不限于本次检索命中。
+        /// </summary>
+        Task<List<FiledArchiveSearchHit>> GetWithdrawableHitsByContainerCodesAsync(
+            string mediaKind,
+            IReadOnlyCollection<string> containerCodes);
+
         Task<List<FiledArchiveSearchHit>> SearchByContainerAsync(
             string mediaKind,
             ContainerDirectionSearchCriteria criteria);

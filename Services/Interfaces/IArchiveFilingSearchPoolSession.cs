@@ -21,5 +21,8 @@ namespace DocMgr.Services.Interfaces
         void Replace(string mediaKind, IEnumerable<ArchiveSearchPoolItemRow> items);
 
         void Clear(string mediaKind);
+
+        /// <summary>清空全部介质的筛选池。登录会话切换时调用，避免下一位用户看到上一会话的挑选。</summary>
+        void ClearAll();
     }
 }

@@ -133,16 +133,149 @@ namespace DocMgr.Services.YearlyArchive
                 bool hasMatchingBackup = matchedBackupFactIdsByRoot.TryGetValue(rootId, out var matchedIdsInRoot)
                     && matchedIdsInRoot.Any(id => id != rootId);
 
+                var matchedIds = new HashSet<int>();
+                if (matchedByFactId.ContainsKey(rootId))
+                {
+                    matchedIds.Add(rootId);
+                }
+
+                foreach (var backupHit in backupHits)
+                {
+                    if (matchedByFactId.ContainsKey(backupHit.FilingFactId))
+                    {
+                        matchedIds.Add(backupHit.FilingFactId);
+                    }
+                }
+
                 groups.Add(new FiledArchiveSearchGroupHit
                 {
                     PrimaryHit = primaryHit,
                     BackupHits = backupHits,
                     HasMatchingBackup = hasMatchingBackup,
-                    ExpandByDefault = hasMatchingBackup && !matchedByFactId.ContainsKey(rootId)
+                    ExpandByDefault = hasMatchingBackup && !matchedByFactId.ContainsKey(rootId),
+                    MatchedFilingFactIds = matchedIds
                 });
             }
 
             return groups;
+        }
+
+        /// <summary>
+        /// 按电子介质袋归组。同袋备份仍挂在原件下；跨袋备份出现在其所在袋中。
+        /// </summary>
+        internal static List<FiledArchiveSearchElectronicBagGroupHit> GroupRegisterHitsByElectronicBag(
+            IReadOnlyList<FiledArchiveSearchGroupHit> itemGroups,
+            IReadOnlyDictionary<string, YearlyElectronicArchiveUnit> unitsByArchiveNo)
+        {
+            if (itemGroups.Count == 0)
+            {
+                return [];
+            }
+
+            var placements = new List<(string Key, FiledArchiveSearchGroupHit Group)>();
+            foreach (var group in itemGroups)
+            {
+                var matchedIds = group.MatchedFilingFactIds;
+                bool primaryMatched = matchedIds.Contains(group.PrimaryHit.FilingFactId);
+                string primaryKey = ResolveArchiveBoxKey(group.PrimaryHit);
+                var sameBagBackups = new List<FiledArchiveSearchHit>();
+
+                foreach (var backup in group.BackupHits)
+                {
+                    string backupKey = ResolveArchiveBoxKey(backup);
+                    bool backupMatched = matchedIds.Contains(backup.FilingFactId);
+                    if (string.Equals(backupKey, primaryKey, StringComparison.Ordinal))
+                    {
+                        if (primaryMatched || backupMatched)
+                        {
+                            sameBagBackups.Add(backup);
+                        }
+
+                        continue;
+                    }
+
+                    if (!primaryMatched && !backupMatched)
+                    {
+                        continue;
+                    }
+
+                    placements.Add((backupKey, new FiledArchiveSearchGroupHit
+                    {
+                        PrimaryHit = backup,
+                        BackupHits = Array.Empty<FiledArchiveSearchHit>(),
+                        HasMatchingBackup = false,
+                        ExpandByDefault = false,
+                        MatchedFilingFactIds = matchedIds
+                    }));
+                }
+
+                if (!primaryMatched && sameBagBackups.Count == 0)
+                {
+                    continue;
+                }
+
+                bool sameBagBackupMatched = sameBagBackups.Any(hit => matchedIds.Contains(hit.FilingFactId));
+                placements.Add((primaryKey, new FiledArchiveSearchGroupHit
+                {
+                    PrimaryHit = group.PrimaryHit,
+                    BackupHits = sameBagBackups,
+                    HasMatchingBackup = sameBagBackupMatched,
+                    ExpandByDefault = !primaryMatched && sameBagBackupMatched,
+                    MatchedFilingFactIds = matchedIds
+                }));
+            }
+
+            return placements
+                .GroupBy(placement => placement.Key, StringComparer.Ordinal)
+                .OrderBy(bucket => bucket.Key, StringComparer.Ordinal)
+                .Select(bucket =>
+                {
+                    var orderedItemGroups = bucket
+                        .Select(placement => placement.Group)
+                        .OrderBy(group => group.PrimaryHit.FormNo, StringComparer.Ordinal)
+                        .ThenBy(group => group.PrimaryHit.MaterialName, StringComparer.Ordinal)
+                        .ThenBy(group => group.PrimaryHit.ItemName, StringComparer.Ordinal)
+                        .ThenBy(group => group.PrimaryHit.FilingFactId)
+                        .ToList();
+
+                    var referenceHit = orderedItemGroups[0].PrimaryHit;
+                    unitsByArchiveNo.TryGetValue(bucket.Key, out var unit);
+
+                    return new FiledArchiveSearchElectronicBagGroupHit
+                    {
+                        ElectronicArchiveNo = bucket.Key,
+                        ProjectName = !string.IsNullOrWhiteSpace(unit?.ProjectName)
+                            ? unit.ProjectName.Trim()
+                            : referenceHit.ProjectName,
+                        Year = NormalizeText(unit?.Year),
+                        StorageLocation = ResolveBagStorageLocation(unit, referenceHit),
+                        CurrentStorageLocation = referenceHit.CurrentStorageLocation,
+                        StorageCarrierTypeDisplay = !string.IsNullOrWhiteSpace(unit?.StorageCarrierType)
+                            ? ArchiveOutboundDomainValues.NormalizeElectronicStorageCarrierDisplay(unit.StorageCarrierType)
+                            : referenceHit.StorageCarrierTypeDisplay,
+                        LinkedMediumCodes = !string.IsNullOrWhiteSpace(unit?.LinkedMediumCodes)
+                            ? unit.LinkedMediumCodes.Trim()
+                            : referenceHit.LinkedMediumDisplay,
+                        ArchivedBy = NormalizeText(unit?.ArchivedBy),
+                        ArchivedDate = unit?.ArchivedDate,
+                        Remarks = NormalizeText(unit?.Remarks),
+                        UnitLifecycleStatus = NormalizeText(unit?.UnitLifecycleStatus),
+                        ItemGroups = orderedItemGroups
+                    };
+                })
+                .ToList();
+        }
+
+        private static string ResolveBagStorageLocation(
+            YearlyElectronicArchiveUnit? unit,
+            FiledArchiveSearchHit referenceHit)
+        {
+            if (!string.IsNullOrWhiteSpace(unit?.StorageLocation))
+            {
+                return unit.StorageLocation.Trim();
+            }
+
+            return referenceHit.StorageLocation;
         }
     }
 }

@@ -64,6 +64,13 @@ namespace DocMgr.Repositories.Interfaces
 
         Task<List<YearlyArchiveFilingFact>> GetFactsByIdsAsync(IReadOnlyCollection<int> filingFactIds);
 
+        /// <summary>
+        /// 按当前容器编号读取仍可提档的立档事实（在库、借出中）。已转移、已销毁、已处置不返回。
+        /// </summary>
+        Task<List<YearlyArchiveFilingFact>> GetWithdrawableFactsByCurrentContainerCodesAsync(
+            string mediaKind,
+            IReadOnlyCollection<string> containerCodes);
+
         /// <summary>读取立档事实对应的建档申请 Id。记录不存在或未关联时返回 null。</summary>
         Task<int?> GetRegisterRecordIdAsync(int filingFactId);
 

@@ -11,6 +11,16 @@
 
     <Page.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <Style x:Key="ProjectReferenceTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#6B7280"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsReferenced}" Value="True">
+                    <Setter Property="Foreground" Value="#B45309"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Page.Resources>
 
     <Grid Margin="20">
@@ -36,9 +46,14 @@
                                 Visibility="{Binding CanMaintainProjects, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         <Button Content="删除选中" Command="{Binding DeleteCommand}" Width="100" Style="{StaticResource ToolbarDangerButtonStyle}" Margin="0,0,10,0"
                                 Visibility="{Binding CanMaintainProjects, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <Button Content="导入Excel" Command="{Binding ImportCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Margin="0,0,10,0"
+                                Visibility="{Binding CanMaintainProjects, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                ToolTip="从 Excel 新增项目。同一实施年度下已有同名项目时不重复写入，也不修改库内记录。"/>
                         <Button Content="刷新列表" Command="{Binding RefreshCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}" Margin="0,0,10,0"/>
                         <Button Content="拷贝项目名称" Command="{Binding CopyProjectNameCommand}" Width="120" Style="{StaticResource ToolbarActionButtonStyle}"
                                 ToolTip="把当前选中项目的名称复制到剪贴板"/>
+                        <Button Content="导出Excel" Command="{Binding ExportCommand}" Style="{StaticResource ToolbarActionButtonStyle}" Margin="0,0,0,0"
+                                ToolTip="把当前列表中的项目导出为 Excel。"/>
                     </StackPanel>
 
                     <!-- 右侧搜索 -->
@@ -55,7 +70,7 @@
                             </TextBox.InputBindings>
                         </TextBox>
 
-                        <Button Content="年度项目检索" Command="{Binding SearchCommand}" Width="100" Style="{StaticResource ToolbarActionButtonStyle}"/>
+                        <Button Content="年度项目检索" Command="{Binding SearchCommand}" Style="{StaticResource ToolbarActionButtonStyle}"/>
                     </StackPanel>
                 </Grid>
             </ScrollViewer>
@@ -72,10 +87,19 @@
                   RowHeight="35" ColumnHeaderHeight="40">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="60"/>
+                <DataGridTextColumn Header="实施年度" Binding="{Binding ImplementYear}" Width="100"/>
                 <DataGridTextColumn Header="项目名称" Binding="{Binding ProjectName}" Width="250"/>
                 <DataGridTextColumn Header="项目编码" Binding="{Binding ProjectCode}" Width="150"/>
-                <DataGridTextColumn Header="实施年度" Binding="{Binding ImplementYear}" Width="100"/>
                 <DataGridTextColumn Header="资金管理部门" Binding="{Binding CapitalMgrDept}" Width="150"/>
+                <DataGridTextColumn Binding="{Binding ReferenceDisplay, Mode=OneWay}" Width="88">
+                    <DataGridTextColumn.Header>
+                        <TextBlock Text="库内引用" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   ToolTip="已引用：建档、立档、出库、归还、档案盒、电子袋、盘库或出入网中仍有该项目，不能删除。未引用：可以删除。"/>
+                    </DataGridTextColumn.Header>
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource ProjectReferenceTextStyle}"/>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
                 <DataGridTextColumn Header="备注" Binding="{Binding Remark}" Width="*"/>
             </DataGrid.Columns>
         </DataGrid>

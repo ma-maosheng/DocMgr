@@ -14,16 +14,19 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IReadOnlyList<FiledArchiveSearchGroupHit> _itemGroupHits;
         private readonly RelayCommand<FiledArchiveSearchHitRow> _viewDetailCommand;
         private readonly Action? _onSelectionChanged;
+        private readonly Action? _onContainerSelectionChanged;
         private bool _itemGroupsLoaded;
 
         public FiledArchiveSearchBoxGroupRow(
             FiledArchiveSearchBoxGroupHit group,
             RelayCommand<FiledArchiveSearchHitRow> viewDetailCommand,
-            Action? onSelectionChanged = null)
+            Action? onSelectionChanged = null,
+            Action? onContainerSelectionChanged = null)
         {
             _itemGroupHits = group.ItemGroups;
             _viewDetailCommand = viewDetailCommand;
             _onSelectionChanged = onSelectionChanged;
+            _onContainerSelectionChanged = onContainerSelectionChanged;
 
             ArchiveSequenceNo = group.ArchiveSequenceNo;
             ProjectName = group.ProjectName;
@@ -43,6 +46,21 @@ namespace DocMgr.ViewModels.YearlyArchive
             SelectAllItemGroupsCommand = new RelayCommand(_ => SelectAllItemGroups());
             ClearItemGroupSelectionCommand = new RelayCommand(_ => ClearItemGroupSelection());
             ToggleItemGroupSelectionCommand = new RelayCommand(_ => ToggleItemGroupSelection());
+        }
+
+        private bool _isSelected;
+
+        /// <summary>勾选后可将本盒内全部可提档资料加入筛选池。</summary>
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (SetProperty(ref _isSelected, value))
+                {
+                    _onContainerSelectionChanged?.Invoke();
+                }
+            }
         }
 
         public string ArchiveSequenceNo { get; }

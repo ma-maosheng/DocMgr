@@ -675,6 +675,31 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
             .ToListAsync();
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<YearlyElectronicArchiveUnit>> GetElectronicArchiveUnitsByArchiveNosAsync(
+        IReadOnlyCollection<string> archiveNos)
+    {
+        if (archiveNos == null || archiveNos.Count == 0)
+        {
+            return Array.Empty<YearlyElectronicArchiveUnit>();
+        }
+
+        var normalized = archiveNos
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Select(code => code.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (normalized.Count == 0)
+        {
+            return Array.Empty<YearlyElectronicArchiveUnit>();
+        }
+
+        return await _dbContext.YearlyElectronicArchiveUnits
+            .AsNoTracking()
+            .Where(unit => normalized.Contains(unit.ElectronicArchiveNo))
+            .ToListAsync();
+    }
+
     public CabinetSlotSpecialRule? GetCabinetSlotSpecialRule(string cabinetName, string slotCode, string boxSpecification, string sideCode)
     {
         return _dbContext.CabinetSlotSpecialRules

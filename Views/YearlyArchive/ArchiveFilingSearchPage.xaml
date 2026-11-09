@@ -58,6 +58,8 @@
                             <TextBlock Text="{Binding Primary.ProjectName}" Style="{StaticResource SearchFieldValueStyle}"/>
                             <TextBlock Text="资料名称：" Style="{StaticResource SearchFieldLabelStyle}"/>
                             <TextBlock Text="{Binding Primary.MaterialName}" Style="{StaticResource SearchFieldValueStyle}"/>
+                            <TextBlock Text="备份副本" Style="{StaticResource SearchFieldValueStyle}" Foreground="#E65100" FontWeight="SemiBold"
+                                       Visibility="{Binding PrimaryIsBackupCopy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                             <TextBlock Text="库管模式：" Style="{StaticResource SearchFieldLabelStyle}"/>
                             <TextBlock Text="{Binding Primary.ArchivePurpose}" Style="{StaticResource SearchFieldValueStyle}"/>
                             <TextBlock Text="子项名称：" Style="{StaticResource SearchFieldLabelStyle}"/>
@@ -314,6 +316,9 @@
                         <Button Content="重置" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding ResetCommand}"/>
                         <Button Content="选中加入筛选池" Margin="40,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding AddSelectedToPoolCommand}"
                                 ToolTip="按勾选范围加入会话筛选池；电子可整子项或部分目录/文件"/>
+                        <Button Content="{Binding AddSelectedContainerButtonText}" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}"
+                                Command="{Binding AddSelectedContainersToPoolCommand}"
+                                ToolTip="{Binding AddSelectedContainerToolTip}"/>
                         <Button Content="本页全部加入" Margin="10,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Command="{Binding AddAllResultsToPoolCommand}"
                                 ToolTip="将本页各组原件整子项加入筛选池（不含备份副本）"/>
                         <Button Content="检索池" Margin="40,0,0,0" Style="{StaticResource ToolbarActionButtonStyle}" Click="OpenSearchPool_Click"/>
@@ -331,10 +336,10 @@
                 <TextBlock DockPanel.Dock="Top" FontWeight="SemiBold" Foreground="#37474F" Margin="0,0,0,6">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Text" Value="检索结果（按档案盒分组，展开后可批量选择盒内资料子项；子项下可展开备份副本）"/>
+                            <Setter Property="Text" Value="检索结果（按档案盒分组。勾选档案盒可将其内全部可取资料加入筛选池；展开后可选择本次命中的资料子项）"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsElectronicSearch}" Value="True">
-                                    <Setter Property="Text" Value="检索结果（默认折叠备份副本，按需展开）"/>
+                                    <Setter Property="Text" Value="检索结果（按电子介质袋分组。勾选介质袋可将其内全部可取资料加入筛选池；展开后查看本次命中资料，同袋备份默认折叠）"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -358,6 +363,9 @@
                                 <Border Margin="0,0,0,8" Padding="10,8" BorderBrush="#B2DFDB" BorderThickness="1" CornerRadius="4" Background="#FAFFFE">
                                     <StackPanel>
                                         <WrapPanel Margin="0,0,0,4">
+                                            <CheckBox VerticalAlignment="Center" Margin="0,0,8,6"
+                                                      IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      ToolTip="选中本档案盒，将其内全部在库、借出中的资料加入筛选池"/>
                                             <TextBlock Text="档案盒编号：" Style="{StaticResource SearchFieldLabelStyle}"/>
                                             <TextBlock Text="{Binding ArchiveSequenceNo}" Style="{StaticResource SearchFieldValueStyle}" Foreground="#004D40" FontWeight="SemiBold"/>
                                             <TextBlock Text="所属项目：" Style="{StaticResource SearchFieldLabelStyle}"/>
@@ -425,8 +433,55 @@
                                 </Style.Triggers>
                             </Style>
                         </ScrollViewer.Style>
-                        <ItemsControl ItemsSource="{Binding SearchResultGroups}"
-                                      ItemTemplate="{StaticResource FiledArchiveSearchItemGroupTemplate}"/>
+                        <ItemsControl ItemsSource="{Binding SearchResultBagGroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,8" Padding="10,8" BorderBrush="#B2DFDB" BorderThickness="1" CornerRadius="4" Background="#FAFFFE">
+                                        <StackPanel>
+                                            <WrapPanel Margin="0,0,0,4">
+                                                <CheckBox VerticalAlignment="Center" Margin="0,0,8,6"
+                                                          IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          ToolTip="选中本电子介质袋，将其内全部在库、借出中的资料加入筛选池"/>
+                                                <TextBlock Text="介质袋编号：" Style="{StaticResource SearchFieldLabelStyle}"/>
+                                                <TextBlock Text="{Binding ElectronicArchiveNo}" Style="{StaticResource SearchFieldValueStyle}" Foreground="#004D40" FontWeight="SemiBold"/>
+                                                <TextBlock Text="所属项目：" Style="{StaticResource SearchFieldLabelStyle}"/>
+                                                <TextBlock Text="{Binding ProjectName}" Style="{StaticResource SearchFieldValueStyle}"/>
+                                                <TextBlock Text="年度：" Style="{StaticResource SearchFieldLabelStyle}"/>
+                                                <TextBlock Text="{Binding Year}" Style="{StaticResource SearchFieldValueStyle}"/>
+                                                <TextBlock Text="载体：" Style="{StaticResource SearchFieldLabelStyle}"/>
+                                                <TextBlock Text="{Binding StorageCarrierTypeDisplay}" Style="{StaticResource SearchFieldValueStyle}"/>
+                                                <TextBlock Text="关联介质：" Style="{StaticResource SearchFieldLabelStyle}"/>
+                                                <TextBlock Text="{Binding LinkedMediumCodes}" Style="{StaticResource SearchFieldValueStyle}"/>
+                                                <TextBlock Text="立档位置：" Style="{StaticResource SearchFieldLabelStyle}"/>
+                                                <TextBlock Text="{Binding StorageLocation}" Style="{StaticResource SearchFieldValueStyle}"/>
+                                                <TextBlock Text="当前位置：" Style="{StaticResource SearchFieldLabelStyle}"/>
+                                                <TextBlock Text="{Binding CurrentStorageLocation}" Style="{StaticResource SearchFieldValueStyle}" Foreground="#1B5E20" FontWeight="SemiBold"/>
+                                                <TextBlock Text="袋状态：" Style="{StaticResource SearchFieldLabelStyle}"/>
+                                                <TextBlock Text="{Binding UnitLifecycleStatusDisplay, Mode=OneWay}" Style="{StaticResource SearchFieldValueStyle}" Foreground="#C62828" FontWeight="SemiBold"/>
+                                                <TextBlock Text="归档人：" Style="{StaticResource SearchFieldLabelStyle}"/>
+                                                <TextBlock Text="{Binding ArchivedBy}" Style="{StaticResource SearchFieldValueStyle}"/>
+                                                <TextBlock Text="归档时间：" Style="{StaticResource SearchFieldLabelStyle}"/>
+                                                <TextBlock Text="{Binding ArchivedDateText}" Style="{StaticResource SearchFieldValueStyle}"/>
+                                            </WrapPanel>
+                                            <TextBlock Text="{Binding Remarks, StringFormat=备注：{0}}"
+                                                       Style="{StaticResource SearchFieldValueStyle}" Margin="0,0,0,4"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                <TextBlock Text="{Binding SummaryText}" Foreground="#666" VerticalAlignment="Center" FontSize="12"/>
+                                                <Button Content="{Binding ExpandToggleText}" Margin="8,0,0,0" Padding="6,2"
+                                                        Style="{StaticResource ButtonNormalStyle}"
+                                                        Command="{Binding ToggleExpandCommand}"/>
+                                            </StackPanel>
+                                            <StackPanel Margin="0,8,0,0"
+                                                        Visibility="{Binding IsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <TextBlock Text="袋内资料子项" FontWeight="SemiBold" Foreground="#546E7A" Margin="0,0,0,6"/>
+                                                <ItemsControl ItemsSource="{Binding ItemGroups}"
+                                                              ItemTemplate="{StaticResource FiledArchiveSearchItemGroupTemplate}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </ScrollViewer>
                 </Grid>
             </DockPanel>

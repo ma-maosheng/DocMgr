@@ -60,5 +60,9 @@ namespace DocMgr.Models.YearlyArchive
     public sealed class SearchResultSetSaveResult
     {
         public YearlyArchiveSearchResultSet ResultSet { get; init; } = null!;
+
+        /// <summary>本次保存产生的结果集。跨容器时按容器拆成多个。</summary>
+        public IReadOnlyList<YearlyArchiveSearchResultSet> ResultSets { get; init; } =
+            Array.Empty<YearlyArchiveSearchResultSet>();
     }
 }

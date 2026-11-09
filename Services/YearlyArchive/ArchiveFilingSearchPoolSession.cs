@@ -88,5 +88,21 @@ namespace DocMgr.Services.YearlyArchive
                 PoolChanged?.Invoke(mediaKind);
             }
         }
+
+        /// <inheritdoc />
+        public void ClearAll()
+        {
+            if (_pools.Count == 0)
+            {
+                return;
+            }
+
+            var mediaKinds = _pools.Keys.ToList();
+            _pools.Clear();
+            foreach (string mediaKind in mediaKinds)
+            {
+                PoolChanged?.Invoke(mediaKind);
+            }
+        }
     }
 }

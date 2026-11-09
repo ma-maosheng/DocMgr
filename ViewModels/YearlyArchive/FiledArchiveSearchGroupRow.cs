@@ -122,7 +122,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             Func<int, string?, Task<IReadOnlyList<MatchedContentEntryInfo>>>? loadAllContentEntriesAsync = null,
 
-            Action? onSelectionChanged = null)
+            Action? onSelectionChanged = null,
+
+            bool showContainerSummary = true)
 
         {
 
@@ -131,6 +133,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             _onSelectionChanged = onSelectionChanged;
 
             IsElectronicSearch = isElectronicSearch;
+
+            ShowArchiveContainerSummary = isElectronicSearch && showContainerSummary;
 
             Primary = new FiledArchiveSearchHitRow(group.PrimaryHit);
             Primary.PropertyChanged += (_, args) =>
@@ -181,8 +185,10 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool IsElectronicSearch { get; }
 
-        /// <summary>是否在子项行展示档案盒/位置（模拟介质按盒分组时由盒级行承担）。</summary>
-        public bool ShowArchiveContainerSummary => IsElectronicSearch;
+        /// <summary>是否在子项行展示档案盒/介质袋与位置（按容器分组时由容器行承担）。</summary>
+        public bool ShowArchiveContainerSummary { get; }
+
+        public bool PrimaryIsBackupCopy => Primary.Hit.IsBackupCopy;
 
         public FiledArchiveSearchHitRow Primary { get; }
 

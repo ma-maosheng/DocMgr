@@ -673,6 +673,40 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
     }
 
     /// <inheritdoc />
+    public Task<List<YearlyArchiveFilingFact>> GetWithdrawableFactsByCurrentContainerCodesAsync(
+        string mediaKind,
+        IReadOnlyCollection<string> containerCodes)
+    {
+        if (string.IsNullOrWhiteSpace(mediaKind) || containerCodes == null || containerCodes.Count == 0)
+        {
+            return Task.FromResult(new List<YearlyArchiveFilingFact>());
+        }
+
+        var codes = containerCodes
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Select(code => code.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (codes.Count == 0)
+        {
+            return Task.FromResult(new List<YearlyArchiveFilingFact>());
+        }
+
+        string kind = mediaKind.Trim();
+        return _dbContext.YearlyArchiveFilingFacts
+            .AsNoTracking()
+            .Where(fact => fact.MediaKind == kind
+                && (fact.LifecycleStatus == FilingFactLifecycleStatus.InArchive
+                    || fact.LifecycleStatus == FilingFactLifecycleStatus.Borrowed)
+                && ((fact.CurrentContainerCode != "" && codes.Contains(fact.CurrentContainerCode))
+                    || (fact.CurrentContainerCode == "" && codes.Contains(fact.ContainerCode))))
+            .OrderBy(fact => fact.FormNo)
+            .ThenBy(fact => fact.ItemName)
+            .ThenBy(fact => fact.Id)
+            .ToListAsync();
+    }
+
+    /// <inheritdoc />
     public async Task<int?> GetRegisterRecordIdAsync(int filingFactId)
     {
         if (filingFactId <= 0)

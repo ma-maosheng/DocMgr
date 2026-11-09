@@ -140,6 +140,10 @@ public interface IArchiveFilingRepository
     /// <summary>按档案盒编号批量读取档案盒（检索结果盒级摘要用）。</summary>
     Task<IReadOnlyList<YearlyArchiveBox>> GetArchiveBoxesBySequenceNosAsync(IReadOnlyCollection<string> sequenceNos);
 
+    /// <summary>按电子立档编号批量读取电子介质袋（检索结果袋级摘要用）。</summary>
+    Task<IReadOnlyList<YearlyElectronicArchiveUnit>> GetElectronicArchiveUnitsByArchiveNosAsync(
+        IReadOnlyCollection<string> archiveNos);
+
     CabinetSlotSpecialRule? GetCabinetSlotSpecialRule(string cabinetName, string slotCode, string boxSpecification, string sideCode);
 
     Task<List<ArchiveContainerProjection>> GetArchiveContainerProjectionsAsync(string projectName, string year, ArchiveContainerKind containerKind);

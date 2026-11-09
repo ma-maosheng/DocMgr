@@ -14,6 +14,7 @@ namespace DocMgr.ViewModels
         private readonly IUserContextService _userContextService;
         private readonly IDialogService _dialogService;
         private readonly AppInitializationState _initializationState;
+        private readonly IArchiveFilingSearchPoolSession _searchPoolSession;
 
         private string _username = string.Empty;
         private string _password = string.Empty;
@@ -23,12 +24,14 @@ namespace DocMgr.ViewModels
             IUserService userService,
             IUserContextService userContextService,
             IDialogService dialogService,
-            AppInitializationState initializationState)
+            AppInitializationState initializationState,
+            IArchiveFilingSearchPoolSession searchPoolSession)
         {
             _userService = userService;
             _userContextService = userContextService;
             _dialogService = dialogService;
             _initializationState = initializationState;
+            _searchPoolSession = searchPoolSession;
             _initializationState.PropertyChanged += InitializationState_PropertyChanged;
 
             LoginCommand = new RelayCommand(async _ => await LoginAsync(), _ => CanSubmitLogin);
@@ -135,6 +138,7 @@ namespace DocMgr.ViewModels
                 }
 
                 _userContextService.SetCurrentSession(loginResult.User, loginResult.SessionId);
+                _searchPoolSession.ClearAll();
 
 #if !DEBUG
                 if (loginResult.User.MustChangePassword)

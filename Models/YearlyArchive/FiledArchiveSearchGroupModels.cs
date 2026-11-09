@@ -14,6 +14,43 @@ namespace DocMgr.Models.YearlyArchive
         public bool HasMatchingBackup { get; init; }
 
         public bool ExpandByDefault { get; init; }
+
+        /// <summary>本次检索直接命中的立档事实 Id（含原件与备份）。</summary>
+        public IReadOnlySet<int> MatchedFilingFactIds { get; init; } = new HashSet<int>();
+    }
+
+    /// <summary>
+    /// 电子介质检索结果：按电子介质袋归组后的袋级摘要与袋内资料子项分组。
+    /// </summary>
+    public sealed class FiledArchiveSearchElectronicBagGroupHit
+    {
+        public string ElectronicArchiveNo { get; init; } = string.Empty;
+
+        public string ProjectName { get; init; } = string.Empty;
+
+        public string Year { get; init; } = string.Empty;
+
+        public string StorageLocation { get; init; } = string.Empty;
+
+        public string CurrentStorageLocation { get; init; } = string.Empty;
+
+        public string StorageCarrierTypeDisplay { get; init; } = string.Empty;
+
+        public string LinkedMediumCodes { get; init; } = string.Empty;
+
+        public string ArchivedBy { get; init; } = string.Empty;
+
+        public DateTime? ArchivedDate { get; init; }
+
+        public string Remarks { get; init; } = string.Empty;
+
+        /// <summary>电子介质袋生命周期状态（InUse / Relocated / Disposed 等）。</summary>
+        public string UnitLifecycleStatus { get; init; } = string.Empty;
+
+        public IReadOnlyList<FiledArchiveSearchGroupHit> ItemGroups { get; init; } =
+            Array.Empty<FiledArchiveSearchGroupHit>();
+
+        public int ItemCount => ItemGroups.Count;
     }
 
     /// <summary>

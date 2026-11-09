@@ -24,9 +24,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _isInitialized;
         private bool _isSearching;
 
-        private ObservableCollection<FiledArchiveSearchGroupRow> _searchResultGroups = new();
         private ObservableCollection<FiledArchiveSearchBoxGroupRow> _searchResultBoxGroups = new();
+        private ObservableCollection<FiledArchiveSearchElectronicBagGroupRow> _searchResultBagGroups = new();
         private List<FiledArchiveSearchGroupHit> _simulatedItemGroupHits = new();
+        private List<FiledArchiveSearchGroupHit> _electronicItemGroupHits = new();
 
         public event Action<ArchiveDetailOpenRequest>? ViewRegisterDetailRequested;
 
@@ -55,6 +56,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
             ResetCommand = new RelayCommand(_ => ResetCriteria());
             AddSelectedToPoolCommand = new RelayCommand(async _ => await AddSelectedToPoolAsync(), _ => HasSelectableSearchResults);
+            AddSelectedContainersToPoolCommand = new RelayCommand(
+                async _ => await AddSelectedContainersToPoolAsync(),
+                _ => HasSelectedContainers);
             AddAllResultsToPoolCommand = new RelayCommand(_ => AddAllResultsToPool(), _ => HasSearchResults);
             RemoveSelectedFromPoolCommand = new RelayCommand(_ => RemoveSelectedFromPool(), _ => FilterPool.Any(r => r.IsSelected));
             ClearPoolCommand = new RelayCommand(_ => ClearPool(), _ => FilterPool.Count > 0);
@@ -148,11 +152,19 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public ObservableCollection<FiledArchiveSearchHitRow> SearchResults { get; } = new();
 
-        public ObservableCollection<FiledArchiveSearchGroupRow> SearchResultGroups => _searchResultGroups;
-
         public ObservableCollection<FiledArchiveSearchBoxGroupRow> SearchResultBoxGroups => _searchResultBoxGroups;
 
+        public ObservableCollection<FiledArchiveSearchElectronicBagGroupRow> SearchResultBagGroups => _searchResultBagGroups;
+
         public bool UseArchiveBoxGroupedResults => !IsElectronicSearch;
+
+        public string AddSelectedContainerButtonText => IsElectronicSearch
+            ? "选中介质加入筛选池"
+            : "选中档案盒加入筛选池";
+
+        public string AddSelectedContainerToolTip => IsElectronicSearch
+            ? "将勾选电子介质袋内全部在库、借出中的资料整子项加入筛选池，不限本次检索命中"
+            : "将勾选档案盒内全部在库、借出中的资料整子项加入筛选池，不限本次检索命中";
 
         public ObservableCollection<ArchiveSearchPoolItemRow> FilterPool => _filterPool;
 
@@ -180,17 +192,22 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool HasLastSaveResultSetNotice => !string.IsNullOrWhiteSpace(LastSaveResultSetNotice);
 
-        public bool HasSearchResults => UseArchiveBoxGroupedResults
-            ? _searchResultBoxGroups.Count > 0
-            : _searchResultGroups.Count > 0;
+        public bool HasSearchResults => IsElectronicSearch
+            ? _searchResultBagGroups.Count > 0
+            : _searchResultBoxGroups.Count > 0;
 
         private bool _hasSelectableSearchResults;
+
+        private bool _hasSelectedContainers;
+
+        public bool HasSelectedContainers => _hasSelectedContainers;
 
         public bool HasSelectableSearchResults => _hasSelectableSearchResults;
 
         public RelayCommand SearchCommand { get; }
         public RelayCommand ResetCommand { get; }
         public RelayCommand AddSelectedToPoolCommand { get; }
+        public RelayCommand AddSelectedContainersToPoolCommand { get; }
         public RelayCommand AddAllResultsToPoolCommand { get; }
         public RelayCommand RemoveSelectedFromPoolCommand { get; }
         public RelayCommand ClearPoolCommand { get; }
@@ -279,16 +296,22 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 if (IsElectronicSearch)
                 {
-                    var groups = await _searchService.SearchByRegisterGroupedAsync(_mediaKind, criteria)
+                    var bagGroups = await _searchService.SearchByRegisterGroupedByElectronicBagAsync(_mediaKind, criteria)
                         .ConfigureAwait(true);
-                    var itemRows = groups
-                        .Select(group => CreateItemGroupRow(group))
+                    var bagRows = bagGroups
+                        .Select(bagGroup => new FiledArchiveSearchElectronicBagGroupRow(
+                            bagGroup,
+                            ViewDetailCommand,
+                            LoadContentEntriesAsync,
+                            NotifySearchSelectionChanged,
+                            NotifyContainerSelectionChanged))
                         .ToList();
-                    var hitRows = groups
-                        .Select(group => new FiledArchiveSearchHitRow(group.PrimaryHit))
+                    var hitRows = bagGroups
+                        .SelectMany(bagGroup => bagGroup.ItemGroups)
+                        .Select(itemGroup => new FiledArchiveSearchHitRow(itemGroup.PrimaryHit))
                         .ToList();
 
-                    ApplyElectronicSearchResults(itemRows, hitRows);
+                    ApplyElectronicSearchResults(bagRows, hitRows);
                 }
                 else
                 {
@@ -298,7 +321,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                         .Select(boxGroup => new FiledArchiveSearchBoxGroupRow(
                             boxGroup,
                             ViewDetailCommand,
-                            NotifySearchSelectionChanged))
+                            NotifySearchSelectionChanged,
+                            NotifyContainerSelectionChanged))
                         .ToList();
                     var hitRows = boxGroups
                         .SelectMany(boxGroup => boxGroup.ItemGroups)
@@ -321,13 +345,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         private void ApplyElectronicSearchResults(
-            IReadOnlyList<FiledArchiveSearchGroupRow> itemRows,
+            IReadOnlyList<FiledArchiveSearchElectronicBagGroupRow> bagRows,
             IReadOnlyList<FiledArchiveSearchHitRow> hitRows)
         {
-            _searchResultGroups = new ObservableCollection<FiledArchiveSearchGroupRow>(itemRows);
+            _searchResultBagGroups = new ObservableCollection<FiledArchiveSearchElectronicBagGroupRow>(bagRows);
             _searchResultBoxGroups = new ObservableCollection<FiledArchiveSearchBoxGroupRow>();
+            _electronicItemGroupHits = bagRows
+                .SelectMany(bagRow => bagRow.ItemGroupHits)
+                .ToList();
+            _simulatedItemGroupHits = new List<FiledArchiveSearchGroupHit>();
             ReplaceSearchHitRows(hitRows);
-            OnPropertyChanged(nameof(SearchResultGroups));
+            OnPropertyChanged(nameof(SearchResultBagGroups));
             OnPropertyChanged(nameof(SearchResultBoxGroups));
         }
 
@@ -336,13 +364,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             IReadOnlyList<FiledArchiveSearchHitRow> hitRows)
         {
             _searchResultBoxGroups = new ObservableCollection<FiledArchiveSearchBoxGroupRow>(boxRows);
-            _searchResultGroups = new ObservableCollection<FiledArchiveSearchGroupRow>();
+            _searchResultBagGroups = new ObservableCollection<FiledArchiveSearchElectronicBagGroupRow>();
             _simulatedItemGroupHits = boxRows
                 .SelectMany(boxRow => boxRow.ItemGroupHits)
                 .ToList();
+            _electronicItemGroupHits = new List<FiledArchiveSearchGroupHit>();
             ReplaceSearchHitRows(hitRows);
             OnPropertyChanged(nameof(SearchResultBoxGroups));
-            OnPropertyChanged(nameof(SearchResultGroups));
+            OnPropertyChanged(nameof(SearchResultBagGroups));
         }
 
         private void ReplaceSearchHitRows(IReadOnlyList<FiledArchiveSearchHitRow> hitRows)
@@ -358,6 +387,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             OnPropertyChanged(nameof(HasSearchResults));
             NotifySearchSelectionChanged();
+            NotifyContainerSelectionChanged();
         }
 
         private IEnumerable<FiledArchiveSearchGroupHit> EnumerateSimulatedItemGroupHits()
@@ -380,16 +410,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             };
         }
 
-        private FiledArchiveSearchGroupRow CreateItemGroupRow(FiledArchiveSearchGroupHit group)
-        {
-            return new FiledArchiveSearchGroupRow(
-                group,
-                ViewDetailCommand,
-                IsElectronicSearch,
-                IsElectronicSearch ? LoadContentEntriesAsync : null,
-                NotifySearchSelectionChanged);
-        }
-
         private IEnumerable<FiledArchiveSearchGroupRow> EnumerateLoadedItemGroups()
         {
             if (UseArchiveBoxGroupedResults)
@@ -405,20 +425,24 @@ namespace DocMgr.ViewModels.YearlyArchive
                 yield break;
             }
 
-            foreach (var itemGroup in _searchResultGroups)
+            foreach (var bagGroup in _searchResultBagGroups)
             {
-                yield return itemGroup;
+                foreach (var itemGroup in bagGroup.ItemGroups)
+                {
+                    yield return itemGroup;
+                }
             }
         }
 
         private void ClearSearchResults()
         {
-            _searchResultGroups = new ObservableCollection<FiledArchiveSearchGroupRow>();
             _searchResultBoxGroups = new ObservableCollection<FiledArchiveSearchBoxGroupRow>();
+            _searchResultBagGroups = new ObservableCollection<FiledArchiveSearchElectronicBagGroupRow>();
             _simulatedItemGroupHits = new List<FiledArchiveSearchGroupHit>();
+            _electronicItemGroupHits = new List<FiledArchiveSearchGroupHit>();
             SearchResults.Clear();
-            OnPropertyChanged(nameof(SearchResultGroups));
             OnPropertyChanged(nameof(SearchResultBoxGroups));
+            OnPropertyChanged(nameof(SearchResultBagGroups));
             RefreshSearchSelectionState();
         }
 
@@ -551,15 +575,112 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             else
             {
-                selections = EnumerateLoadedItemGroups()
-                    .Select(group => ArchiveSearchPoolSupport.CreateWholeMediaItem(group.Primary.Hit.FilingFactId))
+                var originalHits = _electronicItemGroupHits
+                    .Select(group => group.PrimaryHit)
+                    .Where(hit => !hit.IsBackupCopy)
+                    .GroupBy(hit => hit.FilingFactId)
+                    .Select(bucket => bucket.First())
                     .ToList();
-                hitsByFactId = EnumerateLoadedItemGroups()
-                    .Select(group => group.Primary.Hit)
-                    .ToDictionary(hit => hit.FilingFactId);
+                selections = originalHits
+                    .Select(hit => ArchiveSearchPoolSupport.CreateWholeMediaItem(hit.FilingFactId))
+                    .ToList();
+                hitsByFactId = originalHits.ToDictionary(hit => hit.FilingFactId);
             }
 
             MergeIntoPool(selections, hitsByFactId, new Dictionary<int, MatchedContentEntryInfo>());
+        }
+
+        private async Task AddSelectedContainersToPoolAsync()
+        {
+            var containerCodes = (IsElectronicSearch
+                    ? _searchResultBagGroups.Where(row => row.IsSelected).Select(row => row.ElectronicArchiveNo)
+                    : _searchResultBoxGroups.Where(row => row.IsSelected).Select(row => row.ArchiveSequenceNo))
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Select(code => code.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            if (containerCodes.Count == 0)
+            {
+                _dialogService.ShowMessage(
+                    IsElectronicSearch ? "请先勾选电子介质袋。" : "请先勾选档案盒。",
+                    "提示");
+                return;
+            }
+
+            try
+            {
+                var hits = await _searchService.GetWithdrawableHitsByContainerCodesAsync(_mediaKind, containerCodes)
+                    .ConfigureAwait(true);
+                var coveredCodes = hits
+                    .Select(FiledArchiveSearchGroupingSupport.ResolveArchiveBoxKey)
+                    .ToHashSet(StringComparer.Ordinal);
+                var missingCodes = containerCodes
+                    .Where(code => !coveredCodes.Contains(code))
+                    .ToList();
+
+                ArchiveSearchPoolSupport.MergeResult? mergeResult = null;
+                if (hits.Count > 0)
+                {
+                    var selections = hits
+                        .Select(hit => ArchiveSearchPoolSupport.CreateWholeMediaItem(hit.FilingFactId))
+                        .ToList();
+                    var hitsByFactId = hits.ToDictionary(hit => hit.FilingFactId);
+                    mergeResult = MergeIntoPool(
+                        selections,
+                        hitsByFactId,
+                        new Dictionary<int, MatchedContentEntryInfo>(),
+                        notifyWhenUnchanged: missingCodes.Count == 0);
+                }
+
+                if (missingCodes.Count > 0)
+                {
+                    string containerLabel = IsElectronicSearch ? "电子介质袋" : "档案盒";
+                    var lines = new List<string>();
+                    if (mergeResult is { AddedCount: > 0 })
+                    {
+                        lines.Add($"已加入筛选池 {mergeResult.AddedCount} 条。");
+                    }
+                    else if (hits.Count > 0)
+                    {
+                        lines.Add("这些容器中的可取资料已在筛选池中。");
+                    }
+
+                    lines.Add($"以下{containerLabel}没有在库或借出中的资料：{string.Join("、", missingCodes)}");
+                    _dialogService.ShowMessage(string.Join(Environment.NewLine, lines), "提示");
+                }
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"加入筛选池失败：{ex.Message}");
+            }
+            finally
+            {
+                ClearContainerSelection();
+            }
+        }
+
+        private void ClearContainerSelection()
+        {
+            foreach (var boxGroup in _searchResultBoxGroups)
+            {
+                boxGroup.IsSelected = false;
+            }
+
+            foreach (var bagGroup in _searchResultBagGroups)
+            {
+                bagGroup.IsSelected = false;
+            }
+
+            NotifyContainerSelectionChanged();
+        }
+
+        private void NotifyContainerSelectionChanged()
+        {
+            bool hasSelected = IsElectronicSearch
+                ? _searchResultBagGroups.Any(row => row.IsSelected)
+                : _searchResultBoxGroups.Any(row => row.IsSelected);
+            SetProperty(ref _hasSelectedContainers, hasSelected, nameof(HasSelectedContainers));
         }
 
         private static void CollectHit(Dictionary<int, FiledArchiveSearchHit> hitsByFactId, FiledArchiveSearchHit hit)
@@ -567,14 +688,15 @@ namespace DocMgr.ViewModels.YearlyArchive
             hitsByFactId[hit.FilingFactId] = hit;
         }
 
-        private void MergeIntoPool(
+        private ArchiveSearchPoolSupport.MergeResult MergeIntoPool(
             IReadOnlyList<ArchiveSearchPoolSelection> incoming,
             IReadOnlyDictionary<int, FiledArchiveSearchHit> hitsByFactId,
-            IReadOnlyDictionary<int, MatchedContentEntryInfo> entriesById)
+            IReadOnlyDictionary<int, MatchedContentEntryInfo> entriesById,
+            bool notifyWhenUnchanged = true)
         {
             if (incoming.Count == 0)
             {
-                return;
+                return new ArchiveSearchPoolSupport.MergeResult();
             }
 
             var hitByFactId = new Dictionary<int, FiledArchiveSearchHit>();
@@ -614,7 +736,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             _poolSession.Replace(_mediaKind, _filterPool.ToList());
 
             NotifyPoolChanged();
-            ShowMergeResultMessage(mergeResult, incoming.Count);
+            if (notifyWhenUnchanged)
+            {
+                ShowMergeResultMessage(mergeResult, incoming.Count);
+            }
+
+            return mergeResult;
         }
 
         private void ShowMergeResultMessage(ArchiveSearchPoolSupport.MergeResult mergeResult, int incomingCount)
@@ -713,7 +840,19 @@ namespace DocMgr.ViewModels.YearlyArchive
                     Selections = _filterPool.Select(row => row.Selection).ToList()
                 }, user, isAdmin);
 
-                string notice = $"已保存结果集「{saveResult.ResultSet.Name}」（编号 {saveResult.ResultSet.ResultSetNo}）。";
+                var savedSets = saveResult.ResultSets.Count > 0
+                    ? saveResult.ResultSets
+                    : new[] { saveResult.ResultSet };
+                string notice = savedSets.Count == 1
+                    ? $"已保存结果集「{savedSets[0].Name}」（编号 {savedSets[0].ResultSetNo}）。"
+                    : "已按容器拆分为 "
+                      + savedSets.Count
+                      + " 个结果集："
+                      + Environment.NewLine
+                      + string.Join(
+                          Environment.NewLine,
+                          savedSets.Select(set =>
+                              $"「{set.Name}」（编号 {set.ResultSetNo}，{set.Items.Count} 条）"));
 
                 LastSaveResultSetNotice = notice;
                 _dialogService.ShowMessage(notice, "保存完成");

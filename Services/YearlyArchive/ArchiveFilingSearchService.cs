@@ -149,6 +149,70 @@ namespace DocMgr.Services.YearlyArchive
             return FiledArchiveSearchGroupingSupport.GroupRegisterHitsByArchiveBox(itemGroups, boxesBySequenceNo);
         }
 
+        /// <inheritdoc />
+        public async Task<List<FiledArchiveSearchElectronicBagGroupHit>> SearchByRegisterGroupedByElectronicBagAsync(
+            string mediaKind,
+            RegisterDirectionSearchCriteria criteria)
+        {
+            if (!string.Equals(
+                    mediaKind,
+                    ArchiveRegisterDomainValues.MediaKindElectronic,
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("仅电子介质检索支持按电子介质袋归组。");
+            }
+
+            var itemGroups = await SearchByRegisterGroupedAsync(mediaKind, criteria);
+            if (itemGroups.Count == 0)
+            {
+                return [];
+            }
+
+            var bagKeys = itemGroups
+                .SelectMany(group => new[] { group.PrimaryHit }.Concat(group.BackupHits))
+                .Select(FiledArchiveSearchGroupingSupport.ResolveArchiveBoxKey)
+                .Where(key => !string.IsNullOrWhiteSpace(key))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            var units = await _archiveFilingRepository.GetElectronicArchiveUnitsByArchiveNosAsync(bagKeys);
+            var unitsByArchiveNo = units.ToDictionary(
+                unit => unit.ElectronicArchiveNo.Trim(),
+                StringComparer.Ordinal);
+
+            return FiledArchiveSearchGroupingSupport.GroupRegisterHitsByElectronicBag(itemGroups, unitsByArchiveNo);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<FiledArchiveSearchHit>> GetWithdrawableHitsByContainerCodesAsync(
+            string mediaKind,
+            IReadOnlyCollection<string> containerCodes)
+        {
+            var facts = await _filingFactRepository.GetWithdrawableFactsByCurrentContainerCodesAsync(
+                mediaKind,
+                containerCodes);
+            if (facts.Count == 0)
+            {
+                return [];
+            }
+
+            var stockCountsByRegisterMediaId = await LoadRegisterMediaStockCountsAsync(facts);
+            var supplementsByMediaItemId = await LoadRegisterSupplementsByMediaItemIdAsync(facts);
+            var archivePurposeByRegisterRecordId = await LoadArchivePurposeByRegisterRecordIdAsync(facts);
+            var projectYearByProjectId = await LoadProjectYearsByProjectIdAsync(facts);
+            var simulatedCopyCountsByFactId = await GetSimulatedInArchiveCopyCountInfoByFilingFactIdsAsync(
+                facts.Select(fact => fact.Id).ToList());
+            return facts
+                .Select(fact => MapHit(
+                    fact,
+                    stockCountsByRegisterMediaId,
+                    supplementsByMediaItemId: supplementsByMediaItemId,
+                    archivePurposeByRegisterRecordId: archivePurposeByRegisterRecordId,
+                    projectYearByProjectId: projectYearByProjectId,
+                    simulatedCopyCountsByFactId: simulatedCopyCountsByFactId))
+                .ToList();
+        }
+
         public async Task<List<FiledArchiveSearchHit>> SearchByContainerAsync(
             string mediaKind,
             ContainerDirectionSearchCriteria criteria)
@@ -243,6 +307,18 @@ namespace DocMgr.Services.YearlyArchive
                 : (await _filingFactRepository.GetElectronicContentEntriesByIdsAsync(contentEntryIds))
                     .ToDictionary(entry => entry.Id);
 
+            var buckets = request.Selections
+                .Where(selection => factById.ContainsKey(selection.FilingFactId))
+                .GroupBy(
+                    selection => ResolveCurrentContainerCode(factById[selection.FilingFactId]),
+                    StringComparer.Ordinal)
+                .OrderBy(bucket => bucket.Key, StringComparer.Ordinal)
+                .ToList();
+            if (buckets.Count == 0)
+            {
+                throw new InvalidOperationException("未找到可保存的立档记录。");
+            }
+
             int year = DateTime.Now.Year;
             string prefix = $"检索集-{request.MediaKind}-{year}-";
             string? lastNo = await _filingFactRepository.GetLastResultSetNoByPrefixAsync(prefix);
@@ -253,83 +329,41 @@ namespace DocMgr.Services.YearlyArchive
                 nextSequence = parsed + 1;
             }
 
+            bool splitByContainer = buckets.Count > 1;
+            string baseName = request.Name.Trim();
+            string remarks = request.Remarks?.Trim() ?? string.Empty;
+            string createdByName = string.IsNullOrWhiteSpace(currentUser.RealName)
+                ? currentUser.LoginName
+                : currentUser.RealName;
             DateTime now = DateTime.Now;
-            var resultSet = new YearlyArchiveSearchResultSet
+            var savedSets = new List<YearlyArchiveSearchResultSet>();
+
+            foreach (var bucket in buckets)
             {
-                ResultSetNo = $"{prefix}{nextSequence:D4}",
-                Name = request.Name.Trim(),
-                MediaKind = request.MediaKind,
-                Status = ArchiveSearchResultSetStatus.Confirmed,
-                CreatedByUserId = currentUser.Id,
-                CreatedByName = string.IsNullOrWhiteSpace(currentUser.RealName)
-                    ? currentUser.LoginName
-                    : currentUser.RealName,
-                CreatedAt = now,
-                UpdatedAt = now,
-                Remarks = request.Remarks?.Trim() ?? string.Empty
-            };
-
-            int order = 0;
-            foreach (var selection in request.Selections
-                         .OrderBy(item => factById.TryGetValue(item.FilingFactId, out var fact) ? fact.FormNo : string.Empty)
-                         .ThenBy(item => factById.TryGetValue(item.FilingFactId, out var fact) ? fact.ItemName : string.Empty)
-                         .ThenBy(item => item.ContentEntryId))
-            {
-                if (!factById.TryGetValue(selection.FilingFactId, out var fact))
-                {
-                    continue;
-                }
-
-                YearlyArchiveRegisterElectronicMediaItemEntry? scopedEntry = null;
-                if (selection.IsContentEntry)
-                {
-                    if (!contentEntries.TryGetValue(selection.ContentEntryId!.Value, out scopedEntry))
-                    {
-                        throw new InvalidOperationException(
-                            $"目录/文件条目 [{selection.ContentEntryId}] 不存在，无法保存。");
-                    }
-
-                    if (scopedEntry.ElectronicMediaItemDetailId != fact.MediaItemId)
-                    {
-                        throw new InvalidOperationException(
-                            $"目录/文件条目 [{scopedEntry.EntryName}] 与立档子项不匹配，无法保存。");
-                    }
-                }
-
-                resultSet.Items.Add(new YearlyArchiveSearchResultSetItem
-                {
-                    FilingFactId = fact.Id,
-                    SelectionScopeKind = selection.IsContentEntry
-                        ? ArchiveSearchSelectionScopeKind.ContentEntry
-                        : ArchiveSearchSelectionScopeKind.WholeMediaItem,
-                    ContentEntryId = selection.IsContentEntry ? selection.ContentEntryId : null,
-                    ContentEntryKind = scopedEntry?.EntryKind?.Trim() ?? string.Empty,
-                    ContentEntryName = scopedEntry?.EntryName?.Trim() ?? string.Empty,
-                    SortOrder = order++,
-                    FormNo = fact.FormNo,
-                    MaterialName = fact.MaterialName,
-                    ItemName = fact.ItemName,
-                    ContainerCode = fact.ContainerCode,
-                    StorageLocation = fact.StorageLocation,
-                    LifecycleStatus = fact.LifecycleStatus,
-                    BorrowHintLevel = fact.BorrowHintLevel,
-                    BorrowHintText = fact.BorrowHintText,
-                    RequestedCopyCount = string.Equals(
-                        request.MediaKind,
-                        ArchiveRegisterDomainValues.MediaKindSimulated,
-                        StringComparison.Ordinal)
-                        && selection.IsWholeMediaItem
-                        ? Math.Max(1, selection.RequestedCopyCount)
-                        : 1,
-                    AddedAt = now
-                });
+                string resultSetName = splitByContainer
+                    ? BuildSplitResultSetName(baseName, bucket.Key)
+                    : baseName;
+                var resultSet = BuildResultSet(
+                    request,
+                    bucket,
+                    factById,
+                    contentEntries,
+                    $"{prefix}{nextSequence:D4}",
+                    resultSetName,
+                    remarks,
+                    currentUser.Id,
+                    createdByName,
+                    now);
+                nextSequence++;
+                savedSets.Add(resultSet);
+                _filingFactRepository.AddResultSet(resultSet);
             }
 
-            _filingFactRepository.AddResultSet(resultSet);
             await _filingFactRepository.SaveChangesAsync();
             return new SearchResultSetSaveResult
             {
-                ResultSet = resultSet
+                ResultSet = savedSets[0],
+                ResultSets = savedSets
             };
         }
 
@@ -908,6 +942,122 @@ namespace DocMgr.Services.YearlyArchive
                 : 0;
 
             return ArchiveStockCopyCountSupport.ResolveStockCopyCount(fact.MediaKind, registerMediaCount);
+        }
+
+        private static YearlyArchiveSearchResultSet BuildResultSet(
+            SaveArchiveSearchResultSetRequest request,
+            IEnumerable<ArchiveSearchPoolSelection> selections,
+            IReadOnlyDictionary<int, YearlyArchiveFilingFact> factById,
+            IReadOnlyDictionary<int, YearlyArchiveRegisterElectronicMediaItemEntry> contentEntries,
+            string resultSetNo,
+            string name,
+            string remarks,
+            int createdByUserId,
+            string createdByName,
+            DateTime now)
+        {
+            var resultSet = new YearlyArchiveSearchResultSet
+            {
+                ResultSetNo = resultSetNo,
+                Name = name,
+                MediaKind = request.MediaKind,
+                Status = ArchiveSearchResultSetStatus.Confirmed,
+                CreatedByUserId = createdByUserId,
+                CreatedByName = createdByName,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Remarks = remarks
+            };
+
+            int order = 0;
+            foreach (var selection in selections
+                         .OrderBy(item => factById.TryGetValue(item.FilingFactId, out var fact) ? fact.FormNo : string.Empty)
+                         .ThenBy(item => factById.TryGetValue(item.FilingFactId, out var fact) ? fact.ItemName : string.Empty)
+                         .ThenBy(item => item.ContentEntryId))
+            {
+                if (!factById.TryGetValue(selection.FilingFactId, out var fact))
+                {
+                    continue;
+                }
+
+                YearlyArchiveRegisterElectronicMediaItemEntry? scopedEntry = null;
+                if (selection.IsContentEntry)
+                {
+                    if (!contentEntries.TryGetValue(selection.ContentEntryId!.Value, out scopedEntry))
+                    {
+                        throw new InvalidOperationException(
+                            $"目录/文件条目 [{selection.ContentEntryId}] 不存在，无法保存。");
+                    }
+
+                    if (scopedEntry.ElectronicMediaItemDetailId != fact.MediaItemId)
+                    {
+                        throw new InvalidOperationException(
+                            $"目录/文件条目 [{scopedEntry.EntryName}] 与立档子项不匹配，无法保存。");
+                    }
+                }
+
+                string containerCode = ResolveCurrentContainerCode(fact);
+                string storageLocation = string.IsNullOrWhiteSpace(fact.CurrentStorageLocation)
+                    ? fact.StorageLocation
+                    : fact.CurrentStorageLocation.Trim();
+
+                resultSet.Items.Add(new YearlyArchiveSearchResultSetItem
+                {
+                    FilingFactId = fact.Id,
+                    SelectionScopeKind = selection.IsContentEntry
+                        ? ArchiveSearchSelectionScopeKind.ContentEntry
+                        : ArchiveSearchSelectionScopeKind.WholeMediaItem,
+                    ContentEntryId = selection.IsContentEntry ? selection.ContentEntryId : null,
+                    ContentEntryKind = scopedEntry?.EntryKind?.Trim() ?? string.Empty,
+                    ContentEntryName = scopedEntry?.EntryName?.Trim() ?? string.Empty,
+                    SortOrder = order++,
+                    FormNo = fact.FormNo,
+                    MaterialName = fact.MaterialName,
+                    ItemName = fact.ItemName,
+                    ContainerCode = containerCode,
+                    StorageLocation = storageLocation,
+                    LifecycleStatus = fact.LifecycleStatus,
+                    BorrowHintLevel = fact.BorrowHintLevel,
+                    BorrowHintText = fact.BorrowHintText,
+                    RequestedCopyCount = string.Equals(
+                        request.MediaKind,
+                        ArchiveRegisterDomainValues.MediaKindSimulated,
+                        StringComparison.Ordinal)
+                        && selection.IsWholeMediaItem
+                        ? Math.Max(1, selection.RequestedCopyCount)
+                        : 1,
+                    AddedAt = now
+                });
+            }
+
+            if (resultSet.Items.Count == 0)
+            {
+                throw new InvalidOperationException("未找到可保存的立档记录。");
+            }
+
+            return resultSet;
+        }
+
+        private static string ResolveCurrentContainerCode(YearlyArchiveFilingFact fact)
+        {
+            return string.IsNullOrWhiteSpace(fact.CurrentContainerCode)
+                ? fact.ContainerCode.Trim()
+                : fact.CurrentContainerCode.Trim();
+        }
+
+        private static string BuildSplitResultSetName(string baseName, string containerCode)
+        {
+            const int maxLength = 128;
+            string code = string.IsNullOrWhiteSpace(containerCode) ? "未登记容器" : containerCode.Trim();
+            string suffix = " " + code;
+            if (suffix.Length >= maxLength)
+            {
+                return code.Length <= maxLength ? code : code[..maxLength];
+            }
+
+            int maxBaseLength = maxLength - suffix.Length;
+            string trimmedBase = baseName.Length <= maxBaseLength ? baseName : baseName[..maxBaseLength];
+            return trimmedBase + suffix;
         }
     }
 }
