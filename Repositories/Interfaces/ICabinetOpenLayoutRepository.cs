@@ -3,6 +3,7 @@ using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.HistoryArchive;
 using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.YearlyArchive;
+using DocMgr.Repositories.YearlyArchive;
 
 namespace DocMgr.Repositories.Interfaces;
 
@@ -35,6 +36,8 @@ public interface ICabinetOpenLayoutRepository
     List<OpticalDiscMediaTransaction> GetOpticalDiscMediaTransactionsByMediumIds(IReadOnlyCollection<int> mediumIds);
 
     List<YearlyElectronicArchiveUnitMediumLink> GetElectronicArchiveUnitMediumLinksByMediumIds(IReadOnlyCollection<int> mediumIds);
+
+    Dictionary<int, ElectronicArchiveProjectSummary> LoadElectronicProjectSummaries(IReadOnlyCollection<int> unitIds);
 
     List<YearlyElectronicArchiveUnitDiscLink> GetElectronicArchiveUnitDiscLinksByMediumIds(IReadOnlyCollection<int> mediumIds);
 

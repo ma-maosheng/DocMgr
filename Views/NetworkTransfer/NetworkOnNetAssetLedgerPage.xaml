@@ -43,6 +43,20 @@
                       Style="{StaticResource ToolbarFilterComboBoxStyle}"
                       ItemsSource="{Binding DepartmentOptions}"
                       SelectedItem="{Binding AssetDepartment}"/>
+            <TextBlock Text="实施年度：" VerticalAlignment="Center" Margin="12,0,0,0"/>
+            <ComboBox Width="88"
+                      Style="{StaticResource ToolbarFilterComboBoxStyle}"
+                      ItemsSource="{Binding ProjectFilter.ImplementYears}"
+                      SelectedItem="{Binding ProjectFilter.SelectedImplementYear}"
+                      ToolTip="按项目实施年度收窄项目列表。选「全部」时，同名项目会标出实施年度"/>
+            <TextBlock Text="项目：" VerticalAlignment="Center" Margin="12,0,0,0"/>
+            <ComboBox Width="220"
+                      Style="{StaticResource ToolbarFilterComboBoxStyle}"
+                      ItemsSource="{Binding ProjectFilter.ProjectOptions}"
+                      DisplayMemberPath="Name"
+                      SelectedValuePath="Id"
+                      SelectedValue="{Binding ProjectFilter.SelectedProjectId}"
+                      ToolTip="按在网资料的项目名称与所属年度匹配所选项目"/>
             <TextBlock Text="关键词：" VerticalAlignment="Center" Margin="12,0,0,0"/>
             <TextBox Width="180"
                      Height="32"

@@ -130,42 +130,82 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
             .ToList();
     }
 
+    public Dictionary<int, ElectronicArchiveProjectSummary> LoadElectronicProjectSummaries(IReadOnlyCollection<int> unitIds)
+        => ElectronicArchiveProjectLookup.LoadByContainerIds(_dbContext, unitIds);
+
     public List<YearlyElectronicArchiveUnitMediumLink> GetElectronicArchiveUnitMediumLinksByMediumIds(IReadOnlyCollection<int> mediumIds)
     {
-        return _dbContext.YearlyElectronicArchiveUnitMediumLinks
+        // 查询起点已是袋子与硬盘的关联。再从袋子包含 MediumLinks 会回到同一实体，无跟踪查询不允许这种循环。
+        List<YearlyElectronicArchiveUnitMediumLink> links = _dbContext.YearlyElectronicArchiveUnitMediumLinks
             .AsNoTracking()
             .AsSplitQuery()
             .Include(link => link.ElectronicArchiveUnit)
-                .ThenInclude(unit => unit.MediaItemLinks)
+            .Include(link => link.HardDiskMedium)
+                .ThenInclude(medium => medium!.ArchiveItemLinks)
                     .ThenInclude(itemLink => itemLink.MediaItem)
                         .ThenInclude(item => item!.MediaEntry)
                             .ThenInclude(media => media!.RegisterRecord)
-            .Include(link => link.ElectronicArchiveUnit)
-                .ThenInclude(unit => unit.MediaItemLinks)
+            .Include(link => link.HardDiskMedium)
+                .ThenInclude(medium => medium!.ArchiveItemLinks)
                     .ThenInclude(itemLink => itemLink.MediaItem)
                         .ThenInclude(item => item!.ElectronicDetail)
             .Where(link => mediumIds.Contains(link.HardDiskMediumId))
             .Where(link => link.ElectronicArchiveUnit != null)
             .ToList();
+        AttachLoadedMediumLinks(links);
+        return links;
     }
 
     public List<YearlyElectronicArchiveUnitDiscLink> GetElectronicArchiveUnitDiscLinksByMediumIds(IReadOnlyCollection<int> mediumIds)
     {
-        return _dbContext.YearlyElectronicArchiveUnitDiscLinks
+        List<YearlyElectronicArchiveUnitDiscLink> links = _dbContext.YearlyElectronicArchiveUnitDiscLinks
             .AsNoTracking()
             .AsSplitQuery()
             .Include(link => link.ElectronicArchiveUnit)
-                .ThenInclude(unit => unit.MediaItemLinks)
+            .Include(link => link.OpticalDiscMedium)
+                .ThenInclude(medium => medium!.ArchiveItemLinks)
                     .ThenInclude(itemLink => itemLink.MediaItem)
                         .ThenInclude(item => item!.MediaEntry)
                             .ThenInclude(media => media!.RegisterRecord)
-            .Include(link => link.ElectronicArchiveUnit)
-                .ThenInclude(unit => unit.MediaItemLinks)
+            .Include(link => link.OpticalDiscMedium)
+                .ThenInclude(medium => medium!.ArchiveItemLinks)
                     .ThenInclude(itemLink => itemLink.MediaItem)
                         .ThenInclude(item => item!.ElectronicDetail)
             .Where(link => mediumIds.Contains(link.OpticalDiscMediumId))
             .Where(link => link.ElectronicArchiveUnit != null)
             .ToList();
+        AttachLoadedDiscLinks(links);
+        return links;
+    }
+
+    /// <summary>
+    /// 把已加载的硬盘关联挂回袋子，供 <see cref="ElectronicMediumCatalog.GetItemLinks"/> 读取资料明细。
+    /// </summary>
+    private static void AttachLoadedMediumLinks(IEnumerable<YearlyElectronicArchiveUnitMediumLink> links)
+    {
+        foreach (YearlyElectronicArchiveUnitMediumLink link in links)
+        {
+            YearlyElectronicArchiveUnit unit = link.ElectronicArchiveUnit;
+            if (!unit.MediumLinks.Contains(link))
+            {
+                unit.MediumLinks.Add(link);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 把已加载的光盘关联挂回袋子，供 <see cref="ElectronicMediumCatalog.GetItemLinks"/> 读取资料明细。
+    /// </summary>
+    private static void AttachLoadedDiscLinks(IEnumerable<YearlyElectronicArchiveUnitDiscLink> links)
+    {
+        foreach (YearlyElectronicArchiveUnitDiscLink link in links)
+        {
+            YearlyElectronicArchiveUnit unit = link.ElectronicArchiveUnit;
+            if (!unit.DiscLinks.Contains(link))
+            {
+                unit.DiscLinks.Add(link);
+            }
+        }
     }
 
     /// <inheritdoc />
@@ -649,7 +689,13 @@ public class CabinetOpenLayoutRepository : ICabinetOpenLayoutRepository
     {
         var links = _dbContext.YearlyElectronicArchiveUnitMediaItemLinks
             .AsNoTracking()
-            .Where(link => link.YearlyElectronicArchiveUnitId == unit.Id)
+            .Where(link =>
+                (link.HardDiskMediumId != null && _dbContext.YearlyElectronicArchiveUnitMediumLinks.Any(mediumLink =>
+                    mediumLink.YearlyElectronicArchiveUnitId == unit.Id
+                    && mediumLink.HardDiskMediumId == link.HardDiskMediumId))
+                || (link.OpticalDiscMediumId != null && _dbContext.YearlyElectronicArchiveUnitDiscLinks.Any(discLink =>
+                    discLink.YearlyElectronicArchiveUnitId == unit.Id
+                    && discLink.OpticalDiscMediumId == link.OpticalDiscMediumId)))
             .Include(link => link.MediaItem)
                 .ThenInclude(item => item.MediaEntry)
                     .ThenInclude(media => media!.RegisterRecord)

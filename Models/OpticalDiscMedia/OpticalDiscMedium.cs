@@ -126,6 +126,11 @@ namespace DocMgr.Models.OpticalDiscMedia
         public virtual List<YearlyElectronicArchiveUnitDiscLink> ElectronicArchiveLinks { get; set; } = new();
 
         /// <summary>
+        /// 这张光盘上的资料明细。
+        /// </summary>
+        public virtual List<YearlyElectronicArchiveUnitMediaItemLink> ArchiveItemLinks { get; set; } = new();
+
+        /// <summary>
         /// 关联光盘台账（当前状态）。
         /// </summary>
         public virtual OpticalDiscLedger? Ledger { get; set; }

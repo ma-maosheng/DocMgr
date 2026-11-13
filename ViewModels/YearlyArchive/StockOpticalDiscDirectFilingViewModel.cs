@@ -222,7 +222,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         /// <summary>
-        /// 介质袋编号预览。年度取自页面「年度」，确认写入前不占用号段。
+        /// 介质袋编号预览。年度取办理当时的日历年，确认写入前不占用号段。
         /// </summary>
         public string PreviewElectronicArchiveNo
         {
@@ -1007,7 +1007,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private async Task RefreshPreviewElectronicArchiveNoAsync()
         {
             int token = ++_archiveNoPreviewToken;
-            string year = Year?.Trim() ?? string.Empty;
+            string year = DateTime.Now.Year.ToString();
             if (string.IsNullOrWhiteSpace(year))
             {
                 PreviewElectronicArchiveNo = string.Empty;

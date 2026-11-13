@@ -1,4 +1,5 @@
 using DocMgr.Data;
+using DocMgr.Models.ArchiveContainers;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.HistoryArchive;
 using DocMgr.Models.OpticalDiscMedia;
@@ -296,10 +297,18 @@ namespace DocMgr.Repositories.YearlyArchive
                 .Include(unit => unit.DiscLinks)
                     .ThenInclude(link => link.OpticalDiscMedium)
                         .ThenInclude(disc => disc!.Ledger)
-                .Include(unit => unit.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item.MediaEntry)
-                            .ThenInclude(media => media!.RegisterRecord)
+                .Include(unit => unit.MediumLinks)
+                    .ThenInclude(link => link.HardDiskMedium)
+                        .ThenInclude(medium => medium!.ArchiveItemLinks)
+                            .ThenInclude(itemLink => itemLink.MediaItem)
+                                .ThenInclude(item => item.MediaEntry)
+                                    .ThenInclude(media => media!.RegisterRecord)
+                .Include(unit => unit.DiscLinks)
+                    .ThenInclude(link => link.OpticalDiscMedium)
+                        .ThenInclude(disc => disc!.ArchiveItemLinks)
+                            .ThenInclude(itemLink => itemLink.MediaItem)
+                                .ThenInclude(item => item.MediaEntry)
+                                    .ThenInclude(media => media!.RegisterRecord)
                 .FirstOrDefaultAsync(unit => unit.Id == unitId);
         }
 
@@ -314,10 +323,18 @@ namespace DocMgr.Repositories.YearlyArchive
                 .Include(unit => unit.DiscLinks)
                     .ThenInclude(link => link.OpticalDiscMedium)
                         .ThenInclude(disc => disc!.Ledger)
-                .Include(unit => unit.MediaItemLinks)
-                    .ThenInclude(link => link.MediaItem)
-                        .ThenInclude(item => item.MediaEntry)
-                            .ThenInclude(media => media!.RegisterRecord)
+                .Include(unit => unit.MediumLinks)
+                    .ThenInclude(link => link.HardDiskMedium)
+                        .ThenInclude(medium => medium!.ArchiveItemLinks)
+                            .ThenInclude(itemLink => itemLink.MediaItem)
+                                .ThenInclude(item => item.MediaEntry)
+                                    .ThenInclude(media => media!.RegisterRecord)
+                .Include(unit => unit.DiscLinks)
+                    .ThenInclude(link => link.OpticalDiscMedium)
+                        .ThenInclude(disc => disc!.ArchiveItemLinks)
+                            .ThenInclude(itemLink => itemLink.MediaItem)
+                                .ThenInclude(item => item.MediaEntry)
+                                    .ThenInclude(media => media!.RegisterRecord)
                 .FirstOrDefaultAsync(unit => unit.ElectronicArchiveNo == normalized);
         }
 
@@ -333,15 +350,30 @@ namespace DocMgr.Repositories.YearlyArchive
             return boxes;
         }
 
-        public async Task<List<YearlyElectronicArchiveUnit>> GetElectronicTargetUnitsAsync(string projectName, string year, int excludeUnitId)
+        public Task<List<YearlyElectronicArchiveUnit>> GetElectronicTargetUnitsAsync(string projectName, string year, int excludeUnitId)
         {
-            var units = await _dbContext.YearlyElectronicArchiveUnits
-                .Include(unit => unit.MediaItemLinks)
-                .Where(unit => unit.ProjectName == projectName && unit.Year == year && unit.Id != excludeUnitId)
+            return _dbContext.YearlyElectronicArchiveUnits
+                .AsSplitQuery()
+                .Include(unit => unit.MediumLinks)
+                    .ThenInclude(link => link.HardDiskMedium)
+                        .ThenInclude(medium => medium!.Ledger)
+                .Include(unit => unit.MediumLinks)
+                    .ThenInclude(link => link.HardDiskMedium)
+                        .ThenInclude(medium => medium!.ArchiveItemLinks)
+                            .ThenInclude(itemLink => itemLink.MediaItem)
+                                .ThenInclude(item => item!.MediaEntry)
+                                    .ThenInclude(media => media!.RegisterRecord)
+                .Where(unit => unit.Id != excludeUnitId)
+                .Where(unit => unit.UnitLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+                .Where(unit => unit.StorageCarrierType.Contains("硬盘"))
+                .Where(unit => !unit.StorageCarrierType.Contains("光盘"))
+                .Where(unit => unit.MediumLinks.Any(link =>
+                    link.HardDiskMedium != null
+                    && link.HardDiskMedium.Ledger != null
+                    && link.HardDiskMedium.Ledger.MediaStatus == HardDiskMedium.StatusInStockData
+                    && link.HardDiskMedium.ArchiveItemLinks.Any()))
                 .OrderBy(unit => unit.ElectronicArchiveNo)
                 .ToListAsync();
-
-            return units;
         }
 
         public Task<List<YearlyArchiveFilingFact>> GetFilingFactsBySourceLinksAsync(
@@ -397,17 +429,48 @@ namespace DocMgr.Repositories.YearlyArchive
                 .ToListAsync();
         }
 
-        public Task<List<YearlyArchiveBox>> GetSimulatedSourceCandidatesAsync(string projectName, string year)
+        public async Task<List<string>> GetDistinctSimulatedBoxYearsAsync()
+        {
+            List<string> years = await _dbContext.YearlyArchiveBoxes
+                .AsNoTracking()
+                .Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+                .Select(box => box.Year)
+                .ToListAsync();
+
+            return years
+                .Select(year => year?.Trim() ?? string.Empty)
+                .Where(year => year.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .OrderByDescending(year => year, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        public Task<List<YearlyArchiveBox>> GetSimulatedSourceCandidatesAsync(string projectName, string year, int? projectId = null)
         {
             string normalizedProject = projectName.Trim();
             string normalizedYear = year.Trim();
 
-            return _dbContext.YearlyArchiveBoxes
+            IQueryable<YearlyArchiveBox> query = _dbContext.YearlyArchiveBoxes
                 .AsNoTracking()
                 .Include(box => box.MediaItemLinks)
-                .Where(box => box.ProjectName == normalizedProject && box.Year == normalizedYear)
+                .Where(box => box.Year == normalizedYear)
                 .Where(box => box.MediaItemLinks.Count > 0)
-                .Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+                .Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse);
+
+            if (projectId is > 0)
+            {
+                int id = projectId.Value;
+                query = query.Where(box => _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                    fact.ContainerKind == ArchiveContainerKind.ArchiveBox
+                    && fact.ContainerId == box.Id
+                    && fact.ProjectId == id));
+            }
+            else
+            {
+                query = query.Where(box => box.ProjectName == normalizedProject);
+            }
+
+            return query
                 .OrderBy(box => box.ArchiveSequenceNo)
                 .ToListAsync();
         }
@@ -417,15 +480,26 @@ namespace DocMgr.Repositories.YearlyArchive
             string normalizedProject = projectName.Trim();
             string normalizedYear = year.Trim();
 
+            IQueryable<int> unitIds = ElectronicArchiveProjectLookup.QueryContainerIds(
+                _dbContext,
+                null,
+                normalizedProject,
+                normalizedYear);
             return _dbContext.YearlyElectronicArchiveUnits
                 .AsNoTracking()
                 .AsSplitQuery()
-                .Include(unit => unit.MediaItemLinks)
                 .Include(unit => unit.MediumLinks)
                     .ThenInclude(link => link.HardDiskMedium)
                         .ThenInclude(medium => medium!.Ledger)
-                .Where(unit => unit.ProjectName == normalizedProject && unit.Year == normalizedYear)
-                .Where(unit => unit.MediaItemLinks.Count > 0)
+                .Include(unit => unit.MediumLinks)
+                    .ThenInclude(link => link.HardDiskMedium)
+                        .ThenInclude(medium => medium!.ArchiveItemLinks)
+                .Include(unit => unit.DiscLinks)
+                    .ThenInclude(link => link.OpticalDiscMedium)
+                        .ThenInclude(disc => disc!.ArchiveItemLinks)
+                .Where(unit => unitIds.Contains(unit.Id))
+                .Where(unit => unit.MediumLinks.Any(link => link.HardDiskMedium != null && link.HardDiskMedium.ArchiveItemLinks.Any())
+                    || unit.DiscLinks.Any(link => link.OpticalDiscMedium != null && link.OpticalDiscMedium.ArchiveItemLinks.Any()))
                 .Where(unit => unit.UnitLifecycleStatus != ArchiveContainerLifecycleStatus.Disposed)
                 .OrderBy(unit => unit.ElectronicArchiveNo)
                 .ToListAsync();
@@ -451,7 +525,12 @@ namespace DocMgr.Repositories.YearlyArchive
                 .Include(unit => unit.DiscLinks)
                     .ThenInclude(link => link.OpticalDiscMedium)
                         .ThenInclude(disc => disc!.Ledger)
-                .Include(unit => unit.MediaItemLinks)
+                .Include(unit => unit.MediumLinks)
+                    .ThenInclude(link => link.HardDiskMedium)
+                        .ThenInclude(medium => medium!.ArchiveItemLinks)
+                .Include(unit => unit.DiscLinks)
+                    .ThenInclude(link => link.OpticalDiscMedium)
+                        .ThenInclude(disc => disc!.ArchiveItemLinks)
                 .Where(unit => unit.UnitLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
                 .Where(unit =>
                     unit.StorageLocation == slotKey

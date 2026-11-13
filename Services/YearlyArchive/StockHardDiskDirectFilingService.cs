@@ -125,9 +125,13 @@ namespace DocMgr.Services.YearlyArchive
 
             try
             {
-                ProjectInfo project = EnsureProject(request);
+                var projectGroups = ResolveProjectGroups(request);
+                if (projectGroups.Count == 0)
+                {
+                    return StockHardDiskDirectFilingResult.Fail("未扫描到可立档的项目资料。");
+                }
+
                 HardDiskMedium medium = await EnsureHardDiskMediumAsync(request, currentUser);
-                int? autoNumberYear = TryParseProjectNumberYear(request.Year);
                 if (medium.Id > 0)
                 {
                     var links = await _archiveFilingService.GetElectronicArchiveLinkInfosAsync([medium.Id]);
@@ -143,13 +147,15 @@ namespace DocMgr.Services.YearlyArchive
                         string.IsNullOrWhiteSpace(medium.Ledger?.StorageLocation)
                             ? request.StorageLocation
                             : medium.Ledger.StorageLocation);
-                int existingBagCount = await CountExistingHardDiskBagsAsync(project.ProjectName, request.Year.Trim());
                 var savedRecords = new List<YearlyArchiveRegisterRecord>();
                 var pathByMediaItemId = new Dictionary<int, string>();
 
-                foreach (var material in request.Materials)
+                foreach (var group in projectGroups)
                 {
-                    var record = await CreateRegisterRecordAsync(request, project, currentUser, medium.DiskCode, material, autoNumberYear);
+                    ProjectInfo project = EnsureProject(group.Year, group.ProjectName, projectGroups.Count == 1 ? request.ProjectCode : string.Empty);
+                    foreach (var material in group.Materials)
+                    {
+                        var record = await CreateRegisterRecordAsync(request, project, currentUser, medium.DiskCode, material);
                     await _archiveRegisterRepository.SaveOrUpdateRecordGraphAsync(record);
                     var persisted = await _archiveRegisterRepository.GetByFormNoWithDetailsAsync(record.FormNo)
                         ?? throw new InvalidOperationException($"保存建档记录 [{record.FormNo}] 后未能重新加载。");
@@ -170,14 +176,16 @@ namespace DocMgr.Services.YearlyArchive
                         pathByMediaItemId[items[index].Id] = drafts[index].FilingStoragePath?.Trim()
                             ?? items[index].StoragePath;
                     }
+                    }
                 }
 
-                string electronicNo = await _archiveFilingService.GenerateNextElectronicArchiveNoAsync(request.Year);
+                string electronicNo = await _archiveFilingService.GenerateNextElectronicArchiveNoAsync(DateTime.Now.Year.ToString());
                 string operatorName = currentUser?.RealName?.Trim() ?? "资料管理员";
-                string bagRemark = existingBagCount > 0
-                    ? $"{ArchiveRegisterDomainValues.SourceTypeStockDirect}；同项目第 {existingBagCount + 1} 袋。"
+                string bagRemark = projectGroups.Count > 1
+                    ? $"{ArchiveRegisterDomainValues.SourceTypeStockDirect}；混装 {projectGroups.Count} 个项目。"
                     : ArchiveRegisterDomainValues.SourceTypeStockDirect;
                 string contentSummary = string.Join("；", request.Materials.Select(item => item.MaterialName.Trim()));
+                string storagePath = string.Join("；", projectGroups.Select(group => $"{group.Year}\\{group.ProjectName}"));
                 var mediaItemIds = pathByMediaItemId.Keys.ToList();
 
                 var submission = new ElectronicArchiveSubmissionRequest
@@ -185,16 +193,9 @@ namespace DocMgr.Services.YearlyArchive
                     ArchiveUnit = new YearlyElectronicArchiveUnit
                     {
                         ElectronicArchiveNo = electronicNo,
-                        ProjectName = project.ProjectName.Trim(),
-                        Year = request.Year.Trim(),
+                        Year = DateTime.Now.Year.ToString(),
                         StorageCarrierType = ArchiveFilingBusinessRules.DefaultElectronicBagCarrierType,
-                        StoragePath = string.Join("\\", new[]
-                        {
-                            string.Empty,
-                            ElectronicFilingStoragePathSupport.SanitizePathSegment(request.Year, "未知年度"),
-                            ElectronicFilingStoragePathSupport.SanitizePathSegment(project.ProjectName, "未知项目"),
-                            string.Empty
-                        }),
+                        StoragePath = storagePath,
                         StorageLocation = fullLocation,
                         LinkedMediumCodes = medium.DiskCode.Trim(),
                         Disposition = ArchiveRegisterDomainValues.ElectronicDispositionRetain,
@@ -210,8 +211,7 @@ namespace DocMgr.Services.YearlyArchive
                     SubmissionMode = ElectronicArchiveSubmissionMode.RetainedHardDiskDirectNew,
                     IsRetainedHardDiskScenario = false,
                     RequiresFormatRetainedHardDisk = false,
-                    FilingMode = ArchiveFilingBusinessRules.DirectRetainedHardDiskSourceOption,
-                    AutoNumberYear = autoNumberYear
+                    FilingMode = ArchiveFilingBusinessRules.DirectRetainedHardDiskSourceOption
                 };
 
                 var filingResult = await _archiveFilingService.SubmitNewElectronicArchiveUnitAsync(submission, currentUser);
@@ -219,9 +219,7 @@ namespace DocMgr.Services.YearlyArchive
                 return new StockHardDiskDirectFilingResult
                 {
                     Succeeded = true,
-                    Message = existingBagCount > 0
-                        ? $"已完成存量直办立档（第 {existingBagCount + 1} 袋）。电子袋 [{filingResult.ElectronicArchiveNo}]，硬盘 [{medium.DiskCode}]，物理位置编号 [{fullLocation}]。"
-                        : $"已完成存量直办立档。电子袋 [{filingResult.ElectronicArchiveNo}]，硬盘 [{medium.DiskCode}]，物理位置编号 [{fullLocation}]。",
+                    Message = $"已完成存量直办立档。电子袋 [{filingResult.ElectronicArchiveNo}]，硬盘 [{medium.DiskCode}]，物理位置编号 [{fullLocation}]。",
                     ElectronicArchiveNo = filingResult.ElectronicArchiveNo,
                     DiskCode = medium.DiskCode,
                     StorageLocation = fullLocation,
@@ -432,9 +430,9 @@ namespace DocMgr.Services.YearlyArchive
             return $"硬盘 [{diskCode}]{serial} 已关联电子立档袋，不能再次直办立档。";
         }
 
-        private ProjectInfo EnsureProject(StockHardDiskDirectFilingRequest request)
+        private ProjectInfo EnsureProject(string year, string projectName, string? projectCode)
         {
-            var existing = FindProject(request.Year, request.ProjectName);
+            var existing = FindProject(year, projectName);
             if (existing != null)
             {
                 return existing;
@@ -442,14 +440,57 @@ namespace DocMgr.Services.YearlyArchive
 
             var project = new ProjectInfo
             {
-                ProjectName = request.ProjectName.Trim(),
-                ProjectCode = request.ProjectCode?.Trim() ?? string.Empty,
-                ImplementYear = request.Year.Trim(),
+                ProjectName = projectName.Trim(),
+                ProjectCode = projectCode?.Trim() ?? string.Empty,
+                ImplementYear = year.Trim(),
                 Remark = ArchiveRegisterDomainValues.SourceTypeStockDirect
             };
             _projectService.AddProject(project);
-            return FindProject(request.Year, request.ProjectName)
+            return FindProject(year, projectName)
                 ?? throw new InvalidOperationException("新建项目后未能读取到项目信息。");
+        }
+
+        private static List<StockProjectGroup> ResolveProjectGroups(StockHardDiskDirectFilingRequest request)
+        {
+            var groups = new List<StockProjectGroup>();
+            foreach (var material in request.Materials)
+            {
+                string year = string.IsNullOrWhiteSpace(material.Year) ? request.Year.Trim() : material.Year.Trim();
+                string name = string.IsNullOrWhiteSpace(material.ProjectName) ? request.ProjectName.Trim() : material.ProjectName.Trim();
+                StockProjectGroup? group = groups.FirstOrDefault(item =>
+                    string.Equals(item.Year, year, StringComparison.Ordinal)
+                    && string.Equals(item.ProjectName, name, StringComparison.Ordinal));
+                if (group == null)
+                {
+                    group = new StockProjectGroup(year, name);
+                    groups.Add(group);
+                }
+
+                group.Materials.Add(material);
+            }
+
+            if (groups.Count == 1 && !string.IsNullOrWhiteSpace(request.ProjectName) && !request.ProjectName.Contains('、'))
+            {
+                groups[0] = new StockProjectGroup(request.Year.Trim(), request.ProjectName.Trim(), groups[0].Materials);
+            }
+
+            return groups;
+        }
+
+        private sealed class StockProjectGroup
+        {
+            public StockProjectGroup(string year, string projectName, List<StockHardDiskMaterialDraft>? materials = null)
+            {
+                Year = year;
+                ProjectName = projectName;
+                Materials = materials ?? new List<StockHardDiskMaterialDraft>();
+            }
+
+            public string Year { get; }
+
+            public string ProjectName { get; }
+
+            public List<StockHardDiskMaterialDraft> Materials { get; }
         }
 
         private async Task<HardDiskMedium> EnsureHardDiskMediumAsync(StockHardDiskDirectFilingRequest request, User? currentUser)
@@ -518,11 +559,10 @@ namespace DocMgr.Services.YearlyArchive
             ProjectInfo project,
             User? currentUser,
             string diskCode,
-            StockHardDiskMaterialDraft material,
-            int? numberingYear)
+            StockHardDiskMaterialDraft material)
         {
-            DateTime archiveYearDate = ResolveArchiveYearDate(request.Year);
-            string formNo = await _archiveRegisterService.GenerateNextFormNoAsync(numberingYear);
+            DateTime archiveYearDate = ResolveArchiveYearDate(project.ImplementYear);
+            string formNo = await _archiveRegisterService.GenerateNextFormNoAsync();
             string operatorName = currentUser?.RealName?.Trim() ?? string.Empty;
 
             var media = new YearlyArchiveRegisterMedia
@@ -574,6 +614,8 @@ namespace DocMgr.Services.YearlyArchive
                 };
                 media.Items.Add(mediaItem);
             }
+
+            ArchiveRegisterMaterialSummarySupport.EnsureSingleMaterial(media, material.MaterialName);
 
             return new YearlyArchiveRegisterRecord
             {
@@ -659,16 +701,6 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return Array.Empty<string>();
-        }
-
-        private static int? TryParseProjectNumberYear(string? year)
-        {
-            if (string.IsNullOrWhiteSpace(year) || year.Trim().Length != 4 || !year.Trim().All(char.IsDigit))
-            {
-                return null;
-            }
-
-            return int.Parse(year.Trim(), NumberStyles.None, CultureInfo.InvariantCulture);
         }
     }
 }

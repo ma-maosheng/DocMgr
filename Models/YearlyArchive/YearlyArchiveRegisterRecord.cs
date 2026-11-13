@@ -189,6 +189,27 @@ namespace DocMgr.Models.YearlyArchive
         private string _archivePurpose = string.Empty;
 
         /// <summary>
+        /// 库管模式为「其他」时的补充说明。
+        /// </summary>
+        public string ArchivePurposeNote
+        {
+            get => _archivePurposeNote;
+            set
+            {
+                string v = value ?? string.Empty;
+                if (string.Equals(_archivePurposeNote, v, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _archivePurposeNote = v;
+                NotifyPropertyChanged();
+            }
+        }
+
+        private string _archivePurposeNote = string.Empty;
+
+        /// <summary>
         /// 证明材料备注（「无」表示未附证明材料；有材料时填写名称）。
         /// </summary>
         public string ProofMaterialNote
@@ -229,6 +250,27 @@ namespace DocMgr.Models.YearlyArchive
         }
 
         private string _otherRequests = string.Empty;
+
+        /// <summary>
+        /// 申请说明。提交时必填。
+        /// </summary>
+        public string Reason
+        {
+            get => _reason;
+            set
+            {
+                string v = value ?? string.Empty;
+                if (string.Equals(_reason, v, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _reason = v;
+                NotifyPropertyChanged();
+            }
+        }
+
+        private string _reason = string.Empty;
 
         /// <summary>
         /// 申请人用户ID（草稿待办归属）。

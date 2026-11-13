@@ -301,6 +301,8 @@
                                   ScrollViewer.VerticalScrollBarVisibility="Auto"
                                   ScrollViewer.HorizontalScrollBarVisibility="Auto">
                             <DataGrid.Columns>
+                                <DataGridTextColumn Header="年度" Binding="{Binding Year, Mode=OneWay}" Width="70" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="项目" Binding="{Binding ProjectName, Mode=OneWay}" Width="140" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="*" IsReadOnly="True"/>
                                 <DataGridTextColumn Header="子项" Binding="{Binding ItemName, Mode=OneWay}" Width="*" IsReadOnly="True"/>
                                 <DataGridTemplateColumn Header="来源" Width="72">

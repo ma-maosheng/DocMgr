@@ -64,7 +64,7 @@ namespace DocMgr.Services.Interfaces
         Task<string> ResolveDataFullLocationAsync(string? requestedLocation);
 
         /// <summary>
-        /// 预览下一条电子袋号（不占用编号）。年度取项目实施年度。
+        /// 预览下一条电子袋号（不占用编号）。年度取办理当时的日历年。
         /// </summary>
         Task<string> PeekNextElectronicArchiveNoAsync(string year);
 

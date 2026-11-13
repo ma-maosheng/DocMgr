@@ -108,7 +108,8 @@ namespace DocMgr.Services.YearlyArchive
                 ProjectName = record.ProjectName ?? string.Empty,
                 SourceType = sourceProvideUnit,
                 ProvideUnit = string.Empty,
-                Purpose = record.ArchivePurpose,
+                Purpose = FormatArchivePurposeForPrint(record.ArchivePurpose, record.ArchivePurposeNote),
+                Reason = record.Reason,
                 OtherRequests = record.OtherRequests,
                 Dept = record.ApplicantDept,
                 Applicant = record.ApplicantName,
@@ -133,6 +134,18 @@ namespace DocMgr.Services.YearlyArchive
                 EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled,
                 EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled
             };
+        }
+
+        private static string FormatArchivePurposeForPrint(string? archivePurpose, string? archivePurposeNote)
+        {
+            string purpose = archivePurpose?.Trim() ?? string.Empty;
+            string note = archivePurposeNote?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(note))
+            {
+                return purpose;
+            }
+
+            return string.IsNullOrWhiteSpace(purpose) ? note : $"{purpose}（{note}）";
         }
 
         private static List<string> BuildProofLinesForPrint(YearlyArchiveRegisterRecord record)
@@ -208,6 +221,37 @@ namespace DocMgr.Services.YearlyArchive
 
                 lines.Add($"介质{mediaIndex++}：{FormatMediaLabelForPrint(media)}");
 
+                List<YearlyArchiveRegisterMaterial> materials = (media.Materials ?? [])
+                    .OrderBy(material => material.SortOrder)
+                    .ThenBy(material => material.Id)
+                    .Where(material => !string.IsNullOrWhiteSpace(material.MaterialName) || material.Items is { Count: > 0 })
+                    .ToList();
+                if (materials.Count > 0)
+                {
+                    foreach (YearlyArchiveRegisterMaterial material in materials)
+                    {
+                        lines.Add($"    资料名称：{material.MaterialName?.Trim()}");
+                        List<YearlyArchiveRegisterMediaItem> materialItems = material.Items is { Count: > 0 }
+                            ? material.Items
+                            : matchedItems.Where(item => item.YearlyArchiveRegisterMaterialId == material.Id).ToList();
+                        AppendPrintItemLines(lines, materialItems, confidentialLevels, sinkSourceToItems);
+                    }
+
+                    continue;
+                }
+
+                AppendPrintItemLines(lines, matchedItems, confidentialLevels, sinkSourceToItems);
+            }
+
+            return lines;
+        }
+
+        private static void AppendPrintItemLines(
+            List<string> lines,
+            IReadOnlyList<YearlyArchiveRegisterMediaItem> matchedItems,
+            IReadOnlyCollection<string> confidentialLevels,
+            bool sinkSourceToItems)
+        {
                 int itemIndex = 1;
                 foreach (var item in matchedItems)
                 {
@@ -245,9 +289,6 @@ namespace DocMgr.Services.YearlyArchive
                     var line = "       " + $"({itemIndex++}). {item.ContentDesc} {countLabel}{suffix}".Trim();
                     lines.Add(line);
                 }
-            }
-
-            return lines;
         }
 
         private static string FormatMediaLabelForPrint(YearlyArchiveRegisterMedia media)

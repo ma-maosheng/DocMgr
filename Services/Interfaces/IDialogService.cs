@@ -115,6 +115,15 @@ namespace DocMgr.Services.Interfaces
         /// 选择一个或多个硬盘介质。
         /// </summary>
         IReadOnlyList<HardDiskMedium>? ShowHardDiskMediumSelectionDialog(IEnumerable<string>? initialSelectedCodes = null, int? currentElectronicArchiveUnitId = null, string? selectionMode = null);
+
+        /// <summary>
+        /// 选择一块可并入的非空硬盘。取消时返回 null。
+        /// </summary>
+        AppendHardDiskSelectionResult? ShowAppendHardDiskSelectionDialog(
+            IReadOnlyList<AppendHardDiskPickerRow> rows,
+            bool sameProjectOnly,
+            bool sameYearOnly,
+            int? selectedUnitId);
         bool ShowHardDiskMediaOutboundApplicationEditDialog(HardDiskMediaApplication applicationToEdit);
         bool ShowHardDiskDisposalEditDialog(HardDiskDisposalRecord record);
         bool ShowNetworkInboundEditDialog(NetworkInboundRecord record, NetworkTransferWorkspaceMode mode);

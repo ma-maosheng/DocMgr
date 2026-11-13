@@ -106,6 +106,8 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
                 .Include(item => item.MediaEntries)
                     .ThenInclude(media => media.Items)
                         .ThenInclude(mediaItem => mediaItem.SimulatedDetail)
+                .Include(item => item.MediaEntries)
+                    .ThenInclude(media => media.Materials)
                 .Include(item => item.ReturnHardDiskItems)
                 .Include(item => item.BusinessChain)
                     .ThenInclude(chain => chain!.Tasks)
@@ -119,10 +121,38 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
                 .Include(item => item.MediaEntries)
                     .ThenInclude(media => media.Items)
                         .ThenInclude(mediaItem => mediaItem.SimulatedDetail)
+                .Include(item => item.MediaEntries)
+                    .ThenInclude(media => media.Materials)
                 .Include(item => item.ReturnHardDiskItems)
                 .Include(item => item.BusinessChain)
                     .ThenInclude(chain => chain!.Tasks);
         return query.FirstOrDefaultAsync(item => item.Id == recordId);
+    }
+
+    public async Task<(int Status, bool SignedAttachmentUploaded)?> GetInboundAttachmentGateAsync(int recordId)
+    {
+        var row = await _dbContext.NetworkInboundRecords
+            .AsNoTracking()
+            .Where(item => item.Id == recordId)
+            .Select(item => new { item.Status, item.SignedAttachmentUploaded })
+            .FirstOrDefaultAsync();
+        return row == null ? null : (row.Status, row.SignedAttachmentUploaded);
+    }
+
+    public async Task<bool> TryMarkInboundSignedUploadedAsync(int recordId, string uploader, DateTime uploadedAt)
+    {
+        NetworkInboundRecord? record = await _dbContext.NetworkInboundRecords
+            .FirstOrDefaultAsync(item => item.Id == recordId);
+        if (record == null)
+        {
+            return false;
+        }
+
+        record.SignedAttachmentUploaded = true;
+        record.SignedAttachmentUploadedTime = uploadedAt;
+        record.SignedAttachmentUploader = uploader?.Trim() ?? string.Empty;
+        record.UpdatedAt = uploadedAt;
+        return true;
     }
 
     public void AddInbound(NetworkInboundRecord record) => _dbContext.NetworkInboundRecords.Add(record);
@@ -207,6 +237,8 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
                 .Include(item => item.MediaEntries)
                     .ThenInclude(media => media.Items)
                         .ThenInclude(mediaItem => mediaItem.SimulatedDetail)
+                .Include(item => item.MediaEntries)
+                    .ThenInclude(media => media.Materials)
                 .Include(item => item.BusinessChain)
                     .ThenInclude(chain => chain!.Tasks)
             : _dbContext.NetworkOutboundRecords
@@ -220,6 +252,8 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
                 .Include(item => item.MediaEntries)
                     .ThenInclude(media => media.Items)
                         .ThenInclude(mediaItem => mediaItem.SimulatedDetail)
+                .Include(item => item.MediaEntries)
+                    .ThenInclude(media => media.Materials)
                 .Include(item => item.BusinessChain)
                     .ThenInclude(chain => chain!.Tasks);
         return query.FirstOrDefaultAsync(item => item.Id == recordId);
@@ -353,7 +387,8 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
         string? originKind,
         string? lifecycleStatus,
         string? serverPath,
-        IReadOnlyCollection<string>? serverPathNamesForDepartment)
+        IReadOnlyCollection<string>? serverPathNamesForDepartment,
+        int? projectId = null)
     {
         IQueryable<NetworkOnNetAsset> query = _dbContext.NetworkOnNetAssets.AsNoTracking();
 
@@ -402,6 +437,15 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
             }
 
             query = query.Where(item => pathNames.Contains(item.ServerPath));
+        }
+
+        if (projectId is > 0)
+        {
+            int id = projectId.Value;
+            query = query.Where(asset => _dbContext.ProjectInfos.Any(project =>
+                project.Id == id
+                && project.ProjectName == asset.ProjectName
+                && project.ImplementYear == asset.Year));
         }
 
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -700,7 +744,12 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
             ? _dbContext.YearlyArchiveRegisterRecords
             : _dbContext.YearlyArchiveRegisterRecords.AsNoTracking();
         return query
+            .AsSplitQuery()
             .Include(item => item.MediaEntries)
+                .ThenInclude(media => media.Items)
+            .Include(item => item.MediaEntries)
+                .ThenInclude(media => media.Materials)
+                    .ThenInclude(material => material.Items)
             .FirstOrDefaultAsync(item => item.SourceNetworkOutboundRecordId == outboundRecordId);
     }
 

@@ -35,14 +35,15 @@ namespace DocMgr.Models.YearlyArchive
         public ArchiveContainerKind ContainerKind => ArchiveContainerKind.ElectronicBag;
 
         /// <summary>
-        /// 所属项目
-        /// </summary>
-        public string ProjectName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// 所属年度
+        /// 立档操作年。硬盘袋与光盘袋含义相同，只用于袋号 <c>年度电子-年份-顺序号</c>，不表示袋内资料的实施年度。
         /// </summary>
         public string Year { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 袋内已加载资料的项目名称汇总。不入库，不能作为入袋条件。
+        /// </summary>
+        [NotMapped]
+        public string ProjectName => ElectronicMediumCatalog.SummarizeProjectNames(this);
 
         /// <summary>
         /// 存储载体类型
@@ -121,8 +122,9 @@ namespace DocMgr.Models.YearlyArchive
         public virtual List<YearlyElectronicArchiveUnitDiscLink> DiscLinks { get; set; } = new();
 
         /// <summary>
-        /// 关联资料子项（立档明细）。
+        /// 当前介质上的资料明细。不是袋子的外键集合，介质导航未加载时为空。
         /// </summary>
-        public virtual List<YearlyElectronicArchiveUnitMediaItemLink> MediaItemLinks { get; set; } = new();
+        [NotMapped]
+        public List<YearlyElectronicArchiveUnitMediaItemLink> MediaItemLinks => ElectronicMediumCatalog.GetItemLinks(this);
     }
 }

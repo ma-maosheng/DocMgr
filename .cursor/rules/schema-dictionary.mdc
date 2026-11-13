@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-11-09T02:56:16Z
+> 生成时间（UTC）：2026-11-13T06:30:12Z
 
 ## 表索引
 
@@ -85,6 +85,7 @@ alwaysApply: true
 | 资料出库同步条目 | `YearlyArchiveOutboundSyncEntry` | `YearlyArchiveOutboundSyncEntries` | 表 |
 | 电子介质明细扩展 | `YearlyArchiveRegisterElectronicMediaItemDetail` | `YearlyArchiveRegisterElectronicMediaItemDetails` | 表 |
 | 电子介质目录/文件明细 | `YearlyArchiveRegisterElectronicMediaItemEntry` | `YearlyArchiveRegisterElectronicMediaItemEntries` | 表 |
+| 登记介质资料 | `YearlyArchiveRegisterMaterial` | `YearlyArchiveRegisterMaterials` | 表 |
 | 登记介质条目 | `YearlyArchiveRegisterMedia` | `YearlyArchiveRegisterMedias` | 表 |
 | 登记介质明细 | `YearlyArchiveRegisterMediaItem` | `YearlyArchiveRegisterMediaItems` | 表 |
 | 年度资料登记申请 | `YearlyArchiveRegisterRecord` | `YearlyArchiveRegisterRecords` | 表 |
@@ -750,7 +751,6 @@ alwaysApply: true
 | 所属年度 | `Year` | `String` | 否 |
 | 申请说明 | `Reason` | `String` | 否 |
 | 其他要求 | `OtherRequests` | `String` | 否 |
-| 备注 | `Remark` | `String` | 否 |
 | 证明材料备注 | `ProofMaterialNote` | `String` | 否 |
 | 入网时归还借用硬盘 | `ReturnBorrowedHardDiskWithInbound` | `Boolean` | 否 |
 | 来源检索集ID | `SourceResultSetId` | `Int32?` | 否 |
@@ -1307,6 +1307,8 @@ alwaysApply: true
 | 存储载体类型 | `StorageCarrierType` | `String` | 否 |
 | 处置 | `Disposition` | `String` | 否 |
 | 介质编号 | `MediumCode` | `String` | 否 |
+| 硬盘介质ID | `HardDiskMediumId` | `Int32?` | 否 |
+| 光盘介质ID | `OpticalDiscMediumId` | `Int32?` | 否 |
 | 立档存储路径 | `FilingStoragePath` | `String` | 否 |
 | 数据大小(MB) | `DataSizeMb` | `Decimal` | 否 |
 | 立档时间 | `FiledAt` | `DateTime` | 否 |
@@ -1562,6 +1564,15 @@ alwaysApply: true
 | 修改日期 | `ModifiedAt` | `DateTime?` | 否 |
 | 排序 | `SortOrder` | `Int32` | 否 |
 
+### YearlyArchiveRegisterMaterial（登记介质资料）
+
+| 中文字段 | Property | CLR 类型 | 待补全 |
+| --- | --- | --- | --- |
+| ID | `Id` | `Int32` | 否 |
+| 介质ID | `YearlyArchiveRegisterMediaId` | `Int32` | 否 |
+| 排序序号 | `SortOrder` | `Int32` | 否 |
+| 资料名称 | `MaterialName` | `String` | 否 |
+
 ### YearlyArchiveRegisterMedia（登记介质条目）
 
 | 中文字段 | Property | CLR 类型 | 待补全 |
@@ -1590,6 +1601,7 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 介质ID | `YearlyArchiveRegisterMediaId` | `Int32` | 否 |
+| 登记介质资料ID | `YearlyArchiveRegisterMaterialId` | `Int32?` | 否 |
 | 分项资料名称 | `ContentDesc` | `String` | 否 |
 | 份数 | `ContentCount` | `Int32` | 否 |
 | 提交时存储目录 | `StoragePath` | `String` | 否 |
@@ -1616,8 +1628,10 @@ alwaysApply: true
 | 项目名称 | `ProjectName` | `String?` | 否 |
 | 资料名称 | `MaterialName` | `String` | 否 |
 | 库管模式 | `ArchivePurpose` | `String` | 否 |
+| 库管模式说明 | `ArchivePurposeNote` | `String` | 否 |
 | 证明材料备注 | `ProofMaterialNote` | `String` | 否 |
 | 其他要求 | `OtherRequests` | `String` | 否 |
+| 申请说明 | `Reason` | `String` | 否 |
 | 申请人用户ID | `ApplicantUserId` | `Int32` | 否 |
 | 申请人 | `ApplicantName` | `String` | 否 |
 | 申请部门 | `ApplicantDept` | `String` | 否 |
@@ -1810,8 +1824,7 @@ alwaysApply: true
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
 | 电子立档编号 | `ElectronicArchiveNo` | `String` | 否 |
-| 项目名称 | `ProjectName` | `String` | 否 |
-| 所属年度 | `Year` | `String` | 否 |
+| 立档操作年 | `Year` | `String` | 否 |
 | 存储载体类型 | `StorageCarrierType` | `String` | 否 |
 | 存储目录 | `StoragePath` | `String` | 否 |
 | 存放位置 | `StorageLocation` | `String` | 否 |
@@ -1840,7 +1853,8 @@ alwaysApply: true
 | 中文字段 | Property | CLR 类型 | 待补全 |
 | --- | --- | --- | --- |
 | ID | `Id` | `Int32` | 否 |
-| 电子立档单元ID | `YearlyElectronicArchiveUnitId` | `Int32` | 否 |
+| 硬盘介质ID | `HardDiskMediumId` | `Int32?` | 否 |
+| 光盘介质ID | `OpticalDiscMediumId` | `Int32?` | 否 |
 | 登记介质明细ID | `YearlyArchiveRegisterMediaItemId` | `Int32` | 否 |
 | 立档存储路径 | `FilingStoragePath` | `String` | 否 |
 | 介质编号 | `MediumCode` | `String` | 否 |

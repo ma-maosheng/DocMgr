@@ -15,7 +15,9 @@ namespace DocMgr.Services.Interfaces
 
         Task<ArchiveRelocationContainerSummary?> LoadElectronicSourceByIdAsync(int unitId);
 
-        Task<IReadOnlyList<ArchiveRelocationSourceOption>> GetSimulatedSourceOptionsAsync(string projectName, string year);
+        Task<IReadOnlyList<string>> GetSimulatedBoxYearsAsync();
+
+        Task<IReadOnlyList<ArchiveRelocationSourceOption>> GetSimulatedSourceOptionsAsync(string projectName, string year, int? projectId = null);
 
         Task<IReadOnlyList<ArchiveRelocationSourceOption>> GetElectronicSourceOptionsAsync(string projectName, string year);
 

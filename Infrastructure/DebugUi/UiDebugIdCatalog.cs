@@ -94,6 +94,7 @@ namespace DocMgr.Infrastructure.DebugUi
             Add<ArchiveReturnRehomeTargetPickDialog>("YA-RTN-RHOME", "归还目标盒选择");
             Add<ArchiveSearchResultSetPickDialog>("YA-SCH-PICK", "检索集选择");
             Add<StockHardDiskYearProjectPickDialog>("YA-FIL-STK-PRJ", "年度已有项目");
+            Add<AppendHardDiskSelectionDialog>("YA-FIL-HD-APP", "选择可并入硬盘");
             Add<ArchiveDetailWindow>("YA-DTL-WN", "资料详情窗口");
             Add<SimulatedArchiveInventoryRegisterEditDialog>("YA-INV-SIM-ED", "模拟资料盘库编辑");
             Add<ElectronicArchiveInventoryRegisterEditDialog>("YA-INV-ELC-ED", "电子资料盘库编辑");

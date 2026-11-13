@@ -124,9 +124,42 @@ namespace DocMgr.ViewModels.YearlyArchive
                     : BuildMediaEntries();
 
             var data = await _archiveRegisterService.BuildPrintDataAsync(CurrentRecord, mediaEntries);
+            data.ProjectYear = ResolvePrintProjectYear();
             data.OpticalDiscLedgerSummary =
                 await _archiveRegisterService.BuildOpticalDiscLedgerSummaryAsync(CurrentRecord);
             return data;
+        }
+
+        /// <summary>打印表「项目年度」取所属项目的实施年度。</summary>
+        private string ResolvePrintProjectYear()
+        {
+            if (CurrentRecord?.ProjectId is int projectId)
+            {
+                if (SelectedProject != null
+                    && SelectedProject.Id == projectId
+                    && !string.IsNullOrWhiteSpace(SelectedProject.ImplementYear))
+                {
+                    return SelectedProject.ImplementYear.Trim();
+                }
+
+                try
+                {
+                    string? year = _projectService.SearchProjects(null, null)
+                        .FirstOrDefault(project => project.Id == projectId)
+                        ?.ImplementYear;
+                    if (!string.IsNullOrWhiteSpace(year))
+                    {
+                        return year.Trim();
+                    }
+                }
+                catch (Exception)
+                {
+                    // 查不到项目时改用页面上选中的年度。
+                }
+            }
+
+            string selected = SelectedProjectYear?.Trim() ?? string.Empty;
+            return string.Equals(selected, "全部", StringComparison.Ordinal) ? string.Empty : selected;
         }
 
         private void ShowArchiveRegisterPrintPreview(System.Windows.Documents.FlowDocument document, ArchiveRegisterPrintData data)

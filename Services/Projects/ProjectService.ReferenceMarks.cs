@@ -1,3 +1,4 @@
+using DocMgr.Models.ArchiveContainers;
 using DocMgr.Models.NetworkTransfer;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,7 +42,9 @@ public partial class ProjectService
         HashSet<(string Name, string Year)> nameYearPairs = _dbContext.YearlyArchiveBoxes
             .AsNoTracking()
             .Select(box => new { box.ProjectName, box.Year })
-            .Union(_dbContext.YearlyElectronicArchiveUnits.Select(unit => new { unit.ProjectName, unit.Year }))
+            .Union(_dbContext.YearlyArchiveFilingFacts
+                .Where(fact => fact.ContainerKind == ArchiveContainerKind.ElectronicBag && fact.ProjectId == null)
+                .Select(fact => new { fact.ProjectName, Year = string.Empty }))
             .Union(_dbContext.YearlyArchiveInventoryRegisterItems.Select(item => new { item.ProjectName, item.Year }))
             .Union(_dbContext.NetworkInboundRecords.Select(record => new { record.ProjectName, record.Year }))
             .Union(_dbContext.NetworkOutboundRecords.Select(record => new { record.ProjectName, record.Year }))

@@ -86,7 +86,6 @@ namespace DocMgr.Services.YearlyArchive
             ArgumentNullException.ThrowIfNull(unit);
 
             unit.ElectronicArchiveNo = unit.ElectronicArchiveNo.Trim();
-            unit.ProjectName = unit.ProjectName.Trim();
             unit.Year = unit.Year.Trim();
             unit.StorageCarrierType = unit.StorageCarrierType.Trim();
             unit.StoragePath = unit.StoragePath.Trim();
@@ -230,17 +229,16 @@ namespace DocMgr.Services.YearlyArchive
                 var record = mediaItem.MediaEntry?.RegisterRecord;
                 var link = new YearlyElectronicArchiveUnitMediaItemLink
                 {
-                    ElectronicArchiveUnit = unit,
                     MediaItem = mediaItem,
                     FilingStoragePath = filingPath,
                     MediumCode = normalizedMediumCode,
                     FormNo = record?.FormNo?.Trim() ?? string.Empty,
-                    MaterialName = record?.MaterialName?.Trim() ?? string.Empty,
+                    MaterialName = ArchiveRegisterMaterialSummarySupport.ResolveItemMaterialName(mediaItem),
                     ItemName = mediaItem.ContentDesc?.Trim() ?? string.Empty,
                     DataSizeMb = ElectronicMediaItemSupport.ResolveMediaItemDataSizeMb(mediaItem),
                     CreatedAt = createdAt
                 };
-                unit.MediaItemLinks.Add(link);
+                ElectronicMediumCatalog.AddItemLink(unit, link);
                 createdLinks.Add(link);
             }
 
@@ -279,21 +277,6 @@ namespace DocMgr.Services.YearlyArchive
             ArgumentNullException.ThrowIfNull(updatedUnit);
             ArgumentNullException.ThrowIfNull(records);
 
-            string existingProject = existingUnit.ProjectName.Trim();
-            string existingYear = existingUnit.Year.Trim();
-            string updatedProject = updatedUnit.ProjectName.Trim();
-            string updatedYear = updatedUnit.Year.Trim();
-
-            if (!string.IsNullOrWhiteSpace(updatedProject) && !string.Equals(existingProject, updatedProject, StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException($"电子立档单元 [{existingUnit.ElectronicArchiveNo}] 与当前资料项目不一致，禁止跨项目并入。");
-            }
-
-            if (!string.IsNullOrWhiteSpace(updatedYear) && !string.Equals(existingYear, updatedYear, StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException($"电子立档单元 [{existingUnit.ElectronicArchiveNo}] 与当前资料年度不一致，禁止跨年度并入。");
-            }
-
             if (!string.IsNullOrWhiteSpace(existingUnit.StorageCarrierType)
                 && !string.IsNullOrWhiteSpace(updatedUnit.StorageCarrierType)
                 && !string.Equals(existingUnit.StorageCarrierType.Trim(), updatedUnit.StorageCarrierType.Trim(), StringComparison.Ordinal))
@@ -303,7 +286,21 @@ namespace DocMgr.Services.YearlyArchive
 
             if (!ArchiveFilingBusinessRules.IsHardDiskArchiveCarrierType(existingUnit.StorageCarrierType))
             {
-                throw new InvalidOperationException($"电子立档单元 [{existingUnit.ElectronicArchiveNo}] 不是硬盘档，当前业务仅允许并入本项目已立档硬盘。");
+                EnsureRecordsShareOneProject(records);
+                string existingProjects = existingUnit.ProjectName?.Trim() ?? string.Empty;
+                string incomingProject = records
+                    .Select(ArchiveFilingBusinessRules.ResolveElectronicArchiveProjectName)
+                    .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name))
+                    ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(existingProjects)
+                    && !string.IsNullOrWhiteSpace(incomingProject)
+                    && existingProjects.Split('、').All(name => !string.Equals(name.Trim(), incomingProject, StringComparison.Ordinal)))
+                {
+                    throw new InvalidOperationException(
+                        $"光盘 [{existingUnit.ElectronicArchiveNo}] 已存放项目「{existingProjects}」，不能再写入项目「{incomingProject}」。");
+                }
+
+                throw new InvalidOperationException($"电子立档单元 [{existingUnit.ElectronicArchiveNo}] 是光盘袋，不能并档或二次写入。");
             }
 
             var existingLinkedCodes = ParseMediumCodes(existingUnit.LinkedMediumCodes);
@@ -320,31 +317,27 @@ namespace DocMgr.Services.YearlyArchive
             {
                 throw new InvalidOperationException($"电子立档单元 [{existingUnit.ElectronicArchiveNo}] 已绑定硬盘 [{existingLinkedCodes[0]}]，并入时不能改绑其他硬盘。\n请继续使用原硬盘袋，或改为新建电子介质袋。");
             }
+        }
 
-            foreach (var record in records)
+        /// <summary>
+        /// 光盘上的登记单必须属于同一个项目。有项目编号时比编号，否则比项目名称。
+        /// </summary>
+        private static void EnsureRecordsShareOneProject(IEnumerable<YearlyArchiveRegisterRecord> records)
+        {
+            var list = records.ToList();
+            var projectIds = list
+                .Select(record => record.ProjectId ?? 0)
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+            var projectNames = list
+                .Select(ArchiveFilingBusinessRules.ResolveElectronicArchiveProjectName)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            if (projectIds.Count > 1 || projectNames.Count > 1)
             {
-                string recordProject = record.ProjectName?.Trim() ?? string.Empty;
-                if (record.SourceNetworkOutboundRecordId is > 0)
-                {
-                    if (!string.Equals(existingProject, recordProject, StringComparison.Ordinal))
-                    {
-                        throw new InvalidOperationException($"登记单 [{record.FormNo}] 与电子立档单元 [{existingUnit.ElectronicArchiveNo}] 项目不一致，禁止跨项目并入。");
-                    }
-
-                    continue;
-                }
-
-                string recordYear = record.CreatedDate.Year.ToString();
-
-                if (!string.Equals(existingProject, recordProject, StringComparison.Ordinal))
-                {
-                    throw new InvalidOperationException($"登记单 [{record.FormNo}] 与电子立档单元 [{existingUnit.ElectronicArchiveNo}] 项目不一致，禁止跨项目并入。");
-                }
-
-                if (!string.Equals(existingYear, recordYear, StringComparison.Ordinal))
-                {
-                    throw new InvalidOperationException($"登记单 [{record.FormNo}] 与电子立档单元 [{existingUnit.ElectronicArchiveNo}] 年度不一致，禁止跨年度并入。");
-                }
+                throw new InvalidOperationException("一张光盘只能存放一个项目的资料。");
             }
         }
 
@@ -357,8 +350,7 @@ namespace DocMgr.Services.YearlyArchive
             {
                 Id = existingUnit.Id,
                 ElectronicArchiveNo = existingUnit.ElectronicArchiveNo,
-                ProjectName = string.IsNullOrWhiteSpace(updatedUnit.ProjectName) ? existingUnit.ProjectName : updatedUnit.ProjectName,
-                Year = string.IsNullOrWhiteSpace(updatedUnit.Year) ? existingUnit.Year : updatedUnit.Year,
+                Year = existingUnit.Year,
                 StorageCarrierType = string.IsNullOrWhiteSpace(updatedUnit.StorageCarrierType) ? existingUnit.StorageCarrierType : updatedUnit.StorageCarrierType,
                 StoragePath = MergeDelimitedText(existingUnit.StoragePath, updatedUnit.StoragePath),
                 StorageLocation = string.IsNullOrWhiteSpace(updatedUnit.StorageLocation) ? existingUnit.StorageLocation : updatedUnit.StorageLocation,
@@ -379,8 +371,6 @@ namespace DocMgr.Services.YearlyArchive
             ArgumentNullException.ThrowIfNull(target);
             ArgumentNullException.ThrowIfNull(source);
 
-            target.ProjectName = source.ProjectName;
-            target.Year = source.Year;
             target.StorageCarrierType = source.StorageCarrierType;
             target.StoragePath = source.StoragePath;
             target.StorageLocation = source.StorageLocation;

@@ -44,6 +44,11 @@ namespace DocMgr.Services.Interfaces
         /// </summary>
         Task<List<YearlyElectronicArchiveUnit>> GetExistingElectronicUnitsForProjectAsync(string projectName, string year);
 
+        /// <summary>
+        /// 拷入非空硬盘的候选。本项目已有硬盘在前，其他非空硬盘在后且不会被默认选中。
+        /// </summary>
+        Task<List<HardDiskAppendCandidate>> GetHardDiskAppendCandidatesAsync(int? projectId, string? projectName, string? implementYear);
+
         /// <summary>按主键读取电子立档单元（含关联），供出网并档预定与立档预选。</summary>
         Task<YearlyElectronicArchiveUnit?> FindElectronicArchiveUnitAsync(int unitId);
 
@@ -90,7 +95,7 @@ namespace DocMgr.Services.Interfaces
         /// </summary>
         /// <param name="newBox">档案盒信息</param>
         /// <param name="mediaItemIds">关联的资料子项ID列表</param>
-        /// <param name="numberingYear">立档编号年度段；空则按办理日期年份。直办立档应传入项目年度。</param>
+        /// <param name="numberingYear">立档编号年度段。空则使用办理当时的日历年。</param>
         Task CreateArchiveBoxAsync(YearlyArchiveBox newBox, List<int> mediaItemIds, int? numberingYear = null);
 
         /// <summary>

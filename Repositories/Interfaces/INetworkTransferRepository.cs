@@ -16,6 +16,12 @@ public interface INetworkTransferRepository
 
     Task<NetworkInboundRecord?> GetInboundByIdAsync(int recordId, bool tracking = false);
 
+    /// <summary>只读取入网单状态与是否已上传签批单，供附件门禁用，避免拆分加载整单。</summary>
+    Task<(int Status, bool SignedAttachmentUploaded)?> GetInboundAttachmentGateAsync(int recordId);
+
+    /// <summary>标记入网单已上传签批单。不加载明细图。</summary>
+    Task<bool> TryMarkInboundSignedUploadedAsync(int recordId, string uploader, DateTime uploadedAt);
+
     void AddInbound(NetworkInboundRecord record);
 
     void RemoveInboundItems(IEnumerable<NetworkInboundItem> items);
@@ -64,7 +70,8 @@ public interface INetworkTransferRepository
         string? originKind,
         string? lifecycleStatus,
         string? serverPath,
-        IReadOnlyCollection<string>? serverPathNamesForDepartment);
+        IReadOnlyCollection<string>? serverPathNamesForDepartment,
+        int? projectId = null);
 
     Task<List<NetworkInboundItem>> GetInboundItemsByIdsAsync(IReadOnlyCollection<int> itemIds);
 

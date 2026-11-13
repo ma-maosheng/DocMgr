@@ -1,15 +1,25 @@
 using System;
+using DocMgr.Models.HardDiskMedia;
+using DocMgr.Models.OpticalDiscMedia;
 
 namespace DocMgr.Models.YearlyArchive
 {
     /// <summary>
-    /// 电子介质袋与资料子项的关联（立档明细，供检索）。
+    /// 硬盘或光盘与资料子项的关联。资料归属介质，不归属介质袋。
     /// </summary>
     public sealed class YearlyElectronicArchiveUnitMediaItemLink
     {
         public int Id { get; set; }
 
-        public int YearlyElectronicArchiveUnitId { get; set; }
+        /// <summary>
+        /// 资料所在硬盘。与 <see cref="OpticalDiscMediumId"/> 二选一。
+        /// </summary>
+        public int? HardDiskMediumId { get; set; }
+
+        /// <summary>
+        /// 资料所在光盘。与 <see cref="HardDiskMediumId"/> 二选一。
+        /// </summary>
+        public int? OpticalDiscMediumId { get; set; }
 
         public int YearlyArchiveRegisterMediaItemId { get; set; }
 
@@ -36,7 +46,9 @@ namespace DocMgr.Models.YearlyArchive
 
         public DateTime CreatedAt { get; set; }
 
-        public YearlyElectronicArchiveUnit ElectronicArchiveUnit { get; set; } = null!;
+        public HardDiskMedium? HardDiskMedium { get; set; }
+
+        public OpticalDiscMedium? OpticalDiscMedium { get; set; }
 
         public YearlyArchiveRegisterMediaItem MediaItem { get; set; } = null!;
     }

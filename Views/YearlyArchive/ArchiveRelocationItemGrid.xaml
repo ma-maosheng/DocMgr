@@ -1,0 +1,30 @@
+<local:LedgerGridHost x:Class="DocMgr.Views.YearlyArchive.ArchiveRelocationItemGrid"
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:local="clr-namespace:DocMgr.Views.Shared"
+                      xmlns:ya="clr-namespace:DocMgr.Views.YearlyArchive">
+    <DataGrid ItemsSource="{Binding ItemsSource, RelativeSource={RelativeSource AncestorType=ya:ArchiveRelocationItemGrid}}"
+              AutoGenerateColumns="False" IsReadOnly="True"
+              CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
+              MinHeight="160" MaxHeight="280"
+              VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+        <DataGrid.Style>
+            <Style TargetType="DataGrid">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding ItemDetailsPanel.IsExpanded}" Value="False">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </DataGrid.Style>
+        <DataGrid.Columns>
+            <DataGridTextColumn Header="表单号" Binding="{Binding FormNo, Mode=OneWay}" Width="120"/>
+            <DataGridTextColumn Header="年度" Binding="{Binding Year, Mode=OneWay}" Width="70"/>
+            <DataGridTextColumn Header="项目" Binding="{Binding ProjectName, Mode=OneWay}" Width="140"/>
+            <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="160"/>
+            <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName, Mode=OneWay}" Width="*"/>
+            <DataGridTextColumn Header="迁档前编号" Binding="{Binding BeforeStorageLocation, Mode=OneWay}" Width="140"/>
+            <DataGridTextColumn Header="迁档后编号" Binding="{Binding AfterStorageLocation, Mode=OneWay}" Width="140"/>
+        </DataGrid.Columns>
+    </DataGrid>
+</local:LedgerGridHost>

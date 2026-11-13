@@ -118,7 +118,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        /// <summary>资料名称只读展示：年度.项目.资料（库内 MaterialName 仍仅存「资料」段）。</summary>
+        /// <summary>资料名称只读展示：年度.项目.各介质资料名称摘要。</summary>
         public string MaterialNameDisplay
         {
             get
@@ -169,6 +169,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             return parts.Count == 0 ? "—" : string.Join(".", parts);
         }
 
+        /// <summary>电子介质录入区标题。与出入网共用同一控件。</summary>
+        public string SectionHeader => "资料介质（电子） *";
+
+        /// <summary>建档申请的电子介质工具条始终显示处置。</summary>
+        public bool ShowElectronicDispositionInHeader => true;
+
         /// <summary>是否为出网办结自动生成的建档草稿。</summary>
         public bool IsNetworkOutboundTransferRegister =>
             ArchiveRegisterBusinessRules.IsNetworkOutboundTransferRegister(CurrentRecord);
@@ -213,6 +219,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                     if (CurrentRecord != null)
                     {
                         CurrentRecord.ArchivePurpose = value ?? string.Empty;
+                        if (!IsArchivePurposeOtherSelected)
+                        {
+                            CurrentRecord.ArchivePurposeNote = string.Empty;
+                        }
                     }
 
                     OnPropertyChanged(nameof(IsArchivePurposeOtherSelected));
@@ -222,6 +232,16 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool IsArchivePurposeOtherSelected =>
             string.Equals(SelectedArchivePurpose?.Trim(), "其他", StringComparison.Ordinal);
+
+        /// <summary>库管模式补充说明的只读后缀，无说明时为空。</summary>
+        public string ArchivePurposeNoteSuffix
+        {
+            get
+            {
+                string note = CurrentRecord?.ArchivePurposeNote?.Trim() ?? string.Empty;
+                return string.IsNullOrWhiteSpace(note) ? string.Empty : $"（{note}）";
+            }
+        }
 
         private bool _hasProofMaterialSelected;
         /// <summary>申请时是否附有证明材料。</summary>
@@ -343,7 +363,17 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         // Permissions
         private bool _canEditForm;
-        public bool CanEditForm { get => _canEditForm; set => SetProperty(ref _canEditForm, value); }
+        public bool CanEditForm
+        {
+            get => _canEditForm;
+            set
+            {
+                if (SetProperty(ref _canEditForm, value))
+                {
+                    SyncRequestHeaderChrome();
+                }
+            }
+        }
         private bool _canApproveProd;
         public bool CanApproveProd { get => _canApproveProd; set => SetProperty(ref _canApproveProd, value); }
         private bool _canApproveRnd;
@@ -423,7 +453,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand AddDataSimulatedMediaEntryCommand { get; }
 
         public RelayCommand<MediaEntryViewModel> AddMediaItemCommand { get; }
-        public RelayCommand<MediaEntryViewModel> BatchAddElectronicMediaItemsCommand { get; }
+        public RelayCommand<MediaEntryViewModel> AddRegisterMaterialCommand { get; }
+        public RelayCommand<MediaMaterialGroupViewModel> AddRegisterMaterialItemCommand { get; }
+        public RelayCommand<MediaMaterialGroupViewModel> RemoveRegisterMaterialCommand { get; }
+        public RelayCommand<object> BatchAddElectronicMediaItemsCommand { get; }
         public RelayCommand<MediaEntryViewModel> RemoveMediaEntryCommand { get; }
         public RelayCommand<MediaItemViewModel> RemoveMediaItemCommand { get; }
         public RelayCommand<MediaItemViewModel> PickFolderAndScanElectronicContentCommand { get; }
@@ -472,14 +505,24 @@ namespace DocMgr.ViewModels.YearlyArchive
 
 
             PrintApplicationsCommand = new RelayCommand(async _ => await _pageDb.RunAsync(PrintApplicationAsync), _ => CanExecuteApplicationPrint());
+            AttachRequestHeader();
             PrintApprovalCommand = new RelayCommand(_ => PrintApprovalPage(), _ => CanPrintHandoverSheet);
             CompleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(CompleteAsync), _ => CanCompleteApproval);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
 
-            AddDataElectronicMediaEntryCommand = new RelayCommand(_ => AddDataElectronicMediaEntry(), _ => CanEditForm);
+            AddDataElectronicMediaEntryCommand = new RelayCommand(
+                async _ => await _pageDb.RunAsync(AddDataElectronicMediaEntryAsync),
+                _ => CanEditForm);
             AddDataSimulatedMediaEntryCommand = new RelayCommand(_ => AddDataSimulatedMediaEntry(), _ => CanEditForm);
-            AddMediaItemCommand = new RelayCommand<MediaEntryViewModel>(m => AddMediaItem(m), _ => CanEditForm);
-            BatchAddElectronicMediaItemsCommand = new RelayCommand<MediaEntryViewModel>(
+            AddMediaItemCommand = new RelayCommand<MediaEntryViewModel>(
+                async m => await _pageDb.RunAsync(() => AddMediaItemAsync(m)),
+                _ => CanEditForm);
+            AddRegisterMaterialCommand = new RelayCommand<MediaEntryViewModel>(m => AddRegisterMaterial(m), _ => CanEditForm);
+            AddRegisterMaterialItemCommand = new RelayCommand<MediaMaterialGroupViewModel>(
+                async m => await _pageDb.RunAsync(() => AddRegisterMaterialItemAsync(m)),
+                _ => CanEditForm);
+            RemoveRegisterMaterialCommand = new RelayCommand<MediaMaterialGroupViewModel>(m => RemoveRegisterMaterial(m), _ => CanEditForm);
+            BatchAddElectronicMediaItemsCommand = new RelayCommand<object>(
                 async media => await _pageDb.RunAsync(() => BatchAddElectronicMediaItemsAsync(media)),
                 _ => CanEditForm);
             RemoveMediaEntryCommand = new RelayCommand<MediaEntryViewModel>(m => RemoveMediaEntry(m), _ => CanEditForm);
@@ -637,6 +680,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             IsDialogMode = isDialogMode;
             OnPropertyChanged(nameof(ShowEmbeddedActionButtons));
             OnPropertyChanged(nameof(ShowFooterActionBar));
+            SyncRequestHeaderChrome();
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -688,6 +732,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(WorkspaceMode));
             OnPropertyChanged(nameof(ShowApprovalWorkflowPanel));
             OnPropertyChanged(nameof(ShowApplicationSubmitActions));
+            SyncRequestHeaderChrome();
             OnPropertyChanged(nameof(RegisterWorkspaceBannerText));
             OnPropertyChanged(nameof(DialogTitle));
             OnPropertyChanged(nameof(WindowTitle));

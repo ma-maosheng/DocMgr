@@ -28,19 +28,29 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                 <!-- 年份 -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
-                    <TextBlock Text="年份：" VerticalAlignment="Center" Foreground="#666" Margin="0,0,0,0"/>
+                    <TextBlock Text="建档年份：" VerticalAlignment="Center" Foreground="#666" Margin="0,0,0,0"/>
                     <!-- Change: Binding ItemsSource and SelectedItem -->
                     <ComboBox x:Name="CmbYear" Width="100" Style="{StaticResource ToolbarFilterComboBoxStyle}" VerticalContentAlignment="Center"
-                              ItemsSource="{Binding Years}" SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                              ItemsSource="{Binding Years}" SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              ToolTip="按建档单创建年筛选"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
+                    <TextBlock Text="实施年度：" VerticalAlignment="Center" Foreground="#666"/>
+                    <ComboBox Width="100" Style="{StaticResource ToolbarFilterComboBoxStyle}" VerticalContentAlignment="Center"
+                              ItemsSource="{Binding ImplementYears}"
+                              SelectedItem="{Binding SelectedImplementYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              ToolTip="按项目实施年度收窄项目列表。选「全部」时，同名项目会带上实施年度。"/>
                 </StackPanel>
 
                 <!-- 关键词 -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
                     <TextBlock Text="关键词：" VerticalAlignment="Center" Foreground="#666" Margin="0,0,0,0"/>
                     <!-- Change: Binding Text -->
                     <TextBox x:Name="TxtKeyword" Width="200" Style="{StaticResource SearchTextBoxStyle}"
@@ -49,7 +59,7 @@
                 </StackPanel>
 
                 <!-- 业务状态 -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
                     <TextBlock Text="业务状态：" VerticalAlignment="Center" Foreground="#666" Margin="0,0,0,0"/>
                     <!-- Change: Binding ItemsSource, DisplayMemberPath, SelectedValuePath, SelectedValue -->
                     <ComboBox x:Name="CmbStatus" Width="120" Style="{StaticResource ToolbarFilterComboBoxStyle}" VerticalContentAlignment="Center"
@@ -61,7 +71,7 @@
                 </StackPanel>
 
                 <!-- 项目 -->
-                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
+                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
                     <TextBlock Text="项目：" VerticalAlignment="Center" Foreground="#666" Margin="0,0,0,0"/>
                     <ComboBox Width="220" Style="{StaticResource ToolbarFilterComboBoxStyle}" VerticalContentAlignment="Center"
                               ItemsSource="{Binding ProjectOptions}"
@@ -71,7 +81,7 @@
                 </StackPanel>
 
                     <!-- 按钮组 -->
-                    <StackPanel Grid.Column="4" Orientation="Horizontal">
+                    <StackPanel Grid.Column="5" Orientation="Horizontal">
                         <!-- Change: Binding Command -->
                         <Button x:Name="BtnSearch" Content="🔍 查询" Style="{StaticResource ToolbarActionButtonStyle}" 
                                 Command="{Binding SearchCommand}"/>

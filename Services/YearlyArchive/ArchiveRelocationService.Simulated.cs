@@ -172,13 +172,14 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             string operatorName = ResolveOperatorName();
-            string archiveSequenceNo = await GenerateNextArchiveSequenceNoAsync(source.Year);
+            string operationYear = operatedAt.Year.ToString();
+            string archiveSequenceNo = await GenerateNextArchiveSequenceNoAsync(operationYear);
             var newBox = new YearlyArchiveBox
             {
                 ArchiveSequenceNo = archiveSequenceNo,
                 BoxLocationCode = newLocation,
                 ProjectName = source.ProjectName,
-                Year = source.Year,
+                Year = operationYear,
                 Specs = request.NewBoxSpecification.Trim(),
                 PlacementMode = source.PlacementMode,
                 ArchivedBy = operatorName,

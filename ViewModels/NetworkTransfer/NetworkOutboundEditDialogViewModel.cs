@@ -275,11 +275,11 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
 
     public string MaterialPathDisplay =>
         string.IsNullOrWhiteSpace(_record.MaterialPath)
-            ? "请先选择服务器路径，并完善年度、项目与资料名称。系统将按规范生成相对路径。"
+            ? "请先选择服务器路径，并完善年度与项目。系统将按规范生成相对路径。"
             : _record.MaterialPath;
 
     public string MaterialPathHint =>
-        "请将拟出网资料先放入上述相对路径（位于所选服务器路径之下）后再申请。路径为「出网\\年度\\项目\\资料名称」（共用服务器路径时前加申请部门）；各子项名称作为该路径下的子目录。";
+        "公共路径为「出网\\年度\\项目」（共用服务器路径时前加申请部门）。每一份资料名称是其下的子目录，子项名称再作为该资料名称下的子目录。";
 
     public string ProjectName
     {
@@ -740,8 +740,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
             SelectedServerPath,
             ApplicantDept,
             Year,
-            ProjectName,
-            _record.MaterialName);
+            ProjectName);
         OnPropertyChanged(nameof(MaterialPathDisplay));
         OnPropertyChanged(nameof(CurrentRecord));
         _electronicMediaEditor.RefreshOutboundItemStoragePaths();
@@ -824,6 +823,10 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
 
     private NetworkOutboundRecord BuildDraftSnapshot()
     {
+        _electronicMediaEditor.RefreshOutboundItemStoragePaths();
+        List<YearlyArchiveRegisterMedia> mediaEntries = BuildExternalMediaEntriesForSave();
+        _record.MaterialName = ArchiveRegisterMaterialSummarySupport.Build(mediaEntries);
+        OnPropertyChanged(nameof(MaterialName));
         // 保存前按当前表头重算资料路径，避免年度/项目曾被 Clear 冲空后留下脏路径。
         if (CanEditServerPath)
         {
@@ -831,8 +834,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
                 SelectedServerPath,
                 ApplicantDept,
                 Year,
-                ProjectName,
-                _record.MaterialName);
+                ProjectName);
         }
 
         var draft = new NetworkOutboundRecord
@@ -841,7 +843,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
             OutboundNo = OutboundNo?.Trim() ?? string.Empty,
             DestinationKind = DestinationKind?.Trim() ?? string.Empty,
             DestinationUnit = ResolveDraftDestinationUnit(),
-            MaterialName = MaterialName?.Trim() ?? string.Empty,
+            MaterialName = _record.MaterialName?.Trim() ?? string.Empty,
             ServerPath = SelectedServerPath?.PathName?.Trim() ?? _record.ServerPath?.Trim() ?? string.Empty,
             MaterialPath = _record.MaterialPath?.Trim() ?? string.Empty,
             ProjectName = ProjectName?.Trim() ?? string.Empty,
@@ -852,7 +854,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
             Reason = _record.Reason?.Trim() ?? string.Empty,
             OtherRequests = _record.OtherRequests?.Trim() ?? string.Empty,
             Remark = _record.Remark?.Trim() ?? string.Empty,
-            MediaEntries = BuildExternalMediaEntriesForSave()
+            MediaEntries = mediaEntries
         };
         if (!HasProofMaterial)
         {
@@ -1046,7 +1048,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel : ViewModelBase
             _hasCommittedChanges = true;
             if (NetworkTransferDomainValues.IsArchiveFilingDestination(_record.DestinationKind))
             {
-                _dialogService.ShowMessage("出网申请已办结。已写入出网台账，并生成待立档任务，请在「资料立档」中选择光盘、空白硬盘或并入同项目资料盘。");
+                _dialogService.ShowMessage("出网申请已办结。已写入出网台账，并生成待立档任务，请在「资料立档」中选择光盘、空白硬盘或并入已有硬盘。");
                 RequestClose?.Invoke(true);
                 return;
             }

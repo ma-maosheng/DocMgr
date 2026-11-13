@@ -1,0 +1,134 @@
+<local:LedgerGridHost x:Class="DocMgr.Views.YearlyArchive.ElectronicFilingDetailGrid"
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:local="clr-namespace:DocMgr.Views.Shared"
+                      xmlns:ya="clr-namespace:DocMgr.Views.YearlyArchive">
+    <local:LedgerGridHost.Resources>
+        <local:BoolToVisConverter x:Key="BoolToVisConverter"/>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <local:InverseBoolToVisConverter x:Key="InverseBoolToVisConverter"/>
+        <local:BindingProxy x:Key="SelfProxy"/>
+        <Style x:Key="FilingDetailCellStyle" TargetType="DataGridCell" BasedOn="{StaticResource StandardDataGridCellStyle}">
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="4,2"/>
+        </Style>
+        <Style x:Key="FilingDetailCellTextStyle" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="TextAlignment" Value="Left"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="FilingEditablePathTextBoxStyle" TargetType="TextBox">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="TextAlignment" Value="Left"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="MinHeight" Value="28"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="Background" Value="#FFFBEB"/>
+            <Setter Property="BorderBrush" Value="#F59E0B"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ToolTip" Value="可编辑：请确认或修改立档后的目标存储路径"/>
+        </Style>
+        <Style x:Key="FilingEditablePathCellStyle" TargetType="DataGridCell" BasedOn="{StaticResource FilingDetailCellStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsStoragePathEditable}" Value="True">
+                    <Setter Property="Background" Value="#FFF7ED"/>
+                    <Setter Property="BorderBrush" Value="#FDBA74"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </local:LedgerGridHost.Resources>
+    <DataGrid ItemsSource="{Binding ItemsSource, RelativeSource={RelativeSource AncestorType=ya:ElectronicFilingDetailGrid}}"
+              MinHeight="{Binding MinHeight, RelativeSource={RelativeSource AncestorType=ya:ElectronicFilingDetailGrid}}"
+              IsReadOnly="{Binding Data.IsPathReadOnly, Source={StaticResource SelfProxy}}"
+              AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
+              CellStyle="{StaticResource FilingDetailCellStyle}"
+              VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+        <DataGrid.Style>
+            <Style TargetType="DataGrid">
+                <Setter Property="Visibility" Value="Visible"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsExpanded, RelativeSource={RelativeSource AncestorType=ya:ElectronicFilingDetailGrid}}" Value="False">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </DataGrid.Style>
+        <DataGrid.Columns>
+            <DataGridTextColumn Header="实施年度" Binding="{Binding ImplementYear, Mode=OneWay}" Width="90" IsReadOnly="True"
+                                ElementStyle="{StaticResource FilingDetailCellTextStyle}"/>
+            <DataGridTextColumn Header="项目名称" Binding="{Binding ProjectName, Mode=OneWay}" Width="160" IsReadOnly="True"
+                                ElementStyle="{StaticResource FilingDetailCellTextStyle}"/>
+            <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="130" IsReadOnly="True"
+                                ElementStyle="{StaticResource FilingDetailCellTextStyle}"/>
+            <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName, Mode=OneWay}" Width="300" IsReadOnly="True"
+                                ElementStyle="{StaticResource FilingDetailCellTextStyle}"/>
+            <DataGridTextColumn Header="资料类型" Binding="{Binding MaterialCategory, Mode=OneWay}" Width="80" IsReadOnly="True"
+                                ElementStyle="{StaticResource FilingDetailCellTextStyle}"/>
+            <DataGridTextColumn Header="所属子类" Binding="{Binding SubCategory, Mode=OneWay}" Width="80" IsReadOnly="True"
+                                ElementStyle="{StaticResource FilingDetailCellTextStyle}"/>
+            <DataGridTextColumn Header="组织形式" Binding="{Binding DataOrganizationForm, Mode=OneWay}" Width="80" IsReadOnly="True"
+                                ElementStyle="{StaticResource FilingDetailCellTextStyle}"/>
+            <DataGridTextColumn Header="来源路径" Binding="{Binding SourceStoragePath, Mode=OneWay}" Width="300" IsReadOnly="True"
+                                ElementStyle="{StaticResource FilingDetailCellTextStyle}"/>
+            <DataGridTextColumn Header="立档存储路径" Binding="{Binding FilingStoragePath, Mode=OneWay}" Width="320" IsReadOnly="True"
+                                ElementStyle="{StaticResource FilingDetailCellTextStyle}">
+                <DataGridTextColumn.Visibility>
+                    <Binding Path="Data.AllowEditStoragePath" Source="{StaticResource SelfProxy}" Converter="{StaticResource InverseBoolToVisConverter}"/>
+                </DataGridTextColumn.Visibility>
+            </DataGridTextColumn>
+            <DataGridTemplateColumn Width="320" CellStyle="{StaticResource FilingEditablePathCellStyle}" IsReadOnly="False">
+                <DataGridTemplateColumn.Visibility>
+                    <Binding Path="Data.AllowEditStoragePath" Source="{StaticResource SelfProxy}" Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                </DataGridTemplateColumn.Visibility>
+                <DataGridTemplateColumn.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="立档存储路径" FontWeight="SemiBold"/>
+                        <Border Background="#DBEAFE" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="3"
+                                Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center"
+                                Visibility="{Binding IsElectronicFilingStoragePathEditable, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource BoolToVisConverter}}">
+                            <TextBlock Text="可编辑" FontSize="11" Foreground="#1D4ED8" FontWeight="SemiBold"/>
+                        </Border>
+                    </StackPanel>
+                </DataGridTemplateColumn.Header>
+                <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <TextBox Text="{Binding FilingStoragePath, UpdateSourceTrigger=PropertyChanged}">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox" BasedOn="{StaticResource FilingEditablePathTextBoxStyle}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsStoragePathEditable}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
+                            <TextBlock Text="{Binding FilingStoragePath, Mode=OneWay}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource FilingDetailCellTextStyle}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsStoragePathEditable}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="数据量(MB)" Binding="{Binding DataSizeMb, Mode=OneWay, StringFormat={}{0:0.##}}" Width="90" IsReadOnly="True"
+                                ElementStyle="{StaticResource FilingDetailCellTextStyle}"/>
+            <DataGridTextColumn Header="所属电子袋" Binding="{Binding ElectronicArchiveNo, Mode=OneWay}" Width="110" IsReadOnly="True"
+                                ElementStyle="{StaticResource FilingDetailCellTextStyle}"/>
+        </DataGrid.Columns>
+    </DataGrid>
+</local:LedgerGridHost>

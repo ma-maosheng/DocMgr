@@ -63,8 +63,8 @@ namespace DocMgr.Services.YearlyArchive
 
             int rowIndex = 0;
             AddDoubleRow(table, ref rowIndex, "申请人", data.Applicant, "申请部门", data.Dept, WordTableRowStyle.SingleLine);
-            AddSingleRow(table, ref rowIndex, "资料名称", data.MaterialName, WordTableRowStyle.SingleLine);
-            AddDoubleRow(table, ref rowIndex, "所属项目", data.ProjectName, "资料来源", data.SourceType, WordTableRowStyle.SingleLine);
+            AddDoubleRow(table, ref rowIndex, "所属项目", data.ProjectName, "项目年度", data.ProjectYear, WordTableRowStyle.SingleLine);
+            AddDoubleRow(table, ref rowIndex, "资料名称", data.MaterialName, "资料来源", data.SourceType, WordTableRowStyle.SingleLine);
 
             string contentText = data.ItemLines.Count > 0 ? string.Join("\n", data.ItemLines) : "(无)";
             bool hasRetainedHardDisk = !string.IsNullOrWhiteSpace(data.RetainedHardDiskRegistration);
@@ -87,6 +87,9 @@ namespace DocMgr.Services.YearlyArchive
             {
                 AddSingleRow(table, ref rowIndex, "光盘台账信息", data.OpticalDiscLedgerSummary, WordTableRowStyle.MultiLine);
             }
+
+            string reason = string.IsNullOrWhiteSpace(data.Reason) ? "(无)" : data.Reason;
+            AddSingleRow(table, ref rowIndex, "申请说明", reason, WordTableRowStyle.SingleLine);
 
             string otherRequests = string.IsNullOrWhiteSpace(data.OtherRequests) ? "(无)" : data.OtherRequests;
             AddSingleRow(table, ref rowIndex, "其他要求", otherRequests, WordTableRowStyle.SingleLine);
@@ -257,7 +260,7 @@ namespace DocMgr.Services.YearlyArchive
         {
             // 与 FlowDocument 登记单一致：固定行外高 + 表后 4 行说明同页。
             int fixedTableHeight =
-                PrintPageLayoutSupport.GetTableRowOuterHeightTwips(SingleRowHeightTwips, CellMarginDxa) * 8
+                PrintPageLayoutSupport.GetTableRowOuterHeightTwips(SingleRowHeightTwips, CellMarginDxa) * 9
                 + PrintPageLayoutSupport.GetTableRowOuterHeightTwips(SignatureBlockRowHeightTwips, CellMarginDxa) * 2;
             if (hasRetainedHardDisk)
             {

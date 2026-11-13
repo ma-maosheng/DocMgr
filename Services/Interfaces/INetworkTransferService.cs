@@ -107,7 +107,8 @@ public interface INetworkTransferService
         string? originKind,
         string? lifecycleStatus,
         string? serverPath,
-        string? departmentName);
+        string? departmentName,
+        int? projectId = null);
 
     Task<IReadOnlyList<NetworkOnNetDisposalRecord>> SearchDisposalRecordsAsync(
         string? keyword,

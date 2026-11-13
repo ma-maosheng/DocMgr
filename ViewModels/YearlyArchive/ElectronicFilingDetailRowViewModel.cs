@@ -15,6 +15,12 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string FormNo { get; init; } = string.Empty;
 
+        /// <summary>项目实施年度。</summary>
+        public string ImplementYear { get; init; } = string.Empty;
+
+        /// <summary>项目名称。</summary>
+        public string ProjectName { get; init; } = string.Empty;
+
         public string MaterialName { get; init; } = string.Empty;
 
         public string MediaType { get; init; } = string.Empty;

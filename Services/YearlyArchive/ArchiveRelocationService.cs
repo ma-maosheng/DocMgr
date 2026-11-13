@@ -72,15 +72,27 @@ namespace DocMgr.Services.YearlyArchive
             return unit == null ? null : MapElectronicSummary(unit);
         }
 
-        public async Task<IReadOnlyList<ArchiveRelocationSourceOption>> GetSimulatedSourceOptionsAsync(string projectName, string year)
+        public async Task<IReadOnlyList<string>> GetSimulatedBoxYearsAsync()
+        {
+            return await _relocationRepository.GetDistinctSimulatedBoxYearsAsync();
+        }
+
+        public async Task<IReadOnlyList<ArchiveRelocationSourceOption>> GetSimulatedSourceOptionsAsync(
+            string projectName,
+            string year,
+            int? projectId = null)
         {
             EnsureArchiveAdmin();
-            if (string.IsNullOrWhiteSpace(projectName) || string.IsNullOrWhiteSpace(year))
+            if (string.IsNullOrWhiteSpace(year)
+                || (projectId is not > 0 && string.IsNullOrWhiteSpace(projectName)))
             {
                 return Array.Empty<ArchiveRelocationSourceOption>();
             }
 
-            var boxes = await _relocationRepository.GetSimulatedSourceCandidatesAsync(projectName.Trim(), year.Trim());
+            var boxes = await _relocationRepository.GetSimulatedSourceCandidatesAsync(
+                projectName.Trim(),
+                year.Trim(),
+                projectId);
             return boxes
                 .Select(box => new ArchiveRelocationSourceOption
                 {
@@ -147,18 +159,91 @@ namespace DocMgr.Services.YearlyArchive
                 ?? throw new InvalidOperationException("未找到源电子介质袋。");
 
             var units = await _relocationRepository.GetElectronicTargetUnitsAsync(source.ProjectName, source.Year, sourceUnitId);
-            return units
-                .Where(unit => !string.Equals(unit.UnitLifecycleStatus, ArchiveContainerLifecycleStatus.Disposed, StringComparison.Ordinal))
-                .Where(unit => !hardDiskMergeTargetsOnly || IsHardDiskMergeTargetUnit(unit))
-                .Select(unit => new ArchiveRelocationTargetOption
+            var sourceProjectIds = source.MediaItemLinks
+                .Select(link => link.MediaItem?.MediaEntry?.RegisterRecord?.ProjectId ?? 0)
+                .Where(id => id > 0)
+                .ToHashSet();
+            var sourceProjectNames = source.MediaItemLinks
+                .Select(link => link.MediaItem?.MediaEntry?.RegisterRecord?.ProjectName?.Trim() ?? string.Empty)
+                .Where(name => name.Length > 0)
+                .ToHashSet(StringComparer.Ordinal);
+
+            var options = new List<ArchiveRelocationTargetOption>();
+            var others = new List<ArchiveRelocationTargetOption>();
+            foreach (var unit in units.Where(unit => !string.Equals(unit.UnitLifecycleStatus, ArchiveContainerLifecycleStatus.Disposed, StringComparison.Ordinal)))
+            {
+                if (hardDiskMergeTargetsOnly && !IsHardDiskMergeTargetUnit(unit))
+                {
+                    continue;
+                }
+
+                bool belongs = SharesProject(unit, sourceProjectIds, sourceProjectNames);
+                if (!belongs && !HasRemainingHardDiskCapacity(unit))
+                {
+                    continue;
+                }
+
+                var option = new ArchiveRelocationTargetOption
                 {
                     ContainerId = unit.Id,
                     ContainerCode = unit.ElectronicArchiveNo,
                     StorageLocation = unit.StorageLocation,
                     IsEmpty = unit.MediaItemLinks.Count == 0,
-                    DisplayText = BuildElectronicSourceDisplayText(unit)
-                })
-                .ToList();
+                    BelongsToCurrentProject = belongs,
+                    DisplayText = (belongs ? "本项目已有 / " : "其他非空 / ") + BuildElectronicSourceDisplayText(unit)
+                };
+                if (belongs)
+                {
+                    options.Add(option);
+                }
+                else
+                {
+                    others.Add(option);
+                }
+            }
+
+            options.AddRange(others);
+            return options;
+        }
+
+        private static bool SharesProject(
+            YearlyElectronicArchiveUnit unit,
+            HashSet<int> sourceProjectIds,
+            HashSet<string> sourceProjectNames)
+        {
+            foreach (var link in unit.MediaItemLinks)
+            {
+                var record = link.MediaItem?.MediaEntry?.RegisterRecord;
+                if (record?.ProjectId is > 0 && sourceProjectIds.Contains(record.ProjectId.Value))
+                {
+                    return true;
+                }
+
+                string name = record?.ProjectName?.Trim() ?? string.Empty;
+                if (name.Length > 0 && sourceProjectNames.Contains(name))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool HasRemainingHardDiskCapacity(YearlyElectronicArchiveUnit unit)
+        {
+            var medium = unit.MediumLinks.Select(link => link.HardDiskMedium).FirstOrDefault(item => item != null);
+            if (medium == null)
+            {
+                return false;
+            }
+
+            decimal totalMb = ElectronicMediaCapacitySupport.ParseCapacityTextToMb(medium.Capacity);
+            if (totalMb <= 0)
+            {
+                return true;
+            }
+
+            return medium.ArchiveItemLinks.Sum(link => link.DataSizeMb) < totalMb;
         }
 
         public Task<ArchiveRelocationPreview> PreviewSimulatedRelocationAsync(SimulatedRelocationRequest request)
@@ -715,7 +800,9 @@ namespace DocMgr.Services.YearlyArchive
             DateTime updatedAt,
             string remark,
             List<YearlyArchiveRelocationItem> relocationItems,
-            string? storageCarrierType = null)
+            string? storageCarrierType = null,
+            int? hardDiskMediumId = null,
+            int? opticalDiscMediumId = null)
         {
             var facts = await _relocationRepository.GetFilingFactsByContainerAsync(
                 ArchiveRegisterDomainValues.MediaKindElectronic,
@@ -754,6 +841,18 @@ namespace DocMgr.Services.YearlyArchive
                 if (!string.IsNullOrWhiteSpace(storageCarrierType))
                 {
                     fact.StorageCarrierType = storageCarrierType.Trim();
+                }
+
+                if (hardDiskMediumId is > 0)
+                {
+                    fact.HardDiskMediumId = hardDiskMediumId;
+                    fact.OpticalDiscMediumId = null;
+                }
+
+                if (opticalDiscMediumId is > 0)
+                {
+                    fact.OpticalDiscMediumId = opticalDiscMediumId;
+                    fact.HardDiskMediumId = null;
                 }
 
                 fact.LifecycleUpdatedAt = updatedAt;
@@ -810,15 +909,15 @@ namespace DocMgr.Services.YearlyArchive
 
             if (IsOpticalDiscCarrier(target.StorageCarrierType))
             {
-                throw new InvalidOperationException("并入同项目硬盘模式下，目标不能为光盘介质袋（光盘不可二次写入）。");
+                throw new InvalidOperationException("并入已有硬盘模式下，目标不能为光盘介质袋（光盘不可二次写入）。");
             }
 
             if (target.MediaItemLinks.Count == 0)
             {
-                throw new InvalidOperationException("并入同项目硬盘模式下，目标应为本项目已用硬盘袋。");
+                throw new InvalidOperationException("并入已有硬盘模式下，目标应为本项目已用硬盘袋。");
             }
 
-            throw new InvalidOperationException("并入同项目硬盘模式下，目标必须为已用的硬盘介质袋。");
+            throw new InvalidOperationException("并入已有硬盘模式下，目标必须为已用的硬盘介质袋。");
         }
 
         private static string? ValidateHardDiskMergeTargetUnit(YearlyElectronicArchiveUnit target)
@@ -827,24 +926,24 @@ namespace DocMgr.Services.YearlyArchive
 
             if (IsOpticalDiscCarrier(target.StorageCarrierType))
             {
-                return "并入同项目硬盘模式下，目标不能为光盘介质袋（光盘不可二次写入）。";
+                return "并入已有硬盘模式下，目标不能为光盘介质袋（光盘不可二次写入）。";
             }
 
             if (target.MediaItemLinks.Count == 0)
             {
-                return "并入同项目硬盘模式下，目标应为本项目已用硬盘袋。";
+                return "并入已有硬盘模式下，目标应为本项目已用硬盘袋。";
             }
 
             if (!IsHardDiskCarrier(target.StorageCarrierType))
             {
-                return "并入同项目硬盘模式下，目标必须为已用的硬盘介质袋。";
+                return "并入已有硬盘模式下，目标必须为已用的硬盘介质袋。";
             }
 
             return null;
         }
 
         /// <summary>
-        /// 并入同项目硬盘：目标袋不得已含拟并入资料（同介质明细、同表单号+子项名、或已是源件的备份副本），避免同一资料二次写入。
+        /// 并入已有硬盘：目标袋不得已含拟并入资料（同介质明细、同表单号+子项名、或已是源件的备份副本），避免同一资料二次写入。
         /// </summary>
         private async Task<string?> ValidateElectronicMergeNoDuplicateMaterialsAsync(
             YearlyElectronicArchiveUnit source,

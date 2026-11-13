@@ -244,10 +244,8 @@ namespace DocMgr.Services.YearlyArchive
                     return new FiledArchiveSearchElectronicBagGroupHit
                     {
                         ElectronicArchiveNo = bucket.Key,
-                        ProjectName = !string.IsNullOrWhiteSpace(unit?.ProjectName)
-                            ? unit.ProjectName.Trim()
-                            : referenceHit.ProjectName,
-                        Year = NormalizeText(unit?.Year),
+                        ProjectName = JoinDistinct(orderedItemGroups.Select(group => group.PrimaryHit.ProjectName), referenceHit.ProjectName),
+                        Year = JoinDistinct(orderedItemGroups.Select(group => group.PrimaryHit.ProjectYear), referenceHit.ProjectYear),
                         StorageLocation = ResolveBagStorageLocation(unit, referenceHit),
                         CurrentStorageLocation = referenceHit.CurrentStorageLocation,
                         StorageCarrierTypeDisplay = !string.IsNullOrWhiteSpace(unit?.StorageCarrierType)
@@ -276,6 +274,16 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return referenceHit.StorageLocation;
+        }
+
+        private static string JoinDistinct(IEnumerable<string?> values, string fallback)
+        {
+            string text = string.Join("、", values
+                .Select(value => value?.Trim() ?? string.Empty)
+                .Where(value => value.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal));
+            return string.IsNullOrWhiteSpace(text) ? NormalizeText(fallback) : text;
         }
     }
 }

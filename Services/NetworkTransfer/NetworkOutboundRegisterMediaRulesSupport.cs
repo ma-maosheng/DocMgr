@@ -255,7 +255,7 @@ internal static class NetworkOutboundRegisterMediaRulesSupport
                 }
                 else if (appendUnitId != media.AppendTargetElectronicUnitId)
                 {
-                    errors.Add("• 同一申请单只能并入一块本项目当年已立档硬盘");
+                    errors.Add("• 同一申请单只能并入一块非空硬盘");
                 }
             }
         }

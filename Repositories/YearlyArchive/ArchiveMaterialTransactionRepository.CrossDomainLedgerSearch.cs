@@ -144,6 +144,12 @@ namespace DocMgr.Repositories.YearlyArchive
                 query = query.Where(item => item.tx.OperatorName.Contains(operatorName));
             }
 
+            if (criteria.ProjectId is > 0)
+            {
+                int projectId = criteria.ProjectId.Value;
+                query = query.Where(item => item.fact.ProjectId == projectId);
+            }
+
             if (!string.IsNullOrWhiteSpace(keyword))
             {
                 query = query.Where(item =>
@@ -216,6 +222,12 @@ namespace DocMgr.Repositories.YearlyArchive
             if (!string.IsNullOrWhiteSpace(operatorName))
             {
                 query = query.Where(item => item.tx.OperatorName.Contains(operatorName));
+            }
+
+            if (criteria.ProjectId is > 0)
+            {
+                int projectId = criteria.ProjectId.Value;
+                query = query.Where(item => item.fact.ProjectId == projectId);
             }
 
             if (!string.IsNullOrWhiteSpace(keyword))

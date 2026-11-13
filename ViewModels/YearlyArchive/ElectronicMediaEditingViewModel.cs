@@ -40,6 +40,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly List<string> _electronicDataSubCategoryOptions = new();
         private readonly List<string> _electronicSoftwareSubCategoryOptions = new();
         private readonly Dictionary<MediaItemViewModel, NotifyCollectionChangedEventHandler> _contentEntryQuantityHandlers = new();
+        private readonly Dictionary<MediaItemViewModel, PropertyChangedEventHandler> _mediaItemSourceProvideHandlers = new();
 
         private bool _isInitialized;
         private int _electronicMediaSettingsSyncDepth;
@@ -68,6 +69,20 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _allowElectronicContentScan = true;
         private string _sectionHeader = "资料介质（电子）";
 
+        /// <summary>档外入网与出网按资料名称分组。建档申请使用自己的编辑器。</summary>
+        public bool UseRegisterMaterialGroups { get; set; }
+
+        /// <summary>旧单没有资料名称行时，用表头上的单个资料名称填入唯一一组。</summary>
+        public string? UngroupedMaterialNameFallback { get; set; }
+
+        /// <summary>宿主上已确定的实施年度和项目名称。两项都有值时，扫描只认这一对。</summary>
+        public Func<(string? Year, string? ProjectName)>? ResolveCommittedProject { get; set; }
+
+        /// <summary>
+        /// 页面还没选定项目时，用已核对过的扫描年度和项目回填。页面上默认的当年不算已选项目。
+        /// </summary>
+        public Action<string, ProjectInfo>? ApplyScannedProjectWhenUnset { get; set; }
+
         private string _selectedElectronicMediaType = string.Empty;
         private string _selectedElectronicDisposition = string.Empty;
 
@@ -92,8 +107,21 @@ namespace DocMgr.ViewModels.YearlyArchive
             };
             MediaEntries.CollectionChanged += MediaEntries_CollectionChanged;
 
-            AddDataElectronicMediaEntryCommand = new RelayCommand(_ => AddDataElectronicMediaEntry(), _ => CanEditForm);
-            AddMediaItemCommand = new RelayCommand<MediaEntryViewModel>(AddMediaItem, _ => CanEditForm);
+            AddDataElectronicMediaEntryCommand = new RelayCommand(
+                async _ => await AddDataElectronicMediaEntryAsync(),
+                _ => CanEditForm);
+            AddMediaItemCommand = new RelayCommand<MediaEntryViewModel>(
+                async media => await AddMediaItemAsync(media),
+                _ => CanEditForm);
+            AddRegisterMaterialCommand = new RelayCommand<MediaEntryViewModel>(
+                AddRegisterMaterial,
+                _ => CanEditForm && UseRegisterMaterialGroups);
+            AddRegisterMaterialItemCommand = new RelayCommand<MediaMaterialGroupViewModel>(
+                async group => await AddRegisterMaterialItemAsync(group),
+                group => group != null && UseRegisterMaterialGroups && (CanEditForm || AllowElectronicContentScan));
+            RemoveRegisterMaterialCommand = new RelayCommand<MediaMaterialGroupViewModel>(
+                RemoveRegisterMaterial,
+                _ => CanEditForm && UseRegisterMaterialGroups);
             BatchAddElectronicMediaItemsCommand = new RelayCommand<MediaEntryViewModel>(
                 async media => await BatchAddElectronicMediaItemsAsync(media),
                 _ => CanEditForm && AllowElectronicContentScan);
@@ -120,6 +148,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         public ObservableCollection<MediaEntryViewModel> MediaEntries { get; } = new();
+
+        /// <summary>子项资料来源或提供单位变化，以及子项增删后通知。入网表头据此汇总数据来源与提供单位。</summary>
+        public event EventHandler? MediaSourceProvideChanged;
 
         public ListCollectionView DataElectronicMediaView { get; }
 
@@ -387,6 +418,15 @@ namespace DocMgr.ViewModels.YearlyArchive
                     }
 
                     media.SyncAppendTargetSelection(ArchiveFilingAppendTargets, clearIfMissing: !retainUnlistedSavedTargets);
+                    if (media.AppendTargetElectronicUnitId is not > 0)
+                    {
+                        ArchiveFilingAppendTargetOption? preferred = ArchiveFilingAppendTargets
+                            .FirstOrDefault(option => option.BelongsToCurrentProject);
+                        if (preferred != null)
+                        {
+                            media.SelectedAppendTarget = preferred;
+                        }
+                    }
                 }
             }
             finally
@@ -434,6 +474,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        /// <summary>出入网不是出网转入建档单，共用录入区上的关联提示保持隐藏。</summary>
+        public bool IsNetworkOutboundTransferRegister => false;
+
+        /// <summary>出入网不使用出网转入建档提示。</summary>
+        public string NetworkOutboundTransferHint => string.Empty;
+
         /// <summary>卡片标题（入网场景为「数据来源（档外/档内）」）。</summary>
         public string SectionHeader
         {
@@ -448,6 +494,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand AddDataElectronicMediaEntryCommand { get; }
 
         public RelayCommand<MediaEntryViewModel> AddMediaItemCommand { get; }
+
+        public RelayCommand<MediaEntryViewModel> AddRegisterMaterialCommand { get; }
+
+        public RelayCommand<MediaMaterialGroupViewModel> AddRegisterMaterialItemCommand { get; }
+
+        public RelayCommand<MediaMaterialGroupViewModel> RemoveRegisterMaterialCommand { get; }
 
         public RelayCommand<MediaEntryViewModel> BatchAddElectronicMediaItemsCommand { get; }
 
@@ -774,6 +826,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             RecalculateQuantities(media);
+            NotifyMediaSourceProvideChanged();
         }
 
         private void ApplyBorrowedHardDiskRegistrationVisibilityToEntries()
@@ -791,7 +844,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             foreach (var item in media.Items)
             {
                 DetachContentEntryQuantityHandler(item);
+                DetachMediaItemSourceProvideHandler(item);
             }
+
+            NotifyMediaSourceProvideChanged();
         }
 
         private void MediaEntry_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -852,6 +908,19 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void MediaItems_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
+            if (e.Action == NotifyCollectionChangedAction.Reset)
+            {
+                DetachOrphanedMediaItemSourceProvideHandlers();
+            }
+
+            if (e.OldItems != null)
+            {
+                foreach (MediaItemViewModel item in e.OldItems)
+                {
+                    DetachMediaItemSourceProvideHandler(item);
+                }
+            }
+
             if (e.NewItems != null)
             {
                 foreach (MediaItemViewModel item in e.NewItems)
@@ -868,6 +937,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             // 子项增删不影响 Filter，禁止 Refresh 以免重建介质卡片打乱 Radio。
             NotifyMediaViewSummaries();
+            NotifyMediaSourceProvideChanged();
         }
 
         private void ScheduleRefreshMediaViews()
@@ -932,7 +1002,43 @@ namespace DocMgr.ViewModels.YearlyArchive
             item.SetAutoContentCount(1);
         }
 
-        private void AddDataElectronicMediaEntry()
+        /// <summary>
+        /// 新增电子介质。档外入网且允许扫描时，先询问是否按四级目录扫描；选「是」则指定盘符并写入资料名称与子项。
+        /// 出网申请起草阶段不扫描，只加空介质。
+        /// </summary>
+        private async Task AddDataElectronicMediaEntryAsync()
+        {
+            if (!CanEditForm)
+            {
+                return;
+            }
+
+            EnsureElectronicMediaSelections();
+            if (UseRegisterMaterialGroups && AllowElectronicContentScan)
+            {
+                bool scan = _dialogService.ShowConfirm(
+                    ElectronicMediaBatchSubItemAddSupport.FourLayerScanPrompt,
+                    "扫描资料介质");
+                if (!scan)
+                {
+                    AddEmptyElectronicMediaEntry();
+                    return;
+                }
+
+                MediaEntryViewModel entry = MediaEntries.LastOrDefault(IsReusableBlankElectronicMedium)
+                    ?? AddEmptyElectronicMediaEntry();
+                await BatchAddElectronicMediaItemsAsync(
+                    entry,
+                    targetGroup: null,
+                    pickFolderTitle: "选择代表该介质的盘符",
+                    acceptDriveRoot: true);
+                return;
+            }
+
+            AddEmptyElectronicMediaEntry();
+        }
+
+        private MediaEntryViewModel AddEmptyElectronicMediaEntry()
         {
             EnsureElectronicMediaSelections();
             var entry = new MediaEntryViewModel
@@ -945,11 +1051,23 @@ namespace DocMgr.ViewModels.YearlyArchive
             };
             entry.ResolveAppendTargetOption = ResolveAppendTargetOption;
             entry.SetShowBorrowedHardDiskRegistrationUi(EnableRetainedHardDiskBorrowedRegistration);
-            entry.Items.Add(CreateDefaultElectronicMediaItem());
+            if (UseRegisterMaterialGroups)
+            {
+                entry.EnableRegisterMaterialGroups();
+                MediaMaterialGroupViewModel group = entry.AddMaterialGroup(string.Empty);
+                group.Items.Add(CreateDefaultElectronicMediaItem());
+                AttachMaterialGroupWatchers(entry);
+            }
+            else
+            {
+                entry.Items.Add(CreateDefaultElectronicMediaItem());
+            }
+
             MediaEntries.Add(entry);
             entry.SyncAppendTargetSelection(ArchiveFilingAppendTargets);
             RecalculateQuantities(entry);
             ApplySelectedElectronicMediaSettingsToEntries();
+            return entry;
         }
 
         private void RemoveMediaEntry(MediaEntryViewModel? media)
@@ -960,15 +1078,91 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        private void AddMediaItem(MediaEntryViewModel? media)
+        /// <summary>
+        /// 添加资料子项。允许扫描时先询问是否按四级目录扫描，否则直接加一条空子项。
+        /// </summary>
+        private async Task AddMediaItemAsync(MediaEntryViewModel? media)
         {
-            if (media == null)
+            if (media == null || !CanEditForm)
             {
+                return;
+            }
+
+            if (media.UsesRegisterMaterialGroups)
+            {
+                MediaMaterialGroupViewModel group = media.Materials.LastOrDefault() ?? media.AddMaterialGroup(string.Empty);
+                await AddItemToMaterialGroupAsync(group);
+                return;
+            }
+
+            if (AllowElectronicContentScan
+                && _dialogService.ShowConfirm(ElectronicMediaBatchSubItemAddSupport.FourLayerScanPrompt, "扫描资料介质"))
+            {
+                await BatchAddElectronicMediaItemsAsync(media);
                 return;
             }
 
             media.Items.Add(CreateDefaultElectronicMediaItem());
             RefreshOutboundItemStoragePath(media.Items[^1]);
+        }
+
+        private void AddRegisterMaterial(MediaEntryViewModel? media)
+        {
+            if (media == null || !media.UsesRegisterMaterialGroups || !CanEditForm)
+            {
+                return;
+            }
+
+            MediaMaterialGroupViewModel group = media.AddMaterialGroup(string.Empty);
+            group.Items.Add(CreateDefaultElectronicMediaItem());
+            RefreshOutboundItemStoragePath(group.Items[^1]);
+        }
+
+        private async Task AddRegisterMaterialItemAsync(MediaMaterialGroupViewModel? group)
+        {
+            if (group?.Owner == null || !UseRegisterMaterialGroups)
+            {
+                return;
+            }
+
+            if (!CanEditForm && !AllowElectronicContentScan)
+            {
+                return;
+            }
+
+            await AddItemToMaterialGroupAsync(group);
+        }
+
+        /// <summary>
+        /// 允许扫描时先按四级目录建组；否则在当前资料名称下加一条空子项。
+        /// </summary>
+        private async Task AddItemToMaterialGroupAsync(MediaMaterialGroupViewModel group)
+        {
+            if (AllowElectronicContentScan
+                && _dialogService.ShowConfirm(ElectronicMediaBatchSubItemAddSupport.FourLayerScanPrompt, "扫描资料介质"))
+            {
+                await BatchAddElectronicMediaItemsAsync(group);
+                return;
+            }
+
+            if (!CanEditForm)
+            {
+                return;
+            }
+
+            MediaItemViewModel item = CreateDefaultElectronicMediaItem();
+            group.Items.Add(item);
+            RefreshOutboundItemStoragePath(item);
+        }
+
+        private void RemoveRegisterMaterial(MediaMaterialGroupViewModel? group)
+        {
+            if (!CanEditForm)
+            {
+                return;
+            }
+
+            group?.Owner.RemoveMaterialGroup(group);
         }
 
         private void RemoveMediaItem(MediaItemViewModel? item)
@@ -978,8 +1172,61 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            var parent = MediaEntries.FirstOrDefault(m => m.Items.Contains(item));
-            parent?.Items.Remove(item);
+            foreach (MediaEntryViewModel media in MediaEntries)
+            {
+                foreach (MediaMaterialGroupViewModel group in media.Materials)
+                {
+                    if (group.Items.Remove(item))
+                    {
+                        return;
+                    }
+                }
+            }
+
+            MediaEntries.FirstOrDefault(media => media.Items.Contains(item))?.Items.Remove(item);
+        }
+
+        private void AttachMaterialGroupWatchers(MediaEntryViewModel media)
+        {
+            media.Materials.CollectionChanged -= MaterialGroups_CollectionChanged;
+            media.Materials.CollectionChanged += MaterialGroups_CollectionChanged;
+            foreach (MediaMaterialGroupViewModel group in media.Materials)
+            {
+                WatchMaterialGroup(group);
+            }
+        }
+
+        private void MaterialGroups_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems == null)
+            {
+                return;
+            }
+
+            foreach (MediaMaterialGroupViewModel group in e.NewItems)
+            {
+                WatchMaterialGroup(group);
+            }
+        }
+
+        private void WatchMaterialGroup(MediaMaterialGroupViewModel group)
+        {
+            group.PropertyChanged -= MaterialGroup_PropertyChanged;
+            group.PropertyChanged += MaterialGroup_PropertyChanged;
+        }
+
+        private void MaterialGroup_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (sender is not MediaMaterialGroupViewModel group
+                || !string.Equals(e.PropertyName, nameof(MediaMaterialGroupViewModel.MaterialName), StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            foreach (MediaItemViewModel item in group.Items)
+            {
+                RefreshOutboundItemStoragePath(item);
+            }
         }
 
         private MediaEntryViewModel CreateMediaEntryViewModel(YearlyArchiveRegisterMedia media)
@@ -987,7 +1234,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             var vm = RegisterMediaTreeSupport.CreateMediaEntryViewModel(
                 media,
                 ResolveConfidentialLevelFromRecord,
-                ConfigureElectronicMediaItem);
+                ConfigureElectronicMediaItem,
+                UseRegisterMaterialGroups,
+                UngroupedMaterialNameFallback);
+            AttachMaterialGroupWatchers(vm);
             vm.ResolveAppendTargetOption = ResolveAppendTargetOption;
             RecalculateQuantities(vm);
             return vm;
@@ -1469,7 +1719,51 @@ namespace DocMgr.ViewModels.YearlyArchive
             ApplyDefaultProvideUnitForInternalItem(item, onlyWhenEmpty: true);
             RefreshElectronicSubCategoryOptions(item);
             AttachContentEntryQuantityHandler(item);
+            AttachMediaItemSourceProvideHandler(item);
         }
+
+        private void AttachMediaItemSourceProvideHandler(MediaItemViewModel item)
+        {
+            if (_mediaItemSourceProvideHandlers.ContainsKey(item))
+            {
+                return;
+            }
+
+            PropertyChangedEventHandler handler = (_, e) =>
+            {
+                if (e.PropertyName == nameof(MediaItemViewModel.SourceType)
+                    || e.PropertyName == nameof(MediaItemViewModel.ProvideUnit))
+                {
+                    NotifyMediaSourceProvideChanged();
+                }
+            };
+            _mediaItemSourceProvideHandlers[item] = handler;
+            item.PropertyChanged += handler;
+        }
+
+        private void DetachMediaItemSourceProvideHandler(MediaItemViewModel item)
+        {
+            if (_mediaItemSourceProvideHandlers.TryGetValue(item, out PropertyChangedEventHandler? handler))
+            {
+                item.PropertyChanged -= handler;
+                _mediaItemSourceProvideHandlers.Remove(item);
+            }
+        }
+
+        private void DetachOrphanedMediaItemSourceProvideHandlers()
+        {
+            HashSet<MediaItemViewModel> live = MediaEntries.SelectMany(media => media.Items).ToHashSet();
+            foreach (MediaItemViewModel item in _mediaItemSourceProvideHandlers.Keys.ToList())
+            {
+                if (!live.Contains(item))
+                {
+                    DetachMediaItemSourceProvideHandler(item);
+                }
+            }
+        }
+
+        private void NotifyMediaSourceProvideChanged() =>
+            MediaSourceProvideChanged?.Invoke(this, EventArgs.Empty);
 
         private void ApplyElectronicContentScanAvailabilityToItems()
         {

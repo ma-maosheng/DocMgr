@@ -43,6 +43,7 @@ internal static class NetworkInboundExternalMediaValidationSupport
             mediaSeq++;
             ValidateMediaDisposition(media, mediaSeq, errors);
 
+            NetworkRegisterMaterialGroupSupport.Validate(media, mediaSeq, errors);
             if (media.Items == null || media.Items.Count == 0)
             {
                 errors.Add($"• 第{mediaSeq}条介质至少需要填写一条内容明细");

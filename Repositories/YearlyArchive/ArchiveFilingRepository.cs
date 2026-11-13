@@ -3,6 +3,7 @@ using DocMgr.Models.ArchiveContainers;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.OpticalDiscMedia;
+using DocMgr.Models.Projects;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
@@ -169,10 +170,166 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
 
     public Task<List<YearlyElectronicArchiveUnit>> GetExistingElectronicUnitsForProjectAsync(string projectName, string year)
     {
+        IQueryable<int> unitIds = ElectronicArchiveProjectLookup.QueryContainerIds(_dbContext, null, projectName, year);
         return _dbContext.YearlyElectronicArchiveUnits
             .AsNoTracking()
-            .Where(unit => unit.ProjectName == projectName && unit.Year == year)
+            .Where(unit => unitIds.Contains(unit.Id))
             .ToListAsync();
+    }
+
+    public async Task<List<HardDiskAppendCandidate>> GetHardDiskAppendCandidatesAsync(
+        int? projectId,
+        string? projectName,
+        string? implementYear)
+    {
+        int? resolvedProjectId = projectId is > 0 ? projectId : null;
+        if (resolvedProjectId == null && !string.IsNullOrWhiteSpace(projectName))
+        {
+            string name = projectName.Trim();
+            string year = implementYear?.Trim() ?? string.Empty;
+            IQueryable<ProjectInfo> projects = _dbContext.ProjectInfos.AsNoTracking()
+                .Where(project => project.ProjectName == name);
+            if (!string.IsNullOrWhiteSpace(year))
+            {
+                projects = projects.Where(project => project.ImplementYear == year);
+            }
+
+            List<int> ids = await projects.Select(project => project.Id).Take(2).ToListAsync();
+            if (ids.Count == 1)
+            {
+                resolvedProjectId = ids[0];
+            }
+        }
+
+        HashSet<int> ownedUnitIds = resolvedProjectId is > 0 || !string.IsNullOrWhiteSpace(projectName)
+            ? (await ElectronicArchiveProjectLookup.QueryContainerIds(_dbContext, resolvedProjectId, projectName, implementYear).ToListAsync())
+                .ToHashSet()
+            : new HashSet<int>();
+
+        List<YearlyElectronicArchiveUnit> units = await _dbContext.YearlyElectronicArchiveUnits
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(unit => unit.MediumLinks)
+                .ThenInclude(link => link.HardDiskMedium)
+                    .ThenInclude(medium => medium!.Ledger)
+            .Include(unit => unit.MediumLinks)
+                .ThenInclude(link => link.HardDiskMedium)
+                    .ThenInclude(medium => medium!.ArchiveItemLinks)
+            .Where(unit => unit.UnitLifecycleStatus == ArchiveContainerLifecycleStatus.InUse)
+            .Where(unit => unit.StorageCarrierType.Contains("硬盘"))
+            .Where(unit => !unit.StorageCarrierType.Contains("光盘"))
+            .Where(unit => unit.MediumLinks.Any(link =>
+                link.HardDiskMedium != null
+                && !link.HardDiskMedium.IsDeleted
+                && link.HardDiskMedium.Ledger != null
+                && link.HardDiskMedium.Ledger.MediaStatus == HardDiskMedium.StatusInStockData
+                && link.HardDiskMedium.ArchiveItemLinks.Any()))
+            .OrderBy(unit => unit.ElectronicArchiveNo)
+            .ToListAsync();
+
+        var owned = new List<HardDiskAppendCandidate>();
+        var others = new List<HardDiskAppendCandidate>();
+        foreach (YearlyElectronicArchiveUnit unit in units)
+        {
+            HardDiskMedium? medium = unit.MediumLinks
+                .Select(link => link.HardDiskMedium)
+                .FirstOrDefault(item => item != null);
+            bool belongs = ownedUnitIds.Contains(unit.Id);
+            if (!belongs && !HasRemainingDataCapacity(medium))
+            {
+                continue;
+            }
+
+            var candidate = new HardDiskAppendCandidate
+            {
+                Unit = unit,
+                BelongsToCurrentProject = belongs
+            };
+            if (belongs)
+            {
+                owned.Add(candidate);
+            }
+            else
+            {
+                others.Add(candidate);
+            }
+        }
+
+        owned.AddRange(others);
+        await AttachAppendCandidateProjectsAsync(owned).ConfigureAwait(false);
+        return owned;
+    }
+
+    private async Task AttachAppendCandidateProjectsAsync(List<HardDiskAppendCandidate> candidates)
+    {
+        if (candidates.Count == 0)
+        {
+            return;
+        }
+
+        List<int> unitIds = candidates.Select(candidate => candidate.Unit.Id).Distinct().ToList();
+        var rows = await (
+            from fact in _dbContext.YearlyArchiveFilingFacts.AsNoTracking()
+            where fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                  && unitIds.Contains(fact.ContainerId)
+            join project in _dbContext.ProjectInfos.AsNoTracking()
+                on fact.ProjectId equals project.Id into projects
+            from project in projects.DefaultIfEmpty()
+            select new
+            {
+                fact.ContainerId,
+                fact.ProjectId,
+                Name = fact.ProjectName,
+                Year = project != null ? project.ImplementYear : string.Empty
+            }).ToListAsync().ConfigureAwait(false);
+
+        var projectsByUnit = rows
+            .GroupBy(row => row.ContainerId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<HardDiskAppendProjectRef>)group
+                    .Select(row => new HardDiskAppendProjectRef
+                    {
+                        ProjectId = row.ProjectId,
+                        ProjectName = row.Name?.Trim() ?? string.Empty,
+                        ImplementYear = row.Year?.Trim() ?? string.Empty
+                    })
+                    .Where(row => row.ProjectId is > 0 || !string.IsNullOrWhiteSpace(row.ProjectName))
+                    .DistinctBy(row => $"{row.ProjectId}|{row.ProjectName}|{row.ImplementYear}")
+                    .ToList());
+
+        for (int index = 0; index < candidates.Count; index++)
+        {
+            HardDiskAppendCandidate candidate = candidates[index];
+            if (!projectsByUnit.TryGetValue(candidate.Unit.Id, out IReadOnlyList<HardDiskAppendProjectRef>? projects))
+            {
+                continue;
+            }
+
+            candidates[index] = new HardDiskAppendCandidate
+            {
+                Unit = candidate.Unit,
+                BelongsToCurrentProject = candidate.BelongsToCurrentProject,
+                Projects = projects
+            };
+        }
+    }
+
+    private static bool HasRemainingDataCapacity(HardDiskMedium? medium)
+    {
+        if (medium == null)
+        {
+            return false;
+        }
+
+        decimal totalMb = ElectronicMediaCapacitySupport.ParseCapacityTextToMb(medium.Capacity);
+        if (totalMb <= 0)
+        {
+            return true;
+        }
+
+        decimal usedMb = medium.ArchiveItemLinks.Sum(link => link.DataSizeMb);
+        return usedMb < totalMb;
     }
 
     public Task<YearlyArchiveBox?> GetLastArchiveBoxByPrefixAsync(string prefix)
@@ -267,9 +424,16 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     {
         return _dbContext.YearlyArchiveRegisterRecords
             .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.Materials)
+            .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.Items)
+                    .ThenInclude(item => item.RegisterMaterial)
+            .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ElectronicArchiveUnitMediaItemLinks)
-                        .ThenInclude(link => link.ElectronicArchiveUnit)
+                        .ThenInclude(link => link.HardDiskMedium)
+                            .ThenInclude(medium => medium!.ElectronicArchiveLinks)
+                                .ThenInclude(bagLink => bagLink.ElectronicArchiveUnit)
             .Where(record => recordIds.Contains(record.Id))
             .ToListAsync();
     }
@@ -289,8 +453,11 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
 
         var items = await _dbContext.YearlyArchiveRegisterMediaItems
             .AsSplitQuery()
+            .Include(item => item.RegisterMaterial)
             .Include(item => item.MediaEntry)
                 .ThenInclude(media => media!.RegisterRecord)
+            .Include(item => item.MediaEntry)
+                .ThenInclude(media => media!.Materials)
             .Include(item => item.ArchiveBoxLinks)
             .Include(item => item.SimulatedDetail)
             .Where(item => idList.Contains(item.Id))
@@ -353,6 +520,9 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
         return _dbContext.YearlyArchiveRegisterMedias
             .AsSplitQuery()
             .Include(media => media.RegisterRecord)
+            .Include(media => media.Materials)
+            .Include(media => media.Items)
+                .ThenInclude(item => item.RegisterMaterial)
             .Include(media => media.Items)
                 .ThenInclude(item => item.ElectronicArchiveUnitMediaItemLinks)
             .Where(media => mediaEntryIds.Contains(media.Id))
@@ -363,8 +533,11 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     {
         return _dbContext.YearlyArchiveRegisterMediaItems
             .AsSplitQuery()
+            .Include(item => item.RegisterMaterial)
             .Include(item => item.MediaEntry)
                 .ThenInclude(media => media!.RegisterRecord)
+            .Include(item => item.MediaEntry)
+                .ThenInclude(media => media!.Materials)
             .Include(item => item.MediaEntry)
                 .ThenInclude(media => media!.Items)
                     .ThenInclude(sibling => sibling.ElectronicArchiveUnitMediaItemLinks)
@@ -379,11 +552,24 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     {
         return _dbContext.YearlyElectronicArchiveUnitMediaItemLinks
             .AsNoTracking()
-            .Include(link => link.ElectronicArchiveUnit)
+            .Include(link => link.HardDiskMedium)
+                .ThenInclude(medium => medium!.ElectronicArchiveLinks)
+                    .ThenInclude(bagLink => bagLink.ElectronicArchiveUnit)
+            .Include(link => link.OpticalDiscMedium)
+                .ThenInclude(medium => medium!.ElectronicArchiveLinks)
+                    .ThenInclude(bagLink => bagLink.ElectronicArchiveUnit)
             .Include(link => link.MediaItem)
                 .ThenInclude(item => item.MediaEntry)
                     .ThenInclude(media => media!.RegisterRecord)
-            .Where(link => link.YearlyElectronicArchiveUnitId == unitId)
+            .Include(link => link.MediaItem)
+                .ThenInclude(item => item.ElectronicDetail)
+            .Where(link =>
+                (link.HardDiskMediumId != null && _dbContext.YearlyElectronicArchiveUnitMediumLinks.Any(mediumLink =>
+                    mediumLink.YearlyElectronicArchiveUnitId == unitId
+                    && mediumLink.HardDiskMediumId == link.HardDiskMediumId))
+                || (link.OpticalDiscMediumId != null && _dbContext.YearlyElectronicArchiveUnitDiscLinks.Any(discLink =>
+                    discLink.YearlyElectronicArchiveUnitId == unitId
+                    && discLink.OpticalDiscMediumId == link.OpticalDiscMediumId)))
             .OrderBy(link => link.FormNo)
             .ThenBy(link => link.ItemName)
             .ToListAsync();
@@ -394,6 +580,17 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
         string normalized = mediumCode.Trim();
         return _dbContext.YearlyElectronicArchiveUnitMediaItemLinks
             .AsNoTracking()
+            .Include(link => link.HardDiskMedium)
+                .ThenInclude(medium => medium!.ElectronicArchiveLinks)
+                    .ThenInclude(bagLink => bagLink.ElectronicArchiveUnit)
+            .Include(link => link.OpticalDiscMedium)
+                .ThenInclude(medium => medium!.ElectronicArchiveLinks)
+                    .ThenInclude(bagLink => bagLink.ElectronicArchiveUnit)
+            .Include(link => link.MediaItem)
+                .ThenInclude(item => item.MediaEntry)
+                    .ThenInclude(media => media!.RegisterRecord)
+            .Include(link => link.MediaItem)
+                .ThenInclude(item => item.ElectronicDetail)
             .Where(link => link.MediumCode == normalized)
             .ToListAsync();
     }
@@ -414,6 +611,11 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
     {
         return _dbContext.YearlyArchiveRegisterRecords
             .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.Materials)
+            .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.Items)
+                    .ThenInclude(item => item.RegisterMaterial)
+            .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ArchiveBoxLinks)
             .Where(record => recordIds.Contains(record.Id))
@@ -425,9 +627,13 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
         return _dbContext.YearlyElectronicArchiveUnits
             .AsSplitQuery()
             .Include(item => item.MediumLinks)
+                .ThenInclude(link => link.HardDiskMedium)
+                    .ThenInclude(medium => medium!.ArchiveItemLinks)
+                        .ThenInclude(itemLink => itemLink.MediaItem)
             .Include(item => item.DiscLinks)
-            .Include(item => item.MediaItemLinks)
-                .ThenInclude(link => link.MediaItem)
+                .ThenInclude(link => link.OpticalDiscMedium)
+                    .ThenInclude(disc => disc!.ArchiveItemLinks)
+                        .ThenInclude(itemLink => itemLink.MediaItem)
             .FirstOrDefaultAsync(item => item.Id == unitId);
     }
 
@@ -961,6 +1167,11 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
             .AsNoTracking()
             .AsSplitQuery()
             .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.Materials)
+            .Include(record => record.MediaEntries)
+                .ThenInclude(media => media.Items)
+                    .ThenInclude(item => item.RegisterMaterial)
+            .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ArchiveBoxLinks)
                         .ThenInclude(link => link.ArchiveBox)
@@ -974,6 +1185,8 @@ public class ArchiveFilingRepository : IArchiveFilingRepository
             .Include(record => record.MediaEntries)
                 .ThenInclude(media => media.Items)
                     .ThenInclude(item => item.ElectronicArchiveUnitMediaItemLinks)
-                        .ThenInclude(link => link.ElectronicArchiveUnit);
+                        .ThenInclude(link => link.HardDiskMedium)
+                            .ThenInclude(medium => medium!.ElectronicArchiveLinks)
+                                .ThenInclude(bagLink => bagLink.ElectronicArchiveUnit);
     }
 }

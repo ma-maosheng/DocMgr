@@ -1,6 +1,6 @@
 ---
 description: 电子资料数据组织形式：固定目录型（单一父目录模型），不再支持文件型与多选扫描
-globs: "**/{ElectronicMediaItemSupport.cs,ElectronicMediaContentScanService.cs,IElectronicMediaContentScanService.cs,ArchiveRegisterService.PrintingAndMaintenance.cs,NetworkInboundExternalMediaValidationSupport.cs,NetworkOutboundExternalMediaValidationSupport.cs,ElectronicMediaEditingViewModel.cs,ElectronicMediaEditingViewModel.OutboundStoragePath.cs,ElectronicMediaEditingViewModel.BatchSubItems.cs,ElectronicMediaBatchSubItemAddSupport.cs,ArchiveRegisterViewModel.Media.cs,ArchiveRegisterViewModel.BatchSubItems.cs,ArchiveRegisterViewModel.cs,ArchiveRegisterSupportTypes.cs,RegisterMediaTreeSupport.cs,StockHardDiskDirectFilingModels.cs,ArchiveRegisterDomainValues.cs,FieldDomainSeedService.SeedCatalog.cs,ArchiveRegisterResources.xaml}"
+globs: "**/{ElectronicMediaItemSupport.cs,ElectronicMediaContentScanService.cs,IElectronicMediaContentScanService.cs,ArchiveRegisterService.PrintingAndMaintenance.cs,NetworkInboundExternalMediaValidationSupport.cs,NetworkOutboundExternalMediaValidationSupport.cs,ElectronicMediaEditingViewModel.cs,ElectronicMediaEditingViewModel.OutboundStoragePath.cs,ElectronicMediaEditingViewModel.BatchSubItems.cs,ElectronicMediaBatchSubItemAddSupport.cs,ArchiveRegisterViewModel.Media.cs,ArchiveRegisterViewModel.BatchSubItems.cs,ArchiveRegisterViewModel.cs,ArchiveRegisterSupportTypes.cs,RegisterMediaTreeSupport.cs,StockHardDiskDirectFilingModels.cs,StockHardDiskDirectFilingDirectorySupport.Registration.cs,ArchiveRegisterDomainValues.cs,FieldDomainSeedService.SeedCatalog.cs,ArchiveRegisterResources.xaml}"
 alwaysApply: false
 ---
 
@@ -20,11 +20,13 @@ alwaysApply: false
 
 ## 批量添加资料子项
 
-- 电子资料明细模板在「+ 添加资料子项」左侧提供「+ 批量添加资料子项」。
+- 电子介质的「添加资料子项」先询问是否按四级目录扫描。选「是」执行原「扫描【资料名称】目录」：选资料名称文件夹则往当前组追加子项，选同一年度、同一项目的年度目录则按资料名称建组。选「否」只新增一条空子项。模拟介质的「添加资料子项」不询问、只加空子项。独立的「扫描【资料名称】目录」按钮已删除。
 - 用户选择代表资料名称的文件夹；其一级业务子文件夹各生成一条资料子项。子项名称取文件夹名，填入后仍可编辑。存储目录、数据量与目录/文件明细沿用「选择子项资料所属目录」的单一父目录扫描。
 - 资料名称文件夹里直接散落的文件不生成子项，并在结果中说明已跳过。没有一级子文件夹时不新增。不允许把盘符根目录当作资料名称文件夹。
+- **仅 YA-REG-ED**：资料名称写在每条介质内部，一张单可以有多份。若所选目录符合四级「年度\项目\资料名称\子项」，且首级文件夹名是年度信息（四位年份，或只加「年」「年度」），并且这些资料同属一个年度、一个项目，则按每一份资料名称在当前介质下建组，第四级子文件夹作为该组的子项。扫描采用盘上的年度和项目之前，先核对项目库：实施年度和项目名称都要对上。对不上则本次扫描不写入资料名称和子项，提醒先在项目信息中补全该项目后再重新扫描，扫描过程中不把缺失项目写入项目库。对得上之后，尚未选择项目时用扫描到的年度和项目写入表头（页面默认的当年不算已选项目）；已选择项目且与扫描结果不一致时再询问是否覆盖。选中的就是某一份资料名称文件夹时，同样补表头，并只往当前资料组追加子项。档外入网同样先做这次项目库核对，核对通过后才建组；尚未选择项目时，把扫描认定的实施年度和项目名称写入页面（页面默认的当年不算已选项目），已经选定项目则不改这两项。申请单上的实施年度和项目名称都已有值时，建档与入网的扫描只识别与这一对一致的文件夹，同一张盘上的其他年度或其他项目不写入该申请单。若介质里已有四级目录但与页面项目完全对不上，不写入资料，并提醒先在项目信息中补全介质上的项目后再重新扫描。资料立档按子项所属资料名称写入路径和立档事实，不用申请单上用顿号拼起来的资料名称摘要。多个年度或多个项目不导入，提示改选同一个年度、同一个项目下的目录。档外入网与出网同样在介质内建资料名称组。出网扫描建组不改表头的年度和项目。出网申请起草阶段仍不扫描建组。
+- **建档申请与档外入网**：「+ 添加资料介质（电子）」先询问该介质是否按四级结构扫描。选「否」只新增空介质。选「是」时默认介质内已是四级结构，用户只指定代表介质的盘符；只采纳盘符下的年度文件夹，忽略其余目录。页面上已有整组空白的电子介质时，写入该介质，不另建一条；介质内已有的空白资料名称和空白子项也先占用，写完后不再留下空白组。取消选盘符时，空介质仍保留。盘符不能当作「添加资料子项」的资料名称文件夹。建档与档外入网在这次扫描写入资料明细时，若页面上的实施年度和项目名称还未选定，就用扫描认定且已在项目库中的那一对回填；已经选定的保持原样。出网申请起草阶段点此按钮只加空介质，不扫描。
 - 本组只有一条未改动的空子项时，用本次结果替换它；已有填写内容时追加。
-- 资料室存档仍逐个子文件夹核验路径末尾为「年度\项目\资料名称\子项名称」，不符合的不建子项。出网申请阶段未开放扫描时，该按钮不可用。
+- 资料室存档仍逐个子文件夹核验路径末尾为「年度\项目\资料名称\子项名称」，资料名称取该子项所属组，不符合的不建子项。出网申请阶段未开放扫描时，「添加资料子项」不询问，只在当前资料名称下加空子项；「添加资料名称」在申请态可用。档外入网申请，以及出网审批通过后的补录扫描，按资料名称建组。
 
 ## 相对路径字段已删除
 

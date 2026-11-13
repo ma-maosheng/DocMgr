@@ -388,22 +388,20 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             var fact = await _outboundRepository.GetFilingFactByIdAsync(item.FilingFactId);
-            string year = string.IsNullOrWhiteSpace(request.Year)
-                ? (fact?.FiledAt.Year.ToString() ?? DateTime.Now.Year.ToString())
-                : request.Year.Trim();
+            DateTime now = DateTime.Now;
+            string operationYear = now.Year.ToString();
             string project = string.IsNullOrWhiteSpace(request.ProjectName)
                 ? (fact?.ProjectName?.Trim() ?? record.ProjectName?.Trim() ?? string.Empty)
                 : request.ProjectName.Trim();
 
-            string archiveSequenceNo = await GenerateNextArchiveSequenceNoAsync(year);
-            DateTime now = DateTime.Now;
+            string archiveSequenceNo = await GenerateNextArchiveSequenceNoAsync(operationYear);
             string operatorName = ResolveUserName(user);
             var newBox = new YearlyArchiveBox
             {
                 ArchiveSequenceNo = archiveSequenceNo,
                 BoxLocationCode = location,
                 ProjectName = project,
-                Year = year,
+                Year = operationYear,
                 Specs = request.Specs.Trim(),
                 PlacementMode = ArchiveBoxPlacementModeSupport.Normalize(request.PlacementMode),
                 ArchivedBy = operatorName,

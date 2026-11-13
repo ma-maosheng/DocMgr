@@ -79,7 +79,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 new RelocationModeOption("迁入其他档口", ArchiveRelocationMode.PhysicalMove),
                 new RelocationModeOption("迁入空白硬盘", ArchiveRelocationMode.MoveToBlankHardDisk),
                 new RelocationModeOption("迁入空白光盘", ArchiveRelocationMode.MoveToBlankOpticalDisc),
-                new RelocationModeOption("并入同项目硬盘", ArchiveRelocationMode.MergeToExisting)
+                new RelocationModeOption("并入已有硬盘", ArchiveRelocationMode.MergeToExisting)
             ];
 
             Items = new ObservableCollection<ArchiveRelocationItemSummary>();
@@ -800,11 +800,11 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
-                var yearsList = await _archiveRegisterService.GetExistingYearsAsync();
+                List<string> yearsList = ProjectFilterOptionFactory.ListImplementYears(_projectService);
                 Years.Clear();
-                foreach (int year in yearsList)
+                foreach (string year in yearsList)
                 {
-                    Years.Add(year.ToString());
+                    Years.Add(year);
                 }
 
                 if (Years.Count == 0)
@@ -818,8 +818,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"加载年份失败：{ex.Message}", "错误");
+                _dialogService.ShowError($"加载实施年度失败：{ex.Message}", "错误");
             }
+
+            await Task.CompletedTask;
         }
 
         private void LoadProjectOptions()
@@ -1113,6 +1115,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     TargetOptions.Add(option);
                 }
+
+                SelectedTarget = options.FirstOrDefault(option => option.BelongsToCurrentProject);
             }
             catch (Exception ex)
             {

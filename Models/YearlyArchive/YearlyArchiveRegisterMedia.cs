@@ -52,9 +52,31 @@ namespace DocMgr.Models.YearlyArchive
 
         public virtual YearlyArchiveRegisterRecord? RegisterRecord { get; set; }
 
+        /// <summary>本介质下的资料名称。建档、档外入网与出网都使用。</summary>
+        public virtual List<YearlyArchiveRegisterMaterial> Materials { get; set; } = new();
+
         public virtual NetworkTransfer.NetworkInboundRecord? NetworkInboundRecord { get; set; }
 
         public virtual NetworkTransfer.NetworkOutboundRecord? NetworkOutboundRecord { get; set; }
+
+        public virtual List<YearlyArchiveRegisterMediaItem> Items { get; set; } = new();
+    }
+
+    /// <summary>
+    /// 一条介质内的一份资料名称，其下挂资料子项。
+    /// </summary>
+    public class YearlyArchiveRegisterMaterial
+    {
+        public int Id { get; set; }
+
+        public int YearlyArchiveRegisterMediaId { get; set; }
+
+        public int SortOrder { get; set; }
+
+        /// <summary>资料名称段，不含年度与项目。</summary>
+        public string MaterialName { get; set; } = string.Empty;
+
+        public virtual YearlyArchiveRegisterMedia? MediaEntry { get; set; }
 
         public virtual List<YearlyArchiveRegisterMediaItem> Items { get; set; } = new();
     }
@@ -63,6 +85,10 @@ namespace DocMgr.Models.YearlyArchive
     {
         public int Id { get; set; }
         public int YearlyArchiveRegisterMediaId { get; set; }
+
+        /// <summary>所属资料名称。建档、档外入网与出网的子项都挂到本介质的一份资料名称上。</summary>
+        public int? YearlyArchiveRegisterMaterialId { get; set; }
+
         public string ContentDesc { get; set; } = string.Empty;
         public int ContentCount { get; set; }
         public string StoragePath { get; set; } = string.Empty;
@@ -83,6 +109,8 @@ namespace DocMgr.Models.YearlyArchive
         /// </summary>
         public string ConfidentialLevel { get; set; } = ArchiveRegisterDomainValues.ConfidentialLevelNone;
         public virtual YearlyArchiveRegisterMedia? MediaEntry { get; set; }
+
+        public virtual YearlyArchiveRegisterMaterial? RegisterMaterial { get; set; }
         public virtual YearlyArchiveRegisterElectronicMediaItemDetail? ElectronicDetail { get; set; }
         public virtual YearlyArchiveRegisterSimulatedMediaItemDetail? SimulatedDetail { get; set; }
         public virtual List<YearlyArchiveBoxMediaItemLink> ArchiveBoxLinks { get; set; } = new();

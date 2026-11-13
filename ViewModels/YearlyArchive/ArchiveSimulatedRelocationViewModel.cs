@@ -24,6 +24,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private ArchiveRelocationContainerSummary? _sourceSummary;
         private string _selectedRelocationMode = ArchiveRelocationMode.PhysicalMove;
         private string _selectedYear = string.Empty;
+        private string _selectedImplementYear = string.Empty;
         private int? _selectedProjectId;
         private ArchiveRelocationSourceOption? _selectedSourceOption;
         private string _remarks = string.Empty;
@@ -234,6 +235,28 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        public ObservableCollection<string> ImplementYears { get; } = new();
+
+        public string SelectedImplementYear
+        {
+            get => _selectedImplementYear;
+            set
+            {
+                if (!SetProperty(ref _selectedImplementYear, value))
+                {
+                    return;
+                }
+
+                if (IsCascadeReloadSuppressed || !_isInitialized)
+                {
+                    LoadProjectOptions();
+                    return;
+                }
+
+                _pageDb.RunInBackground(ReloadYearAndSourcesAsync);
+            }
+        }
+
         public string SelectedYear
         {
             get => _selectedYear;
@@ -246,11 +269,10 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 if (IsCascadeReloadSuppressed || !_isInitialized)
                 {
-                    LoadProjectOptions();
                     return;
                 }
 
-                _pageDb.RunInBackground(ReloadYearAndSourcesAsync);
+                RequestReloadSourceOptions();
             }
         }
 
@@ -567,11 +589,27 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             try
             {
-                var yearsList = await _archiveRegisterService.GetExistingYearsAsync();
-                Years.Clear();
-                foreach (int year in yearsList)
+                List<string> implementYears = ProjectFilterOptionFactory.ListImplementYears(_projectService);
+                ImplementYears.Clear();
+                foreach (string year in implementYears)
                 {
-                    Years.Add(year.ToString());
+                    ImplementYears.Add(year);
+                }
+
+                if (ImplementYears.Count == 0)
+                {
+                    ImplementYears.Add(DateTime.Now.Year.ToString());
+                }
+
+                SelectedImplementYear = ImplementYears.Contains(DateTime.Now.Year.ToString())
+                    ? DateTime.Now.Year.ToString()
+                    : ImplementYears[0];
+
+                IReadOnlyList<string> boxYears = await _relocationService.GetSimulatedBoxYearsAsync();
+                Years.Clear();
+                foreach (string year in boxYears)
+                {
+                    Years.Add(year);
                 }
 
                 if (Years.Count == 0)
@@ -585,7 +623,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError($"加载年份失败：{ex.Message}", "错误");
+                _dialogService.ShowError($"加载年度失败：{ex.Message}", "错误");
             }
         }
 
@@ -594,7 +632,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 ProjectOptions.Clear();
-                foreach (var project in _projectService.SearchProjects(SelectedYear, keyword: null)
+                foreach (var project in _projectService.SearchProjects(SelectedImplementYear, keyword: null)
                              .Where(item => item.Id > 0 && !string.IsNullOrWhiteSpace(item.ProjectName))
                              .OrderBy(item => item.ProjectName))
                 {
@@ -626,7 +664,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             try
             {
                 IsBusy = true;
-                var options = await _relocationService.GetSimulatedSourceOptionsAsync(projectName, SelectedYear);
+                var options = await _relocationService.GetSimulatedSourceOptionsAsync(
+                    projectName,
+                    SelectedYear,
+                    SelectedProjectId);
                 SourceOptions.Clear();
                 foreach (var option in options)
                 {
@@ -994,7 +1035,10 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                var options = await _relocationService.GetSimulatedSourceOptionsAsync(projectName, SelectedYear);
+                var options = await _relocationService.GetSimulatedSourceOptionsAsync(
+                    projectName,
+                    SelectedYear,
+                    SelectedProjectId);
                 foreach (var option in options)
                 {
                     SourceOptions.Add(option);

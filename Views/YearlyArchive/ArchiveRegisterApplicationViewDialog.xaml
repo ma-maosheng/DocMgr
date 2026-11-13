@@ -39,10 +39,11 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,6">
@@ -74,9 +75,13 @@
                                 <TextBlock Text="{Binding ProofMaterialDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
                             </StackPanel>
 
-                            <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3">
+                            <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,6">
+                                <TextBlock Text="申请说明：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                                <TextBlock Text="{Binding ApplicationReason, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3">
                                 <TextBlock Text="其他要求：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                                <TextBlock Text="{Binding OtherRequests}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                                <TextBlock Text="{Binding OtherRequests, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Grid>
                     </GroupBox>

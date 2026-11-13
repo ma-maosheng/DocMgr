@@ -73,7 +73,6 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private string _year = string.Empty;
         private ProjectInfo? _selectedProject;
         private string _reason = string.Empty;
-        private string _remark = string.Empty;
         private string _sourceResultSetNo = string.Empty;
         private int? _sourceResultSetId;
         private SearchPoolListItem? _selectedSearchResultSet;
@@ -126,6 +125,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             _hardDiskMediaService = hardDiskMediaService;
             _cabinetService = cabinetService;
             _electronicMediaEditor = electronicMediaEditor;
+            _electronicMediaEditor.MediaSourceProvideChanged += (_, _) => SyncExternalHeaderSourceFromMediaItems();
             _record = record;
             _mode = mode;
 
@@ -153,6 +153,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 _ => FillDefaultMaterialPath(),
                 _ => CanEditHeader || CanEditApprovalPaths);
             InitializeApprovalCommands();
+            AttachRequestHeader();
 
             RefreshUploadCategoryOptions();
             _pageDb.RunInBackground(InitializeAsync);
@@ -276,7 +277,12 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     OnPropertyChanged(nameof(IsInboundItemGridReadOnly));
                     if (!_suppressSourceKindSideEffects && !_isInitializing)
                     {
-                        ApplyProvideUnitSideEffectsForSourceKind(previousSourceKind);
+                        // 已有明细时，院内/院外与提供部门以子项为准，避免切换数据来源把汇总冲掉。
+                        if (!(IsExternalSource && HasExternalMediaSourcePairs()))
+                        {
+                            ApplyProvideUnitSideEffectsForSourceKind(previousSourceKind);
+                        }
+
                         if (IsArchivedSource)
                         {
                             Items.Clear();
@@ -289,6 +295,10 @@ namespace DocMgr.ViewModels.NetworkTransfer
                     }
 
                     NotifyInboundSourceKindDependentUi();
+                    if (!_syncingExternalHeaderFromItems && !_isInitializing)
+                    {
+                        SyncExternalHeaderSourceFromMediaItems();
+                    }
                     OnPropertyChanged(nameof(CanSubmit));
 
                     CommandManager.InvalidateRequerySuggested();
@@ -351,12 +361,6 @@ namespace DocMgr.ViewModels.NetworkTransfer
         {
             get => _reason;
             set => SetProperty(ref _reason, value);
-        }
-
-        public string Remark
-        {
-            get => _remark;
-            set => SetProperty(ref _remark, value);
         }
 
         /// <summary>申请时是否附有证明材料。</summary>
@@ -474,7 +478,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
         /// <summary>资料路径组成说明。</summary>
         public string MaterialPathHint =>
-            "默认组成为「入网\\年度\\项目\\资料名称」（共用服务器路径时前加申请部门）。各子项名称作为该路径下的子目录。";
+            "公共路径为「入网\\年度\\项目」（共用服务器路径时前加申请部门）。每一份资料名称是其下的子目录，子项名称再作为该资料名称下的子目录。";
 
         /// <summary>当前选中检索集的基本信息摘要。</summary>
         public string SelectedSearchResultSetSummary
@@ -582,6 +586,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             finally
             {
                 _isInitializing = false;
+                SyncExternalHeaderSourceFromMediaItems();
                 _dialogDbGate.Release();
             }
         }
@@ -604,7 +609,6 @@ namespace DocMgr.ViewModels.NetworkTransfer
 
             BindProjectSelectionFromRecord();
             Reason = _record.Reason;
-            Remark = _record.Remark;
             SourceResultSetId = _record.SourceResultSetId;
             SourceResultSetNo = _record.SourceResultSetNo;
             ApplicantName = _record.ApplicantName;
@@ -657,6 +661,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
             OnPropertyChanged(nameof(ShowProvideUnitDepartmentCombo));
             OnPropertyChanged(nameof(ShowProvideUnitExternalTextBox));
             OnPropertyChanged(nameof(ShowProvideUnitReadOnlyText));
+            LoadRequestHeaderFromRecord();
             OnPropertyChanged(nameof(ProvideUnitDisplay));
             OnPropertyChanged(nameof(CanPrintApplication));
             NotifyProofMaterialStateChanged();
@@ -1136,18 +1141,11 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(_record.MaterialName))
-            {
-                _dialogService.ShowError("请先填写资料名称。");
-                return;
-            }
-
             _record.MaterialPath = NetworkInboundMaterialPathSupport.BuildDefaultMaterialPath(
                 SelectedServerPath,
                 ApplicantDept,
                 Year,
-                ProjectName,
-                _record.MaterialName);
+                ProjectName);
             OnPropertyChanged(nameof(CurrentRecord));
         }
 
@@ -1346,7 +1344,6 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 MaterialPath = _record.MaterialPath?.Trim() ?? string.Empty,
                 Reason = _record.Reason,
                 OtherRequests = _record.OtherRequests,
-                Remark = _record.Remark,
                 SourceResultSetId = SourceResultSetId,
                 SourceResultSetNo = SourceResultSetNo
             };

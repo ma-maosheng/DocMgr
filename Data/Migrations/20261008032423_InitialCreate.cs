@@ -911,6 +911,8 @@ namespace DocMgr.Data.Migrations
                     StorageCarrierType = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
                     Disposition = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
                     MediumCode = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    HardDiskMediumId = table.Column<int>(type: "int", nullable: true),
+                    OpticalDiscMediumId = table.Column<int>(type: "int", nullable: true),
                     FilingStoragePath = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: false),
                     DataSizeMb = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     FiledAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -1191,7 +1193,6 @@ namespace DocMgr.Data.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ElectronicArchiveNo = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    ProjectName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Year = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     StorageCarrierType = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     StoragePath = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -1567,7 +1568,6 @@ namespace DocMgr.Data.Migrations
                     Year = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Reason = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     OtherRequests = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Remark = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ProofMaterialNote = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ReturnBorrowedHardDiskWithInbound = table.Column<bool>(type: "bit", nullable: false),
                     SourceResultSetId = table.Column<int>(type: "int", nullable: true),
@@ -1705,8 +1705,10 @@ namespace DocMgr.Data.Migrations
                     ProjectName = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     MaterialName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ArchivePurpose = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ArchivePurposeNote = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ProofMaterialNote = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     OtherRequests = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Reason = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ApplicantUserId = table.Column<int>(type: "int", nullable: false),
                     ApplicantName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ApplicantDept = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -2375,12 +2377,34 @@ namespace DocMgr.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "YearlyArchiveRegisterMaterials",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    YearlyArchiveRegisterMediaId = table.Column<int>(type: "int", nullable: false),
+                    SortOrder = table.Column<int>(type: "int", nullable: false),
+                    MaterialName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_YearlyArchiveRegisterMaterials", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_YearlyArchiveRegisterMaterials_YearlyArchiveRegisterMedias_YearlyArchiveRegisterMediaId",
+                        column: x => x.YearlyArchiveRegisterMediaId,
+                        principalTable: "YearlyArchiveRegisterMedias",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "YearlyArchiveRegisterMediaItems",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     YearlyArchiveRegisterMediaId = table.Column<int>(type: "int", nullable: false),
+                    YearlyArchiveRegisterMaterialId = table.Column<int>(type: "int", nullable: true),
                     ContentDesc = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ContentCount = table.Column<int>(type: "int", nullable: false),
                     StoragePath = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -2398,6 +2422,12 @@ namespace DocMgr.Data.Migrations
                         principalTable: "YearlyArchiveRegisterMedias",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_YearlyArchiveRegisterMediaItems_YearlyArchiveRegisterMaterials_YearlyArchiveRegisterMaterialId",
+                        column: x => x.YearlyArchiveRegisterMaterialId,
+                        principalTable: "YearlyArchiveRegisterMaterials",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -2474,7 +2504,8 @@ namespace DocMgr.Data.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    YearlyElectronicArchiveUnitId = table.Column<int>(type: "int", nullable: false),
+                    HardDiskMediumId = table.Column<int>(type: "int", nullable: true),
+                    OpticalDiscMediumId = table.Column<int>(type: "int", nullable: true),
                     YearlyArchiveRegisterMediaItemId = table.Column<int>(type: "int", nullable: false),
                     FilingStoragePath = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
                     MediumCode = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
@@ -2494,11 +2525,20 @@ namespace DocMgr.Data.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_YearlyElectronicArchiveUnitMediaItemLinks_YearlyElectronicArchiveUnits_YearlyElectronicArchiveUnitId",
-                        column: x => x.YearlyElectronicArchiveUnitId,
-                        principalTable: "YearlyElectronicArchiveUnits",
+                        name: "FK_YearlyElectronicArchiveUnitMediaItemLinks_HardDiskMedia_HardDiskMediumId",
+                        column: x => x.HardDiskMediumId,
+                        principalTable: "HardDiskMedia",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_YearlyElectronicArchiveUnitMediaItemLinks_OpticalDiscMedia_OpticalDiscMediumId",
+                        column: x => x.OpticalDiscMediumId,
+                        principalTable: "OpticalDiscMedia",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.CheckConstraint(
+                        name: "CK_YearlyElectronicArchiveUnitMediaItemLinks_OneMedium",
+                        sql: "([HardDiskMediumId] IS NOT NULL AND [OpticalDiscMediumId] IS NULL) OR ([HardDiskMediumId] IS NULL AND [OpticalDiscMediumId] IS NOT NULL)");
                 });
 
             migrationBuilder.CreateTable(
@@ -3308,6 +3348,16 @@ namespace DocMgr.Data.Migrations
                 column: "EntryName");
 
             migrationBuilder.CreateIndex(
+                name: "IX_YearlyArchiveRegisterMaterials_YearlyArchiveRegisterMediaId",
+                table: "YearlyArchiveRegisterMaterials",
+                column: "YearlyArchiveRegisterMediaId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_YearlyArchiveRegisterMediaItems_YearlyArchiveRegisterMaterialId",
+                table: "YearlyArchiveRegisterMediaItems",
+                column: "YearlyArchiveRegisterMaterialId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_YearlyArchiveRegisterMediaItems_YearlyArchiveRegisterMediaId",
                 table: "YearlyArchiveRegisterMediaItems",
                 column: "YearlyArchiveRegisterMediaId");
@@ -3432,10 +3482,14 @@ namespace DocMgr.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_YearlyElectronicArchiveUnitMediaItemLinks_YearlyElectronicArchiveUnitId_YearlyArchiveRegisterMediaItemId",
+                name: "IX_YearlyElectronicArchiveUnitMediaItemLinks_HardDiskMediumId",
                 table: "YearlyElectronicArchiveUnitMediaItemLinks",
-                columns: new[] { "YearlyElectronicArchiveUnitId", "YearlyArchiveRegisterMediaItemId" },
-                unique: true);
+                column: "HardDiskMediumId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_YearlyElectronicArchiveUnitMediaItemLinks_OpticalDiscMediumId",
+                table: "YearlyElectronicArchiveUnitMediaItemLinks",
+                column: "OpticalDiscMediumId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_YearlyElectronicArchiveUnitMediumLinks_HardDiskMediumId",
@@ -3469,13 +3523,23 @@ namespace DocMgr.Data.Migrations
                 UNION ALL
                 SELECT
                     1 AS [Kind],
-                    [ElectronicArchiveNo] AS [ContainerCode],
-                    [ProjectName],
-                    [Year],
-                    [ArchivedBy],
-                    [ArchivedDate],
-                    [Remarks]
-                FROM [YearlyElectronicArchiveUnits];
+                    u.[ElectronicArchiveNo] AS [ContainerCode],
+                    ISNULL(STUFF((
+                        SELECT N'、' + d.[ProjectName]
+                        FROM (
+                            SELECT DISTINCT f.[ProjectName]
+                            FROM [YearlyArchiveFilingFacts] f
+                            WHERE f.[ContainerKind] = 1
+                              AND f.[ContainerId] = u.[Id]
+                              AND f.[ProjectName] <> N''
+                        ) d
+                        FOR XML PATH(''), TYPE
+                    ).value('.', 'nvarchar(max)'), 1, 1, N''), N'') AS [ProjectName],
+                    u.[Year],
+                    u.[ArchivedBy],
+                    u.[ArchivedDate],
+                    u.[Remarks]
+                FROM [YearlyElectronicArchiveUnits] u;
                 """);
         }
 
@@ -3705,6 +3769,9 @@ namespace DocMgr.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "YearlyArchiveRegisterMediaItems");
+
+            migrationBuilder.DropTable(
+                name: "YearlyArchiveRegisterMaterials");
 
             migrationBuilder.DropTable(
                 name: "YearlyArchiveRegisterMedias");

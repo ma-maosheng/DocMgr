@@ -1,3 +1,7 @@
+using System.Windows;
+using System.Windows.Threading;
+
+using DocMgr.Models.Projects;
 using DocMgr.Models.YearlyArchive;
 
 using DocMgr.Services.NetworkTransfer;
@@ -58,6 +62,7 @@ public sealed partial class NetworkInboundEditDialogViewModel
 
         await _electronicMediaEditor.InitializeAsync();
 
+        _electronicMediaEditor.UngroupedMaterialNameFallback = _record.MaterialName;
         _electronicMediaEditor.SyncFromEntities(_record.MediaEntries?.ToList() ?? []);
 
         NetworkInboundReturnHardDiskMediaBridgeSupport.ApplyReturnHardDiskItemsToMediaEntries(
@@ -116,6 +121,10 @@ public sealed partial class NetworkInboundEditDialogViewModel
 
         _electronicMediaEditor.RestrictRetainedHardDiskToBorrowedOnly = isExternal;
 
+        _electronicMediaEditor.UseRegisterMaterialGroups = isExternal;
+        _electronicMediaEditor.AllowElectronicContentScan = isExternal;
+        _electronicMediaEditor.ResolveCommittedProject = () => (Year, ProjectName);
+        _electronicMediaEditor.ApplyScannedProjectWhenUnset = ApplyScannedYearAndProject;
         if (isExternal)
 
         {
@@ -137,6 +146,62 @@ public sealed partial class NetworkInboundEditDialogViewModel
     private int GetExternalMediaItemCount() =>
 
         _electronicMediaEditor.MediaEntries.Sum(entry => entry.Items.Count);
+
+    /// <summary>
+    /// 入网页还没选定项目时，用扫描认定的实施年度和项目名称回填。已经选定的不改。
+    /// </summary>
+    private void ApplyScannedYearAndProject(string year, ProjectInfo project)
+    {
+        if (SelectedProject != null || !string.IsNullOrWhiteSpace(ProjectName))
+        {
+            return;
+        }
+
+        string targetYear = year.Trim();
+        if (string.IsNullOrWhiteSpace(targetYear))
+        {
+            return;
+        }
+
+        if (!ProjectYears.Any(item => string.Equals(item, targetYear, StringComparison.Ordinal)))
+        {
+            ProjectYears.Add(targetYear);
+        }
+
+        if (!string.Equals(Year, targetYear, StringComparison.Ordinal))
+        {
+            Year = targetYear;
+        }
+        else
+        {
+            LoadProjects();
+        }
+
+        ProjectInfo? listed = Projects.FirstOrDefault(item => item.Id == project.Id);
+        if (listed == null)
+        {
+            Projects.Add(project);
+            listed = project;
+        }
+
+        SelectedProject = listed;
+        int projectId = listed.Id;
+        if (Application.Current?.Dispatcher is not { } dispatcher
+            || dispatcher.HasShutdownStarted
+            || dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        dispatcher.BeginInvoke(() =>
+        {
+            ProjectInfo? again = Projects.FirstOrDefault(item => item.Id == projectId);
+            if (again != null && !ReferenceEquals(SelectedProject, again))
+            {
+                SelectedProject = again;
+            }
+        }, DispatcherPriority.Background);
+    }
 
 }
 

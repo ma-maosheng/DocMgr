@@ -453,6 +453,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             int generation = Interlocked.Increment(ref _simulatedTargetLocationOptionsGeneration);
+            bool deferAutoSelection = _deferConsoleAutoSelection;
             string? locationToPrefer = preferredLocation;
             if (string.IsNullOrWhiteSpace(locationToPrefer) && !preferSuggestedSelection)
             {
@@ -461,7 +462,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             string projectName = TargetProject;
-            string year = TargetYear;
+            string year = DateTime.Now.Year.ToString();
             string boxSpecification = SelectedSpec;
 
             IReadOnlyList<ArchiveBoxTargetLocationOption> options;
@@ -495,6 +496,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             ReplaceSimulatedTargetLocationOptions(options);
+
+            if (deferAutoSelection)
+            {
+                SyncSelectedSimulatedTargetLocationOption(null);
+                ClearSimulatedLocationSelectionCore();
+                return;
+            }
 
             ArchiveBoxTargetLocationOption? selected = null;
             if (preferSuggestedSelection)

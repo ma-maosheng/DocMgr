@@ -612,7 +612,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             string projectName = ProjectName;
-            string year = Year;
+            string year = DateTime.Now.Year.ToString();
             string boxSpecification = SelectedSpec;
             try
             {
@@ -670,7 +670,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             using (IServiceScope scope = _scopeFactory.CreateScope())
             {
                 var filing = scope.ServiceProvider.GetRequiredService<IStockTextArchiveDirectFilingService>();
-                suggestion = await filing.SuggestBoxSlotAsync(ProjectName, Year, SelectedSpec).ConfigureAwait(true);
+                suggestion = await filing.SuggestBoxSlotAsync(ProjectName, DateTime.Now.Year.ToString(), SelectedSpec).ConfigureAwait(true);
             }
 
             if (suggestion == null || string.IsNullOrWhiteSpace(suggestion.CabinetName))
@@ -864,12 +864,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private async Task RefreshPreviewArchiveSequenceNoAsync()
         {
             int token = ++_archiveNoPreviewToken;
-            string year = Year?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(year))
-            {
-                PreviewArchiveSequenceNo = string.Empty;
-                return;
-            }
+            string year = DateTime.Now.Year.ToString();
 
             try
             {
@@ -911,7 +906,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ? "年度模拟-????-???"
                 : PreviewArchiveSequenceNo;
             BusinessNumberHint =
-                $"确认立档后将生成 1 条建档单号，档案盒号预计为 [{previewBoxNo}]（确认写入时按当时库内最大号顺延；建档单号、盒号、立档编号的年度均取自项目实施年度）。{MediaSummary}";
+                $"确认立档后将生成 1 条建档单号，档案盒号预计为 [{previewBoxNo}]（确认写入时按当时库内最大号顺延；建档单号、盒号、立档编号的年度均取办理当时的日历年）。{MediaSummary}";
         }
 
         private void ExportExcelTemplate()

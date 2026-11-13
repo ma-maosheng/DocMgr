@@ -5,6 +5,7 @@ using DocMgr.Models.OpticalDiscMedia;
 using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
+using DocMgr.Repositories.YearlyArchive;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using System;
@@ -993,8 +994,10 @@ namespace DocMgr.Services.Cabinets
                 return new Dictionary<int, MediumArchiveContext>();
             }
 
-            return _cabinetOpenLayoutRepository.GetElectronicArchiveUnitMediumLinksByMediumIds(targetIds)
-                .AsEnumerable()
+            var links = _cabinetOpenLayoutRepository.GetElectronicArchiveUnitMediumLinksByMediumIds(targetIds);
+            var summaries = _cabinetOpenLayoutRepository.LoadElectronicProjectSummaries(
+                links.Select(link => link.YearlyElectronicArchiveUnitId).Distinct().ToList());
+            return links
                 .GroupBy(link => link.HardDiskMediumId)
                 .ToDictionary(
                     group => group.Key,
@@ -1006,7 +1009,7 @@ namespace DocMgr.Services.Cabinets
                             .First();
 
                         var unit = selectedLink.ElectronicArchiveUnit;
-                        return CreateMediumArchiveContext(unit);
+                        return CreateMediumArchiveContext(unit, summaries);
                     });
         }
 
@@ -1035,7 +1038,9 @@ namespace DocMgr.Services.Cabinets
                     });
         }
 
-        private static MediumArchiveContext CreateMediumArchiveContext(YearlyElectronicArchiveUnit unit)
+        private static MediumArchiveContext CreateMediumArchiveContext(
+            YearlyElectronicArchiveUnit unit,
+            IReadOnlyDictionary<int, ElectronicArchiveProjectSummary>? projectSummaries = null)
         {
             string archivedDateText = unit.ArchivedDate == default ? string.Empty : unit.ArchivedDate.ToString("yyyy-MM-dd");
             var mediumItems = unit.MediaItemLinks
@@ -1044,6 +1049,20 @@ namespace DocMgr.Services.Cabinets
                 .ThenBy(link => link.ItemName)
                 .Select(link => MapMediumArchiveItemDetail(link))
                 .ToList();
+            string projectName = string.IsNullOrWhiteSpace(unit.ProjectName) ? string.Empty : unit.ProjectName.Trim();
+            string yearText = string.IsNullOrWhiteSpace(unit.Year) ? string.Empty : unit.Year.Trim();
+            if (projectSummaries != null && projectSummaries.TryGetValue(unit.Id, out ElectronicArchiveProjectSummary? summary))
+            {
+                if (!string.IsNullOrWhiteSpace(summary.ProjectNames))
+                {
+                    projectName = summary.ProjectNames;
+                }
+
+                if (!string.IsNullOrWhiteSpace(summary.ImplementYears))
+                {
+                    yearText = summary.ImplementYears;
+                }
+            }
 
             return new MediumArchiveContext(
                 string.IsNullOrWhiteSpace(unit.ElectronicArchiveNo) ? string.Empty : unit.ElectronicArchiveNo.Trim(),
@@ -1051,8 +1070,8 @@ namespace DocMgr.Services.Cabinets
                 string.IsNullOrWhiteSpace(unit.StoragePath) ? string.Empty : unit.StoragePath.Trim(),
                 string.IsNullOrWhiteSpace(unit.StorageCarrierType) ? string.Empty : unit.StorageCarrierType.Trim(),
                 string.IsNullOrWhiteSpace(unit.ContentSummary) ? string.Empty : unit.ContentSummary.Trim(),
-                string.IsNullOrWhiteSpace(unit.ProjectName) ? string.Empty : unit.ProjectName.Trim(),
-                string.IsNullOrWhiteSpace(unit.Year) ? string.Empty : unit.Year.Trim(),
+                projectName,
+                yearText,
                 archivedDateText,
                 string.IsNullOrWhiteSpace(unit.ArchivedBy) ? string.Empty : unit.ArchivedBy.Trim(),
                 string.IsNullOrWhiteSpace(unit.LinkedMediumCodes) ? string.Empty : unit.LinkedMediumCodes.Trim(),

@@ -21,6 +21,7 @@ internal static class NetworkInboundRegisterMediaPersistenceSupport
                     .ThenInclude(detail => detail!.Entries)
             .Include(media => media.Items)
                 .ThenInclude(item => item.SimulatedDetail)
+            .Include(media => media.Materials)
             .Where(media => media.NetworkInboundRecordId == inboundRecordId)
             .ToListAsync();
 
@@ -40,6 +41,11 @@ internal static class NetworkInboundRegisterMediaPersistenceSupport
 
                     dbContext.YearlyArchiveRegisterMediaItems.RemoveRange(media.Items);
                 }
+
+                if (media.Materials is { Count: > 0 })
+                {
+                    dbContext.YearlyArchiveRegisterMaterials.RemoveRange(media.Materials);
+                }
             }
 
             dbContext.YearlyArchiveRegisterMedias.RemoveRange(existing);
@@ -55,6 +61,7 @@ internal static class NetworkInboundRegisterMediaPersistenceSupport
             media.Id = 0;
             media.NetworkInboundRecordId = inboundRecordId;
             media.YearlyArchiveRegisterRecordId = null;
+            NetworkRegisterMediaGraphSupport.ResetMaterialGraph(media);
             if (media.Items != null)
             {
                 foreach (YearlyArchiveRegisterMediaItem item in media.Items)

@@ -33,12 +33,25 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         private string _selectedYear = "全部年份";
+        private string _selectedImplementYear = ProjectFilterOptionFactory.AllImplementYearsOption;
+
         public string SelectedYear
         {
             get => _selectedYear;
+            set => SetProperty(ref _selectedYear, value);
+        }
+
+        public ObservableCollection<string> ImplementYears { get; } = new()
+        {
+            ProjectFilterOptionFactory.AllImplementYearsOption
+        };
+
+        public string SelectedImplementYear
+        {
+            get => _selectedImplementYear;
             set
             {
-                if (!SetProperty(ref _selectedYear, value))
+                if (!SetProperty(ref _selectedImplementYear, value))
                 {
                     return;
                 }
@@ -124,6 +137,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             _isInitialized = true;
             await LoadYearsAsync();
+            LoadImplementYears();
             await SearchAsync();
         }
 
@@ -148,11 +162,37 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        private void LoadImplementYears()
+        {
+            try
+            {
+                ImplementYears.Clear();
+                ImplementYears.Add(ProjectFilterOptionFactory.AllImplementYearsOption);
+                foreach (string year in ProjectFilterOptionFactory.ListImplementYears(_projectService))
+                {
+                    ImplementYears.Add(year);
+                }
+
+                if (!ImplementYears.Contains(_selectedImplementYear))
+                {
+                    SelectedImplementYear = ProjectFilterOptionFactory.AllImplementYearsOption;
+                }
+                else
+                {
+                    LoadProjectOptions();
+                }
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"加载实施年度失败：{ex.Message}");
+            }
+        }
+
         private void LoadProjectOptions()
         {
             try
             {
-                ProjectFilterOptionFactory.Reload(ProjectOptions, _projectService, SelectedYear);
+                ProjectFilterOptionFactory.Reload(ProjectOptions, _projectService, SelectedImplementYear);
             }
             catch (Exception ex)
             {
@@ -187,6 +227,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             SearchKeyword = string.Empty;
             SelectedStatusValue = -1;
             SelectedYear = Years.FirstOrDefault(x => x != "全部年份") ?? "全部年份";
+            SelectedImplementYear = ProjectFilterOptionFactory.AllImplementYearsOption;
             SelectedProjectId = null;
 
             await SearchAsync();

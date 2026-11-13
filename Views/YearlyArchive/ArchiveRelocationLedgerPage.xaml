@@ -58,6 +58,12 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="6"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="88"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="180"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="108"/>
                         <ColumnDefinition Width="6"/>
                         <ColumnDefinition Width="Auto"/>
@@ -79,54 +85,68 @@
                         <ColumnDefinition Width="88"/>
                         <ColumnDefinition Width="6"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="88"/>
+                        <ColumnDefinition Width="140"/>
                         <ColumnDefinition Width="6"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <TextBlock Grid.Column="0" Text="筛选条件" FontWeight="SemiBold" Foreground="#37474F" VerticalAlignment="Center"/>
 
-                    <TextBlock Grid.Column="2" Text="自" Style="{StaticResource FilterLabelStyle}"/>
-                    <DatePicker Grid.Column="3" Style="{StaticResource FilterDatePickerStyle}"
+                    <TextBlock Grid.Column="2" Text="实施年度：" Style="{StaticResource FilterLabelStyle}" Width="Auto"/>
+                    <ComboBox Grid.Column="3" Style="{StaticResource FilterInputStyle}"
+                              ItemsSource="{Binding ProjectFilter.ImplementYears}"
+                              SelectedItem="{Binding ProjectFilter.SelectedImplementYear, Mode=TwoWay}"
+                              ToolTip="按项目实施年度收窄项目列表。选「全部」时，同名项目会标出实施年度"/>
+
+                    <TextBlock Grid.Column="5" Text="项目：" Style="{StaticResource FilterLabelStyle}"/>
+                    <ComboBox Grid.Column="6" Style="{StaticResource FilterInputStyle}"
+                              ItemsSource="{Binding ProjectFilter.ProjectOptions}"
+                              DisplayMemberPath="Name"
+                              SelectedValuePath="Id"
+                              SelectedValue="{Binding ProjectFilter.SelectedProjectId, Mode=TwoWay}"
+                              ToolTip="按立档事实的项目编号筛选"/>
+
+                    <TextBlock Grid.Column="8" Text="自" Style="{StaticResource FilterLabelStyle}"/>
+                    <DatePicker Grid.Column="9" Style="{StaticResource FilterDatePickerStyle}"
                                 SelectedDate="{Binding OperatedFrom, Mode=TwoWay}"/>
 
-                    <TextBlock Grid.Column="5" Text="至" Style="{StaticResource FilterLabelStyle}"/>
-                    <DatePicker Grid.Column="6" Style="{StaticResource FilterDatePickerStyle}"
+                    <TextBlock Grid.Column="11" Text="至" Style="{StaticResource FilterLabelStyle}"/>
+                    <DatePicker Grid.Column="12" Style="{StaticResource FilterDatePickerStyle}"
                                 SelectedDate="{Binding OperatedTo, Mode=TwoWay}"/>
 
-                    <TextBlock Grid.Column="8" Text="模式：" Style="{StaticResource FilterLabelStyle}"/>
-                    <ComboBox Grid.Column="9" Style="{StaticResource FilterInputStyle}"
+                    <TextBlock Grid.Column="14" Text="模式：" Style="{StaticResource FilterLabelStyle}"/>
+                    <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
                               ItemsSource="{Binding RelocationModeOptions}"
                               DisplayMemberPath="Label"
                               SelectedValuePath="Value"
                               SelectedValue="{Binding SelectedRelocationMode, Mode=TwoWay}"/>
 
-                    <TextBlock Grid.Column="11" Text="性质：" Style="{StaticResource FilterLabelStyle}"/>
-                    <ComboBox Grid.Column="12" Style="{StaticResource FilterInputStyle}"
+                    <TextBlock Grid.Column="17" Text="性质：" Style="{StaticResource FilterLabelStyle}"/>
+                    <ComboBox Grid.Column="18" Style="{StaticResource FilterInputStyle}"
                               ItemsSource="{Binding RelocationKindOptions}"
                               DisplayMemberPath="Label"
                               SelectedValuePath="Value"
                               SelectedValue="{Binding SelectedRelocationKind, Mode=TwoWay}"/>
 
-                    <TextBlock Grid.Column="14" Text="介质：" Style="{StaticResource FilterLabelStyle}"/>
-                    <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
+                    <TextBlock Grid.Column="20" Text="介质：" Style="{StaticResource FilterLabelStyle}"/>
+                    <ComboBox Grid.Column="21" Style="{StaticResource FilterInputStyle}"
                               ItemsSource="{Binding MediaKindOptions}"
                               DisplayMemberPath="Label"
                               SelectedValuePath="Value"
                               SelectedValue="{Binding SelectedMediaKind, Mode=TwoWay}"/>
 
-                    <TextBlock Grid.Column="17" Text="单号：" Style="{StaticResource FilterLabelStyle}"/>
-                    <TextBox Grid.Column="18" Style="{StaticResource SearchTextBoxStyle}"
+                    <TextBlock Grid.Column="23" Text="单号：" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBox Grid.Column="24" Style="{StaticResource SearchTextBoxStyle}"
                              Text="{Binding BusinessNo, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="移库单号"/>
 
-                    <TextBlock Grid.Column="20" Text="操作人：" Style="{StaticResource FilterLabelStyle}"/>
-                    <TextBox Grid.Column="21" Style="{StaticResource SearchTextBoxStyle}"
+                    <TextBlock Grid.Column="26" Text="操作人：" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBox Grid.Column="27" Style="{StaticResource SearchTextBoxStyle}"
                              Text="{Binding OperatorName, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="移库操作人"/>
 
-                    <TextBlock Grid.Column="23" Text="关键字：" Style="{StaticResource FilterLabelStyle}"/>
-                    <TextBox Grid.Column="24" Style="{StaticResource SearchTextBoxStyle}"
+                    <TextBlock Grid.Column="29" Text="关键字：" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBox Grid.Column="30" Style="{StaticResource SearchTextBoxStyle}"
                              Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="立档编号、表单号、资料名称、移库前后容器/位置、摘要">
                         <TextBox.InputBindings>
@@ -134,7 +154,7 @@
                         </TextBox.InputBindings>
                     </TextBox>
 
-                    <StackPanel Grid.Column="26" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="32" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
                         <Button Content="重置" Margin="4,0,0,0" Command="{Binding ResetCommand}" Style="{StaticResource CompactToolbarButtonStyle}"/>
                         <Button Content="定位立档" Margin="6,0,0,0" Command="{Binding NavigateToFilingLedgerCommand}" Style="{StaticResource CompactToolbarButtonStyle}"

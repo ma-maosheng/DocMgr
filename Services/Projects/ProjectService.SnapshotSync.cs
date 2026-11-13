@@ -1,4 +1,5 @@
 using DocMgr.Models.ArchiveContainers;
+using DocMgr.Repositories.YearlyArchive;
 using DocMgr.Models.NetworkTransfer;
 using Microsoft.EntityFrameworkCore;
 
@@ -213,7 +214,15 @@ public partial class ProjectService
             join media in _dbContext.YearlyArchiveRegisterMedias on item.YearlyArchiveRegisterMediaId equals media.Id
             join record in _dbContext.YearlyArchiveRegisterRecords on media.YearlyArchiveRegisterRecordId equals record.Id
             where record.ProjectId == projectId
-            select link.YearlyElectronicArchiveUnitId).ToList();
+            select link.HardDiskMediumId != null
+                ? _dbContext.YearlyElectronicArchiveUnitMediumLinks
+                    .Where(mediumLink => mediumLink.HardDiskMediumId == link.HardDiskMediumId)
+                    .Select(mediumLink => mediumLink.YearlyElectronicArchiveUnitId)
+                    .FirstOrDefault()
+                : _dbContext.YearlyElectronicArchiveUnitDiscLinks
+                    .Where(discLink => discLink.OpticalDiscMediumId == link.OpticalDiscMediumId)
+                    .Select(discLink => discLink.YearlyElectronicArchiveUnitId)
+                    .FirstOrDefault()).ToList();
         ids.UnionWith(linkedIds);
         return ids;
     }
@@ -228,10 +237,7 @@ public partial class ProjectService
 
     private List<int> FindUnitIdsByNameAndYear(string name, string year)
     {
-        return _dbContext.YearlyElectronicArchiveUnits
-            .Where(unit => unit.ProjectName == name && unit.Year == year)
-            .Select(unit => unit.Id)
-            .ToList();
+        return ElectronicArchiveProjectLookup.QueryContainerIds(_dbContext, null, name, year).ToList();
     }
 
     private void SyncBoxes(IReadOnlyCollection<int> boxIds, string newName)
@@ -262,7 +268,6 @@ public partial class ProjectService
             .ToList();
         foreach (YearlyElectronicArchiveUnit unit in units)
         {
-            AssignText(unit.ProjectName, newName, value => unit.ProjectName = value);
             AssignText(
                 unit.StoragePath,
                 ProjectSnapshotPathSupport.ReplaceProjectSegment(unit.StoragePath, oldName, newName, oldYear),
@@ -278,7 +283,13 @@ public partial class ProjectService
         }
 
         List<YearlyElectronicArchiveUnitMediaItemLink> links = _dbContext.YearlyElectronicArchiveUnitMediaItemLinks
-            .Where(link => unitIds.Contains(link.YearlyElectronicArchiveUnitId))
+            .Where(link =>
+                (link.HardDiskMediumId != null && _dbContext.YearlyElectronicArchiveUnitMediumLinks.Any(mediumLink =>
+                    unitIds.Contains(mediumLink.YearlyElectronicArchiveUnitId)
+                    && mediumLink.HardDiskMediumId == link.HardDiskMediumId))
+                || (link.OpticalDiscMediumId != null && _dbContext.YearlyElectronicArchiveUnitDiscLinks.Any(discLink =>
+                    unitIds.Contains(discLink.YearlyElectronicArchiveUnitId)
+                    && discLink.OpticalDiscMediumId == link.OpticalDiscMediumId)))
             .ToList();
         foreach (YearlyElectronicArchiveUnitMediaItemLink link in links)
         {
@@ -396,7 +407,7 @@ public partial class ProjectService
     private bool HasNameOnlySnapshots(string name, string year)
     {
         return _dbContext.YearlyArchiveBoxes.Any(box => box.ProjectName == name && box.Year == year)
-            || _dbContext.YearlyElectronicArchiveUnits.Any(unit => unit.ProjectName == name && unit.Year == year)
+            || ElectronicArchiveProjectLookup.QueryContainerIds(_dbContext, null, name, year).Any()
             || HasNetworkSnapshots(name, year);
     }
 

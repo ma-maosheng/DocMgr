@@ -21,6 +21,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveCirculationLedgerService _ledgerService;
         private readonly IDialogService _dialogService;
         private readonly LedgerStoredMaterialOpener _materialOpener;
+        private readonly IProjectService _projectService;
         private bool _canViewStoredMaterial;
         private readonly SemaphoreSlim _searchGate = new(1, 1);
         private readonly PageDbOperationQueue _pageDb = new();
@@ -50,11 +51,14 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ArchiveCirculationLedgerViewModel(
             IArchiveCirculationLedgerService ledgerService,
             IDialogService dialogService,
-            LedgerStoredMaterialOpener materialOpener)
+            LedgerStoredMaterialOpener materialOpener,
+            IProjectService projectService)
         {
             _ledgerService = ledgerService;
             _dialogService = dialogService;
             _materialOpener = materialOpener;
+            _projectService = projectService;
+            ProjectFilter = new LedgerProjectFilter();
 
             SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SearchAsync));
             ResetCommand = new RelayCommand(_ => ResetCriteria());
@@ -66,6 +70,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _ => _canViewStoredMaterial);
             ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.Circulation));
         }
+
+        public LedgerProjectFilter ProjectFilter { get; }
 
         public event Action<int>? NavigateToFilingLedgerRequested;
 
@@ -295,6 +301,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            ProjectFilter.Load(_projectService);
             await SearchAsync();
             _isInitialized = true;
         }
@@ -465,6 +472,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             BusinessNo = BusinessNo,
             OperatorName = OperatorName,
             Keyword = Keyword,
+            ProjectId = ProjectFilter.SelectedProjectId,
             ListingMode = ListingMode
         };
 
@@ -476,7 +484,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             NodeCategory = SelectedNodeCategory,
             OperatorName = OperatorName,
             ApplicantName = ApplicantName,
-            Keyword = Keyword
+            Keyword = Keyword,
+            ProjectId = ProjectFilter.SelectedProjectId
         };
 
         private void UpdateSummaryText()
@@ -523,6 +532,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ApplicantName = string.Empty;
             Keyword = string.Empty;
             ListingMode = CirculationLedgerListingMode.CirculationOnly;
+            ProjectFilter.Reset();
 
             _allCirculationRows.Clear();
             _allProcessNodeRows.Clear();

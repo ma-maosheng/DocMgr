@@ -17,6 +17,10 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public string FormNo { get; init; } = string.Empty;
 
+        public int ProjectId { get; init; }
+
+        public string ProjectName { get; init; } = string.Empty;
+
         public string MaterialName { get; init; } = string.Empty;
 
         public string MediaType { get; init; } = string.Empty;

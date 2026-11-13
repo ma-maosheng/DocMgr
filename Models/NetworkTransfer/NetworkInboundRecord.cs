@@ -51,8 +51,6 @@ namespace DocMgr.Models.NetworkTransfer
         /// <summary>其他要求（选填）。</summary>
         public string OtherRequests { get; set; } = string.Empty;
 
-        public string Remark { get; set; } = string.Empty;
-
         /// <summary>证明材料备注；「无」表示未附，有材料时填写名称。</summary>
         public string ProofMaterialNote { get; set; } = string.Empty;
 

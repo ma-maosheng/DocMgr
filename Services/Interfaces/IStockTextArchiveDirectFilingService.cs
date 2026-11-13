@@ -49,7 +49,7 @@ namespace DocMgr.Services.Interfaces
             string boxSpecification);
 
         /// <summary>
-        /// 预览下一条模拟盒号（不占用编号）。年度须为项目实施年度。
+        /// 预览下一条模拟盒号（不占用编号）。年度取办理当时的日历年。
         /// </summary>
         Task<string> PeekNextArchiveSequenceNoAsync(string year);
 

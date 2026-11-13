@@ -160,12 +160,11 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             ProvideUnit = NetworkTransferDomainValues.ResolveInboundProvideUnit(draft.SourceKind, draft.ProvideUnit),
             TargetServerPath = ResolveInboundTargetServerPath(draft, builtItems),
             MaterialPath = draft.MaterialPath?.Trim() ?? string.Empty,
-            MaterialName = draft.MaterialName?.Trim() ?? string.Empty,
+            MaterialName = ResolveInboundHeaderMaterialName(draft, builtItems),
             ProjectName = draft.ProjectName?.Trim() ?? string.Empty,
             Year = draft.Year?.Trim() ?? string.Empty,
             Reason = draft.Reason?.Trim() ?? string.Empty,
             OtherRequests = draft.OtherRequests?.Trim() ?? string.Empty,
-            Remark = draft.Remark?.Trim() ?? string.Empty,
             ProofMaterialNote = NormalizeInboundProofMaterialNote(draft.ProofMaterialNote),
             ReturnBorrowedHardDiskWithInbound = draft.ReturnBorrowedHardDiskWithInbound,
             SourceResultSetId = draft.SourceResultSetId,
@@ -225,12 +224,11 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         existing.ProvideUnit = NetworkTransferDomainValues.ResolveInboundProvideUnit(draft.SourceKind, draft.ProvideUnit);
         existing.TargetServerPath = ResolveInboundTargetServerPath(draft, builtItems);
         existing.MaterialPath = draft.MaterialPath?.Trim() ?? string.Empty;
-        existing.MaterialName = draft.MaterialName?.Trim() ?? string.Empty;
+        existing.MaterialName = ResolveInboundHeaderMaterialName(draft, builtItems);
         existing.ProjectName = draft.ProjectName?.Trim() ?? string.Empty;
         existing.Year = draft.Year?.Trim() ?? string.Empty;
         existing.Reason = draft.Reason?.Trim() ?? string.Empty;
         existing.OtherRequests = draft.OtherRequests?.Trim() ?? string.Empty;
-        existing.Remark = draft.Remark?.Trim() ?? string.Empty;
         existing.ProofMaterialNote = NormalizeInboundProofMaterialNote(draft.ProofMaterialNote);
         existing.ReturnBorrowedHardDiskWithInbound = draft.ReturnBorrowedHardDiskWithInbound;
         existing.SourceResultSetId = draft.SourceResultSetId;
@@ -663,7 +661,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             DestinationUnit = NetworkTransferDomainValues.ResolveOutboundDestinationUnit(
                 draft.DestinationKind,
                 draft.DestinationUnit),
-            MaterialName = draft.MaterialName?.Trim() ?? string.Empty,
+            MaterialName = ArchiveRegisterMaterialSummarySupport.Build(draft.MediaEntries),
             ServerPath = draft.ServerPath?.Trim() ?? string.Empty,
             MaterialPath = draft.MaterialPath?.Trim() ?? string.Empty,
             ProjectName = draft.ProjectName?.Trim() ?? string.Empty,
@@ -710,6 +708,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         }
 
         EnsureApplicantOwner(existing.ApplicantUserId, currentUser);
+        draft.MaterialName = ArchiveRegisterMaterialSummarySupport.Build(draft.MediaEntries);
         ApplyOutboundHeader(existing, draft);
         existing.UpdatedAt = DateTime.Now;
         existing.BusinessChain ??= NetworkArchiveBusinessChainSupport.CreateForOutbound(existing, DateTime.Now);
@@ -995,7 +994,8 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         string? originKind,
         string? lifecycleStatus,
         string? serverPath,
-        string? departmentName)
+        string? departmentName,
+        int? projectId = null)
     {
         IReadOnlyList<ServerPathSetting> serverPathSettings = _serverPathSettingService.GetAll();
         IReadOnlyCollection<string>? pathNamesForDepartment = null;
@@ -1011,7 +1011,8 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             originKind,
             lifecycleStatus,
             serverPath,
-            pathNamesForDepartment);
+            pathNamesForDepartment,
+            projectId);
         await EnrichOnNetAssetListItemsAsync(assets, serverPathSettings);
         return assets;
     }
@@ -1747,14 +1748,14 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         bool signedUploaded;
         if (string.Equals(businessType, NetworkTransferDomainValues.InboundAttachmentBusinessType, StringComparison.Ordinal))
         {
-            var record = await _repository.GetInboundByIdAsync(recordId);
-            if (record == null)
+            (int Status, bool SignedAttachmentUploaded)? inboundGate = await _repository.GetInboundAttachmentGateAsync(recordId);
+            if (inboundGate == null)
             {
                 return "未找到入网申请单。";
             }
 
-            status = record.Status;
-            signedUploaded = record.SignedAttachmentUploaded;
+            status = inboundGate.Value.Status;
+            signedUploaded = inboundGate.Value.SignedAttachmentUploaded;
         }
         else if (string.Equals(businessType, NetworkTransferDomainValues.OutboundAttachmentBusinessType, StringComparison.Ordinal))
         {
@@ -1823,15 +1824,7 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         string uploader = ResolveUserDisplayName(currentUser);
         if (string.Equals(businessType, NetworkTransferDomainValues.InboundAttachmentBusinessType, StringComparison.Ordinal))
         {
-            var record = await _repository.GetInboundByIdAsync(recordId, tracking: true);
-            if (record != null)
-            {
-                record.SignedAttachmentUploaded = true;
-                record.SignedAttachmentUploadedTime = now;
-                record.SignedAttachmentUploader = uploader;
-                record.UpdatedAt = now;
-            }
-
+            await _repository.TryMarkInboundSignedUploadedAsync(recordId, uploader, now);
             return;
         }
 
@@ -2276,7 +2269,8 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         {
             foreach (YearlyArchiveRegisterMedia media in NetworkOutboundOnNetAssetMappingSupport.CloneMediaForArchiveRegister(
                          outbound.MediaEntries,
-                         outbound.OutboundNo))
+                         outbound.OutboundNo,
+                         outbound.MaterialName))
             {
                 register.MediaEntries.Add(media);
             }
@@ -2284,7 +2278,10 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         else
         {
             NetworkOutboundRegisterMediaRulesSupport.NormalizeArchiveFilingCarrier(register.MediaEntries);
+            EnsureLegacySingleMaterial(register);
         }
+
+        ArchiveRegisterMaterialSummarySupport.Apply(register);
 
         if (register.Status != YearlyArchiveRegisterRecord.Completed)
         {
@@ -2311,7 +2308,8 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         ApplyArchiveRegisterHeaderFromOutbound(register, outbound, now);
         foreach (YearlyArchiveRegisterMedia media in NetworkOutboundOnNetAssetMappingSupport.CloneMediaForArchiveRegister(
                      outbound.MediaEntries,
-                     outbound.OutboundNo))
+                     outbound.OutboundNo,
+                     outbound.MaterialName))
         {
             register.MediaEntries.Add(media);
         }
@@ -2327,6 +2325,8 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             });
         }
 
+        EnsureLegacySingleMaterial(register);
+        ArchiveRegisterMaterialSummarySupport.Apply(register);
         return register;
     }
 
@@ -2576,6 +2576,34 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         {
             throw new InvalidOperationException("请先上传签批单后再办结。");
         }
+    }
+
+    /// <summary>
+    /// 尚未分组的介质补一份资料名称。已有分组时保持原样。
+    /// </summary>
+    private static void EnsureLegacySingleMaterial(YearlyArchiveRegisterRecord register)
+    {
+        foreach (YearlyArchiveRegisterMedia media in register.MediaEntries)
+        {
+            if (media.Materials is { Count: > 0 })
+            {
+                continue;
+            }
+
+            ArchiveRegisterMaterialSummarySupport.EnsureSingleMaterial(media, register.MaterialName);
+        }
+    }
+
+    private static string ResolveInboundHeaderMaterialName(
+        NetworkInboundRecord draft,
+        IReadOnlyList<NetworkInboundItem> items)
+    {
+        if (NetworkTransferDomainValues.IsExternalOfflineSource(draft.SourceKind))
+        {
+            return ArchiveRegisterMaterialSummarySupport.Build(draft.MediaEntries);
+        }
+
+        return NetworkRegisterMaterialGroupSupport.JoinDistinctNames(items.Select(item => item.MaterialName));
     }
 
     private static void ValidateInboundHeader(NetworkInboundRecord record)

@@ -73,7 +73,9 @@ public static class NetworkInboundItemPrintSupport
             detail?.MaterialCategory,
             detail?.SubCategory);
         string subCategory = detail?.SubCategory?.Trim() ?? string.Empty;
-        string head = $"{rowNo}. [{Empty(assetKind)}] {Empty(mediaItem.ContentDesc)} / {Empty(subCategory)}";
+        string materialName = ArchiveRegisterMaterialSummarySupport.ResolveItemMaterialName(mediaItem);
+        string materialPrefix = string.IsNullOrWhiteSpace(materialName) ? string.Empty : $"{Empty(materialName)} / ";
+        string head = $"{rowNo}. [{Empty(assetKind)}] {materialPrefix}{Empty(mediaItem.ContentDesc)} / {Empty(subCategory)}";
 
         var segments = new List<string>();
         foreach (string extra in ElectronicMediaItemSupport.BuildElectronicItemPrintExtraParts(mediaItem))

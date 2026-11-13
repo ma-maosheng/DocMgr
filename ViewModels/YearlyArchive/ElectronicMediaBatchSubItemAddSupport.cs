@@ -13,6 +13,10 @@ namespace DocMgr.ViewModels.YearlyArchive;
 /// </summary>
 internal static class ElectronicMediaBatchSubItemAddSupport
 {
+    /// <summary>新增电子介质或子项前，询问是否按四级目录扫描。</summary>
+    internal const string FourLayerScanPrompt =
+        "当电子介质内的资料组织形式符合【年度\\项目\\资料名称\\子项名称】四级结构时，可以通过扫描资料介质来直接获取相关资料详情，该介质是否需要扫描？";
+
     /// <summary>
     /// 选择资料名称文件夹，将其一级子文件夹追加为资料子项。本组仅有一条未改动的空子项时，用本次结果替换它。
     /// </summary>
@@ -22,7 +26,14 @@ internal static class ElectronicMediaBatchSubItemAddSupport
         IElectronicMediaContentScanService scanService,
         Func<MediaItemViewModel> createItem,
         Func<MediaItemViewModel, string, string?> validateFolder,
-        Func<MediaItemViewModel, string, Task<string?>> scanAndApplyAsync)
+        Func<MediaItemViewModel, string, Task<string?>> scanAndApplyAsync,
+        Action<ElectronicArchiveFourLayerResolveResult>? confirmParsedHeader = null,
+        string? pickFolderTitle = null,
+        MediaMaterialGroupViewModel? targetGroup = null,
+        Func<ElectronicArchiveFourLayerResolveResult, Task>? importRegisterMaterials = null,
+        bool acceptDriveRoot = false,
+        string? requiredYear = null,
+        string? requiredProjectName = null)
     {
         ArgumentNullException.ThrowIfNull(dialogService);
         ArgumentNullException.ThrowIfNull(scanService);
@@ -35,10 +46,89 @@ internal static class ElectronicMediaBatchSubItemAddSupport
             return;
         }
 
-        string? folder = dialogService.PickFolder("选择资料名称文件夹（其一级子文件夹将作为资料子项）");
+        string? folder = dialogService.PickFolder(
+            string.IsNullOrWhiteSpace(pickFolderTitle)
+                ? "选择资料名称文件夹（其一级子文件夹将作为资料子项）"
+                : pickFolderTitle);
         if (string.IsNullOrWhiteSpace(folder))
         {
             return;
+        }
+
+        bool limitToCommittedProject = !string.IsNullOrWhiteSpace(requiredYear)
+                                        && !string.IsNullOrWhiteSpace(requiredProjectName);
+        if (acceptDriveRoot && ElectronicMediaItemSupport.IsDriveRoot(folder))
+        {
+            ElectronicArchiveFourLayerResolveResult driveResolved =
+                StockHardDiskDirectFilingDirectorySupport.ResolveRegistrationDrive(
+                    folder,
+                    requiredYear,
+                    requiredProjectName);
+            if (driveResolved.Status == ElectronicArchiveFourLayerResolveStatus.ProjectMismatch)
+            {
+                dialogService.ShowMessage(ScannedProjectLibraryMatchSupport.BuildUnmatchedFourLayerRescanMessage(
+                    requiredYear,
+                    requiredProjectName,
+                    driveResolved.CandidateLabels));
+                return;
+            }
+
+            if (driveResolved.Status == ElectronicArchiveFourLayerResolveStatus.Ambiguous)
+            {
+                dialogService.ShowMessage(BuildAmbiguousHeaderMessage(driveResolved.CandidateLabels));
+                return;
+            }
+
+            if (driveResolved.Status == ElectronicArchiveFourLayerResolveStatus.Unique
+                && importRegisterMaterials != null)
+            {
+                await importRegisterMaterials(driveResolved).ConfigureAwait(true);
+                return;
+            }
+
+            dialogService.ShowMessage("所选盘符下没有符合「年度\\项目\\资料名称\\子项名称」的目录。");
+            return;
+        }
+
+        if (confirmParsedHeader != null || importRegisterMaterials != null)
+        {
+            ElectronicArchiveFourLayerResolveResult resolved =
+                StockHardDiskDirectFilingDirectorySupport.ResolveRegistrationFolder(
+                    folder,
+                    requiredYear,
+                    requiredProjectName);
+            if (resolved.Status == ElectronicArchiveFourLayerResolveStatus.ProjectMismatch)
+            {
+                dialogService.ShowMessage(ScannedProjectLibraryMatchSupport.BuildUnmatchedFourLayerRescanMessage(
+                    requiredYear,
+                    requiredProjectName,
+                    resolved.CandidateLabels));
+                return;
+            }
+
+            if (resolved.Status == ElectronicArchiveFourLayerResolveStatus.Ambiguous)
+            {
+                dialogService.ShowMessage(BuildAmbiguousHeaderMessage(resolved.CandidateLabels));
+                return;
+            }
+
+            if (resolved.Status == ElectronicArchiveFourLayerResolveStatus.Unique
+                && importRegisterMaterials != null)
+            {
+                await importRegisterMaterials(resolved).ConfigureAwait(true);
+                return;
+            }
+
+            if (resolved.Status == ElectronicArchiveFourLayerResolveStatus.Unique)
+            {
+                confirmParsedHeader?.Invoke(resolved);
+                folder = resolved.MaterialFolderPath;
+            }
+            else if (limitToCommittedProject)
+            {
+                dialogService.ShowMessage("所选文件夹下没有符合「年度\\项目\\资料名称\\子项名称」的目录。");
+                return;
+            }
         }
 
         if (ElectronicMediaItemSupport.IsDriveRoot(folder))
@@ -64,8 +154,9 @@ internal static class ElectronicMediaBatchSubItemAddSupport
             return;
         }
 
-        bool replacePlaceholder = media.Items.Count == 1
-            && IsUntouchedPlaceholder(media.Items[0], createItem());
+        bool replacePlaceholder = targetGroup != null
+            ? targetGroup.Items.Count == 1 && IsUntouchedPlaceholder(targetGroup.Items[0], createItem())
+            : media.Items.Count == 1 && IsUntouchedPlaceholder(media.Items[0], createItem());
 
         var created = new List<MediaItemViewModel>();
         var skipped = new List<string>();
@@ -107,14 +198,29 @@ internal static class ElectronicMediaBatchSubItemAddSupport
 
         if (created.Count > 0)
         {
-            if (replacePlaceholder)
+            if (targetGroup != null)
             {
-                media.Items.Clear();
-            }
+                if (replacePlaceholder)
+                {
+                    targetGroup.Items.Clear();
+                }
 
-            foreach (MediaItemViewModel item in created)
+                foreach (MediaItemViewModel item in created)
+                {
+                    targetGroup.Items.Add(item);
+                }
+            }
+            else
             {
-                media.Items.Add(item);
+                if (replacePlaceholder)
+                {
+                    media.Items.Clear();
+                }
+
+                foreach (MediaItemViewModel item in created)
+                {
+                    media.Items.Add(item);
+                }
             }
         }
 
@@ -185,6 +291,28 @@ internal static class ElectronicMediaBatchSubItemAddSupport
             }
         }
 
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildAmbiguousHeaderMessage(IReadOnlyList<string> labels)
+    {
+        const int maxShown = 8;
+        var lines = new List<string>
+        {
+            "所选文件夹里有多套年度或多个项目，不能导入到同一张申请单。"
+        };
+        int shown = Math.Min(maxShown, labels.Count);
+        for (int i = 0; i < shown; i++)
+        {
+            lines.Add($"• {labels[i]}");
+        }
+
+        if (labels.Count > maxShown)
+        {
+            lines.Add($"其余 {labels.Count - maxShown} 套未列出。");
+        }
+
+        lines.Add("请改为选择同一个年度、同一个项目下的目录。");
         return string.Join(Environment.NewLine, lines);
     }
 }

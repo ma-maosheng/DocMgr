@@ -545,10 +545,18 @@ public sealed partial class ArchiveDisposalService : IArchiveDisposalService
         else
         {
             bagCode = item.ElectronicArchiveNo?.Trim() ?? string.Empty;
+            if (item.FilingFactId > 0 && factsById.TryGetValue(item.FilingFactId, out var electronicFact))
+            {
+                projectName = electronicFact.ProjectName?.Trim() ?? string.Empty;
+            }
+
             if (unitsById.TryGetValue(item.ElectronicArchiveUnitId, out var unit))
             {
                 projectYear = unit.Year?.Trim() ?? string.Empty;
-                projectName = unit.ProjectName?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    projectName = unit.ProjectName?.Trim() ?? string.Empty;
+                }
                 if (string.IsNullOrWhiteSpace(bagCode))
                 {
                     bagCode = unit.ElectronicArchiveNo?.Trim() ?? string.Empty;

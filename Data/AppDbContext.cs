@@ -58,6 +58,7 @@ namespace DocMgr.Data
         // === 年度资料登记相关表 ===
         public DbSet<YearlyArchiveRegisterRecord> YearlyArchiveRegisterRecords { get; set; }
         public DbSet<YearlyArchiveRegisterMedia> YearlyArchiveRegisterMedias { get; set; }
+        public DbSet<YearlyArchiveRegisterMaterial> YearlyArchiveRegisterMaterials { get; set; }
         public DbSet<YearlyArchiveRegisterMediaItem> YearlyArchiveRegisterMediaItems { get; set; }
         public DbSet<YearlyArchiveRegisterElectronicMediaItemDetail> YearlyArchiveRegisterElectronicMediaItemDetails { get; set; }
         public DbSet<YearlyArchiveRegisterElectronicMediaItemEntry> YearlyArchiveRegisterElectronicMediaItemEntries { get; set; }
@@ -613,15 +614,17 @@ namespace DocMgr.Data
 
             modelBuilder.Entity<YearlyElectronicArchiveUnitMediaItemLink>(entity =>
             {
-                entity.HasIndex(item => new { item.YearlyElectronicArchiveUnitId, item.YearlyArchiveRegisterMediaItemId })
-                    .IsUnique();
-
                 entity.HasIndex(item => item.YearlyArchiveRegisterMediaItemId)
                     .IsUnique();
 
-                entity.HasOne(item => item.ElectronicArchiveUnit)
-                    .WithMany(unit => unit.MediaItemLinks)
-                    .HasForeignKey(item => item.YearlyElectronicArchiveUnitId)
+                entity.HasOne(item => item.HardDiskMedium)
+                    .WithMany(medium => medium.ArchiveItemLinks)
+                    .HasForeignKey(item => item.HardDiskMediumId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(item => item.OpticalDiscMedium)
+                    .WithMany(medium => medium.ArchiveItemLinks)
+                    .HasForeignKey(item => item.OpticalDiscMediumId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(item => item.MediaItem)

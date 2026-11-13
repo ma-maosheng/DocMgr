@@ -344,10 +344,30 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static bool IsDataSimulated(MediaEntryViewModel? m) => m != null && string.Equals(m.MediaKind, ArchiveRegisterDomainValues.MediaKindSimulated, StringComparison.Ordinal);
 
         // Actions
-        private void AddDataElectronicMediaEntry()
+        /// <summary>
+        /// 新增电子介质。先询问是否按四级目录扫描；选「是」则选目录并写入资料名称与子项，选「否」只加空介质。
+        /// </summary>
+        private async Task AddDataElectronicMediaEntryAsync()
         {
+            if (!CanEditForm)
+            {
+                return;
+            }
+
             EnsureElectronicMediaSelections();
-            AddMediaEntry(ArchiveRegisterDomainValues.MediaKindElectronic);
+            bool scan = _dialogService.ShowConfirm(ElectronicMediaBatchSubItemAddSupport.FourLayerScanPrompt, "扫描资料介质");
+            if (!scan)
+            {
+                AddMediaEntry(ArchiveRegisterDomainValues.MediaKindElectronic);
+                return;
+            }
+
+            MediaEntryViewModel entry = MediaEntries.LastOrDefault(IsReusableBlankElectronicMedium)
+                ?? AddMediaEntry(ArchiveRegisterDomainValues.MediaKindElectronic);
+            await BatchAddElectronicMediaItemsAsync(
+                entry,
+                "选择代表该介质的盘符",
+                acceptDriveRoot: true);
         }
         private void AddDataSimulatedMediaEntry()
         {
@@ -355,7 +375,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             AddMediaEntry(ArchiveRegisterDomainValues.MediaKindSimulated);
         }
 
-        private void AddMediaEntry(string kind)
+        private MediaEntryViewModel AddMediaEntry(string kind)
         {
             bool isElectronic = string.Equals(kind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.Ordinal);
             var entry = new MediaEntryViewModel
@@ -366,7 +386,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                 IsBorrowedHardDisk = false,
                 BorrowedHardDiskCode = string.Empty
             };
-            entry.Items.Add(isElectronic
+            entry.EnableRegisterMaterialGroups();
+            MediaMaterialGroupViewModel group = entry.AddMaterialGroup(string.Empty);
+            group.Items.Add(isElectronic
                 ? CreateDefaultElectronicMediaItem()
                 : CreateDefaultSimulatedMediaItem());
             MediaEntries.Add(entry);
@@ -380,20 +402,118 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 ApplySelectedSimulatedMediaSettingsToEntries();
             }
+
+            return entry;
         }
         private void RemoveMediaEntry(MediaEntryViewModel? m) { if (m != null) MediaEntries.Remove(m); }
-        private void AddMediaItem(MediaEntryViewModel? m)
+
+        /// <summary>
+        /// 添加资料子项。电子介质先询问是否按四级目录扫描；模拟介质直接加一条空子项。
+        /// </summary>
+        private async Task AddMediaItemAsync(MediaEntryViewModel? media)
         {
-            if (m == null)
+            if (media == null || !CanEditForm)
             {
                 return;
             }
 
-            m.Items.Add(IsDataElectronic(m)
+            if (!IsDataElectronic(media))
+            {
+                AddItemToMaterialGroup(
+                    media.UsesRegisterMaterialGroups ? media.Materials.LastOrDefault() ?? media.AddMaterialGroup(string.Empty) : null,
+                    media,
+                    false);
+                return;
+            }
+
+            if (!ConfirmElectronicFourLayerScan())
+            {
+                AddItemToMaterialGroup(
+                    media.UsesRegisterMaterialGroups ? media.Materials.LastOrDefault() ?? media.AddMaterialGroup(string.Empty) : null,
+                    media,
+                    true);
+                return;
+            }
+
+            await BatchAddElectronicMediaItemsAsync(media);
+        }
+
+        private void AddRegisterMaterial(MediaEntryViewModel? media)
+        {
+            if (media == null || !media.UsesRegisterMaterialGroups)
+            {
+                return;
+            }
+
+            MediaMaterialGroupViewModel group = media.AddMaterialGroup(string.Empty);
+            group.Items.Add(IsDataElectronic(media)
                 ? CreateDefaultElectronicMediaItem()
                 : CreateDefaultSimulatedMediaItem());
         }
-        private void RemoveMediaItem(MediaItemViewModel? i) { if (i == null) return; var p = MediaEntries.FirstOrDefault(m => m.Items.Contains(i)); p?.Items.Remove(i); }
+
+        /// <summary>
+        /// 在指定资料名称下添加子项。电子介质先询问是否按四级目录扫描。
+        /// </summary>
+        private async Task AddRegisterMaterialItemAsync(MediaMaterialGroupViewModel? group)
+        {
+            if (group?.Owner == null || !CanEditForm)
+            {
+                return;
+            }
+
+            if (!IsDataElectronic(group.Owner) || !ConfirmElectronicFourLayerScan())
+            {
+                AddItemToMaterialGroup(group, group.Owner, IsDataElectronic(group.Owner));
+                return;
+            }
+
+            await BatchAddElectronicMediaItemsAsync(
+                group,
+                "选择资料名称文件夹，或年度所在目录");
+        }
+
+        private bool ConfirmElectronicFourLayerScan() =>
+            _dialogService.ShowConfirm(ElectronicMediaBatchSubItemAddSupport.FourLayerScanPrompt, "扫描资料介质");
+
+        private void AddItemToMaterialGroup(MediaMaterialGroupViewModel? group, MediaEntryViewModel media, bool isElectronic)
+        {
+            MediaItemViewModel item = isElectronic
+                ? CreateDefaultElectronicMediaItem()
+                : CreateDefaultSimulatedMediaItem();
+            if (group == null)
+            {
+                media.Items.Add(item);
+                return;
+            }
+
+            group.Items.Add(item);
+        }
+
+        private void RemoveRegisterMaterial(MediaMaterialGroupViewModel? group)
+        {
+            group?.Owner.RemoveMaterialGroup(group);
+        }
+
+        private void RemoveMediaItem(MediaItemViewModel? i)
+        {
+            if (i == null)
+            {
+                return;
+            }
+
+            foreach (MediaEntryViewModel media in MediaEntries)
+            {
+                foreach (MediaMaterialGroupViewModel group in media.Materials)
+                {
+                    if (group.Items.Remove(i))
+                    {
+                        return;
+                    }
+                }
+            }
+
+            MediaEntries.FirstOrDefault(m => m.Items.Contains(i))?.Items.Remove(i);
+        }
 
         private void SyncCollectionsFromRecord()
         {
@@ -482,6 +602,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 BorrowedHardDiskCode = media.BorrowedHardDiskCode
             };
 
+            vm.EnableRegisterMaterialGroups();
+            var loadedItems = new List<(YearlyArchiveRegisterMediaItem Entity, MediaItemViewModel View)>();
             if (media.Items != null)
             {
                 foreach (var item in media.Items)
@@ -535,12 +657,65 @@ namespace DocMgr.ViewModels.YearlyArchive
                         ConfigureElectronicMediaItem(itemVm);
                     }
                     itemVm.RefreshContentScanSummary();
-                    vm.Items.Add(itemVm);
+                    loadedItems.Add((item, itemVm));
                 }
             }
 
+            AssignLoadedItemsToMaterialGroups(vm, media, loadedItems);
+
             RecalculateQuantities(vm);
             return vm;
+        }
+
+        private static void AssignLoadedItemsToMaterialGroups(
+            MediaEntryViewModel vm,
+            YearlyArchiveRegisterMedia media,
+            IReadOnlyList<(YearlyArchiveRegisterMediaItem Entity, MediaItemViewModel View)> loadedItems)
+        {
+            List<YearlyArchiveRegisterMaterial> materials = (media.Materials ?? [])
+                .OrderBy(material => material.SortOrder)
+                .ThenBy(material => material.Id)
+                .ToList();
+            if (materials.Count == 0)
+            {
+                MediaMaterialGroupViewModel group = vm.AddMaterialGroup(string.Empty);
+                foreach ((YearlyArchiveRegisterMediaItem _, MediaItemViewModel view) in loadedItems)
+                {
+                    group.Items.Add(view);
+                }
+
+                return;
+            }
+
+            var assigned = new HashSet<MediaItemViewModel>();
+            foreach (YearlyArchiveRegisterMaterial material in materials)
+            {
+                MediaMaterialGroupViewModel group = vm.AddMaterialGroup(material.MaterialName);
+                foreach ((YearlyArchiveRegisterMediaItem entity, MediaItemViewModel view) in loadedItems)
+                {
+                    if (entity.YearlyArchiveRegisterMaterialId != material.Id)
+                    {
+                        continue;
+                    }
+
+                    group.Items.Add(view);
+                    assigned.Add(view);
+                }
+            }
+
+            List<(YearlyArchiveRegisterMediaItem Entity, MediaItemViewModel View)> orphans = loadedItems
+                .Where(pair => !assigned.Contains(pair.View))
+                .ToList();
+            if (orphans.Count == 0)
+            {
+                return;
+            }
+
+            MediaMaterialGroupViewModel orphanGroup = vm.AddMaterialGroup(string.Empty);
+            foreach ((YearlyArchiveRegisterMediaItem _, MediaItemViewModel view) in orphans)
+            {
+                orphanGroup.Items.Add(view);
+            }
         }
 
         private List<YearlyArchiveRegisterMedia> BuildMediaEntries()
@@ -549,20 +724,54 @@ namespace DocMgr.ViewModels.YearlyArchive
             RecalculateAllQuantities();
 
             // 证明材料由主表 ProofMaterialNote 承载，介质行不再区分证明类型。
-            return MediaEntries
-                .Select(m => new YearlyArchiveRegisterMedia
+            return MediaEntries.Select(m =>
+            {
+                List<YearlyArchiveRegisterMaterial> materials = BuildMaterialEntities(m);
+                List<YearlyArchiveRegisterMediaItem> items = m.UsesRegisterMaterialGroups
+                    ? materials.SelectMany(material => material.Items).ToList()
+                    : m.Items.Select((item, index) => MapMediaItemEntity(item, IsDataElectronic(m), index)).ToList();
+                return new YearlyArchiveRegisterMedia
                 {
-                MediaKind = m.MediaKind,
-                MediaType = IsDataElectronic(m) ? ResolveSelectedElectronicMediaType() : ResolveSelectedSimulatedMediaType(),
-                MediaCount = IsDataElectronic(m) ? 1 : m.MediaCount,
-                Disposition = IsDataElectronic(m)
-                    ? ResolveSelectedElectronicDisposition()
-                    : ArchiveRegisterDomainValues.ElectronicDispositionRetain,
-                IsBorrowedHardDisk = IsDataElectronic(m) && m.IsRetainedHardDiskScenario && m.IsBorrowedHardDisk,
-                BorrowedHardDiskCode = IsDataElectronic(m) && m.IsRetainedHardDiskScenario && m.IsBorrowedHardDisk
-                    ? (m.BorrowedHardDiskCode?.Trim() ?? string.Empty)
-                    : string.Empty,
-                Items = m.Items.Select((item, index) => MapMediaItemEntity(item, IsDataElectronic(m), index)).ToList()
+                    MediaKind = m.MediaKind,
+                    MediaType = IsDataElectronic(m) ? ResolveSelectedElectronicMediaType() : ResolveSelectedSimulatedMediaType(),
+                    MediaCount = IsDataElectronic(m) ? 1 : m.MediaCount,
+                    Disposition = IsDataElectronic(m)
+                        ? ResolveSelectedElectronicDisposition()
+                        : ArchiveRegisterDomainValues.ElectronicDispositionRetain,
+                    IsBorrowedHardDisk = IsDataElectronic(m) && m.IsRetainedHardDiskScenario && m.IsBorrowedHardDisk,
+                    BorrowedHardDiskCode = IsDataElectronic(m) && m.IsRetainedHardDiskScenario && m.IsBorrowedHardDisk
+                        ? (m.BorrowedHardDiskCode?.Trim() ?? string.Empty)
+                        : string.Empty,
+                    Materials = materials,
+                    Items = items
+                };
+            }).ToList();
+        }
+
+        private List<YearlyArchiveRegisterMaterial> BuildMaterialEntities(MediaEntryViewModel media)
+        {
+            if (!media.UsesRegisterMaterialGroups)
+            {
+                return new List<YearlyArchiveRegisterMaterial>();
+            }
+
+            bool isElectronic = IsDataElectronic(media);
+            return media.Materials.Select((group, index) =>
+            {
+                var material = new YearlyArchiveRegisterMaterial
+                {
+                    SortOrder = index + 1,
+                    MaterialName = group.MaterialName?.Trim() ?? string.Empty,
+                    Items = group.Items
+                        .Select((item, itemIndex) => MapMediaItemEntity(item, isElectronic, itemIndex))
+                        .ToList()
+                };
+                foreach (YearlyArchiveRegisterMediaItem item in material.Items)
+                {
+                    item.RegisterMaterial = material;
+                }
+
+                return material;
             }).ToList();
         }
 

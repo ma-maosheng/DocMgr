@@ -105,7 +105,7 @@ namespace DocMgr.Services.YearlyArchive
                 {
                     foreach (var link in item.ElectronicArchiveUnitMediaItemLinks)
                     {
-                        var unit = link.ElectronicArchiveUnit;
+                        var unit = ElectronicMediumCatalog.FindCurrentBag(link);
                         if (unit != null && seenIds.Add(unit.Id))
                         {
                             units.Add(unit);

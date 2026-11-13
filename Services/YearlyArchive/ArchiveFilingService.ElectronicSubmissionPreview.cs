@@ -259,7 +259,6 @@ namespace DocMgr.Services.YearlyArchive
             PendingExternalHardDiskRegistration? pendingExternalHardDisk = null)
         {
             unit.ElectronicArchiveNo = unit.ElectronicArchiveNo.Trim();
-            unit.ProjectName = unit.ProjectName.Trim();
             unit.Year = unit.Year.Trim();
             unit.StorageCarrierType = unit.StorageCarrierType.Trim();
             unit.StoragePath = unit.StoragePath.Trim();

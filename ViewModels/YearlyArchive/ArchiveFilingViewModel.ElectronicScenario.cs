@@ -18,6 +18,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ElectronicStepFourAppendModeNoticeVisibility));
             OnPropertyChanged(nameof(ElectronicStepFourNewBoxSectionVisibility));
             OnPropertyChanged(nameof(IsElectronicMediumSelectionButtonVisible));
+            OnPropertyChanged(nameof(IsAppendHardDiskSelectionButtonVisible));
             OnPropertyChanged(nameof(ElectronicStoragePathLabel));
             OnPropertyChanged(nameof(ElectronicMediaCountLabel));
         }
@@ -134,7 +135,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             ElectronicArchiveSubmissionMode.CopyNewOpticalDisc => "出网申请已预定新光盘立档，本步只选择光盘档口并赋码。",
             ElectronicArchiveSubmissionMode.CopyNewHardDisk => "出网申请已预定库内空盘，介质编号不可更改，本步选择数据硬盘档口。",
-            ElectronicArchiveSubmissionMode.CopyAppendExistingHardDisk => "出网申请已预定并入下方硬盘袋。",
+            ElectronicArchiveSubmissionMode.CopyAppendExistingHardDisk => "出网申请已预定并入所选硬盘。",
             _ => string.Empty
         };
 
@@ -178,6 +179,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(OutboundArchiveFilingModeHint));
             OnPropertyChanged(nameof(IsOutboundArchiveBlankDiskCodeReadOnly));
             OnPropertyChanged(nameof(IsElectronicMediumSelectionButtonVisible));
+            OnPropertyChanged(nameof(IsAppendHardDiskSelectionButtonVisible));
 
             if (_outboundArchiveFilingMode != ElectronicArchiveSubmissionMode.CopyAppendExistingHardDisk)
             {

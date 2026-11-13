@@ -18,7 +18,7 @@ namespace DocMgr.Services.YearlyArchive
         internal const string BlankHardDiskSourceOption = "选择一块空硬盘，立档";
         internal const string DirectRetainedHardDiskSourceOption = "使用该硬盘直接立档";
         internal const string SingleOpticalDiscSourceOption = "使用1张光盘，立档";
-        internal const string AppendExistingHardDiskOption = "数据并入本项目已立档硬盘";
+        internal const string AppendExistingHardDiskOption = "选择一块非空硬盘，并入";
         internal const string HardDiskSelectionModeBlankTarget = "BlankTarget";
 
         /// <summary>
@@ -138,9 +138,10 @@ namespace DocMgr.Services.YearlyArchive
                 ElectronicArchiveSubmissionMode.CopyAppendExistingHardDisk => new ElectronicArchiveSubmissionModeOption(
                     predeterminedMode,
                     AppendExistingHardDiskOption,
-                    "出网申请已预定并入本项目当年硬盘袋。",
+                    "出网申请已预定并入所选非空硬盘。",
                     true,
                     string.Empty,
+                    true,
                     true,
                     true),
                 _ => throw new InvalidOperationException("出网申请预定的归档载体无法立档。")
@@ -200,7 +201,7 @@ namespace DocMgr.Services.YearlyArchive
                 : isOpticalDiscArchiveScenario
                     ? "光盘留存场景每张光盘需单独立档，不允许并档。"
                     : !hasExistingHardDiskArchive
-                        ? "所属项目当年无已立档硬盘袋，暂不可并档。"
+                        ? "当前没有可并入的非空硬盘，暂不可并档。"
                         : "当前场景不支持并档。";
 
             bool isOpticalDefault = opticalEnabled && (isCopyScenario || isOpticalDiscArchiveScenario);
@@ -235,11 +236,12 @@ namespace DocMgr.Services.YearlyArchive
                 new ElectronicArchiveSubmissionModeOption(
                     appendMode,
                     AppendExistingHardDiskOption,
-                    "将数据并入本项目已立档硬盘（沿用原电子袋与原数据硬盘）。",
+                    "将数据并入所选非空硬盘（沿用原电子袋与原数据硬盘）。",
                     appendEnabled,
                     appendDisabledReason,
                     true,
-                    false)
+                    false,
+                    true)
             ];
         }
 

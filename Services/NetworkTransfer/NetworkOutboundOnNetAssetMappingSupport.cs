@@ -28,13 +28,14 @@ internal static class NetworkOutboundOnNetAssetMappingSupport
                     detail.DataSizeMb,
                     NetworkInboundItemDisplaySupport.DefaultDataSizeUnit);
 
+            string materialName = ArchiveRegisterMaterialSummarySupport.ResolveItemMaterialName(mediaItem);
             result.Add(new NetworkOutboundItem
             {
                 SortOrder = sort++,
                 AssetKind = NetworkInboundOnNetAssetMappingSupport.ResolveAssetKind(
                     detail?.MaterialCategory,
                     detail?.SubCategory),
-                AssetName = header.MaterialName?.Trim() ?? string.Empty,
+                AssetName = materialName,
                 ItemName = mediaItem.ContentDesc?.Trim() ?? string.Empty,
                 ServerPath = header.ServerPath?.Trim() ?? string.Empty,
                 ConfidentialLevel = mediaItem.ConfidentialLevel?.Trim() ?? string.Empty,
@@ -79,7 +80,8 @@ internal static class NetworkOutboundOnNetAssetMappingSupport
 
     internal static List<YearlyArchiveRegisterMedia> CloneMediaForArchiveRegister(
         IEnumerable<YearlyArchiveRegisterMedia>? mediaEntries,
-        string outboundNo)
+        string outboundNo,
+        string? fallbackMaterialName)
     {
         var result = new List<YearlyArchiveRegisterMedia>();
         foreach (YearlyArchiveRegisterMedia source in mediaEntries ?? [])
@@ -107,6 +109,21 @@ internal static class NetworkOutboundOnNetAssetMappingSupport
                     ? string.Empty
                     : source.AppendTargetHardDiskCode?.Trim() ?? string.Empty
             };
+
+            var materialClones = new Dictionary<YearlyArchiveRegisterMaterial, YearlyArchiveRegisterMaterial>();
+            foreach (YearlyArchiveRegisterMaterial sourceMaterial in (source.Materials ?? [])
+                         .OrderBy(material => material.SortOrder)
+                         .ThenBy(material => material.Id))
+            {
+                var clonedMaterial = new YearlyArchiveRegisterMaterial
+                {
+                    SortOrder = sourceMaterial.SortOrder,
+                    MaterialName = sourceMaterial.MaterialName?.Trim() ?? string.Empty,
+                    MediaEntry = clone
+                };
+                materialClones[sourceMaterial] = clonedMaterial;
+                clone.Materials.Add(clonedMaterial);
+            }
 
             foreach (YearlyArchiveRegisterMediaItem item in source.Items ?? [])
             {
@@ -143,7 +160,22 @@ internal static class NetworkOutboundOnNetAssetMappingSupport
                                 .ToList()
                         }
                 };
+                YearlyArchiveRegisterMaterial? sourceMaterial = item.RegisterMaterial
+                    ?? source.Materials?.FirstOrDefault(material =>
+                        material.Id > 0 && material.Id == item.YearlyArchiveRegisterMaterialId);
+                if (sourceMaterial != null
+                    && materialClones.TryGetValue(sourceMaterial, out YearlyArchiveRegisterMaterial? clonedMaterial))
+                {
+                    clonedItem.RegisterMaterial = clonedMaterial;
+                    clonedMaterial.Items.Add(clonedItem);
+                }
+
                 clone.Items.Add(clonedItem);
+            }
+
+            if (clone.Materials.Count == 0)
+            {
+                ArchiveRegisterMaterialSummarySupport.EnsureSingleMaterial(clone, fallbackMaterialName);
             }
 
             result.Add(clone);

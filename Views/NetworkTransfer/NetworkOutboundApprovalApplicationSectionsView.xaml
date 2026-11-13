@@ -37,9 +37,9 @@
         </GroupBox>
         <GroupBox Header="2. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
             <StackPanel>
-                <StackPanel Margin="0,0,0,8">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                     <TextBlock Text="资料名称：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                    <TextBlock Text="{Binding CurrentRecord.MaterialName, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                    <TextBlock Text="{Binding CurrentRecord.MaterialName, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap"/>
                 </StackPanel>
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>

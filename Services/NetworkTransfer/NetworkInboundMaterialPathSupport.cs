@@ -4,8 +4,9 @@ namespace DocMgr.Services.NetworkTransfer;
 
 /// <summary>
 /// 入网申请资料路径默认值生成。
-/// 部门专用：入网\年度\项目\资料名称；
-/// 共用路径：申请部门\入网\年度\项目\资料名称。
+/// 部门专用：入网\年度\项目；
+/// 共用路径：申请部门\入网\年度\项目。
+/// 资料名称是该路径下的子目录。
 /// </summary>
 public static class NetworkInboundMaterialPathSupport
 {
@@ -22,13 +23,11 @@ public static class NetworkInboundMaterialPathSupport
         ServerPathSetting? serverPath,
         string? applicantDept,
         string? year,
-        string? projectName,
-        string? materialName) =>
-        NetworkMaterialPathSupport.BuildMaterialPath(
+        string? projectName) =>
+        NetworkMaterialPathSupport.BuildMaterialPathPrefix(
             serverPath,
             applicantDept,
             year,
             projectName,
-            materialName,
             NetworkMaterialPathSupport.InboundFolderName);
 }

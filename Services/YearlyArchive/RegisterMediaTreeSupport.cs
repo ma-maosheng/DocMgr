@@ -66,8 +66,11 @@ namespace DocMgr.Services.YearlyArchive
         public static MediaEntryViewModel CreateMediaEntryViewModel(
             YearlyArchiveRegisterMedia media,
             Func<string?, string> resolveConfidentialLevel,
-            Action<MediaItemViewModel>? configureElectronicMediaItem = null)
+            Action<MediaItemViewModel>? configureElectronicMediaItem = null,
+            bool useMaterialGroups = false,
+            string? ungroupedMaterialName = null)
         {
+            var loadedItems = new List<(YearlyArchiveRegisterMediaItem Entity, MediaItemViewModel View)>();
             var vm = new MediaEntryViewModel
             {
                 MediaKind = media.MediaKind,
@@ -86,6 +89,12 @@ namespace DocMgr.Services.YearlyArchive
 
             if (media.Items == null)
             {
+                if (useMaterialGroups)
+                {
+                    vm.EnableRegisterMaterialGroups();
+                    vm.AddMaterialGroup(ResolveUngroupedMaterialName(ungroupedMaterialName));
+                }
+
                 return vm;
             }
 
@@ -134,7 +143,20 @@ namespace DocMgr.Services.YearlyArchive
 
                 configureElectronicMediaItem?.Invoke(itemVm);
                 itemVm.RefreshContentScanSummary();
-                vm.Items.Add(itemVm);
+                if (useMaterialGroups)
+                {
+                    loadedItems.Add((item, itemVm));
+                }
+                else
+                {
+                    vm.Items.Add(itemVm);
+                }
+            }
+
+            if (useMaterialGroups)
+            {
+                vm.EnableRegisterMaterialGroups();
+                AssignLoadedItemsToMaterialGroups(vm, media, loadedItems, ungroupedMaterialName);
             }
 
             return vm;
@@ -150,43 +172,146 @@ namespace DocMgr.Services.YearlyArchive
         {
             return entries
                 .Where(IsDataElectronic)
-                .Select(m => new YearlyArchiveRegisterMedia
+                .Select(m =>
                 {
-                    MediaKind = m.MediaKind,
-                    MediaType = resolveSelectedMediaType(),
-                    MediaCount = 1,
-                    Disposition = resolveSelectedDisposition(),
-                    IsBorrowedHardDisk = m.IsRetainedHardDiskScenario && m.IsBorrowedHardDisk,
-                    BorrowedHardDiskCode = m.IsRetainedHardDiskScenario && m.IsBorrowedHardDisk
-                        ? (m.BorrowedHardDiskCode?.Trim() ?? string.Empty)
-                        : string.Empty,
-                    UseInStockBlankHardDisk = (m.IsExternalOfflineReturnedHardDiskScenario || m.IsArchiveFilingHardDiskScenario)
-                                              && m.UseInStockBlankHardDisk,
-                    RequisitionedMediumId = (m.IsExternalOfflineReturnedHardDiskScenario || m.IsArchiveFilingHardDiskScenario)
-                                            && m.UseInStockBlankHardDisk
-                        ? m.RequisitionedMediumId
-                        : null,
-                    RequisitionedHardDiskCode = (m.IsExternalOfflineReturnedHardDiskScenario || m.IsArchiveFilingHardDiskScenario)
+                    List<YearlyArchiveRegisterMaterial> materials = BuildMaterialEntities(m);
+                    List<YearlyArchiveRegisterMediaItem> items = m.UsesRegisterMaterialGroups
+                        ? materials.SelectMany(material => material.Items).ToList()
+                        : m.Items.Select((item, index) => MapMediaItemEntity(item, isElectronic: true, index)).ToList();
+                    return new YearlyArchiveRegisterMedia
+                    {
+                        MediaKind = m.MediaKind,
+                        MediaType = resolveSelectedMediaType(),
+                        MediaCount = 1,
+                        Disposition = resolveSelectedDisposition(),
+                        IsBorrowedHardDisk = m.IsRetainedHardDiskScenario && m.IsBorrowedHardDisk,
+                        BorrowedHardDiskCode = m.IsRetainedHardDiskScenario && m.IsBorrowedHardDisk
+                            ? (m.BorrowedHardDiskCode?.Trim() ?? string.Empty)
+                            : string.Empty,
+                        UseInStockBlankHardDisk = (m.IsExternalOfflineReturnedHardDiskScenario || m.IsArchiveFilingHardDiskScenario)
+                                                  && m.UseInStockBlankHardDisk,
+                        RequisitionedMediumId = (m.IsExternalOfflineReturnedHardDiskScenario || m.IsArchiveFilingHardDiskScenario)
                                                 && m.UseInStockBlankHardDisk
-                        ? (m.RequisitionedHardDiskCode?.Trim() ?? string.Empty)
-                        : string.Empty,
-                    RequisitionedDiskNeedReturn = m.IsExternalOfflineReturnedHardDiskScenario
-                                                  && m.UseInStockBlankHardDisk
-                                                  && m.RequisitionedDiskNeedReturn,
-                    ExpectedReturnDate = m.IsExternalOfflineReturnedHardDiskScenario
-                                       && m.UseInStockBlankHardDisk
-                                       && m.RequiresExpectedReturnDate
-                        ? m.ExpectedReturnDate?.Date
-                        : null,
-                    AppendTargetElectronicUnitId = m.IsArchiveFilingHardDiskScenario && !m.UseInStockBlankHardDisk
-                        ? m.AppendTargetElectronicUnitId
-                        : null,
-                    AppendTargetHardDiskCode = m.IsArchiveFilingHardDiskScenario && !m.UseInStockBlankHardDisk
-                        ? (m.AppendTargetHardDiskCode?.Trim() ?? string.Empty)
-                        : string.Empty,
-                    Items = m.Items.Select((item, index) => MapMediaItemEntity(item, isElectronic: true, index)).ToList()
+                            ? m.RequisitionedMediumId
+                            : null,
+                        RequisitionedHardDiskCode = (m.IsExternalOfflineReturnedHardDiskScenario || m.IsArchiveFilingHardDiskScenario)
+                                                    && m.UseInStockBlankHardDisk
+                            ? (m.RequisitionedHardDiskCode?.Trim() ?? string.Empty)
+                            : string.Empty,
+                        RequisitionedDiskNeedReturn = m.IsExternalOfflineReturnedHardDiskScenario
+                                                      && m.UseInStockBlankHardDisk
+                                                      && m.RequisitionedDiskNeedReturn,
+                        ExpectedReturnDate = m.IsExternalOfflineReturnedHardDiskScenario
+                                           && m.UseInStockBlankHardDisk
+                                           && m.RequiresExpectedReturnDate
+                            ? m.ExpectedReturnDate?.Date
+                            : null,
+                        AppendTargetElectronicUnitId = m.IsArchiveFilingHardDiskScenario && !m.UseInStockBlankHardDisk
+                            ? m.AppendTargetElectronicUnitId
+                            : null,
+                        AppendTargetHardDiskCode = m.IsArchiveFilingHardDiskScenario && !m.UseInStockBlankHardDisk
+                            ? (m.AppendTargetHardDiskCode?.Trim() ?? string.Empty)
+                            : string.Empty,
+                        Materials = materials,
+                        Items = items
+                    };
                 })
                 .ToList();
+        }
+
+        /// <summary>
+        /// 分组开启时，把界面上的资料名称写成实体，子项挂到对应资料名称。
+        /// </summary>
+        public static List<YearlyArchiveRegisterMaterial> BuildMaterialEntities(MediaEntryViewModel media)
+        {
+            if (!media.UsesRegisterMaterialGroups)
+            {
+                return new List<YearlyArchiveRegisterMaterial>();
+            }
+
+            return media.Materials.Select((group, index) =>
+            {
+                var material = new YearlyArchiveRegisterMaterial
+                {
+                    SortOrder = index + 1,
+                    MaterialName = group.MaterialName?.Trim() ?? string.Empty,
+                    Items = group.Items
+                        .Select((item, itemIndex) => MapMediaItemEntity(item, isElectronic: true, itemIndex))
+                        .ToList()
+                };
+                foreach (YearlyArchiveRegisterMediaItem item in material.Items)
+                {
+                    item.RegisterMaterial = material;
+                }
+
+                return material;
+            }).ToList();
+        }
+
+        /// <summary>
+        /// 按资料名称主键把已加载子项放回分组。没有资料名称行时收成一组，名称沿用旧表头（顿号摘要除外）。
+        /// </summary>
+        public static void AssignLoadedItemsToMaterialGroups(
+            MediaEntryViewModel vm,
+            YearlyArchiveRegisterMedia media,
+            IReadOnlyList<(YearlyArchiveRegisterMediaItem Entity, MediaItemViewModel View)> loadedItems,
+            string? ungroupedMaterialName)
+        {
+            List<YearlyArchiveRegisterMaterial> materials = (media.Materials ?? [])
+                .OrderBy(material => material.SortOrder)
+                .ThenBy(material => material.Id)
+                .ToList();
+            if (materials.Count == 0)
+            {
+                MediaMaterialGroupViewModel group = vm.AddMaterialGroup(ResolveUngroupedMaterialName(ungroupedMaterialName));
+                foreach ((YearlyArchiveRegisterMediaItem _, MediaItemViewModel view) in loadedItems)
+                {
+                    group.Items.Add(view);
+                }
+
+                if (group.Items.Count == 0)
+                {
+                    return;
+                }
+
+                return;
+            }
+
+            var assigned = new HashSet<MediaItemViewModel>();
+            foreach (YearlyArchiveRegisterMaterial material in materials)
+            {
+                MediaMaterialGroupViewModel group = vm.AddMaterialGroup(material.MaterialName);
+                foreach ((YearlyArchiveRegisterMediaItem entity, MediaItemViewModel view) in loadedItems)
+                {
+                    if (entity.YearlyArchiveRegisterMaterialId != material.Id)
+                    {
+                        continue;
+                    }
+
+                    group.Items.Add(view);
+                    assigned.Add(view);
+                }
+            }
+
+            List<(YearlyArchiveRegisterMediaItem Entity, MediaItemViewModel View)> orphans = loadedItems
+                .Where(pair => !assigned.Contains(pair.View))
+                .ToList();
+            if (orphans.Count == 0)
+            {
+                return;
+            }
+
+            MediaMaterialGroupViewModel orphanGroup = vm.AddMaterialGroup(string.Empty);
+            foreach ((YearlyArchiveRegisterMediaItem _, MediaItemViewModel view) in orphans)
+            {
+                orphanGroup.Items.Add(view);
+            }
+        }
+
+        private static string ResolveUngroupedMaterialName(string? materialName)
+        {
+            string trimmed = materialName?.Trim() ?? string.Empty;
+            return trimmed.Contains('、') ? string.Empty : trimmed;
         }
 
         /// <summary>

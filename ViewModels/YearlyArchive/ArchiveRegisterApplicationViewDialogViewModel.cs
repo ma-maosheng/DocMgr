@@ -73,7 +73,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         // 1. 申请信息
         public string FormNo => string.IsNullOrWhiteSpace(_record.FormNo) ? "待编单" : _record.FormNo.Trim();
         public string StatusDisplay => _record.StatusStr;
-        public string ArchivePurpose => EmptyAsPlaceholder(_record.ArchivePurpose);
+        public string ArchivePurpose
+        {
+            get
+            {
+                string purpose = EmptyAsPlaceholder(_record.ArchivePurpose);
+                string note = _record.ArchivePurposeNote?.Trim() ?? string.Empty;
+                return string.IsNullOrWhiteSpace(note) ? purpose : $"{purpose}（{note}）";
+            }
+        }
+
+        public string ApplicationReason => EmptyAsPlaceholder(_record.Reason);
         public string OtherRequests => EmptyAsPlaceholder(_record.OtherRequests);
         public string HasProofMaterialDisplay =>
             ArchiveRegisterDomainValues.HasProofMaterial(_record.ProofMaterialNote) ? "是" : "否";
@@ -344,6 +354,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ProjectName));
             OnPropertyChanged(nameof(SourceProvideUnitDisplay));
             OnPropertyChanged(nameof(ArchivePurpose));
+            OnPropertyChanged(nameof(ApplicationReason));
             OnPropertyChanged(nameof(OtherRequests));
             OnPropertyChanged(nameof(HasProofMaterialDisplay));
             OnPropertyChanged(nameof(ProofMaterialDisplay));

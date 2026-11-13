@@ -20,6 +20,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private readonly IArchiveCrossDomainTransferLedgerService _ledgerService;
         private readonly IDialogService _dialogService;
         private readonly LedgerStoredMaterialOpener _materialOpener;
+        private readonly IProjectService _projectService;
 
         private DateTime? _operatedFrom;
         private DateTime? _operatedTo;
@@ -36,11 +37,14 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ArchiveCrossDomainTransferLedgerViewModel(
             IArchiveCrossDomainTransferLedgerService ledgerService,
             IDialogService dialogService,
-            LedgerStoredMaterialOpener materialOpener)
+            LedgerStoredMaterialOpener materialOpener,
+            IProjectService projectService)
         {
             _ledgerService = ledgerService;
             _dialogService = dialogService;
             _materialOpener = materialOpener;
+            _projectService = projectService;
+            ProjectFilter = new LedgerProjectFilter();
 
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
             ResetCommand = new RelayCommand(_ => ResetCriteria());
@@ -87,6 +91,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             ExportCommand = new RelayCommand(async _ => await ExportAsync(), _ => LedgerRows.Count > 0);
             ShowIntroCommand = new RelayCommand(_ => _dialogService.ShowLedgerIntro(LedgerIntroKind.CrossDomain));
         }
+
+        public LedgerProjectFilter ProjectFilter { get; }
 
         public event Action<int>? NavigateToFilingLedgerRequested;
 
@@ -237,6 +243,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             await LoadBusinessNoOptionsAsync();
+            ProjectFilter.Load(_projectService);
             await SearchAsync();
             _isInitialized = true;
         }
@@ -316,7 +323,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             MediaKind = SelectedMediaKind,
             BusinessNo = BusinessNo,
             OperatorName = OperatorName,
-            Keyword = Keyword
+            Keyword = Keyword,
+            ProjectId = ProjectFilter.SelectedProjectId
         };
 
         private void ResetCriteria()
@@ -328,6 +336,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             BusinessNo = string.Empty;
             OperatorName = string.Empty;
             Keyword = string.Empty;
+            ProjectFilter.Reset();
             LedgerRows.Clear();
             SelectedRow = null;
             RecentBusinessNoOptions.Clear();

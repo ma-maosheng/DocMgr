@@ -10,5 +10,6 @@ namespace DocMgr.Models.YearlyArchive
         bool IsEnabled,
         string DisabledReason,
         bool RequiresExistingElectronicUnit,
-        bool IsDefault);
+        bool IsDefault,
+        bool UsesAppendHardDiskPicker = false);
 }

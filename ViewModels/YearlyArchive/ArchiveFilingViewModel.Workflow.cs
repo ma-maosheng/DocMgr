@@ -31,6 +31,24 @@ namespace DocMgr.ViewModels.YearlyArchive
         public Task RefreshPendingList()
             => RefreshPendingList(null, null);
 
+        /// <summary>
+        /// 立档成功后刷新待办。仍有未立档资料时保留申请，但不再自动选回上一笔的档口或并入硬盘。
+        /// </summary>
+        private async Task RefreshPendingListAfterSuccessfulFilingAsync(
+            IReadOnlyCollection<int>? simulatedRecordIdsToRetain,
+            IReadOnlyCollection<int>? electronicRecordIdsToRetain = null)
+        {
+            _deferConsoleAutoSelection = true;
+            try
+            {
+                await RefreshPendingList(simulatedRecordIdsToRetain, electronicRecordIdsToRetain);
+            }
+            finally
+            {
+                _deferConsoleAutoSelection = false;
+            }
+        }
+
         private async Task RefreshPendingList(
             IReadOnlyCollection<int>? simulatedRecordIdsToRetain,
             IReadOnlyCollection<int>? electronicRecordIdsToRetain = null)
@@ -118,6 +136,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _selectedRecords = retainedRecords;
             OnPropertyChanged(nameof(SelectedRecords));
             OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
+            OnPropertyChanged(nameof(ArchivePurposeText));
             SuppressPendingListSelectionSync = true;
             try
             {
@@ -151,6 +170,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             _selectedRecords = retainedRecords;
             OnPropertyChanged(nameof(SelectedRecords));
             OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
+            OnPropertyChanged(nameof(ArchivePurposeText));
             await HandleSelectedRecordsChangedAsync().ConfigureAwait(true);
             return true;
         }
@@ -342,21 +362,19 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task GenerateSequence()
         {
-            if (string.IsNullOrWhiteSpace(TargetYear))
-            {
-                MessageBox.Show("请先选择资料以确定归属年度。");
-                return;
-            }
-
+            string operationYear = DateTime.Now.Year.ToString();
             try
             {
+                // 编号查询走独立 scope，不使用页面长期持有的 DbContext。
+                using IServiceScope scope = _scopeFactory.CreateScope();
+                IArchiveFilingService filing = scope.ServiceProvider.GetRequiredService<IArchiveFilingService>();
                 if (IsSimulatedTrack)
                 {
-                    ArchiveSequenceNo = await _filingService.GenerateNextArchiveSequenceNoAsync(TargetYear);
+                    ArchiveSequenceNo = await filing.GenerateNextArchiveSequenceNoAsync(operationYear);
                     return;
                 }
 
-                ElectronicArchiveNo = await _filingService.GenerateNextElectronicArchiveNoAsync(TargetYear);
+                ElectronicArchiveNo = await filing.GenerateNextElectronicArchiveNoAsync(operationYear);
             }
             catch (Exception ex)
             {
@@ -448,7 +466,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     ArchiveSequenceNo = ArchiveSequenceNo.Trim(),
                     BoxLocationCode = boxLocationCode,
                     ProjectName = TargetProject,
-                    Year = TargetYear,
+                    Year = DateTime.Now.Year.ToString(),
                     Specs = SelectedSpec,
                     ArchivedBy = _userContextService.CurrentUser?.RealName ?? "Unknown",
                     ArchivedDate = DateTime.Now,
@@ -459,7 +477,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     await _filingService.CreateArchiveBoxAsync(newBox, selectedMediaItemIds);
                     MessageBox.Show($"模拟介质立档成功。\n档案盒编号：{newBox.ArchiveSequenceNo}\n本次已入盒 {selectedMediaItemIds.Count} 个资料子项。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                    await RefreshPendingList(selectedRecordIds);
+                    await RefreshPendingListAfterSuccessfulFilingAsync(selectedRecordIds);
                 }
                 catch (Exception ex)
                 {
@@ -479,7 +497,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 await _filingService.AppendToArchiveBoxAsync(SelectedExistingBox.Id, selectedMediaItemIds);
                 MessageBox.Show($"模拟介质已并入档案盒：{SelectedExistingBox.ArchiveSequenceNo}\n本次已入盒 {selectedMediaItemIds.Count} 个资料子项。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                await RefreshPendingList(selectedRecordIds);
+                await RefreshPendingListAfterSuccessfulFilingAsync(selectedRecordIds);
             }
             catch (Exception ex)
             {
@@ -519,6 +537,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            if (!await EnsureSameProjectYearDiskHasNoDuplicateSubItemsAsync(selectedMediaItemIds))
+            {
+                return;
+            }
+
             if (!ConfirmElectronicFilingStoragePaths())
             {
                 return;
@@ -544,7 +567,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                     var result = await _filingService.SubmitNewElectronicArchiveUnitAsync(request, _userContextService.CurrentUser);
                     ShowElectronicArchiveResultDialog(result);
-                    await RefreshPendingList(null, selectedRecordIds);
+                    await RefreshPendingListAfterSuccessfulFilingAsync(null, selectedRecordIds);
                     ResetElectronicStepThreeSummaryAfterSuccessfulFiling();
                 }
                 catch (InvalidOperationException ex)
@@ -577,7 +600,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
                 var result = await _filingService.SubmitAppendElectronicArchiveUnitAsync(request, _userContextService.CurrentUser);
                 ShowElectronicArchiveResultDialog(result);
-                await RefreshPendingList(null, selectedRecordIds);
+                await RefreshPendingListAfterSuccessfulFilingAsync(null, selectedRecordIds);
                 ResetElectronicStepThreeSummaryAfterSuccessfulFiling();
             }
             catch (InvalidOperationException ex)
@@ -722,8 +745,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     ElectronicArchiveNo = IsNewBoxMode
                         ? ElectronicArchiveNo.Trim()
                         : SelectedExistingElectronicUnit?.ElectronicArchiveNo?.Trim() ?? ElectronicArchiveNo.Trim(),
-                    ProjectName = archiveProject,
-                    Year = archiveYear,
+                    Year = DateTime.Now.Year.ToString(),
                     StorageCarrierType = ElectronicStorageCarrierType.Trim(),
                     StoragePath = ElectronicStoragePath.Trim(),
                     StorageLocation = storageLocation,

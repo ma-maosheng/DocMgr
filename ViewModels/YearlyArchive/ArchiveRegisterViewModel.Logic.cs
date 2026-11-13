@@ -64,6 +64,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (CurrentRecord == null) return;
                 UpdateUIState();
                 SyncCollectionsFromRecord();
+                LoadRequestHeaderFromRecord();
                 ApplyArchivePurposeSelection();
                 if (CurrentRecord.ProjectId.HasValue)
                 {
@@ -76,6 +77,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 OnPropertyChanged(nameof(IsExternalSource));
                 OnPropertyChanged(nameof(SourceProvideUnitDisplay));
                 OnPropertyChanged(nameof(MaterialNameDisplay));
+                OnPropertyChanged(nameof(ArchivePurposeNoteSuffix));
                 NotifyNetworkOutboundTransferUiState();
                 if (_userContextService.CurrentUser != null)
                 {
@@ -324,7 +326,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             var mediaEntries = BuildMediaEntries();
-            if (!_dialogService.ShowConfirm("确认提交申请吗？\n\n提交后所有审批信息将被重置，状态流转为“已提交”。")) return;
+            string confirmMessage = ArchiveOutboundDomainValues.IsLongTermArchivePurpose(CurrentRecord.ArchivePurpose)
+                ? "长期存档的电子介质资料不允许提档方式出库。是否继续以长期存档模式提交申请？\n\n提交后所有审批信息将被重置，状态流转为“已提交”。"
+                : "确认提交申请吗？\n\n提交后所有审批信息将被重置，状态流转为“已提交”。";
+            if (!_dialogService.ShowConfirm(confirmMessage)) return;
 
             try
             {

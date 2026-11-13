@@ -32,7 +32,7 @@ public partial class ElectronicMediaEditingViewModel
 
         foreach (MediaEntryViewModel media in MediaEntries.Where(RegisterMediaTreeSupport.IsDataElectronic))
         {
-            foreach (MediaItemViewModel item in media.Items)
+            foreach (MediaItemViewModel item in EnumerateEditableItems(media))
             {
                 RefreshOutboundItemStoragePath(item, forceGenerated: false);
             }
@@ -61,10 +61,14 @@ public partial class ElectronicMediaEditingViewModel
         foreach (MediaEntryViewModel media in MediaEntries.Where(RegisterMediaTreeSupport.IsDataElectronic))
         {
             mediaSeq++;
-            for (int itemIndex = 0; itemIndex < media.Items.Count; itemIndex++)
+            List<MediaItemViewModel> items = EnumerateEditableItems(media).ToList();
+            for (int itemIndex = 0; itemIndex < items.Count; itemIndex++)
             {
-                MediaItemViewModel item = media.Items[itemIndex];
-                string label = $"第{mediaSeq}条介质第{itemIndex + 1}项";
+                MediaItemViewModel item = items[itemIndex];
+                string materialName = ResolveItemMaterialName(item);
+                string label = string.IsNullOrWhiteSpace(materialName)
+                    ? $"第{mediaSeq}条介质第{itemIndex + 1}项"
+                    : $"第{mediaSeq}条介质「{materialName}」第{itemIndex + 1}项";
                 if (string.IsNullOrWhiteSpace(item.StorageRootFullPath))
                 {
                     errors.Add(
@@ -76,7 +80,7 @@ public partial class ElectronicMediaEditingViewModel
                         item.StorageRootFullPath,
                         header.Year,
                         header.ProjectName,
-                        header.MaterialName,
+                        ResolveItemMaterialName(item),
                         item.ContentDesc,
                         out _,
                         out string pathError))
@@ -114,7 +118,7 @@ public partial class ElectronicMediaEditingViewModel
             scannedRootPath,
             header.Year,
             header.ProjectName,
-            header.MaterialName,
+            ResolveItemMaterialName(item),
             item.ContentDesc,
             out _,
             out errorMessage);
@@ -145,10 +149,11 @@ public partial class ElectronicMediaEditingViewModel
         string mediaType = string.IsNullOrWhiteSpace(header.MediaType)
             ? ResolveSelectedElectronicMediaType()
             : header.MediaType.Trim();
+        string materialName = ResolveItemMaterialName(item);
         string generated = NetworkOutboundItemStoragePathSupport.BuildMediaStoragePath(
             header.Year,
             header.ProjectName,
-            header.MaterialName,
+            materialName,
             item.ContentDesc);
         forceGenerated = forceGenerated
             || NetworkOutboundItemStoragePathSupport.ShouldForceGeneratedStoragePath(header.DestinationKind);
@@ -160,7 +165,7 @@ public partial class ElectronicMediaEditingViewModel
         item.ShowOutboundStoragePathHint = true;
         item.OutboundServerFullPathHint = NetworkOutboundItemStoragePathSupport.BuildServerFullPathHint(
             header.ServerPhysicalPath,
-            header.MaterialPath,
+            CombineMaterialFolder(header.MaterialPath, materialName),
             item.ContentDesc);
 
         // 仅首次判定：加载时若库内路径与当前生成规则不一致，视为用户曾自定义。
@@ -204,5 +209,52 @@ public partial class ElectronicMediaEditingViewModel
         item.StoragePath = ElectronicMediaItemSupport.FormatStoragePathForRegistration(scannedRootPath);
         item.HasCustomizedOutboundStoragePath = true;
         item.OutboundStoragePathCustomizationResolved = true;
+    }
+
+    private IEnumerable<MediaItemViewModel> EnumerateEditableItems(MediaEntryViewModel media) =>
+        media.UsesRegisterMaterialGroups
+            ? media.Materials.SelectMany(group => group.Items)
+            : media.Items;
+
+    /// <summary>子项所属资料名称。分组未开启时不把表头顿号摘要写进路径。</summary>
+    private string ResolveItemMaterialName(MediaItemViewModel item)
+    {
+        foreach (MediaEntryViewModel media in MediaEntries)
+        {
+            foreach (MediaMaterialGroupViewModel group in media.Materials)
+            {
+                if (!group.Items.Contains(item))
+                {
+                    continue;
+                }
+
+                return group.MaterialName?.Trim() ?? string.Empty;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static string CombineMaterialFolder(string? materialPath, string? materialName)
+    {
+        string prefix = materialPath?.Trim().TrimEnd('\\') ?? string.Empty;
+        string folder = materialName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(folder) || folder.Contains('、'))
+        {
+            return prefix;
+        }
+
+        if (string.IsNullOrWhiteSpace(prefix))
+        {
+            return NetworkMaterialPathSupport.SanitizePathSegment(folder, "未命名资料");
+        }
+
+        string last = prefix.Split('\\').LastOrDefault() ?? string.Empty;
+        if (string.Equals(last, folder, StringComparison.OrdinalIgnoreCase))
+        {
+            return prefix;
+        }
+
+        return prefix + "\\" + NetworkMaterialPathSupport.SanitizePathSegment(folder, "未命名资料");
     }
 }

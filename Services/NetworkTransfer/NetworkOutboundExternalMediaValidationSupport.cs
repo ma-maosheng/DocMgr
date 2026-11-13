@@ -24,7 +24,7 @@ internal static class NetworkOutboundExternalMediaValidationSupport
 
         if (string.IsNullOrWhiteSpace(header.MaterialPath))
         {
-            errors.Add("出网资料所在具体路径尚未生成，请先选择服务器路径并完善年度、项目与资料名称。");
+            errors.Add("出网资料所在具体路径尚未生成，请先选择服务器路径并完善年度与项目。");
         }
 
         ValidateMediaTree(header.DestinationKind, mediaEntries, errors, requireDataSize: false);
@@ -123,6 +123,7 @@ internal static class NetworkOutboundExternalMediaValidationSupport
                 errors.Add($"• 第{mediaSeq}条介质：当前目的地仅允许处置方式为「{required}」");
             }
 
+            NetworkRegisterMaterialGroupSupport.Validate(media, mediaSeq, errors);
             if (media.Items == null || media.Items.Count == 0)
             {
                 errors.Add($"• 第{mediaSeq}条介质至少需要填写一条内容明细");

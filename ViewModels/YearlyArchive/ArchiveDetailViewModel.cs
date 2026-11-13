@@ -36,6 +36,15 @@ namespace DocMgr.ViewModels.YearlyArchive
             private set => SetProperty(ref _record, value);
         }
 
+        private string _projectImplementYear = "-";
+
+        /// <summary>申请所属项目的实施年度。</summary>
+        public string ProjectImplementYear
+        {
+            get => _projectImplementYear;
+            private set => SetProperty(ref _projectImplementYear, value);
+        }
+
         /// <summary>资料来源表头汇总：内部 . 单位；多对时以顿号连接。</summary>
         public string SourceProvideUnitDisplay =>
             ArchiveRegisterSourceProvideUnitDisplaySupport.FormatAggregated(
@@ -173,11 +182,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 var record = await _archiveRegisterService.GetByIdAsync(recordId);
                 if (record == null)
                 {
+                    ProjectImplementYear = "-";
                     _dialogService.ShowMessage($"未找到编号为 {recordId} 的登记记录。", "提示");
                     return;
                 }
 
                 Record = record;
+                ProjectImplementYear = await ResolveProjectImplementYearAsync(record.ProjectId);
                 await LoadAttachmentsAsync(record.FormNo);
                 ApplyDetailCollections(record);
                 await ApplyFilingFactBindingAsync(record);
@@ -189,6 +200,23 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 _dialogService.ShowError($"加载资料详情失败：{ex.Message}");
             }
+        }
+
+        private async Task<string> ResolveProjectImplementYearAsync(int? projectId)
+        {
+            if (projectId is not int id || id <= 0)
+            {
+                return "-";
+            }
+
+            IReadOnlyDictionary<int, string> years = await _filingFactRepository
+                .GetProjectImplementYearsByIdsAsync([id]);
+            if (!years.TryGetValue(id, out string? implementYear) || string.IsNullOrWhiteSpace(implementYear))
+            {
+                return "-";
+            }
+
+            return implementYear.Trim();
         }
 
         private async Task LoadAttachmentsAsync(string formNo)

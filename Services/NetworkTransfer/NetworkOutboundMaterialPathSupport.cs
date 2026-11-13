@@ -4,8 +4,9 @@ namespace DocMgr.Services.NetworkTransfer;
 
 /// <summary>
 /// 出网申请资料相对路径生成。
-/// 部门专用：出网\年度\项目\资料名称；
-/// 共用路径：申请部门\出网\年度\项目\资料名称。
+/// 部门专用：出网\年度\项目；
+/// 共用路径：申请部门\出网\年度\项目。
+/// 资料名称是该路径下的子目录。
 /// </summary>
 public static class NetworkOutboundMaterialPathSupport
 {
@@ -18,13 +19,11 @@ public static class NetworkOutboundMaterialPathSupport
         ServerPathSetting? serverPath,
         string? applicantDept,
         string? year,
-        string? projectName,
-        string? materialName) =>
-        NetworkMaterialPathSupport.BuildMaterialPath(
+        string? projectName) =>
+        NetworkMaterialPathSupport.BuildMaterialPathPrefix(
             serverPath,
             applicantDept,
             year,
             projectName,
-            materialName,
             NetworkMaterialPathSupport.OutboundFolderName);
 }

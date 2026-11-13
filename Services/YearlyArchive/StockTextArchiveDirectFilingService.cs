@@ -274,11 +274,10 @@ namespace DocMgr.Services.YearlyArchive
                 }
 
                 var project = EnsureProject(request);
-                int? numberingYear = TryParseProjectNumberYear(request.Year);
-                string year = request.Year.Trim();
+                string operationYear = DateTime.Now.Year.ToString();
                 string operatorName = currentUser?.RealName?.Trim() ?? string.Empty;
 
-                var record = await CreateRegisterRecordAsync(request, project, currentUser, numberingYear);
+                var record = await CreateRegisterRecordAsync(request, project, currentUser);
                 await _archiveRegisterRepository.SaveOrUpdateRecordGraphAsync(record);
                 var persisted = await _archiveRegisterRepository.GetByFormNoWithDetailsAsync(record.FormNo)
                     ?? throw new InvalidOperationException($"保存建档记录 [{record.FormNo}] 后未能重新加载。");
@@ -293,7 +292,7 @@ namespace DocMgr.Services.YearlyArchive
                     throw new InvalidOperationException($"建档记录 [{persisted.FormNo}] 未包含可入盒的资料子项。");
                 }
 
-                string archiveSequenceNo = await _archiveFilingService.GenerateNextArchiveSequenceNoAsync(year);
+                string archiveSequenceNo = await _archiveFilingService.GenerateNextArchiveSequenceNoAsync(operationYear);
                 int boxSequence = request.SpecifiedBoxIndex.HasValue
                     ? request.SpecifiedBoxIndex.Value
                     : await _archiveFilingService.GetMinimumAvailableBoxSequenceInCellAsync(
@@ -313,14 +312,14 @@ namespace DocMgr.Services.YearlyArchive
                     ArchiveSequenceNo = archiveSequenceNo,
                     BoxLocationCode = boxLocationCode,
                     ProjectName = project.ProjectName.Trim(),
-                    Year = year,
+                    Year = operationYear,
                     Specs = request.BoxSpecification.Trim(),
                     ArchivedBy = operatorName,
                     ArchivedDate = DateTime.Now,
                     Remarks = request.Remarks?.Trim() ?? string.Empty
                 };
 
-                await _archiveFilingService.CreateArchiveBoxAsync(newBox, mediaItemIds, numberingYear);
+                await _archiveFilingService.CreateArchiveBoxAsync(newBox, mediaItemIds);
 
                 return new StockTextArchiveDirectFilingResult
                 {
@@ -366,11 +365,10 @@ namespace DocMgr.Services.YearlyArchive
         private async Task<YearlyArchiveRegisterRecord> CreateRegisterRecordAsync(
             StockTextArchiveDirectFilingRequest request,
             ProjectInfo project,
-            User? currentUser,
-            int? numberingYear)
+            User? currentUser)
         {
             DateTime archiveYearDate = ResolveArchiveYearDate(request.Year);
-            string formNo = await _archiveRegisterService.GenerateNextFormNoAsync(numberingYear);
+            string formNo = await _archiveRegisterService.GenerateNextFormNoAsync();
             string operatorName = currentUser?.RealName?.Trim() ?? string.Empty;
 
             var mediaEntries = new List<YearlyArchiveRegisterMedia>();
@@ -407,6 +405,7 @@ namespace DocMgr.Services.YearlyArchive
                     });
                 }
 
+                ArchiveRegisterMaterialSummarySupport.EnsureSingleMaterial(media, request.MaterialName);
                 mediaEntries.Add(media);
             }
 
@@ -472,16 +471,6 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return provideUnit;
-        }
-
-        private static int? TryParseProjectNumberYear(string? year)
-        {
-            if (string.IsNullOrWhiteSpace(year) || year.Trim().Length != 4 || !year.Trim().All(char.IsDigit))
-            {
-                return null;
-            }
-
-            return int.Parse(year.Trim(), NumberStyles.None, CultureInfo.InvariantCulture);
         }
 
         /// <inheritdoc/>

@@ -1,0 +1,97 @@
+<Window x:Class="DocMgr.Views.YearlyArchive.AppendHardDiskSelectionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
+        Title="选择可并入硬盘"
+        Width="1100"
+        Height="520"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F7FA">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Button Content="关闭"
+                Command="{x:Static viewShared:ViewCommands.CloseCurrentView}"
+                Style="{StaticResource DialogCloseButtonStyle}"
+                HorizontalAlignment="Right"/>
+
+        <StackPanel Grid.Row="0" Margin="0,0,120,0">
+            <TextBlock Text="可并入的非空硬盘"
+                       FontSize="15"
+                       FontWeight="Bold"
+                       Foreground="#333"/>
+            <TextBlock Margin="0,8,0,0"
+                       Foreground="#4B5563"
+                       TextWrapping="Wrap"
+                       Text="推荐优先选择可用容量能容纳本批待立档数据的硬盘。同一项目名称、同一实施年度默认不勾选，需要时再勾选。"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,12,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0"
+                     Height="{StaticResource FormControlHeight}"
+                     Margin="0,0,12,0"
+                     Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="可按硬盘编号、电子袋编号、年度-项目、存放位置、备注筛选。"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <CheckBox Content="同一项目名称"
+                          IsChecked="{Binding SameProjectOnly, Mode=TwoWay}"
+                          VerticalAlignment="Center"/>
+                <CheckBox Content="同一实施年度"
+                          Margin="16,0,0,0"
+                          IsChecked="{Binding SameYearOnly, Mode=TwoWay}"
+                          VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding VisibleRows}"
+                  SelectedItem="{Binding SelectedRow}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  HeadersVisibility="Column"
+                  SelectionMode="Single"
+                  IsReadOnly="True"
+                  ColumnHeaderStyle="{StaticResource DataGridHeaderStyle}">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow" BasedOn="{StaticResource StandardDataGridRowStyle}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding CanSelect}" Value="False">
+                            <Setter Property="IsEnabled" Value="False"/>
+                            <Setter Property="Foreground" Value="#94A3B8"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="分组" Binding="{Binding GroupLabel, Mode=OneWay}" Width="100"/>
+                <DataGridTextColumn Header="电子袋编号" Binding="{Binding ElectronicArchiveNo, Mode=OneWay}" Width="140"/>
+                <DataGridTextColumn Header="袋内硬盘" Binding="{Binding DiskCode, Mode=OneWay}" Width="120"/>
+                <DataGridTextColumn Header="年度-项目" Binding="{Binding YearProjectText, Mode=OneWay}" Width="180">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                            <Setter Property="ToolTip" Value="{Binding YearProjectText}"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="可用容量" Binding="{Binding AvailableCapacityText, Mode=OneWay}" Width="110"/>
+                <DataGridTextColumn Header="存放位置" Binding="{Binding StorageLocation, Mode=OneWay}" Width="140"/>
+                <DataGridTextColumn Header="备注" Binding="{Binding Remarks, Mode=OneWay}" Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="确定" Style="{StaticResource DialogPrimaryActionButtonStyle}" Command="{Binding ConfirmCommand}"/>
+            <Button Content="取消" Style="{StaticResource DialogSecondaryActionButtonStyle}" Margin="10,0,0,0" Command="{Binding CancelCommand}"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -362,7 +362,9 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
         return _dbContext.YearlyArchiveRegisterMediaItems
             .AsNoTracking()
             .Where(item => mediaItemIds.Contains(item.Id))
+            .Include(item => item.RegisterMaterial)
             .Include(item => item.MediaEntry)
+                .ThenInclude(media => media!.Materials)
             .Include(item => item.ElectronicDetail)
             .Include(item => item.SimulatedDetail)
             .ToListAsync();
@@ -962,7 +964,7 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             RegisterMediaId = mediaEntry?.Id ?? mediaItem.YearlyArchiveRegisterMediaId,
             MediaItemId = mediaItem.Id,
             FormNo = record?.FormNo?.Trim() ?? string.Empty,
-            MaterialName = record?.MaterialName?.Trim() ?? string.Empty,
+            MaterialName = ArchiveRegisterMaterialSummarySupport.ResolveItemMaterialName(mediaItem),
             ProjectId = record?.ProjectId,
             ProjectName = record?.ProjectName?.Trim() ?? box.ProjectName?.Trim() ?? string.Empty,
             ProvideUnit = mediaItem.ProvideUnit?.Trim() ?? string.Empty,
@@ -999,7 +1001,7 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
         var mediaEntry = mediaItem.MediaEntry;
         DateTime filedAt = link.CreatedAt == default ? unit.ArchivedDate : link.CreatedAt;
 
-        return new YearlyArchiveFilingFact
+        var fact = new YearlyArchiveFilingFact
         {
             FilingFactNo = string.Empty,
             MediaKind = ArchiveRegisterDomainValues.MediaKindElectronic,
@@ -1007,9 +1009,11 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             RegisterMediaId = mediaEntry?.Id ?? mediaItem.YearlyArchiveRegisterMediaId,
             MediaItemId = mediaItem.Id,
             FormNo = link.FormNo?.Trim() ?? record?.FormNo?.Trim() ?? string.Empty,
-            MaterialName = link.MaterialName?.Trim() ?? record?.MaterialName?.Trim() ?? string.Empty,
+            MaterialName = !string.IsNullOrWhiteSpace(link.MaterialName)
+                ? link.MaterialName.Trim()
+                : ArchiveRegisterMaterialSummarySupport.ResolveItemMaterialName(mediaItem),
             ProjectId = record?.ProjectId,
-            ProjectName = record?.ProjectName?.Trim() ?? unit.ProjectName?.Trim() ?? string.Empty,
+            ProjectName = record?.ProjectName?.Trim() ?? string.Empty,
             ProvideUnit = mediaItem.ProvideUnit?.Trim() ?? string.Empty,
             ApplicantName = record?.ApplicantName?.Trim() ?? string.Empty,
             ItemName = link.ItemName?.Trim() ?? mediaItem.ContentDesc?.Trim() ?? string.Empty,
@@ -1035,5 +1039,8 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             ArchiveCopyRole = FilingFactArchiveCopyRole.Original,
             CreatedAt = DateTime.Now
         };
+
+        ElectronicMediumCatalog.AssignFactMedium(fact, link);
+        return fact;
     }
 }

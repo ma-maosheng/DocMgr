@@ -21,6 +21,15 @@ internal static class NetworkInboundOnNetAssetMappingSupport
 
             foreach (YearlyArchiveRegisterMediaItem item in media.Items.OrderBy(row => row.Id))
             {
+                item.MediaEntry ??= media;
+                if (item.RegisterMaterial == null
+                    && item.YearlyArchiveRegisterMaterialId is int materialId
+                    && materialId > 0)
+                {
+                    item.RegisterMaterial = media.Materials?
+                        .FirstOrDefault(material => material.Id == materialId);
+                }
+
                 yield return item;
             }
         }
@@ -45,13 +54,15 @@ internal static class NetworkInboundOnNetAssetMappingSupport
                     detail.DataSizeMb,
                     NetworkInboundItemDisplaySupport.DefaultDataSizeUnit);
 
+            string materialName = ArchiveRegisterMaterialSummarySupport.ResolveItemMaterialName(mediaItem);
+            string itemName = mediaItem.ContentDesc?.Trim() ?? string.Empty;
             result.Add(new NetworkInboundItem
             {
                 SortOrder = sort++,
                 AssetKind = ResolveAssetKind(detail?.MaterialCategory, detail?.SubCategory),
-                AssetName = header.MaterialName?.Trim() ?? string.Empty,
-                ItemName = mediaItem.ContentDesc?.Trim() ?? string.Empty,
-                MaterialName = header.MaterialName?.Trim() ?? string.Empty,
+                AssetName = string.IsNullOrWhiteSpace(itemName) ? materialName : itemName,
+                ItemName = itemName,
+                MaterialName = materialName,
                 ConfidentialLevel = mediaItem.ConfidentialLevel?.Trim() ?? string.Empty,
                 DataSizeText = dataSizeText,
                 TargetServerPath = header.TargetServerPath?.Trim() ?? string.Empty,

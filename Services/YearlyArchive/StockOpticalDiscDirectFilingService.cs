@@ -133,8 +133,7 @@ namespace DocMgr.Services.YearlyArchive
 
             try
             {
-                int? autoNumberYear = TryParseProjectNumberYear(request.Year);
-                string electronicNo = await _archiveFilingService.GenerateNextElectronicArchiveNoAsync(request.Year);
+                string electronicNo = await _archiveFilingService.GenerateNextElectronicArchiveNoAsync(DateTime.Now.Year.ToString());
                 string discCode = electronicNo;
                 var existingDisc = await FindDiscByCodeAsync(discCode);
                 if (existingDisc != null)
@@ -152,7 +151,7 @@ namespace DocMgr.Services.YearlyArchive
 
                 foreach (var material in request.Materials)
                 {
-                    var record = await CreateRegisterRecordAsync(request, project, currentUser, material, autoNumberYear);
+                    var record = await CreateRegisterRecordAsync(request, project, currentUser, material);
                     await _archiveRegisterRepository.SaveOrUpdateRecordGraphAsync(record);
                     var persisted = await _archiveRegisterRepository.GetByFormNoWithDetailsAsync(record.FormNo)
                         ?? throw new InvalidOperationException($"保存建档记录 [{record.FormNo}] 后未能重新加载。");
@@ -190,8 +189,7 @@ namespace DocMgr.Services.YearlyArchive
                     ArchiveUnit = new YearlyElectronicArchiveUnit
                     {
                         ElectronicArchiveNo = electronicNo,
-                        ProjectName = project.ProjectName.Trim(),
-                        Year = request.Year.Trim(),
+                        Year = DateTime.Now.Year.ToString(),
                         StorageCarrierType = ArchiveFilingBusinessRules.DefaultOpticalDiscBagCarrierType,
                         StoragePath = string.Join("\\", new[]
                         {
@@ -218,8 +216,7 @@ namespace DocMgr.Services.YearlyArchive
                     IsOpticalDiscArchiveScenario = true,
                     IsStockOpticalDiscDirectFiling = true,
                     PreferredOpticalDiscCode = discCode,
-                    FilingMode = "存量光盘直办",
-                    AutoNumberYear = autoNumberYear
+                    FilingMode = "存量光盘直办"
                 };
 
                 var filingResult = await _archiveFilingService.SubmitNewElectronicArchiveUnitAsync(submission, currentUser);
@@ -427,11 +424,10 @@ namespace DocMgr.Services.YearlyArchive
             StockOpticalDiscDirectFilingRequest request,
             ProjectInfo project,
             User? currentUser,
-            StockOpticalDiscMaterialDraft material,
-            int? numberingYear)
+            StockOpticalDiscMaterialDraft material)
         {
             DateTime archiveYearDate = ResolveArchiveYearDate(request.Year);
-            string formNo = await _archiveRegisterService.GenerateNextFormNoAsync(numberingYear);
+            string formNo = await _archiveRegisterService.GenerateNextFormNoAsync();
             string operatorName = currentUser?.RealName?.Trim() ?? string.Empty;
 
             var media = new YearlyArchiveRegisterMedia
@@ -481,6 +477,8 @@ namespace DocMgr.Services.YearlyArchive
                     }
                 });
             }
+
+            ArchiveRegisterMaterialSummarySupport.EnsureSingleMaterial(media, material.MaterialName);
 
             return new YearlyArchiveRegisterRecord
             {
@@ -566,16 +564,6 @@ namespace DocMgr.Services.YearlyArchive
             }
 
             return Array.Empty<string>();
-        }
-
-        private static int? TryParseProjectNumberYear(string? year)
-        {
-            if (string.IsNullOrWhiteSpace(year) || year.Trim().Length != 4 || !year.Trim().All(char.IsDigit))
-            {
-                return null;
-            }
-
-            return int.Parse(year.Trim(), NumberStyles.None, CultureInfo.InvariantCulture);
         }
     }
 }

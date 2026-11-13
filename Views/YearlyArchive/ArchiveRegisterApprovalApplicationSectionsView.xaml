@@ -16,7 +16,7 @@
 
         <GroupBox Header="1. 申请信息" Style="{StaticResource Level1GroupBoxStyle}">
             <StackPanel>
-                <!-- 第1行：申请人信息 + 库管模式 + 证明材料（组间距 YaRegInlineFieldGroupMargin=右12） -->
+                <!-- 第1行：申请人信息 + 资料名称 + 库管模式 + 证明材料（组间距 YaRegInlineFieldGroupMargin=右12） -->
                 <WrapPanel Margin="{StaticResource YaRegFormRowMargin}" Orientation="Horizontal">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                 Margin="{StaticResource YaRegInlineFieldGroupMargin}">
@@ -31,8 +31,25 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                 Margin="{StaticResource YaRegInlineFieldGroupMargin}">
+                        <TextBlock Text="资料名称：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding MaterialNameDisplay, Mode=OneWay}"
+                                   Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                Margin="{StaticResource YaRegInlineFieldGroupMargin}">
+                        <TextBlock Text="资料来源：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                        <TextBlock Text="{Binding SourceProvideUnitDisplay, Mode=OneWay}"
+                                   Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                Margin="{StaticResource YaRegInlineFieldGroupMargin}">
                         <TextBlock Text="库管模式：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                        <TextBlock Text="{Binding CurrentRecord.ArchivePurpose}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                        <TextBlock Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}">
+                            <Run Text="{Binding CurrentRecord.ArchivePurpose, Mode=OneWay}"/>
+                            <Run Text="{Binding ArchivePurposeNoteSuffix, Mode=OneWay}"/>
+                        </TextBlock>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                 Margin="{StaticResource YaRegFormRowMargin}">
@@ -41,34 +58,19 @@
                     </StackPanel>
                 </WrapPanel>
 
-                <!-- 第2行：其他要求 -->
+                <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left" Text="申请说明：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
+                    <TextBlock Text="{Binding CurrentRecord.Reason, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap"/>
+                </DockPanel>
                 <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
                     <TextBlock DockPanel.Dock="Left" Text="其他要求：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                    <TextBlock Text="{Binding CurrentRecord.OtherRequests}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
+                    <TextBlock Text="{Binding CurrentRecord.OtherRequests, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap"/>
                 </DockPanel>
             </StackPanel>
         </GroupBox>
 
         <GroupBox Header="2. 资料信息" Style="{StaticResource Level1GroupBoxStyle}">
             <StackPanel>
-                <!-- 资料名称与资料来源紧挨横排（组间距 YaRegInlineFieldGroupMargin=右12） -->
-                <WrapPanel Margin="{StaticResource YaRegFormRowMargin}" Orientation="Horizontal">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
-                                Margin="{StaticResource YaRegInlineFieldGroupMargin}">
-                        <TextBlock Text="资料名称：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                        <TextBlock Text="{Binding MaterialNameDisplay, Mode=OneWay}"
-                                   Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"
-                                   TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
-                                Margin="{StaticResource YaRegFormRowMargin}">
-                        <TextBlock Text="资料来源：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                        <TextBlock Text="{Binding SourceProvideUnitDisplay, Mode=OneWay}"
-                                   Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"
-                                   TextWrapping="Wrap"/>
-                    </StackPanel>
-                </WrapPanel>
-
                 <ItemsControl ItemsSource="{Binding DataElectronicMediaView}" ItemTemplate="{StaticResource MediaEntryReadOnlyTemplate_DataElectronic}"/>
                 <ItemsControl ItemsSource="{Binding DataSimulatedMediaView}" ItemTemplate="{StaticResource MediaEntryReadOnlyTemplate_DataSimulated}"/>
             </StackPanel>

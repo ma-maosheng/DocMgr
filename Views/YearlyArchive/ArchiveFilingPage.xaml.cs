@@ -6,12 +6,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
 
 namespace DocMgr.Views.YearlyArchive
 {
     public partial class ArchiveFilingPage : Page
     {
+        // 不在 Unloaded 释放。Frame 后退会复用同一页实例，提前 Dispose 后页面上的 DbContext 已销毁。
         private readonly IServiceScope _pageScope;
         private bool _isInitialized;
 
@@ -26,8 +28,6 @@ namespace DocMgr.Views.YearlyArchive
             DataContext = ViewModel;
             ViewModel.SimulatedPendingSelectionRestoreRequested += RestoreSimulatedPendingSelection;
             ViewModel.RequestClearPendingListSelections += ClearPendingPoolListSelections;
-
-            Unloaded += ArchiveFilingPage_Unloaded;
         }
 
         private void Page_Loaded(object sender, RoutedEventArgs e)
@@ -57,14 +57,6 @@ namespace DocMgr.Views.YearlyArchive
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
-        }
-
-        private void ArchiveFilingPage_Unloaded(object sender, RoutedEventArgs e)
-        {
-            Unloaded -= ArchiveFilingPage_Unloaded;
-            ViewModel.SimulatedPendingSelectionRestoreRequested -= RestoreSimulatedPendingSelection;
-            ViewModel.RequestClearPendingListSelections -= ClearPendingPoolListSelections;
-            _pageScope.Dispose();
         }
 
         private void RestoreSimulatedPendingSelection(IReadOnlyList<int> recordIds)
@@ -122,6 +114,47 @@ namespace DocMgr.Views.YearlyArchive
             UpdateSelectedRecordsFromSender(sender);
         }
 
+        /// <summary>
+        /// 轨道切换会清空操作台，列表行却可能仍保持选中，再次单击不会触发 SelectionChanged。
+        /// 此时若操作台尚未写入申请信息，按当前列表选中项重新刷新。
+        /// </summary>
+        private void LvPendingRecords_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not ListView listView)
+            {
+                return;
+            }
+
+            if (FindClickedPendingRecord(listView, e.OriginalSource as DependencyObject) == null
+                || listView.SelectedItems.Count == 0)
+            {
+                return;
+            }
+
+            if (ViewModel.SelectedRecords.Count > 0
+                && !string.IsNullOrWhiteSpace(ViewModel.TargetProject))
+            {
+                return;
+            }
+
+            UpdateSelectedRecordsFromSender(listView);
+        }
+
+        private static YearlyArchiveRegisterRecord? FindClickedPendingRecord(ListView listView, DependencyObject? source)
+        {
+            while (source != null && !ReferenceEquals(source, listView))
+            {
+                if (source is ListViewItem item && item.Content is YearlyArchiveRegisterRecord record)
+                {
+                    return record;
+                }
+
+                source = System.Windows.Media.VisualTreeHelper.GetParent(source);
+            }
+
+            return null;
+        }
+
         private void UpdateSelectedRecordsFromSender(object sender)
         {
             // #region agent log
@@ -137,6 +170,13 @@ namespace DocMgr.Views.YearlyArchive
             }
 
             if (sender is not ListView listView)
+            {
+                return;
+            }
+
+            // 未显示页签在卸载时也会冒出 SelectionChanged，不能拿另一侧的选中项覆盖当前操作台。
+            bool isSimulatedList = ReferenceEquals(listView, LvSimulatedPendingRecords);
+            if (isSimulatedList != ViewModel.IsSimulatedTrack)
             {
                 return;
             }

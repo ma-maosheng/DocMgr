@@ -428,6 +428,7 @@ namespace DocMgr.Services.YearlyArchive
             record.ProofMaterialNote = ArchiveRegisterDomainValues.NormalizeProofMaterialNote(record.ProofMaterialNote);
             record.MarkAsDraft();
             record.MediaEntries = mediaEntries?.ToList() ?? new List<YearlyArchiveRegisterMedia>();
+            ArchiveRegisterMaterialSummarySupport.Apply(record);
             // 先清空跟踪：上方可能已 AsNoTracking/跟踪加载过同单，避免 SaveOrUpdate 再挂图时同键冲突。
             _archiveRegisterRepository.ClearChangeTracker();
             await SaveOrUpdateAsync(record);
@@ -638,6 +639,7 @@ namespace DocMgr.Services.YearlyArchive
 
             record.MarkAsSubmitted();
             record.MediaEntries = mediaEntries?.ToList() ?? new List<YearlyArchiveRegisterMedia>();
+            ArchiveRegisterMaterialSummarySupport.Apply(record);
             await SubmitApplicationAsync(record);
             await ApplyBorrowedHardDiskRegisterLockAsync(record);
             await _archiveRegisterRepository.SaveChangesAsync();
@@ -1175,7 +1177,7 @@ namespace DocMgr.Services.YearlyArchive
             var dataSimulatedDispositionOptions = pageDomainOptions.DataSimulatedDispositions;
 
             if (string.IsNullOrWhiteSpace(record.FormNo)) errors.Add("• 表单编号未生成");
-            if (string.IsNullOrWhiteSpace(record.MaterialName)) errors.Add("• 资料名称未填写");
+            record.MaterialName = ArchiveRegisterMaterialSummarySupport.Build(entries);
 
             record.ProofMaterialNote = ArchiveRegisterDomainValues.NormalizeProofMaterialNote(record.ProofMaterialNote);
 
@@ -1209,6 +1211,8 @@ namespace DocMgr.Services.YearlyArchive
                         errors.Add($"• 第{seq}条介质至少需要填写一条内容明细");
                         continue;
                     }
+
+                    ArchiveRegisterMaterialSummarySupport.AppendMaterialGroupErrors(media, seq, errors);
 
                     if (string.Equals(media.MediaKind, ArchiveRegisterDomainValues.MediaKindElectronic, StringComparison.OrdinalIgnoreCase))
                     {
@@ -1353,6 +1357,18 @@ namespace DocMgr.Services.YearlyArchive
                 }
             }
 
+            record.Reason = record.Reason?.Trim() ?? string.Empty;
+            record.OtherRequests = record.OtherRequests?.Trim() ?? string.Empty;
+            if (!string.Equals(record.ArchivePurpose?.Trim(), "其他", StringComparison.Ordinal))
+            {
+                record.ArchivePurposeNote = string.Empty;
+            }
+            else
+            {
+                record.ArchivePurposeNote = record.ArchivePurposeNote?.Trim() ?? string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.Reason)) errors.Add("• 未填写【申请说明】");
             if (string.IsNullOrWhiteSpace(record.ArchivePurpose)) errors.Add("• 未选择【库管模式】");
             else if (!IsAllowedDomainValue(record.ArchivePurpose, archivePurposeOptions))
                 errors.Add($"• 库管模式不在域值定义中（允许值：{string.Join("、", archivePurposeOptions)}）");

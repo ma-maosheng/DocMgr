@@ -257,8 +257,6 @@ public sealed class ArchiveInventoryRegisterRepository : IArchiveInventoryRegist
                 unit.ElectronicArchiveNo,
                 ledger.MediaStatus,
                 ledger.StorageLocation,
-                unit.ProjectName,
-                unit.Year,
                 unit.ContentSummary,
             }).ToListAsync();
 
@@ -281,11 +279,12 @@ public sealed class ArchiveInventoryRegisterRepository : IArchiveInventoryRegist
                 unit.ElectronicArchiveNo,
                 ledger.MediaStatus,
                 ledger.StorageLocation,
-                unit.ProjectName,
-                unit.Year,
                 unit.ContentSummary,
             }).ToListAsync();
 
+        var projectSummaries = ElectronicArchiveProjectLookup.LoadByContainerIds(
+            _dbContext,
+            hardDiskRows.Select(row => row.Id).Concat(opticalDiscRows.Select(row => row.Id)).Distinct().ToList());
         var results = new List<ArchiveInventorySelectableElectronicMedia>();
 
         foreach (var row in hardDiskRows)
@@ -308,11 +307,11 @@ public sealed class ArchiveInventoryRegisterRepository : IArchiveInventoryRegist
                 MediumCode = row.MediumCode?.Trim() ?? string.Empty,
                 ElectronicArchiveUnitId = row.Id,
                 ElectronicArchiveNo = row.ElectronicArchiveNo?.Trim() ?? string.Empty,
-                ProjectName = row.ProjectName?.Trim() ?? string.Empty,
-                Year = row.Year?.Trim() ?? string.Empty,
+                ProjectName = projectSummaries.TryGetValue(row.Id, out var hardDiskProjects) ? hardDiskProjects.ProjectNames : string.Empty,
+                Year = projectSummaries.TryGetValue(row.Id, out hardDiskProjects) ? hardDiskProjects.ImplementYears : string.Empty,
                 BeforeMediaStatus = row.MediaStatus?.Trim() ?? string.Empty,
                 BeforeStorageLocation = row.StorageLocation?.Trim() ?? string.Empty,
-                MaterialName = row.ProjectName?.Trim() ?? string.Empty,
+                MaterialName = projectSummaries.TryGetValue(row.Id, out var namedProjects) ? namedProjects.ProjectNames : string.Empty,
                 ItemName = row.ContentSummary?.Trim() ?? string.Empty,
             });
         }
@@ -332,11 +331,11 @@ public sealed class ArchiveInventoryRegisterRepository : IArchiveInventoryRegist
                 MediumCode = row.MediumCode?.Trim() ?? string.Empty,
                 ElectronicArchiveUnitId = row.Id,
                 ElectronicArchiveNo = row.ElectronicArchiveNo?.Trim() ?? string.Empty,
-                ProjectName = row.ProjectName?.Trim() ?? string.Empty,
-                Year = row.Year?.Trim() ?? string.Empty,
+                ProjectName = projectSummaries.TryGetValue(row.Id, out var hardDiskProjects) ? hardDiskProjects.ProjectNames : string.Empty,
+                Year = projectSummaries.TryGetValue(row.Id, out hardDiskProjects) ? hardDiskProjects.ImplementYears : string.Empty,
                 BeforeMediaStatus = row.MediaStatus?.Trim() ?? string.Empty,
                 BeforeStorageLocation = row.StorageLocation?.Trim() ?? string.Empty,
-                MaterialName = row.ProjectName?.Trim() ?? string.Empty,
+                MaterialName = projectSummaries.TryGetValue(row.Id, out var namedProjects) ? namedProjects.ProjectNames : string.Empty,
                 ItemName = row.ContentSummary?.Trim() ?? string.Empty,
             });
         }

@@ -48,6 +48,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _isRefreshingElectronicScenario;
         private bool _suppressElectronicScenarioRefresh;
         private bool _suppressElectronicSubmissionModeChange;
+
+        /// <summary>立档刚成功时的待办刷新：档口和介质选择只准备列表，不自动选回上一笔。</summary>
+        private bool _deferConsoleAutoSelection;
         private string _externalHardDiskFormattedBlankTargetLocation = string.Empty;
 
         private bool UsesOpticalDiscCarrierForLabels =>
@@ -131,6 +134,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             SuggestElectronicLocationCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SuggestElectronicLocationAsync), _ => CanOperate);
             ShowElectronicSlotSnapshotCommand = new RelayCommand(_ => ShowElectronicSlotSnapshot());
             SelectElectronicMediaCommand = new RelayCommand(_ => SelectElectronicMedia(), _ => CanOperate);
+            SelectAppendHardDiskCommand = new RelayCommand(_ => SelectAppendHardDisk(), _ => CanOperate);
             RegisterExternalHardDiskCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RegisterExternalHardDiskAsync), _ => CanOperate);
             RecommendExternalHardDiskBlankTargetLocationCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RecommendExternalHardDiskBlankTargetLocationAsync), _ => CanOperate);
             ShowExternalHardDiskBlankTargetSlotSnapshotCommand = new RelayCommand(_ => ShowExternalHardDiskBlankTargetSlotSnapshot());
@@ -304,6 +308,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 _selectedRecords = value ?? new List<YearlyArchiveRegisterRecord>();
                 OnPropertyChanged(nameof(SelectedRecords));
                 OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
+                OnPropertyChanged(nameof(ArchivePurposeText));
                 _pageDb.RunInBackground(HandleSelectedRecordsChangedAsync);
             }
         }
@@ -339,6 +344,17 @@ namespace DocMgr.ViewModels.YearlyArchive
                     .Select(r => r.FormNo)
                     .Where(f => !string.IsNullOrWhiteSpace(f))
                     .Distinct(StringComparer.OrdinalIgnoreCase));
+
+        /// <summary>
+        /// 左侧勾选批次的库管模式（去重并列示）。
+        /// </summary>
+        public string ArchivePurposeText =>
+            SelectedRecords.Count == 0
+                ? string.Empty
+                : string.Join("、", SelectedRecords
+                    .Select(record => record.ArchivePurpose?.Trim())
+                    .Where(purpose => !string.IsNullOrWhiteSpace(purpose))
+                    .Distinct(StringComparer.Ordinal));
 
         public ElectronicMediaFormListItem? SelectedElectronicMediaForm
         {
@@ -467,6 +483,36 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         public YearlyElectronicArchiveUnit? SelectedExistingElectronicUnit => SelectedExistingElectronicUnitItem?.Unit;
+
+        private bool _appendSameProjectOnly;
+
+        /// <summary>可并入非空硬盘只保留项目名称与当前申请相同的硬盘，不要求实施年度相同。</summary>
+        public bool AppendSameProjectOnly
+        {
+            get => _appendSameProjectOnly;
+            set
+            {
+                if (SetProperty(ref _appendSameProjectOnly, value))
+                {
+                    ApplyAppendHardDiskFilter();
+                }
+            }
+        }
+
+        private bool _appendSameYearOnly;
+
+        /// <summary>可并入非空硬盘只保留实施年度与当前申请相同的硬盘，不要求项目名称相同。</summary>
+        public bool AppendSameYearOnly
+        {
+            get => _appendSameYearOnly;
+            set
+            {
+                if (SetProperty(ref _appendSameYearOnly, value))
+                {
+                    ApplyAppendHardDiskFilter();
+                }
+            }
+        }
 
         public bool IsAppendMode => !IsNewBoxMode;
 
@@ -624,11 +670,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             get => _archiveSequenceNo;
             set
             {
-                if (SetProperty(ref _archiveSequenceNo, value)
-                    && IsSimulatedTrack
-                    && IsNewBoxMode)
+                if (SetProperty(ref _archiveSequenceNo, value))
                 {
-                    _draftNewArchiveSequenceNo = value;
+                    OnPropertyChanged(nameof(SimulatedConsoleFilingNoText));
+                    if (IsSimulatedTrack && IsNewBoxMode)
+                    {
+                        _draftNewArchiveSequenceNo = value;
+                    }
                 }
             }
         }
@@ -681,14 +729,24 @@ namespace DocMgr.ViewModels.YearlyArchive
             get => _electronicArchiveNo;
             set
             {
-                if (SetProperty(ref _electronicArchiveNo, value)
-                    && IsElectronicTrack
-                    && IsNewBoxMode)
+                if (SetProperty(ref _electronicArchiveNo, value))
                 {
-                    _draftNewElectronicArchiveNo = value;
+                    OnPropertyChanged(nameof(ElectronicConsoleFilingNoText));
+                    if (IsElectronicTrack && IsNewBoxMode)
+                    {
+                        _draftNewElectronicArchiveNo = value;
+                    }
                 }
             }
         }
+
+        /// <summary>模拟介质操作台标题上的立档编号。尚未赋码时显示尚未生成。</summary>
+        public string SimulatedConsoleFilingNoText =>
+            string.IsNullOrWhiteSpace(ArchiveSequenceNo) ? "尚未生成" : ArchiveSequenceNo.Trim();
+
+        /// <summary>电子介质操作台标题上的立档编号。尚未赋码时显示尚未生成。</summary>
+        public string ElectronicConsoleFilingNoText =>
+            string.IsNullOrWhiteSpace(ElectronicArchiveNo) ? "尚未生成" : ElectronicArchiveNo.Trim();
 
         private string _electronicStorageCarrierType = string.Empty;
         public string ElectronicStorageCarrierType
@@ -740,6 +798,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (SetProperty(ref _electronicLinkedMediumCodes, value))
                 {
                     RequestCopyTargetHardDiskCapacityRefresh();
+                    OnPropertyChanged(nameof(BlankHardDiskCabinetLocateText));
+                    RequestBlankHardDiskCabinetLocationLookup();
                     _pageDb.RunInBackground(RebuildElectronicFilingDetailRowsAsync);
                 }
             }
@@ -754,6 +814,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (SetProperty(ref _electronicOriginalStorageLocation, value))
                 {
                     RaiseSlotSnapshotAvailabilityChanged();
+                    OnPropertyChanged(nameof(BlankHardDiskCabinetLocateText));
+                    RefreshElectronicFilingTargetMediumSummary();
                 }
             }
         }
@@ -973,6 +1035,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 if (_suppressElectronicSubmissionModeChange)
                 {
                     RequestCopyTargetHardDiskCapacityRefresh();
+                    NotifyHardDiskCabinetLocateText();
                     return;
                 }
 
@@ -1004,6 +1067,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 OnPropertyChanged(nameof(ElectronicStepSevenAppendNoticeVisibility));
                 OnPropertyChanged(nameof(IsElectronicStepSevenSuggestLocationEnabled));
                 OnModeChanged();
+                NotifyHardDiskCabinetLocateText();
             }
         }
 
@@ -1058,9 +1122,50 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public bool IsElectronicDirectBagScenario => SelectedElectronicSubmissionMode is ElectronicArchiveSubmissionMode.RetainedOpticalDiscSingleNew or ElectronicArchiveSubmissionMode.RetainedHardDiskDirectNew;
 
+        /// <summary>
+        /// 与「选择并入硬盘」相同：选项可用时即显示；出网申请已预定空盘时只展示编号。
+        /// </summary>
         public bool IsElectronicMediumSelectionButtonVisible =>
-            ElectronicStepFourBlankHardDiskSectionVisibility == Visibility.Visible
-            && !IsOutboundArchiveBlankDiskCodeReadOnly;
+            !IsOutboundArchiveBlankDiskCodeReadOnly;
+
+        /// <summary>
+        /// 与「选择库内空盘」相同：选项可用时即显示；出网申请已预定并入目标时只展示编号。
+        /// </summary>
+        public bool IsAppendHardDiskSelectionButtonVisible =>
+            _outboundArchiveFilingMode != ElectronicArchiveSubmissionMode.CopyAppendExistingHardDisk;
+
+        /// <summary>当前选中的可并入非空硬盘编号。</summary>
+        public string SelectedAppendHardDiskCode =>
+            SelectedExistingElectronicUnitItem is { CanSelectForAppend: true }
+                ? SelectedExistingElectronicUnitItem.LinkedMediumCodesDisplay
+                : string.Empty;
+
+        /// <summary>
+        /// 库内空盘在磁盘柜中的定位：硬盘编号、当前档口、介质袋。空盘尚未入袋。
+        /// </summary>
+        public string BlankHardDiskCabinetLocateText =>
+            SelectedElectronicSubmissionMode == ElectronicArchiveSubmissionMode.CopyNewHardDisk
+                ? BuildHardDiskCabinetLocateText(ElectronicLinkedMediumCodes, ElectronicOriginalStorageLocation, "尚无")
+                : string.Empty;
+
+        /// <summary>
+        /// 并入硬盘在磁盘柜中的定位：硬盘编号、所在档口、既有介质袋。
+        /// </summary>
+        public string SelectedAppendHardDiskCabinetLocateText
+        {
+            get
+            {
+                if (SelectedExistingElectronicUnitItem is not { CanSelectForAppend: true } item)
+                {
+                    return string.Empty;
+                }
+
+                return BuildHardDiskCabinetLocateText(
+                    item.LinkedMediumCodesDisplay,
+                    item.StorageLocation,
+                    DescribeElectronicBag(item.Unit.StorageCarrierType, item.ElectronicArchiveNo));
+            }
+        }
 
         private IReadOnlyList<string> SelectedElectronicMediaTypes => EnumerateSelectedElectronicMediaEntryRows()
             .Select(item => item.MediaType?.Trim())
@@ -1149,6 +1254,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         public RelayCommand SuggestElectronicLocationCommand { get; }
         public RelayCommand ShowElectronicSlotSnapshotCommand { get; }
         public RelayCommand SelectElectronicMediaCommand { get; }
+        public RelayCommand SelectAppendHardDiskCommand { get; }
         public RelayCommand RegisterExternalHardDiskCommand { get; }
         public RelayCommand RecommendExternalHardDiskBlankTargetLocationCommand { get; }
         public RelayCommand ShowExternalHardDiskBlankTargetSlotSnapshotCommand { get; }
@@ -1171,6 +1277,20 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void ResetSelection()
         {
+            // 使进行中的选中刷新作废，避免切页后旧任务把已清空的操作台又写回去。
+            Interlocked.Increment(ref _selectedRecordsChangedGeneration);
+            bool previousSuppress = SuppressPendingListSelectionSync;
+            SuppressPendingListSelectionSync = true;
+            try
+            {
+                // 清掉两侧列表高亮。否则切回原页后同一行仍处于选中，再次单击不会触发 SelectionChanged。
+                RequestClearPendingListSelections?.Invoke();
+            }
+            finally
+            {
+                SuppressPendingListSelectionSync = previousSuppress;
+            }
+
             _selectedRecords = new List<YearlyArchiveRegisterRecord>();
             ReplaceItems(SimulatedRecordItems, Array.Empty<SelectableSimulatedArchiveItemViewModel>());
             RefreshSimulatedRecordItemsPanel();
@@ -1182,6 +1302,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(SelectedElectronicMediaForm));
             OnPropertyChanged(nameof(SelectedRecords));
             OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
+            OnPropertyChanged(nameof(ArchivePurposeText));
             OnPropertyChanged(nameof(ElectronicStepOneSelectedDisposition));
             OnPropertyChanged(nameof(ElectronicStepOneSelectedMediumCode));
             RaiseElectronicStepFourPresentationChanged();
@@ -1196,6 +1317,19 @@ namespace DocMgr.ViewModels.YearlyArchive
             _existingContainerSummaries = Array.Empty<ArchiveContainerSummary>();
             ReplaceItems(ExistingBoxes, Array.Empty<YearlyArchiveBox>());
             ReplaceItems(ExistingElectronicUnits, Array.Empty<ExistingElectronicArchiveUnitListItem>());
+            ClearAppendHardDiskCandidates();
+            if (_appendSameProjectOnly)
+            {
+                _appendSameProjectOnly = false;
+                OnPropertyChanged(nameof(AppendSameProjectOnly));
+            }
+
+            if (_appendSameYearOnly)
+            {
+                _appendSameYearOnly = false;
+                OnPropertyChanged(nameof(AppendSameYearOnly));
+            }
+
             ReplaceItems(SimulatedRecordItems, Array.Empty<SelectableSimulatedArchiveItemViewModel>());
             RefreshSimulatedRecordItemsPanel();
             ReplaceItems(ElectronicRecordItems, Array.Empty<SelectableElectronicArchiveMediaViewModel>());
@@ -1208,12 +1342,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             SelectedExistingBox = null;
             SelectedExistingElectronicUnitItem = null;
             ArchiveSequenceNo = string.Empty;
+            Remarks = string.Empty;
             ResetSimulatedLocationSelection();
             ResetElectronicFields();
             ResetElectronicLocationSelection();
             IsNewBoxMode = true;
             UpdateSummaryText();
             OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
+            OnPropertyChanged(nameof(ArchivePurposeText));
             OnPropertyChanged(nameof(ElectronicStepOneSelectedDisposition));
             OnPropertyChanged(nameof(ElectronicStepOneSelectedMediumCode));
             RaiseElectronicStepFourPresentationChanged();
@@ -1275,6 +1411,9 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void OnSelectedExistingElectronicUnitChanged()
         {
+            OnPropertyChanged(nameof(SelectedAppendHardDiskCode));
+            OnPropertyChanged(nameof(SelectedAppendHardDiskCabinetLocateText));
+            RefreshElectronicFilingTargetMediumSummary();
             RequestSelectedExistingHardDiskCapacityRefresh();
             if (IsElectronicTrack && !IsNewBoxMode && SelectedExistingElectronicUnit != null)
             {

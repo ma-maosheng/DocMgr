@@ -70,6 +70,16 @@ namespace DocMgr.Models.YearlyArchive
 
         public string MediumCode { get; set; } = string.Empty;
 
+        /// <summary>
+        /// 资料所在硬盘。电子资料与 <see cref="OpticalDiscMediumId"/> 二选一；模拟资料两者都为空。
+        /// </summary>
+        public int? HardDiskMediumId { get; set; }
+
+        /// <summary>
+        /// 资料所在光盘。电子资料与 <see cref="HardDiskMediumId"/> 二选一；模拟资料两者都为空。
+        /// </summary>
+        public int? OpticalDiscMediumId { get; set; }
+
         public string FilingStoragePath { get; set; } = string.Empty;
 
         public decimal DataSizeMb { get; set; }

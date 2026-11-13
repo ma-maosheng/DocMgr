@@ -220,7 +220,7 @@ namespace DocMgr.Services.YearlyArchive
             bool targetIsEmpty = target.MediaItemLinks.Count == 0;
             if (targetIsEmpty)
             {
-                return Blocked("并入同项目硬盘模式下，目标应为本项目已用硬盘袋。");
+                return Blocked("并入已有硬盘模式下，目标应为本项目已用硬盘袋。");
             }
 
             string? hardDiskTargetBlockReason = ValidateHardDiskMergeTargetUnit(target);
@@ -242,7 +242,7 @@ namespace DocMgr.Services.YearlyArchive
             {
                 string targetMediumCodeBackup = ResolveTargetMediumCode(target);
                 return Ready(
-                    $"【保留原件·备份并入同项目硬盘】原件袋 [{source.ElectronicArchiveNo}] 保留于 [{source.StorageLocation}]；"
+                    $"【保留原件·备份并入已有硬盘】原件袋 [{source.ElectronicArchiveNo}] 保留于 [{source.StorageLocation}]；"
                     + $"将 {source.MediaItemLinks.Count} 条资料子项备份副本并入 [{target.ElectronicArchiveNo}]（{target.StorageLocation}"
                     + $"{(string.IsNullOrWhiteSpace(targetMediumCodeBackup) ? "" : $" / 硬盘 {targetMediumCodeBackup}")}）。",
                     source.MediaItemLinks.Count);
@@ -273,7 +273,7 @@ namespace DocMgr.Services.YearlyArchive
                     : "原介质袋将置空。";
 
             return Ready(
-                $"【容器内容迁移·并入同项目硬盘】将电子介质袋 [{source.ElectronicArchiveNo}] 内 {source.MediaItemLinks.Count} 条资料子项迁至 [{target.ElectronicArchiveNo}]（{target.StorageLocation}）。{dispositionHintMerge}",
+                $"【容器内容迁移·并入已有硬盘】将电子介质袋 [{source.ElectronicArchiveNo}] 内 {source.MediaItemLinks.Count} 条资料子项迁至 [{target.ElectronicArchiveNo}]（{target.StorageLocation}）。{dispositionHintMerge}",
                 source.MediaItemLinks.Count);
         }
 
@@ -377,14 +377,7 @@ namespace DocMgr.Services.YearlyArchive
             var itemLinkIds = source.MediaItemLinks.Select(link => link.Id).ToList();
             string targetMediumCode = ResolveTargetMediumCode(target);
 
-            foreach (var link in source.MediaItemLinks.ToList())
-            {
-                link.YearlyElectronicArchiveUnitId = target.Id;
-                if (!string.IsNullOrWhiteSpace(targetMediumCode))
-                {
-                    link.MediumCode = targetMediumCode;
-                }
-            }
+            ElectronicMediumCatalog.AttachItemLinks(target, source.MediaItemLinks, targetMediumCode);
 
             target.UnitLifecycleStatus = ArchiveContainerLifecycleStatus.InUse;
             target.MediaCount = target.MediaItemLinks.Count;
@@ -425,6 +418,13 @@ namespace DocMgr.Services.YearlyArchive
                 if (!string.IsNullOrWhiteSpace(targetMediumCode))
                 {
                     fact.MediumCode = targetMediumCode;
+                }
+
+                YearlyElectronicArchiveUnitMediaItemLink? movedLink = target.MediaItemLinks
+                    .FirstOrDefault(link => link.Id == fact.SourceLinkId);
+                if (movedLink != null)
+                {
+                    ElectronicMediumCatalog.AssignFactMedium(fact, movedLink);
                 }
 
                 fact.StorageCarrierType = target.StorageCarrierType;
@@ -563,6 +563,7 @@ namespace DocMgr.Services.YearlyArchive
             string remark = $"资料迁档：电子介质袋 [{source.ElectronicArchiveNo}] 换盘至空白硬盘 [{newDiskCode}]，存放于 [{finalLocation}]。";
 
             await DetachMediumFromOtherElectronicUnitsAsync(source.Id, targetMedium);
+            ElectronicMediumCatalog.MoveItemLinksToHardDisk(source.MediaItemLinks, targetMedium);
 
             string disposition = await ReplaceSourceElectronicMediumForMoveToEmptyAsync(
                 source,
@@ -576,11 +577,6 @@ namespace DocMgr.Services.YearlyArchive
             source.LinkedMediumCodes = newDiskCode;
             source.UnitLifecycleStatus = ArchiveContainerLifecycleStatus.InUse;
             source.MediaCount = source.MediaItemLinks.Count;
-
-            foreach (var link in source.MediaItemLinks)
-            {
-                link.MediumCode = newDiskCode;
-            }
 
             if (!source.MediumLinks.Any(link => link.HardDiskMediumId == targetMedium.Id))
             {
@@ -621,7 +617,8 @@ namespace DocMgr.Services.YearlyArchive
                 newDiskCode,
                 operatedAt,
                 remark,
-                context.RelocationItems);
+                context.RelocationItems,
+                hardDiskMediumId: targetMedium.Id);
 
             request.TargetBlankHardDiskCode = newDiskCode;
             request.NewStorageLocation = finalLocation;
@@ -852,7 +849,7 @@ namespace DocMgr.Services.YearlyArchive
                     return Blocked(backupSlotIssue);
                 }
 
-                string backupDiscCode = await PeekNextOpticalDiscCodeForUnitAsync(source.Year);
+                string backupDiscCode = await PeekNextOpticalDiscCodeForUnitAsync(DateTime.Now.Year.ToString());
 
                 return Ready(
                     $"【保留原件·备份至空白光盘】原件袋 [{source.ElectronicArchiveNo}] 与介质保留于 [{source.StorageLocation}] 不变；"
@@ -927,6 +924,7 @@ namespace DocMgr.Services.YearlyArchive
                     request.RelocationMode,
                     sourceHostsAtTargetAfterOperation: true));
             string remark = $"资料迁档：电子介质袋 [{source.ElectronicArchiveNo}] 迁入空白光盘，存放于 [{finalLocation}]。";
+            var movingLinks = source.MediaItemLinks.ToList();
 
             string disposition = await ReplaceSourceElectronicMediumForMoveToBlankOpticalDiscAsync(
                 source,
@@ -946,10 +944,12 @@ namespace DocMgr.Services.YearlyArchive
             source.LinkedMediumCodes = string.Empty;
             source.MediaCount = 1;
             source.UnitLifecycleStatus = ArchiveContainerLifecycleStatus.InUse;
-
-            foreach (var link in source.MediaItemLinks)
+            OpticalDiscMedium? targetDisc = source.DiscLinks
+                .Select(link => link.OpticalDiscMedium)
+                .FirstOrDefault(disc => disc != null && string.Equals(disc.DiscCode, discCode, StringComparison.OrdinalIgnoreCase));
+            if (targetDisc != null)
             {
-                link.MediumCode = discCode;
+                ElectronicMediumCatalog.MoveItemLinksToOpticalDisc(movingLinks, targetDisc);
             }
 
             var context = new ArchiveRelocationExecutionContext
@@ -967,7 +967,8 @@ namespace DocMgr.Services.YearlyArchive
                 operatedAt,
                 remark,
                 context.RelocationItems,
-                ArchiveFilingBusinessRules.DefaultOpticalDiscBagCarrierType);
+                ArchiveFilingBusinessRules.DefaultOpticalDiscBagCarrierType,
+                opticalDiscMediumId: targetDisc?.Id);
 
             request.NewStorageLocation = finalLocation;
             await _relocationRepository.SaveChangesAsync();

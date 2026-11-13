@@ -5,9 +5,9 @@ namespace DocMgr.Services.NetworkTransfer;
 
 /// <summary>
 /// 出入网资料相对路径统一拼装。
-/// 部门专用：出网|入网\年度\项目\资料名称；
-/// 共用路径：部门\出网|入网\年度\项目\资料名称。
-/// 子项名称作为该路径下的子目录，由调用方另行拼接。
+/// 部门专用：出网|入网\年度\项目；
+/// 共用路径：部门\出网|入网\年度\项目。
+/// 每一份资料名称是该路径下的子目录，子项名称再作为资料名称下的子目录。
 /// </summary>
 public static class NetworkMaterialPathSupport
 {
@@ -24,14 +24,13 @@ public static class NetworkMaterialPathSupport
             StringComparison.Ordinal);
 
     /// <summary>
-    /// 按所选服务器路径与申请信息生成相对路径；未选服务器路径时返回空。
+    /// 公共前缀：出网|入网\年度\项目。未选服务器路径时返回空。资料名称不放进这一段。
     /// </summary>
-    public static string BuildMaterialPath(
+    public static string BuildMaterialPathPrefix(
         ServerPathSetting? serverPath,
         string? applicantDept,
         string? year,
         string? projectName,
-        string? materialName,
         string businessFolderName)
     {
         if (serverPath == null)
@@ -48,8 +47,27 @@ public static class NetworkMaterialPathSupport
         segments.Add(SanitizePathSegment(businessFolderName, "未知业务"));
         segments.Add(SanitizePathSegment(NormalizeYear(year), "未知年度"));
         segments.Add(SanitizePathSegment(projectName, "未知项目"));
-        segments.Add(SanitizePathSegment(materialName, "未命名资料"));
         return string.Join("\\", segments);
+    }
+
+    /// <summary>
+    /// 按所选服务器路径与一份资料名称生成相对路径；未选服务器路径时返回空。
+    /// </summary>
+    public static string BuildMaterialPath(
+        ServerPathSetting? serverPath,
+        string? applicantDept,
+        string? year,
+        string? projectName,
+        string? materialName,
+        string businessFolderName)
+    {
+        string prefix = BuildMaterialPathPrefix(serverPath, applicantDept, year, projectName, businessFolderName);
+        if (string.IsNullOrWhiteSpace(prefix))
+        {
+            return string.Empty;
+        }
+
+        return prefix + "\\" + SanitizePathSegment(materialName, "未命名资料");
     }
 
     /// <summary>

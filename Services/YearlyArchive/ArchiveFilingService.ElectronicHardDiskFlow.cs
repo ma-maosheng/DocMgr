@@ -382,11 +382,22 @@ namespace DocMgr.Services.YearlyArchive
                 .ToList();
 
             var linkedMedia = await PrepareElectronicArchiveUnitAsync(newUnit, archivedAt, borrowedHardDiskCandidate, pendingExternalHardDisk);
+            bool isOpticalDisc = ArchiveFilingBusinessRules.IsOpticalDiscArchiveCarrierType(newUnit.StorageCarrierType);
+            if (isOpticalDisc)
+            {
+                await UpsertElectronicArchiveDiscLinksAsync(newUnit, archivedAt, preferredOpticalDiscCode);
+            }
+            else
+            {
+                AssignElectronicArchiveMediumLinks(newUnit, linkedMedia);
+            }
 
-            AssignElectronicArchiveMediumLinks(newUnit, linkedMedia);
             var createdItemLinks = AddElectronicMediaItemLinks(newUnit, mediaItems, filingStoragePathByMediaItemId, mediumCode, archivedAt);
             _archiveFilingRepository.AddElectronicArchiveUnit(newUnit);
-            await UpsertElectronicArchiveDiscLinksAsync(newUnit, archivedAt, preferredOpticalDiscCode);
+            if (!isOpticalDisc)
+            {
+                await UpsertElectronicArchiveDiscLinksAsync(newUnit, archivedAt, preferredOpticalDiscCode);
+            }
 
             _submissionChangeTracker?.BeginSection("电子介质袋（YearlyElectronicArchiveUnit）");
             _submissionChangeTracker?.AddLine(
@@ -955,7 +966,6 @@ namespace DocMgr.Services.YearlyArchive
             {
                 Id = source.Id,
                 ElectronicArchiveNo = source.ElectronicArchiveNo.Trim(),
-                ProjectName = source.ProjectName.Trim(),
                 Year = source.Year.Trim(),
                 StorageCarrierType = source.StorageCarrierType.Trim(),
                 StoragePath = source.StoragePath.Trim(),
@@ -981,30 +991,14 @@ namespace DocMgr.Services.YearlyArchive
             ArgumentNullException.ThrowIfNull(archiveUnit);
             ArgumentNullException.ThrowIfNull(records);
 
-            if (string.IsNullOrWhiteSpace(archiveUnit.ProjectName))
-            {
-                throw new InvalidOperationException("请先选择待立档资料以确定所属项目。");
-            }
-
             if (string.IsNullOrWhiteSpace(archiveUnit.Year))
             {
-                throw new InvalidOperationException("请先选择待立档资料以确定所属年度。");
+                throw new InvalidOperationException("电子介质袋的立档操作年不能为空。");
             }
 
-            foreach (var record in records)
+            if (ArchiveFilingBusinessRules.IsOpticalDiscArchiveCarrierType(archiveUnit.StorageCarrierType))
             {
-                string recordProject = ArchiveFilingBusinessRules.ResolveElectronicArchiveProjectName(record);
-                string recordYear = record.CreatedDate.Year.ToString();
-
-                if (!string.Equals(archiveUnit.ProjectName, recordProject, StringComparison.Ordinal))
-                {
-                    throw new InvalidOperationException($"登记单 [{record.FormNo}] 与当前电子介质袋所属项目不一致，不能混合立档。");
-                }
-
-                if (!string.Equals(archiveUnit.Year, recordYear, StringComparison.Ordinal))
-                {
-                    throw new InvalidOperationException($"登记单 [{record.FormNo}] 与当前电子介质袋所属年度不一致，不能混合立档。");
-                }
+                EnsureRecordsShareOneProject(records);
             }
         }
 

@@ -46,7 +46,8 @@ namespace DocMgr.Services.YearlyArchive
                     sourceHostsAtTargetAfterOperation: false));
             string newDiskCode = targetMedium.DiskCode.Trim();
             string operatorName = ResolveOperatorName();
-            string backupUnitNo = await GenerateNextElectronicArchiveNoAsync(source.Year);
+            int operationYear = DateTime.Now.Year;
+            string backupUnitNo = await GenerateNextElectronicArchiveNoAsync(operationYear.ToString());
             string remark = $"资料备份：由电子介质袋 [{source.ElectronicArchiveNo}] 备份至新建袋 [{backupUnitNo}] / 硬盘 [{newDiskCode}]，存放于 [{finalLocation}]；原件保留于 [{source.StorageLocation}]。";
 
             await ValidateBackupMediumCapacityAsync(newDiskCode, source.MediaItemLinks);
@@ -54,8 +55,7 @@ namespace DocMgr.Services.YearlyArchive
             var backupUnit = new YearlyElectronicArchiveUnit
             {
                 ElectronicArchiveNo = backupUnitNo,
-                ProjectName = source.ProjectName.Trim(),
-                Year = source.Year.Trim(),
+                Year = operationYear.ToString(),
                 StorageCarrierType = ResolveHardDiskBagCarrierType(source),
                 StoragePath = source.StoragePath?.Trim() ?? string.Empty,
                 StorageLocation = finalLocation,
@@ -137,14 +137,14 @@ namespace DocMgr.Services.YearlyArchive
                     request.RelocationMode,
                     sourceHostsAtTargetAfterOperation: false));
             string operatorName = ResolveOperatorName();
-            string backupUnitNo = await GenerateNextElectronicArchiveNoAsync(source.Year);
+            int operationYear = DateTime.Now.Year;
+            string backupUnitNo = await GenerateNextElectronicArchiveNoAsync(operationYear.ToString());
             string remark = $"资料备份：由电子介质袋 [{source.ElectronicArchiveNo}] 备份至新建光盘袋 [{backupUnitNo}]，存放于 [{finalLocation}]；原件保留于 [{source.StorageLocation}]。";
 
             var backupUnit = new YearlyElectronicArchiveUnit
             {
                 ElectronicArchiveNo = backupUnitNo,
-                ProjectName = source.ProjectName.Trim(),
-                Year = source.Year.Trim(),
+                Year = operationYear.ToString(),
                 StorageCarrierType = ArchiveFilingBusinessRules.DefaultOpticalDiscBagCarrierType,
                 StoragePath = source.StoragePath?.Trim() ?? string.Empty,
                 StorageLocation = finalLocation,
@@ -311,7 +311,6 @@ namespace DocMgr.Services.YearlyArchive
 
                 var newLink = new YearlyElectronicArchiveUnitMediaItemLink
                 {
-                    ElectronicArchiveUnit = targetUnit,
                     MediaItem = clone,
                     YearlyArchiveRegisterMediaItemId = clone.Id,
                     FilingStoragePath = filingPath,
@@ -325,7 +324,7 @@ namespace DocMgr.Services.YearlyArchive
                     CreatedAt = operatedAt
                 };
 
-                targetUnit.MediaItemLinks.Add(newLink);
+                ElectronicMediumCatalog.AddItemLink(targetUnit, newLink);
                 _filingRepository.AddElectronicArchiveUnitMediaItemLink(newLink);
                 await _filingRepository.SaveChangesAsync();
 

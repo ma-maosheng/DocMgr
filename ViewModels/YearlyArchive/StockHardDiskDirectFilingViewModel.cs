@@ -250,7 +250,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         /// <summary>
-        /// 介质袋编号预览（页内字段与标题共用）。年度取自目录扫描「年度」字段（项目实施年度），不占用号段。
+        /// 介质袋编号预览（页内字段与标题共用）。年度取办理当时的日历年，不占用号段。
         /// </summary>
         public string PreviewElectronicArchiveNo
         {
@@ -709,7 +709,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private async Task RefreshPreviewElectronicArchiveNoAsync()
         {
             int token = ++_archiveNoPreviewToken;
-            string year = Year?.Trim() ?? string.Empty;
+            string year = DateTime.Now.Year.ToString();
             if (string.IsNullOrWhiteSpace(year))
             {
                 PreviewElectronicArchiveNo = string.Empty;
@@ -718,7 +718,6 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             try
             {
-                // 存量直办：袋号年度必须用目录扫描/项目实施年度，不得回退到系统当前年。
                 string preview = await _filingService.PeekNextElectronicArchiveNoAsync(year);
                 if (token != _archiveNoPreviewToken)
                 {
@@ -754,7 +753,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             string previewBagNo = PreviewElectronicArchiveNo;
             BusinessNumberHint =
-                $"确认立档后将生成 {materialCount} 条建档单号（入库申请编号），电子袋号预计为 [{previewBagNo}]（确认写入时按当时库内最大号顺延；建档单号、电子袋号、立档编号的年度均取自项目年度）。";
+                $"确认立档后将生成 {materialCount} 条建档单号（入库申请编号），电子袋号预计为 [{previewBagNo}]（确认写入时按当时库内最大号顺延；建档单号、电子袋号、立档编号的年度均取办理当时的日历年）。";
         }
 
         private async Task ShowSlotSnapshotAsync()
@@ -951,11 +950,17 @@ namespace DocMgr.ViewModels.YearlyArchive
         private StockHardDiskDirectFilingRequest BuildRequest()
         {
             var materials = PreviewRows
-                .GroupBy(row => row.MaterialName, StringComparer.Ordinal)
-                .Select(group => new StockHardDiskMaterialDraft
+                .GroupBy(row => $"{row.Year}\u001f{row.ProjectName}\u001f{row.MaterialName}", StringComparer.Ordinal)
+                .Select(group =>
                 {
-                    MaterialName = group.Key,
-                    Items = group.Select(row => row.Item).ToList()
+                    StockHardDiskPreviewRow first = group.First();
+                    return new StockHardDiskMaterialDraft
+                    {
+                        Year = first.Year,
+                        ProjectName = first.ProjectName,
+                        MaterialName = first.MaterialName,
+                        Items = group.Select(row => row.Item).ToList()
+                    };
                 })
                 .ToList();
 
@@ -1147,6 +1152,10 @@ namespace DocMgr.ViewModels.YearlyArchive
         public StockHardDiskItemDraft Item { get; }
 
         public ObservableCollection<string> AvailableSubCategories { get; } = new();
+
+        public string Year => string.IsNullOrWhiteSpace(Material.Year) ? _owner.Year : Material.Year;
+
+        public string ProjectName => string.IsNullOrWhiteSpace(Material.ProjectName) ? _owner.ProjectName : Material.ProjectName;
 
         public string MaterialName => Material.MaterialName;
 

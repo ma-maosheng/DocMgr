@@ -4,6 +4,7 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
+      xmlns:local="clr-namespace:DocMgr.Views.SystemSettings"
       mc:Ignorable="d"
       Title="在线用户与登录记录"
       Background="White">
@@ -56,27 +57,7 @@
                                Foreground="#666"
                                Margin="0,0,0,8"/>
 
-                    <DataGrid Grid.Row="2"
-                              AutoGenerateColumns="False"
-                              ItemsSource="{Binding OnlineUsers}"
-                              CanUserAddRows="False"
-                              IsReadOnly="True"
-                              SelectionMode="Single"
-                              BorderThickness="1"
-                              BorderBrush="#E0E0E0"
-                              RowHeight="35"
-                              ColumnHeaderHeight="40">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="登录账号" Binding="{Binding LoginName}" Width="120"/>
-                            <DataGridTextColumn Header="真实姓名" Binding="{Binding RealName}" Width="100"/>
-                            <DataGridTextColumn Header="部门" Binding="{Binding Department}" Width="140"/>
-                            <DataGridTextColumn Header="角色" Binding="{Binding Role}" Width="120"/>
-                            <DataGridTextColumn Header="终端" Binding="{Binding TerminalName}" Width="140"/>
-                            <DataGridTextColumn Header="登录时间" Binding="{Binding LoginTime, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="150"/>
-                            <DataGridTextColumn Header="最近心跳" Binding="{Binding LastHeartbeatTime, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="150"/>
-                            <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <local:UserSessionGrid Grid.Row="2" ItemsSource="{Binding OnlineUsers}"/>
                 </Grid>
             </TabItem>
 
@@ -118,28 +99,9 @@
                                Foreground="#666"
                                Margin="0,0,0,8"/>
 
-                    <DataGrid Grid.Row="2"
-                              AutoGenerateColumns="False"
-                              ItemsSource="{Binding LoginRecords}"
-                              CanUserAddRows="False"
-                              IsReadOnly="True"
-                              SelectionMode="Single"
-                              BorderThickness="1"
-                              BorderBrush="#E0E0E0"
-                              RowHeight="35"
-                              ColumnHeaderHeight="40">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="登录账号" Binding="{Binding LoginName}" Width="110"/>
-                            <DataGridTextColumn Header="真实姓名" Binding="{Binding RealName}" Width="90"/>
-                            <DataGridTextColumn Header="部门" Binding="{Binding Department}" Width="120"/>
-                            <DataGridTextColumn Header="角色" Binding="{Binding Role}" Width="110"/>
-                            <DataGridTextColumn Header="终端" Binding="{Binding TerminalName}" Width="120"/>
-                            <DataGridTextColumn Header="登录时间" Binding="{Binding LoginTime, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="145"/>
-                            <DataGridTextColumn Header="最近心跳" Binding="{Binding LastHeartbeatTime, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="145"/>
-                            <DataGridTextColumn Header="结束时间" Binding="{Binding LogoutTime, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="145"/>
-                            <DataGridTextColumn Header="状态" Binding="{Binding StatusDisplay}" Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <local:UserSessionGrid Grid.Row="2"
+                                          ItemsSource="{Binding LoginRecords}"
+                                          ShowEndTime="True"/>
                 </Grid>
             </TabItem>
         </TabControl>

@@ -349,6 +349,9 @@
                             <ColumnDefinition Width="96"/>
                             <ColumnDefinition Width="8"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="96"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="176"/>
                             <ColumnDefinition Width="8"/>
                             <ColumnDefinition Width="Auto"/>
@@ -383,57 +386,63 @@
                                   ItemsSource="{Binding Years}"
                                   SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="5" Text="项目：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <TextBlock Grid.Column="5" Text="实施年度：" Style="{StaticResource LedgerFilterLabelStyle}"/>
                         <ComboBox Grid.Column="6" Style="{StaticResource FilterInputStyle}"
+                                  ItemsSource="{Binding ImplementYears}"
+                                  SelectedItem="{Binding SelectedImplementYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  ToolTip="按项目实施年度收窄项目列表。选「全部」时，同名项目会带上实施年度。"/>
+
+                        <TextBlock Grid.Column="8" Text="项目：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="9" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding ProjectOptions}"
                                   DisplayMemberPath="Name"
                                   SelectedValuePath="Id"
                                   SelectedValue="{Binding SelectedProjectId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="8" Text="介质：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <ComboBox Grid.Column="9" Style="{StaticResource FilterInputStyle}"
+                        <TextBlock Grid.Column="11" Text="介质：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="12" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding MediaKindOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedMediaKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="11" Text="立档方式：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <ComboBox Grid.Column="12" Style="{StaticResource FilterInputStyle}"
+                        <TextBlock Grid.Column="14" Text="立档方式：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding FilingMethodOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedFilingMethod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="14" Text="办理形式：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <ComboBox Grid.Column="15" Style="{StaticResource FilterInputStyle}"
+                        <TextBlock Grid.Column="17" Text="办理形式：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="18" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding HandlingFormOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedHandlingForm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="17" Text="状态：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <ComboBox Grid.Column="18" Style="{StaticResource FilterInputStyle}"
+                        <TextBlock Grid.Column="20" Text="状态：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="21" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding LifecycleStatusOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedLifecycleStatus, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="20" Text="副本：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <ComboBox Grid.Column="21" Style="{StaticResource FilterInputStyle}"
+                        <TextBlock Grid.Column="23" Text="副本：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <ComboBox Grid.Column="24" Style="{StaticResource FilterInputStyle}"
                                   ItemsSource="{Binding ArchiveCopyRoleOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedValuePath="Value"
                                   SelectedValue="{Binding SelectedArchiveCopyRole, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Grid.Column="23" Text="立档自：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <DatePicker Grid.Column="24" Style="{StaticResource FilterDatePickerStyle}"
+                        <TextBlock Grid.Column="26" Text="立档自：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <DatePicker Grid.Column="27" Style="{StaticResource FilterDatePickerStyle}"
                                     SelectedDate="{Binding FiledFrom, Mode=TwoWay}"/>
 
-                        <TextBlock Grid.Column="26" Text="立档至：" Style="{StaticResource LedgerFilterLabelStyle}"/>
-                        <DatePicker Grid.Column="27" Style="{StaticResource FilterDatePickerStyle}"
+                        <TextBlock Grid.Column="29" Text="立档至：" Style="{StaticResource LedgerFilterLabelStyle}"/>
+                        <DatePicker Grid.Column="30" Style="{StaticResource FilterDatePickerStyle}"
                                     SelectedDate="{Binding FiledTo, Mode=TwoWay}"/>
 
-                        <StackPanel Grid.Column="29" Orientation="Horizontal" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="32" Orientation="Horizontal" VerticalAlignment="Center">
                             <Button Content="查询" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding SearchCommand}"/>
                             <Button Content="重置" Margin="4,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding ResetCommand}"/>
                             <Button Content="导出" Margin="6,0,0,0" Style="{StaticResource CompactToolbarButtonStyle}" Command="{Binding ExportCommand}" ToolTip="导出台账"/>

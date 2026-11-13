@@ -21,6 +21,11 @@ namespace DocMgr.Data.Configurations
                 .WithOne()
                 .HasForeignKey(i => i.YearlyArchiveRegisterMediaId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasMany(m => m.Materials)
+                .WithOne(material => material.MediaEntry)
+                .HasForeignKey(material => material.YearlyArchiveRegisterMediaId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

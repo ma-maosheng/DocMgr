@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using DocMgr.Models;
 using DocMgr.Models.NetworkTransfer;
+using DocMgr.Models.YearlyArchive;
+using DocMgr.Services.YearlyArchive;
 
 namespace DocMgr.ViewModels.NetworkTransfer;
 
@@ -9,6 +11,7 @@ public sealed partial class NetworkInboundEditDialogViewModel
     private const string ArchiveRoomDepartmentName = NetworkTransferDomainValues.InboundProvideUnitArchiveRoom;
 
     private bool _suppressProvideUnitDefault;
+    private bool _syncingExternalHeaderFromItems;
     private string _provideUnit = string.Empty;
 
     /// <summary>档外资料（内部）时可选的院内部门（不含资料室）。</summary>
@@ -22,11 +25,21 @@ public sealed partial class NetworkInboundEditDialogViewModel
     public bool IsExternalOfflineExternalSource =>
         NetworkTransferDomainValues.IsExternalOfflineExternalSource(SourceKind);
 
-    /// <summary>草稿可编辑且为档外资料（内部）时，提供部门使用下拉框。</summary>
-    public bool ShowProvideUnitDepartmentCombo => CanEditForm && IsExternalOfflineInternalSource;
+    /// <summary>草稿可编辑、档外资料（内部）、且还没有明细时，提供部门使用下拉框。</summary>
+    public bool ShowProvideUnitDepartmentCombo =>
+        CanEditForm && IsExternalOfflineInternalSource && !ShowExternalSourceProvideUnitSummary;
 
-    /// <summary>草稿可编辑且为档外资料（外部）时，提供部门使用文本框。</summary>
-    public bool ShowProvideUnitExternalTextBox => CanEditForm && IsExternalOfflineExternalSource;
+    /// <summary>草稿可编辑、档外资料（外部）、且还没有明细时，提供部门使用文本框。</summary>
+    public bool ShowProvideUnitExternalTextBox =>
+        CanEditForm && IsExternalOfflineExternalSource && !ShowExternalSourceProvideUnitSummary;
+
+    /// <summary>档外资料已有明细时，提供部门改为只读汇总（来源 . 单位）。</summary>
+    public bool ShowExternalSourceProvideUnitSummary =>
+        CanEditForm && IsExternalSource && GetExternalMediaItemCount() > 0;
+
+    /// <summary>档外资料表头汇总，格式与立档申请「资料来源」相同。</summary>
+    public string ExternalSourceProvideUnitDisplay =>
+        ArchiveRegisterSourceProvideUnitDisplaySupport.FormatAggregated(CollectExternalItemSourcePairs());
 
     /// <summary>立档资料或不可编辑时，提供部门只读展示。</summary>
     public bool ShowProvideUnitReadOnlyText =>
@@ -36,7 +49,19 @@ public sealed partial class NetworkInboundEditDialogViewModel
     public string ProvideUnit
     {
         get => _provideUnit;
-        set => SetProperty(ref _provideUnit, value);
+        set
+        {
+            // 明细汇总显示时，折叠的部门下拉仍绑定本属性，匹配不上时会把值写空。
+            if (!_syncingExternalHeaderFromItems
+                && ShowExternalSourceProvideUnitSummary
+                && string.IsNullOrWhiteSpace(value)
+                && !string.IsNullOrWhiteSpace(_provideUnit))
+            {
+                return;
+            }
+
+            SetProperty(ref _provideUnit, value);
+        }
     }
 
     /// <summary>审批只读展示用提供部门（单位）；无值时显示「(无)」。</summary>
@@ -73,9 +98,7 @@ public sealed partial class NetworkInboundEditDialogViewModel
     {
         OnPropertyChanged(nameof(IsExternalOfflineInternalSource));
         OnPropertyChanged(nameof(IsExternalOfflineExternalSource));
-        OnPropertyChanged(nameof(ShowProvideUnitDepartmentCombo));
-        OnPropertyChanged(nameof(ShowProvideUnitExternalTextBox));
-        OnPropertyChanged(nameof(ShowProvideUnitReadOnlyText));
+        NotifyExternalSourceProvideVisibility();
         OnPropertyChanged(nameof(ProvideUnitDisplay));
 
         if (_suppressProvideUnitDefault)
@@ -132,4 +155,121 @@ public sealed partial class NetworkInboundEditDialogViewModel
 
     private string ResolveDraftProvideUnit() =>
         NetworkTransferDomainValues.ResolveInboundProvideUnit(SourceKind, ProvideUnit);
+
+    /// <summary>
+    /// 档外资料已有明细时，表头数据来源与提供部门跟随各子项的资料来源、提供单位。
+    /// 来源一致时回写院内/院外；提供部门保存去重后的单位名称，界面展示「来源 . 单位」。
+    /// </summary>
+    private void SyncExternalHeaderSourceFromMediaItems()
+    {
+        OnPropertyChanged(nameof(ExternalSourceProvideUnitDisplay));
+        NotifyExternalSourceProvideVisibility();
+
+        if (_syncingExternalHeaderFromItems || _isInitializing || !CanEditForm || !IsExternalSource)
+        {
+            return;
+        }
+
+        List<(string? SourceType, string? ProvideUnit)> pairs = CollectExternalItemSourcePairs();
+        if (pairs.Count == 0)
+        {
+            return;
+        }
+
+        string? derivedKind = DeriveExternalSourceKind(pairs);
+        string derivedUnit = DeriveExternalProvideUnit(pairs);
+
+        _syncingExternalHeaderFromItems = true;
+        _suppressProvideUnitDefault = true;
+        try
+        {
+            if (derivedKind != null
+                && !string.Equals(SourceKind, derivedKind, StringComparison.Ordinal))
+            {
+                SourceKind = derivedKind;
+            }
+
+            if (!string.Equals(ProvideUnit, derivedUnit, StringComparison.Ordinal))
+            {
+                ProvideUnit = derivedUnit;
+            }
+        }
+        finally
+        {
+            _suppressProvideUnitDefault = false;
+            _syncingExternalHeaderFromItems = false;
+        }
+    }
+
+    private bool HasExternalMediaSourcePairs() => CollectExternalItemSourcePairs().Count > 0;
+
+    private List<(string? SourceType, string? ProvideUnit)> CollectExternalItemSourcePairs() =>
+        _electronicMediaEditor.MediaEntries
+            .Where(RegisterMediaTreeSupport.IsDataElectronic)
+            .SelectMany(media => media.Items)
+            .Select(item => ((string?)item.SourceType, (string?)item.ProvideUnit))
+            .ToList();
+
+    private static string? DeriveExternalSourceKind(
+        IReadOnlyList<(string? SourceType, string? ProvideUnit)> pairs)
+    {
+        bool anyExternal = false;
+        bool anyInternal = false;
+        foreach ((string? SourceType, string? ProvideUnit) pair in pairs)
+        {
+            string source = pair.SourceType?.Trim() ?? string.Empty;
+            if (source.Length == 0)
+            {
+                continue;
+            }
+
+            if (string.Equals(source, ArchiveRegisterDomainValues.SourceTypeExternal, StringComparison.Ordinal))
+            {
+                anyExternal = true;
+            }
+            else
+            {
+                anyInternal = true;
+            }
+        }
+
+        if (anyExternal && !anyInternal)
+        {
+            return NetworkTransferDomainValues.SourceKindExternalOfflineExternal;
+        }
+
+        if (anyInternal && !anyExternal)
+        {
+            return NetworkTransferDomainValues.SourceKindExternalOfflineInternal;
+        }
+
+        return null;
+    }
+
+    private static string DeriveExternalProvideUnit(
+        IReadOnlyList<(string? SourceType, string? ProvideUnit)> pairs)
+    {
+        var units = new List<string>();
+        foreach ((string? SourceType, string? ProvideUnit) pair in pairs)
+        {
+            string unit = pair.ProvideUnit?.Trim() ?? string.Empty;
+            if (unit.Length == 0
+                || units.Exists(existing => string.Equals(existing, unit, StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            units.Add(unit);
+        }
+
+        return string.Join("、", units);
+    }
+
+    private void NotifyExternalSourceProvideVisibility()
+    {
+        OnPropertyChanged(nameof(ShowExternalSourceProvideUnitSummary));
+        OnPropertyChanged(nameof(ShowProvideUnitDepartmentCombo));
+        OnPropertyChanged(nameof(ShowProvideUnitExternalTextBox));
+        OnPropertyChanged(nameof(ShowProvideUnitReadOnlyText));
+    }
 }

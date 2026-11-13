@@ -4,6 +4,7 @@ using DocMgr.Models.HistoryArchive;
 using DocMgr.Models.Inventory;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
+using DocMgr.Repositories.YearlyArchive;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocMgr.Repositories.Inventory;
@@ -581,7 +582,11 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
 
         if (!string.IsNullOrWhiteSpace(year))
         {
-            query = query.Where(unit => unit.Year == year);
+            query = query.Where(unit => _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                && fact.ContainerId == unit.Id
+                && fact.ProjectId != null
+                && _dbContext.ProjectInfos.Any(project => project.Id == fact.ProjectId && project.ImplementYear == year)));
         }
 
         if (!string.IsNullOrWhiteSpace(locationKeyword))
@@ -605,13 +610,15 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
         }
 
         var units = await query.ToListAsync();
+        var projectSummaries = ElectronicArchiveProjectLookup.LoadByContainerIds(_dbContext, units.Select(unit => unit.Id).ToList());
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             units = units
                 .Where(unit =>
                     contentHits.Contains(unit.Id)
                     || ContainsText(unit.ElectronicArchiveNo, keyword, keywordCaseSensitive)
-                    || ContainsText(unit.ProjectName, keyword, keywordCaseSensitive)
+                    || ContainsText(projectSummaries.TryGetValue(unit.Id, out var summary) ? summary.ProjectNames : string.Empty, keyword, keywordCaseSensitive)
+                    || ContainsText(projectSummaries.TryGetValue(unit.Id, out summary) ? summary.ImplementYears : string.Empty, keyword, keywordCaseSensitive)
                     || ContainsText(unit.StorageLocation, keyword, keywordCaseSensitive)
                     || ContainsText(unit.ContentSummary, keyword, keywordCaseSensitive)
                     || ContainsText(unit.LinkedMediumCodes, keyword, keywordCaseSensitive)
@@ -663,8 +670,12 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
                 ContainerKind = StockContainerKind.ElectronicBag,
                 ContainerId = unit.Id,
                 ContainerCode = unit.ElectronicArchiveNo?.Trim() ?? string.Empty,
-                ProjectOrCategory = unit.ProjectName?.Trim() ?? string.Empty,
-                Year = unit.Year?.Trim() ?? string.Empty,
+                ProjectOrCategory = projectSummaries.TryGetValue(unit.Id, out var projectSummary) && !string.IsNullOrWhiteSpace(projectSummary.ProjectNames)
+                    ? projectSummary.ProjectNames
+                    : string.Empty,
+                Year = projectSummaries.TryGetValue(unit.Id, out projectSummary) && !string.IsNullOrWhiteSpace(projectSummary.ImplementYears)
+                    ? projectSummary.ImplementYears
+                    : unit.Year?.Trim() ?? string.Empty,
                 StorageLocation = unit.StorageLocation?.Trim() ?? string.Empty,
                 LifecycleStatusDisplay = BuildYearlyLifecycleDisplay(
                     unit.UnitLifecycleStatus,

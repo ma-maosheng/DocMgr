@@ -1,7 +1,8 @@
-<Window x:Class="DocMgr.Views.YearlyArchive.ArchiveRegisterEditDialog"
+﻿<Window x:Class="DocMgr.Views.YearlyArchive.ArchiveRegisterEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:DocMgr.Views.YearlyArchive"
+        xmlns:shared="clr-namespace:DocMgr.Views.Shared"
         Width="1200"
         Height="820"
         WindowStartupLocation="CenterOwner"
@@ -15,283 +16,68 @@
             <DataTemplate x:Key="ApplicantSectionsTemplate">
                 <UserControl>
                 <StackPanel Orientation="Vertical">
-                    <GroupBox Header="1. 申请信息" Style="{StaticResource Level1GroupBoxStyle}">
-                        <StackPanel>
-                            <!-- 第1行：申请人信息 + 库管模式 + 证明材料（过窄时 WrapPanel 可折行） -->
-                            <WrapPanel Margin="{StaticResource YaRegFormRowMargin}" Orientation="Horizontal">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,2">
-                                    <TextBlock Style="{StaticResource ArchiveRegisterCardLabelStyle}"
-                                               Text="申请人 *："/>
-                                    <TextBox Width="{StaticResource YaRegPersonNameWidth}"
-                                             Margin="{StaticResource YaRegFieldTrailingMargin}"
-                                             Text="{Binding CurrentRecord.ApplicantName}"
-                                             IsReadOnly="True"
-                                             Background="#F5F5F5"
-                                             Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
-                                    <TextBlock Style="{StaticResource ArchiveRegisterInlineLabelStyle}"
-                                               Text="部门 *："/>
-                                    <TextBox Width="{StaticResource YaRegDepartmentWidth}"
-                                             Margin="{StaticResource YaRegFieldTrailingMargin}"
-                                             Text="{Binding CurrentRecord.ApplicantDept}"
-                                             IsReadOnly="True"
-                                             Background="#F5F5F5"
-                                             Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
-                                    <TextBlock Style="{StaticResource ArchiveRegisterInlineLabelStyle}"
-                                               Text="日期 *："/>
-                                    <DatePicker Width="{StaticResource YaRegDateWidth}"
-                                                SelectedDate="{Binding CurrentRecord.ApplicantDate}"
-                                                Style="{StaticResource ArchiveRegisterFormDatePickerStyle}"/>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,2">
-                                    <TextBlock Style="{StaticResource ArchiveRegisterCardLabelStyle}"
-                                               Text="库管模式 *："/>
-                                    <ComboBox Width="{StaticResource YaRegArchivePurposeWidth}"
-                                              Margin="{StaticResource YaRegFieldTrailingMargin}"
-                                              Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
-                                              ItemsSource="{Binding ArchivePurposeOptions}"
-                                              SelectedItem="{Binding SelectedArchivePurpose}"/>
-                                    <StackPanel Orientation="Horizontal">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsArchivePurposeOtherSelected}" Value="True">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-                                        <TextBlock Style="{StaticResource ArchiveRegisterInlineLabelStyle}" Text="说明："/>
-                                        <TextBox Width="160"
-                                                 Margin="{StaticResource YaRegFieldTrailingMargin}"
-                                                 Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                                                 Text="{Binding CurrentRecord.OtherRequests, UpdateSourceTrigger=PropertyChanged}"
-                                                 ToolTip="当库管模式为‘其他’时可在此补充说明"/>
+                    <shared:ApplicationRequestHeaderSectionView DataContext="{Binding RequestHeader}">
+                        <shared:ApplicationRequestHeaderSectionView.IdentityContent>
+                            <StackPanel DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <WrapPanel Margin="{StaticResource YaRegFormRowMargin}" Orientation="Horizontal">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,2">
+                                        <TextBlock Style="{StaticResource ArchiveRegisterCardLabelStyle}" Text="资料名称 *："/>
+                                        <ComboBox Width="{StaticResource YaRegYearWidth}"
+                                                  Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                                                  ItemsSource="{Binding ProjectYears}"
+                                                  SelectedItem="{Binding SelectedProjectYear}"
+                                                  ToolTip="实施年度"/>
+                                        <TextBlock Text="."
+                                                   VerticalAlignment="Center"
+                                                   FontWeight="SemiBold"
+                                                   Margin="4,0"/>
+                                        <ComboBox Width="{StaticResource YaRegProjectWidth}"
+                                                  Margin="{StaticResource YaRegFieldTrailingMargin}"
+                                                  Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                                                  ItemsSource="{Binding Projects}"
+                                                  DisplayMemberPath="ProjectName"
+                                                  SelectedItem="{Binding SelectedProject}"
+                                                  ToolTip="所属项目"/>
+                                        <TextBlock Style="{StaticResource ArchiveRegisterInlineLabelStyle}" Text="资料来源："/>
+                                        <TextBlock Text="{Binding SourceProvideUnitDisplay, Mode=OneWay}"
+                                                   VerticalAlignment="Center"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="#333"
+                                                   ToolTip="由各介质子项的资料来源与提供单位汇总"/>
                                     </StackPanel>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,2">
-                                    <TextBlock Style="{StaticResource ArchiveRegisterCardLabelStyle}"
-                                               Text="附有证明材料："/>
-                                    <StackPanel Orientation="Horizontal"
-                                                Style="{StaticResource FormInlineRadioGroupStyle}"
-                                                Margin="{StaticResource YaRegFieldTrailingMargin}">
-                                        <RadioButton Content="是"
-                                                     GroupName="RegisterProofMaterialHas"
-                                                     Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
-                                                     IsChecked="{Binding HasProofMaterial, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                        <RadioButton Content="否"
-                                                     GroupName="RegisterProofMaterialHas"
-                                                     Style="{StaticResource ArchiveRegisterFormRadioButtonStyle}"
-                                                     IsChecked="{Binding HasProofMaterial, Converter={StaticResource InverseBoolRadioConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,2">
+                                        <TextBlock Style="{StaticResource ArchiveRegisterCardLabelStyle}" Text="库管模式 *："/>
+                                        <ComboBox Width="{StaticResource YaRegArchivePurposeWidth}"
+                                                  Margin="{StaticResource YaRegFieldTrailingMargin}"
+                                                  Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
+                                                  ItemsSource="{Binding ArchivePurposeOptions}"
+                                                  SelectedItem="{Binding SelectedArchivePurpose}"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsArchivePurposeOtherSelected}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBlock Style="{StaticResource ArchiveRegisterInlineLabelStyle}" Text="说明："/>
+                                            <TextBox Width="160"
+                                                     Margin="{StaticResource YaRegFieldTrailingMargin}"
+                                                     Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
+                                                     Text="{Binding CurrentRecord.ArchivePurposeNote, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="库管模式为「其他」时的补充说明"/>
+                                        </StackPanel>
                                     </StackPanel>
-                                    <StackPanel Orientation="Horizontal" MinWidth="140">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding HasProofMaterial}" Value="True">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-                                        <TextBlock Style="{StaticResource ArchiveRegisterInlineLabelStyle}"
-                                                   Text="名称："/>
-                                        <TextBox Width="160"
-                                                 Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                                                 Text="{Binding ProofMaterialName, UpdateSourceTrigger=PropertyChanged}"
-                                                 ToolTip="填写证明材料名称；审批环节由资料管理员上传扫描件"/>
-                                    </StackPanel>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,2">
-                                    <StackPanel.Style>
-                                        <Style TargetType="StackPanel">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <MultiDataTrigger>
-                                                    <MultiDataTrigger.Conditions>
-                                                        <Condition Binding="{Binding ShowApplicationSubmitActions}" Value="True"/>
-                                                        <Condition Binding="{Binding ShowEmbeddedActionButtons}" Value="True"/>
-                                                    </MultiDataTrigger.Conditions>
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </MultiDataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </StackPanel.Style>
-                                    <Button Content="💾 保存草稿" Command="{Binding SaveDraftCommand}"
-                                            Padding="10,0" Margin="0,0,8,0" Width="100" Style="{StaticResource ButtonNormalStyle}"/>
-                                    <Button Content="💾 提交申请" Command="{Binding SubmitApplicationsCommand}"
-                                            Padding="10,0" Margin="0,0,8,0" Width="100" Style="{StaticResource ButtonNormalStyle}"/>
-                                    <Button Content="💾 打印申请" Command="{Binding PrintApplicationsCommand}"
-                                            Padding="10,0" Width="100" Style="{StaticResource ButtonNormalStyle}"/>
-                                </StackPanel>
-                            </WrapPanel>
-
-                            <!-- 第2行：其他要求 -->
-                            <DockPanel Margin="{StaticResource YaRegFormRowMargin}" LastChildFill="True">
-                                <TextBlock DockPanel.Dock="Left"
-                                           Style="{StaticResource ArchiveRegisterCardLabelStyle}"
-                                           Text="其他要求："/>
-                                <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                                         Text="{Binding CurrentRecord.OtherRequests, UpdateSourceTrigger=PropertyChanged}"/>
-                            </DockPanel>
-                        </StackPanel>
-                    </GroupBox>
-
+                                </WrapPanel>
+                            </StackPanel>
+                        </shared:ApplicationRequestHeaderSectionView.IdentityContent>
+                    </shared:ApplicationRequestHeaderSectionView>
                     <GroupBox Header="2. 资料信息" Style="{StaticResource Level1GroupBoxStyle}">
                         <StackPanel Orientation="Vertical" Grid.IsSharedSizeScope="True">
-                            <!-- 资料名称（年度.项目.资料）与子项来源汇总同一行 -->
-                            <Grid Margin="{StaticResource YaRegFormRowMargin}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="2*"/>
-                                    <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <DockPanel Grid.Column="0" LastChildFill="True">
-                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource ArchiveRegisterCardLabelStyle}" Text="资料名称 *："/>
-                                    <ComboBox DockPanel.Dock="Left"
-                                              Width="{StaticResource YaRegYearWidth}"
-                                              Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
-                                              ItemsSource="{Binding ProjectYears}"
-                                              SelectedItem="{Binding SelectedProjectYear}"
-                                              ToolTip="实施年度"/>
-                                    <TextBlock DockPanel.Dock="Left"
-                                               Text="."
-                                               VerticalAlignment="Center"
-                                               FontWeight="SemiBold"
-                                               Margin="4,0"/>
-                                    <ComboBox DockPanel.Dock="Left"
-                                              MinWidth="140"
-                                              MaxWidth="220"
-                                              Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
-                                              ItemsSource="{Binding Projects}"
-                                              DisplayMemberPath="ProjectName"
-                                              SelectedItem="{Binding SelectedProject}"
-                                              ToolTip="所属项目"/>
-                                    <TextBlock DockPanel.Dock="Left"
-                                               Text="."
-                                               VerticalAlignment="Center"
-                                               FontWeight="SemiBold"
-                                               Margin="4,0"/>
-                                    <TextBox Text="{Binding CurrentRecord.MaterialName, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                                             ToolTip="资料名称（不含年度与项目）"/>
-                                </DockPanel>
-                                <DockPanel Grid.Column="2" LastChildFill="True" VerticalAlignment="Center">
-                                    <TextBlock DockPanel.Dock="Left"
-                                               Style="{StaticResource ArchiveRegisterCardLabelStyle}"
-                                               Text="资料来源："/>
-                                    <TextBlock Text="{Binding SourceProvideUnitDisplay, Mode=OneWay}"
-                                               VerticalAlignment="Center"
-                                               TextWrapping="Wrap"
-                                               Foreground="#333"
-                                               ToolTip="由各介质子项的资料来源与提供单位汇总"/>
-                                </DockPanel>
-                            </Grid>
-
-                            <GroupBox Header="资料介质（电子） *" Style="{StaticResource Level2GroupBoxStyle}">
-                                <StackPanel>
-                                    <Grid Margin="0,0,0,4">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="{StaticResource YaRegLabelColumn}" SharedSizeGroup="YaRegMediaTbLabel"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegMediaKindColumn}" SharedSizeGroup="YaRegMediaTbKind"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegLabelColumn}" SharedSizeGroup="YaRegMediaTbLabel"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegMediaTypeColumn}" SharedSizeGroup="YaRegMediaTbType"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegLabelColumn}" SharedSizeGroup="YaRegMediaTbLabel"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegCountColumn}" SharedSizeGroup="YaRegMediaTbCount"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegFieldGutterColumn}"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegLabelColumn}" SharedSizeGroup="YaRegMediaTbLabel"/>
-                                            <ColumnDefinition Width="{StaticResource YaRegDispositionColumn}" SharedSizeGroup="YaRegMediaTbDisp"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="介质：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
-                                        <TextBox Grid.Column="1" Text="电子" IsReadOnly="True" Background="#F5F5F5"
-                                                 Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
-                                        <TextBlock Grid.Column="3" Text="类型：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
-                                        <ComboBox Grid.Column="4"
-                                                  ItemsSource="{Binding DataElectronicMediaTypeOptions}"
-                                                  SelectedItem="{Binding SelectedElectronicMediaType}">
-                                            <ComboBox.Style>
-                                                <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsElectronicMediaTypeEditable}" Value="False">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </ComboBox.Style>
-                                        </ComboBox>
-                                        <TextBox Grid.Column="4"
-                                                 Text="{Binding SelectedElectronicMediaType, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5">
-                                            <TextBox.Style>
-                                                <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsElectronicMediaTypeEditable}" Value="False">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBox.Style>
-                                        </TextBox>
-                                        <TextBlock Grid.Column="6" Text="数量：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
-                                        <TextBox Grid.Column="7" Text="{Binding DataElectronicMediaCount, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5"
-                                                 Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"/>
-                                        <TextBlock Grid.Column="9" Text="处置：" Style="{StaticResource ArchiveRegisterMediaToolbarLabelStyle}"/>
-                                        <ComboBox Grid.Column="10"
-                                                  ItemsSource="{Binding DataElectronicDispositionOptions}"
-                                                  SelectedItem="{Binding SelectedElectronicDisposition}">
-                                            <ComboBox.Style>
-                                                <Style TargetType="ComboBox" BasedOn="{StaticResource ArchiveRegisterFormComboBoxStyle}">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsElectronicDispositionEditable}" Value="False">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </ComboBox.Style>
-                                        </ComboBox>
-                                        <TextBox Grid.Column="10"
-                                                 Text="{Binding SelectedElectronicDisposition, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5">
-                                            <TextBox.Style>
-                                                <Style TargetType="TextBox" BasedOn="{StaticResource ArchiveRegisterFormTextBoxStyle}">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsElectronicDispositionEditable}" Value="False">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBox.Style>
-                                        </TextBox>
-                                        <Button Grid.Column="11"
-                                                Content="+ 添加资料介质（电子）"
-                                                Command="{Binding AddDataElectronicMediaEntryCommand}"
-                                                Padding="8,2"
-                                                Margin="{StaticResource YaRegFieldLeadingMargin}"
-                                                HorizontalAlignment="Right"
-                                                VerticalAlignment="Center"/>
-                                    </Grid>
-                                    <TextBlock Margin="2,0,0,4" Foreground="#00695C" TextWrapping="Wrap"
-                                               Text="{Binding NetworkOutboundTransferHint, Mode=OneWay}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsNetworkOutboundTransferRegister}" Value="True">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                    <ItemsControl ItemsSource="{Binding DataElectronicMediaView}" ItemTemplate="{StaticResource MediaEntryTemplate_DataElectronic}"/>
-                                </StackPanel>
-                            </GroupBox>
+                            <local:DataElectronicMediaSectionView />
 
                             <GroupBox Header="资料介质（模拟） *" Style="{StaticResource Level2GroupBoxStyle}">
                                 <StackPanel>

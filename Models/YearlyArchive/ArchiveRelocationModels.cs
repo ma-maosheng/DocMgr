@@ -71,6 +71,11 @@ namespace DocMgr.Models.YearlyArchive
         public string DisplayText { get; init; } = string.Empty;
 
         public bool IsEmpty { get; init; }
+
+        /// <summary>
+        /// 目标盘的资料里已经有源袋上的项目。
+        /// </summary>
+        public bool BelongsToCurrentProject { get; init; }
     }
 
     public sealed class ArchiveRelocationSourceOption

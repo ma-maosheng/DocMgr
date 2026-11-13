@@ -333,6 +333,40 @@ namespace DocMgr.Services.Shared
             }
         }
 
+        /// <inheritdoc/>
+        public AppendHardDiskSelectionResult? ShowAppendHardDiskSelectionDialog(
+            IReadOnlyList<AppendHardDiskPickerRow> rows,
+            bool sameProjectOnly,
+            bool sameYearOnly,
+            int? selectedUnitId)
+        {
+            var dialog = new AppendHardDiskSelectionDialog
+            {
+                Owner = GetOwnerWindow()
+            };
+            var (scope, viewModel) = CreateScopedViewModel<AppendHardDiskSelectionDialogViewModel>(
+                [typeof(IReadOnlyList<AppendHardDiskPickerRow>), typeof(bool), typeof(bool), typeof(int?)],
+                rows,
+                sameProjectOnly,
+                sameYearOnly,
+                selectedUnitId);
+
+            dialog.DataContext = viewModel;
+
+            void HandleRequestClose(bool? result) => dialog.DialogResult = result;
+            viewModel.RequestClose += HandleRequestClose;
+
+            try
+            {
+                return dialog.ShowDialog() == true ? viewModel.Result : null;
+            }
+            finally
+            {
+                viewModel.RequestClose -= HandleRequestClose;
+                scope.Dispose();
+            }
+        }
+
         public ImportMode? ShowImportOptionDialog(string tableName)
         {
             var dialog = new ImportOptionDialog

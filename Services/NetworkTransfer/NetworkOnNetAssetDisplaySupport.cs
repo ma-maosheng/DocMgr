@@ -61,12 +61,12 @@ internal static class NetworkOnNetAssetDisplaySupport
                 if (outbound != null)
                 {
                     asset.ApplicationNo = outbound.OutboundNo?.Trim() ?? string.Empty;
-                    asset.MaterialPath = outbound.MaterialPath?.Trim() ?? string.Empty;
                     asset.MaterialName = ResolveMaterialName(
-                        outbound.MaterialName,
                         outboundItem.AssetName,
+                        outbound.MaterialName,
                         outboundItem.ItemName,
                         asset.AssetName);
+                    asset.MaterialPath = AppendMaterialFolder(outbound.MaterialPath, asset.MaterialName);
                     asset.ApplicantDept = outbound.ApplicantDept?.Trim() ?? string.Empty;
                 }
             }
@@ -156,12 +156,12 @@ internal static class NetworkOnNetAssetDisplaySupport
         NetworkInboundItem? inboundItem)
     {
         asset.ApplicationNo = inbound.InboundNo?.Trim() ?? string.Empty;
-        asset.MaterialPath = inbound.MaterialPath?.Trim() ?? string.Empty;
         asset.MaterialName = ResolveMaterialName(
-            inbound.MaterialName,
             inboundItem?.MaterialName,
+            inbound.MaterialName,
             inboundItem?.ItemName,
             asset.AssetName);
+        asset.MaterialPath = AppendMaterialFolder(inbound.MaterialPath, asset.MaterialName);
         asset.ProvideUnit = inbound.ProvideUnit?.Trim() ?? string.Empty;
         asset.ApplicantDept = inbound.ApplicantDept?.Trim() ?? string.Empty;
     }
@@ -248,13 +248,35 @@ internal static class NetworkOnNetAssetDisplaySupport
             : snapshot.EntryCount.ToString();
     }
 
+    /// <summary>
+    /// 表头路径只到年度/项目。明细资料名称不含顿号、且还不是最后一段时，补上该资料目录。
+    /// </summary>
+    private static string AppendMaterialFolder(string? materialPath, string? materialName)
+    {
+        string path = materialPath?.Trim() ?? string.Empty;
+        string name = materialName?.Trim() ?? string.Empty;
+        if (path.Length == 0 || name.Length == 0 || name.Contains('、'))
+        {
+            return path;
+        }
+
+        string folder = NetworkMaterialPathSupport.SanitizePathSegment(name, "未命名资料");
+        string last = path.Split('\\', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? string.Empty;
+        if (string.Equals(last, folder, StringComparison.OrdinalIgnoreCase))
+        {
+            return path;
+        }
+
+        return path + "\\" + folder;
+    }
+
     private static string ResolveMaterialName(
-        string? headerMaterialName,
         string? itemMaterialName,
+        string? headerMaterialName,
         string? itemName,
         string? assetName)
     {
-        foreach (string? candidate in new[] { headerMaterialName, itemMaterialName, itemName, assetName })
+        foreach (string? candidate in new[] { itemMaterialName, headerMaterialName, itemName, assetName })
         {
             string trimmed = candidate?.Trim() ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(trimmed))

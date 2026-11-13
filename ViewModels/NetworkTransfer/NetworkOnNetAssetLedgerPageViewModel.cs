@@ -6,6 +6,7 @@ using DocMgr.Models.NetworkTransfer;
 using DocMgr.Services.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
+using DocMgr.ViewModels.YearlyArchive;
 using DocMgr.Views.Shared;
 using DocMgr.ViewModels.Shared;
 
@@ -20,6 +21,7 @@ public sealed class NetworkOnNetAssetLedgerPageViewModel : ViewModelBase
     private readonly PageDbOperationQueue _pageDb = new();
     private readonly IDialogService _dialogService;
     private readonly IServerPathSettingService _serverPathSettingService;
+    private readonly IProjectService _projectService;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private int _refreshGeneration;
     private bool _isInitialized;
@@ -33,11 +35,14 @@ public sealed class NetworkOnNetAssetLedgerPageViewModel : ViewModelBase
     public NetworkOnNetAssetLedgerPageViewModel(
         INetworkTransferService service,
         IDialogService dialogService,
-        IServerPathSettingService serverPathSettingService)
+        IServerPathSettingService serverPathSettingService,
+        IProjectService projectService)
     {
         _service = service;
         _dialogService = dialogService;
         _serverPathSettingService = serverPathSettingService;
+        _projectService = projectService;
+        ProjectFilter = new LedgerProjectFilter();
 
         RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshAssetsAsync));
         SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RefreshAssetsAsync));
@@ -47,6 +52,8 @@ public sealed class NetworkOnNetAssetLedgerPageViewModel : ViewModelBase
     }
 
     public ObservableCollection<NetworkOnNetAsset> Assets { get; } = new();
+
+    public LedgerProjectFilter ProjectFilter { get; }
 
     public ObservableCollection<string> OriginKindOptions { get; } = new()
     {
@@ -149,6 +156,7 @@ public sealed class NetworkOnNetAssetLedgerPageViewModel : ViewModelBase
         }
 
         LoadAssetFilterOptions();
+        ProjectFilter.Load(_projectService);
         await RefreshAssetsAsync();
         _isInitialized = true;
     }
@@ -197,7 +205,13 @@ public sealed class NetworkOnNetAssetLedgerPageViewModel : ViewModelBase
                 string? department = string.Equals(AssetDepartment, "全部", StringComparison.Ordinal) ? null : AssetDepartment;
                 string? keyword = string.IsNullOrWhiteSpace(AssetKeyword) ? null : AssetKeyword.Trim();
                 IReadOnlyList<NetworkOnNetAsset> list =
-                    await _service.SearchOnNetAssetsAsync(keyword, origin, life, serverPath, department);
+                    await _service.SearchOnNetAssetsAsync(
+                        keyword,
+                        origin,
+                        life,
+                        serverPath,
+                        department,
+                        ProjectFilter.SelectedProjectId);
                 Assets.Clear();
                 foreach (NetworkOnNetAsset item in list)
                 {

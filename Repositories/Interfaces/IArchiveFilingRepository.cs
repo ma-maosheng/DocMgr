@@ -49,6 +49,11 @@ public interface IArchiveFilingRepository
 
     Task<List<YearlyElectronicArchiveUnit>> GetExistingElectronicUnitsForProjectAsync(string projectName, string year);
 
+    /// <summary>
+    /// 在用数据硬盘：本项目已有的在前，其他仍有剩余容量的非空盘在后。
+    /// </summary>
+    Task<List<HardDiskAppendCandidate>> GetHardDiskAppendCandidatesAsync(int? projectId, string? projectName, string? implementYear);
+
     Task<YearlyArchiveBox?> GetLastArchiveBoxByPrefixAsync(string prefix);
 
     Task<YearlyElectronicArchiveUnit?> GetLastElectronicUnitByPrefixAsync(string prefix);

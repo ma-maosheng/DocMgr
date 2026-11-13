@@ -137,6 +137,15 @@ namespace DocMgr.Repositories.YearlyArchive
                     || box.BoxLocationCode.Contains(keyword));
             }
 
+            if (criteria.ProjectId is > 0)
+            {
+                int projectId = criteria.ProjectId.Value;
+                query = query.Where(box => _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                    fact.ContainerKind == ArchiveContainerKind.ArchiveBox
+                    && fact.ContainerId == box.Id
+                    && fact.ProjectId == projectId));
+            }
+
             return query;
         }
 
@@ -165,9 +174,21 @@ namespace DocMgr.Repositories.YearlyArchive
             {
                 query = query.Where(unit =>
                     unit.ElectronicArchiveNo.Contains(keyword)
-                    || unit.ProjectName.Contains(keyword)
                     || unit.Year.Contains(keyword)
-                    || unit.StorageLocation.Contains(keyword));
+                    || unit.StorageLocation.Contains(keyword)
+                    || _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                        fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                        && fact.ContainerId == unit.Id
+                        && fact.ProjectName.Contains(keyword)));
+            }
+
+            if (criteria.ProjectId is > 0)
+            {
+                int projectId = criteria.ProjectId.Value;
+                query = query.Where(unit => _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                    fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                    && fact.ContainerId == unit.Id
+                    && fact.ProjectId == projectId));
             }
 
             return query;

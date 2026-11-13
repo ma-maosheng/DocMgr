@@ -10,6 +10,41 @@ using DocMgr.ViewModels.Shared;
 
 namespace DocMgr.ViewModels.YearlyArchive
 {
+    /// <summary>一条介质内的一份资料名称及其子项。</summary>
+    public class MediaMaterialGroupViewModel : ViewModelBase
+    {
+        public MediaMaterialGroupViewModel(MediaEntryViewModel owner)
+        {
+            Owner = owner;
+            ItemDetailsPanel = new ItemDetailsListPresenter<MediaItemViewModel>(
+                "资料子项",
+                summaryBuilder: items => ItemDetailsPanelSummarySupport.BuildTextColumnSummary(
+                    items,
+                    item => item.ContentDesc,
+                    "暂无资料子项"));
+            Items.CollectionChanged += (_, _) =>
+            {
+                ItemDetailsPanel.RefreshItems(Items, preserveExpanded: ItemDetailsPanel.IsExpanded);
+                Owner.RebuildFlatItemsFromMaterials();
+            };
+            ItemDetailsPanel.RefreshItems(Items);
+        }
+
+        public MediaEntryViewModel Owner { get; }
+
+        private string _materialName = string.Empty;
+
+        public string MaterialName
+        {
+            get => _materialName;
+            set => SetProperty(ref _materialName, value);
+        }
+
+        public ObservableCollection<MediaItemViewModel> Items { get; } = new();
+
+        public ItemDetailsListPresenter<MediaItemViewModel> ItemDetailsPanel { get; }
+    }
+
     public class MediaEntryViewModel : ViewModelBase
     {
         public MediaEntryViewModel()
@@ -548,6 +583,63 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<MediaItemViewModel> Items { get; } = new();
 
         public ItemDetailsListPresenter<MediaItemViewModel> ItemDetailsPanel { get; }
+
+        /// <summary>建档申请、档外入网与出网按资料名称分组。存档入网不使用。</summary>
+        public bool UsesRegisterMaterialGroups { get; private set; }
+
+        public ObservableCollection<MediaMaterialGroupViewModel> Materials { get; } = new();
+
+        public void EnableRegisterMaterialGroups()
+        {
+            if (UsesRegisterMaterialGroups)
+            {
+                return;
+            }
+
+            UsesRegisterMaterialGroups = true;
+            OnPropertyChanged(nameof(UsesRegisterMaterialGroups));
+        }
+
+        public MediaMaterialGroupViewModel AddMaterialGroup(string? materialName)
+        {
+            var group = new MediaMaterialGroupViewModel(this)
+            {
+                MaterialName = materialName?.Trim() ?? string.Empty
+            };
+            Materials.Add(group);
+            return group;
+        }
+
+        public void RemoveMaterialGroup(MediaMaterialGroupViewModel? group)
+        {
+            if (group == null || !Materials.Remove(group))
+            {
+                return;
+            }
+
+            RebuildFlatItemsFromMaterials();
+        }
+
+        /// <summary>分组是编辑源，平铺列表给仍按介质子项循环的保存和校验使用。</summary>
+        public void RebuildFlatItemsFromMaterials()
+        {
+            if (!UsesRegisterMaterialGroups)
+            {
+                return;
+            }
+
+            List<MediaItemViewModel> flat = Materials.SelectMany(group => group.Items).ToList();
+            if (flat.Count == Items.Count && flat.SequenceEqual(Items))
+            {
+                return;
+            }
+
+            Items.Clear();
+            foreach (MediaItemViewModel item in flat)
+            {
+                Items.Add(item);
+            }
+        }
     }
 
     public class ElectronicMediaItemEntryViewModel : ViewModelBase

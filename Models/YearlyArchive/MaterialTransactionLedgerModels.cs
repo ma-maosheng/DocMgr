@@ -25,6 +25,9 @@ namespace DocMgr.Models.YearlyArchive
         public string OperatorName { get; set; } = string.Empty;
 
         public string Keyword { get; set; } = string.Empty;
+
+        /// <summary>项目编号。空表示不按项目筛选。</summary>
+        public int? ProjectId { get; set; }
     }
 
     /// <summary>
@@ -55,6 +58,9 @@ namespace DocMgr.Models.YearlyArchive
         public string OperatorName { get; set; } = string.Empty;
 
         public string Keyword { get; set; } = string.Empty;
+
+        /// <summary>项目编号。空表示不按项目筛选。</summary>
+        public int? ProjectId { get; set; }
 
         /// <summary>
         /// 容器列表范围，见 <see cref="CirculationLedgerListingMode"/>。
@@ -112,6 +118,9 @@ namespace DocMgr.Models.YearlyArchive
         public string ApplicantName { get; set; } = string.Empty;
 
         public string Keyword { get; set; } = string.Empty;
+
+        /// <summary>项目编号。空表示不按项目筛选。</summary>
+        public int? ProjectId { get; set; }
     }
 
     /// <summary>
@@ -510,6 +519,9 @@ namespace DocMgr.Models.YearlyArchive
         public string OperatorName { get; set; } = string.Empty;
 
         public string Keyword { get; set; } = string.Empty;
+
+        /// <summary>项目编号。空表示不按项目筛选。</summary>
+        public int? ProjectId { get; set; }
     }
 
     /// <summary>

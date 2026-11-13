@@ -1,0 +1,30 @@
+<local:LedgerGridHost x:Class="DocMgr.Views.NetworkTransfer.NetworkOutboundRecordGrid"
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:local="clr-namespace:DocMgr.Views.Shared"
+                      xmlns:nt="clr-namespace:DocMgr.Views.NetworkTransfer">
+    <local:LedgerGridHost.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <local:BindingProxy x:Key="SelfProxy"/>
+    </local:LedgerGridHost.Resources>
+    <DataGrid ItemsSource="{Binding ItemsSource, RelativeSource={RelativeSource AncestorType=nt:NetworkOutboundRecordGrid}}"
+              SelectedItem="{Binding SelectedItem, RelativeSource={RelativeSource AncestorType=nt:NetworkOutboundRecordGrid}, Mode=TwoWay}"
+              AutoGenerateColumns="False" IsReadOnly="True"
+              VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+        <DataGrid.Columns>
+            <DataGridTextColumn Header="出网单号" Binding="{Binding OutboundNo, Mode=OneWay}" Width="160"/>
+            <DataGridTextColumn Header="业务状态" Binding="{Binding StatusDisplay, Mode=OneWay}" Width="160"
+                                ElementStyle="{StaticResource WorkflowStatusColumnTextStyle}"/>
+            <DataGridTextColumn Header="目的地" Binding="{Binding DestinationKind, Mode=OneWay}" Width="110"/>
+            <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="*"/>
+            <DataGridTextColumn Header="明细数" Binding="{Binding ItemCount, Mode=OneWay}" Width="70">
+                <DataGridTextColumn.Visibility>
+                    <Binding Path="Data.ShowItemCount" Source="{StaticResource SelfProxy}" Converter="{StaticResource BooleanToVisibilityConverter}"/>
+                </DataGridTextColumn.Visibility>
+            </DataGridTextColumn>
+            <DataGridTextColumn Header="关联业务进度" Binding="{Binding BusinessChainProgressDisplay, Mode=OneWay}" Width="230"/>
+            <DataGridTextColumn Header="申请人" Binding="{Binding ApplicantName, Mode=OneWay}" Width="90"/>
+            <DataGridTextColumn Header="申请时间" Binding="{Binding ApplyTime, Mode=OneWay, StringFormat={}{0:yyyy-MM-dd HH:mm}}" Width="140"/>
+        </DataGrid.Columns>
+    </DataGrid>
+</local:LedgerGridHost>

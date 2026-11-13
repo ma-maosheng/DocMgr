@@ -4,6 +4,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using DocMgr.Models.Projects;
 using DocMgr.Models.Shared;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Services.Interfaces;
@@ -43,6 +44,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private bool _isBusy;
         private string _busyStatus = string.Empty;
         private string _selectedYear = DateTime.Now.Year.ToString();
+        private string _selectedImplementYear = ProjectFilterOptionFactory.AllImplementYearsOption;
         private readonly List<FilingLedgerRow> _sourceRows = new();
         private readonly HashSet<string> _expandedFoldGroupKeys = new(StringComparer.Ordinal);
         private string _selectedFoldField = FoldFieldFormNo;
@@ -137,6 +139,33 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 if (!SetProperty(ref _selectedYear, value))
+                {
+                    return;
+                }
+
+                if (_suppressYearSideEffects)
+                {
+                    return;
+                }
+            }
+        }
+
+        public ObservableCollection<string> ImplementYears { get; } = new()
+        {
+            ProjectFilterOptionFactory.AllImplementYearsOption
+        };
+
+        public string SelectedImplementYear
+        {
+            get => _selectedImplementYear;
+            set
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    return;
+                }
+
+                if (!SetProperty(ref _selectedImplementYear, value))
                 {
                     return;
                 }
@@ -523,6 +552,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 await ReportBusyAsync("正在加载档案年度…");
                 await LoadYearsAsync();
+                await ReportBusyAsync("正在加载实施年度…");
+                await LoadImplementYearsAsync();
                 await ReportBusyAsync("正在加载项目列表…");
                 await LoadProjectOptionsAsync();
                 await ReportBusyAsync("正在查询立档记录…");
@@ -619,28 +650,57 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        private async Task LoadImplementYearsAsync()
+        {
+            try
+            {
+                List<string> years = await Task.Run(() =>
+                {
+                    using IServiceScope scope = _scopeFactory.CreateScope();
+                    IProjectService projectService = scope.ServiceProvider.GetRequiredService<IProjectService>();
+                    return ProjectFilterOptionFactory.ListImplementYears(projectService);
+                });
+
+                _suppressYearSideEffects = true;
+                try
+                {
+                    ImplementYears.Clear();
+                    ImplementYears.Add(ProjectFilterOptionFactory.AllImplementYearsOption);
+                    foreach (string year in years)
+                    {
+                        ImplementYears.Add(year);
+                    }
+
+                    if (!ImplementYears.Contains(_selectedImplementYear))
+                    {
+                        _selectedImplementYear = ProjectFilterOptionFactory.AllImplementYearsOption;
+                        OnPropertyChanged(nameof(SelectedImplementYear));
+                    }
+                }
+                finally
+                {
+                    _suppressYearSideEffects = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"加载实施年度失败：{ex.Message}");
+            }
+        }
+
         private async Task LoadProjectOptionsAsync()
         {
             try
             {
-                ProjectOptions.Clear();
-                ProjectOptions.Add(new ProjectFilterOption { Id = null, Name = "全部项目" });
-
-                string? archiveYear = ResolveSelectedArchiveYear();
-                var projects = await QueryOnBackgroundAsync(service => service.GetProjectOptionsForYearAsync(archiveYear));
-                foreach (var project in projects)
+                string? implementYear = ProjectFilterOptionFactory.NormalizeImplementYear(SelectedImplementYear);
+                List<ProjectInfo> projects = await Task.Run(() =>
                 {
-                    if (project.ProjectId is not > 0 && string.IsNullOrWhiteSpace(project.ProjectName))
-                    {
-                        continue;
-                    }
+                    using IServiceScope scope = _scopeFactory.CreateScope();
+                    IProjectService projectService = scope.ServiceProvider.GetRequiredService<IProjectService>();
+                    return projectService.SearchProjects(implementYear, keyword: null);
+                });
 
-                    ProjectOptions.Add(new ProjectFilterOption
-                    {
-                        Id = project.ProjectId,
-                        Name = project.ProjectName.Trim()
-                    });
-                }
+                ProjectFilterOptionFactory.Fill(ProjectOptions, projects, showImplementYear: implementYear == null);
             }
             catch (Exception ex)
             {
@@ -1178,6 +1238,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void ResetCriteria()
         {
             SelectedYear = DateTime.Now.Year.ToString();
+            SelectedImplementYear = ProjectFilterOptionFactory.AllImplementYearsOption;
             SelectedProjectId = null;
             SelectedMediaKind = string.Empty;
             SelectedFilingMethod = string.Empty;

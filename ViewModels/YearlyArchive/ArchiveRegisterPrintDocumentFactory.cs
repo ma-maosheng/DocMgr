@@ -32,7 +32,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private static readonly Thickness PrintLabelPadding = new Thickness(4, 2, 4, 2);
         private static readonly Thickness PrintContentMargin = new Thickness(4, 2, 4, 2);
 
-        /// <summary>其他要求按正文估行后的上限。</summary>
+        /// <summary>申请说明、其他要求按正文估行后的上限。</summary>
         private const int OtherRequestsMaxLines = 5;
 
         /// <summary>留存硬盘/光盘台账按正文估行后的上限。</summary>
@@ -106,11 +106,15 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             string contentStr = data.ItemLines.Count > 0 ? string.Join("\n", data.ItemLines) : "(无)";
             string proofStr = data.ProofLines.Count > 0 ? string.Join("\n", data.ProofLines) : "(无)";
+            string reasonText = string.IsNullOrWhiteSpace(data.Reason) ? "(无)" : data.Reason;
             string otherRequestsText = string.IsNullOrWhiteSpace(data.OtherRequests) ? "(无)" : data.OtherRequests;
             bool hasRetainedHardDisk = !string.IsNullOrWhiteSpace(data.RetainedHardDiskRegistration);
             bool hasOpticalDiscLedger = !string.IsNullOrWhiteSpace(data.OpticalDiscLedgerSummary);
 
             double proofHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(proofStr, MediumSummaryMaxLines);
+            double reasonHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
+                reasonText,
+                OtherRequestsMaxLines);
             double otherRequestsHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(
                 otherRequestsText,
                 OtherRequestsMaxLines);
@@ -128,6 +132,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 data,
                 contentStr,
                 proofHeight,
+                reasonHeight,
                 otherRequestsHeight,
                 retainedHardDiskHeight,
                 opticalDiscHeight,
@@ -136,10 +141,15 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             TableRowGroup g = new TableRowGroup();
             g.Rows.Add(CreateDoubleRow("申请人", EmptyAsPlaceholder(data.Applicant), "申请部门", EmptyAsPlaceholder(data.Dept), PrintRowHeightOneLine));
-            g.Rows.Add(CreateRow("资料名称", EmptyAsPlaceholder(data.MaterialName), 3, PrintRowHeightOneLine));
             g.Rows.Add(CreateDoubleRow(
                 "所属项目",
                 EmptyAsPlaceholder(data.ProjectName),
+                "项目年度",
+                EmptyAsPlaceholder(data.ProjectYear),
+                PrintRowHeightOneLine));
+            g.Rows.Add(CreateDoubleRow(
+                "资料名称",
+                EmptyAsPlaceholder(data.MaterialName),
                 "资料来源",
                 EmptyAsPlaceholder(data.SourceType),
                 PrintRowHeightOneLine));
@@ -167,6 +177,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     opticalDiscHeight,
                     VerticalAlignment.Top));
             }
+            g.Rows.Add(CreateRow("申请说明", reasonText, 3, reasonHeight, VerticalAlignment.Top));
             g.Rows.Add(CreateRow("其他要求", otherRequestsText, 3, otherRequestsHeight, VerticalAlignment.Top));
 
             // 审批签字区：按审核审批配置启用节点输出
@@ -285,6 +296,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ArchiveRegisterPrintData data,
             string contentStr,
             double proofHeight,
+            double reasonHeight,
             double otherRequestsHeight,
             double retainedHardDiskHeight,
             double opticalDiscHeight,
@@ -293,18 +305,19 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             int approvalRowCount = CountApprovalPrintRows(data);
             // 固定行（不含资料内容撑满行）：
-            // 申请人/名称/项目·来源/库管(4) + 证明/其他要求(+留存硬盘/光盘) + 签批行 + 交接。
+            // 申请人/名称/项目·来源/库管(4) + 证明/申请说明/其他要求(+留存硬盘/光盘) + 签批行 + 交接。
             int oneLineRows = 4 + approvalRowCount;
             double fixedContentHeight =
                 PrintRowHeightOneLine * oneLineRows
                 + proofHeight
+                + reasonHeight
                 + otherRequestsHeight
                 + (hasRetainedHardDisk ? retainedHardDiskHeight : 0)
                 + (hasOpticalDiscLedger ? opticalDiscHeight : 0)
                 + PrintRowHeightTwoLines;
-            int variableTextRows = 2
+            int variableTextRows = 3
                 + (hasRetainedHardDisk ? 1 : 0)
-                + (hasOpticalDiscLedger ? 1 : 0); // 证明、其他要求、[留存硬盘]、[光盘]
+                + (hasOpticalDiscLedger ? 1 : 0); // 证明、申请说明、其他要求、[留存硬盘]、[光盘]
             int fixedRowCount = oneLineRows + variableTextRows + 1; // +交接
             double fixedTableHeight = fixedContentHeight
                 + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, CellPadding) * fixedRowCount

@@ -183,10 +183,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 .Select(media => media.Disposition)
                 .Where(value => !string.IsNullOrWhiteSpace(value))
                 .Distinct());
-            string sourceItemNameSummary = string.Join("；", selectedElectronicItems
-                .Select(item => item.ItemName)
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .Distinct());
+            string sourceItemNameSummary = BuildElectronicContentSummary(selectedElectronicItems);
 
             if (IsNewBoxMode)
             {
@@ -831,12 +828,38 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             if (!ArchiveFilingBusinessRules.IsHardDiskArchiveCarrierType(SelectedExistingElectronicUnit.StorageCarrierType))
             {
-                throw new InvalidOperationException($"当前选中的电子介质袋 [{SelectedExistingElectronicUnit.ElectronicArchiveNo}] 不是硬盘档，当前业务只允许并入本项目已立档硬盘。");
+                throw new InvalidOperationException($"当前选中的电子介质袋 [{SelectedExistingElectronicUnit.ElectronicArchiveNo}] 不是硬盘档，只能并入非空硬盘。");
             }
+        }
+
+        /// <summary>
+        /// 两个选盘按钮都可在对应选项可用时直接点：尚未选中该方式时先切过去，再打开选择框。
+        /// </summary>
+        private bool EnsureElectronicSubmissionMode(ElectronicArchiveSubmissionMode mode)
+        {
+            if (SelectedElectronicSubmissionMode == mode)
+            {
+                return true;
+            }
+
+            if (IsElectronicSubmissionModeLocked
+                || !AvailableElectronicSubmissionModes.Any(item => item.Mode == mode && item.IsEnabled))
+            {
+                return false;
+            }
+
+            SelectedElectronicSubmissionMode = mode;
+            return SelectedElectronicSubmissionMode == mode;
         }
 
         private void SelectElectronicMedia()
         {
+            if (!EnsureElectronicSubmissionMode(ElectronicArchiveSubmissionMode.CopyNewHardDisk))
+            {
+                _dialogService.ShowMessage("当前立档方式无需从硬盘库选择空白硬盘作为入袋载体。", "提示");
+                return;
+            }
+
             if (!_electronicDecision.StepFourLayout.ShowBlankInventoryHardDiskSelection)
             {
                 _dialogService.ShowMessage("当前立档方式无需从硬盘库选择空白硬盘作为入袋载体。", "提示");
@@ -871,10 +894,71 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             EnsureElectronicBagDefaults();
-            ElectronicLinkedMediumCodes = targetMedium.DiskCode;
             ElectronicOriginalStorageLocation = targetMedium.Ledger?.StorageLocation ?? string.Empty;
             ElectronicSelectedMediumStatus = targetMedium.Ledger?.MediaStatus ?? string.Empty;
+            ElectronicLinkedMediumCodes = targetMedium.DiskCode;
             ElectronicMediaCount = 1;
+        }
+
+        /// <summary>
+        /// 在「选择一块非空硬盘，并入」卡片内选择一块可并入的非空硬盘。
+        /// </summary>
+        private void SelectAppendHardDisk()
+        {
+            if (SelectedElectronicSubmissionMode is not ElectronicArchiveSubmissionMode.CopyAppendExistingHardDisk
+                and not ElectronicArchiveSubmissionMode.RetainedHardDiskAppendExistingHardDisk)
+            {
+                ElectronicArchiveSubmissionMode? appendMode = AvailableElectronicSubmissionModes
+                    .FirstOrDefault(item => item.UsesAppendHardDiskPicker && item.IsEnabled)
+                    ?.Mode;
+                if (appendMode == null || !EnsureElectronicSubmissionMode(appendMode.Value))
+                {
+                    _dialogService.ShowMessage($"请先选择「{ArchiveFilingBusinessRules.AppendExistingHardDiskOption}」。", "提示");
+                    return;
+                }
+            }
+
+            if (_outboundArchiveFilingMode == ElectronicArchiveSubmissionMode.CopyAppendExistingHardDisk)
+            {
+                return;
+            }
+
+            List<AppendHardDiskPickerRow> rows = BuildAppendHardDiskPickerRows();
+            if (rows.Count == 0)
+            {
+                _dialogService.ShowMessage("当前没有可并入的非空硬盘。", "提示");
+                return;
+            }
+
+            AppendHardDiskSelectionResult? result = _dialogService.ShowAppendHardDiskSelectionDialog(
+                rows,
+                AppendSameProjectOnly,
+                AppendSameYearOnly,
+                SelectedExistingElectronicUnitItem?.Unit.Id);
+            if (result == null)
+            {
+                return;
+            }
+
+            if (AppendSameProjectOnly != result.SameProjectOnly)
+            {
+                AppendSameProjectOnly = result.SameProjectOnly;
+            }
+
+            if (AppendSameYearOnly != result.SameYearOnly)
+            {
+                AppendSameYearOnly = result.SameYearOnly;
+            }
+
+            ExistingElectronicArchiveUnitListItem? selected = ExistingElectronicUnits
+                .FirstOrDefault(item => item.Unit.Id == result.UnitId && item.CanSelectForAppend);
+            if (selected == null)
+            {
+                _dialogService.ShowMessage("所选硬盘不在当前可并入范围内。", "提示");
+                return;
+            }
+
+            SelectedExistingElectronicUnitItem = selected;
         }
 
         private void ResetElectronicLocationSelection(bool reloadOptions = true)
@@ -1082,6 +1166,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             int generation = Interlocked.Increment(ref _electronicTargetLocationOptionsGeneration);
+            bool deferAutoSelection = _deferConsoleAutoSelection;
             string? locationToPrefer = preferredLocation;
             if (string.IsNullOrWhiteSpace(locationToPrefer) && !preferSuggestedSelection)
             {
@@ -1124,6 +1209,13 @@ namespace DocMgr.ViewModels.YearlyArchive
                 .ToList();
 
             ReplaceElectronicTargetLocationOptions(orderedOptions);
+
+            if (deferAutoSelection)
+            {
+                SyncSelectedElectronicTargetLocationOption(null);
+                ClearElectronicLocationSelectionCore();
+                return;
+            }
 
             HardDiskMediaReturnTargetLocationOption? selected = null;
             if (preferSuggestedSelection)

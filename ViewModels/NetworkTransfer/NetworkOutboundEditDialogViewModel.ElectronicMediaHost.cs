@@ -23,6 +23,7 @@ public sealed partial class NetworkOutboundEditDialogViewModel
         _electronicMediaEditor.CanEditForm = CanEditForm;
         _electronicMediaEditor.CanEditItemConfidentialLevel = CanEditItemConfidentialLevel;
         _electronicMediaEditor.SectionHeader = ExternalDataSourceSectionTitle;
+        _electronicMediaEditor.UngroupedMaterialNameFallback = _record.MaterialName;
         await _electronicMediaEditor.InitializeAsync().ConfigureAwait(true);
         // 先刷并档目标再 Sync：容量刷新走独立 scope，不与后续附件加载抢页面 DbContext。
         await RefreshArchiveFilingAppendTargetsAsync().ConfigureAwait(true);
@@ -83,11 +84,11 @@ public sealed partial class NetworkOutboundEditDialogViewModel
                 return;
             }
 
-            List<YearlyElectronicArchiveUnit> units;
+            List<HardDiskAppendCandidate> candidates;
             using (IServiceScope scope = _scopeFactory.CreateScope())
             {
                 var filing = scope.ServiceProvider.GetRequiredService<IArchiveFilingService>();
-                units = await filing.GetExistingElectronicUnitsForProjectAsync(projectName, year)
+                candidates = await filing.GetHardDiskAppendCandidatesAsync(SelectedProject?.Id, projectName, year)
                     .ConfigureAwait(true);
             }
 
@@ -96,12 +97,18 @@ public sealed partial class NetworkOutboundEditDialogViewModel
                 return;
             }
 
-            List<ArchiveFilingAppendTargetOption> options = units
-                .Where(unit =>
-                    string.Equals(unit.UnitLifecycleStatus, ArchiveContainerLifecycleStatus.InUse, StringComparison.Ordinal)
-                    && ArchiveFilingBusinessRules.IsHardDiskArchiveCarrierType(unit.StorageCarrierType)
-                    && !string.IsNullOrWhiteSpace(unit.LinkedMediumCodes))
-                .Select(ArchiveFilingAppendTargetOption.From)
+            List<ArchiveFilingAppendTargetOption> options = candidates
+                .Select(candidate =>
+                {
+                    ArchiveFilingAppendTargetOption option = ArchiveFilingAppendTargetOption.From(candidate.Unit);
+                    return new ArchiveFilingAppendTargetOption
+                    {
+                        UnitId = option.UnitId,
+                        DiskCode = option.DiskCode,
+                        BelongsToCurrentProject = candidate.BelongsToCurrentProject,
+                        DisplayText = (candidate.BelongsToCurrentProject ? "本项目已有 / " : "其他非空 / ") + option.DisplayText
+                    };
+                })
                 .ToList();
             _electronicMediaEditor.ReplaceArchiveFilingAppendTargets(options, retainUnlistedSavedTargets: true);
         }
@@ -138,6 +145,8 @@ public sealed partial class NetworkOutboundEditDialogViewModel
         _electronicMediaEditor.EnableOutboundItemStoragePathMode = true;
         _electronicMediaEditor.OutboundStoragePathHeaderResolver = BuildOutboundStoragePathHeader;
         // 申请与审批通过前无法读取具体文件/目录；审批通过后、确认实物交接前允许补录扫描。
+        _electronicMediaEditor.ResolveCommittedProject = () => (Year, ProjectName);
+        _electronicMediaEditor.UseRegisterMaterialGroups = true;
         _electronicMediaEditor.AllowElectronicContentScan = CanSupplementElectronicContentScan;
     }
 

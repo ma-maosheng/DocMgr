@@ -5,12 +5,15 @@ namespace DocMgr.Models.YearlyArchive
         public string FormNo { get; set; } = string.Empty;
         public string MaterialName { get; set; } = string.Empty;
         public string ProjectName { get; set; } = string.Empty;
+        /// <summary>所属项目的实施年度。</summary>
+        public string ProjectYear { get; set; } = string.Empty;
         public string SourceType { get; set; } = string.Empty;
         public string ProvideUnit { get; set; } = string.Empty;
         public List<string> ItemLines { get; set; } = new();
         public List<string> ProofLines { get; set; } = new();
         public string RetainedHardDiskRegistration { get; set; } = string.Empty;
         public string Purpose { get; set; } = string.Empty;
+        public string Reason { get; set; } = string.Empty;
         public string OtherRequests { get; set; } = string.Empty;
         public string Dept { get; set; } = string.Empty;
         public string Applicant { get; set; } = string.Empty;

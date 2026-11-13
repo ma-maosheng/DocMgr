@@ -85,6 +85,15 @@ namespace DocMgr.Services.YearlyArchive
         }
 
         /// <inheritdoc/>
+        public Task<List<HardDiskAppendCandidate>> GetHardDiskAppendCandidatesAsync(
+            int? projectId,
+            string? projectName,
+            string? implementYear)
+        {
+            return _archiveFilingRepository.GetHardDiskAppendCandidatesAsync(projectId, projectName, implementYear);
+        }
+
+        /// <inheritdoc/>
         public Task<YearlyElectronicArchiveUnit?> FindElectronicArchiveUnitAsync(int unitId)
         {
             if (unitId <= 0)
@@ -102,13 +111,6 @@ namespace DocMgr.Services.YearlyArchive
             if (unit == null)
             {
                 throw new InvalidOperationException("预定的并档硬盘袋已不存在，请重新选择。");
-            }
-
-            if (!string.Equals(unit.ProjectName?.Trim(), projectName?.Trim(), StringComparison.Ordinal)
-                || !string.Equals(unit.Year?.Trim(), year?.Trim(), StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException(
-                    $"电子袋 [{unit.ElectronicArchiveNo}] 不属于当前项目「{projectName}」的 {year} 年度，不能作为并档目标。");
             }
 
             if (!string.Equals(unit.UnitLifecycleStatus?.Trim(), ArchiveContainerLifecycleStatus.InUse, StringComparison.Ordinal))
@@ -352,7 +354,7 @@ namespace DocMgr.Services.YearlyArchive
             {
                 case ElectronicArchiveSubmissionMode.RetainedHardDiskAppendExistingHardDisk:
                     changeTracker.AddLine(
-                        $"介质处置说明：登记介质来源为资料室借出硬盘 [{EmptyAsDash(borrowedDiskCode)}]；本次并档将资料拷贝并并入本项目已立档硬盘（目标档口：{EmptyAsDash(appendTargetLocation)}）；原借出硬盘后续将格式化并归还至 {returnedLocation}。");
+                        $"介质处置说明：登记介质来源为资料室借出硬盘 [{EmptyAsDash(borrowedDiskCode)}]；本次并档将资料拷贝并并入所选非空硬盘（目标档口：{EmptyAsDash(appendTargetLocation)}）；原借出硬盘后续将格式化并归还至 {returnedLocation}。");
                     if (!string.IsNullOrWhiteSpace(borrowedDiskCode))
                     {
                         changeTracker.AddLine(

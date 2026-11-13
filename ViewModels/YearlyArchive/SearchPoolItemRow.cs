@@ -34,6 +34,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             ProjectName = hit.ProjectName;
             ProjectYear = hit.ProjectYear;
             ArchivePurpose = hit.ArchivePurpose;
+            RegisterMediaType = hit.RegisterMediaType;
             StorageCarrierTypeDisplay = hit.StorageCarrierTypeDisplay;
             FilingDirectoryDisplay = hit.FilingStoragePath?.Trim() ?? string.Empty;
             MaterialCategory = hit.MaterialCategory;
@@ -63,6 +64,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         public string ProjectYear { get; }
 
         public string ArchivePurpose { get; }
+
+        /// <summary>登记介质条目上的载体类型（如纸质、硬盘）。</summary>
+        public string RegisterMediaType { get; }
 
         public string ItemName { get; }
 

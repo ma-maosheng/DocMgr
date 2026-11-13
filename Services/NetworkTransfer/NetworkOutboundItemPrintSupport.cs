@@ -82,6 +82,15 @@ public static class NetworkOutboundItemPrintSupport
             foreach (YearlyArchiveRegisterMediaItem mediaItem in media.Items.OrderBy(item => item.Id))
             {
                 itemIndex++;
+                mediaItem.MediaEntry ??= media;
+                if (mediaItem.RegisterMaterial == null
+                    && mediaItem.YearlyArchiveRegisterMaterialId is int materialId
+                    && materialId > 0)
+                {
+                    mediaItem.RegisterMaterial = media.Materials?
+                        .FirstOrDefault(material => material.Id == materialId);
+                }
+
                 lines.Add(BuildMediaItemLine(mediaItem, itemIndex));
             }
         }
@@ -128,7 +137,7 @@ public static class NetworkOutboundItemPrintSupport
 
         if (media.AppendTargetElectronicUnitId is > 0)
         {
-            segments.Add($"并入已立档硬盘：{Empty(media.AppendTargetHardDiskCode)}");
+            segments.Add($"并入非空硬盘：{Empty(media.AppendTargetHardDiskCode)}");
         }
     }
 
@@ -186,9 +195,11 @@ public static class NetworkOutboundItemPrintSupport
             SimulatedMediaItemClassificationSupport.ResolveMaterialCategory(mediaItem),
             SimulatedMediaItemClassificationSupport.ResolveSubCategory(mediaItem));
         string subCategory = SimulatedMediaItemClassificationSupport.ResolveSubCategory(mediaItem);
+        string materialName = ArchiveRegisterMaterialSummarySupport.ResolveItemMaterialName(mediaItem);
+        string materialPrefix = string.IsNullOrWhiteSpace(materialName) ? string.Empty : $"{Empty(materialName)} / ";
         string head = string.IsNullOrWhiteSpace(classification)
-            ? $"       {itemIndex}. [{Empty(assetKind)}] {Empty(mediaItem.ContentDesc)} / {Empty(subCategory)}"
-            : $"       {itemIndex}. [{Empty(assetKind)}] {Empty(mediaItem.ContentDesc)} / {classification}";
+            ? $"       {itemIndex}. [{Empty(assetKind)}] {materialPrefix}{Empty(mediaItem.ContentDesc)} / {Empty(subCategory)}"
+            : $"       {itemIndex}. [{Empty(assetKind)}] {materialPrefix}{Empty(mediaItem.ContentDesc)} / {classification}";
 
         var segments = new List<string>();
         foreach (string extra in ElectronicMediaItemSupport.BuildElectronicItemPrintExtraParts(mediaItem))

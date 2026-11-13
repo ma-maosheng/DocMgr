@@ -339,7 +339,7 @@ public static class NetworkOutboundApplicationValidationSupport
 
         if (string.IsNullOrWhiteSpace(header.MaterialName))
         {
-            errors.Add("请填写资料名称。");
+            errors.Add("请至少填写一份资料名称。");
         }
 
         if (string.IsNullOrWhiteSpace(header.Reason))

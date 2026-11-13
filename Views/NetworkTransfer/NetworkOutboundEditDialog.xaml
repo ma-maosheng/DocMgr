@@ -86,12 +86,6 @@
                         <GroupBox Header="2. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,4">
-                                    <TextBlock Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="资料名称 *："/>
-                                    <TextBox Text="{Binding MaterialName, UpdateSourceTrigger=PropertyChanged}"
-                                             Width="500" Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                                             IsEnabled="{Binding CanEditForm}"/>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,4">
                                     <TextBlock Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="所属项目 *："/>
                                     <ComboBox Width="100" Style="{StaticResource ArchiveRegisterFormComboBoxStyle}" Margin="0,0,5,0"
                                               ItemsSource="{Binding ProjectYears}"
@@ -187,7 +181,7 @@
                                               Style="{StaticResource ArchiveRegisterFormComboBoxStyle}"
                                               IsEnabled="{Binding CanEditForm}"/>
                                     <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Foreground="#64748B" FontSize="11"
-                                               Text="归档载体在下方电子介质中选择：光盘，或硬盘（库内空盘 / 并入本项目已立档硬盘）。"/>
+                                               Text="归档载体在下方电子介质中选择：光盘，或硬盘（库内空盘 / 并入非空硬盘）。"/>
                                 </StackPanel>
                                 <GroupBox Header="出网明细 *" Margin="0,8,0,0" BorderBrush="#DDD" Padding="6">
                                     <StackPanel Margin="4">

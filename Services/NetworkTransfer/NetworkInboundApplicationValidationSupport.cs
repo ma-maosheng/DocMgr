@@ -277,7 +277,7 @@ public static class NetworkInboundApplicationValidationSupport
 
         if (string.IsNullOrWhiteSpace(header.MaterialName))
         {
-            errors.Add("请填写资料名称。");
+            errors.Add("请至少填写一份资料名称。");
         }
 
         if (string.IsNullOrWhiteSpace(header.Reason))
@@ -329,6 +329,11 @@ public static class NetworkInboundApplicationValidationSupport
             if (!item.SourceFilingFactId.HasValue || item.SourceFilingFactId.Value <= 0)
             {
                 errors.Add($"第 {rowNo} 行{rowLabel}：立档明细缺少立档事实关联。");
+            }
+
+            if (string.IsNullOrWhiteSpace(item.MaterialName))
+            {
+                errors.Add($"第 {rowNo} 行{rowLabel}：资料名称不能为空。");
             }
 
             if (string.IsNullOrWhiteSpace(item.ItemName))

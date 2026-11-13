@@ -221,6 +221,7 @@ public sealed partial class NetworkInboundEditDialogViewModel
         IsDialogMode = isDialogMode;
         OnPropertyChanged(nameof(ShowEmbeddedActionButtons));
         OnPropertyChanged(nameof(ShowFooterActionBar));
+        SyncRequestHeaderChrome();
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -371,6 +372,7 @@ public sealed partial class NetworkInboundEditDialogViewModel
                 or NetworkInboundRecord.StatusSignedUploaded
             && isArchiveAdmin;
 
+        SyncRequestHeaderChrome();
         OnPropertyChanged(nameof(ShowApprovalWorkflowPanel));
         OnPropertyChanged(nameof(ShowApprovalPanel));
         OnPropertyChanged(nameof(ShowApplicationSubmitActions));
@@ -484,59 +486,71 @@ public sealed partial class NetworkInboundEditDialogViewModel
             return;
         }
 
-        bool anySuccess = false;
+        var pendingFiles = new List<(string FileName, string Extension, byte[] Content)>();
         foreach (string filePath in dialog.FileNames)
         {
-            try
+            if (!File.Exists(filePath))
             {
-                if (!File.Exists(filePath))
-                {
-                    continue;
-                }
-
-                byte[] content = await File.ReadAllBytesAsync(filePath);
-                string fileName = Path.GetFileName(filePath);
-                string extension = Path.GetExtension(filePath);
-                var (ok, message, _) = await _service.UploadAttachmentAsync(
-                    NetworkTransferDomainValues.InboundAttachmentBusinessType,
-                    _record.Id,
-                    _record.InboundNo,
-                    fileCategory,
-                    fileName,
-                    extension,
-                    content.LongLength,
-                    content,
-                    RequireUser());
-                if (!ok)
-                {
-                    _dialogService.ShowError(message);
-                    continue;
-                }
-
-                anySuccess = true;
+                continue;
             }
-            catch (Exception ex)
-            {
-                _dialogService.ShowError($"上传失败：{ex.Message}");
-            }
+
+            byte[] content = await File.ReadAllBytesAsync(filePath);
+            pendingFiles.Add((Path.GetFileName(filePath), Path.GetExtension(filePath), content));
         }
 
-        if (!anySuccess)
+        if (pendingFiles.Count == 0)
         {
             return;
         }
 
-        _hasCommittedChanges = true;
-        await ReloadAttachmentsAsync();
-        await ReloadRecordAsync();
-
-        string displayName = string.Equals(fileCategory, NetworkTransferDomainValues.AttachmentCategorySignedForm, StringComparison.Ordinal)
-            ? "签批交接单"
-            : fileCategory;
-        if (!AttachmentsMeetMandatoryRequirements)
+        await _pageDb.RunAsync(async () =>
         {
-            _dialogService.ShowMessage($"{displayName}已上传。\n\n当前尚未满足办结要求：\n{AttachmentRequirementHint}");
-        }
+            bool anySuccess = false;
+            foreach ((string fileName, string extension, byte[] content) in pendingFiles)
+            {
+                try
+                {
+                    var (ok, message, _) = await _service.UploadAttachmentAsync(
+                        NetworkTransferDomainValues.InboundAttachmentBusinessType,
+                        _record.Id,
+                        _record.InboundNo,
+                        fileCategory,
+                        fileName,
+                        extension,
+                        content.LongLength,
+                        content,
+                        RequireUser());
+                    if (!ok)
+                    {
+                        _dialogService.ShowError(message);
+                        continue;
+                    }
+
+                    anySuccess = true;
+                }
+                catch (Exception ex)
+                {
+                    _dialogService.ShowError($"上传失败：{ex.Message}");
+                }
+            }
+
+            if (!anySuccess)
+            {
+                return;
+            }
+
+            _hasCommittedChanges = true;
+            await ReloadAttachmentsAsync();
+            await ReloadRecordAsync();
+
+            string displayName = string.Equals(fileCategory, NetworkTransferDomainValues.AttachmentCategorySignedForm, StringComparison.Ordinal)
+                ? "签批交接单"
+                : fileCategory;
+            if (!AttachmentsMeetMandatoryRequirements)
+            {
+                _dialogService.ShowMessage($"{displayName}已上传。\n\n当前尚未满足办结要求：\n{AttachmentRequirementHint}");
+            }
+        });
     }
 
     private async Task CaptureAttachmentByCategoryAsync(string fileCategory)
@@ -574,38 +588,41 @@ public sealed partial class NetworkInboundEditDialogViewModel
             ? "签批交接单"
             : fileCategory;
         string fileName = DocumentCameraAttachmentCaptureSupport.BuildFileName(_record.InboundNo, displayName, "入网");
-        try
+        await _pageDb.RunAsync(async () =>
         {
-            var (ok, message, _) = await _service.UploadAttachmentAsync(
-                NetworkTransferDomainValues.InboundAttachmentBusinessType,
-                _record.Id,
-                _record.InboundNo,
-                fileCategory,
-                fileName,
-                ".jpg",
-                captured.JpegContent.LongLength,
-                captured.JpegContent,
-                RequireUser());
-            if (!ok)
+            try
             {
-                _dialogService.ShowError(message);
+                var (ok, message, _) = await _service.UploadAttachmentAsync(
+                    NetworkTransferDomainValues.InboundAttachmentBusinessType,
+                    _record.Id,
+                    _record.InboundNo,
+                    fileCategory,
+                    fileName,
+                    ".jpg",
+                    captured.JpegContent.LongLength,
+                    captured.JpegContent,
+                    RequireUser());
+                if (!ok)
+                {
+                    _dialogService.ShowError(message);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"上传失败：{ex.Message}");
                 return;
             }
-        }
-        catch (Exception ex)
-        {
-            _dialogService.ShowError($"上传失败：{ex.Message}");
-            return;
-        }
 
-        _hasCommittedChanges = true;
-        await ReloadAttachmentsAsync();
-        await ReloadRecordAsync();
+            _hasCommittedChanges = true;
+            await ReloadAttachmentsAsync();
+            await ReloadRecordAsync();
 
-        if (!AttachmentsMeetMandatoryRequirements)
-        {
-            _dialogService.ShowMessage($"{displayName}已上传。\n\n当前尚未满足办结要求：\n{AttachmentRequirementHint}");
-        }
+            if (!AttachmentsMeetMandatoryRequirements)
+            {
+                _dialogService.ShowMessage($"{displayName}已上传。\n\n当前尚未满足办结要求：\n{AttachmentRequirementHint}");
+            }
+        });
     }
 
     private async Task PrintApprovalAsync()

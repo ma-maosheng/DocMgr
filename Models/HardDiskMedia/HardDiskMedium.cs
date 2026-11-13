@@ -155,6 +155,11 @@ namespace DocMgr.Models.HardDiskMedia
         public virtual List<YearlyElectronicArchiveUnitMediumLink> ElectronicArchiveLinks { get; set; } = new();
 
         /// <summary>
+        /// 这块硬盘上的资料明细。
+        /// </summary>
+        public virtual List<YearlyElectronicArchiveUnitMediaItemLink> ArchiveItemLinks { get; set; } = new();
+
+        /// <summary>
         /// 关联硬盘台账（当前状态）。
         /// </summary>
         public virtual HardDiskLedger? Ledger { get; set; }

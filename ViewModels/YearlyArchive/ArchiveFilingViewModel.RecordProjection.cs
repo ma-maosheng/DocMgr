@@ -1,5 +1,7 @@
 using DocMgr.Infrastructure.AgentDebugLogging;
 using DocMgr.Models.ArchiveContainers;
+using DocMgr.Models.YearlyArchive;
+using DocMgr.Repositories.Interfaces;
 using DocMgr.Services.YearlyArchive;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -114,14 +116,22 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return false;
             }
 
+            bool applied = false;
             await RunOnUiAsync(() =>
             {
+                if (myGeneration != Volatile.Read(ref _selectedRecordsChangedGeneration))
+                {
+                    return;
+                }
+
                 _selectedRecords = refreshedRecords;
                 OnPropertyChanged(nameof(SelectedRecords));
                 OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
+                OnPropertyChanged(nameof(ArchivePurposeText));
+                applied = true;
             }).ConfigureAwait(true);
 
-            return true;
+            return applied;
         }
 
         private async Task HandleSelectedRecordsChangedCoreAsync(int myGeneration)
@@ -146,6 +156,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ResetElectronicLocationSelection();
                 Remarks = string.Empty;
                 OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
+                OnPropertyChanged(nameof(ArchivePurposeText));
                 OnPropertyChanged(nameof(ElectronicStepOneSelectedDisposition));
                 OnPropertyChanged(nameof(ElectronicStepOneSelectedMediumCode));
                 OnPropertyChanged(nameof(ElectronicStepOneSelectedFilingStatus));
@@ -178,6 +189,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ResetElectronicLocationSelection();
                 Remarks = string.Empty;
                 OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
+                OnPropertyChanged(nameof(ArchivePurposeText));
                 OnPropertyChanged(nameof(ElectronicStepOneSelectedDisposition));
                 OnPropertyChanged(nameof(ElectronicStepOneSelectedMediumCode));
                 OnPropertyChanged(nameof(ElectronicStepOneSelectedFilingStatus));
@@ -187,8 +199,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             var first = SelectedRecords.First();
+            string implementYear = await ResolveSelectedRecordImplementYearAsync(first).ConfigureAwait(true);
+            if (myGeneration != Volatile.Read(ref _selectedRecordsChangedGeneration))
+            {
+                return;
+            }
+
             TargetProject = ArchiveFilingBusinessRules.ResolveElectronicArchiveProjectName(first);
-            TargetYear = first.CreatedDate.Year.ToString();
+            TargetYear = implementYear;
 
             if (IsSimulatedTrack)
             {
@@ -200,7 +218,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                     mediaEntries = first.MediaEntries?.Count ?? -1
                 });
                 // #endregion
-                await LoadExistingBoxesAsync(TargetProject, TargetYear).ConfigureAwait(true);
+                await LoadExistingBoxesAsync(TargetProject, DateTime.Now.Year.ToString()).ConfigureAwait(true);
                 if (myGeneration != Volatile.Read(ref _selectedRecordsChangedGeneration))
                 {
                     return;
@@ -263,6 +281,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
 
             OnPropertyChanged(nameof(ElectronicApplicationFormNosText));
+            OnPropertyChanged(nameof(ArchivePurposeText));
             UpdateSummaryText();
             RaiseElectronicStepFourPresentationChanged();
         }
@@ -274,7 +293,79 @@ namespace DocMgr.ViewModels.YearlyArchive
             string itemText = IsSimulatedTrack
                 ? $"，其中 {SimulatedRecordItems.Count(item => item.IsSelected)} 个资料子项待本次入盒"
                 : $"，其中 {CountPendingElectronicMediaItemsForSubmit()} 个资料明细待本次入袋（整介质一并立档）";
+            string materialProgress = BuildVisibleMaterialProgressText();
             SummaryText = $"已选择 {SelectedRecords.Count} 份{trackText}资料{itemText}，准备{modeText}";
+            if (materialProgress.Length > 0)
+            {
+                SummaryText += "。" + materialProgress;
+            }
+        }
+
+        /// <summary>一介质含多份资料名称时，标出每份资料已立档的子项数。</summary>
+        private static string BuildMaterialFilingProgressText(YearlyArchiveRegisterMedia media)
+        {
+            var groups = (media.Items ?? [])
+                .Select(item => new
+                {
+                    Name = ArchiveRegisterMaterialSummarySupport.ResolveItemMaterialName(item),
+                    Archived = item.ElectronicArchiveUnitMediaItemLinks.Any()
+                })
+                .Where(item => item.Name.Length > 0)
+                .GroupBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (groups.Count <= 1)
+            {
+                return string.Empty;
+            }
+
+            return string.Join("，", groups.Select(group => $"{group.Key} {group.Count(item => item.Archived)}/{group.Count()}"));
+        }
+
+        private string BuildVisibleMaterialProgressText()
+        {
+            IEnumerable<(string Name, bool Archived)> rows = IsSimulatedTrack
+                ? SimulatedRecordItems.Select(item => (item.MaterialName?.Trim() ?? string.Empty, !item.CanSelect))
+                : ElectronicRecordItems.Select(item => (item.MaterialName?.Trim() ?? string.Empty, !item.CanSelect));
+            var groups = rows
+                .Where(row => row.Name.Length > 0)
+                .GroupBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (groups.Count <= 1)
+            {
+                return string.Empty;
+            }
+
+            return string.Join("，", groups.Select(group =>
+                $"{group.Key} 未立档 {group.Count(row => !row.Archived)}/{group.Count()}"));
+        }
+
+        private static string BuildElectronicContentSummary(IReadOnlyList<SelectableElectronicArchiveMediaViewModel> items)
+        {
+            var named = items
+                .Select(item => (
+                    Material: item.MaterialName?.Trim() ?? string.Empty,
+                    Item: item.ItemName?.Trim() ?? string.Empty))
+                .Where(row => row.Item.Length > 0)
+                .ToList();
+            if (named.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var groups = named
+                .GroupBy(row => row.Material, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (groups.Count <= 1)
+            {
+                return string.Join("；", named.Select(row => row.Item).Distinct(StringComparer.Ordinal));
+            }
+
+            return string.Join("；", groups.Select(group =>
+            {
+                string material = string.IsNullOrWhiteSpace(group.Key) ? "未命名资料" : group.Key;
+                string itemNames = string.Join("、", group.Select(row => row.Item).Distinct(StringComparer.Ordinal));
+                return $"{material}：{itemNames}";
+            }));
         }
 
         /// <summary>
@@ -317,6 +408,7 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void OnCurrentElectronicMediaFormChanged()
         {
             UpdateSummaryText();
+            ApplyAppendHardDiskFilter();
             _pageDb.RunInBackground(PrefillElectronicFieldsFromSelectedRecordsAsync);
             _pageDb.RunInBackground(RebuildElectronicFilingDetailRowsAsync);
         }
@@ -353,6 +445,14 @@ namespace DocMgr.ViewModels.YearlyArchive
                 "查询已有案卷失败: ");
         }
 
+        private readonly List<HardDiskAppendCandidate> _appendHardDiskCandidates = new();
+
+        private int _appendMatchProjectId;
+
+        private string _appendMatchProjectName = string.Empty;
+
+        private string _appendMatchImplementYear = string.Empty;
+
         private Task LoadExistingElectronicUnitsAsync(string projectName, string year)
         {
             return LoadExistingElectronicUnitItemsAsync(projectName, year);
@@ -360,31 +460,304 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task LoadExistingElectronicUnitItemsAsync(string projectName, string year)
         {
-            List<YearlyElectronicArchiveUnit> units;
-            List<ArchiveContainerSummary> summaries;
-
             try
             {
-                using (IServiceScope scope = _scopeFactory.CreateScope())
+                using IServiceScope scope = _scopeFactory.CreateScope();
+                IArchiveFilingService filing = scope.ServiceProvider.GetRequiredService<IArchiveFilingService>();
+                int projectId = SelectedRecords.FirstOrDefault()?.ProjectId ?? 0;
+                List<HardDiskAppendCandidate> candidates = await filing.GetHardDiskAppendCandidatesAsync(
+                    projectId > 0 ? projectId : null,
+                    projectName,
+                    null).ConfigureAwait(false);
+                List<ArchiveContainerSummary> summaries = await filing.GetExistingContainerSummariesForProjectAsync(projectName, year, ArchiveContainerKind.ElectronicBag).ConfigureAwait(false);
+                string implementYear = await ResolveAppendMatchImplementYearAsync(scope.ServiceProvider, projectId, year).ConfigureAwait(false);
+                await RunOnUiAsync(() =>
                 {
-                    IArchiveFilingService filing = scope.ServiceProvider.GetRequiredService<IArchiveFilingService>();
-                    units = await filing.GetExistingElectronicUnitsForProjectAsync(projectName, year).ConfigureAwait(false);
-                    summaries = await filing.GetExistingContainerSummariesForProjectAsync(projectName, year, ArchiveContainerKind.ElectronicBag).ConfigureAwait(false);
-                }
+                    _appendHardDiskCandidates.Clear();
+                    _appendHardDiskCandidates.AddRange(candidates);
+                    _appendMatchProjectId = projectId;
+                    _appendMatchProjectName = projectName?.Trim() ?? string.Empty;
+                    _appendMatchImplementYear = implementYear;
+                    _existingContainerSummaries = summaries;
+                    ApplyAppendHardDiskFilter();
+                }).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 await RunOnUiAsync(() => MessageBox.Show("查询已有电子立档单元失败: " + ex.GetBaseException().Message)).ConfigureAwait(false);
+            }
+        }
+
+        private async Task<string> ResolveSelectedRecordImplementYearAsync(YearlyArchiveRegisterRecord record)
+        {
+            int projectId = record.ProjectId ?? 0;
+            string fallback = record.CreatedDate.Year.ToString();
+            if (projectId <= 0)
+            {
+                return fallback;
+            }
+
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            return await ResolveAppendMatchImplementYearAsync(scope.ServiceProvider, projectId, fallback).ConfigureAwait(true);
+        }
+
+        private static async Task<string> ResolveAppendMatchImplementYearAsync(IServiceProvider services, int projectId, string fallbackYear)
+        {
+            if (projectId <= 0)
+            {
+                return fallbackYear?.Trim() ?? string.Empty;
+            }
+
+            IArchiveFilingFactRepository facts = services.GetRequiredService<IArchiveFilingFactRepository>();
+            IReadOnlyDictionary<int, string> years = await facts.GetProjectImplementYearsByIdsAsync([projectId]).ConfigureAwait(false);
+            if (years.TryGetValue(projectId, out string? implementYear) && !string.IsNullOrWhiteSpace(implementYear))
+            {
+                return implementYear.Trim();
+            }
+
+            return fallbackYear?.Trim() ?? string.Empty;
+        }
+
+        private void ClearAppendHardDiskCandidates()
+        {
+            _appendHardDiskCandidates.Clear();
+            _appendMatchProjectId = 0;
+            _appendMatchProjectName = string.Empty;
+            _appendMatchImplementYear = string.Empty;
+        }
+
+        /// <summary>
+        /// 按同一项目名称、同一实施年度收窄可并入硬盘，并在当前选中项落出范围时改选可用容量足够的硬盘。
+        /// </summary>
+        private void ApplyAppendHardDiskFilter()
+        {
+            if (_appendHardDiskCandidates.Count == 0)
+            {
                 return;
             }
 
-            await RunOnUiAsync(() =>
+            decimal requiredMb = EnumeratePendingElectronicMediaItemRows().Sum(row => row.DataSizeMb);
+            int? selectedId = _selectedExistingElectronicUnitItem?.Unit.Id;
+            int? predeterminedId = GetPredeterminedAppendUnitId();
+
+            var items = _appendHardDiskCandidates
+                .Where(candidate => IncludeAppendCandidate(candidate, predeterminedId))
+                .Select(candidate => ExistingElectronicArchiveUnitListItem.From(
+                    candidate.Unit,
+                    candidate.BelongsToCurrentProject,
+                    CandidateMatchesYear(candidate),
+                    requiredMb))
+                .OrderByDescending(item => item.CanHoldPendingBatch)
+                .ThenByDescending(item => item.BelongsToCurrentProject)
+                .ThenByDescending(item => item.BelongsToCurrentYear)
+                .ThenByDescending(item => item.AvailableCapacityMb)
+                .ThenBy(item => item.ElectronicArchiveNo, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (predeterminedId is int keepId && items.All(item => item.Unit.Id != keepId))
             {
-                var items = units.Select(ExistingElectronicArchiveUnitListItem.From).ToList();
-                ReplaceItems(ExistingElectronicUnits, items);
-                SelectedExistingElectronicUnitItem = items.FirstOrDefault(item => item.CanSelectForAppend);
-                _existingContainerSummaries = summaries;
-            }).ConfigureAwait(false);
+                ExistingElectronicArchiveUnitListItem? forced = ExistingElectronicUnits.FirstOrDefault(item => item.Unit.Id == keepId);
+                if (forced != null)
+                {
+                    items.Add(forced);
+                }
+            }
+
+            ReplaceItems(ExistingElectronicUnits, items);
+
+            if (_deferConsoleAutoSelection)
+            {
+                SelectedExistingElectronicUnitItem = null;
+                return;
+            }
+
+            if (predeterminedId is int forcedId)
+            {
+                ExistingElectronicArchiveUnitListItem? forced = items.FirstOrDefault(item => item.Unit.Id == forcedId && item.CanSelectForAppend);
+                if (forced != null)
+                {
+                    SelectedExistingElectronicUnitItem = forced;
+                    return;
+                }
+            }
+
+            ExistingElectronicArchiveUnitListItem? kept = selectedId is int id
+                ? items.FirstOrDefault(item => item.Unit.Id == id && item.CanSelectForAppend)
+                : null;
+            if (kept != null)
+            {
+                SelectedExistingElectronicUnitItem = kept;
+                return;
+            }
+
+            SelectedExistingElectronicUnitItem = items.FirstOrDefault(item => item.CanSelectForAppend && item.CanHoldPendingBatch);
+        }
+
+        private int? GetPredeterminedAppendUnitId()
+        {
+            return EnumeratePendingElectronicMediaItemRows()
+                .Where(item => item.IsOutboundArchiveFiling
+                    && !item.UseInStockBlankHardDisk
+                    && item.AppendTargetElectronicUnitId is > 0)
+                .Select(item => item.AppendTargetElectronicUnitId)
+                .FirstOrDefault();
+        }
+
+        private List<AppendHardDiskPickerRow> BuildAppendHardDiskPickerRows()
+        {
+            decimal requiredMb = EnumeratePendingElectronicMediaItemRows().Sum(row => row.DataSizeMb);
+            int? predeterminedId = GetPredeterminedAppendUnitId();
+            return _appendHardDiskCandidates
+                .Select(candidate =>
+                {
+                    ExistingElectronicArchiveUnitListItem item = ExistingElectronicArchiveUnitListItem.From(
+                        candidate.Unit,
+                        candidate.BelongsToCurrentProject,
+                        CandidateMatchesYear(candidate),
+                        requiredMb);
+                    return new AppendHardDiskPickerRow
+                    {
+                        UnitId = candidate.Unit.Id,
+                        GroupLabel = item.GroupLabel,
+                        ElectronicArchiveNo = item.ElectronicArchiveNo,
+                        DiskCode = item.LinkedMediumCodesDisplay,
+                        YearProjectText = FormatYearProjectText(candidate),
+                        AvailableCapacityText = item.AvailableCapacityText,
+                        AvailableCapacityMb = item.AvailableCapacityMb,
+                        StorageLocation = item.StorageLocation,
+                        Remarks = item.Remarks,
+                        CanSelect = item.CanSelectForAppend,
+                        CanHoldPendingBatch = item.CanHoldPendingBatch,
+                        BelongsToCurrentProject = item.BelongsToCurrentProject,
+                        BelongsToCurrentYear = item.BelongsToCurrentYear,
+                        MatchesProjectFilter = CandidateMatchesProjectName(candidate),
+                        MatchesYearFilter = CandidateMatchesImplementYearOnly(candidate),
+                        MatchesProjectYear = CandidateMatchesProjectName(candidate) && CandidateMatchesImplementYearOnly(candidate),
+                        IsPredetermined = predeterminedId == candidate.Unit.Id
+                    };
+                })
+                .ToList();
+        }
+
+        private bool IncludeAppendCandidate(HardDiskAppendCandidate candidate, int? predeterminedId)
+        {
+            if (predeterminedId is int keepId && candidate.Unit.Id == keepId)
+            {
+                return true;
+            }
+
+            if (AppendSameProjectOnly && !CandidateMatchesProjectName(candidate))
+            {
+                return false;
+            }
+
+            if (AppendSameYearOnly && !CandidateMatchesImplementYearOnly(candidate))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private static string FormatYearProjectText(HardDiskAppendCandidate candidate)
+        {
+            List<string> labels = candidate.Projects
+                .Select(project => FormatYearProjectLabel(project.ImplementYear, project.ProjectName))
+                .Where(label => label.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(label => label, StringComparer.Ordinal)
+                .ToList();
+            return labels.Count == 0 ? "—" : string.Join("、", labels);
+        }
+
+        private static string FormatYearProjectLabel(string? implementYear, string? projectName)
+        {
+            string year = implementYear?.Trim() ?? string.Empty;
+            string name = projectName?.Trim() ?? string.Empty;
+            if (year.Length == 0)
+            {
+                return name;
+            }
+
+            return name.Length == 0 ? year : $"{year}-{name}";
+        }
+
+        /// <summary>硬盘上任一项目的名称与当前申请相同。不看实施年度，也不按项目编号比对。</summary>
+        private bool CandidateMatchesProjectName(HardDiskAppendCandidate candidate)
+        {
+            if (string.IsNullOrWhiteSpace(_appendMatchProjectName))
+            {
+                return false;
+            }
+
+            return candidate.Projects.Any(project => ProjectNameMatches(project.ProjectName, _appendMatchProjectName));
+        }
+
+        /// <summary>硬盘上任一项目的实施年度与当前申请相同。不看项目名称。</summary>
+        private bool CandidateMatchesImplementYearOnly(HardDiskAppendCandidate candidate)
+        {
+            if (string.IsNullOrWhiteSpace(_appendMatchImplementYear))
+            {
+                return false;
+            }
+
+            return candidate.Projects.Any(project => YearMatches(project.ImplementYear, _appendMatchImplementYear));
+        }
+
+        private bool CandidateMatchesProject(HardDiskAppendCandidate candidate)
+        {
+            if (_appendMatchProjectId > 0)
+            {
+                return candidate.Projects.Any(project => project.ProjectId == _appendMatchProjectId);
+            }
+
+            return candidate.Projects.Any(project => ProjectNameMatches(project.ProjectName, _appendMatchProjectName));
+        }
+
+        private bool CandidateMatchesYear(HardDiskAppendCandidate candidate)
+        {
+            if (string.IsNullOrWhiteSpace(_appendMatchImplementYear))
+            {
+                return true;
+            }
+
+            return candidate.Projects.Any(project => YearMatches(project.ImplementYear, _appendMatchImplementYear));
+        }
+
+        private bool CandidateMatchesProjectYear(HardDiskAppendCandidate candidate)
+        {
+            if (string.IsNullOrWhiteSpace(_appendMatchImplementYear))
+            {
+                return candidate.BelongsToCurrentProject || CandidateMatchesProject(candidate);
+            }
+
+            if (_appendMatchProjectId > 0)
+            {
+                return candidate.Projects.Any(project =>
+                    project.ProjectId == _appendMatchProjectId
+                    && YearMatches(project.ImplementYear, _appendMatchImplementYear));
+            }
+
+            return candidate.Projects.Any(project =>
+                ProjectNameMatches(project.ProjectName, _appendMatchProjectName)
+                && YearMatches(project.ImplementYear, _appendMatchImplementYear));
+        }
+
+        private static bool ProjectNameMatches(string? left, string? right)
+            => string.Equals(left?.Trim(), right?.Trim(), StringComparison.OrdinalIgnoreCase);
+
+        private static bool YearMatches(string? diskYear, string targetYear)
+        {
+            string left = diskYear?.Trim() ?? string.Empty;
+            string right = targetYear.Trim();
+            if (left.Length == 0 || right.Length == 0)
+            {
+                return false;
+            }
+
+            return string.Equals(left, right, StringComparison.Ordinal)
+                || left.StartsWith(right, StringComparison.Ordinal)
+                || right.StartsWith(left, StringComparison.Ordinal);
         }
 
         private async Task LoadExistingContainersAsync<TContainer>(
@@ -464,7 +837,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                         MediaItemId = entry.Item.Id,
                         RecordId = entry.Record.Id,
                         FormNo = entry.Record.FormNo ?? string.Empty,
-                        MaterialName = entry.Record.MaterialName ?? string.Empty,
+                        MaterialName = ArchiveRegisterMaterialSummarySupport.ResolveItemMaterialName(entry.Item),
                         MediaType = entry.Media.MediaType ?? string.Empty,
                         MaterialCategory = SimulatedMediaItemClassificationSupport.ResolveMaterialCategory(entry.Item),
                         SubCategory = SimulatedMediaItemClassificationSupport.ResolveSubCategory(entry.Item),
@@ -489,6 +862,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 })
                 .OrderBy(item => item.FormNo, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(item => item.MediaType, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.MaterialName, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(item => item.ContentDesc, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -539,12 +913,24 @@ namespace DocMgr.ViewModels.YearlyArchive
                         : archivedCount >= totalCount
                             ? "已全部立档"
                             : "已部分立档";
-                    string label = $"{x.Record.FormNo} | {x.Media.MediaType} | {x.Record.MaterialName} | {filingStatus}({archivedCount}/{totalCount})";
+                    string materialNames = ArchiveRegisterMaterialSummarySupport.Build([x.Media]);
+                    if (string.IsNullOrWhiteSpace(materialNames))
+                    {
+                        materialNames = x.Record.MaterialName ?? string.Empty;
+                    }
+
+                    string materialProgress = BuildMaterialFilingProgressText(x.Media);
+                    string label = $"{x.Record.FormNo} | {x.Media.MediaType} | {materialNames} | {filingStatus}({archivedCount}/{totalCount})";
+                    if (materialProgress.Length > 0)
+                    {
+                        label += $"（{materialProgress}）";
+                    }
+
                     return new ElectronicMediaFormListItem
                     {
                         MediaEntryId = x.Media.Id,
                         FormNo = x.Record.FormNo,
-                        MaterialName = x.Record.MaterialName ?? string.Empty,
+                        MaterialName = materialNames,
                         MediaType = x.Media.MediaType,
                         Disposition = x.Media.Disposition ?? string.Empty,
                         MediumCode = code,
@@ -666,7 +1052,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 {
                     // 子项优先按自身立档链接判断；无子项条目按整体投影（全部子项已入袋才视为已立档，无子项视为未立档）。
                     var archiveLink = entry.Item?.ElectronicArchiveUnitMediaItemLinks
-                        ?.Where(link => link.ElectronicArchiveUnit != null)
+                        ?.Where(link => ElectronicMediumCatalog.FindCurrentBag(link) != null)
                         .OrderByDescending(link => link.CreatedAt)
                         .FirstOrDefault();
                     bool isArchived = entry.Item != null
@@ -684,7 +1070,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                         MediaItemId = mediaItemId,
                         RecordId = entry.Record.Id,
                         FormNo = entry.Record.FormNo,
-                        MaterialName = entry.Record.MaterialName ?? string.Empty,
+                        ProjectId = entry.Record.ProjectId ?? 0,
+                        ProjectName = entry.Record.ProjectName?.Trim() ?? string.Empty,
+                        MaterialName = entry.Item == null
+                            ? ArchiveRegisterMaterialSummarySupport.Build([entry.Media])
+                            : ArchiveRegisterMaterialSummarySupport.ResolveItemMaterialName(entry.Item),
                         MediaType = entry.Media.MediaType,
                         MaterialCategory = entry.Item?.ElectronicDetail?.MaterialCategory?.Trim() ?? string.Empty,
                         SubCategory = entry.Item?.ElectronicDetail?.SubCategory?.Trim() ?? string.Empty,
@@ -700,8 +1090,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                         ItemName = displayLine.ItemName,
                         CanSelect = !isArchived,
                         ArchiveStatusText = isArchived ? "已入袋" : "未入袋",
-                        ElectronicArchiveNo = archiveLink?.ElectronicArchiveUnit?.ElectronicArchiveNo ?? string.Empty,
-                        LinkedMediumCodes = archiveLink?.ElectronicArchiveUnit?.LinkedMediumCodes ?? string.Empty,
+                        ElectronicArchiveNo = (archiveLink == null ? null : ElectronicMediumCatalog.FindCurrentBag(archiveLink)?.ElectronicArchiveNo) ?? string.Empty,
+                        LinkedMediumCodes = (archiveLink == null ? null : ElectronicMediumCatalog.FindCurrentBag(archiveLink)?.LinkedMediumCodes) ?? string.Empty,
                         IsBorrowedHardDisk = entry.Media.IsBorrowedHardDisk,
                         BorrowedHardDiskCode = entry.Media.BorrowedHardDiskCode ?? string.Empty,
                         IsOutboundArchiveFiling = entry.Record.SourceNetworkOutboundRecordId is > 0
@@ -717,9 +1107,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                     };
                     return viewModel;
                 })
-                .OrderBy(item => item.FormNo, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(item => item.MediaType, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(item => item.MaterialName, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(item => item.ItemName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.MaterialCategory, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.SubCategory, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.DataOrganizationForm, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(item => item.StoragePath, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 

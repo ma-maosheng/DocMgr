@@ -2145,10 +2145,6 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Remark")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("ReturnBorrowedHardDiskWithInbound")
                         .HasColumnType("bit");
 
@@ -4200,6 +4196,12 @@ namespace DocMgr.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<int?>("HardDiskMediumId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("OpticalDiscMediumId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("PrimaryFilingFactId")
                         .HasColumnType("int");
 
@@ -5144,6 +5146,32 @@ namespace DocMgr.Data.Migrations
                     b.ToTable("YearlyArchiveRegisterElectronicMediaItemEntries", (string)null);
                 });
 
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterMaterial", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("MaterialName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("YearlyArchiveRegisterMediaId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("YearlyArchiveRegisterMediaId");
+
+                    b.ToTable("YearlyArchiveRegisterMaterials");
+                });
+
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterMedia", b =>
                 {
                     b.Property<int>("Id")
@@ -5263,10 +5291,15 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("YearlyArchiveRegisterMaterialId")
+                        .HasColumnType("int");
+
                     b.Property<int>("YearlyArchiveRegisterMediaId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("YearlyArchiveRegisterMaterialId");
 
                     b.HasIndex("YearlyArchiveRegisterMediaId");
 
@@ -5310,6 +5343,10 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ArchivePurpose")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ArchivePurposeNote")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -5400,6 +5437,10 @@ namespace DocMgr.Data.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RndDeptOpinion")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Reason")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -6065,10 +6106,6 @@ namespace DocMgr.Data.Migrations
                     b.Property<int>("MediaCount")
                         .HasColumnType("int");
 
-                    b.Property<string>("ProjectName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Remarks")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -6172,30 +6209,37 @@ namespace DocMgr.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<int?>("HardDiskMediumId")
+                        .HasColumnType("int");
+
                     b.Property<string>("MediumCode")
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
 
-                    b.Property<int>("YearlyArchiveRegisterMediaItemId")
+                    b.Property<int?>("OpticalDiscMediumId")
                         .HasColumnType("int");
 
-                    b.Property<int>("YearlyElectronicArchiveUnitId")
+                    b.Property<int>("YearlyArchiveRegisterMediaItemId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("FormNo");
 
+                    b.HasIndex("HardDiskMediumId");
+
                     b.HasIndex("MediumCode");
+
+                    b.HasIndex("OpticalDiscMediumId");
 
                     b.HasIndex("YearlyArchiveRegisterMediaItemId")
                         .IsUnique();
 
-                    b.HasIndex("YearlyElectronicArchiveUnitId", "YearlyArchiveRegisterMediaItemId")
-                        .IsUnique();
-
-                    b.ToTable("YearlyElectronicArchiveUnitMediaItemLinks", (string)null);
+                    b.ToTable("YearlyElectronicArchiveUnitMediaItemLinks", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_YearlyElectronicArchiveUnitMediaItemLinks_OneMedium", "([HardDiskMediumId] IS NOT NULL AND [OpticalDiscMediumId] IS NULL) OR ([HardDiskMediumId] IS NULL AND [OpticalDiscMediumId] IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyElectronicArchiveUnitMediumLink", b =>
@@ -6608,8 +6652,24 @@ namespace DocMgr.Data.Migrations
                     b.Navigation("RegisterRecord");
                 });
 
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterMaterial", b =>
+                {
+                    b.HasOne("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterMedia", "MediaEntry")
+                        .WithMany("Materials")
+                        .HasForeignKey("YearlyArchiveRegisterMediaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MediaEntry");
+                });
+
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterMediaItem", b =>
                 {
+                    b.HasOne("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterMaterial", "RegisterMaterial")
+                        .WithMany("Items")
+                        .HasForeignKey("YearlyArchiveRegisterMaterialId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterMedia", "MediaEntry")
                         .WithMany("Items")
                         .HasForeignKey("YearlyArchiveRegisterMediaId")
@@ -6617,6 +6677,8 @@ namespace DocMgr.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("MediaEntry");
+
+                    b.Navigation("RegisterMaterial");
                 });
 
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterRecord", b =>
@@ -6694,21 +6756,27 @@ namespace DocMgr.Data.Migrations
 
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyElectronicArchiveUnitMediaItemLink", b =>
                 {
+                    b.HasOne("DocMgr.Models.HardDiskMedia.HardDiskMedium", "HardDiskMedium")
+                        .WithMany("ArchiveItemLinks")
+                        .HasForeignKey("HardDiskMediumId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("DocMgr.Models.OpticalDiscMedia.OpticalDiscMedium", "OpticalDiscMedium")
+                        .WithMany("ArchiveItemLinks")
+                        .HasForeignKey("OpticalDiscMediumId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterMediaItem", "MediaItem")
                         .WithMany("ElectronicArchiveUnitMediaItemLinks")
                         .HasForeignKey("YearlyArchiveRegisterMediaItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("DocMgr.Models.YearlyArchive.YearlyElectronicArchiveUnit", "ElectronicArchiveUnit")
-                        .WithMany("MediaItemLinks")
-                        .HasForeignKey("YearlyElectronicArchiveUnitId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ElectronicArchiveUnit");
+                    b.Navigation("HardDiskMedium");
 
                     b.Navigation("MediaItem");
+
+                    b.Navigation("OpticalDiscMedium");
                 });
 
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyElectronicArchiveUnitMediumLink", b =>
@@ -6743,6 +6811,8 @@ namespace DocMgr.Data.Migrations
             modelBuilder.Entity("DocMgr.Models.HardDiskMedia.HardDiskMedium", b =>
                 {
                     b.Navigation("Applications");
+
+                    b.Navigation("ArchiveItemLinks");
 
                     b.Navigation("ElectronicArchiveLinks");
 
@@ -6796,6 +6866,8 @@ namespace DocMgr.Data.Migrations
 
             modelBuilder.Entity("DocMgr.Models.OpticalDiscMedia.OpticalDiscMedium", b =>
                 {
+                    b.Navigation("ArchiveItemLinks");
+
                     b.Navigation("ElectronicArchiveLinks");
 
                     b.Navigation("Ledger");
@@ -6835,9 +6907,16 @@ namespace DocMgr.Data.Migrations
                     b.Navigation("Entries");
                 });
 
+            modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterMaterial", b =>
+                {
+                    b.Navigation("Items");
+                });
+
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterMedia", b =>
                 {
                     b.Navigation("Items");
+
+                    b.Navigation("Materials");
                 });
 
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyArchiveRegisterMediaItem", b =>
@@ -6874,8 +6953,6 @@ namespace DocMgr.Data.Migrations
             modelBuilder.Entity("DocMgr.Models.YearlyArchive.YearlyElectronicArchiveUnit", b =>
                 {
                     b.Navigation("DiscLinks");
-
-                    b.Navigation("MediaItemLinks");
 
                     b.Navigation("MediumLinks");
                 });

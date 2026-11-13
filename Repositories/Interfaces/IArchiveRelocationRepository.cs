@@ -69,7 +69,9 @@ namespace DocMgr.Repositories.Interfaces
 
         Task<List<YearlyElectronicArchiveUnitDiscLink>> GetElectronicUnitDiscLinksAsync(int unitId);
 
-        Task<List<YearlyArchiveBox>> GetSimulatedSourceCandidatesAsync(string projectName, string year);
+        Task<List<string>> GetDistinctSimulatedBoxYearsAsync();
+
+        Task<List<YearlyArchiveBox>> GetSimulatedSourceCandidatesAsync(string projectName, string year, int? projectId = null);
 
         Task<List<YearlyElectronicArchiveUnit>> GetElectronicSourceCandidatesAsync(string projectName, string year);
 

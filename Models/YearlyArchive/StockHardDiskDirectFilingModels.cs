@@ -9,7 +9,7 @@ namespace DocMgr.Models.YearlyArchive
     /// <summary>
     /// 存量硬盘根目录四级扫描：年度 / 项目 / 资料名称 / 子项。
     /// </summary>
-    public static class StockHardDiskDirectFilingDirectorySupport
+    public static partial class StockHardDiskDirectFilingDirectorySupport
     {
         private static readonly Regex YearFolderRegex = new(@"^(?<year>19\d{2}|20\d{2})", RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
@@ -25,7 +25,7 @@ namespace DocMgr.Models.YearlyArchive
         };
 
         /// <summary>
-        /// 扫描根目录，要求有且仅有一套年度/项目。
+        /// 扫描根目录。一块硬盘可以包含多个年度、多个项目，一次直办仍写入同一只袋。
         /// </summary>
         public static StockHardDiskDirectoryScanResult ScanRoot(string? rootPath)
         {
@@ -54,67 +54,56 @@ namespace DocMgr.Models.YearlyArchive
                 yearPairs.Add((folder, parsedYear));
             }
 
-            var distinctYears = yearPairs.Select(item => item.Year).Distinct(StringComparer.Ordinal).ToList();
-            if (distinctYears.Count == 0)
+            if (yearPairs.Count == 0)
             {
                 return StockHardDiskDirectoryScanResult.Fail("根目录下没有四位年度文件夹（如 2018）。");
             }
 
-            if (distinctYears.Count > 1)
-            {
-                return StockHardDiskDirectoryScanResult.Fail(
-                    $"一块硬盘只能存放唯一一个年度/项目。当前根目录出现多个年度：{string.Join("、", distinctYears)}。");
-            }
-
-            if (yearPairs.Count > 1)
-            {
-                warnings.Add($"同一年度存在多个文件夹，已使用 [{yearPairs[0].Dir.Name}]。");
-            }
-
-            var yearDir = yearPairs[0].Dir;
-            string year = yearPairs[0].Year;
-            var projectFolders = EnumerateBusinessDirectories(yearDir.FullName).ToList();
-            if (projectFolders.Count == 0)
-            {
-                return StockHardDiskDirectoryScanResult.Fail($"年度 [{year}] 下未找到项目文件夹。");
-            }
-
-            if (projectFolders.Count > 1)
-            {
-                return StockHardDiskDirectoryScanResult.Fail(
-                    $"一块硬盘只能存放唯一一个年度/项目。年度 [{year}] 下出现多个项目文件夹：{string.Join("、", projectFolders.Select(item => item.Name))}。");
-            }
-
-            var projectDir = projectFolders[0];
-            string projectName = projectDir.Name.Trim();
-            var materialFolders = EnumerateBusinessDirectories(projectDir.FullName).ToList();
-            if (materialFolders.Count == 0)
-            {
-                return StockHardDiskDirectoryScanResult.Fail($"项目 [{projectName}] 下未找到资料名称文件夹。");
-            }
-
             var materials = new List<StockHardDiskMaterialDraft>();
-            foreach (var materialDir in materialFolders.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
+            foreach (var yearPair in yearPairs.OrderBy(item => item.Year, StringComparer.Ordinal).ThenBy(item => item.Dir.Name, StringComparer.OrdinalIgnoreCase))
             {
-                var itemFolders = EnumerateBusinessDirectories(materialDir.FullName).ToList();
-                if (itemFolders.Count == 0)
+                var projectFolders = EnumerateBusinessDirectories(yearPair.Dir.FullName).ToList();
+                if (projectFolders.Count == 0)
                 {
-                    warnings.Add($"资料 [{materialDir.Name}] 下没有子项文件夹，已跳过。");
+                    warnings.Add($"年度 [{yearPair.Year}] 下未找到项目文件夹，已跳过。");
                     continue;
                 }
 
-                var items = new List<StockHardDiskItemDraft>();
-                foreach (var itemDir in itemFolders.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
+                foreach (var projectDir in projectFolders)
                 {
-                    items.Add(CreateItemDraft(root, year, projectName, materialDir.Name, itemDir));
-                }
+                    string projectName = projectDir.Name.Trim();
+                    var materialFolders = EnumerateBusinessDirectories(projectDir.FullName).ToList();
+                    if (materialFolders.Count == 0)
+                    {
+                        warnings.Add($"项目 [{yearPair.Year}/{projectName}] 下未找到资料名称文件夹，已跳过。");
+                        continue;
+                    }
 
-                materials.Add(new StockHardDiskMaterialDraft
-                {
-                    MaterialName = materialDir.Name.Trim(),
-                    FullPath = materialDir.FullName,
-                    Items = items
-                });
+                    foreach (var materialDir in materialFolders.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
+                    {
+                        var itemFolders = EnumerateBusinessDirectories(materialDir.FullName).ToList();
+                        if (itemFolders.Count == 0)
+                        {
+                            warnings.Add($"资料 [{materialDir.Name}] 下没有子项文件夹，已跳过。");
+                            continue;
+                        }
+
+                        var items = new List<StockHardDiskItemDraft>();
+                        foreach (var itemDir in itemFolders.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
+                        {
+                            items.Add(CreateItemDraft(root, yearPair.Year, projectName, materialDir.Name, itemDir));
+                        }
+
+                        materials.Add(new StockHardDiskMaterialDraft
+                        {
+                            Year = yearPair.Year,
+                            ProjectName = projectName,
+                            MaterialName = materialDir.Name.Trim(),
+                            FullPath = materialDir.FullName,
+                            Items = items
+                        });
+                    }
+                }
             }
 
             if (materials.Count == 0)
@@ -122,12 +111,22 @@ namespace DocMgr.Models.YearlyArchive
                 return StockHardDiskDirectoryScanResult.Fail("未扫描到任何资料子项。请确认第四级为子项资料文件夹。");
             }
 
+            StockHardDiskMaterialDraft first = materials[0];
+            var projectLabels = materials
+                .Select(item => $"{item.Year} {item.ProjectName}")
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            if (projectLabels.Count > 1)
+            {
+                warnings.Add($"本盘包含多个年度/项目，将一次写入同一只电子袋：{string.Join("、", projectLabels)}。");
+            }
+
             return new StockHardDiskDirectoryScanResult
             {
                 Succeeded = true,
                 RootPath = root,
-                Year = year,
-                ProjectName = projectName,
+                Year = first.Year,
+                ProjectName = projectLabels.Count == 1 ? first.ProjectName : string.Join("、", projectLabels),
                 Materials = materials,
                 Warnings = warnings
             };
@@ -346,6 +345,10 @@ namespace DocMgr.Models.YearlyArchive
 
     public sealed class StockHardDiskMaterialDraft
     {
+        public string Year { get; set; } = string.Empty;
+
+        public string ProjectName { get; set; } = string.Empty;
+
         public string MaterialName { get; set; } = string.Empty;
 
         public string FullPath { get; init; } = string.Empty;

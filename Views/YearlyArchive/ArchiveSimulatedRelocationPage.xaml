@@ -4,6 +4,7 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:viewShared="clr-namespace:DocMgr.Views.Shared"
+      xmlns:ya="clr-namespace:DocMgr.Views.YearlyArchive"
       mc:Ignorable="d"
       d:DesignHeight="900" d:DesignWidth="1300"
       Title="ArchiveSimulatedRelocationPage" Background="#F0F2F5">
@@ -72,7 +73,8 @@
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="240"/>
+                            <ColumnDefinition Width="220"/>
+                            <ColumnDefinition Width="120"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
@@ -81,24 +83,30 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="年度：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="实施年度：" Style="{StaticResource FieldLabelStyle}"/>
                         <TextBlock Grid.Row="0" Grid.Column="1" Text="项目：" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="源档案盒：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="盒年度：" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="3" Text="源档案盒：" Style="{StaticResource FieldLabelStyle}"/>
 
                         <ComboBox Grid.Row="1" Grid.Column="0" Style="{StaticResource FormComboBoxStyle}" Margin="0,0,12,0"
-                                  ItemsSource="{Binding Years}"
-                                  SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                  ItemsSource="{Binding ImplementYears}"
+                                  SelectedItem="{Binding SelectedImplementYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  ToolTip="按项目实施年度列出项目。"/>
                         <ComboBox Grid.Row="1" Grid.Column="1" Style="{StaticResource FormComboBoxStyle}" Margin="0,0,12,0"
                                   ItemsSource="{Binding ProjectOptions}"
                                   DisplayMemberPath="Name"
                                   SelectedValuePath="Id"
                                   SelectedValue="{Binding SelectedProjectId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        <ComboBox Grid.Row="1" Grid.Column="2" Style="{StaticResource FormComboBoxStyle}"
+                        <ComboBox Grid.Row="1" Grid.Column="2" Style="{StaticResource FormComboBoxStyle}" Margin="0,0,12,0"
+                                  ItemsSource="{Binding Years}"
+                                  SelectedItem="{Binding SelectedYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  ToolTip="档案盒上的办理年，用于列出该年的源档案盒。"/>
+                        <ComboBox Grid.Row="1" Grid.Column="3" Style="{StaticResource FormComboBoxStyle}"
                                   ItemsSource="{Binding SourceOptions}"
                                   DisplayMemberPath="DisplayText"
                                   SelectedItem="{Binding SelectedSourceOption, Mode=TwoWay}"/>
 
-                        <Border Grid.Row="2" Grid.ColumnSpan="3" Margin="0,12,0,0" Padding="10,8"
+                        <Border Grid.Row="2" Grid.ColumnSpan="4" Margin="0,12,0,0" Padding="10,8"
                                 Background="#F6FFFD" BorderBrush="#B2DFDB" BorderThickness="1" CornerRadius="4"
                                 Visibility="{Binding HasSource, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <StackPanel>
@@ -209,28 +217,7 @@
                                    Foreground="#666" TextWrapping="Wrap" Margin="0,0,0,8"
                                    Visibility="{Binding ShowItemsEmptyHint, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         <viewShared:ItemDetailsPanelHeader DataContext="{Binding ItemDetailsPanel}" Margin="0,0,0,6"/>
-                        <DataGrid ItemsSource="{Binding ItemDetailsPanel.PageItems}" AutoGenerateColumns="False" IsReadOnly="True"
-                              CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
-                              MinHeight="160" MaxHeight="280">
-                            <DataGrid.Style>
-                                <Style TargetType="DataGrid">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding ItemDetailsPanel.IsExpanded}" Value="False">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </DataGrid.Style>
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="表单号" Binding="{Binding FormNo, Mode=OneWay}" Width="120"/>
-                                <DataGridTextColumn Header="年度" Binding="{Binding Year, Mode=OneWay}" Width="70"/>
-                                <DataGridTextColumn Header="项目" Binding="{Binding ProjectName, Mode=OneWay}" Width="140"/>
-                                <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, Mode=OneWay}" Width="160"/>
-                                <DataGridTextColumn Header="子项名称" Binding="{Binding ItemName, Mode=OneWay}" Width="*"/>
-                                <DataGridTextColumn Header="迁档前编号" Binding="{Binding BeforeStorageLocation, Mode=OneWay}" Width="140"/>
-                                <DataGridTextColumn Header="迁档后编号" Binding="{Binding AfterStorageLocation, Mode=OneWay}" Width="140"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                        <ya:ArchiveRelocationItemGrid ItemsSource="{Binding ItemDetailsPanel.PageItems}"/>
                         <viewShared:ItemDetailsPanelPaginationBar DataContext="{Binding ItemDetailsPanel}"/>
                     </StackPanel>
                 </GroupBox>

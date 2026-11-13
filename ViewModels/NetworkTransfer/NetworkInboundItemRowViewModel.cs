@@ -165,7 +165,7 @@ public sealed class NetworkInboundItemRowViewModel : ViewModelBase
     public string StorageLocationDisplay =>
         NetworkInboundItemDisplaySupport.ResolveStorageLocationDisplay(Item, _isExternalSource);
 
-    /// <summary>立档检索集明细列：与 YA-FIL-POOL 右侧「池内立档记录」同名字段。</summary>
+    /// <summary>立档检索集明细列，与共用表 ArchiveSearchPoolItemGrid 同名字段。</summary>
     public string FormNo => FirstNonEmpty(_poolItem?.FormNo, Item.FormNo);
 
     public string ProjectYear =>
@@ -174,6 +174,8 @@ public sealed class NetworkInboundItemRowViewModel : ViewModelBase
     public string ProjectName => FirstNonEmpty(_poolItem?.ProjectName, _filingFact?.ProjectName);
 
     public string ArchivePurpose => _poolItem?.ArchivePurpose?.Trim() ?? string.Empty;
+
+    public string RegisterMediaType => _poolItem?.RegisterMediaType?.Trim() ?? string.Empty;
 
     public string StorageCarrierTypeDisplay =>
         FirstNonEmpty(
